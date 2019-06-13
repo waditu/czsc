@@ -47,6 +47,13 @@ def daily_classifier(ts_code, trade_date, return_central=False):
     first_central = _central(data.iloc[:3, :])
     last_central = _central(data.iloc[-3:, :])
 
+    # 若两个中枢之间存在价格重叠部分，则第二个中枢不存在
+    if first_central and last_central:
+        fp = first_central['price_span']
+        lp = last_central["price_span"]
+        if fp[1] >= lp[0] >= fp[0] or fp[1] >= lp[1] >= fp[0]:
+            last_central = None
+
     # 没有中枢的情况
     if first_central is None and last_central is None:
         kind = "最强单边走势"
