@@ -27,7 +27,7 @@ def daily_classifier(ts_code, trade_date, return_central=False):
 
     df = ts.pro_bar(ts_code=ts_code, freq='30min', start_date=trade_date, end_date=end_date)
     df.sort_values('trade_time', inplace=True)
-    data = df[['ts_code', 'trade_time', 'high', 'low']].iloc[1:, :]
+    data = df[['ts_code', 'trade_time', 'high', 'low', 'close']].iloc[1:, :]
     data = data.reset_index(drop=True)
     assert len(data) == 8, "每个交易日，A股有且只有8跟30分钟K线"
 
