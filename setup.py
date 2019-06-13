@@ -17,7 +17,7 @@ setup(
     packages=find_packages(exclude=['test', 'images']),
     include_package_data=True,
     install_requires=[
-        "requests", "pandas"
+        "requests", "pandas", "tushare"
     ],
 
     classifiers=[
