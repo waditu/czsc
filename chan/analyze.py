@@ -80,9 +80,3 @@ def find_fx(kline):
     return kline
 
 
-def find_bi(kline):
-    kline1 = kline.dropna(axis=0, how='any',  subset=['fx'])
-    kline2 = kline.dropna(axis=0, how='any',  subset=['high_m', 'low_m'])
-    pass
-
-

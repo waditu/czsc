@@ -15,7 +15,7 @@ def get_kline(ts_code, start_date, end_date, freq='30min'):
     :param end_date: str
         日期，如 20190610
     :return: pd.DataFrame
-        columns = ["symbol", "dt", "open", "close", "high", "low", "vr"]
+        columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
 
     example:
     >>> get_kline(ts_code='600122.SH', start_date='20190601', end_date='20190610', freq='30min')
@@ -33,10 +33,35 @@ def get_kline(ts_code, start_date, end_date, freq='30min'):
 
     df.sort_values('dt', inplace=True)
     df.reset_index(drop=True, inplace=True)
-    df['vr'] = 0
-    for i in range(5, len(df)):
-        df.loc[i, 'vr'] = round(df.loc[i, 'vol'] / df.loc[i-5:i-1, 'vol'].mean(), 4)
 
-    return df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vr']]
+    # 计算量比
+    # df['vr'] = 0
+    # for i in range(5, len(df)):
+    #     df.loc[i, 'vr'] = round(df.loc[i, 'vol'] / df.loc[i-5:i-1, 'vol'].mean(), 4)
+
+    return df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
+
+
+def get_realtime_kline(ts_code, freq="5min"):
+    """实时获取分钟K线
+
+    :param ts_code: str
+        tushare 股票代码，如 600122.SH
+    :param freq: str
+        K线周期，分钟级别，可选值 5min 15min 30min 60min
+
+    :return: pd.DataFrame
+        columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
+
+    """
+    code = ts_code[:6]
+
+    df = ts.get_k_data(code=code, ktype=freq.replace("min", ""))
+    df['symbol'] = ts_code
+    df.rename(columns={'date': 'dt', 'volume': 'vol'}, inplace=True)
+    df.sort_values('dt', inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    return df[["symbol", "dt", "open", "close", "high", "low", "vol"]]
 
 

@@ -21,6 +21,7 @@ def daily_classifier(ts_code, trade_date, return_central=False):
     >>> kind, central = daily_classifier('600122.SH', "20190613", return_central=True)
     >>> print(kind, central)
     """
+
     start_date = datetime.strptime(trade_date, '%Y%m%d')
     end_date = start_date + timedelta(days=1)
     end_date = end_date.date().__str__().replace("-", "")
@@ -62,12 +63,15 @@ def daily_classifier(ts_code, trade_date, return_central=False):
     elif (first_central is None and last_central) or (first_central and last_central is None):
         max_p = max(data.iloc[:3, :]['close'])
         min_p = min(data.iloc[:3, :]['close'])
+
         # 1、在前三根30分钟K线出现当天高点
         if max(data['close']) == max_p:
             kind = "弱平衡市"
+
         # 2、在前三根30分钟K线出现当天低点
         elif min(data['close']) == min_p:
             kind = "强平衡市"
+
         # 3、在前三根30分钟K线不出现当天高低点
         else:
             kind = "转折平衡市"
@@ -80,6 +84,7 @@ def daily_classifier(ts_code, trade_date, return_central=False):
             kind = "向上两中枢走势"
         else:
             raise ValueError("两中枢的最低价不可以相等")
+
     else:
         raise ValueError('中枢计算错误')
 

@@ -23,3 +23,7 @@ pip install git+git://github.com/zengbin93/chan.git
 
 * vr 表示 量比
 * dt 表示 该周期的交易结束时间
+
+
+### K线绘图
+

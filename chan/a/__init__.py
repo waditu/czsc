@@ -6,4 +6,4 @@
 """
 
 from .daily_classfier import daily_classifier
-from .utils import get_kline
+from .utils import get_kline, get_realtime_kline
