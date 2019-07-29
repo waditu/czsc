@@ -109,6 +109,20 @@ def find_fx(kline):
                     last_index = None
                 else:
                     last_index = curr_index
+
+    # 添加 笔标记 - 从第一个有效顶分型开始标记
+    kline['bi_mark'] = None
+    mark = 0
+    for i, row in kline.iterrows():
+        if mark == 0 and row['fx'] == 0:
+            kline.loc[i, 'bi_mark'] = mark
+            mark += 1
+            continue
+
+        if mark > 0 and row['fx'] in [0, 1]:
+            kline.loc[i, 'bi_mark'] = mark
+            mark += 1
+
     return kline
 
 

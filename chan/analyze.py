@@ -1,82 +1,43 @@
 # coding: utf-8
-"""
-
-step 1. 去除包含关系
-step 2. 找出全部分型，并验证有效性
-step 3. 标记线段
-step 4. 标记中枢
-====================================================================
-"""
 
 
-def preprocess(kline):
-    """去除包含关系"""
-    kline['high_m'] = None
-    kline['low_m'] = None
+def find_xd(kline):
+    """线段查找。输入：确定了分型的 K 线；输出：加入线段查找结果的 K 线"""
 
-    # 首行处理
-    last_h = kline.loc[0, 'high']
-    last_l = kline.loc[0, 'low']
+    # 找出所有可能的线段终点
+    gd1 = kline[kline['bi_mark'] == 0].iloc[0]
+    gd2 = kline[kline['bi_mark'] == 2].iloc[0]
 
-    if last_h >= kline.loc[1, 'high']:
-        direction = 0    # 下跌
+    if gd1['high'] < gd2['high']:
+        direction = "向上"
     else:
-        direction = 1    # 上涨
+        direction = "向下"
 
-    for i, row in kline.iterrows():
-        cur_h, cur_l = row['high'], row['low']
-        # 左包含 or 右包含
-        if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
-            if direction == 0:
-                last_h = min(last_h, cur_h)
-                last_l = min(last_l, cur_l)
-            elif direction == 1:
-                last_h = max(last_h, cur_h)
-                last_l = max(last_l, cur_l)
-            else:
-                raise ValueError
-            continue
+    i = 4
+    mark = 0
+    kline['xd_mark'] = None
 
-        kline.loc[i-1, 'high_m'] = last_h
-        kline.loc[i-1, 'low_m'] = last_l
+    while i <= kline['bi_mark'].max():
+        gd1 = kline[kline['bi_mark'] == i-3].iloc[0]
+        dd1 = kline[kline['bi_mark'] == i-2].iloc[0]
+        gd2 = kline[kline['bi_mark'] == i-1].iloc[0]
+        dd2 = kline[kline['bi_mark'] == i].iloc[0]
 
-        # 更新 direction, last_h, last_l
-        if last_h >= cur_h:
-            direction = 0  # 下跌
-        else:
-            direction = 1  # 上涨
+        # 第二个顶分型的最高价小于或等于第一个顶分型的最高价，向上过程有可能结束
+        if direction == "向上" and gd2['high'] <= gd1['high']:
+            kline.loc[gd1.name, 'xd_mark'] = mark
+            mark += 1
+            direction = "向下"
 
-        last_h = cur_h
-        last_l = cur_l
+        # 第二个底分型的最低价大于或等于第一个底分型的最低价，向下过程有可能结束
+        elif direction == "向下" and dd2['low'] >= dd1['low']:
+            kline.loc[dd1.name, 'xd_mark'] = mark
+            mark += 1
+            direction = "向上"
 
-    return kline
+        i += 2
 
-
-def find_fx(kline):
-    """找出全部分型，并验证有效性
-
-    0 - 顶分型
-    1 - 底分型
-
-    :param kline: pd.DataFrame
-        经过预处理，去除了包含关系的 K 线
-    :return:
-    """
-
-    kline_new = kline.dropna()
-    kline['fx'] = None
-
-    for i in range(1, len(kline_new)-1):
-        data = kline_new.iloc[i-1: i+2]
-        row = kline_new.iloc[i]
-
-        if max(data['high_m']) == row['high_m']:
-            kline.loc[row.name, 'fx'] = 0
-        elif min(data['low_m']) == row['low_m']:
-            kline.loc[row.name, 'fx'] = 1
-        else:
-            continue
+    # TODO(zengbin): 检查线段的有效性
 
     return kline
-
 
