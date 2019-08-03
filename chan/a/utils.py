@@ -2,8 +2,22 @@
 
 import tushare as ts
 
+from ..utils import ma, macd, boll
 
-def get_kline(ts_code, start_date, end_date, freq='30min', asset='E'):
+
+def _cal_indicators(kline, indicators):
+    if "ma" in indicators:
+        kline = ma(kline)
+
+    if "macd" in indicators:
+        kline = macd(kline)
+
+    if "boll" in indicators:
+        kline = boll(kline)
+    return kline
+
+
+def get_kline(ts_code, start_date, end_date, freq='30min', asset='E', indicators=("ma", "macd")):
     """获取指定级别的前复权K线
 
     :param ts_code: str
@@ -14,6 +28,8 @@ def get_kline(ts_code, start_date, end_date, freq='30min', asset='E'):
         日期，如 20190601
     :param end_date: str
         日期，如 20190610
+    :param indicators: tuple
+        可选值 ma macd boll
     :param asset: str
         交易资产类型，可选值 E股票 I沪深指数 C数字货币 FT期货 FD基金 O期权 CB可转债（v1.2.39），默认E
     :return: pd.DataFrame
@@ -41,17 +57,19 @@ def get_kline(ts_code, start_date, end_date, freq='30min', asset='E'):
     # df['vr'] = 0
     # for i in range(5, len(df)):
     #     df.loc[i, 'vr'] = round(df.loc[i, 'vol'] / df.loc[i-5:i-1, 'vol'].mean(), 4)
+    kline = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
+    return _cal_indicators(kline, indicators)
 
-    return df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
 
-
-def get_realtime_kline(ts_code, freq="5min"):
+def get_realtime_kline(ts_code, freq="5min", indicators=("ma", "macd")):
     """实时获取分钟K线（仅适用于A股股票）
 
     :param ts_code: str
         tushare 股票代码，如 600122.SH
     :param freq: str
         K线周期，分钟级别，可选值 5min 15min 30min 60min
+    :param indicators: tuple
+        可选值 ma macd boll
     :return: pd.DataFrame
         columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
 
@@ -64,6 +82,8 @@ def get_realtime_kline(ts_code, freq="5min"):
     df.sort_values('dt', inplace=True)
     df.reset_index(drop=True, inplace=True)
 
-    return df[["symbol", "dt", "open", "close", "high", "low", "vol"]]
+    kline = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
+    return _cal_indicators(kline, indicators)
+
 
 
