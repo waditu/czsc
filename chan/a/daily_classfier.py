@@ -7,8 +7,10 @@ import tushare as ts
 # ts.set_token("******")
 
 
-def daily_classifier(ts_code, trade_date, return_central=False):
+def daily_classifier(ts_code, trade_date, asset='E', return_central=False):
     """ A 股每日走势的分类
+
+    asset 交易资产类型，可选值 E股票 I沪深指数
 
     使用该方法前，请仔细阅读：http://blog.sina.com.cn/s/blog_486e105c010009uy.html
 
@@ -26,7 +28,8 @@ def daily_classifier(ts_code, trade_date, return_central=False):
     end_date = start_date + timedelta(days=1)
     end_date = end_date.date().__str__().replace("-", "")
 
-    df = ts.pro_bar(ts_code=ts_code, freq='30min', start_date=trade_date, end_date=end_date)
+    df = ts.pro_bar(ts_code=ts_code, freq='30min', asset=asset,
+                    start_date=trade_date, end_date=end_date)
     df.sort_values('trade_time', inplace=True)
     data = df[['ts_code', 'trade_time', 'high', 'low', 'close']].iloc[1:, :]
     data = data.reset_index(drop=True)
