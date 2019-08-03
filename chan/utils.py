@@ -167,6 +167,22 @@ def find_xd(kline):
     return kline
 
 
+def ma(kline, params=(5, 10, 20, 60, 120, 250)):
+    """计算指定周期的若干 MA 均线
+
+    :param kline: pd.DataFrame
+        K线，确保含有 close 列
+    :param params: tuple
+    :return: pd.DataFrame
+        在原始数据中新增若干 MA 均线
+    """
+    for p in params:
+        col = "ma"+str(p)
+        kline[col] = kline['close'].rolling(p).mean()
+        kline[col] = kline[col].apply(round, args=(4,))
+    return kline
+
+
 def macd(kline):
     """计算 MACD 指标
 
