@@ -64,15 +64,15 @@ def daily_classifier(ts_code, trade_date, asset='E', return_central=False):
 
     # 一个中枢的情况（平衡市）
     elif (first_central is None and last_central) or (first_central and last_central is None):
-        max_p = max(data.iloc[:3, :]['close'])
-        min_p = min(data.iloc[:3, :]['close'])
+        max_p = max(data.iloc[:3, :]['high'])
+        min_p = min(data.iloc[:3, :]['low'])
 
         # 1、在前三根30分钟K线出现当天高点
-        if max(data['close']) == max_p:
+        if max(data['high']) == max_p:
             kind = "弱平衡市"
 
         # 2、在前三根30分钟K线出现当天低点
-        elif min(data['close']) == min_p:
+        elif min(data['low']) == min_p:
             kind = "强平衡市"
 
         # 3、在前三根30分钟K线不出现当天高低点
