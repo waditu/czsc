@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from datetime import datetime, timedelta
 import tushare as ts
 
 from ..utils import ma, macd, boll
@@ -17,13 +18,13 @@ def _cal_indicators(kline, indicators):
     return kline
 
 
-def get_kline(ts_code, start_date, end_date, freq='30min', asset='E', indicators=("ma", "macd")):
+def get_kline(ts_code, end_date, start_date=None, freq='30min', asset='E', indicators=("ma", "macd")):
     """获取指定级别的前复权K线
 
     :param ts_code: str
         股票代码，如 600122.SH
     :param freq: str
-        K线级别，可选值 [1min, 5min, 15min, 30min, D, M, Y]
+        K线级别，可选值 [1min, 5min, 15min, 30min, 60min, D, M, Y]
     :param start_date: str
         日期，如 20190601
     :param end_date: str
@@ -39,9 +40,34 @@ def get_kline(ts_code, start_date, end_date, freq='30min', asset='E', indicators
     >>> from chan.a.utils import get_kline
     >>> get_kline(ts_code='600122.SH', start_date='20190601', end_date='20190610', freq='30min')
     """
+    if start_date is None:
+        end_date = datetime.strptime(end_date, '%Y%m%d')
+        if freq == '1min':
+            start_date = end_date - timedelta(days=10)
+        elif freq == '5min':
+            start_date = end_date - timedelta(days=20)
+        elif freq == '30min':
+            start_date = end_date - timedelta(days=100)
+        elif freq == '60min':
+            start_date = end_date - timedelta(days=200)
+        elif freq == 'D':
+            start_date = end_date - timedelta(weeks=100)
+        elif freq == 'W':
+            start_date = end_date - timedelta(weeks=500)
+        elif freq == 'M':
+            start_date = end_date - timedelta(weeks=4*500)
+        elif freq == 'Y':
+            start_date = end_date - timedelta(weeks=52*30)
+        else:
+            raise ValueError("'freq' value error, current value is %s, "
+                             "optional valid values are ['1min', '5min', '30min', "
+                             "'60min', 'D', 'W', 'M', 'Y']" % freq)
+
+        start_date = start_date.date().__str__().replace("-", "")
+        end_date = end_date.date().__str__().replace("-", "")
+
     # https://tushare.pro/document/2?doc_id=109
-    df = ts.pro_bar(ts_code=ts_code, freq=freq,
-                    start_date=start_date, end_date=end_date,
+    df = ts.pro_bar(ts_code=ts_code, freq=freq, start_date=start_date, end_date=end_date,
                     adj='qfq', asset=asset)
 
     # 统一 k 线数据格式为 6 列，分别是 ["symbol", "dt", "open", "close", "high", "low", "vr"]
