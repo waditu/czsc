@@ -78,16 +78,16 @@ def find_bi(kline):
         经过预处理，去除了包含关系的 K 线
     :return: kline: pd.DataFrame
     """
-    kline['fx'] = None
+    kline['bi_fx'] = None
 
     for i in range(1, len(kline) - 1):
         data = kline.iloc[i - 1: i + 2]
         row = kline.iloc[i]
 
         if max(data['high']) == row['high']:
-            kline.loc[row.name, 'fx'] = 0
+            kline.loc[row.name, 'bi_fx'] = 0
         elif min(data['low']) == row['low']:
-            kline.loc[row.name, 'fx'] = 1
+            kline.loc[row.name, 'bi_fx'] = 1
         else:
             continue
 
@@ -95,17 +95,17 @@ def find_bi(kline):
     last_index = None
 
     for i in kline.index[::-1]:
-        if kline.loc[i, 'fx'] not in [0, 1]:
+        if kline.loc[i, 'bi_fx'] not in [0, 1]:
             continue
 
-        if kline.loc[i, 'fx'] in [0, 1]:
+        if kline.loc[i, 'bi_fx'] in [0, 1]:
             if last_index is None:
                 last_index = i
             else:
                 curr_index = i
                 if last_index - curr_index < 3:
-                    kline.loc[last_index, 'fx'] = 2
-                    kline.loc[curr_index, 'fx'] = 2
+                    kline.loc[last_index, 'bi_fx'] = 2
+                    kline.loc[curr_index, 'bi_fx'] = 2
                     last_index = None
                 else:
                     last_index = curr_index
@@ -114,16 +114,15 @@ def find_bi(kline):
     kline['bi_mark'] = None
     mark = 0
     for i, row in kline.iterrows():
-        if mark == 0 and row['fx'] == 0:
+        if mark == 0 and row['bi_fx'] == 0:
             kline.loc[i, 'bi_mark'] = mark
             mark += 1
             continue
 
-        if mark > 0 and row['fx'] in [0, 1]:
+        if mark > 0 and row['bi_fx'] in [0, 1]:
             kline.loc[i, 'bi_mark'] = mark
             mark += 1
 
-    del kline['fx']
     return kline
 
 
@@ -141,7 +140,7 @@ def find_xd(kline):
 
     i = 4
     mark = 0
-    kline['fx'] = None
+    kline['xd_mark'] = None
 
     while i <= kline['bi_mark'].max():
         gd1 = kline[kline['bi_mark'] == i - 3].iloc[0]
@@ -151,13 +150,13 @@ def find_xd(kline):
 
         # 第二个顶分型的最高价小于或等于第一个顶分型的最高价，向上过程有可能结束
         if direction == "向上" and gd2['high'] <= gd1['high']:
-            kline.loc[gd1.name, 'fx'] = 0
+            kline.loc[gd1.name, 'xd_mark'] = 0
             mark += 1
             direction = "向下"
 
         # 第二个底分型的最低价大于或等于第一个底分型的最低价，向下过程有可能结束
         elif direction == "向下" and dd2['low'] >= dd1['low']:
-            kline.loc[dd1.name, 'fx'] = 1
+            kline.loc[dd1.name, 'xd_mark'] = 1
             mark += 1
             direction = "向上"
 
@@ -165,19 +164,7 @@ def find_xd(kline):
 
     # 线段有效的基础： 标准特征序列中至少含一笔
     # 添加 线段标记 - 从第一个有效顶分型开始标记
-    kline['xd_mark'] = None
-    mark = 0
-    for i, row in kline.iterrows():
-        if mark == 0 and row['fx'] == 0:
-            kline.loc[i, 'xd_mark'] = mark
-            mark += 1
-            continue
 
-        if mark > 0 and row['fx'] in [0, 1]:
-            kline.loc[i, 'xd_mark'] = mark
-            mark += 1
-
-    del kline['fx']
     return kline
 
 
