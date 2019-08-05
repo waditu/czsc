@@ -123,6 +123,7 @@ def find_bi(kline):
             kline.loc[i, 'bi_mark'] = mark
             mark += 1
 
+    del kline['fx']
     return kline
 
 
@@ -140,7 +141,7 @@ def find_xd(kline):
 
     i = 4
     mark = 0
-    kline['xd_mark'] = None
+    kline['fx'] = None
 
     while i <= kline['bi_mark'].max():
         gd1 = kline[kline['bi_mark'] == i - 3].iloc[0]
@@ -150,20 +151,33 @@ def find_xd(kline):
 
         # 第二个顶分型的最高价小于或等于第一个顶分型的最高价，向上过程有可能结束
         if direction == "向上" and gd2['high'] <= gd1['high']:
-            kline.loc[gd1.name, 'xd_mark'] = mark
+            kline.loc[gd1.name, 'fx'] = 0
             mark += 1
             direction = "向下"
 
         # 第二个底分型的最低价大于或等于第一个底分型的最低价，向下过程有可能结束
         elif direction == "向下" and dd2['low'] >= dd1['low']:
-            kline.loc[dd1.name, 'xd_mark'] = mark
+            kline.loc[dd1.name, 'fx'] = 1
             mark += 1
             direction = "向上"
 
         i += 2
-    # 线段有效的基础： 标准特征序列中至少含一笔
-    # TODO(zengbin): 检查线段的有效性
 
+    # 线段有效的基础： 标准特征序列中至少含一笔
+    # 添加 线段标记 - 从第一个有效顶分型开始标记
+    kline['xd_mark'] = None
+    mark = 0
+    for i, row in kline.iterrows():
+        if mark == 0 and row['fx'] == 0:
+            kline.loc[i, 'xd_mark'] = mark
+            mark += 1
+            continue
+
+        if mark > 0 and row['fx'] in [0, 1]:
+            kline.loc[i, 'xd_mark'] = mark
+            mark += 1
+
+    del kline['fx']
     return kline
 
 
@@ -222,3 +236,4 @@ def boll(kline):
     kline['boll-top'] = kline['boll-top'].apply(round, args=(4,))
     kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(4,))
     return kline
+
