@@ -3,9 +3,6 @@
 from datetime import datetime, timedelta
 import tushare as ts
 
-# 首次使用，需要设置token
-# ts.set_token("******")
-
 
 def daily_classifier(ts_code, trade_date, asset='E', return_central=False):
     """ A 股每日走势的分类
