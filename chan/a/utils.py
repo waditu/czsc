@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 import tushare as ts
+from collections import OrderedDict
 
 from ..utils import ma, macd, boll
 
@@ -110,6 +111,4 @@ def get_realtime_kline(ts_code, freq="5min", indicators=("ma", "macd")):
 
     kline = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
     return _cal_indicators(kline, indicators)
-
-
 
