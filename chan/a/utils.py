@@ -41,6 +41,9 @@ def get_kline(ts_code, end_date, start_date=None, freq='30min', asset='E', indic
     >>> from chan.a.utils import get_kline
     >>> get_kline(ts_code='600122.SH', start_date='20190601', end_date='20190610', freq='30min')
     """
+    if indicators is None:
+        indicators = []
+
     if start_date is None:
         end_date = datetime.strptime(end_date, '%Y%m%d')
         if freq == '1min':

@@ -12,7 +12,12 @@ class OrderedAttrDict(OrderedDict):
 
 
 def preprocess(kline):
-    """去除包含关系"""
+    """去除包含关系
+
+    :param kline: pd.DataFrame
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
+    :return: pd.DataFrame
+    """
     kline['high_m'] = None
     kline['low_m'] = None
 
@@ -75,7 +80,8 @@ def find_bi(kline):
     2 - 无效分型
 
     :param kline: pd.DataFrame
-        经过预处理，去除了包含关系的 K 线
+        经过预处理，去除了包含关系的 K 线，
+        columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
     :return: kline: pd.DataFrame
     """
     kline['bi_fx'] = None
@@ -127,8 +133,12 @@ def find_bi(kline):
 
 
 def find_xd(kline):
-    """线段查找。输入：确定了分型的 K 线；输出：加入线段查找结果的 K 线"""
+    """线段查找。输入：确定了分型的 K 线；输出：加入线段查找结果的 K 线
 
+    :param kline: pd.DataFrame
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
+    :return:
+    """
     # 找出所有可能的线段终点
     gd1 = kline[kline['bi_mark'] == 0].iloc[0]
     gd2 = kline[kline['bi_mark'] == 2].iloc[0]
@@ -172,7 +182,7 @@ def ma(kline, params=(5, 10, 20, 60, 120, 250)):
     """计算指定周期的若干 MA 均线
 
     :param kline: pd.DataFrame
-        K线，确保含有 close 列
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
     :param params: tuple
     :return: pd.DataFrame
         在原始数据中新增若干 MA 均线
@@ -188,7 +198,7 @@ def macd(kline):
     """计算 MACD 指标
 
     :param kline: pd.DataFrame
-        K线，确保含有 close 列
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
     :return: pd.DataFrame
         在原始数据中新增 diff,dea,macd 三列
     """
@@ -209,7 +219,7 @@ def boll(kline):
     """计算 BOLL 指标
 
     :param kline: pd.DataFrame
-        K线，确保含有 close 列
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
     :return: pd.DataFrame
         在原始数据中新增 BOLL 指标结果
     """
@@ -224,3 +234,40 @@ def boll(kline):
     kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(4,))
     return kline
 
+
+def kline_status(kline):
+    """计算 kline 的当下状态
+
+    :param kline: pd.DataFrame
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
+    :return: OrderedDict
+    """
+    kline = ma(kline)
+    kline = macd(kline)
+
+    # MACD 多空状态
+    last_raw = kline.iloc[-1]
+    if last_raw['diff'] < 0 and last_raw['dea'] < 0:
+        macd_status = '空头行情'
+    elif last_raw['diff'] > 0 and last_raw['dea'] > 0:
+        macd_status = '多头行情'
+    else:
+        macd_status = '转折行情'
+
+    # 最近三根K线状态
+    pred = preprocess(kline)
+    last_three = pred.iloc[-3:]
+
+    # 笔状态：最近三根 K 线的走势状态
+    if min(last_three['low']) == last_three.iloc[-1]['low']:
+        bi_status = "向下笔延伸中"
+    elif min(last_three['low']) == last_three.iloc[-2]['low']:
+        bi_status = "底分型构造中"
+    elif max(last_three['high']) == last_three.iloc[-1]['high']:
+        bi_status = "向上笔延伸中"
+    elif max(last_three['high']) == last_three.iloc[-2]['high']:
+        bi_status = "顶分型构造中"
+    else:
+        raise ValueError("kline 数据出错")
+
+    return OrderedDict(macd_status=macd_status, bi_status=bi_status)
