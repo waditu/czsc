@@ -1,3 +1,4 @@
+pyecharts
 tqdm
 pandas
 tushare
