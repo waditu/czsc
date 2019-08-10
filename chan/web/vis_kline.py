@@ -12,15 +12,16 @@ from pyecharts import options as opts
 from pyecharts.charts import Kline, Grid, Line, Bar, Scatter
 from pyecharts.globals import ThemeType, CurrentConfig
 from chan.a import get_kline
-from chan.utils import preprocess, find_bi, find_xd
-from chan import cache_path
+from chan.utils import preprocess, find_bi, find_xd, cache_path
+
 
 CurrentConfig.PAGE_TITLE = "chan - 缠论分析"
 
 
-def kline_viewer(ts_code, freq, end_date, asset='E'):
+def kline_viewer(ts_code, freq, end_date, asset='E', show=True):
     """
 
+    :param show:
     :param ts_code:
     :param freq:
     :param end_date:
@@ -222,7 +223,9 @@ def kline_viewer(ts_code, freq, end_date, asset='E'):
         ),
     )
 
-    # 调用浏览器打开可视化结果
     graph_path = os.path.join(cache_path, "%s_kline_%s.html" % (symbol, freq))
     grid_chart.render(path=graph_path)
-    webbrowser.open(graph_path)
+
+    # 调用浏览器打开可视化结果
+    if show:
+        webbrowser.open(graph_path)

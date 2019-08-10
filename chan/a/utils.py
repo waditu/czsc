@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 import tushare as ts
-from collections import OrderedDict
+
 
 from ..utils import ma, macd, boll
 

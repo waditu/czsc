@@ -1,14 +1,18 @@
 # coding: utf-8
 
+import os
+import shutil
 from collections import OrderedDict
 
 
-class OrderedAttrDict(OrderedDict):
-    """OrderedDict that can get attribute by dot"""
+cache_path = os.path.join(os.path.expanduser('~'), ".chan")
+if not os.path.exists(cache_path):
+    os.mkdir(cache_path)
 
-    def __init__(self, *args, **kwargs):
-        super(OrderedAttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
+
+def clean_cache():
+    shutil.rmtree(cache_path)
+    os.mkdir(cache_path)
 
 
 def preprocess(kline):
