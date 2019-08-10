@@ -11,8 +11,10 @@ import webbrowser
 from pyecharts import options as opts
 from pyecharts.charts import Kline, Grid, Line, Bar, Scatter
 from pyecharts.globals import ThemeType, CurrentConfig
+
 from chan.a import get_kline
-from chan.utils import preprocess, find_bi, find_xd, cache_path
+from chan.utils import cache_path
+from chan.analyze import preprocess, find_fx, find_bi, find_xd
 
 
 CurrentConfig.PAGE_TITLE = "chan - 缠论分析"
@@ -34,9 +36,14 @@ def kline_viewer(ts_code, freq, end_date, asset='E', show=True):
     >>> kline_viewer(ts_code='002739.SZ', freq='1min', end_date="20190809", asset='E')
     """
     kline_raw = get_kline(ts_code, freq=freq, end_date=end_date, asset=asset, indicators=('ma', 'macd'))
+
+    for col in ['open', 'close', 'high', 'low']:
+        kline_raw[col] = kline_raw[col].apply(round, args=(2,))
+
     kline_chan = find_xd(find_bi(preprocess(kline_raw)))
     kline_chan = kline_chan[['dt', 'fx', 'bi_mark', 'bi', 'xd_mark']]
     kline_raw = kline_raw.merge(kline_chan, how='left', on='dt')
+    # kline_raw = kline_raw.merge(kline_chan, how='right', on='dt')
     start_dt = kline_raw.iloc[0]["dt"]
     end_dt = kline_raw.iloc[-1]["dt"]
 

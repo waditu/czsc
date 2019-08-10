@@ -83,6 +83,8 @@ def find_bi(kline):
     1 - 底分型
     2 - 无效分型
 
+    一个分型能否成为笔的一部分，至少需要看到后面两个分型的情况才能确定。
+
     :param kline: pd.DataFrame
         经过预处理，去除了包含关系的 K 线，
         columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
@@ -94,7 +96,6 @@ def find_bi(kline):
     for i in range(1, len(kline) - 1):
         data = kline.iloc[i - 1: i + 2]
         row = kline.iloc[i]
-
         if max(data['high']) == row['high']:
             kline.loc[row.name, 'fx'] = 0
         elif min(data['low']) == row['low']:
@@ -105,7 +106,8 @@ def find_bi(kline):
     # 确定分型的有效性：满足结合律；实现方式：从后往前，不满足结合律就处理成无效分型
     last_index = None
 
-    for i in kline.index[::-1]:
+    # for i in kline.index[::-1]:
+    for i in kline.index:
         if kline.loc[i, 'fx'] not in [0, 1]:
             continue
 
@@ -114,10 +116,12 @@ def find_bi(kline):
                 last_index = i
             else:
                 curr_index = i
-                if last_index - curr_index < 3:
+                if curr_index - last_index < 4:
                     kline.loc[last_index, 'fx'] = 2
                     kline.loc[curr_index, 'fx'] = 2
-                    last_index = None
+                    kline_part = kline.iloc[:i]
+                    last_index = kline_part[kline_part['fx'].isin([0, 1])].iloc[-1].name
+                    last_index = int(last_index)
                 else:
                     last_index = curr_index
 
@@ -203,7 +207,7 @@ def ma(kline, params=(5, 10, 20, 60, 120, 250)):
     for p in params:
         col = "ma"+str(p)
         kline[col] = kline['close'].rolling(p).mean()
-        kline[col] = kline[col].apply(round, args=(4,))
+        kline[col] = kline[col].apply(round, args=(2,))
     return kline
 
 
@@ -222,9 +226,9 @@ def macd(kline):
     kline['dea'] = kline['diff'].ewm(adjust=False, alpha=2 / (m + 1), ignore_na=True).mean()
     kline['macd'] = 2 * (kline['diff'] - kline['dea'])
 
-    kline['diff'] = kline['diff'].apply(round, args=(4,))
-    kline['dea'] = kline['dea'].apply(round, args=(4,))
-    kline['macd'] = kline['macd'].apply(round, args=(4,))
+    kline['diff'] = kline['diff'].apply(round, args=(2,))
+    kline['dea'] = kline['dea'].apply(round, args=(2,))
+    kline['macd'] = kline['macd'].apply(round, args=(2,))
     return kline
 
 
@@ -241,10 +245,10 @@ def boll(kline):
     kline['boll-top'] = kline['boll-mid'] + 2*kline['boll-tmp2']
     kline['boll-bottom'] = kline['boll-mid'] - 2*kline['boll-tmp2']
 
-    kline['boll-mid'] = kline['boll-mid'].apply(round, args=(4,))
-    kline['boll-tmp2'] = kline['boll-tmp2'].apply(round, args=(4,))
-    kline['boll-top'] = kline['boll-top'].apply(round, args=(4,))
-    kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(4,))
+    kline['boll-mid'] = kline['boll-mid'].apply(round, args=(2,))
+    kline['boll-tmp2'] = kline['boll-tmp2'].apply(round, args=(2,))
+    kline['boll-top'] = kline['boll-top'].apply(round, args=(2,))
+    kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(2,))
     return kline
 
 
