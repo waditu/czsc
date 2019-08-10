@@ -4,7 +4,7 @@ import chan
 
 setup(
     name="chan",
-    version="0.0.1",
+    version=chan.version,
     keywords=("缠论", "技术分析"),
     description="缠论技术分析工具",
     long_description="缠论技术分析工具",
