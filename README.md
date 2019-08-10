@@ -32,11 +32,11 @@ pip install git+git://github.com/zengbin93/chan.git
 
 ### 应用缠论对 K 线进行分析，并将分析结果可视化
 
-``python
+```python
 import chan
 
 chan.kline_viewer(ts_code='000001.SH', freq='W', end_date='20190809', asset='I', show=True)
-``
+```
 
 
 
