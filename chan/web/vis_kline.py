@@ -40,8 +40,9 @@ def kline_viewer(ts_code, freq, end_date, asset='E', show=True):
     for col in ['open', 'close', 'high', 'low']:
         kline_raw[col] = kline_raw[col].apply(round, args=(2,))
 
-    kline_chan = find_xd(find_bi(preprocess(kline_raw)))
-    kline_chan = kline_chan[['dt', 'fx', 'bi_mark', 'bi', 'xd_mark']]
+    # kline_chan = find_xd(find_bi(preprocess(kline_raw)))
+    kline_chan = find_bi(find_fx(preprocess(kline_raw)))
+    kline_chan = kline_chan[['dt', 'fx_mark', 'fx', 'bi_mark', 'bi']]
     kline_raw = kline_raw.merge(kline_chan, how='left', on='dt')
     # kline_raw = kline_raw.merge(kline_chan, how='right', on='dt')
     start_dt = kline_raw.iloc[0]["dt"]
