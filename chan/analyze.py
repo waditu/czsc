@@ -166,10 +166,72 @@ def find_xd(kline):
     """线段查找。输入：确定了分型的 K 线；输出：加入线段查找结果的 K 线
 
     :param kline: pd.DataFrame
-        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
-    :return:
+        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol", 'bi', 'bi_mark', 'fx', 'fx_mark']
+    :return: pd.DataFrame
+        K线，columns = ['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'fx', 'fx_mark', 'bi', 'bi_mark',
+                       'xd', 'xd_mark']
     """
-    pass
+    kline_new = kline[["dt", 'bi', 'bi_mark', 'fx', 'fx_mark']]
+    kline_new = kline_new.dropna()
+    kline_new = kline_new.reset_index(drop=True)
+    assert kline_new.iloc[0]['fx_mark'] == 1, "分型标记必选从 1 开始"
+
+    # 利用向上笔查找潜在的线段顶分型，利用向下笔查找潜在的线段底分型
+    kline_new['xd_fx'] = None
+    kline_new['xd'] = None
+    for i in range(1, len(kline_new)-2):
+        last = kline_new.iloc[i-2]['bi']
+        cur = kline_new.iloc[i]['bi']
+        next_ = kline_new.iloc[i+2]['bi']
+        if i % 2 == 0:
+            if min([last, cur, next_]) == cur:
+                kline_new.loc[i, 'xd_fx'] = 1
+                kline_new.loc[i, 'xd'] = cur
+        else:
+            if max([last, cur, next_]) == cur:
+                kline_new.loc[i, 'xd_fx'] = 0
+                kline_new.loc[i, 'xd'] = cur
+
+    # 确认线段分型的有效性：至少存在一个反方向的一笔
+    potential_valid = None
+    valid_list = []
+
+    for i, row in kline_new.iterrows():
+        if row['xd_fx'] not in [0, 1]:
+            continue
+
+        if not potential_valid:
+            # 找到第一个潜在的有效线段分型
+            potential_valid = row.to_dict()
+            potential_valid['id'] = i
+        else:
+            # 对潜在分型进行相应的判断
+            if row['xd_fx'] == potential_valid['xd_fx']:
+                # update 潜在顶分型
+                if potential_valid['xd_fx'] == 0 and row['xd'] > potential_valid['xd']:
+                    potential_valid = row.to_dict()
+                    potential_valid['id'] = i
+                # update 潜在底分型
+                if potential_valid['xd_fx'] == 1 and row['xd'] < potential_valid['xd']:
+                    potential_valid = row.to_dict()
+                    potential_valid['id'] = i
+            else:
+                # 判断潜在分型的有效性
+                # 取两个不同类型分型之间的数据，不包括两个分型点
+                bi_part = kline_new.iloc[potential_valid['id']+1:i]
+                if sum(bi_part['fx_mark']) >= 1:  # 两个有效线段分型之间至少存在一笔
+                    valid_list.append(potential_valid)
+
+                potential_valid = row.to_dict()
+                potential_valid['id'] = i
+
+    valid_df = pd.DataFrame(valid_list)
+    valid_df['xd_mark'] = [x for x in range(len(valid_df))]
+
+    valid_df = valid_df[['dt', 'xd', 'xd_mark']]
+    kline = kline.merge(valid_df, how='left', on='dt')
+    print(kline.columns)
+    return kline
 
 
 
