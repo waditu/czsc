@@ -339,9 +339,9 @@ def kline_viewer(ts_code, freq, end_date, asset='E', show=True):
         ),
     )
 
-    graph_path = os.path.join(cache_path, "%s_kline_%s.html" % (symbol, freq))
-    grid_chart.render(path=graph_path)
-
     # 调用浏览器打开可视化结果
     if show:
+        graph_path = os.path.join(cache_path, "%s_kline_%s.html" % (symbol, freq))
+        grid_chart.render(path=graph_path)
         webbrowser.open(graph_path)
+    return grid_chart
