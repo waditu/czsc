@@ -7,7 +7,7 @@ Pypi上已经存在一个名为chan的库，以致于这个库没法上传到Pyp
 
 执行以下代码直接从github安装：
 ```
-pip install git+git://github.com/zengbin93/chan.git
+pip install git+git://github.com/zengbin93/chan.git -U
 ```
 
 ## K线数据样例
