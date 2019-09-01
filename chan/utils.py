@@ -3,6 +3,7 @@
 import os
 import shutil
 from collections import OrderedDict
+from .analyze import preprocess
 
 
 cache_path = os.path.join(os.path.expanduser('~'), ".chan")
