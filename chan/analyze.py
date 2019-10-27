@@ -56,8 +56,9 @@ def preprocess(kline):
             k_new.append(last)
             last = deepcopy(row)
 
-        if i == len(kline):
-            k_new.append(last)
+        if i == len(kline)-1:
+            if row['dt'] != k_new[-1]['dt']:
+                k_new.append(row)
 
     # print('k_new nums:', len(k_new))
     return k_new
@@ -131,10 +132,12 @@ def find_bi(k_fx):
 
 def find_xd(k_bi):
     """查找线段标记"""
+
     k_xd = []
     i = 0
     potential = deepcopy(k_bi[i])
 
+    # 依据不创新高、新低的近似标准找出所有潜在线段标记
     while i < len(k_bi)-3:
         k1, k2, k3 = k_bi[i+1], k_bi[i+2], k_bi[i+3]
 
@@ -160,13 +163,82 @@ def find_xd(k_bi):
 
         else:
             raise ValueError
-
     potential['xd'] = potential['bi']
     k_xd.append(potential)
-    # print("xd nums:", len(k_xd))
-    # 待完善：如果两个线段标记之间无有效笔标记，则这两个线段标记无效。
-
     return k_xd
+
+    # # 在向下笔构成的标准特征序列中找出所有顶分型；在向上笔构成的标准特征序列中找出所有底分型；
+    # def _bi_fx(bi_list, mode):
+    #
+    #     if mode == 'g':
+    #         direction = 'up'
+    #     elif mode == 'd':
+    #         direction = 'down'
+    #     else:
+    #         raise ValueError
+    #
+    #     bi_pred = []
+    #     last = bi_list[0]
+    #     for bi in bi_list[1:]:
+    #         # 包含关系处理
+    #         cur_h, cur_l = bi['high'], bi['low']
+    #         last_h, last_l = last['high'], last['low']
+    #
+    #         # 左包含 or 右包含
+    #         if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
+    #             # 有包含关系，按方向分别处理
+    #             if direction == "up":
+    #                 last_h = max(last_h, cur_h)
+    #                 last_l = max(last_l, cur_l)
+    #                 if last_h != last['high']:
+    #                     last = deepcopy(bi)
+    #                 last['low'] = last_l
+    #             elif direction == "down":
+    #                 last_h = min(last_h, cur_h)
+    #                 last_l = min(last_l, cur_l)
+    #                 if last_l != last['low']:
+    #                     last = deepcopy(bi)
+    #                 last['high'] = last_h
+    #             else:
+    #                 raise ValueError
+    #         else:
+    #             # 无包含关系，更新 K 线
+    #             bi_pred.append(last)
+    #             last = deepcopy(bi)
+    #
+    #     return [x for x in find_fx(bi_pred) if x.get('fx_mark', None) == mode]
+    #
+    # bi_down = [{"dt": x['dt'], "high": x['fx'], "low": k_bi[i+1]['fx']}
+    #            for i, x in enumerate(k_bi[:-1]) if x['fx_mark'] == "g"]
+    # bi_g = _bi_fx(bi_down, mode='g')
+    # bi_up = [{"dt": x['dt'], "high": k_bi[i+1]['fx'], "low": x['fx']}
+    #          for i, x in enumerate(k_bi[:-1]) if x['fx_mark'] == "d"]
+    # bi_d = _bi_fx(bi_up, mode='d')
+    # valid_fx = [x['low'] for x in bi_d] + [x['high'] for x in bi_g]
+    # # valid_dt = [x['dt'] for x in bi_d] + [x['dt'] for x in bi_g]
+    #
+    # # 利用特征序列的顶底分型确认线段标记的有效性，随后，对连续两个相同标记进行处理。
+    # k_xd_valid = [k_xd[0]]
+    # for x in k_xd:
+    #     if x['fx'] not in valid_fx:
+    #         continue
+    #     else:
+    #         if x['fx_mark'] == k_xd_valid[-1]['fx_mark']:
+    #             if x['fx_mark'] == 'g' and x['fx'] > k_xd_valid[-1]['fx']:
+    #                 k_xd_valid[-1] = x
+    #             elif x['fx_mark'] == 'd' and x['fx'] < k_xd_valid[-1]['fx']:
+    #                 k_xd_valid[-1] = x
+    #             else:
+    #                 continue
+    #         else:
+    #             k_xd_valid.append(x)
+    #
+    # # 对最后一个线段标记使用近似定义
+    # if k_xd[-1] not in k_xd_valid and k_xd[-1]['fx_mark'] != k_xd_valid[-1]['fx_mark']:
+    #     # print("add last xd")
+    #     k_xd_valid.append(k_xd[-1])
+    #
+    # return k_xd_valid
 
 
 def find_zs(k_xd):
@@ -226,6 +298,7 @@ class KlineAnalyze(object):
         self.k_fx = find_fx(self.k_new)
         self.k_bi = find_bi(self.k_fx)
         self.k_xd = find_xd(self.k_bi)
+        self.k_zs = find_zs(self.k_xd)
 
     @property
     def chan_result(self):
@@ -281,6 +354,7 @@ class KlineAnalyze(object):
             # 找第三卖点是否形成
             s = '中枢下移'
         elif xd1[0]['fx_mark'] == "d" and xd4[1]['fx'] > zs[1]:
+            # 找第三买点是否形成
             s = '中枢上移'
         else:
             s = '中枢震荡'

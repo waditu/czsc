@@ -32,14 +32,27 @@ pip install git+git://github.com/zengbin93/chan.git -U
 
 ## 使用方法
 
-### 应用缠论对 K 线进行分析，并将分析结果可视化
+目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `chan.analyze` 中；
+此外，基于这个库，开发了一个web页面，关联 tushare.pro 的数据，输入相应的交易代码等就可以直接查看对应的分析结果。
+
+访问地址：http://103.235.232.44:8012/
 
 ```python
-import chan
+from chan.analyze import KlineAnalyze
 
-chan.kline_viewer(ts_code='000001.SH', freq='W', end_date='20190809', asset='I', show=True)
+
+ka = KlineAnalyze(kline)  # kline 的格式见K先数据样例
+
+# 笔的识别结果
+ka.k_bi
+
+# 线段的识别结果
+ka.k_xd
+
+# 中枢的识别结果
+ka.k_zs
+
 ```
-
 
 
 
