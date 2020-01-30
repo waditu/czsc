@@ -38,19 +38,19 @@ pip install git+git://github.com/zengbin93/chan.git -U
 访问地址：http://103.235.232.44:8012/
 
 ```python
-from chan.analyze import KlineAnalyze
+from chan import KlineAnalyze
 
 
 ka = KlineAnalyze(kline)  # kline 的格式见K先数据样例
 
 # 笔的识别结果
-ka.k_bi
+ka.bi
 
 # 线段的识别结果
-ka.k_xd
+ka.xd
 
 # 中枢的识别结果
-ka.k_zs
+ka.zs
 
 ```
 

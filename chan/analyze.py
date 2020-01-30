@@ -1,366 +1,648 @@
 # coding: utf-8
-
-import pandas as pd
+import traceback
 from copy import deepcopy
+import pandas as pd
 
-
-def preprocess(kline):
-    """去除包含关系
-
-    :param kline: pd.DataFrame
-        K线，columns = ["symbol", "dt", "open", "close", "high", "low", "vol"]
-    :return: list of dict
-
-    """
-    k_new = []
-
-    first_row = kline.iloc[0].to_dict()
-    last = deepcopy(first_row)
-    k_new.append(first_row)
-
-    for i, row in kline.iterrows():
-        # first row
-        if i == 0:
-            continue
-
-        # update direction
-        if last['high'] >= k_new[-1]['high']:
-            direction = 'up'
-        else:
-            direction = 'down'
-
-        # 包含关系处理
-        row = row.to_dict()
-        cur_h, cur_l = row['high'], row['low']
-        last_h, last_l = last['high'], last['low']
-
-        # 左包含 or 右包含
-        if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
-            # 有包含关系，按方向分别处理
-            if direction == "up":
-                last_h = max(last_h, cur_h)
-                last_l = max(last_l, cur_l)
-
-            elif direction == "down":
-                last_h = min(last_h, cur_h)
-                last_l = min(last_l, cur_l)
-
-            else:
-                raise ValueError
-
-            last = deepcopy(row)
-            last['high'] = last_h
-            last['low'] = last_l
-        else:
-            # 无包含关系，更新 K 线
-            k_new.append(last)
-            last = deepcopy(row)
-
-        if i == len(kline)-1:
-            if row['dt'] != k_new[-1]['dt']:
-                k_new.append(row)
-
-    # print('k_new nums:', len(k_new))
-    return k_new
-
-
-def find_fx(k_new):
-    """查找顶分型和底分型"""
-    k1 = k_new[0]
-    k2 = k_new[1]
-
-    k_fx = []
-    for k in k_new[2:]:
-        if k2['high'] > k1['high'] and k2['high'] > k['high']:
-            k2['fx_mark'] = 'g'
-            k2['fx'] = k2['high']
-        elif k2['low'] < k1['low'] and k2['low'] < k['low']:
-            k2['fx_mark'] = 'd'
-            k2['fx'] = k2['low']
-
-        k_fx.append(k2)
-        k1, k2, = k2, k
-
-    # print("fx nums:", len(k_fx))
-    return k_fx
-
-
-def find_bi(k_fx):
-    """查找分型标记"""
-    k_bi = []
-
-    potential = None
-    k_count = 0
-
-    for k in k_fx:
-        # print(k)
-        if not potential:
-            # 查找第一个潜在笔分型点
-            if "fx_mark" in k.keys():
-                potential = deepcopy(k)
-            else:
-                continue
-
-        # 验证各分型点是否能够作为笔分型点
-        if "fx_mark" in k.keys():
-            if k['fx_mark'] == potential['fx_mark']:
-                if k['fx_mark'] == "g" and k['fx'] > potential['fx']:
-                    potential = deepcopy(k)
-                elif k['fx_mark'] == "d" and k['fx'] < potential['fx']:
-                    potential = deepcopy(k)
-                else:
-                    continue
-                k_count = 0
-            else:
-                if k_count >= 3:
-                    potential['bi'] = potential['fx']
-                    k_bi.append(potential)
-                    # print("potential old: ", k_count, potential)
-                    k_count = 0
-                    potential = deepcopy(k)
-                    # print("potential new: ", k_count, potential)
-                # k_count = 0
-        else:
-            # print(k_count, k)
-            k_count += 1
-
-    potential['bi'] = potential['fx']
-    k_bi.append(potential)
-    # print("bi nums:", len(k_bi))
-    return k_bi
-
-
-def find_xd(k_bi):
-    """查找线段标记"""
-
-    k_xd = []
-    i = 0
-    potential = deepcopy(k_bi[i])
-
-    # 依据不创新高、新低的近似标准找出所有潜在线段标记
-    while i < len(k_bi)-3:
-        k1, k2, k3 = k_bi[i+1], k_bi[i+2], k_bi[i+3]
-
-        if potential['fx_mark'] == "d":
-            assert k2['fx_mark'] == 'd'
-            if k3['bi'] < k1['bi']:
-                potential['xd'] = potential['bi']
-                k_xd.append(potential)
-                i += 1
-                potential = deepcopy(k_bi[i])
-            else:
-                i += 2
-
-        elif potential['fx_mark'] == "g":
-            assert k2['fx_mark'] == 'g'
-            if k3['bi'] > k1['bi']:
-                potential['xd'] = potential['bi']
-                k_xd.append(potential)
-                i += 1
-                potential = deepcopy(k_bi[i])
-            else:
-                i += 2
-
-        else:
-            raise ValueError
-    potential['xd'] = potential['bi']
-    k_xd.append(potential)
-    return k_xd
-
-    # # 在向下笔构成的标准特征序列中找出所有顶分型；在向上笔构成的标准特征序列中找出所有底分型；
-    # def _bi_fx(bi_list, mode):
-    #
-    #     if mode == 'g':
-    #         direction = 'up'
-    #     elif mode == 'd':
-    #         direction = 'down'
-    #     else:
-    #         raise ValueError
-    #
-    #     bi_pred = []
-    #     last = bi_list[0]
-    #     for bi in bi_list[1:]:
-    #         # 包含关系处理
-    #         cur_h, cur_l = bi['high'], bi['low']
-    #         last_h, last_l = last['high'], last['low']
-    #
-    #         # 左包含 or 右包含
-    #         if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
-    #             # 有包含关系，按方向分别处理
-    #             if direction == "up":
-    #                 last_h = max(last_h, cur_h)
-    #                 last_l = max(last_l, cur_l)
-    #                 if last_h != last['high']:
-    #                     last = deepcopy(bi)
-    #                 last['low'] = last_l
-    #             elif direction == "down":
-    #                 last_h = min(last_h, cur_h)
-    #                 last_l = min(last_l, cur_l)
-    #                 if last_l != last['low']:
-    #                     last = deepcopy(bi)
-    #                 last['high'] = last_h
-    #             else:
-    #                 raise ValueError
-    #         else:
-    #             # 无包含关系，更新 K 线
-    #             bi_pred.append(last)
-    #             last = deepcopy(bi)
-    #
-    #     return [x for x in find_fx(bi_pred) if x.get('fx_mark', None) == mode]
-    #
-    # bi_down = [{"dt": x['dt'], "high": x['fx'], "low": k_bi[i+1]['fx']}
-    #            for i, x in enumerate(k_bi[:-1]) if x['fx_mark'] == "g"]
-    # bi_g = _bi_fx(bi_down, mode='g')
-    # bi_up = [{"dt": x['dt'], "high": k_bi[i+1]['fx'], "low": x['fx']}
-    #          for i, x in enumerate(k_bi[:-1]) if x['fx_mark'] == "d"]
-    # bi_d = _bi_fx(bi_up, mode='d')
-    # valid_fx = [x['low'] for x in bi_d] + [x['high'] for x in bi_g]
-    # # valid_dt = [x['dt'] for x in bi_d] + [x['dt'] for x in bi_g]
-    #
-    # # 利用特征序列的顶底分型确认线段标记的有效性，随后，对连续两个相同标记进行处理。
-    # k_xd_valid = [k_xd[0]]
-    # for x in k_xd:
-    #     if x['fx'] not in valid_fx:
-    #         continue
-    #     else:
-    #         if x['fx_mark'] == k_xd_valid[-1]['fx_mark']:
-    #             if x['fx_mark'] == 'g' and x['fx'] > k_xd_valid[-1]['fx']:
-    #                 k_xd_valid[-1] = x
-    #             elif x['fx_mark'] == 'd' and x['fx'] < k_xd_valid[-1]['fx']:
-    #                 k_xd_valid[-1] = x
-    #             else:
-    #                 continue
-    #         else:
-    #             k_xd_valid.append(x)
-    #
-    # # 对最后一个线段标记使用近似定义
-    # if k_xd[-1] not in k_xd_valid and k_xd[-1]['fx_mark'] != k_xd_valid[-1]['fx_mark']:
-    #     # print("add last xd")
-    #     k_xd_valid.append(k_xd[-1])
-    #
-    # return k_xd_valid
-
-
-def find_zs(k_xd):
-    """查找中枢"""
-    k_zs = []
-    zs_xd = []
-
-    for i in range(len(k_xd)-1):
-        if len(zs_xd) < 4:
-            zs_xd.append(k_xd[i])
-            continue
-
-        zs_d = max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd'])
-        zs_g = min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g'])
-        # zs = (zs_d, zs_g)
-        xd_p1 = zs_xd[-1]['xd']
-        xd_p2 = k_xd[i]['xd']
-        if zs_g > xd_p2 > zs_d:
-            zs_xd.append(k_xd[i])
-        else:
-            if xd_p1 > zs_g and xd_p2 > zs_g:
-                # 线段在中枢上方结束，形成三买
-                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = [k_xd[i]]
-            elif xd_p1 < zs_g and xd_p2 < zs_g:
-                # 线段在中枢下方结束，形成三卖
-                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = [k_xd[i]]
-            else:
-                zs_xd.append(k_xd[i])
-
-    return k_zs
-
-
-def kline_analyze(kline):
-    """使用缠论分析 K 线"""
-    k_new = preprocess(kline)
-    k_fx = find_fx(k_new)
-    k_bi = find_bi(k_fx)
-    k_xd = find_xd(k_bi)
-
-    df_fx = pd.DataFrame(k_fx)[['dt', 'fx_mark', 'fx']]
-    kline = kline.merge(df_fx, how='left', on='dt')
-
-    df_bi = pd.DataFrame(k_bi)[['dt', 'bi']]
-    kline = kline.merge(df_bi, how='left', on='dt')
-
-    df_xd = pd.DataFrame(k_xd)[['dt', 'xd']]
-    kline = kline.merge(df_xd, how='left', on='dt')
-    return kline
+from .ta import macd
 
 
 class KlineAnalyze(object):
     def __init__(self, kline):
-        self.kline = kline
-        self.k_new = preprocess(self.kline)
-        self.k_fx = find_fx(self.k_new)
-        self.k_bi = find_bi(self.k_fx)
-        self.k_xd = find_xd(self.k_bi)
-        self.k_zs = find_zs(self.k_xd)
+        """
+
+        :param kline: list of dict or pd.DataFrame
+            example kline:
+            kline = [
+                {'symbol': '600797.SH', 'dt': '2020-01-08 11:30:00', 'open': 10.72, 'close': 10.67, 'high': 10.76, 'low': 10.63, 'vol': 4464800.0},
+                {'symbol': '600797.SH', 'dt': '2020-01-08 13:30:00', 'open': 10.66, 'close': 10.59, 'high': 10.66, 'low': 10.55, 'vol': 5004800.0},
+                {'symbol': '600797.SH', 'dt': '2020-01-08 14:00:00', 'open': 10.58, 'close': 10.41, 'high': 10.6, 'low': 10.38, 'vol': 10650500.0},
+                {'symbol': '600797.SH', 'dt': '2020-01-08 14:30:00', 'open': 10.42, 'close': 10.41, 'high': 10.48, 'low': 10.35, 'vol': 6610000.0},
+                {'symbol': '600797.SH', 'dt': '2020-01-08 15:00:00', 'open': 10.42, 'close': 10.39, 'high': 10.48, 'low': 10.36, 'vol': 7160500.0}
+            ]
+        """
+        self.name = "缠论分析"
+        self.kline = self._preprocess(kline)
+        self.kline_new = self._remove_include()
+        self.fx = self._find_fx()
+        self.bi = self._find_bi()
+        self.xd = self._find_xd()
+        self.zs = self._find_zs()
+        self.__update_kline()
+
+    @staticmethod
+    def _preprocess(kline):
+        """新增分析所需字段"""
+        if isinstance(kline, pd.DataFrame):
+            kline = [row.to_dict() for _, row in kline.iterrows()]
+
+        results = []
+        for k in kline:
+            k['fx_mark'], k['fx'], k['bi'], k['xd'] = "o", None, None, None
+            results.append(k)
+        return results
+
+    def _remove_include(self):
+        """去除包含关系，得到新的K线数据"""
+        # 取前两根 K 线放入 k_new，完成初始化
+        kline = deepcopy(self.kline)
+        k_new = kline[:2]
+
+        for k in kline[2:]:
+            # 从 k_new 中取最后两根 K 线计算方向
+            k1, k2 = k_new[-2:]
+            if k2['high'] > k1['high']:
+                direction = "up"
+            elif k2['low'] < k1['low']:
+                direction = "down"
+            else:
+                direction = "up"
+
+            # 判断 k2 与 k 之间是否存在包含关系
+            cur_h, cur_l = k['high'], k['low']
+            last_h, last_l = k2['high'], k2['low']
+
+            # 左包含 or 右包含
+            if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
+                # 有包含关系，按方向分别处理
+                if direction == "up":
+                    last_h = max(last_h, cur_h)
+                    last_l = max(last_l, cur_l)
+                elif direction == "down":
+                    last_h = min(last_h, cur_h)
+                    last_l = min(last_l, cur_l)
+                else:
+                    raise ValueError
+
+                k['high'] = last_h
+                k['low'] = last_l
+                k_new.pop(-1)
+                k_new.append(k)
+            else:
+                # 无包含关系，更新 K 线
+                k_new.append(k)
+        return k_new
+
+    def _find_fx(self):
+        """识别线分型标记
+
+        o   非分型
+        d   底分型
+        g   顶分型
+
+        :return:
+        """
+        kn = self.kline_new
+        i = 0
+        while i < len(kn):
+            if i == 0 or i == len(kn) - 1:
+                i += 1
+                continue
+            k1, k2, k3 = kn[i - 1: i + 2]
+            i += 1
+
+            # 顶分型标记
+            if k2['high'] > k1['high'] and k2['high'] > k3['high']:
+                k2['fx_mark'] = 'g'
+                k2['fx'] = k2['high']
+
+            # 底分型标记
+            if k2['low'] < k1['low'] and k2['low'] < k3['low']:
+                k2['fx_mark'] = 'd'
+                k2['fx'] = k2['low']
+        self.kline_new = kn
+
+        fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']} for x in self.kline_new
+              if x['fx_mark'] in ['d', 'g']]
+        return fx
+
+    def _find_bi_v1(self):
+        """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型"""
+        kn = deepcopy(self.kline_new)
+        bi = []
+        potential = None
+        o_count = 0
+
+        for k in kn:
+            if not potential:
+                if k['fx_mark'] in ['d', 'g']:
+                    potential = deepcopy(k)
+                else:
+                    continue
+
+            if k['fx_mark'] in ['d', 'g']:
+                if k['fx_mark'] == potential['fx_mark']:
+                    if k['fx_mark'] == "g" and k['fx'] > potential['fx']:
+                        potential = deepcopy(k)
+                    elif k['fx_mark'] == "d" and k['fx'] < potential['fx']:
+                        potential = deepcopy(k)
+                    else:
+                        continue
+                    o_count = 0
+                else:
+                    if o_count >= 3:
+                        potential['bi'] = potential['fx']
+                        bi.append(potential)
+                        o_count = 0
+                        potential = deepcopy(k)
+            else:
+                o_count += 1
+
+        potential['bi'] = potential['fx']
+        bi.append(potential)
+
+        k_last = self.kline_new[-1]
+        bi_last = bi[-1]
+        if bi_last['fx_mark'] == 'g' and k_last['high'] > bi_last['bi']:
+            bi.pop()
+
+        if bi_last['fx_mark'] == 'd' and k_last['low'] < bi_last['bi']:
+            bi.pop()
+
+        bi = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "bi": x['bi']} for x in bi]
+        bi_list = [x['dt'] for x in bi]
+
+        def __add_bi(k):
+            if k['dt'] in bi_list:
+                k['bi'] = k['fx']
+            return k
+
+        kn = [__add_bi(k) for k in kn]
+        self.kline_new = kn
+        return bi
+
+    def _find_bi_v2(self):
+        """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型
+
+        划分笔的步骤：
+        （1）确定所有符合标准的分型，能够构成笔的标准底分型一定小于其前后的底分型，顶分型反之。
+        （2）如果前后两分型是同一性质的，对于顶，前面的低于后面的，只保留后面的，前面那个可以忽略掉；对于底，
+            前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
+        （3）经过步骤（2）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
+        """
+        kn = deepcopy(self.kline_new)
+        pass
+
+    def _find_bi(self):
+        return self._find_bi_v1()
+
+    def __get_potential_xd(self):
+        """依据不创新高、新低的近似标准找出所有潜在线段标记"""
+        bi = deepcopy(self.bi)
+        xd = []
+        potential = bi[0]
+
+        i = 0
+        while i < len(bi) - 3:
+            k1, k2, k3 = bi[i + 1], bi[i + 2], bi[i + 3]
+
+            if potential['fx_mark'] == "d":
+                assert k2['fx_mark'] == 'd'
+                if k3['bi'] < k1['bi']:
+                    potential['xd'] = potential['bi']
+                    xd.append(potential)
+                    i += 1
+                    potential = deepcopy(bi[i])
+                else:
+                    i += 2
+            elif potential['fx_mark'] == "g":
+                assert k2['fx_mark'] == 'g'
+                if k3['bi'] > k1['bi']:
+                    potential['xd'] = potential['bi']
+                    xd.append(potential)
+                    i += 1
+                    potential = deepcopy(bi[i])
+                else:
+                    i += 2
+            else:
+                raise ValueError
+
+        potential['xd'] = potential['bi']
+        xd.append(potential)
+        xd = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "xd": x['xd']} for x in xd]
+        return xd
+
+    def __get_valid_xd(self, xd_p):
+        bi = deepcopy(self.bi)
+        xd_v = [deepcopy(xd_p[0])]
+        i = 1
+        while i < len(xd_p):
+            p1 = deepcopy(xd_v[-1])
+            p2 = deepcopy(xd_p[i])
+            # bi_l = [x for x in bi if x['dt'] <= p1['dt']]
+            bi_m = [x for x in bi if p1['dt'] <= x['dt'] <= p2['dt']]
+            bi_r = [x for x in bi if x['dt'] >= p2['dt']]
+            if len(bi_m) == 2:
+                # 两个连续线段标记之间只有一笔的处理
+                p3 = deepcopy(xd_p[i+1])
+                if (p1['fx_mark'] == "g" and p1['xd'] < p3['xd']) or \
+                        (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
+                    xd_v.pop(-1)
+                    xd_v.append(p3)
+                i += 2
+            elif len(bi_m) == 4:
+                # 两个连续线段标记之间只有三笔的处理
+                lp2 = bi_m[-2]
+                rp2 = bi_r[1]
+                assert lp2['fx_mark'] == rp2['fx_mark']
+                if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
+                        (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
+                    xd_v.append(p2)
+                    i += 1
+                else:
+                    i += 2
+            else:
+                xd_v.append(p1)
+                i += 1
+
+        # 确保高低交替
+        xd_v1 = deepcopy(xd_v)
+        xd_v = deepcopy(xd_v1[:1])
+        for p in xd_v1:
+            p_last = xd_v[-1]
+            if p['fx_mark'] == p_last['fx_mark']:
+                if p['fx_mark'] == "g" and p['xd'] > p_last['xd']:
+                    xd_v.pop(-1)
+                    xd_v.append(p)
+                if p['fx_mark'] == "d" and p['xd'] < p_last['xd']:
+                    xd_v.pop(-1)
+                    xd_v.append(p)
+            else:
+                xd_v.append(p)
+
+        # 对最后一个有效线段标记进行处理
+        k_last = self.kline_new[-1]
+        xd_last = xd_v[-1]
+        if xd_last['fx_mark'] == 'g' and k_last['high'] > xd_last['xd']:
+            xd_v.pop()
+
+        if xd_last['fx_mark'] == 'd' and k_last['low'] < xd_last['xd']:
+            xd_v.pop()
+
+        return xd_v
+
+    def _find_xd(self):
+        try:
+            xd_p = self.__get_potential_xd()
+            xd_v = self.__get_valid_xd(xd_p)
+            dts = [x['dt'] for x in xd_v]
+
+            def __add_xd(k):
+                if k['dt'] in dts:
+                    k['xd'] = k['fx']
+                return k
+
+            self.kline_new = [__add_xd(k) for k in self.kline_new]
+            return xd_v
+        except:
+            traceback.print_exc()
+            return []
+
+    def _find_zs(self):
+        """查找中枢"""
+        if not self.xd:
+            return None
+
+        k_xd = self.xd
+        k_zs = []
+        zs_xd = []
+
+        for i in range(len(k_xd)):
+            if len(zs_xd) < 3:
+                zs_xd.append(k_xd[i])
+                continue
+            xd_p = k_xd[i]
+            zs_d = max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd'])
+            zs_g = min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g'])
+
+            if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
+                # print(i, "三买")
+                # 线段在中枢上方结束，形成三买
+                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+                zs_xd = deepcopy(k_xd[i-2:i+1])
+            elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
+                # 线段在中枢下方结束，形成三卖
+                # print(i, "三卖")
+                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+                zs_xd = deepcopy(k_xd[i-2:i+1])
+            else:
+                # print(i, "延伸")
+                zs_xd.append(deepcopy(xd_p))
+
+        if len(zs_xd) >= 4:
+            zs_d = max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd'])
+            zs_g = min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g'])
+            k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+
+        return k_zs
+
+    def __update_kline(self):
+        kn_map = {x['dt']: x for x in self.kline_new}
+        for k in self.kline:
+            k1 = kn_map.get(k['dt'], None)
+            if k1:
+                k.update(k1)
+
+    def cal_bei_chi(self, zs1, zs2, direction="down", mode="bi"):
+        """判断 zs1 对 zs2 是否有背驰
+
+        :param direction: str
+            default `down`, optional value [`up`, 'down']
+        :param zs1: list of datetime
+        :param zs2: list of datetime
+        :param mode: str
+            default `bi`, optional value [`xd`, `bi`]
+        :return:
+        """
+        df = pd.DataFrame(self.kline)
+        df = macd(df)
+        k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
+        k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
+
+        if direction == "up" and k1.iloc[-1]['fx'] < k2.iloc[-1]['fx']:
+            return "没有背驰"
+
+        if direction == "down" and k1.iloc[-1]['fx'] > k2.iloc[-1]['fx']:
+            return "没有背驰"
+
+        bc = False
+
+        if mode == 'bi':
+            macd_sum1 = sum([abs(x) for x in k1.macd])
+            macd_sum2 = sum([abs(x) for x in k2.macd])
+            if macd_sum1 < macd_sum2:
+                bc = True
+
+        elif mode == 'xd':
+            if direction == "down":
+                macd_sum1 = sum([abs(x) for x in k1.macd if x < 0])
+                macd_sum2 = sum([abs(x) for x in k2.macd if x < 0])
+            elif direction == "up":
+                macd_sum1 = sum([abs(x) for x in k1.macd if x > 0])
+                macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
+            else:
+                raise ValueError('direction value error')
+
+            if macd_sum1 < macd_sum2 and abs(k1.dea.iloc[-1]) < abs(k2.dea.iloc[-1]):
+                bc = True
+        else:
+            raise ValueError("mode value error")
+
+        if bc:
+            return "背驰"
+        else:
+            return "没有背驰"
+
+    def show(self):
+        pass
 
     @property
     def chan_result(self):
-        k = deepcopy(self.kline)
-        df_fx = pd.DataFrame(self.k_fx)[['dt', 'fx_mark', 'fx']]
-        k = k.merge(df_fx, how='left', on='dt')
+        return pd.DataFrame(self.kline)
 
-        df_bi = pd.DataFrame(self.k_bi)[['dt', 'bi']]
-        k = k.merge(df_bi, how='left', on='dt')
+    @property
+    def status_fx(self):
+        """分型状态"""
+        try:
+            table = dict()
+            fx = self.fx
+            if fx[-1]['fx_mark'] == "d":
+                table['最近一个分型为底分型'] = {"price": fx[-1]['fx'], "dt": fx[-1]['dt'], "kind": "买"}
 
-        df_xd = pd.DataFrame(self.k_xd)[['dt', 'xd']]
-        k = k.merge(df_xd, how='left', on='dt')
-        return k
+            elif fx[-1]['fx_mark'] == "g":
+                table['最近一个分型为顶分型'] = {"price": fx[-1]['fx'], "dt": fx[-1]['dt'], "kind": "卖"}
+            else:
+                raise ValueError
+
+            fx_d = [x for x in fx if x['fx_mark'] == 'd']
+            if fx_d[-1]['fx'] > fx_d[-2]['fx']:
+                table['最近两个底分型趋势向上'] = {"price": fx_d[-1]['fx'], "dt": fx_d[-1]['dt'], "kind": "买"}
+
+            fx_g = [x for x in fx if x['fx_mark'] == 'g']
+            if fx_g[-1]['fx'] < fx_g[-2]['fx']:
+                table['最近两个顶分型趋势向下'] = {"price": fx_g[-1]['fx'], "dt": fx_g[-1]['dt'], "kind": "卖"}
+
+            return table
+        except:
+            return None
 
     @property
     def status_bi(self):
-        k1, k2, k3 = self.k_new[-1], self.k_new[-2], self.k_new[-3]
-        if k1['high'] > k2['high'] > k3['high']:
-            s = "向上笔延伸中"
-        elif k1['low'] < k2['low'] < k3['low']:
-            s = "向下笔延伸中"
-        elif max([k1['high'], k2['high'], k3['high']]) == k2['high']:
-            s = "顶分型构造中"
-        elif min([k1['low'], k2['low'], k3['low']]) == k2['low']:
-            s = "底分型构造中"
-        else:
-            raise ValueError
-        return s
+        """笔状态"""
+        try:
+            table = dict()
+            k_bi = self.bi
+            if k_bi[-1]['fx_mark'] == 'g' and k_bi[-3]['fx_mark'] == 'g':
+                if k_bi[-1]['bi'] < k_bi[-3]['bi']:
+                    s = '向上笔不创新高'
+                    if k_bi[-2]['bi'] < k_bi[-5]['bi']:
+                        s += "，且最近完成的两个向下笔之间有重叠"
+                        if k_bi[-1]['bi'] < k_bi[-4]['bi']:
+                            s += "，且不升破前一向上笔的低点"
+                    table[s] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "卖"}
+                else:
+                    zs1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
+                    zs2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
+                    direction = "up"
+                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='bi')
+                    if bc == "背驰" and direction == "up":
+                        table['向上笔新高背驰'] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "卖"}
+
+            elif k_bi[-1]['fx_mark'] == 'd' and k_bi[-3]['fx_mark'] == 'd':
+                if k_bi[-1]['bi'] > k_bi[-3]['bi']:
+                    s = '向下笔不创新低'
+                    if k_bi[-2]['bi'] > k_bi[-5]['bi']:
+                        s += "，且最近完成的两个向上笔之间有重叠"
+                        if k_bi[-1]['bi'] > k_bi[-4]['bi']:
+                            s += "，且不跌破前一向下笔的高点"
+                    table[s] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "买"}
+                else:
+                    zs1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
+                    zs2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
+                    direction = "down"
+                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='bi')
+                    if bc == "背驰" and direction == "down":
+                        table['向下笔新低背驰'] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "买"}
+            else:
+                raise ValueError("笔分型识别错误")
+            return table
+        except:
+            return None
 
     @property
     def status_xd(self):
-        last = self.k_xd[-1]
-        if last['fx_mark'] == 'g':
-            s = "向下线段延伸中"
-        elif last['fx_mark'] == 'd':
-            s = "向上线段延伸中"
-        else:
-            raise ValueError
-        return s
+        """线段状态"""
+        try:
+            table = dict()
+            if len(self.xd) >= 5:
+                k_xd = self.xd
+                price = k_xd[-1]['xd']
+                dt = k_xd[-1]['dt']
+                if k_xd[-1]['fx_mark'] == "g" and k_xd[-3]['fx_mark'] == "g":
+                    if k_xd[-1]['xd'] < k_xd[-3]['xd']:
+                        table["向上线段不创新高"] = {"price": price, "dt": dt, "kind": "卖"}
+                    else:
+                        direction = "up"
+                        zs1 = [k_xd[-2]['dt'], k_xd[-1]['dt']]
+                        zs2 = [k_xd[-4]['dt'], k_xd[-3]['dt']]
+                        bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+                        if bc == "背驰" and direction == "up":
+                            table['向上线段新高背驰'] = {"price": price, "dt": dt, "kind": "卖"}
+
+                elif k_xd[-1]['fx_mark'] == "d" and k_xd[-3]['fx_mark'] == "d":
+                    if k_xd[-1]['xd'] > k_xd[-3]['xd']:
+                        table["向下线段不创新低"] = {"price": price, "dt": dt, "kind": "买"}
+                    else:
+                        direction = "down"
+                        zs1 = [k_xd[-2]['dt'], k_xd[-1]['dt']]
+                        zs2 = [k_xd[-4]['dt'], k_xd[-3]['dt']]
+                        bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+                        if bc == "背驰" and direction == "down":
+                            table['向下线段新低背驰'] = {"price": price, "dt": dt, "kind": "买"}
+
+                else:
+                    raise ValueError("线段分型识别错误")
+            return table
+        except:
+            return None
 
     @property
     def status_zs(self):
-        if len(self.k_xd) < 5:
-            return "没有中枢"
+        """中枢状态"""
+        try:
+            table = dict()
+            xds = self.xd[-5:]
+            price = xds[-1]['xd']
+            dt = xds[-1]['dt']
 
-        xd1 = (self.k_xd[-5], self.k_xd[-4])
-        xd2 = (self.k_xd[-4], self.k_xd[-3])
-        # xd3 = (self.k_xd[-3], self.k_xd[-2])
-        xd4 = (self.k_xd[-2], self.k_xd[-1])
-        zs = (min([xd2[0]['fx'], xd2[1]['fx']]), max([xd2[0]['fx'], xd2[1]['fx']]))
+            zs_g = min([x['xd'] for x in xds[:4] if x['fx_mark'] == 'g'])
+            zs_d = max([x['xd'] for x in xds[:4] if x['fx_mark'] == 'd'])
 
-        if xd1[0]['fx_mark'] == "g" and xd4[1]['fx'] < zs[0]:
-            # 找第三卖点是否形成
-            s = '中枢下移'
-        elif xd1[0]['fx_mark'] == "d" and xd4[1]['fx'] > zs[1]:
-            # 找第三买点是否形成
-            s = '中枢上移'
+            if xds[-1]['fx_mark'] == "g" and xds[-1]['xd'] < zs_d:
+                # 找第三卖点是否形成
+                table['中枢下移'] = {"price": price, "dt": dt, "kind": "卖"}
+            elif xds[-1]['fx_mark'] == "d" and xds[-1]['xd'] > zs_g:
+                # 找第三买点是否形成
+                table['中枢上移'] = {"price": price, "dt": dt, "kind": "买"}
+            else:
+                table['中枢震荡'] = {"price": price, "dt": dt, "kind": "买"}
+
+            return table
+        except:
+            return None
+
+    @property
+    def status(self):
+        table = dict()
+        if self.status_fx:
+            table.update(self.status_fx)
+
+        if self.status_bi:
+            table.update(self.status_bi)
+
+        if self.status_xd:
+            table.update(self.status_xd)
+
+        if self.status_zs:
+            table.update(self.status_zs)
+
+        return table
+
+
+class SolidAnalyze:
+    """多级别K线联合分析"""
+    def __init__(self, klines):
+        """
+
+        :param klines: dict
+            key 为K线级别名称；value 为对应的K线数据，K线数据基本格式参考 KlineAnalyze
+            example: {"日线": df, "30分钟": df, "5分钟": df, "1分钟": df,}
+        """
+        self.kas = dict()
+        self.freqs = list(klines.keys())
+        for freq, kline in klines.items():
+            ka = KlineAnalyze(kline)
+            self.kas[freq] = ka
+
+    def __check_signals_validation(self, signals):
+        """
+        对于买入信号，如果股价跌破其出现时的价格，这个信号便是无效的；对于卖出信号，如果股价升破其出现时的价格，信号无效。
+        :param signals:
+        :return:
+        """
+        freq = self.freqs[0]
+        price = self.kas[freq].kline[-1]['close']
+
+        signals_valid = []
+        for signal in signals:
+            if signal['kind'] == "买" and price > signal['price']:
+                signals_valid.append(signal)
+
+            if signal['kind'] == "卖" and price < signal['price']:
+                signals_valid.append(signal)
+        return signals_valid
+
+    @property
+    def signals(self):
+        signals = []
+        for freq, ka in self.kas.items():
+            for k, v in ka.status.items():
+                v["name"] = freq + k
+                signals.append(v)
+        try:
+            return self.__check_signals_validation(signals)
+        except:
+            return signals
+
+    @staticmethod
+    def __zs_number(ka):
+        # 检查三买前面的连续向上中枢数量
+        zs_num = 1
+        if len(ka.zs) > 1:
+            k_zs = ka.zs[::-1]
+            zs_cur = k_zs[0]
+            for zs_next in k_zs[1:]:
+                if zs_cur['zs'][0] > zs_next['zs'][1]:
+                    zs_num += 1
+                    zs_cur = zs_next
+                else:
+                    break
+        return zs_num
+
+    def is_potential_third_buy(self, freq):
+        ka = self.kas[freq]
+        xd = ka.xd
+        if len(xd) < 3:
+            return None
+
+        bi = ka.bi
+        if xd[-1]['fx_mark'] == "d" or bi[-1]['fx_mark'] == 'g':
+            return None
+
+        if bi[-1]['bi'] <= xd[-3]['xd']:
+            return None
+
+        res = {
+            "操作提示": freq + "三买（潜力股）",
+            "出现时间": bi[-1]['dt'],
+            "确认时间": "",
+            "中枢数量": self.__zs_number(ka)
+        }
+        return res
+
+    def is_third_buy(self, freq):
+        signals = self.signals
+        core = freq + "中枢上移"
+        ka = self.kas[freq]
+        if len(ka.xd) < 3:
+            return None
+        if core in [x['name'] for x in signals]:
+            dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+            res = {
+                "操作提示": freq + "三买",
+                "出现时间": ka.xd[-1]['dt'],
+                "确认时间": dt2,
+                "中枢数量": self.__zs_number(ka)
+            }
         else:
-            s = '中枢震荡'
-        return s
-
-
-
-
-
+            res = None
+        return res
