@@ -179,11 +179,50 @@ class KlineAnalyze(object):
             前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
         （3）经过步骤（2）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
         """
+        # 符合标准的分型
+        fx_p = []
+        for fx_mark in ['d', 'g']:
+            fx = [x for x in deepcopy(self.fx) if x['fx_mark'] == fx_mark]
+            fx = sorted(fx, key=lambda x: x['dt'], reverse=False)
+            for i in range(1, len(fx) - 2):
+                fx1, fx2, fx3 = fx[i - 1:i + 2]
+                if (fx_mark == "d" and fx1['fx'] > fx2['fx'] < fx3['fx']) or \
+                        (fx_mark == "g" and fx1['fx'] < fx2['fx'] > fx3['fx']):
+                    fx_p.append(deepcopy(fx2))
+        fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
+
+        # 确认哪些分型可以构成笔
+        bi = []
+        for i in range(len(fx_p)):
+            k = deepcopy(fx_p[i])
+            k['bi'] = k['fx']
+            del k['fx']
+            if i == 0:
+                bi.append(k)
+            else:
+                k0 = bi[-1]
+                if k0['fx_mark'] == k['fx_mark']:
+                    if (k0['fx_mark'] == "g" and k0['bi'] < k['bi']) or \
+                            (k0['fx_mark'] == "d" and k0['bi'] > k['bi']):
+                        bi.pop(-1)
+                        bi.append(k)
+                else:
+                    bi.append(k)
+
+        bi_list = [x["dt"] for x in bi]
         kn = deepcopy(self.kline_new)
-        pass
+
+        def __add_bi(k):
+            if k['dt'] in bi_list:
+                k['bi'] = k['fx']
+            return k
+
+        kn = [__add_bi(k) for k in kn]
+        self.kline_new = kn
+        return bi
 
     def _find_bi(self):
-        return self._find_bi_v1()
+        return self._find_bi_v2()
 
     def __get_potential_xd(self):
         """依据不创新高、新低的近似标准找出所有潜在线段标记"""
@@ -223,68 +262,53 @@ class KlineAnalyze(object):
 
     def __get_valid_xd(self, xd_p):
         bi = deepcopy(self.bi)
-        xd_v = [deepcopy(xd_p[0])]
-        i = 1
-        while i < len(xd_p):
-            p1 = deepcopy(xd_v[-1])
+        xd_v = []
+        for i in range(len(xd_p)):
             p2 = deepcopy(xd_p[i])
-            # bi_l = [x for x in bi if x['dt'] <= p1['dt']]
-            bi_m = [x for x in bi if p1['dt'] <= x['dt'] <= p2['dt']]
-            bi_r = [x for x in bi if x['dt'] >= p2['dt']]
-            if len(bi_m) == 2:
-                # 两个连续线段标记之间只有一笔的处理
-                p3 = deepcopy(xd_p[i+1])
-                if (p1['fx_mark'] == "g" and p1['xd'] < p3['xd']) or \
-                        (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
-                    xd_v.pop(-1)
-                    xd_v.append(p3)
-                i += 2
-            elif len(bi_m) == 4:
-                # 两个连续线段标记之间只有三笔的处理
-                lp2 = bi_m[-2]
-                rp2 = bi_r[1]
-                assert lp2['fx_mark'] == rp2['fx_mark']
-                if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
-                        (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
-                    xd_v.append(p2)
-                    i += 1
+            if i == 0:
+                xd_v.append(p2)
+            else:
+                p1 = deepcopy(xd_v[-1])
+                if p1['fx_mark'] == p2['fx_mark']:
+                    if (p1['fx_mark'] == 'g' and p1['xd'] < p2['xd']) or \
+                            (p1['fx_mark'] == 'd' and p1['xd'] > p2['xd']):
+                        xd_v.pop(-1)
+                        xd_v.append(p2)
                 else:
-                    i += 2
-            else:
-                xd_v.append(p1)
-                i += 1
+                    # 连续两个不同类型线段标记不允许出现“线段高点低于线段低点”和“线段低点高于线段高点”的情况；
+                    if (p1['fx_mark'] == "g" and p1['xd'] < p2['xd']) or \
+                            (p1['fx_mark'] == "d" and p1['xd'] > p2['xd']):
+                        continue
 
-        # 确保高低交替
-        xd_v1 = deepcopy(xd_v)
-        xd_v = deepcopy(xd_v1[:1])
-        for p in xd_v1:
-            p_last = xd_v[-1]
-            if p['fx_mark'] == p_last['fx_mark']:
-                if p['fx_mark'] == "g" and p['xd'] > p_last['xd']:
-                    xd_v.pop(-1)
-                    xd_v.append(p)
-                if p['fx_mark'] == "d" and p['xd'] < p_last['xd']:
-                    xd_v.pop(-1)
-                    xd_v.append(p)
-            else:
-                xd_v.append(p)
-
-        # 对最后一个有效线段标记进行处理
-        k_last = self.kline_new[-1]
-        xd_last = xd_v[-1]
-        if xd_last['fx_mark'] == 'g' and k_last['high'] > xd_last['xd']:
-            xd_v.pop()
-
-        if xd_last['fx_mark'] == 'd' and k_last['low'] < xd_last['xd']:
-            xd_v.pop()
-
+                    # bi_l = [x for x in bi if x['dt'] <= p1['dt']]
+                    bi_m = [x for x in bi if p1['dt'] <= x['dt'] <= p2['dt']]
+                    bi_r = [x for x in bi if x['dt'] >= p2['dt']]
+                    if len(bi_m) == 2:
+                        # 两个连续线段标记之间只有一笔的处理
+                        if i == len(xd_p)-1:
+                            break
+                        p3 = deepcopy(xd_p[i+1])
+                        if (p1['fx_mark'] == "g" and p1['xd'] < p3['xd']) or \
+                                (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
+                            xd_v.pop(-1)
+                            xd_v.append(p3)
+                    elif len(bi_m) == 4:
+                        # 两个连续线段标记之间只有三笔的处理
+                        lp2 = bi_m[-2]
+                        rp2 = bi_r[1]
+                        assert lp2['fx_mark'] == rp2['fx_mark']
+                        if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
+                                (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
+                            xd_v.append(p2)
+                    else:
+                        xd_v.append(p2)
         return xd_v
 
     def _find_xd(self):
         try:
-            xd_p = self.__get_potential_xd()
-            xd_v = self.__get_valid_xd(xd_p)
-            dts = [x['dt'] for x in xd_v]
+            xd = self.__get_potential_xd()
+            xd = self.__get_valid_xd(xd)
+            dts = [x['dt'] for x in xd]
 
             def __add_xd(k):
                 if k['dt'] in dts:
@@ -292,7 +316,7 @@ class KlineAnalyze(object):
                 return k
 
             self.kline_new = [__add_xd(k) for k in self.kline_new]
-            return xd_v
+            return xd
         except:
             traceback.print_exc()
             return []
@@ -318,12 +342,12 @@ class KlineAnalyze(object):
                 # print(i, "三买")
                 # 线段在中枢上方结束，形成三买
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = deepcopy(k_xd[i-2:i+1])
+                zs_xd = deepcopy(k_xd[i - 2:i + 1])
             elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
                 # 线段在中枢下方结束，形成三卖
                 # print(i, "三卖")
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = deepcopy(k_xd[i-2:i+1])
+                zs_xd = deepcopy(k_xd[i - 2:i + 1])
             else:
                 # print(i, "延伸")
                 zs_xd.append(deepcopy(xd_p))
@@ -550,6 +574,7 @@ class KlineAnalyze(object):
 
 class SolidAnalyze:
     """多级别K线联合分析"""
+
     def __init__(self, klines):
         """
 
