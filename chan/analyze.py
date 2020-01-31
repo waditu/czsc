@@ -184,8 +184,8 @@ class KlineAnalyze(object):
         for fx_mark in ['d', 'g']:
             fx = [x for x in deepcopy(self.fx) if x['fx_mark'] == fx_mark]
             fx = sorted(fx, key=lambda x: x['dt'], reverse=False)
-            for i in range(1, len(fx) - 2):
-                fx1, fx2, fx3 = fx[i - 1:i + 2]
+            for i in range(1, len(fx)-1):
+                fx1, fx2, fx3 = fx[i-1:i+2]
                 if (fx_mark == "d" and fx1['fx'] > fx2['fx'] < fx3['fx']) or \
                         (fx_mark == "g" and fx1['fx'] < fx2['fx'] > fx3['fx']):
                     fx_p.append(deepcopy(fx2))
@@ -235,7 +235,7 @@ class KlineAnalyze(object):
 
         i = 0
         while i < len(bi) - 3:
-            k1, k2, k3 = bi[i + 1], bi[i + 2], bi[i + 3]
+            k1, k2, k3 = bi[i+1], bi[i+2], bi[i+3]
 
             if potential['fx_mark'] == "d":
                 assert k2['fx_mark'] == 'd'
@@ -664,7 +664,10 @@ class SolidAnalyze:
         return res
 
     def is_third_buy(self, freq):
-        """判断某一级别是否有三买信号"""
+        """判断某一级别是否有三买信号
+
+        一个第三类买点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买点。
+        """
         self._validate_freq(freq)
         signals = self.signals
         core = freq + "中枢上移"
