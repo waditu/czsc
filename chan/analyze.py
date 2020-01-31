@@ -91,7 +91,7 @@ class KlineAnalyze(object):
 
         :return:
         """
-        kn = self.kline_new
+        kn = deepcopy(self.kline_new)
         i = 0
         while i < len(kn):
             if i == 0 or i == len(kn) - 1:
@@ -192,6 +192,7 @@ class KlineAnalyze(object):
         fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
 
         # 确认哪些分型可以构成笔
+        kn = deepcopy(self.kline_new)
         bi = []
         for i in range(len(fx_p)):
             k = deepcopy(fx_p[i])
@@ -207,10 +208,12 @@ class KlineAnalyze(object):
                         bi.pop(-1)
                         bi.append(k)
                 else:
-                    bi.append(k)
+                    # 一笔的顶底分型之间至少包含5根K线
+                    k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
+                    if len(k_num) >= 5:
+                        bi.append(k)
 
         bi_list = [x["dt"] for x in bi]
-        kn = deepcopy(self.kline_new)
 
         def __add_bi(k):
             if k['dt'] in bi_list:
