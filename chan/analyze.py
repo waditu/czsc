@@ -591,6 +591,9 @@ class SolidAnalyze:
             ka = KlineAnalyze(kline)
             self.kas[freq] = ka
 
+    def _validate_freq(self, freq):
+        assert freq in self.freqs, "‘%s’不在级别列表（%s）中" % (freq, "|".join(self.freqs))
+
     def __check_signals_validation(self, signals):
         """
         对于买入信号，如果股价跌破其出现时的价格，这个信号便是无效的；对于卖出信号，如果股价升破其出现时的价格，信号无效。
@@ -622,7 +625,7 @@ class SolidAnalyze:
             return signals
 
     @staticmethod
-    def __zs_number(ka):
+    def up_zs_number(ka):
         # 检查三买前面的连续向上中枢数量
         zs_num = 1
         if len(ka.zs) > 1:
@@ -637,6 +640,8 @@ class SolidAnalyze:
         return zs_num
 
     def is_potential_third_buy(self, freq):
+        """判断某一级别是否有潜力形成三买信号"""
+        self._validate_freq(freq)
         ka = self.kas[freq]
         xd = ka.xd
         if len(xd) < 3:
@@ -649,15 +654,18 @@ class SolidAnalyze:
         if bi[-1]['bi'] <= xd[-3]['xd']:
             return None
 
+        n = self.up_zs_number(ka)
         res = {
             "操作提示": freq + "三买（潜力股）",
             "出现时间": bi[-1]['dt'],
-            "确认时间": "",
-            "中枢数量": self.__zs_number(ka)
+            "确认时间": bi[-1]['dt'],
+            "其他信息": "向上中枢数量为%i" % n
         }
         return res
 
     def is_third_buy(self, freq):
+        """判断某一级别是否有三买信号"""
+        self._validate_freq(freq)
         signals = self.signals
         core = freq + "中枢上移"
         ka = self.kas[freq]
@@ -665,12 +673,70 @@ class SolidAnalyze:
             return None
         if core in [x['name'] for x in signals]:
             dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+            n = self.up_zs_number(ka)
             res = {
                 "操作提示": freq + "三买",
                 "出现时间": ka.xd[-1]['dt'],
                 "确认时间": dt2,
-                "中枢数量": self.__zs_number(ka)
+                "其他信息": "向上中枢数量为%i" % n
             }
         else:
             res = None
         return res
+
+    def check_third_buy(self, freqs):
+        """在多个级别中分别检查三买和潜在三买信号
+
+        :param freqs: list of str
+            级别名称列表，如 ['5分钟', '30分钟', '日线']
+        :return: list of dict
+        """
+        tb = []
+        for freq in freqs:
+            b1 = self.is_third_buy(freq)
+            b2 = self.is_potential_third_buy(freq)
+            if b1:
+                tb.append(b1)
+            if b2:
+                tb.append(b2)
+        return tb
+
+    def is_xd_buy(self, freq):
+        """判断线段买点
+
+        逻辑：中枢震荡和中枢上移过程中的“向下线段不创新低”和“向下线段新低背驰信号”有交易价值。
+
+        :param freq:
+        :return:
+        """
+        ka = self.kas[freq]
+        signals = self.signals
+        if [x for x in signals if x['name'] in [freq+"中枢震荡", freq+"中枢上移"]]:
+            cons = [freq+"向下线段不创新低", freq+"向下线段新低背驰"]
+            signal = [x for x in signals if x['name'] in cons]
+            if signal:
+                assert len(signal) == 1, "线段买点信号错误，%s" % str(signal)
+                signal = signal[0]
+                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+                res = {
+                    "操作提示": freq + "线买",
+                    "出现时间": signal['dt'],
+                    "确认时间": dt2,
+                    "其他信息": freq+signal['name']
+                }
+                return res
+        return None
+
+    def check_xd_buy(self, freqs):
+        """在多个级别中检查线段买点信号
+
+        :param freqs: list of str
+            级别名称列表，如 ['5分钟', '30分钟', '日线']
+        :return: list of dict
+        """
+        xb = []
+        for freq in freqs:
+            b1 = self.is_xd_buy(freq)
+            if b1:
+                xb.append(b1)
+        return xb
