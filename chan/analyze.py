@@ -307,10 +307,26 @@ class KlineAnalyze(object):
                         xd_v.append(p2)
         return xd_v
 
+    def __handle_last_xd(self, xd_v):
+        """判断最后一个线段标记是否有效，规则如下：
+        1）如果最后一个线段标记为顶分型，最近一个向下笔结束在这个顶分型上方，该线段标记无效；
+        2）如果最后一个线段标记为底分型，最近一个向上笔结束在这个底分型下方，该线段标记无效；
+
+        """
+        last_xd = xd_v[-1]
+        bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
+        bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
+
+        if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
+                (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
+            xd_v.pop()
+        return xd_v
+
     def _find_xd(self):
         try:
             xd = self.__get_potential_xd()
             xd = self.__get_valid_xd(xd)
+            xd = self.__handle_last_xd(xd)
             dts = [x['dt'] for x in xd]
 
             def __add_xd(k):
