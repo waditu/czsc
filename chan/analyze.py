@@ -610,24 +610,6 @@ class SolidAnalyze:
     def _validate_freq(self, freq):
         assert freq in self.freqs, "‘%s’不在级别列表（%s）中" % (freq, "|".join(self.freqs))
 
-    def __check_signals_validation(self, signals):
-        """
-        对于买入信号，如果股价跌破其出现时的价格，这个信号便是无效的；对于卖出信号，如果股价升破其出现时的价格，信号无效。
-        :param signals:
-        :return:
-        """
-        freq = self.freqs[0]
-        price = self.kas[freq].kline[-1]['close']
-
-        signals_valid = []
-        for signal in signals:
-            if signal['kind'] == "买" and price > signal['price']:
-                signals_valid.append(signal)
-
-            if signal['kind'] == "卖" and price < signal['price']:
-                signals_valid.append(signal)
-        return signals_valid
-
     @property
     def signals(self):
         signals = []
@@ -635,10 +617,7 @@ class SolidAnalyze:
             for k, v in ka.status.items():
                 v["name"] = freq + k
                 signals.append(v)
-        try:
-            return self.__check_signals_validation(signals)
-        except:
-            return signals
+        return signals
 
     @staticmethod
     def up_zs_number(ka):
