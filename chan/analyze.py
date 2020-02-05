@@ -159,15 +159,6 @@ class KlineAnalyze(object):
             bi.pop()
 
         bi = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "bi": x['bi']} for x in bi]
-        bi_list = [x['dt'] for x in bi]
-
-        def __add_bi(k):
-            if k['dt'] in bi_list:
-                k['bi'] = k['fx']
-            return k
-
-        kn = [__add_bi(k) for k in kn]
-        self.kline_new = kn
         return bi
 
     def _find_bi_v2(self):
@@ -212,20 +203,35 @@ class KlineAnalyze(object):
                     k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
                     if len(k_num) >= 5:
                         bi.append(k)
-
-        bi_list = [x["dt"] for x in bi]
-
-        def __add_bi(k):
-            if k['dt'] in bi_list:
-                k['bi'] = k['fx']
-            return k
-
-        kn = [__add_bi(k) for k in kn]
-        self.kline_new = kn
         return bi
 
-    def _find_bi(self):
-        return self._find_bi_v2()
+    def __handle_last_bi(self, bi):
+        """判断最后一个笔标记是否有效，规则如下：
+        1）如果最后一个笔标记为顶分型，最近一个底分型在这个顶分型上方，该标记无效；
+        2）如果最后一个笔标记为底分型，最近一个顶分型在这个底分型下方，该标记无效；
+
+        """
+        last_bi = bi[-1]
+        fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
+        fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
+
+        if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
+                (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
+            bi.pop()
+        return bi
+
+    def _find_bi(self, version='v2'):
+        if version == 'v2':
+            bi = self._find_bi_v2()
+        else:
+            bi = self._find_bi_v1()
+        bi = self.__handle_last_bi(bi)
+        bi_list = [x["dt"] for x in bi]
+
+        for k in self.kline_new:
+            if k['dt'] in bi_list:
+                k['bi'] = k['fx']
+        return bi
 
     def __get_potential_xd(self):
         """依据不创新高、新低的近似标准找出所有潜在线段标记"""
