@@ -1,6 +1,8 @@
 # chan - 缠论技术分析工具
 >缠论来源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加微信探讨，我的微信号是 `zengbin93`
 
+<iframe height=498 width=510 src="docs/example.wmv" frameborder=0 allowfullscreen></iframe>
+
 ## 安装
 
 Pypi上已经存在一个名为chan的库，以致于这个库没法上传到Pypi。

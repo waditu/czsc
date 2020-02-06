@@ -149,15 +149,6 @@ class KlineAnalyze(object):
 
         potential['bi'] = potential['fx']
         bi.append(potential)
-
-        k_last = self.kline_new[-1]
-        bi_last = bi[-1]
-        if bi_last['fx_mark'] == 'g' and k_last['high'] > bi_last['bi']:
-            bi.pop()
-
-        if bi_last['fx_mark'] == 'd' and k_last['low'] < bi_last['bi']:
-            bi.pop()
-
         bi = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "bi": x['bi']} for x in bi]
         return bi
 
