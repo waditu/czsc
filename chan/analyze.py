@@ -168,8 +168,8 @@ class KlineAnalyze(object):
             fx = sorted(fx, key=lambda x: x['dt'], reverse=False)
             for i in range(1, len(fx)-1):
                 fx1, fx2, fx3 = fx[i-1:i+2]
-                if (fx_mark == "d" and fx1['fx'] > fx2['fx'] < fx3['fx']) or \
-                        (fx_mark == "g" and fx1['fx'] < fx2['fx'] > fx3['fx']):
+                if (fx_mark == "d" and fx1['fx'] >= fx2['fx'] <= fx3['fx']) or \
+                        (fx_mark == "g" and fx1['fx'] <= fx2['fx'] >= fx3['fx']):
                     fx_p.append(deepcopy(fx2))
         fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
 
@@ -380,7 +380,8 @@ class KlineAnalyze(object):
         for k in self.kline:
             k1 = kn_map.get(k['dt'], None)
             if k1:
-                k.update(k1)
+                k['fx_mark'], k['fx'], k['bi'], k['xd'] = k1['fx_mark'], k1['fx'], k1['bi'], k1['xd']
+                # k.update(k1)
 
     def cal_bei_chi(self, zs1, zs2, direction="down", mode="bi"):
         """判断 zs1 对 zs2 是否有背驰
@@ -624,7 +625,7 @@ class SolidAnalyze:
             k_zs = ka.zs[::-1]
             zs_cur = k_zs[0]
             for zs_next in k_zs[1:]:
-                if zs_cur['zs'][0] > zs_next['zs'][1]:
+                if zs_cur['zs'][0] >= zs_next['zs'][1]:
                     zs_num += 1
                     zs_cur = zs_next
                 else:
@@ -696,6 +697,62 @@ class SolidAnalyze:
                 tb.append(b2)
         return tb
 
+    @staticmethod
+    def down_zs_number(ka):
+        # 检查三卖前面的连续向下中枢数量
+        zs_num = 1
+        if len(ka.zs) > 1:
+            k_zs = ka.zs[::-1]
+            zs_cur = k_zs[0]
+            for zs_next in k_zs[1:]:
+                if zs_cur['zs'][1] <= zs_next['zs'][0]:
+                    zs_num += 1
+                    zs_cur = zs_next
+                else:
+                    break
+        return zs_num
+
+    def is_potential_third_sell(self):
+        pass
+
+    def is_third_sell(self, freq):
+        """判断某一级别是否有三卖信号
+
+        一个第三类卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类卖点。
+        """
+        self._validate_freq(freq)
+        signals = self.signals
+        core = freq + "中枢下移"
+        ka = self.kas[freq]
+        if len(ka.xd) < 3:
+            return None
+        if core in [x['name'] for x in signals]:
+            dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+            n = self.down_zs_number(ka)
+            res = {
+                "操作提示": freq + "三卖",
+                "出现时间": ka.xd[-1]['dt'],
+                "确认时间": dt2,
+                "其他信息": "向下中枢数量为%i" % n
+            }
+        else:
+            res = None
+        return res
+
+    def check_third_sell(self, freqs):
+        """在多个级别中分别检查三卖信号
+
+        :param freqs: list of str
+            级别名称列表，如 ['5分钟', '30分钟', '日线']
+        :return: list of dict
+        """
+        ts = []
+        for freq in freqs:
+            s1 = self.is_third_sell(freq)
+            if s1:
+                ts.append(s1)
+        return ts
+
     def is_xd_buy(self, freq):
         """判断线段买点
 
@@ -717,7 +774,7 @@ class SolidAnalyze:
                     "操作提示": freq + "线买",
                     "出现时间": signal['dt'],
                     "确认时间": dt2,
-                    "其他信息": freq+signal['name']
+                    "其他信息": signal['name']
                 }
                 return res
         return None
@@ -735,3 +792,45 @@ class SolidAnalyze:
             if b1:
                 xb.append(b1)
         return xb
+
+    def is_xd_sell(self, freq):
+        """判断线段卖点
+
+        逻辑：中枢震荡和中枢下移过程中的“向上线段不创新高”和“向上线段新高背驰”是卖点。
+
+        :param freq:
+        :return:
+        """
+        ka = self.kas[freq]
+        signals = self.signals
+        if [x for x in signals if x['name'] in [freq+"中枢震荡", freq+"中枢下移"]]:
+            cons = [freq+"向上线段不创新高", freq+"向上线段新高背驰"]
+            signal = [x for x in signals if x['name'] in cons]
+            if signal:
+                assert len(signal) == 1, "线段卖点信号错误，%s" % str(signal)
+                signal = signal[0]
+                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+                res = {
+                    "操作提示": freq + "线卖",
+                    "出现时间": signal['dt'],
+                    "确认时间": dt2,
+                    "其他信息": signal['name']
+                }
+                return res
+        return None
+
+    def check_xd_sell(self, freqs):
+        """在多个级别中检查线段卖点信号
+
+        :param freqs: list of str
+            级别名称列表，如 ['5分钟', '30分钟', '日线']
+        :return: list of dict
+        """
+        xs = []
+        for freq in freqs:
+            b1 = self.is_xd_sell(freq)
+            if b1:
+                xs.append(b1)
+        return xs
+
+

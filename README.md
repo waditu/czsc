@@ -1,7 +1,6 @@
 # chan - 缠论技术分析工具
 >缠论来源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加微信探讨，我的微信号是 `zengbin93`
-
-<iframe height=498 width=510 src="docs/example.wmv" frameborder=0 allowfullscreen></iframe>
+>查看识别效果：docs/example.wmv
 
 ## 安装
 
