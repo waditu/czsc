@@ -162,6 +162,8 @@ class KlineAnalyze(object):
         （3）经过步骤（2）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
         """
         # 符合标准的分型
+        kn = deepcopy(self.kline_new)
+
         fx_p = []
         for fx_mark in ['d', 'g']:
             fx = [x for x in deepcopy(self.fx) if x['fx_mark'] == fx_mark]
@@ -171,10 +173,18 @@ class KlineAnalyze(object):
                 if (fx_mark == "d" and fx1['fx'] >= fx2['fx'] <= fx3['fx']) or \
                         (fx_mark == "g" and fx1['fx'] <= fx2['fx'] >= fx3['fx']):
                     fx_p.append(deepcopy(fx2))
+
+        # 两个相邻的顶点分型之间有1根非共用K线
+        for i in range(len(self.fx)-1):
+            fx1, fx2 = self.fx[i], self.fx[i+1]
+            k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
+            if len(k_num) >= 5:
+                fx_p.append(deepcopy(fx1))
+                fx_p.append(deepcopy(fx2))
+
         fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
 
         # 确认哪些分型可以构成笔
-        kn = deepcopy(self.kline_new)
         bi = []
         for i in range(len(fx_p)):
             k = deepcopy(fx_p[i])
@@ -590,7 +600,7 @@ class KlineAnalyze(object):
 
 
 class SolidAnalyze:
-    """多级别K线联合分析"""
+    """多级别（日线、30分钟、5分钟、1分钟）K线联合分析"""
 
     def __init__(self, klines):
         """
@@ -601,6 +611,9 @@ class SolidAnalyze:
         """
         self.kas = dict()
         self.freqs = list(klines.keys())
+        for freq in "日线、30分钟、5分钟、1分钟".split("、"):
+            assert freq in self.freqs, "缺少 %s 级别的K线" % freq
+
         for freq, kline in klines.items():
             ka = KlineAnalyze(kline)
             self.kas[freq] = ka
