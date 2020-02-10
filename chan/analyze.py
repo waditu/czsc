@@ -598,6 +598,36 @@ class KlineAnalyze(object):
 
         return table
 
+    def is_third_buy(self):
+        status_zs = self.status_zs
+        if status_zs and status_zs.get("中枢上移", None):
+            return True
+        else:
+            return False
+
+    def is_third_sell(self):
+        status_zs = self.status_zs
+        if status_zs and status_zs.get("中枢下移", None):
+            return True
+        else:
+            return False
+
+    def is_xd_buy(self):
+        status_xd = self.status_xd
+        names = ["向下线段不创新低", '向下线段新低背驰']
+        if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
+            return True
+        else:
+            return False
+
+    def is_xd_sell(self):
+        status_xd = self.status_xd
+        names = ["向上线段不创新高", '向上线段新高背驰']
+        if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
+            return True
+        else:
+            return False
+
 
 class SolidAnalyze:
     """多级别（日线、30分钟、5分钟、1分钟）K线联合分析"""
