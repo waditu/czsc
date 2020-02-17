@@ -446,6 +446,48 @@ class KlineAnalyze(object):
     def show(self):
         pass
 
+    def xd_end_potential(self):
+        """最后一个线段结束的概率"""
+        k_xd = self.xd
+        k_bi = self.bi
+        fx_mark = k_xd[-1]['fx_mark']
+        if fx_mark == 'd':
+            direction = "up"
+            last_bi = [x for x in self.bi if x['fx_mark'] == 'g'][-1]
+        elif fx_mark == 'g':
+            direction = "down"
+            last_bi = [x for x in self.bi if x['fx_mark'] == 'd'][-1]
+        else:
+            raise ValueError
+
+        potential_xd = {
+            'dt': last_bi['dt'],
+            'fx_mark': last_bi['fx_mark'],
+            'xd': last_bi['bi'],
+            'prob': 0
+        }
+
+        # 围绕最后一个中枢，判断是否有线段背驰
+        zs1 = [k_xd[-1]['dt'], k_bi[-1]['dt']]  # 走势1：尚未完成的线段
+        zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]  # 走势2：上一根同向线段
+        if direction == 'up':
+            if potential_xd['xd'] >= k_xd[-2]['xd']:
+                bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+                if bc == "背驰":
+                    potential_xd['prob'] += 0.5
+            if self.bi[-1]['fx_mark'] == 'g' and "向上笔新高背驰" in self.status_bi.keys():
+                potential_xd['prob'] += 0.5
+        elif direction == 'down':
+            if potential_xd['xd'] <= k_xd[-2]['xd']:
+                bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+                if bc == "背驰":
+                    potential_xd['prob'] += 0.5
+            if self.bi[-1]['fx_mark'] == 'd' and "向下笔新低背驰" in self.status_bi.keys():
+                potential_xd['prob'] += 0.5
+        else:
+            raise ValueError
+        return potential_xd
+
     @property
     def chan_result(self):
         return pd.DataFrame(self.kline)
@@ -599,20 +641,47 @@ class KlineAnalyze(object):
         return table
 
     def is_third_buy(self):
+        """判断当下是否是三买"""
         status_zs = self.status_zs
         if status_zs and status_zs.get("中枢上移", None):
             return True
         else:
             return False
 
+    def is_potential_third_buy(self):
+        """判断当下是否是潜在的三买"""
+        potential_xd = self.xd_end_potential()
+        if potential_xd['fx_mark'] == 'g' or potential_xd['prob'] == 0:
+            return False
+        else:
+            zs_g = min([x['xd'] for x in self.xd[-5:] if x['fx_mark'] == 'g'])
+            if potential_xd['xd'] > zs_g:
+                return True
+            else:
+                return False
+
     def is_third_sell(self):
+        """判断当下是否是三卖"""
         status_zs = self.status_zs
         if status_zs and status_zs.get("中枢下移", None):
             return True
         else:
             return False
 
+    def is_potential_third_sell(self):
+        """判断当下是否是潜在的三卖"""
+        potential_xd = self.xd_end_potential()
+        if potential_xd['fx_mark'] == 'd' or potential_xd['prob'] == 0:
+            return False
+        else:
+            zs_d = max([x['xd'] for x in self.xd[-5:] if x['fx_mark'] == 'd'])
+            if potential_xd['xd'] < zs_d:
+                return True
+            else:
+                return False
+
     def is_xd_buy(self):
+        """判断当下是否是线段买点（即同级别分解买点）"""
         status_xd = self.status_xd
         names = ["向下线段不创新低", '向下线段新低背驰']
         if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
@@ -620,13 +689,48 @@ class KlineAnalyze(object):
         else:
             return False
 
+    def is_potential_xd_buy(self):
+        """判断当下是否是潜在的线段买点（即同级别分解买点）"""
+        potential_xd = self.xd_end_potential()
+        if potential_xd['fx_mark'] == 'g' or potential_xd['prob'] == 0:
+            return False
+        else:
+            k_xd = self.xd
+            direction = "down"
+            zs1 = [k_xd[-1]['dt'], potential_xd['dt']]
+            zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]
+            bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+
+            if bc == "背驰" or potential_xd['xd'] >= self.xd[-2]['xd']:
+                return True
+            else:
+                return False
+
     def is_xd_sell(self):
+        """判断当下是否是线段卖点（即同级别分解卖点）"""
         status_xd = self.status_xd
         names = ["向上线段不创新高", '向上线段新高背驰']
         if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
             return True
         else:
             return False
+
+    def is_potential_xd_sell(self):
+        """判断当下是否是潜在的线段卖点（即同级别分解卖点）"""
+        potential_xd = self.xd_end_potential()
+        if potential_xd['fx_mark'] == 'd' or potential_xd['prob'] == 0:
+            return False
+        else:
+            k_xd = self.xd
+            direction = "up"
+            zs1 = [k_xd[-1]['dt'], potential_xd['dt']]
+            zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]
+            bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
+
+            if bc == "背驰" or potential_xd['xd'] <= self.xd[-2]['xd']:
+                return True
+            else:
+                return False
 
 
 class SolidAnalyze:
@@ -641,9 +745,6 @@ class SolidAnalyze:
         """
         self.kas = dict()
         self.freqs = list(klines.keys())
-        for freq in "日线、30分钟、5分钟、1分钟".split("、"):
-            assert freq in self.freqs, "缺少 %s 级别的K线" % freq
-
         for freq, kline in klines.items():
             ka = KlineAnalyze(kline)
             self.kas[freq] = ka
@@ -679,24 +780,18 @@ class SolidAnalyze:
         """判断某一级别是否有潜力形成三买信号"""
         self._validate_freq(freq)
         ka = self.kas[freq]
-        xd = ka.xd
-        if len(xd) < 3:
-            return None
 
-        bi = ka.bi
-        if xd[-1]['fx_mark'] == "d" or bi[-1]['fx_mark'] == 'g':
-            return None
-
-        if bi[-1]['bi'] <= xd[-3]['xd']:
-            return None
-
-        n = self.up_zs_number(ka)
-        res = {
-            "操作提示": freq + "三买（潜力股）",
-            "出现时间": bi[-1]['dt'],
-            "确认时间": bi[-1]['dt'],
-            "其他信息": "向上中枢数量为%i" % n
-        }
+        if ka.is_potential_third_buy():
+            n = self.up_zs_number(ka)
+            p_xd = ka.xd_end_potential()
+            res = {
+                "操作提示": freq + "三买（潜力股）",
+                "出现时间": p_xd['dt'],
+                "确认时间": p_xd['dt'],
+                "其他信息": f"向上中枢数量为{n}，三买潜力为{p_xd['prob']}"
+            }
+        else:
+            res = None
         return res
 
     def is_third_buy(self, freq):
@@ -742,7 +837,7 @@ class SolidAnalyze:
 
     @staticmethod
     def down_zs_number(ka):
-        # 检查三卖前面的连续向下中枢数量
+        """检查三卖前面的连续向下中枢数量"""
         zs_num = 1
         if len(ka.zs) > 1:
             k_zs = ka.zs[::-1]
@@ -755,8 +850,26 @@ class SolidAnalyze:
                     break
         return zs_num
 
-    def is_potential_third_sell(self):
-        pass
+    def is_potential_third_sell(self, freq):
+        """判断某一级别是否有潜在三卖信号
+
+        一个第三类卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类卖点。
+        """
+        self._validate_freq(freq)
+        ka = self.kas[freq]
+
+        if ka.is_potential_third_sell():
+            n = self.down_zs_number(ka)
+            p_xd = ka.xd_end_potential()
+            res = {
+                "操作提示": freq + "三卖（潜力股）",
+                "出现时间": p_xd['dt'],
+                "确认时间": p_xd['dt'],
+                "其他信息": f"向下中枢数量为{n}，三卖潜力为{p_xd['prob']}"
+            }
+        else:
+            res = None
+        return res
 
     def is_third_sell(self, freq):
         """判断某一级别是否有三卖信号
