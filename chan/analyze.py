@@ -207,10 +207,14 @@ class KlineAnalyze(object):
         return bi
 
     def __handle_last_bi(self, bi):
-        """判断最后一个笔标记是否有效，规则如下：
+        """判断最后一个笔标记是否有效，有两个方案：
+        方案一规则如下：
+        1）如果最后一个笔标记为顶分型，最近一根K线的最高价在这个顶分型上方，该标记无效；
+        2）如果最后一个笔标记为底分型，最近一根K线的最低价在这个底分型下方，该标记无效；
+
+        方案二规则如下：
         1）如果最后一个笔标记为顶分型，最近一个底分型在这个顶分型上方，该标记无效；
         2）如果最后一个笔标记为底分型，最近一个顶分型在这个底分型下方，该标记无效；
-
         """
         last_bi = bi[-1]
         last_k = self.kline_new[-1]
@@ -319,7 +323,14 @@ class KlineAnalyze(object):
         return xd_v
 
     def __handle_last_xd(self, xd_v):
-        """判断最后一个线段标记是否有效，规则如下：
+        """判断最后一个线段标记是否有效，有以下两个方案：
+
+        方案一规则如下：
+        1）如果最后一个线段标记为顶分型，最近一根K线的最高价在这个顶分型上方，该标记无效；
+        2）如果最后一个线段标记为底分型，最近一根K线的最低价在这个底分型下方，该标记无效；
+
+
+        方案二规则如下：
         1）如果最后一个线段标记为顶分型，最近一个向下笔结束在这个顶分型上方，该线段标记无效；
         2）如果最后一个线段标记为底分型，最近一个向上笔结束在这个底分型下方，该线段标记无效；
 
@@ -660,14 +671,11 @@ class KlineAnalyze(object):
         """判断当下是否是潜在的三买"""
         try:
             potential_xd = self.xd_end_potential()
-            if potential_xd['fx_mark'] == 'g' or potential_xd['prob'] == 0:
-                return False
-            else:
+            if potential_xd['fx_mark'] == 'd' and potential_xd['prob'] == 1:
                 zs_g = min([x['xd'] for x in self.xd[-5:] if x['fx_mark'] == 'g'])
                 if potential_xd['xd'] > zs_g:
                     return True
-                else:
-                    return False
+            return False
         except:
             return False
 
@@ -683,14 +691,11 @@ class KlineAnalyze(object):
         """判断当下是否是潜在的三卖"""
         try:
             potential_xd = self.xd_end_potential()
-            if potential_xd['fx_mark'] == 'd' or potential_xd['prob'] == 0:
-                return False
-            else:
+            if potential_xd['fx_mark'] == 'g' and potential_xd['prob'] == 1:
                 zs_d = max([x['xd'] for x in self.xd[-5:] if x['fx_mark'] == 'd'])
                 if potential_xd['xd'] < zs_d:
                     return True
-                else:
-                    return False
+            return False
         except:
             return False
 
@@ -707,19 +712,15 @@ class KlineAnalyze(object):
         """判断当下是否是潜在的线段买点（即同级别分解买点）"""
         try:
             potential_xd = self.xd_end_potential()
-            if potential_xd['fx_mark'] == 'g' or potential_xd['prob'] == 0:
-                return False
-            else:
+            if potential_xd['fx_mark'] == 'd' and potential_xd['prob'] == 1:
                 k_xd = self.xd
                 direction = "down"
                 zs1 = [k_xd[-1]['dt'], potential_xd['dt']]
                 zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]
                 bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-
                 if bc == "背驰" or potential_xd['xd'] >= self.xd[-2]['xd']:
                     return True
-                else:
-                    return False
+            return False
         except:
             return False
 
@@ -736,19 +737,15 @@ class KlineAnalyze(object):
         """判断当下是否是潜在的线段卖点（即同级别分解卖点）"""
         try:
             potential_xd = self.xd_end_potential()
-            if potential_xd['fx_mark'] == 'd' or potential_xd['prob'] == 0:
-                return False
-            else:
+            if potential_xd['fx_mark'] == 'g' or potential_xd['prob'] == 1:
                 k_xd = self.xd
                 direction = "up"
                 zs1 = [k_xd[-1]['dt'], potential_xd['dt']]
                 zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]
                 bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-
                 if bc == "背驰" or potential_xd['xd'] <= self.xd[-2]['xd']:
                     return True
-                else:
-                    return False
+            return False
         except:
             return False
 
