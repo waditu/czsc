@@ -2,7 +2,8 @@
 import tushare as ts
 from datetime import datetime, timedelta
 import sys
-sys.path.insert(0, 'C:\git_repo\zengbin93\chan')
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 
 from chan.analyze import KlineAnalyze
 
@@ -46,9 +47,6 @@ def get_kline(ts_code, end_date, freq='30min', asset='E'):
     """
     start_date = _get_start_date(end_date, freq)
     start_date = start_date.date().__str__().replace("-", "")
-    end_date = datetime.strptime(end_date, '%Y%m%d')
-    end_date = end_date + timedelta(days=1)
-    end_date = end_date.date().__str__().replace("-", "")
 
     df = ts.pro_bar(ts_code=ts_code, freq=freq, start_date=start_date, end_date=end_date,
                     adj='qfq', asset=asset)
