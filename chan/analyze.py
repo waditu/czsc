@@ -263,21 +263,20 @@ class KlineAnalyze(object):
         zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]  # 走势2：上一根同向线段
         bi1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
         bi2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
-
         if k_bi[-4]['dt'] <= k_xd[-1]['dt']:
             if direction == 'up' and k_bi[-1]['fx_mark'] == 'g' \
                     and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
-                potential_xd['prob'] += 0.5
+                potential_xd['prob'] += 0.4
                 if potential_xd['xd'] >= k_xd[-2]['xd'] and \
                         self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
-                    potential_xd['prob'] += 0.5
+                    potential_xd['prob'] += 0.4
 
             if direction == 'down' and k_bi[-1]['fx_mark'] == 'd' \
                     and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
-                potential_xd['prob'] += 0.5
+                potential_xd['prob'] += 0.4
                 if potential_xd['xd'] <= k_xd[-2]['xd'] and \
                         self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
-                    potential_xd['prob'] += 0.5
+                    potential_xd['prob'] += 0.4
         return potential_xd
 
     def __get_valid_xd(self, xd_p):
@@ -432,11 +431,10 @@ class KlineAnalyze(object):
             default `bi`, optional value [`xd`, `bi`]
         :return:
         """
-        df = pd.DataFrame(self.kline)
+        df = pd.DataFrame(self.kline_new)
         df = macd(df)
         k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
         k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
-
         if direction == "up" and k1.iloc[-1]['fx'] < k2.iloc[-1]['fx']:
             return "没有背驰"
 
@@ -713,7 +711,10 @@ class SolidAnalyze:
         if len(ka.xd) < 3:
             return None
         if core in [x['name'] for x in signals]:
-            dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+            if 1 > ka.last_xd_end_prob > 0:
+                dt2 = ka.xd[-1]['dt']
+            else:
+                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
             n = self.up_zs_number(ka)
             res = {
                 "操作提示": freq + "三买",
@@ -766,7 +767,10 @@ class SolidAnalyze:
         if len(ka.xd) < 3:
             return None
         if core in [x['name'] for x in signals]:
-            dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+            if 1 > ka.last_xd_end_prob > 0:
+                dt2 = ka.xd[-1]['dt']
+            else:
+                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
             n = self.down_zs_number(ka)
             res = {
                 "操作提示": freq + "三卖",
@@ -808,7 +812,10 @@ class SolidAnalyze:
             if signal:
                 assert len(signal) == 1, "线段买点信号错误，%s" % str(signal)
                 signal = signal[0]
-                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+                if 1 > ka.last_xd_end_prob > 0:
+                    dt2 = ka.xd[-1]['dt']
+                else:
+                    dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
                 res = {
                     "操作提示": freq + "线买",
                     "出现时间": signal['dt'],
@@ -848,7 +855,10 @@ class SolidAnalyze:
             if signal:
                 assert len(signal) == 1, "线段卖点信号错误，%s" % str(signal)
                 signal = signal[0]
-                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
+                if 1 > ka.last_xd_end_prob > 0:
+                    dt2 = ka.xd[-1]['dt']
+                else:
+                    dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
                 res = {
                     "操作提示": freq + "线卖",
                     "出现时间": signal['dt'],
