@@ -116,44 +116,7 @@ class KlineAnalyze(object):
               if x['fx_mark'] in ['d', 'g']]
         return fx
 
-    def _find_bi_v1(self):
-        """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型"""
-        kn = deepcopy(self.kline_new)
-        bi = []
-        potential = None
-        o_count = 0
-
-        for k in kn:
-            if not potential:
-                if k['fx_mark'] in ['d', 'g']:
-                    potential = deepcopy(k)
-                else:
-                    continue
-
-            if k['fx_mark'] in ['d', 'g']:
-                if k['fx_mark'] == potential['fx_mark']:
-                    if k['fx_mark'] == "g" and k['fx'] > potential['fx']:
-                        potential = deepcopy(k)
-                    elif k['fx_mark'] == "d" and k['fx'] < potential['fx']:
-                        potential = deepcopy(k)
-                    else:
-                        continue
-                    o_count = 0
-                else:
-                    if o_count >= 3:
-                        potential['bi'] = potential['fx']
-                        bi.append(potential)
-                        o_count = 0
-                        potential = deepcopy(k)
-            else:
-                o_count += 1
-
-        potential['bi'] = potential['fx']
-        bi.append(potential)
-        bi = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "bi": x['bi']} for x in bi]
-        return bi
-
-    def _find_bi_v2(self):
+    def __get_potential_bi(self):
         """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型
 
         划分笔的步骤：
@@ -169,15 +132,15 @@ class KlineAnalyze(object):
         for fx_mark in ['d', 'g']:
             fx = [x for x in deepcopy(self.fx) if x['fx_mark'] == fx_mark]
             fx = sorted(fx, key=lambda x: x['dt'], reverse=False)
-            for i in range(1, len(fx)-1):
-                fx1, fx2, fx3 = fx[i-1:i+2]
+            for i in range(1, len(fx) - 1):
+                fx1, fx2, fx3 = fx[i - 1:i + 2]
                 if (fx_mark == "d" and fx1['fx'] >= fx2['fx'] <= fx3['fx']) or \
                         (fx_mark == "g" and fx1['fx'] <= fx2['fx'] >= fx3['fx']):
                     fx_p.append(deepcopy(fx2))
 
         # 两个相邻的顶点分型之间有1根非共用K线
-        for i in range(len(self.fx)-1):
-            fx1, fx2 = self.fx[i], self.fx[i+1]
+        for i in range(len(self.fx) - 1):
+            fx1, fx2 = self.fx[i], self.fx[i + 1]
             k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
             if len(k_num) >= 5:
                 fx_p.append(deepcopy(fx1))
@@ -219,7 +182,7 @@ class KlineAnalyze(object):
         """
         last_bi = bi[-1]
         last_k = self.kline_new[-1]
-        if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi'])or \
+        if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
                 (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
             bi.pop()
 
@@ -230,11 +193,8 @@ class KlineAnalyze(object):
         #     bi.pop()
         return bi
 
-    def _find_bi(self, version='v2'):
-        if version == 'v2':
-            bi = self._find_bi_v2()
-        else:
-            bi = self._find_bi_v1()
+    def _find_bi(self):
+        bi = self.__get_potential_bi()
         bi = self.__handle_last_bi(bi)
         bi_list = [x["dt"] for x in bi]
 
@@ -251,7 +211,7 @@ class KlineAnalyze(object):
 
         i = 0
         while i < len(bi) - 3:
-            k1, k2, k3 = bi[i+1], bi[i+2], bi[i+3]
+            k1, k2, k3 = bi[i + 1], bi[i + 2], bi[i + 3]
 
             if potential['fx_mark'] == "d":
                 assert k2['fx_mark'] == 'd'
@@ -301,22 +261,23 @@ class KlineAnalyze(object):
 
         zs1 = [k_xd[-1]['dt'], k_bi[-1]['dt']]  # 走势1：尚未完成的线段
         zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]  # 走势2：上一根同向线段
-        if direction == 'up':
-            if self.bi[-1]['fx_mark'] == 'g' and "向上笔新高背驰" in self.status_bi.keys():
+        bi1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
+        bi2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
+
+        if k_bi[-4]['dt'] <= k_xd[-1]['dt']:
+            if direction == 'up' and k_bi[-1]['fx_mark'] == 'g' \
+                    and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
                 potential_xd['prob'] += 0.5
-                if potential_xd['xd'] >= k_xd[-2]['xd']:
-                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-                    if bc == "背驰":
-                        potential_xd['prob'] += 0.5
-        elif direction == 'down':
-            if self.bi[-1]['fx_mark'] == 'd' and "向下笔新低背驰" in self.status_bi.keys():
+                if potential_xd['xd'] >= k_xd[-2]['xd'] and \
+                        self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
+                    potential_xd['prob'] += 0.5
+
+            if direction == 'down' and k_bi[-1]['fx_mark'] == 'd' \
+                    and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
                 potential_xd['prob'] += 0.5
-                if potential_xd['xd'] <= k_xd[-2]['xd']:
-                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-                    if bc == "背驰":
-                        potential_xd['prob'] += 0.5
-        else:
-            raise ValueError
+                if potential_xd['xd'] <= k_xd[-2]['xd'] and \
+                        self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
+                    potential_xd['prob'] += 0.5
         return potential_xd
 
     def __get_valid_xd(self, xd_p):
@@ -344,9 +305,9 @@ class KlineAnalyze(object):
                     bi_r = [x for x in bi if x['dt'] >= p2['dt']]
                     if len(bi_m) == 2:
                         # 两个连续线段标记之间只有一笔的处理
-                        if i == len(xd_p)-1:
+                        if i == len(xd_p) - 1:
                             break
-                        p3 = deepcopy(xd_p[i+1])
+                        p3 = deepcopy(xd_p[i + 1])
                         if (p1['fx_mark'] == "g" and p1['xd'] < p3['xd']) or \
                                 (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
                             xd_v.pop(-1)
@@ -841,8 +802,8 @@ class SolidAnalyze:
         """
         ka = self.kas[freq]
         signals = self.signals
-        if [x for x in signals if x['name'] in [freq+"中枢震荡", freq+"中枢上移"]]:
-            cons = [freq+"向下线段不创新低", freq+"向下线段新低背驰"]
+        if [x for x in signals if x['name'] in [freq + "中枢震荡", freq + "中枢上移"]]:
+            cons = [freq + "向下线段不创新低", freq + "向下线段新低背驰"]
             signal = [x for x in signals if x['name'] in cons]
             if signal:
                 assert len(signal) == 1, "线段买点信号错误，%s" % str(signal)
@@ -881,8 +842,8 @@ class SolidAnalyze:
         """
         ka = self.kas[freq]
         signals = self.signals
-        if [x for x in signals if x['name'] in [freq+"中枢震荡", freq+"中枢下移"]]:
-            cons = [freq+"向上线段不创新高", freq+"向上线段新高背驰"]
+        if [x for x in signals if x['name'] in [freq + "中枢震荡", freq + "中枢下移"]]:
+            cons = [freq + "向上线段不创新高", freq + "向上线段新高背驰"]
             signal = [x for x in signals if x['name'] in cons]
             if signal:
                 assert len(signal) == 1, "线段卖点信号错误，%s" % str(signal)
@@ -910,5 +871,3 @@ class SolidAnalyze:
             if b1:
                 xs.append(b1)
         return xs
-
-
