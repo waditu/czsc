@@ -727,7 +727,7 @@ class SolidAnalyze:
 
     @staticmethod
     def up_zs_number(ka):
-        # 检查三买前面的连续向上中枢数量
+        """检查三买前面的连续向上中枢数量"""
         zs_num = 1
         if len(ka.zs) > 1:
             k_zs = ka.zs[::-1]
