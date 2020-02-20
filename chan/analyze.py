@@ -330,7 +330,7 @@ class KlineAnalyze(object):
 
         # 判断当下线段是否有结束的可能
         last_xd = self.__last_potential_xd(xd_v)
-        if last_xd['prob'] > 0.4:
+        if last_xd['prob'] > 0:
             self.last_xd_end_prob = last_xd.pop('prob')
             xd_v.append(last_xd)
 
