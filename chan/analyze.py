@@ -181,16 +181,17 @@ class KlineAnalyze(object):
         2）如果最后一个笔标记为底分型，最近一个顶分型在这个底分型下方，该标记无效；
         """
         last_bi = bi[-1]
-        last_k = self.kline_new[-1]
-        if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
-                (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
-            bi.pop()
 
-        # fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
-        # fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
-        # if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
-        #         (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
+        # last_k = self.kline_new[-1]
+        # if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
+        #         (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
         #     bi.pop()
+
+        fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
+        fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
+        if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
+                (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
+            bi.pop()
         return bi
 
     def _find_bi(self):
@@ -241,17 +242,20 @@ class KlineAnalyze(object):
 
     def __last_potential_xd(self, k_xd):
         """最后一个线段结束的概率"""
-        k_bi = self.bi
+        k_bi = deepcopy(self.bi)
         fx_mark = k_xd[-1]['fx_mark']
         if fx_mark == 'd':
             direction = "up"
-            last_bi = [x for x in self.bi if x['fx_mark'] == 'g'][-1]
+            if k_bi[-1]['fx_mark'] == 'd':
+                k_bi.pop(-1)
         elif fx_mark == 'g':
             direction = "down"
-            last_bi = [x for x in self.bi if x['fx_mark'] == 'd'][-1]
+            if k_bi[-1]['fx_mark'] == 'g':
+                k_bi.pop(-1)
         else:
             raise ValueError
 
+        last_bi = k_bi[-1]
         potential_xd = {
             'dt': last_bi['dt'],
             'fx_mark': last_bi['fx_mark'],
@@ -259,7 +263,7 @@ class KlineAnalyze(object):
             'prob': 0
         }
 
-        zs1 = [k_xd[-1]['dt'], k_bi[-1]['dt']]  # 走势1：尚未完成的线段
+        zs1 = [k_xd[-1]['dt'], last_bi['dt']]  # 走势1：尚未完成的线段
         zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]  # 走势2：上一根同向线段
         bi1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
         bi2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
@@ -277,6 +281,8 @@ class KlineAnalyze(object):
                 if potential_xd['xd'] <= k_xd[-2]['xd'] and \
                         self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
                     potential_xd['prob'] += 0.4
+        if potential_xd['prob'] > 0:
+            print('\n\n potential_xd: ', potential_xd, "\n\n")
         return potential_xd
 
     def __get_valid_xd(self, xd_p):
@@ -324,7 +330,7 @@ class KlineAnalyze(object):
 
         # 判断当下线段是否有结束的可能
         last_xd = self.__last_potential_xd(xd_v)
-        if last_xd['prob'] > 0:
+        if last_xd['prob'] > 0.4:
             self.last_xd_end_prob = last_xd.pop('prob')
             xd_v.append(last_xd)
 
@@ -344,16 +350,17 @@ class KlineAnalyze(object):
 
         """
         last_xd = xd_v[-1]
-        last_k = self.kline_new[-1]
-        if (last_xd['fx_mark'] == 'g' and last_k['high'] >= last_xd['xd']) or \
-                (last_xd['fx_mark'] == 'd' and last_k['low'] <= last_xd['xd']):
-            xd_v.pop()
 
-        # bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
-        # bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
-        # if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
-        #         (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
+        # last_k = self.kline_new[-1]
+        # if (last_xd['fx_mark'] == 'g' and last_k['high'] >= last_xd['xd']) or \
+        #         (last_xd['fx_mark'] == 'd' and last_k['low'] <= last_xd['xd']):
         #     xd_v.pop()
+
+        bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
+        bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
+        if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
+                (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
+            xd_v.pop()
         return xd_v
 
     def _find_xd(self):
@@ -392,17 +399,14 @@ class KlineAnalyze(object):
             zs_g = min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g'])
 
             if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
-                # print(i, "三买")
                 # 线段在中枢上方结束，形成三买
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
                 zs_xd = deepcopy(k_xd[i - 2:i + 1])
             elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
                 # 线段在中枢下方结束，形成三卖
-                # print(i, "三卖")
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
                 zs_xd = deepcopy(k_xd[i - 2:i + 1])
             else:
-                # print(i, "延伸")
                 zs_xd.append(deepcopy(xd_p))
 
         if len(zs_xd) >= 4:
@@ -418,7 +422,6 @@ class KlineAnalyze(object):
             k1 = kn_map.get(k['dt'], None)
             if k1:
                 k['fx_mark'], k['fx'], k['bi'], k['xd'] = k1['fx_mark'], k1['fx'], k1['bi'], k1['xd']
-                # k.update(k1)
 
     def cal_bei_chi(self, zs1, zs2, direction="down", mode="bi"):
         """判断 zs1 对 zs2 是否有背驰
@@ -458,9 +461,9 @@ class KlineAnalyze(object):
                 macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
             else:
                 raise ValueError('direction value error')
-
-            if macd_sum1 < macd_sum2 and abs(k1.dea.iloc[-1]) < abs(k2.dea.iloc[-1]):
+            if macd_sum1 < macd_sum2:
                 bc = True
+
         else:
             raise ValueError("mode value error")
 
