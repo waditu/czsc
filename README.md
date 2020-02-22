@@ -33,6 +33,8 @@ pip install git+git://github.com/zengbin93/chan.git -U
 目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `chan.analyze` 中；
 此外，基于这个库，开发了一个web页面，关联 tushare.pro 的数据，输入相应的交易代码等就可以直接查看对应的分析结果。
 
+> 前端页面: https://github.com/zengbin93/gm_chan
+
 
 ```python
 from chan import KlineAnalyze
