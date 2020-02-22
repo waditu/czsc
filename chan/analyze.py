@@ -182,16 +182,16 @@ class KlineAnalyze(object):
         """
         last_bi = bi[-1]
 
-        # last_k = self.kline_new[-1]
-        # if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
-        #         (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
-        #     bi.pop()
-
-        fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
-        fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
-        if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
-                (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
+        last_k = self.kline_new[-1]
+        if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
+                (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
             bi.pop()
+
+        # fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
+        # fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
+        # if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
+        #         (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
+        #     bi.pop()
         return bi
 
     def _find_bi(self):
@@ -240,51 +240,6 @@ class KlineAnalyze(object):
         xd = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "xd": x['xd']} for x in xd]
         return xd
 
-    def __last_potential_xd(self, k_xd):
-        """最后一个线段结束的概率"""
-        k_bi = deepcopy(self.bi)
-        fx_mark = k_xd[-1]['fx_mark']
-        if fx_mark == 'd':
-            direction = "up"
-            if k_bi[-1]['fx_mark'] == 'd':
-                k_bi.pop(-1)
-        elif fx_mark == 'g':
-            direction = "down"
-            if k_bi[-1]['fx_mark'] == 'g':
-                k_bi.pop(-1)
-        else:
-            raise ValueError
-
-        last_bi = k_bi[-1]
-        potential_xd = {
-            'dt': last_bi['dt'],
-            'fx_mark': last_bi['fx_mark'],
-            'xd': last_bi['bi'],
-            'prob': 0
-        }
-
-        zs1 = [k_xd[-1]['dt'], last_bi['dt']]  # 走势1：尚未完成的线段
-        zs2 = [k_xd[-3]['dt'], k_xd[-2]['dt']]  # 走势2：上一根同向线段
-        bi1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
-        bi2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
-        if k_bi[-4]['dt'] <= k_xd[-1]['dt']:
-            if direction == 'up' and k_bi[-1]['fx_mark'] == 'g' \
-                    and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
-                potential_xd['prob'] += 0.4
-                if potential_xd['xd'] >= k_xd[-2]['xd'] and \
-                        self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
-                    potential_xd['prob'] += 0.4
-
-            if direction == 'down' and k_bi[-1]['fx_mark'] == 'd' \
-                    and self.cal_bei_chi(bi1, bi2, direction, mode='bi') == '背驰':
-                potential_xd['prob'] += 0.4
-                if potential_xd['xd'] <= k_xd[-2]['xd'] and \
-                        self.cal_bei_chi(zs1, zs2, direction, mode='xd') == "背驰":
-                    potential_xd['prob'] += 0.4
-        if potential_xd['prob'] > 0:
-            print('\n\n potential_xd: ', potential_xd, "\n\n")
-        return potential_xd
-
     def __get_valid_xd(self, xd_p):
         bi = deepcopy(self.bi)
         xd_v = []
@@ -327,13 +282,6 @@ class KlineAnalyze(object):
                             xd_v.append(p2)
                     else:
                         xd_v.append(p2)
-
-        # 判断当下线段是否有结束的可能
-        last_xd = self.__last_potential_xd(xd_v)
-        if last_xd['prob'] > 0:
-            self.last_xd_end_prob = last_xd.pop('prob')
-            xd_v.append(last_xd)
-
         return xd_v
 
     def __handle_last_xd(self, xd_v):
@@ -351,16 +299,16 @@ class KlineAnalyze(object):
         """
         last_xd = xd_v[-1]
 
-        # last_k = self.kline_new[-1]
-        # if (last_xd['fx_mark'] == 'g' and last_k['high'] >= last_xd['xd']) or \
-        #         (last_xd['fx_mark'] == 'd' and last_k['low'] <= last_xd['xd']):
-        #     xd_v.pop()
-
-        bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
-        bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
-        if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
-                (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
+        last_k = self.kline_new[-1]
+        if (last_xd['fx_mark'] == 'g' and last_k['high'] >= last_xd['xd']) or \
+                (last_xd['fx_mark'] == 'd' and last_k['low'] <= last_xd['xd']):
             xd_v.pop()
+
+        # bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
+        # bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
+        # if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
+        #         (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
+        #     xd_v.pop()
         return xd_v
 
     def _find_xd(self):

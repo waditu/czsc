@@ -15,7 +15,7 @@ def ma(kline, params=(5, 10, 20, 60, 120, 250)):
         在原始数据中新增若干 MA 均线
     """
     for p in params:
-        col = "ma"+str(p)
+        col = "ma" + str(p)
         kline[col] = kline['close'].rolling(p).mean()
         kline[col] = kline[col].apply(round, args=(2,))
     return kline
@@ -52,12 +52,11 @@ def boll(kline):
     """
     kline['boll-mid'] = kline['close'].rolling(26).mean()
     kline['boll-tmp2'] = kline['close'].rolling(20).std()
-    kline['boll-top'] = kline['boll-mid'] + 2*kline['boll-tmp2']
-    kline['boll-bottom'] = kline['boll-mid'] - 2*kline['boll-tmp2']
+    kline['boll-top'] = kline['boll-mid'] + 2 * kline['boll-tmp2']
+    kline['boll-bottom'] = kline['boll-mid'] - 2 * kline['boll-tmp2']
 
     kline['boll-mid'] = kline['boll-mid'].apply(round, args=(2,))
     kline['boll-tmp2'] = kline['boll-tmp2'].apply(round, args=(2,))
     kline['boll-top'] = kline['boll-top'].apply(round, args=(2,))
     kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(2,))
     return kline
-
