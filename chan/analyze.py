@@ -164,6 +164,12 @@ class KlineAnalyze(object):
                         bi.pop(-1)
                         bi.append(k)
                 else:
+                    # 确保相邻两个顶底之间顶大于底
+                    if (k0['fx_mark'] == 'g' and k['bi'] > k0['bi']) or \
+                            (k0['fx_mark'] == 'd' and k['bi'] < k0['bi']):
+                        bi.pop(-1)
+                        continue
+
                     # 一笔的顶底分型之间至少包含5根K线
                     k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
                     if len(k_num) >= 5:
