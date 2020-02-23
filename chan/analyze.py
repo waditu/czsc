@@ -154,7 +154,7 @@ class KlineAnalyze(object):
             k = deepcopy(fx_p[i])
             k['bi'] = k['fx']
             del k['fx']
-            if i == 0:
+            if len(bi) == 0:
                 bi.append(k)
             else:
                 k0 = bi[-1]
