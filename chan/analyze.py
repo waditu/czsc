@@ -165,8 +165,8 @@ class KlineAnalyze(object):
                         bi.append(k)
                 else:
                     # 确保相邻两个顶底之间顶大于底
-                    if (k0['fx_mark'] == 'g' and k['bi'] > k0['bi']) or \
-                            (k0['fx_mark'] == 'd' and k['bi'] < k0['bi']):
+                    if (k0['fx_mark'] == 'g' and k['bi'] >= k0['bi']) or \
+                            (k0['fx_mark'] == 'd' and k['bi'] <= k0['bi']):
                         bi.pop(-1)
                         continue
 
