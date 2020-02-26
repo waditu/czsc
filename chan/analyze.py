@@ -2,8 +2,86 @@
 import traceback
 from copy import deepcopy
 import pandas as pd
+from datetime import datetime
 
 from .ta import macd
+
+
+def up_zs_number(ka):
+    """检查最新走势的连续向上中枢数量"""
+    zs_num = 1
+    if len(ka.zs) > 1:
+        k_zs = ka.zs[::-1]
+        zs_cur = k_zs[0]
+        for zs_next in k_zs[1:]:
+            if zs_cur['zs'][0] >= zs_next['zs'][1]:
+                zs_num += 1
+                zs_cur = zs_next
+            else:
+                break
+    return zs_num
+
+
+def down_zs_number(ka):
+    """检查最新走势的连续向下中枢数量"""
+    zs_num = 1
+    if len(ka.zs) > 1:
+        k_zs = ka.zs[::-1]
+        zs_cur = k_zs[0]
+        for zs_next in k_zs[1:]:
+            if zs_cur['zs'][1] <= zs_next['zs'][0]:
+                zs_num += 1
+                zs_cur = zs_next
+            else:
+                break
+    return zs_num
+
+
+def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
+    """判断 zs1 对 zs2 是否有背驰
+
+    :param ka: KlineAnalyze
+        缠论的分析结果，即去除包含关系后，识别出分型、笔、线段的K线
+    :param direction: str
+        default `down`, optional value [`up`, 'down']
+    :param zs1: list of datetime
+        用于比较的走势，通常是最近的走势
+    :param zs2: list of datetime
+        被比较的走势，通常是较前的走势
+    :param mode: str
+        default `bi`, optional value [`zs`, `xd`, `bi`]
+        zs  判断两个走势类型之间是否存在背驰
+        xd  判断两个线段之间是否存在背驰
+        bi  判断两笔之间是否存在背驰
+    :return:
+    """
+    df = macd(ka.kline)
+    k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
+    k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
+
+    bc = False
+    if mode == 'bi':
+        macd_sum1 = sum([abs(x) for x in k1.macd])
+        macd_sum2 = sum([abs(x) for x in k2.macd])
+        if macd_sum1 < macd_sum2:
+            bc = True
+
+    elif mode == 'xd':
+        if direction == "down":
+            macd_sum1 = sum([abs(x) for x in k1.macd if x < 0])
+            macd_sum2 = sum([abs(x) for x in k2.macd if x < 0])
+        elif direction == "up":
+            macd_sum1 = sum([abs(x) for x in k1.macd if x > 0])
+            macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
+        else:
+            raise ValueError('direction value error')
+        if macd_sum1 < macd_sum2:
+            bc = True
+
+    else:
+        raise ValueError("mode value error")
+
+    return bc
 
 
 class KlineAnalyze(object):
@@ -20,7 +98,6 @@ class KlineAnalyze(object):
                 {'symbol': '600797.SH', 'dt': '2020-01-08 15:00:00', 'open': 10.42, 'close': 10.39, 'high': 10.48, 'low': 10.36, 'vol': 7160500.0}
             ]
         """
-        self.name = "缠论分析"
         self.kline = self._preprocess(kline)
         self.kline_new = self._remove_include()
         self.fx = self._find_fx()
@@ -28,7 +105,6 @@ class KlineAnalyze(object):
         self.xd = self._find_xd()
         self.zs = self._find_zs()
         self.__update_kline()
-        self.last_xd_end_prob = 1
 
     @staticmethod
     def _preprocess(kline):
@@ -377,245 +453,13 @@ class KlineAnalyze(object):
             if k1:
                 k['fx_mark'], k['fx'], k['bi'], k['xd'] = k1['fx_mark'], k1['fx'], k1['bi'], k1['xd']
 
-    def cal_bei_chi(self, zs1, zs2, direction="down", mode="bi"):
-        """判断 zs1 对 zs2 是否有背驰
-
-        :param direction: str
-            default `down`, optional value [`up`, 'down']
-        :param zs1: list of datetime
-        :param zs2: list of datetime
-        :param mode: str
-            default `bi`, optional value [`xd`, `bi`]
-        :return:
-        """
-        df = pd.DataFrame(self.kline_new)
-        df = macd(df)
-        k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
-        k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
-        if direction == "up" and k1.iloc[-1]['fx'] < k2.iloc[-1]['fx']:
-            return "没有背驰"
-
-        if direction == "down" and k1.iloc[-1]['fx'] > k2.iloc[-1]['fx']:
-            return "没有背驰"
-
-        bc = False
-
-        if mode == 'bi':
-            macd_sum1 = sum([abs(x) for x in k1.macd])
-            macd_sum2 = sum([abs(x) for x in k2.macd])
-            if macd_sum1 < macd_sum2:
-                bc = True
-
-        elif mode == 'xd':
-            if direction == "down":
-                macd_sum1 = sum([abs(x) for x in k1.macd if x < 0])
-                macd_sum2 = sum([abs(x) for x in k2.macd if x < 0])
-            elif direction == "up":
-                macd_sum1 = sum([abs(x) for x in k1.macd if x > 0])
-                macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
-            else:
-                raise ValueError('direction value error')
-            if macd_sum1 < macd_sum2:
-                bc = True
-
-        else:
-            raise ValueError("mode value error")
-
-        if bc:
-            return "背驰"
-        else:
-            return "没有背驰"
-
-    @property
-    def chan_result(self):
-        return pd.DataFrame(self.kline)
-
-    @property
-    def status_fx(self):
-        """分型状态"""
-        try:
-            table = dict()
-            fx = self.fx
-            if fx[-1]['fx_mark'] == "d":
-                table['最近一个分型为底分型'] = {"price": fx[-1]['fx'], "dt": fx[-1]['dt'], "kind": "买"}
-
-            elif fx[-1]['fx_mark'] == "g":
-                table['最近一个分型为顶分型'] = {"price": fx[-1]['fx'], "dt": fx[-1]['dt'], "kind": "卖"}
-            else:
-                raise ValueError
-
-            fx_d = [x for x in fx if x['fx_mark'] == 'd']
-            if fx_d[-1]['fx'] > fx_d[-2]['fx']:
-                table['最近两个底分型趋势向上'] = {"price": fx_d[-1]['fx'], "dt": fx_d[-1]['dt'], "kind": "买"}
-
-            fx_g = [x for x in fx if x['fx_mark'] == 'g']
-            if fx_g[-1]['fx'] < fx_g[-2]['fx']:
-                table['最近两个顶分型趋势向下'] = {"price": fx_g[-1]['fx'], "dt": fx_g[-1]['dt'], "kind": "卖"}
-
-            return table
-        except:
-            return None
-
-    @property
-    def status_bi(self):
-        """笔状态"""
-        try:
-            table = dict()
-            k_bi = self.bi
-            if k_bi[-1]['fx_mark'] == 'g' and k_bi[-3]['fx_mark'] == 'g':
-                if k_bi[-1]['bi'] < k_bi[-3]['bi']:
-                    s = '向上笔不创新高'
-                    if k_bi[-2]['bi'] < k_bi[-5]['bi']:
-                        s += "，且最近完成的两个向下笔之间有重叠"
-                        if k_bi[-1]['bi'] < k_bi[-4]['bi']:
-                            s += "，且不升破前一向上笔的低点"
-                    table[s] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "卖"}
-                else:
-                    zs1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
-                    zs2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
-                    direction = "up"
-                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='bi')
-                    if bc == "背驰" and direction == "up":
-                        table['向上笔新高背驰'] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "卖"}
-
-            elif k_bi[-1]['fx_mark'] == 'd' and k_bi[-3]['fx_mark'] == 'd':
-                if k_bi[-1]['bi'] > k_bi[-3]['bi']:
-                    s = '向下笔不创新低'
-                    if k_bi[-2]['bi'] > k_bi[-5]['bi']:
-                        s += "，且最近完成的两个向上笔之间有重叠"
-                        if k_bi[-1]['bi'] > k_bi[-4]['bi']:
-                            s += "，且不跌破前一向下笔的高点"
-                    table[s] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "买"}
-                else:
-                    zs1 = [k_bi[-2]['dt'], k_bi[-1]['dt']]
-                    zs2 = [k_bi[-4]['dt'], k_bi[-3]['dt']]
-                    direction = "down"
-                    bc = self.cal_bei_chi(zs1, zs2, direction, mode='bi')
-                    if bc == "背驰" and direction == "down":
-                        table['向下笔新低背驰'] = {"price": k_bi[-1]['bi'], "dt": k_bi[-1]['dt'], "kind": "买"}
-            else:
-                raise ValueError("笔分型识别错误")
-            return table
-        except:
-            return None
-
-    @property
-    def status_xd(self):
-        """线段状态"""
-        try:
-            table = dict()
-            if len(self.xd) >= 5:
-                k_xd = self.xd
-                price = k_xd[-1]['xd']
-                dt = k_xd[-1]['dt']
-                if k_xd[-1]['fx_mark'] == "g" and k_xd[-3]['fx_mark'] == "g":
-                    if k_xd[-1]['xd'] < k_xd[-3]['xd']:
-                        table["向上线段不创新高"] = {"price": price, "dt": dt, "kind": "卖"}
-                    else:
-                        direction = "up"
-                        zs1 = [k_xd[-2]['dt'], k_xd[-1]['dt']]
-                        zs2 = [k_xd[-4]['dt'], k_xd[-3]['dt']]
-                        bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-                        if bc == "背驰" and direction == "up":
-                            table['向上线段新高背驰'] = {"price": price, "dt": dt, "kind": "卖"}
-
-                elif k_xd[-1]['fx_mark'] == "d" and k_xd[-3]['fx_mark'] == "d":
-                    if k_xd[-1]['xd'] > k_xd[-3]['xd']:
-                        table["向下线段不创新低"] = {"price": price, "dt": dt, "kind": "买"}
-                    else:
-                        direction = "down"
-                        zs1 = [k_xd[-2]['dt'], k_xd[-1]['dt']]
-                        zs2 = [k_xd[-4]['dt'], k_xd[-3]['dt']]
-                        bc = self.cal_bei_chi(zs1, zs2, direction, mode='xd')
-                        if bc == "背驰" and direction == "down":
-                            table['向下线段新低背驰'] = {"price": price, "dt": dt, "kind": "买"}
-
-                else:
-                    raise ValueError("线段分型识别错误")
-            return table
-        except:
-            return None
-
-    @property
-    def status_zs(self):
-        """中枢状态"""
-        try:
-            table = dict()
-            xds = self.xd[-5:]
-            price = xds[-1]['xd']
-            dt = xds[-1]['dt']
-
-            zs_g = min([x['xd'] for x in xds[:4] if x['fx_mark'] == 'g'])
-            zs_d = max([x['xd'] for x in xds[:4] if x['fx_mark'] == 'd'])
-
-            if xds[-1]['fx_mark'] == "g" and xds[-1]['xd'] < zs_d:
-                # 找第三卖点是否形成
-                table['中枢下移'] = {"price": price, "dt": dt, "kind": "卖"}
-            elif xds[-1]['fx_mark'] == "d" and xds[-1]['xd'] > zs_g:
-                # 找第三买点是否形成
-                table['中枢上移'] = {"price": price, "dt": dt, "kind": "买"}
-            else:
-                table['中枢震荡'] = {"price": price, "dt": dt, "kind": "买"}
-
-            return table
-        except:
-            return None
-
-    @property
-    def status(self):
-        table = dict()
-        if self.status_fx:
-            table.update(self.status_fx)
-
-        if self.status_bi:
-            table.update(self.status_bi)
-
-        if self.status_xd:
-            table.update(self.status_xd)
-
-        if self.status_zs:
-            table.update(self.status_zs)
-
-        return table
-
-    def is_third_buy(self):
-        """判断当下是否是三买"""
-        status_zs = self.status_zs
-        if status_zs and status_zs.get("中枢上移", None):
-            return True
-        else:
-            return False
-
-    def is_third_sell(self):
-        """判断当下是否是三卖"""
-        status_zs = self.status_zs
-        if status_zs and status_zs.get("中枢下移", None):
-            return True
-        else:
-            return False
-
-    def is_xd_buy(self):
-        """判断当下是否是线段买点（即同级别分解买点）"""
-        status_xd = self.status_xd
-        names = ["向下线段不创新低", '向下线段新低背驰']
-        if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
-            return True
-        else:
-            return False
-
-    def is_xd_sell(self):
-        """判断当下是否是线段卖点（即同级别分解卖点）"""
-        status_xd = self.status_xd
-        names = ["向上线段不创新高", '向上线段新高背驰']
-        if status_xd and (status_xd.get(names[0], None) or status_xd.get(names[1], None)):
-            return True
-        else:
-            return False
-
 
 class SolidAnalyze:
-    """多级别（日线、30分钟、5分钟、1分钟）K线联合分析"""
+    """多级别（日线、30分钟、5分钟、1分钟）K线联合分析
 
+    这只是一个样例，展示如何结合多个K线级别进行买卖点分析。
+    你可以根据自己对缠论的理解，利用 KlineAnalyze 的分析结果在多个级别之间进行联合分析，找出符合自己要求的买卖点。
+    """
     def __init__(self, klines):
         """
 
@@ -626,215 +470,120 @@ class SolidAnalyze:
         self.kas = dict()
         self.freqs = list(klines.keys())
         for freq, kline in klines.items():
-            ka = KlineAnalyze(kline)
-            self.kas[freq] = ka
+            try:
+                ka = KlineAnalyze(kline)
+                self.kas[freq] = ka
+            except:
+                self.kas[freq] = None
+                traceback.print_exc()
 
-    def _validate_freq(self, freq):
+    def _get_ka(self, freq):
+        """输入级别，返回该级别 ka，以及上一级别 ka1，下一级别 ka2"""
         assert freq in self.freqs, "‘%s’不在级别列表（%s）中" % (freq, "|".join(self.freqs))
+        if freq == '日线':
+            ka, ka1, ka2 = self.kas['日线'], None, self.kas['30分钟']
+        elif freq == '30分钟':
+            ka, ka1, ka2 = self.kas['30分钟'], self.kas['日线'], self.kas['5分钟']
+        elif freq == '5分钟':
+            ka, ka1, ka2 = self.kas['5分钟'], self.kas['30分钟'], self.kas['1分钟']
+        elif freq == '1分钟':
+            ka, ka1, ka2 = self.kas['1分钟'], self.kas['5分钟'], None
+        else:
+            raise ValueError
+        return ka, ka1, ka2
 
-    @property
-    def signals(self):
-        signals = []
-        for freq, ka in self.kas.items():
-            for k, v in ka.status.items():
-                v["name"] = freq + k
-                signals.append(v)
-        return signals
-
-    @staticmethod
-    def up_zs_number(ka):
-        """检查三买前面的连续向上中枢数量"""
-        zs_num = 1
-        if len(ka.zs) > 1:
-            k_zs = ka.zs[::-1]
-            zs_cur = k_zs[0]
-            for zs_next in k_zs[1:]:
-                if zs_cur['zs'][0] >= zs_next['zs'][1]:
-                    zs_num += 1
-                    zs_cur = zs_next
-                else:
-                    break
-        return zs_num
+    # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
     def is_third_buy(self, freq):
-        """判断某一级别是否有三买信号
+        """确定某一级别三买
 
-        一个第三类买点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买点。
+        :param freq:
+        :return:
         """
-        self._validate_freq(freq)
-        signals = self.signals
-        core = freq + "中枢上移"
-        ka = self.kas[freq]
-        if len(ka.xd) < 3:
-            return None
-        if core in [x['name'] for x in signals]:
-            if 1 > ka.last_xd_end_prob > 0:
-                dt2 = ka.xd[-1]['dt']
-            else:
-                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
-            n = self.up_zs_number(ka)
-            res = {
-                "操作提示": freq + "三买",
-                "出现时间": ka.xd[-1]['dt'],
-                "确认时间": dt2,
-                "其他信息": "向上中枢数量为%i" % n
-            }
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False, None
+
+        last_xd = ka.xd[-1]
+        if last_xd['fx_mark'] == 'd':
+            zs_g = min([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "g"])
         else:
-            res = None
-        return res
+            zs_g = min([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "g"])
 
-    def check_third_buy(self, freqs):
-        """在多个级别中分别检查三买和潜在三买信号
+        b = False
+        detail = {
+            "操作提示": freq+"三买",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+        }
+        if last_xd['fx_mark'] == 'd' and last_xd['xd'] > zs_g:
+            # 最后一个向下线段已经在本级别结束的情况
+            b = True
+            detail['出现时间'] = last_xd['dt']
+            detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        :param freqs: list of str
-            级别名称列表，如 ['5分钟', '30分钟', '日线']
-        :return: list of dict
-        """
-        tb = []
-        for freq in freqs:
-            b1 = self.is_third_buy(freq)
-            if b1:
-                tb.append(b1)
-        return tb
+        if last_xd['fx_mark'] == 'g':
+            # 最后一个向下线段没有结束的情况
+            last_bi_d = [x for x in ka.bi if x['fx_mark'] == 'd'][-1]
+            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
+            if last_bi_d['bi'] > zs_g and len(xd_inside) >= 6:
+                b = True
+                detail['出现时间'] = last_bi_d['dt']
+                detail['确认时间'] = last_bi_d['dt']
 
-    @staticmethod
-    def down_zs_number(ka):
-        """检查三卖前面的连续向下中枢数量"""
-        zs_num = 1
-        if len(ka.zs) > 1:
-            k_zs = ka.zs[::-1]
-            zs_cur = k_zs[0]
-            for zs_next in k_zs[1:]:
-                if zs_cur['zs'][1] <= zs_next['zs'][0]:
-                    zs_num += 1
-                    zs_cur = zs_next
-                else:
-                    break
-        return zs_num
+        # 配合上一级别向下笔和下一级别向下线段的结束位置寻找最佳买点
+        if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
+            b = False
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+            b = False
+
+        return b, detail
 
     def is_third_sell(self, freq):
-        """判断某一级别是否有三卖信号
+        """确定某一级别三卖
 
-        一个第三类卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类卖点。
+        :param freq:
+        :return:
         """
-        self._validate_freq(freq)
-        signals = self.signals
-        core = freq + "中枢下移"
-        ka = self.kas[freq]
-        if len(ka.xd) < 3:
-            return None
-        if core in [x['name'] for x in signals]:
-            if 1 > ka.last_xd_end_prob > 0:
-                dt2 = ka.xd[-1]['dt']
-            else:
-                dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
-            n = self.down_zs_number(ka)
-            res = {
-                "操作提示": freq + "三卖",
-                "出现时间": ka.xd[-1]['dt'],
-                "确认时间": dt2,
-                "其他信息": "向下中枢数量为%i" % n
-            }
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False, None
+
+        last_xd = ka.xd[-1]
+        if last_xd['fx_mark'] == 'g':
+            zs_d = max([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "d"])
         else:
-            res = None
-        return res
+            zs_d = max([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "d"])
 
-    def check_third_sell(self, freqs):
-        """在多个级别中分别检查三卖信号
+        b = False
+        detail = {
+            "操作提示": freq + "三卖",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+        }
+        if last_xd['fx_mark'] == 'g' and last_xd['xd'] < zs_d:
+            # 最后一个向上线段已经在本级别结束的情况
+            b = True
+            detail['出现时间'] = last_xd['dt']
+            detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        :param freqs: list of str
-            级别名称列表，如 ['5分钟', '30分钟', '日线']
-        :return: list of dict
-        """
-        ts = []
-        for freq in freqs:
-            s1 = self.is_third_sell(freq)
-            if s1:
-                ts.append(s1)
-        return ts
+        if last_xd['fx_mark'] == 'd':
+            # 最后一个向上线段没有结束的情况
+            last_bi_g = [x for x in ka.bi if x['fx_mark'] == 'g'][-1]
+            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
+            if last_bi_g['bi'] > zs_d and len(xd_inside) >= 6:
+                b = True
+                detail['出现时间'] = last_bi_g['dt']
+                detail['确认时间'] = last_bi_g['dt']
 
-    def is_xd_buy(self, freq):
-        """判断线段买点
+        # 配合上一级别向上笔和下一级别向上线段的结束位置寻找最佳买点
+        if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
+            b = False
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
+            b = False
 
-        逻辑：中枢震荡和中枢上移过程中的“向下线段不创新低”和“向下线段新低背驰信号”有交易价值。
-
-        :param freq:
-        :return:
-        """
-        ka = self.kas[freq]
-        signals = self.signals
-        if [x for x in signals if x['name'] in [freq + "中枢震荡", freq + "中枢上移"]]:
-            cons = [freq + "向下线段不创新低", freq + "向下线段新低背驰"]
-            signal = [x for x in signals if x['name'] in cons]
-            if signal:
-                assert len(signal) == 1, "线段买点信号错误，%s" % str(signal)
-                signal = signal[0]
-                if 1 > ka.last_xd_end_prob > 0:
-                    dt2 = ka.xd[-1]['dt']
-                else:
-                    dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
-                res = {
-                    "操作提示": freq + "线买",
-                    "出现时间": signal['dt'],
-                    "确认时间": dt2,
-                    "其他信息": signal['name']
-                }
-                return res
-        return None
-
-    def check_xd_buy(self, freqs):
-        """在多个级别中检查线段买点信号
-
-        :param freqs: list of str
-            级别名称列表，如 ['5分钟', '30分钟', '日线']
-        :return: list of dict
-        """
-        xb = []
-        for freq in freqs:
-            b1 = self.is_xd_buy(freq)
-            if b1:
-                xb.append(b1)
-        return xb
-
-    def is_xd_sell(self, freq):
-        """判断线段卖点
-
-        逻辑：中枢震荡和中枢下移过程中的“向上线段不创新高”和“向上线段新高背驰”是卖点。
-
-        :param freq:
-        :return:
-        """
-        ka = self.kas[freq]
-        signals = self.signals
-        if [x for x in signals if x['name'] in [freq + "中枢震荡", freq + "中枢下移"]]:
-            cons = [freq + "向上线段不创新高", freq + "向上线段新高背驰"]
-            signal = [x for x in signals if x['name'] in cons]
-            if signal:
-                assert len(signal) == 1, "线段卖点信号错误，%s" % str(signal)
-                signal = signal[0]
-                if 1 > ka.last_xd_end_prob > 0:
-                    dt2 = ka.xd[-1]['dt']
-                else:
-                    dt2 = [x for x in ka.bi if x['dt'] >= ka.xd[-1]['dt']][2]['dt']
-                res = {
-                    "操作提示": freq + "线卖",
-                    "出现时间": signal['dt'],
-                    "确认时间": dt2,
-                    "其他信息": signal['name']
-                }
-                return res
-        return None
-
-    def check_xd_sell(self, freqs):
-        """在多个级别中检查线段卖点信号
-
-        :param freqs: list of str
-            级别名称列表，如 ['5分钟', '30分钟', '日线']
-        :return: list of dict
-        """
-        xs = []
-        for freq in freqs:
-            b1 = self.is_xd_sell(freq)
-            if b1:
-                xs.append(b1)
-        return xs
+        return b, detail

@@ -2,8 +2,7 @@
 import tushare as ts
 from datetime import datetime, timedelta
 import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
+sys.path.insert(0, r'C:\git_repo\zengbin93\chan')
 
 from chan.analyze import KlineAnalyze
 
