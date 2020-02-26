@@ -508,8 +508,13 @@ class SolidAnalyze:
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'd':
             zs_g = min([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "g"])
+            zs_d = max([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "d"])
         else:
             zs_g = min([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "g"])
+            zs_d = max([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "d"])
+
+        if zs_d > zs_g:
+            return False, None
 
         b = False
         detail = {
@@ -554,9 +559,14 @@ class SolidAnalyze:
 
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'g':
+            zs_g = min([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "g"])
             zs_d = max([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "d"])
         else:
+            zs_g = min([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "g"])
             zs_d = max([x['xd'] for x in ka.xd[-5:] if x['fx_mark'] == "d"])
+
+        if zs_d > zs_g:
+            return False, None
 
         b = False
         detail = {
