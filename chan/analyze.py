@@ -516,7 +516,9 @@ class SolidAnalyze:
         elif last_xd['fx_mark'] == 'g' and ka.bi[-1]['fx_mark'] == 'd' and ka.bi[-1]['bi'] <= ka.bi[-3]['bi']:
             zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
             zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
-            if is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
+            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
+            # 线段内部走出三笔，且有背驰
+            if len(xd_inside) >= 4 and is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
                 end = True
             if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
                 end = False
@@ -541,6 +543,12 @@ class SolidAnalyze:
             return False
 
         b = False
+        detail = {
+            "操作提示": freq + "一买",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+        }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
             xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
@@ -550,10 +558,12 @@ class SolidAnalyze:
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
                     b = True
+                    detail["出现时间"] = xds[-1]['dt']
+                    detail["确认时间"] = xds[-1]['dt']
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
             b = False
-        return b
+        return b, detail
 
     def is_first_sell(self, freq):
         """确定某一级别一卖，包括由盘整背驰引发的类一卖
@@ -568,6 +578,12 @@ class SolidAnalyze:
             return False
 
         b = False
+        detail = {
+            "操作提示": freq + "一卖",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+        }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
             xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
@@ -577,10 +593,12 @@ class SolidAnalyze:
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'):
                     b = True
+                    detail["出现时间"] = xds[-1]['dt']
+                    detail["确认时间"] = xds[-1]['dt']
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
             b = False
-        return b
+        return b, detail
 
     def is_second_buy(self, freq):
         """确定某一级别二买，包括类二买
@@ -595,6 +613,12 @@ class SolidAnalyze:
             return False
 
         b = False
+        detail = {
+            "操作提示": freq + "二买",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+        }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
             xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
@@ -602,10 +626,12 @@ class SolidAnalyze:
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
             if xds[-1]['fx_mark'] == 'd' and len(xds) <= 5 and xds[-1]['xd'] > xds[-3]['xd']:
                 b = True
+                detail["出现时间"] = xds[-1]['dt']
+                detail["确认时间"] = xds[-1]['dt']
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
             b = False
-        return b
+        return b, detail
 
     def is_second_sell(self, freq):
         """确定某一级别二卖，包括类二卖
@@ -620,6 +646,12 @@ class SolidAnalyze:
             return False
 
         b = False
+        detail = {
+            "操作提示": freq + "二卖",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+        }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
             xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
@@ -627,10 +659,12 @@ class SolidAnalyze:
             # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
             if xds[-1]['fx_mark'] == 'g' and len(xds) <= 5 and xds[-1]['xd'] < xds[-3]['xd']:
                 b = True
+                detail["出现时间"] = xds[-1]['dt']
+                detail["确认时间"] = xds[-1]['dt']
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
             b = False
-        return b
+        return b, detail
 
     # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
