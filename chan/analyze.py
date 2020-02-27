@@ -631,7 +631,7 @@ class SolidAnalyze:
             xds = [xds_l[-1]] + xds_r
             # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-            if xds[-1]['fx_mark'] == 'd' and 3 <= len(xds) <= 5 and xds[-1]['xd'] > xds[-3]['xd']:
+            if len(xds) <= 4 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
                 b = True
                 detail["出现时间"] = xds[-1]['dt']
                 detail["确认时间"] = xds[-1]['dt']
@@ -666,7 +666,7 @@ class SolidAnalyze:
             xds = [xds_l[-1]] + xds_r
             # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
             # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
-            if xds[-1]['fx_mark'] == 'g' and 3 <= len(xds) <= 5 and xds[-1]['xd'] < xds[-3]['xd']:
+            if len(xds) <= 4 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
                 b = True
                 detail["出现时间"] = xds[-1]['dt']
                 detail["确认时间"] = xds[-1]['dt']
