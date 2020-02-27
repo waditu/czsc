@@ -644,7 +644,7 @@ class SolidAnalyze:
         ka, ka1, ka2 = self._get_ka(freq)
 
         if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
-            return False
+            return False, None
 
         b = False
         detail = {
