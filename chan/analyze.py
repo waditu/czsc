@@ -552,7 +552,9 @@ class SolidAnalyze:
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
-            xds = [x for x in ka.xd if x['dt'] >= ka1.xd[-1]['dt']]
+            xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
+            xds = [xds_l[-1]] + xds_r
             # 盘整至少有三段次级别走势，趋势至少有5段；底背驰一定要创新低
             if xds[-1]['fx_mark'] == 'd' and len(xds) >= 4 and xds[-1]['xd'] < xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
@@ -587,7 +589,9 @@ class SolidAnalyze:
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
-            xds = [x for x in ka.xd if x['dt'] >= ka1.xd[-1]['dt']]
+            xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
+            xds = [xds_l[-1]] + xds_r
             # 盘整至少有三段次级别走势，趋势至少有5段；顶背驰一定要创新高
             if xds[-1]['fx_mark'] == 'g' and len(xds) >= 4 and xds[-1]['xd'] > xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
@@ -622,10 +626,12 @@ class SolidAnalyze:
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
-            xds = [x for x in ka.xd if x['dt'] >= ka1.xd[-1]['dt']]
+            xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
+            xds = [xds_l[-1]] + xds_r
             # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-            if xds[-1]['fx_mark'] == 'd' and len(xds) <= 5 and xds[-1]['xd'] > xds[-3]['xd']:
+            if xds[-1]['fx_mark'] == 'd' and 3 <= len(xds) <= 5 and xds[-1]['xd'] > xds[-3]['xd']:
                 b = True
                 detail["出现时间"] = xds[-1]['dt']
                 detail["确认时间"] = xds[-1]['dt']
@@ -655,10 +661,12 @@ class SolidAnalyze:
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
-            xds = [x for x in ka.xd if x['dt'] >= ka1.xd[-1]['dt']]
+            xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
+            xds = [xds_l[-1]] + xds_r
             # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
             # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
-            if xds[-1]['fx_mark'] == 'g' and len(xds) <= 5 and xds[-1]['xd'] < xds[-3]['xd']:
+            if xds[-1]['fx_mark'] == 'g' and 3 <= len(xds) <= 5 and xds[-1]['xd'] < xds[-3]['xd']:
                 b = True
                 detail["出现时间"] = xds[-1]['dt']
                 detail["确认时间"] = xds[-1]['dt']
