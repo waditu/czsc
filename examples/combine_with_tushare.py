@@ -98,10 +98,6 @@ def use_kline_analyze():
     ka = KlineAnalyze(kline)
     print("线段：", ka.xd, "\n")
     print("中枢：", ka.zs, "\n")
-    print("三买：", ka.is_third_buy(), "\n")
-    print("线买：", ka.is_xd_buy(), "\n")
-    print("三卖：", ka.is_third_sell(), "\n")
-    print("线卖：", ka.is_xd_sell(), "\n")
 
 
 def use_solid_analyze():
@@ -111,12 +107,8 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb = sa.is_third_buy('30min')
+    tb, _ = sa.is_third_buy('30min')
     print("指定级别三买：", tb, "\n")
-
-    # 查看多个级别的三买
-    tb = sa.check_third_buy(['1min', '5min', '30min', "D"])
-    print("多级别三买：", tb, "\n")
 
 
 if __name__ == '__main__':

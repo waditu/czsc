@@ -74,12 +74,8 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb = sa.is_third_buy('1800s')
+    tb, _ = sa.is_third_buy('1800s')
     print("指定级别三买：", tb, "\n")
-
-    # 查看多个级别的三买
-    tb = sa.check_third_buy(['60s', '300s', '1800s'])
-    print("多级别三买：", tb, "\n")
 
 
 if __name__ == '__main__':

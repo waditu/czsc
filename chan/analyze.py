@@ -196,7 +196,8 @@ class KlineAnalyze(object):
         """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型
 
         划分笔的步骤：
-        （1）确定所有符合标准的分型，能够构成笔的标准底分型一定小于其前后的底分型，顶分型反之。
+        （1）确定所有符合标准的分型，能够构成笔的标准底分型一定小于其前后的底分型，顶分型反之；
+             两个相邻的顶底分型之间，如果没有共用K线，也可以认为是符合标准的分型。
         （2）如果前后两分型是同一性质的，对于顶，前面的低于后面的，只保留后面的，前面那个可以忽略掉；对于底，
             前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
         （3）经过步骤（2）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
@@ -460,6 +461,7 @@ class SolidAnalyze:
     这只是一个样例，展示如何结合多个K线级别进行买卖点分析。
     你可以根据自己对缠论的理解，利用 KlineAnalyze 的分析结果在多个级别之间进行联合分析，找出符合自己要求的买卖点。
     """
+
     def __init__(self, klines):
         """
 
@@ -492,6 +494,144 @@ class SolidAnalyze:
             raise ValueError
         return ka, ka1, ka2
 
+    def is_xd_end(self, freq):
+        """判断最后一个线段是否可以认为已经结束了（只能判断由小级别一买引发的线段结束）"""
+        ka, ka1, ka2 = self._get_ka(freq)
+        last_xd = ka.xd[-1]
+
+        end = False
+
+        # 向上线段结束的判断
+        if last_xd['fx_mark'] == 'd' and ka.bi[-1]['fx_mark'] == 'g' and ka.bi[-1]['bi'] >= ka.bi[-3]['bi']:
+            zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
+            zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
+            if is_bei_chi(ka, zs1, zs2, direction="up", mode="bi"):
+                end = True
+            if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
+                end = False
+            if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
+                end = False
+
+        # 向下线段结束的判断
+        elif last_xd['fx_mark'] == 'g' and ka.bi[-1]['fx_mark'] == 'd' and ka.bi[-1]['bi'] <= ka.bi[-3]['bi']:
+            zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
+            zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
+            if is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
+                end = True
+            if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
+                end = False
+            if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+                end = False
+
+        else:
+            raise ValueError
+        return end
+
+    def is_first_buy(self, freq):
+        """确定某一级别一买，包括由盘整背驰引发的类一买
+
+        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+
+        :param freq:
+        :return:
+        """
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False
+
+        b = False
+        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
+            # 以上一级别线段终点为走势分解的起点
+            xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            # 盘整至少有三段次级别走势，趋势至少有5段；底背驰一定要创新低
+            if xds[-1]['fx_mark'] == 'd' and len(xds) >= 4 and xds[-1]['xd'] < xds[-3]['xd']:
+                zs1 = [xds[-2]['dt'], xds[-1]['dt']]
+                zs2 = [xds[-4]['dt'], xds[-3]['dt']]
+                if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
+                    b = True
+
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+            b = False
+        return b
+
+    def is_first_sell(self, freq):
+        """确定某一级别一卖，包括由盘整背驰引发的类一卖
+        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+
+        :param freq:
+        :return:
+        """
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False
+
+        b = False
+        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
+            # 以上一级别线段终点为走势分解的起点
+            xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            # 盘整至少有三段次级别走势，趋势至少有5段；顶背驰一定要创新高
+            if xds[-1]['fx_mark'] == 'g' and len(xds) >= 4 and xds[-1]['xd'] > xds[-3]['xd']:
+                zs1 = [xds[-2]['dt'], xds[-1]['dt']]
+                zs2 = [xds[-4]['dt'], xds[-3]['dt']]
+                if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'):
+                    b = True
+
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
+            b = False
+        return b
+
+    def is_second_buy(self, freq):
+        """确定某一级别二买，包括类二买
+        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+
+        :param freq:
+        :return:
+        """
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False
+
+        b = False
+        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
+            # 以上一级别线段终点为走势分解的起点
+            xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
+            # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
+            if xds[-1]['fx_mark'] == 'd' and len(xds) <= 5 and xds[-1]['xd'] > xds[-3]['xd']:
+                b = True
+
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+            b = False
+        return b
+
+    def is_second_sell(self, freq):
+        """确定某一级别二卖，包括类二卖
+        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+
+        :param freq:
+        :return:
+        """
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6:
+            return False
+
+        b = False
+        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
+            # 以上一级别线段终点为走势分解的起点
+            xds = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+            # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
+            # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
+            if xds[-1]['fx_mark'] == 'g' and len(xds) <= 5 and xds[-1]['xd'] < xds[-3]['xd']:
+                b = True
+
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
+            b = False
+        return b
+
     # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
     def is_third_buy(self, freq):
@@ -518,7 +658,7 @@ class SolidAnalyze:
 
         b = False
         detail = {
-            "操作提示": freq+"三买",
+            "操作提示": freq + "三买",
             "出现时间": "",
             "确认时间": "",
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"

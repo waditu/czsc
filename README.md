@@ -65,6 +65,7 @@ from datetime import datetime, timedelta
 from chan import KlineAnalyze, SolidAnalyze
 
 # 首次使用，需要在这里设置你的 tushare token，用于获取数据；在同一台机器上，tushare token 只需要设置一次
+# 没有 token，到 https://tushare.pro/register?reg=7 注册获取
 # ts.set_token("your tushare token")
 
 
@@ -145,7 +146,7 @@ def get_klines(ts_code, end_date, freqs='1min,5min,30min,D', asset='E'):
 def use_kline_analyze():
     print('=' * 100, '\n')
     print("KlineAnalyze 的使用方法：\n")
-    kline = get_kline(ts_code="000300.SH", end_date="20200202", freq='D', asset="I")
+    kline = get_kline(ts_code="000009.SZ", end_date="20200210", freq='30min', asset="I")
     ka = KlineAnalyze(kline)
     print("线段：", ka.xd, "\n")
     print("中枢：", ka.zs, "\n")
@@ -158,12 +159,8 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb = sa.is_third_buy('30min')
+    tb, _ = sa.is_third_buy('30min')
     print("指定级别三买：", tb, "\n")
-
-    # 查看多个级别的三买
-    tb = sa.check_third_buy(['1min', '5min', '30min', "D"])
-    print("多级别三买：", tb, "\n")
 
 
 if __name__ == '__main__':
@@ -176,6 +173,15 @@ if __name__ == '__main__':
 py 文件地址： examples/combine_with_goldminer.py
 
 ```python
+# coding: utf-8
+"""
+结合掘金的数据使用 chan 进行缠论技术分析
+
+author: zengbin93
+email: zeng_bin8888@163.com
+date: 2020-02-02
+========================================================================================================================
+"""
 
 from gm.api import *
 from datetime import datetime
@@ -243,12 +249,8 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb = sa.is_third_buy('1800s')
+    tb, _ = sa.is_third_buy('1800s')
     print("指定级别三买：", tb, "\n")
-
-    # 查看多个级别的三买
-    tb = sa.check_third_buy(['60s', '300s', '1800s'])
-    print("多级别三买：", tb, "\n")
 
 
 if __name__ == '__main__':
