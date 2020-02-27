@@ -55,7 +55,8 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
         bi  判断两笔之间是否存在背驰
     :return:
     """
-    df = macd(ka.kline)
+    df = pd.DataFrame(ka.kline)
+    df = macd(df)
     k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
     k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
 
