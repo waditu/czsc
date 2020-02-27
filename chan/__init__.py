@@ -3,7 +3,7 @@
 from .analyze import KlineAnalyze, SolidAnalyze
 
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 
