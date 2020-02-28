@@ -360,10 +360,10 @@ class KlineAnalyze(object):
                         # 两个连续线段标记之间只有三笔的处理
                         lp2 = bi_m[-2]
                         rp2 = bi_r[1]
-                        assert lp2['fx_mark'] == rp2['fx_mark']
-                        if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
-                                (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
-                            xd_v.append(p2)
+                        if lp2['fx_mark'] == rp2['fx_mark']:
+                            if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
+                                    (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
+                                xd_v.append(p2)
                     else:
                         xd_v.append(p2)
         return xd_v
