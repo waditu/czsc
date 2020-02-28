@@ -550,7 +550,7 @@ class SolidAnalyze:
             "确认时间": "",
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
-        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
+        if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
@@ -587,7 +587,7 @@ class SolidAnalyze:
             "确认时间": "",
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
-        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
+        if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
@@ -624,7 +624,7 @@ class SolidAnalyze:
             "确认时间": "",
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
-        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'd':
+        if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
@@ -659,7 +659,7 @@ class SolidAnalyze:
             "确认时间": "",
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
-        if isinstance(ka1, KlineAnalyze) and ka1.xd[-1]['fx_mark'] == 'g':
+        if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
