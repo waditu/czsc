@@ -1,6 +1,9 @@
 # chan - 缠论技术分析工具
 >缠论来源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加微信探讨，我的微信号是 `zengbin93`
 
+* [在线体验](http://103.235.232.152:8005/?ts_code=000001.SH&asset=I&trade_date=20200228&freqs=5min,30min)
+* 参数说明：1）ts_code 是 tushare 的代码；2）asset 现在有两个值，E 表示股票，I 表示指数
+
 ## 安装
 
 Pypi上已经存在一个名为chan的库，以致于这个库没法上传到Pypi。
