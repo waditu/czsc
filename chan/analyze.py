@@ -783,7 +783,7 @@ class SolidAnalyze(object):
 
 
 class SameLevelDecompose(object):
-    """同级别分解（这个实现仅支持1分钟、5分钟、30分钟级别的分解）
+    """同级别分解（这个实现仅支持5分钟、30分钟级别的分解）
 
     教你炒股票38：走势类型连接的同级别分解： http://blog.sina.com.cn/s/blog_486e105c010009be.html
     教你炒股票39：同级别分解再研究： http://blog.sina.com.cn/s/blog_486e105c010009d5.html
@@ -808,31 +808,26 @@ class SameLevelDecompose(object):
     高点后在不创新高或盘整顶背驰的Ai+k+4卖出，其中k为偶数；当i为奇数，若Ai+3不升破Ai低点，则继续保持不回补直到Ai+k+3升破Ai+k
     低点后在不创新低或盘整底背驰的Ai+k+4回补。
     """
-    def __init__(self, klines, freq="5分钟"):
+    def __init__(self, klines):
         """
 
         :param klines: dict
             key 为K线级别名称；value 为对应的K线数据，K线数据基本格式参考 KlineAnalyze
-            30分钟级别分解对应输入的 klines 为 {"日线": df, "30分钟": df}；
-            5分钟级别分解对应输入的 klines 为 {"30分钟": df, "5分钟": df}
-            1分钟级别分解对应输入的 klines 为 {"5分钟": df, "1分钟": df}
+            30分钟级别分解对应输入的 klines 为 {"日线": df, "30分钟": df, "5分钟": df}；
+            5分钟级别分解对应输入的 klines 为 {"30分钟": df, "5分钟": df, "1分钟": df}
         """
-        self.freq = freq
-        if freq == "30分钟":
+        if "日线" in klines.keys():
             self.ka = KlineAnalyze(klines['30分钟'])
             self.ka1 = KlineAnalyze(klines['日线'])
-        elif freq == "5分钟":
+            self.ka2 = KlineAnalyze(klines['5分钟'])
+        else:
             self.ka = KlineAnalyze(klines['5分钟'])
             self.ka1 = KlineAnalyze(klines['30分钟'])
-        elif freq == '1分钟':
-            self.ka = KlineAnalyze(klines['1分钟'])
-            self.ka1 = KlineAnalyze(klines['5分钟'])
-        else:
-            raise ValueError
+            self.ka2 = KlineAnalyze(klines['1分钟'])
 
     def is_buy_time(self):
         """判断同级别买点"""
-        ka, ka1 = self.ka, self.ka1
+        ka, ka1, ka2 = self.ka, self.ka1, self.ka2
         if len(ka.xd) < 4:
             return False
 
@@ -844,13 +839,13 @@ class SameLevelDecompose(object):
             if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') or last_xd['xd'] >= ka.xd[-3]['xd']:
                 b = True
 
-        if ka1.bi[-1]['fx_mark'] == "g" or ka.bi[-1]['fx_mark'] == "g":
+        if ka1.bi[-1]['fx_mark'] == "g" or ka2.xd[-1]['fx_mark'] == "g":
             b = False
         return b
 
     def is_sell_time(self):
         """判断同级别卖点"""
-        ka, ka1 = self.ka, self.ka1
+        ka, ka1, ka2 = self.ka, self.ka1, self.ka2
         if len(ka.xd) < 4:
             return False
 
@@ -862,6 +857,6 @@ class SameLevelDecompose(object):
             if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') or last_xd['xd'] <= ka.xd[-3]['xd']:
                 b = True
 
-        if ka1.bi[-1]['fx_mark'] == "d" or ka.bi[-1]['fx_mark'] == "d":
+        if ka1.bi[-1]['fx_mark'] == "d" or ka2.xd[-1]['fx_mark'] == "d":
             b = False
         return b
