@@ -530,6 +530,9 @@ class SolidAnalyze(object):
             raise ValueError
         return end
 
+    # ====================================================================
+    # 第一类买卖点
+
     def is_first_buy(self, freq):
         """确定某一级别一买，包括由盘整背驰引发的类一买
 
@@ -605,6 +608,9 @@ class SolidAnalyze(object):
             b = False
         return b, detail
 
+    # ====================================================================
+    # 第二类买卖点
+
     def is_second_buy(self, freq):
         """确定某一级别二买，包括类二买
         注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
@@ -675,6 +681,8 @@ class SolidAnalyze(object):
             b = False
         return b, detail
 
+    # ====================================================================
+    # 第三类买卖点
     # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
     def is_third_buy(self, freq):
@@ -768,7 +776,7 @@ class SolidAnalyze(object):
             # 最后一个向上线段没有结束的情况
             last_bi_g = [x for x in ka.bi if x['fx_mark'] == 'g'][-1]
             xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
-            if last_bi_g['bi'] > zs_d and len(xd_inside) >= 6:
+            if last_bi_g['bi'] < zs_d and len(xd_inside) >= 6:
                 b = True
                 detail['出现时间'] = last_bi_g['dt']
                 detail['确认时间'] = last_bi_g['dt']
@@ -781,82 +789,59 @@ class SolidAnalyze(object):
 
         return b, detail
 
+    # ====================================================================
+    # 同级别分解买卖点（这个实现仅支持5分钟、30分钟级别的分解）
+    def is_xd_buy(self, freq):
+        """同级别分解买点"""
+        ka, ka1, ka2 = self._get_ka(freq)
 
-class SameLevelDecompose(object):
-    """同级别分解（这个实现仅支持5分钟、30分钟级别的分解）
-
-    教你炒股票38：走势类型连接的同级别分解： http://blog.sina.com.cn/s/blog_486e105c010009be.html
-    教你炒股票39：同级别分解再研究： http://blog.sina.com.cn/s/blog_486e105c010009d5.html
-    教你炒股票40：同级别分解的多重赋格： http://blog.sina.com.cn/s/blog_486e105c010009fp.html
-
-    同级别分解规则：在某级别中，不定义中枢延伸，允许该级别上的盘整+盘整连接；与此同时，规定该级别以下的所有级别，都允许中枢延伸，
-    不允许盘整+盘整连接；至于该级别以上级别，根本不考虑，因为所有走势都按该级别给分解了。
-
-    注意，这是一个机械化操作，按程式来就行：不妨从一个下跌背驰开始，以一个30分钟级别的分解为例子，按30分钟级别的同级别分解，必然
-    首先出现向上的第一段走势类型，根据其内部结构可以判断其背驰或盘整背驰结束点，先卖出，然后必然有向下的第二段，这里有两种情况：
-    1、不跌破第一段低点，重新买入，2、跌破第一段低点，如果与第一段前的向下段形成盘整背驰，也重新买入，否则继续观望，直到出现新的
-    下跌背驰。在第二段重新买入的情况下，然后出现向上的第三段，相应面临两种情况：1、超过第一段的高点；2、低于第一段的高点。对于第
-    二种情况，一定是先卖出；第一种情况，又分两种情况：1、第三段对第一段发生盘整背驰，这时要卖出；2、第三段对第一段不发生盘整背驰，
-    这时候继续持有。这个过程可以不断延续下去，直到下一段向上的30分钟走势类型相对前一段向上的走势类型出现不创新高或者盘整背驰为止，
-    这就结束了向上段的运作。向上段的运作，都是先买后卖的。一旦向上段的运作结束后，就进入向下段的运作。向下段的运作刚好相反，是先
-    卖后买，从刚才向上段结束的背驰点开始，所有操作刚好反过来就可以。
-
-    把a定义为A0，则Ai与Ai+2之间就可以不断地比较力度，用盘整背驰的方法决定买卖点。这和前面说的围绕中枢震荡的处理方法类似，但那不
-    是站在同级别分解的基础上的。注意，在实际操作中下一个Ai+2是当下产生的，但这不会影响所有前面Ai+1的同级别唯一性分解。这种机械化
-    操作，可以一直延续，该中枢可以从30分钟一直扩展到日线、周线甚至年线，但这种操作不管这么多，只理会一点，就是Ai与Ai+2之间是否盘
-    整背驰，只要盘整背驰，就在i+2为偶数时卖出，为奇数时买入。如果没有，当i为偶，若Ai+3不跌破Ai高点，则继续持有到Ai+k+3跌破Ai+k
-    高点后在不创新高或盘整顶背驰的Ai+k+4卖出，其中k为偶数；当i为奇数，若Ai+3不升破Ai低点，则继续保持不回补直到Ai+k+3升破Ai+k
-    低点后在不创新低或盘整底背驰的Ai+k+4回补。
-    """
-    def __init__(self, klines):
-        """
-
-        :param klines: dict
-            key 为K线级别名称；value 为对应的K线数据，K线数据基本格式参考 KlineAnalyze
-            30分钟级别分解对应输入的 klines 为 {"日线": df, "30分钟": df, "5分钟": df}；
-            5分钟级别分解对应输入的 klines 为 {"30分钟": df, "5分钟": df, "1分钟": df}
-        """
-        if "日线" in klines.keys():
-            self.ka = KlineAnalyze(klines['30分钟'])
-            self.ka1 = KlineAnalyze(klines['日线'])
-            self.ka2 = KlineAnalyze(klines['5分钟'])
-        else:
-            self.ka = KlineAnalyze(klines['5分钟'])
-            self.ka1 = KlineAnalyze(klines['30分钟'])
-            self.ka2 = KlineAnalyze(klines['1分钟'])
-
-    def is_buy_time(self):
-        """判断同级别买点"""
-        ka, ka1, ka2 = self.ka, self.ka1, self.ka2
-        if len(ka.xd) < 4:
-            return False
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
+            return False, None
 
         b = False
+        detail = {
+            "操作提示": freq + "同级别分解买点",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+        }
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'd':
             zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') or last_xd['xd'] >= ka.xd[-3]['xd']:
                 b = True
+                detail['出现时间'] = last_xd['dt']
+                detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if ka1.bi[-1]['fx_mark'] == "g" or ka2.xd[-1]['fx_mark'] == "g":
             b = False
-        return b
+        return b, detail
 
-    def is_sell_time(self):
-        """判断同级别卖点"""
-        ka, ka1, ka2 = self.ka, self.ka1, self.ka2
-        if len(ka.xd) < 4:
-            return False
+    def is_xd_sell(self, freq):
+        """同级别分解卖点"""
+        ka, ka1, ka2 = self._get_ka(freq)
+
+        if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
+            return False, None
 
         b = False
+        detail = {
+            "操作提示": freq + "同级别分解买点",
+            "出现时间": "",
+            "确认时间": "",
+            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+        }
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'g':
             zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') or last_xd['xd'] <= ka.xd[-3]['xd']:
                 b = True
+                detail['出现时间'] = last_xd['dt']
+                detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         if ka1.bi[-1]['fx_mark'] == "d" or ka2.xd[-1]['fx_mark'] == "d":
             b = False
-        return b
+        return b, detail
+
