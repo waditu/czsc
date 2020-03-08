@@ -2,7 +2,6 @@
 import traceback
 from copy import deepcopy
 import pandas as pd
-from datetime import datetime
 
 from .ta import macd
 
@@ -753,7 +752,7 @@ class SolidAnalyze(object):
         if last_xd['fx_mark'] == 'd' and last_xd['xd'] > zs_g:
             # 最后一个向下线段已经在本级别结束的情况
             detail['出现时间'] = last_xd['dt']
-            price = last_xd[-1]['xd']
+            price = last_xd['xd']
             detail["基准价格"] = price
             # 确保当前价格在容差范围内
             if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
@@ -815,7 +814,7 @@ class SolidAnalyze(object):
         if last_xd['fx_mark'] == 'g' and last_xd['xd'] < zs_d:
             # 最后一个向上线段已经在本级别结束的情况
             detail['出现时间'] = last_xd['dt']
-            price = last_xd[-1]['xd']
+            price = last_xd['xd']
             detail["基准价格"] = price
             # 确保当前价格在容差范围内
             if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
