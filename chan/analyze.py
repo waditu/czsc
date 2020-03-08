@@ -870,7 +870,7 @@ class SolidAnalyze(object):
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') or last_xd['xd'] >= ka.xd[-3]['xd']:
                 detail['出现时间'] = last_xd['dt']
-                price = last_xd['bi']
+                price = last_xd['xd']
                 detail["基准价格"] = price
                 # 确保当前价格在容差范围内
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
@@ -908,7 +908,7 @@ class SolidAnalyze(object):
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') or last_xd['xd'] <= ka.xd[-3]['xd']:
                 detail['出现时间'] = last_xd['dt']
-                price = last_xd['bi']
+                price = last_xd['xd']
                 detail["基准价格"] = price
                 # 确保当前价格在容差范围内
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
