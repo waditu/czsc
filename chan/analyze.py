@@ -463,7 +463,7 @@ class SolidAnalyze(object):
     你可以根据自己对缠论的理解，利用 KlineAnalyze 的分析结果在多个级别之间进行联合分析，找出符合自己要求的买卖点。
     """
 
-    def __init__(self, klines):
+    def __init__(self, klines, symbol=None):
         """
 
         :param klines: dict
@@ -471,6 +471,7 @@ class SolidAnalyze(object):
             example: {"日线": df, "30分钟": df, "5分钟": df, "1分钟": df,}
         """
         self.kas = dict()
+        self.symbol = symbol
         self.freqs = list(klines.keys())
         for freq, kline in klines.items():
             try:
@@ -533,12 +534,15 @@ class SolidAnalyze(object):
     # ====================================================================
     # 第一类买卖点
 
-    def is_first_buy(self, freq):
+    def is_first_buy(self, freq, tolerance=0.03):
         """确定某一级别一买，包括由盘整背驰引发的类一买
 
         注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -548,9 +552,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "一买",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
@@ -563,19 +568,26 @@ class SolidAnalyze(object):
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
-                    b = True
                     detail["出现时间"] = xds[-1]['dt']
-                    detail["确认时间"] = xds[-1]['dt']
+                    price = xds[-1]['xd']
+                    detail["基准价格"] = price
+                    # 确保当前价格在容差范围内
+                    if (1-tolerance) * price <= ka.kline[-1]['close'] <= (1+tolerance) * price:
+                        b = True
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
             b = False
         return b, detail
 
-    def is_first_sell(self, freq):
+    def is_first_sell(self, freq, tolerance=0.03):
         """确定某一级别一卖，包括由盘整背驰引发的类一卖
+
         注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -585,9 +597,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "一卖",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
@@ -600,9 +613,12 @@ class SolidAnalyze(object):
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'):
-                    b = True
                     detail["出现时间"] = xds[-1]['dt']
-                    detail["确认时间"] = xds[-1]['dt']
+                    price = xds[-1]['xd']
+                    detail["基准价格"] = price
+                    # 确保当前价格在容差范围内
+                    if (1-tolerance) * price <= ka.kline[-1]['close'] <= (1+tolerance) * price:
+                        b = True
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
             b = False
@@ -611,11 +627,15 @@ class SolidAnalyze(object):
     # ====================================================================
     # 第二类买卖点
 
-    def is_second_buy(self, freq):
+    def is_second_buy(self, freq, tolerance=0.03):
         """确定某一级别二买，包括类二买
+
         注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -625,9 +645,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "二买",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
@@ -637,20 +658,27 @@ class SolidAnalyze(object):
             xds = [xds_l[-1]] + xds_r
             # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-            if 3 <= len(xds) <= 5 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
-                b = True
+            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
-                detail["确认时间"] = xds[-1]['dt']
+                price = xds[-1]['xd']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
             b = False
         return b, detail
 
-    def is_second_sell(self, freq):
+    def is_second_sell(self, freq, tolerance=0.03):
         """确定某一级别二卖，包括类二卖
+
         注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -660,9 +688,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "二卖",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
@@ -672,10 +701,13 @@ class SolidAnalyze(object):
             xds = [xds_l[-1]] + xds_r
             # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
             # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
-            if 3 <= len(xds) <= 5 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
-                b = True
+            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
-                detail["确认时间"] = xds[-1]['dt']
+                price = xds[-1]['xd']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
             b = False
@@ -685,10 +717,13 @@ class SolidAnalyze(object):
     # 第三类买卖点
     # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
-    def is_third_buy(self, freq):
+    def is_third_buy(self, freq, tolerance=0.03):
         """确定某一级别三买
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -709,25 +744,32 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "三买",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
         if last_xd['fx_mark'] == 'd' and last_xd['xd'] > zs_g:
             # 最后一个向下线段已经在本级别结束的情况
-            b = True
             detail['出现时间'] = last_xd['dt']
-            detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            price = last_xd[-1]['xd']
+            detail["基准价格"] = price
+            # 确保当前价格在容差范围内
+            if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                b = True
 
         if last_xd['fx_mark'] == 'g':
             # 最后一个向下线段没有结束的情况
             last_bi_d = [x for x in ka.bi if x['fx_mark'] == 'd'][-1]
             xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
             if last_bi_d['bi'] > zs_g and len(xd_inside) >= 6:
-                b = True
                 detail['出现时间'] = last_bi_d['dt']
-                detail['确认时间'] = last_bi_d['dt']
+                price = last_bi_d['bi']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         # 配合上一级别向下笔和下一级别向下线段的结束位置寻找最佳买点
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
@@ -737,10 +779,13 @@ class SolidAnalyze(object):
 
         return b, detail
 
-    def is_third_sell(self, freq):
+    def is_third_sell(self, freq, tolerance=0.03):
         """确定某一级别三卖
 
-        :param freq:
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
@@ -761,25 +806,32 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "三卖",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
         if last_xd['fx_mark'] == 'g' and last_xd['xd'] < zs_d:
             # 最后一个向上线段已经在本级别结束的情况
-            b = True
             detail['出现时间'] = last_xd['dt']
-            detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            price = last_xd[-1]['xd']
+            detail["基准价格"] = price
+            # 确保当前价格在容差范围内
+            if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                b = True
 
         if last_xd['fx_mark'] == 'd':
             # 最后一个向上线段没有结束的情况
             last_bi_g = [x for x in ka.bi if x['fx_mark'] == 'g'][-1]
             xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
             if last_bi_g['bi'] < zs_d and len(xd_inside) >= 6:
-                b = True
                 detail['出现时间'] = last_bi_g['dt']
-                detail['确认时间'] = last_bi_g['dt']
+                price = last_bi_g['bi']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         # 配合上一级别向上笔和下一级别向上线段的结束位置寻找最佳买点
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
@@ -791,8 +843,15 @@ class SolidAnalyze(object):
 
     # ====================================================================
     # 同级别分解买卖点（这个实现仅支持5分钟、30分钟级别的分解）
-    def is_xd_buy(self, freq):
-        """同级别分解买点"""
+    def is_xd_buy(self, freq, tolerance=0.03):
+        """同级别分解买点
+
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
+        :return:
+        """
         ka, ka1, ka2 = self._get_ka(freq)
 
         if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
@@ -800,9 +859,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
+            "标的代码": self.symbol,
             "操作提示": freq + "同级别分解买点",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
         }
         last_xd = ka.xd[-1]
@@ -810,16 +870,26 @@ class SolidAnalyze(object):
             zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') or last_xd['xd'] >= ka.xd[-3]['xd']:
-                b = True
                 detail['出现时间'] = last_xd['dt']
-                detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                price = last_xd['bi']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         if ka1.bi[-1]['fx_mark'] == "g" or ka2.xd[-1]['fx_mark'] == "g":
             b = False
         return b, detail
 
-    def is_xd_sell(self, freq):
-        """同级别分解卖点"""
+    def is_xd_sell(self, freq, tolerance=0.03):
+        """同级别分解卖点
+
+        :param freq: str
+            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+        :param tolerance: float
+            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
+        :return:
+        """
         ka, ka1, ka2 = self._get_ka(freq)
 
         if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
@@ -827,9 +897,10 @@ class SolidAnalyze(object):
 
         b = False
         detail = {
-            "操作提示": freq + "同级别分解买点",
+            "标的代码": self.symbol,
+            "操作提示": freq + "同级别分解卖点",
             "出现时间": "",
-            "确认时间": "",
+            "基准价格": 0,
             "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
         }
         last_xd = ka.xd[-1]
@@ -837,9 +908,12 @@ class SolidAnalyze(object):
             zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
             zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
             if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') or last_xd['xd'] <= ka.xd[-3]['xd']:
-                b = True
                 detail['出现时间'] = last_xd['dt']
-                detail['确认时间'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                price = last_xd['bi']
+                detail["基准价格"] = price
+                # 确保当前价格在容差范围内
+                if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
+                    b = True
 
         if ka1.bi[-1]['fx_mark'] == "d" or ka2.xd[-1]['fx_mark'] == "d":
             b = False

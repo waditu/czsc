@@ -1,10 +1,15 @@
 # coding: utf-8
+import unittest
 import tushare as ts
 from datetime import datetime, timedelta
 import sys
+from functools import lru_cache
 sys.path.insert(0, r'C:\git_repo\zengbin93\chan')
 
-from chan.analyze import KlineAnalyze
+import chan
+from chan import KlineAnalyze, SolidAnalyze
+
+print(chan.__version__)
 
 # 首次使用，需要在这里设置你的 tushare token，用于获取数据；在同一台机器上，tushare token 只需要设置一次
 # 没有 token，到 https://tushare.pro/register?reg=7 注册获取
@@ -14,13 +19,13 @@ from chan.analyze import KlineAnalyze
 def _get_start_date(end_date, freq):
     end_date = datetime.strptime(end_date, '%Y%m%d')
     if freq == '1min':
-        start_date = end_date - timedelta(days=30)
+        start_date = end_date - timedelta(days=60)
     elif freq == '5min':
-        start_date = end_date - timedelta(days=70)
+        start_date = end_date - timedelta(days=150)
     elif freq == '30min':
-        start_date = end_date - timedelta(days=500)
+        start_date = end_date - timedelta(days=1000)
     elif freq == 'D':
-        start_date = end_date - timedelta(weeks=500)
+        start_date = end_date - timedelta(weeks=1000)
     elif freq == 'W':
         start_date = end_date - timedelta(weeks=1000)
     else:
@@ -74,16 +79,46 @@ def get_kline(ts_code, end_date, freq='30min', asset='E'):
 
 def get_klines(ts_code, end_date, freqs='1min,5min,30min,D', asset='E'):
     """获取不同级别K线"""
+    freq_map = {"1min": "1分钟", "5min": "5分钟", "30min": "30分钟", "D": "日线"}
     klines = dict()
     freqs = freqs.split(",")
     for freq in freqs:
         df = get_kline(ts_code, end_date, freq=freq, asset=asset)
-        klines[freq] = df
+        klines[freq_map[freq]] = df
     return klines
 
 
-df = get_kline(ts_code="300803.SZ", freq='1min', end_date="20200216")
-ka = KlineAnalyze(df)
+def test_kline_analyze():
+    df = get_kline(ts_code="300803.SZ", freq='1min', end_date="20200216")
+    ka = KlineAnalyze(df)
 
 
+@lru_cache(maxsize=128)
+def create_sa(ts_code, end_date):
+    klines = get_klines(ts_code=ts_code, freqs='1min,5min,30min,D', asset="E", end_date=end_date)
+    sa = SolidAnalyze(klines, symbol=ts_code)
+    return sa
+
+
+def test_solid_analyze():
+    test_data = [
+        {"ts_code": '300033.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟二买"},
+        {"ts_code": '300033.SZ', "freq": "1分钟", "end_date": "20200307", "bs": "1分钟二买"},
+        {"ts_code": '000012.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟二卖"},
+        {"ts_code": '002405.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟一卖"},
+    ]
+    for row in test_data:
+        print("=" * 100)
+        print(row)
+        sa = create_sa(row['ts_code'], row['end_date'])
+        if row['bs'].endswith('二买'):
+            b, detail = sa.is_second_buy(row['freq'], tolerance=0.1)
+            print(b, detail)
+        elif row['bs'].endswith('二卖'):
+            b, detail = sa.is_second_sell(row['freq'], tolerance=0.1)
+            print(b, detail)
+        elif row['bs'].endswith('一卖'):
+            b, detail = sa.is_first_sell(row['freq'], tolerance=0.1)
+            print(b, detail)
+        print('\n')
 
