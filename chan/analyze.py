@@ -770,7 +770,6 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
-        # 配合上一级别向下笔和下一级别向下线段的结束位置寻找最佳买点
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
             b = False
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
@@ -832,7 +831,6 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
-        # 配合上一级别向上笔和下一级别向上线段的结束位置寻找最佳买点
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
             b = False
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
@@ -876,7 +874,9 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
-        if ka1.bi[-1]['fx_mark'] == "g" or ka2.xd[-1]['fx_mark'] == "g":
+        if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
+            b = False
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
             b = False
         return b, detail
 
@@ -914,7 +914,9 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
-        if ka1.bi[-1]['fx_mark'] == "d" or ka2.xd[-1]['fx_mark'] == "d":
+        if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
+            b = False
+        if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
             b = False
         return b, detail
 
