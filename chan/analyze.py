@@ -196,35 +196,14 @@ class KlineAnalyze(object):
         """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型
 
         划分笔的步骤：
-        （1）确定所有符合标准的分型，能够构成笔的标准底分型一定小于其前后的底分型，顶分型反之；
-             两个相邻的顶底分型之间，如果没有共用K线，也可以认为是符合标准的分型。
+        （1）确定所有符合标准的分型。
         （2）如果前后两分型是同一性质的，对于顶，前面的低于后面的，只保留后面的，前面那个可以忽略掉；对于底，
             前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
         （3）经过步骤（2）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
         """
         # 符合标准的分型
         kn = deepcopy(self.kline_new)
-
-        fx_p = []
-        for fx_mark in ['d', 'g']:
-            fx = [x for x in deepcopy(self.fx) if x['fx_mark'] == fx_mark]
-            fx = sorted(fx, key=lambda x: x['dt'], reverse=False)
-            for i in range(1, len(fx) - 1):
-                fx1, fx2, fx3 = fx[i - 1:i + 2]
-                if (fx_mark == "d" and fx1['fx'] >= fx2['fx'] <= fx3['fx']) or \
-                        (fx_mark == "g" and fx1['fx'] <= fx2['fx'] >= fx3['fx']):
-                    fx_p.append(deepcopy(fx2))
-
-        # 两个相邻的顶点分型之间有1根非共用K线
-        for i in range(len(self.fx) - 1):
-            fx1, fx2 = self.fx[i], self.fx[i + 1]
-            k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
-            if len(k_num) >= 5:
-                fx_p.append(deepcopy(fx1))
-                fx_p.append(deepcopy(fx2))
-
-        fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
-
+        fx_p = sorted(deepcopy(self.fx), key=lambda x: x['dt'], reverse=False)
         # 确认哪些分型可以构成笔
         bi = []
         for i in range(len(fx_p)):
@@ -555,7 +534,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "一买",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+            "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
@@ -600,7 +579,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "一卖",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+            "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
@@ -648,7 +627,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "二买",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+            "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
             # 以上一级别线段终点为走势分解的起点
@@ -691,7 +670,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "二卖",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+            "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
             # 以上一级别线段终点为走势分解的起点
@@ -747,7 +726,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "三买",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+            "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
         }
         if last_xd['fx_mark'] == 'd' and last_xd['xd'] > zs_g:
             # 最后一个向下线段已经在本级别结束的情况
@@ -808,7 +787,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "三卖",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+            "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
         }
         if last_xd['fx_mark'] == 'g' and last_xd['xd'] < zs_d:
             # 最后一个向上线段已经在本级别结束的情况
@@ -860,7 +839,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "同级别分解买点",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向下中枢数量为{down_zs_number(ka)}"
+            "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
         }
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'd':
@@ -900,7 +879,7 @@ class SolidAnalyze(object):
             "操作提示": freq + "同级别分解卖点",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": f"向上中枢数量为{up_zs_number(ka)}"
+            "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
         }
         last_xd = ka.xd[-1]
         if last_xd['fx_mark'] == 'g':
