@@ -228,6 +228,7 @@ def trade_simulator(ts_code, end_date, start_date=None, days=3, asset="E", watch
 
     while start_date <= end_date:
         if not is_trade_day(start_date.strftime('%Y%m%d')):
+            start_date += timedelta(days=1)
             continue
 
         ks = kline_simulator(ts_code, trade_dt=start_date.strftime('%Y%m%d'), asset=asset)
@@ -263,5 +264,5 @@ def trade_simulator(ts_code, end_date, start_date=None, days=3, asset="E", watch
 
 
 if __name__ == '__main__':
-    trade_simulator(ts_code='300033.SZ', end_date='20200312', days=3, asset="E", watch_interval=5)
+    trade_simulator(ts_code='603305.SH', end_date='20200312', days=10, asset="E", watch_interval=5)
 
