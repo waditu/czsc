@@ -99,12 +99,18 @@ class KlineAnalyze(object):
             ]
         """
         self.kline = self._preprocess(kline)
+        self.symbol = self.kline[0]['symbol']
+        self.start_dt = self.kline[0]['dt']
+        self.end_dt = self.kline[-1]['dt']
         self.kline_new = self._remove_include()
         self.fx = self._find_fx()
         self.bi = self._find_bi()
         self.xd = self._find_xd()
         self.zs = self._find_zs()
         self.__update_kline()
+
+    def __repr__(self):
+        return "<chan.analyze.KlineAnalyze of %s, from %s to %s>" % (self.symbol, self.start_dt, self.end_dt)
 
     @staticmethod
     def _preprocess(kline):
@@ -542,7 +548,7 @@ class SolidAnalyze(object):
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
             xds = [xds_l[-1]] + xds_r
             # 盘整至少有三段次级别走势，趋势至少有5段；底背驰一定要创新低
-            if len(xds) >= 4 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
+            if len(xds) >= 5 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
@@ -587,7 +593,7 @@ class SolidAnalyze(object):
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
             xds = [xds_l[-1]] + xds_r
             # 盘整至少有三段次级别走势，趋势至少有5段；顶背驰一定要创新高
-            if len(xds) >= 4 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
+            if len(xds) >= 5 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'):
@@ -636,7 +642,7 @@ class SolidAnalyze(object):
             xds = [xds_l[-1]] + xds_r
             # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
+            if 3 <= len(xds) <= 5 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
                 price = xds[-1]['xd']
                 detail["基准价格"] = price
@@ -679,7 +685,7 @@ class SolidAnalyze(object):
             xds = [xds_l[-1]] + xds_r
             # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
             # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
-            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
+            if 3 <= len(xds) <= 5 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
                 price = xds[-1]['xd']
                 detail["基准价格"] = price
@@ -820,7 +826,7 @@ class SolidAnalyze(object):
     # ====================================================================
     # 同级别分解买卖点（这个实现仅支持5分钟、30分钟级别的分解）
     def is_xd_buy(self, freq, tolerance=0.03):
-        """同级别分解买点
+        """同级别分解买点，我称之为线买，即线段买点
 
         :param freq: str
             K线级别，如 1分钟；这个级别可以是你定义的任何名称
@@ -836,7 +842,7 @@ class SolidAnalyze(object):
         b = False
         detail = {
             "标的代码": self.symbol,
-            "操作提示": freq + "同级别分解买点",
+            "操作提示": freq + "线买",
             "出现时间": "",
             "基准价格": 0,
             "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
@@ -860,7 +866,7 @@ class SolidAnalyze(object):
         return b, detail
 
     def is_xd_sell(self, freq, tolerance=0.03):
-        """同级别分解卖点
+        """同级别分解卖点，我称之为线卖，即线段卖点
 
         :param freq: str
             K线级别，如 1分钟；这个级别可以是你定义的任何名称
@@ -876,7 +882,7 @@ class SolidAnalyze(object):
         b = False
         detail = {
             "标的代码": self.symbol,
-            "操作提示": freq + "同级别分解卖点",
+            "操作提示": freq + "线卖",
             "出现时间": "",
             "基准价格": 0,
             "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
