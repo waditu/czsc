@@ -340,7 +340,7 @@ class KlineAnalyze(object):
                                 (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
                             xd_v.pop(-1)
                             xd_v.append(p3)
-                    elif len(bi_m) == 4:
+                    elif len(bi_m) == 4 and len(bi_r) >= 2:
                         # 两个连续线段标记之间只有三笔的处理
                         lp2 = bi_m[-2]
                         rp2 = bi_r[1]
@@ -379,9 +379,45 @@ class KlineAnalyze(object):
         #     xd_v.pop()
         return xd_v
 
+    def __get_potential_xd_v2(self):
+        """识别线段标记：从已经识别出来的笔中识别线段
+
+        划分线段的步骤：
+        （1）确定所有符合标准的笔标记。
+        （2）如果前后两个笔标记是同一性质的，对于顶，前面的低于后面的，只保留后面的，前面那个可以忽略掉；对于底，
+            前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
+        （3）经过步骤（2）的处理后，余下的笔标记，如果相邻的是顶和底，那么这就可以划为线段。
+        """
+        bi_p = sorted(deepcopy(self.bi), key=lambda x: x['dt'], reverse=False)
+        # 确认哪些笔标记可以构成线段
+        xd = []
+        for i in range(len(bi_p)):
+            k = deepcopy(bi_p[i])
+            k['xd'] = k['bi']
+            del k['bi']
+            if len(xd) == 0:
+                xd.append(k)
+            else:
+                k0 = xd[-1]
+                if k0['fx_mark'] == k['fx_mark']:
+                    if (k0['fx_mark'] == "g" and k0['xd'] < k['xd']) or \
+                            (k0['fx_mark'] == "d" and k0['xd'] > k['xd']):
+                        xd.pop(-1)
+                        xd.append(k)
+                else:
+                    # 确保相邻两个顶底之间顶大于底
+                    if (k0['fx_mark'] == 'g' and k['xd'] >= k0['xd']) or \
+                            (k0['fx_mark'] == 'd' and k['xd'] <= k0['xd']):
+                        xd.pop(-1)
+                        continue
+                    xd.append(k)
+        return xd
+
     def _find_xd(self):
         try:
-            xd = self.__get_potential_xd()
+            # xd = self.__get_potential_xd()
+            # xd = self.__get_valid_xd(xd)
+            xd = self.__get_potential_xd_v2()
             xd = self.__get_valid_xd(xd)
             xd = self.__handle_last_xd(xd)
             dts = [x['dt'] for x in xd]
