@@ -3,6 +3,11 @@
 交易模拟器，用于研究单标的的买卖点变化过程
 
 """
+import sys
+sys.path.insert(0, "C:\git_repo\zengbin93\chan")
+import chan
+print(chan.__version__)
+
 import os
 import time
 import traceback
@@ -12,8 +17,6 @@ from datetime import datetime, timedelta
 from chan import SolidAnalyze, KlineAnalyze, macd
 from pyecharts import options as opts
 from pyecharts.commons.utils import JsCode
-from snapshot_selenium import snapshot
-from pyecharts.render import make_snapshot
 from pyecharts.charts import Kline, Line, Bar, Grid, Scatter
 
 
@@ -234,7 +237,7 @@ def trade_simulator(ts_code, end_date, file_bs, start_date=None, days=3, asset="
     results = []
 
     while start_date <= end_date:
-        if not is_trade_day(start_date.strftime('%Y%m%d')):
+        if (asset in ["E", "I"]) and (not is_trade_day(start_date.strftime('%Y%m%d'))):
             start_date += timedelta(days=1)
             continue
 
@@ -270,7 +273,7 @@ def trade_simulator(ts_code, end_date, file_bs, start_date=None, days=3, asset="
         start_date += timedelta(days=1)
 
 
-def draw(df, file_png="test.png"):
+def draw(df, file_html="chan_bs.html", width="1400px", height="680px"):
     x = df.dt.to_list()
     kline = (
         Kline()
@@ -289,7 +292,7 @@ def draw(df, file_png="test.png"):
             markarea_opts=opts.MarkAreaOpts(is_silent=True)
         )
             .set_global_opts(
-            title_opts=opts.TitleOpts(title="K线周期图表", pos_left="0"),
+            title_opts=opts.TitleOpts(title="缠论买卖点分析", pos_left="0"),
             xaxis_opts=opts.AxisOpts(
                 type_="category",
                 is_scale=True,
@@ -489,7 +492,7 @@ def draw(df, file_png="test.png"):
     overlap_bar_line = bar_2.overlap(line_2)
 
     # 最后的 Grid
-    grid_chart = Grid(init_opts=opts.InitOpts(width="1400px", height="680px"))
+    grid_chart = Grid(init_opts=opts.InitOpts(width=width, height=height, page_title="缠论买卖点分析"))
     grid_chart.add_js_funcs("var barData = {}".format(df[['open', 'close', 'low', 'high']].values.tolist()))
     grid_chart.add_js_funcs("var bsName = {}".format(df1[["操作提示", "基准价格"]].values.tolist()))
     grid_chart.add(
@@ -504,29 +507,33 @@ def draw(df, file_png="test.png"):
         overlap_bar_line,
         grid_opts=opts.GridOpts(pos_left="3%", pos_right="1%", pos_top="82%", height="14%"),
     )
-    file_html = file_png.replace(".png", '.html')
-    make_snapshot(snapshot, grid_chart.render(path=file_html), file_png)
+    grid_chart.render(path=file_html)
 
 
-def check_trade(ts_code, freq, file_bs, file_png="bs.png"):
+def check_trade(ts_code, file_bs, freq, end_date="20200314", asset="E", file_html="bs.html"):
     """在图上画出买卖点"""
     bs = pd.read_excel(file_bs)
-    bs['f'] = bs['操作提示'].apply(lambda x: 1 if freq_map[freq] in x and "同级别" not in x else 0)
+    bs['f'] = bs['操作提示'].apply(lambda x: 1 if freq_map[freq] in x and "线" not in x else 0)
     bs = bs[bs.f == 1]
-    df = get_kline(ts_code, freq=freq, end_date="20200314", asset='E')
+    bs['操作提示'] = bs['操作提示'].apply(lambda x: x.replace(freq_map[freq], ""))
+    df = get_kline(ts_code, freq=freq, end_date=end_date, asset=asset)
     ka = KlineAnalyze(df)
     df = pd.DataFrame(ka.kline)
     df = macd(df)
     df = df.merge(bs[['操作提示', '出现时间', '基准价格']], left_on='dt', right_on='出现时间', how='left')
-    draw(df, file_png)
+    draw(df, file_html)
 
 
 if __name__ == '__main__':
-    ts_code = '603305.SH'
+    ts_code = '000001.SH'
+    asset = "I"
+    end_date = '20200313'
+    freq = '5min'
     file_bs = f"{ts_code}买卖点变化过程.xlsx"
+    file_html = f"{ts_code}_{freq}_{end_date}_bs.html"
 
     # step 1. 仿真交易
-    # trade_simulator(ts_code, end_date='20200313', file_bs=file_bs, days=150, asset="E", watch_interval=5)
+    # trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=60, asset=asset, watch_interval=5)
 
     # step 2. 查看仿真交易过程的买卖点提示
-    check_trade(ts_code, '5min', file_bs)
+    check_trade(ts_code, file_bs, freq=freq, asset=asset, end_date=end_date, file_html=file_html)
