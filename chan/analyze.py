@@ -485,13 +485,15 @@ class SolidAnalyze(object):
         ka, ka1, ka2 = self._get_ka(freq)
         last_xd = ka.xd[-1]
 
-        end = False
+        end = None
 
         # 向上线段结束的判断
         if last_xd['fx_mark'] == 'd' and ka.bi[-1]['fx_mark'] == 'g' and ka.bi[-1]['bi'] >= ka.bi[-3]['bi']:
             zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
             zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
-            if is_bei_chi(ka, zs1, zs2, direction="up", mode="bi"):
+            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
+            # 线段内部走出三笔以上，且有背驰
+            if len(xd_inside) >= 4 and is_bei_chi(ka, zs1, zs2, direction="up", mode="bi"):
                 end = True
             if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
                 end = False
@@ -512,7 +514,7 @@ class SolidAnalyze(object):
                 end = False
 
         else:
-            raise ValueError
+            end = False
         return end
 
     # ====================================================================
@@ -547,8 +549,8 @@ class SolidAnalyze(object):
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
             xds = [xds_l[-1]] + xds_r
-            # 盘整至少有三段次级别走势，趋势至少有5段；底背驰一定要创新低
-            if len(xds) >= 4 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
+            # 趋势至少有5段；底背驰一定要创新低
+            if len(xds) >= 6 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
@@ -592,8 +594,8 @@ class SolidAnalyze(object):
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
             xds = [xds_l[-1]] + xds_r
-            # 盘整至少有三段次级别走势，趋势至少有5段；顶背驰一定要创新高
-            if len(xds) >= 4 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
+            # 趋势至少有5段；顶背驰一定要创新高
+            if len(xds) >= 6 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
                 zs1 = [xds[-2]['dt'], xds[-1]['dt']]
                 zs2 = [xds[-4]['dt'], xds[-3]['dt']]
                 if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'):
@@ -642,7 +644,7 @@ class SolidAnalyze(object):
             xds = [xds_l[-1]] + xds_r
             # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
             # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
+            if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
                 price = xds[-1]['xd']
                 detail["基准价格"] = price
@@ -679,17 +681,13 @@ class SolidAnalyze(object):
             "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
         }
         if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
-            # 以上一级别线段终点为走势分解的起点
             xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
             xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
             xds = [xds_l[-1]] + xds_r
-            # 次级别向上走势不创新高，就认为是类二卖，其中第一个是真正的二卖；
-            # 如果一个向下走势内部已经有5段次级别走势，则认为该走势随后不再有二卖机会
-            if 3 <= len(xds) <= 6 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
+            if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd']:
                 detail["出现时间"] = xds[-1]['dt']
                 price = xds[-1]['xd']
                 detail["基准价格"] = price
-                # 确保当前价格在容差范围内
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
@@ -698,8 +696,7 @@ class SolidAnalyze(object):
         return b, detail
 
     # ====================================================================
-    # 第三类买卖点
-    # 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
+    # 第三类买卖点: 一个第三类买卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段构成第三类买卖点。
 
     def is_third_buy(self, freq, tolerance=0.03):
         """确定某一级别三买
