@@ -511,7 +511,7 @@ class SolidAnalyze(object):
     你可以根据自己对缠论的理解，利用 KlineAnalyze 的分析结果在多个级别之间进行联合分析，找出符合自己要求的买卖点。
     """
 
-    def __init__(self, klines, symbol=None):
+    def __init__(self, klines):
         """
 
         :param klines: dict
@@ -519,7 +519,6 @@ class SolidAnalyze(object):
             example: {"日线": df, "30分钟": df, "5分钟": df, "1分钟": df,}
         """
         self.kas = dict()
-        self.symbol = symbol
         self.freqs = list(klines.keys())
         for freq, kline in klines.items():
             try:
@@ -528,6 +527,7 @@ class SolidAnalyze(object):
             except:
                 self.kas[freq] = None
                 traceback.print_exc()
+        self.symbol = self.kas['1分钟'].symbol
 
     def _get_ka(self, freq):
         """输入级别，返回该级别 ka，以及上一级别 ka1，下一级别 ka2"""
@@ -543,43 +543,6 @@ class SolidAnalyze(object):
         else:
             raise ValueError
         return ka, ka1, ka2
-
-    def is_xd_end(self, freq):
-        """判断最后一个线段是否可以认为已经结束了（只能判断由小级别一买引发的线段结束）"""
-        ka, ka1, ka2 = self._get_ka(freq)
-        last_xd = ka.xd[-1]
-
-        end = None
-
-        # 向上线段结束的判断
-        if last_xd['fx_mark'] == 'd' and ka.bi[-1]['fx_mark'] == 'g' and ka.bi[-1]['bi'] >= ka.bi[-3]['bi']:
-            zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
-            zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
-            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
-            # 线段内部走出三笔以上，且有背驰
-            if len(xd_inside) >= 4 and is_bei_chi(ka, zs1, zs2, direction="up", mode="bi"):
-                end = True
-            if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
-                end = False
-            if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
-                end = False
-
-        # 向下线段结束的判断
-        elif last_xd['fx_mark'] == 'g' and ka.bi[-1]['fx_mark'] == 'd' and ka.bi[-1]['bi'] <= ka.bi[-3]['bi']:
-            zs1 = [ka.bi[-2]['dt'], ka.bi[-1]['dt']]
-            zs2 = [ka.bi[-4]['dt'], ka.bi[-3]['dt']]
-            xd_inside = [x for x in ka.bi if x['dt'] >= last_xd['dt']]
-            # 线段内部走出三笔，且有背驰
-            if len(xd_inside) >= 4 and is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
-                end = True
-            if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
-                end = False
-            if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
-                end = False
-
-        else:
-            end = False
-        return end
 
     # ====================================================================
     # 第一类买卖点
@@ -787,13 +750,14 @@ class SolidAnalyze(object):
         if zs_d > zs_g:
             return False, None
 
+        uz = up_zs_number(ka)
         b = False
         detail = {
             "标的代码": self.symbol,
             "操作提示": freq + "三买",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
+            "其他信息": "向上中枢数量为%i" % uz
         }
         if last_xd['fx_mark'] == 'd' and last_xd['xd'] > zs_g:
             # 最后一个向下线段已经在本级别结束的情况
@@ -816,6 +780,8 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
+        if uz > 4:
+            b = False
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
             b = False
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
@@ -848,13 +814,14 @@ class SolidAnalyze(object):
         if zs_d > zs_g:
             return False, None
 
+        dz = down_zs_number(ka)
         b = False
         detail = {
             "标的代码": self.symbol,
             "操作提示": freq + "三卖",
             "出现时间": "",
             "基准价格": 0,
-            "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
+            "其他信息": "向下中枢数量为%i" % dz
         }
         if last_xd['fx_mark'] == 'g' and last_xd['xd'] < zs_d:
             # 最后一个向上线段已经在本级别结束的情况
@@ -877,6 +844,8 @@ class SolidAnalyze(object):
                 if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
                     b = True
 
+        if dz > 4:
+            b = False
         if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
             b = False
         if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
