@@ -475,6 +475,34 @@ class KlineAnalyze(object):
             if k1:
                 k['fx_mark'], k['fx'], k['bi'], k['xd'] = k1['fx_mark'], k1['fx'], k1['bi'], k1['xd']
 
+    def zs_mean(self, n=6, mode='xd'):
+        """计算最近 n 个走势的平均波动幅度
+
+        :param n: int
+            线段数量
+        :param mode: str
+            xd -> 线段平均波动； bi -> 笔平均波动
+        :return: float
+        """
+        if mode == 'xd':
+            latest_zs = deepcopy(self.xd[-n-1:])
+            for x in latest_zs:
+                x['fx'] = x['xd']
+        elif mode == 'bi':
+            latest_zs = deepcopy(self.bi[-n-1:])
+            for x in latest_zs:
+                x['fx'] = x['bi']
+        else:
+            raise ValueError("mode value error, only support 'xd' or 'bi'")
+
+        wave = []
+        for i in range(len(latest_zs)-1):
+            x1 = latest_zs[i]['fx']
+            x2 = latest_zs[i+1]['fx']
+            w = abs(x1-x2)/x1
+            wave.append(w)
+        return round(sum(wave) / len(wave), 2)
+
 
 class SolidAnalyze(object):
     """多级别（日线、30分钟、5分钟、1分钟）K线联合分析
