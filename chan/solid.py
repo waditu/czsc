@@ -163,7 +163,7 @@ def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
     # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
     # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
     if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'd' \
-            and ka2.bi[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd'] \
+            and ka1.bi[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd'] \
             and __in_tolerance(base_price, ka.latest_price, tolerance):
         detail["出现时间"] = xds[-1]['dt']
         detail["基准价格"] = base_price
