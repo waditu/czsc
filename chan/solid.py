@@ -12,6 +12,21 @@ def __in_tolerance(base_price, latest_price, tolerance=0.03):
         return False
 
 
+def __get_sub_xds(ka, ka1):
+    """根据上级别线段标记获取本级别最后一个走势的线段"""
+    xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
+    xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
+    if not xds_r:
+        xds = [xds_l[-1]]
+        return xds
+
+    if xds_r[0]['fx_mark'] != ka1.xd[-1]['fx_mark'] and len(xds_l) > 0:
+        xds = [xds_l[-1]] + xds_r
+    else:
+        xds = xds_r
+    return xds
+
+
 def is_first_buy(ka, ka1, ka2=None, tolerance=0.03):
     """确定某一级别一买，包括由盘整背驰引发的类一买
     注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
@@ -27,7 +42,12 @@ def is_first_buy(ka, ka1, ka2=None, tolerance=0.03):
     :return:
     """
 
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or not isinstance(ka1, KlineAnalyze):
+    if len(ka.xd) < 6 or not ka1.xd or ka1.xd[-1]['fx_mark'] == 'g':
+        return False, None
+
+    if ka1.xd[-1]['xd'] == ka1.bi[-1]['bi']:
+        ka1.xd.pop(-1)
+    else:
         return False, None
 
     b = False
@@ -36,25 +56,23 @@ def is_first_buy(ka, ka1, ka2=None, tolerance=0.03):
         "操作提示": "一买",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
+        "其他信息": ""
     }
-    if ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
-        # 以上一级别线段终点为走势分解的起点
-        xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
-        xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
-        xds = [xds_l[-1]] + xds_r
-        # 趋势至少有5段；底背驰一定要创新低
-        if len(xds) >= 6 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
-            zs1 = [xds[-2]['dt'], xds[-1]['dt']]
-            zs2 = [xds[-4]['dt'], xds[-3]['dt']]
-            base_price = xds[-1]['xd']
-            if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') \
-                    and __in_tolerance(base_price, ka.latest_price, tolerance):
-                detail["出现时间"] = xds[-1]['dt']
-                detail["基准价格"] = base_price
-                b = True
 
-    if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+    # 趋势至少有5段；底背驰一定要创新低
+    xds = __get_sub_xds(ka, ka1)
+    if len(xds) >= 6 and xds[-1]['fx_mark'] == 'd' \
+            and ka1.bi[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
+        zs1 = [xds[-2]['dt'], xds[-1]['dt']]
+        zs2 = [xds[-4]['dt'], xds[-3]['dt']]
+        base_price = xds[-1]['xd']
+        if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') \
+                and __in_tolerance(base_price, ka.latest_price, tolerance):
+            detail["出现时间"] = xds[-1]['dt']
+            detail["基准价格"] = base_price
+            b = True
+
+    if isinstance(ka2, KlineAnalyze) and (ka2.xd[-1]['fx_mark'] == 'g' or ka2.bi[-1]['fx_mark'] == 'g'):
         b = False
     return b, detail
 
@@ -74,7 +92,12 @@ def is_first_sell(ka, ka1, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or not isinstance(ka1, KlineAnalyze):
+    if len(ka.xd) < 6 or not ka1.xd or ka1.xd[-1]['fx_mark'] == 'd':
+        return False, None
+
+    if ka1.xd[-1]['xd'] == ka1.bi[-1]['bi']:
+        ka1.xd.pop(-1)
+    else:
         return False, None
 
     b = False
@@ -83,23 +106,21 @@ def is_first_sell(ka, ka1, ka2=None, tolerance=0.03):
         "操作提示": "一卖",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
+        "其他信息": ""
     }
-    if ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
-        # 以上一级别线段终点为走势分解的起点
-        xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
-        xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
-        xds = [xds_l[-1]] + xds_r
-        # 趋势至少有5段；顶背驰一定要创新高
-        if len(xds) >= 6 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
-            zs1 = [xds[-2]['dt'], xds[-1]['dt']]
-            zs2 = [xds[-4]['dt'], xds[-3]['dt']]
-            base_price = xds[-1]['xd']
-            if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') \
-                    and __in_tolerance(base_price, ka.latest_price, tolerance):
-                detail["出现时间"] = xds[-1]['dt']
-                detail["基准价格"] = base_price
-                b = True
+
+    # 趋势至少有5段；顶背驰一定要创新高
+    xds = __get_sub_xds(ka, ka1)
+    if len(xds) >= 6 and xds[-1]['fx_mark'] == 'g' \
+            and ka1.bi[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd']:
+        zs1 = [xds[-2]['dt'], xds[-1]['dt']]
+        zs2 = [xds[-4]['dt'], xds[-3]['dt']]
+        base_price = xds[-1]['xd']
+        if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') \
+                and __in_tolerance(base_price, ka.latest_price, tolerance):
+            detail["出现时间"] = xds[-1]['dt']
+            detail["基准价格"] = base_price
+            b = True
 
     if isinstance(ka2, KlineAnalyze) and (ka2.xd[-1]['fx_mark'] == 'd' or ka2.bi[-1]['fx_mark'] == 'd'):
         b = False
@@ -121,7 +142,11 @@ def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or not isinstance(ka1, KlineAnalyze):
+    if (not isinstance(ka, KlineAnalyze)) \
+            or len(ka.xd) < 6 \
+            or (not isinstance(ka1, KlineAnalyze))\
+            or (not ka1.xd) \
+            or ka1.xd[-1]['fx_mark'] == 'g':
         return False, None
 
     b = False
@@ -130,23 +155,21 @@ def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
         "操作提示": "二买",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
+        "其他信息": ""
     }
-    if ka1.xd and ka1.xd[-1]['fx_mark'] == 'd':
-        # 以上一级别线段终点为走势分解的起点
-        xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
-        xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
-        xds = [xds_l[-1]] + xds_r
-        base_price = xds[-1]['xd']
-        # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
-        # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
-        if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd'] \
-                and __in_tolerance(base_price, ka.latest_price, tolerance):
-            detail["出现时间"] = xds[-1]['dt']
-            detail["基准价格"] = base_price
-            b = True
 
-    if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'g':
+    xds = __get_sub_xds(ka, ka1)
+    base_price = xds[-1]['xd']
+    # 次级别向下走势不创新低，就认为是类二买，其中第一个是真正的二买；
+    # 如果一个向上走势内部已经有5段次级别走势，则认为该走势随后不再有二买机会
+    if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'd' \
+            and ka2.bi[-1]['fx_mark'] == 'd' and xds[-1]['xd'] > xds[-3]['xd'] \
+            and __in_tolerance(base_price, ka.latest_price, tolerance):
+        detail["出现时间"] = xds[-1]['dt']
+        detail["基准价格"] = base_price
+        b = True
+
+    if isinstance(ka2, KlineAnalyze) and (ka2.xd[-1]['fx_mark'] == 'g' or ka2.bi[-1]['fx_mark'] == 'g'):
         b = False
     return b, detail
 
@@ -166,7 +189,11 @@ def is_second_sell(ka, ka1, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or not isinstance(ka1, KlineAnalyze):
+    if (not isinstance(ka, KlineAnalyze)) \
+            or len(ka.xd) < 6 \
+            or (not isinstance(ka1, KlineAnalyze))\
+            or (not ka1.xd) \
+            or ka1.xd[-1]['fx_mark'] == 'd':
         return False, None
 
     b = False
@@ -175,21 +202,20 @@ def is_second_sell(ka, ka1, ka2=None, tolerance=0.03):
         "操作提示": "二卖",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
+        "其他信息": ""
     }
-    if isinstance(ka1, KlineAnalyze) and ka1.xd and ka1.xd[-1]['fx_mark'] == 'g':
-        xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
-        xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
-        xds = [xds_l[-1]] + xds_r
-        base_price = xds[-1]['xd']
 
-        if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < xds[-3]['xd'] \
-                and __in_tolerance(base_price, ka.latest_price, tolerance):
-            detail["出现时间"] = xds[-1]['dt']
-            detail["基准价格"] = base_price
-            b = True
+    xds = __get_sub_xds(ka, ka1)
+    base_price = xds[-1]['xd']
 
-    if isinstance(ka2, KlineAnalyze) and ka2.xd[-1]['fx_mark'] == 'd':
+    if 3 <= len(xds) <= 4 and xds[-1]['fx_mark'] == 'g' and ka1.bi[-1]['fx_mark'] == 'g' \
+            and xds[-1]['xd'] < xds[-3]['xd'] \
+            and __in_tolerance(base_price, ka.latest_price, tolerance):
+        detail["出现时间"] = xds[-1]['dt']
+        detail["基准价格"] = base_price
+        b = True
+
+    if isinstance(ka2, KlineAnalyze) and (ka2.xd[-1]['fx_mark'] == 'd' or ka2.bi[-1]['fx_mark'] == 'd'):
         b = False
     return b, detail
 
@@ -209,7 +235,7 @@ def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or ka.xd[-1]['fx_mark'] == 'g':
+    if len(ka.xd) < 6 or ka.xd[-1]['fx_mark'] == 'g':
         return False, None
 
     uz = up_zs_number(ka)
