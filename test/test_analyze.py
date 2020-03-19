@@ -1,5 +1,4 @@
 # coding: utf-8
-import unittest
 import tushare as ts
 from datetime import datetime, timedelta
 import sys
@@ -89,35 +88,36 @@ def get_klines(ts_code, end_date, freqs='1min,5min,30min,D', asset='E'):
 
 
 def test_kline_analyze():
-    df = get_kline(ts_code="300803.SZ", freq='1min', end_date="20200216")
+    df = get_kline(ts_code="300803.SZ", freq='5min', end_date="20200316")
     ka = KlineAnalyze(df)
 
 
 @lru_cache(maxsize=128)
 def create_sa(ts_code, end_date):
     klines = get_klines(ts_code=ts_code, freqs='1min,5min,30min,D', asset="E", end_date=end_date)
-    sa = SolidAnalyze(klines, symbol=ts_code)
+    sa = SolidAnalyze(klines)
     return sa
 
 
 def test_solid_analyze():
     test_data = [
-        {"ts_code": '300033.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟二买"},
-        {"ts_code": '300033.SZ', "freq": "1分钟", "end_date": "20200307", "bs": "1分钟二买"},
-        {"ts_code": '000012.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟二卖"},
-        {"ts_code": '002405.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "5分钟一卖"},
+        {"ts_code": '300033.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "二买"},
+        {"ts_code": '300033.SZ', "freq": "1分钟", "end_date": "20200307", "bs": "二买"},
+        {"ts_code": '000012.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "二卖"},
+        {"ts_code": '002405.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "一卖"},
+        {"ts_code": '603383.SH', "freq": "日线", "end_date": "20200227", "bs": "线卖"},
     ]
     for row in test_data:
         print("=" * 100)
         print(row)
         sa = create_sa(row['ts_code'], row['end_date'])
-        if row['bs'].endswith('二买'):
+        if row['bs'] == '二买':
             b, detail = sa.is_second_buy(row['freq'], tolerance=0.1)
             print(b, detail)
-        elif row['bs'].endswith('二卖'):
+        elif row['bs'] == '二卖':
             b, detail = sa.is_second_sell(row['freq'], tolerance=0.1)
             print(b, detail)
-        elif row['bs'].endswith('一卖'):
+        elif row['bs'] == '一卖':
             b, detail = sa.is_first_sell(row['freq'], tolerance=0.1)
             print(b, detail)
         print('\n')
