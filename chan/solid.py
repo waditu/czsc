@@ -327,7 +327,7 @@ def is_xd_buy(ka, ka1=None, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
+    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4 or ka.xd[-1]['fx_mark'] == 'g':
         return False, None
 
     b = False
@@ -336,19 +336,20 @@ def is_xd_buy(ka, ka1=None, ka2=None, tolerance=0.03):
         "操作提示": "线买",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向下中枢数量为%i" % down_zs_number(ka)
+        "其他信息": ""
     }
     last_xd = ka.xd[-1]
-    if last_xd['fx_mark'] == 'd':
-        zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
-        zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
-        if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') or last_xd['xd'] >= ka.xd[-3]['xd']:
-            detail['出现时间'] = last_xd['dt']
-            price = last_xd['xd']
-            detail["基准价格"] = price
-            # 确保当前价格在容差范围内
-            if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
-                b = True
+    base_price = last_xd['xd']
+    zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
+    zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
+
+    # 线买的两种情况：1）向下线段不创新低；2）向下线段新低背驰
+    if (last_xd['xd'] >= ka.xd[-3]['xd'] or
+        (last_xd['xd'] < ka.xd[-3]['xd'] and is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'))) \
+            and __in_tolerance(base_price, ka.latest_price, tolerance):
+        detail['出现时间'] = last_xd['dt']
+        detail["基准价格"] = base_price
+        b = True
 
     if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'g':
         b = False
@@ -370,7 +371,7 @@ def is_xd_sell(ka, ka1=None, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4:
+    if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 4 or ka.xd[-1]['fx_mark'] == 'd':
         return False, None
 
     b = False
@@ -379,19 +380,20 @@ def is_xd_sell(ka, ka1=None, ka2=None, tolerance=0.03):
         "操作提示": "线卖",
         "出现时间": "",
         "基准价格": 0,
-        "其他信息": "向上中枢数量为%i" % up_zs_number(ka)
+        "其他信息": ""
     }
     last_xd = ka.xd[-1]
-    if last_xd['fx_mark'] == 'g':
-        zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
-        zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
-        if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') or last_xd['xd'] <= ka.xd[-3]['xd']:
-            detail['出现时间'] = last_xd['dt']
-            price = last_xd['xd']
-            detail["基准价格"] = price
-            # 确保当前价格在容差范围内
-            if (1 - tolerance) * price <= ka.kline[-1]['close'] <= (1 + tolerance) * price:
-                b = True
+    base_price = last_xd['xd']
+    zs1 = [ka.xd[-2]['dt'], ka.xd[-1]['dt']]
+    zs2 = [ka.xd[-4]['dt'], ka.xd[-3]['dt']]
+
+    # 线卖的两种情况：1）向上线段不创新高；2）向上线段新高背驰
+    if (last_xd['xd'] <= ka.xd[-3]['xd']
+            or (last_xd['xd'] > ka.xd[-3]['xd'] and is_bei_chi(ka, zs1, zs2, direction='up', mode='xd'))) \
+            and __in_tolerance(base_price, ka.latest_price, tolerance):
+        detail['出现时间'] = last_xd['dt']
+        detail["基准价格"] = base_price
+        b = True
 
     if isinstance(ka1, KlineAnalyze) and ka1.bi[-1]['fx_mark'] == 'd':
         b = False
