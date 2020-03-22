@@ -36,6 +36,16 @@ def down_zs_number(ka):
     return zs_num
 
 
+def is_macd_cross(ka, direction="up"):
+    """判断macd的向上金叉、向下死叉"""
+    df = pd.DataFrame(ka.kline)
+    df = macd(df)
+    if (direction == "up" and df.iloc[-1]['diff'] > df.iloc[-1]['dea']) \
+            or (direction == "down" and df.iloc[-1]['diff'] < df.iloc[-1]['dea']):
+        return True
+    return False
+
+
 def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
     """判断 zs1 对 zs2 是否有背驰
 
@@ -240,14 +250,9 @@ class KlineAnalyze(object):
         return bi
 
     def __handle_last_bi(self, bi):
-        """判断最后一个笔标记是否有效，有两个方案：
-        方案一规则如下：
+        """判断最后一个笔标记是否有效，规则如下：
         1）如果最后一个笔标记为顶分型，最近一根K线的最高价在这个顶分型上方，该标记无效；
         2）如果最后一个笔标记为底分型，最近一根K线的最低价在这个底分型下方，该标记无效；
-
-        方案二规则如下：
-        1）如果最后一个笔标记为顶分型，最近一个底分型在这个顶分型上方，该标记无效；
-        2）如果最后一个笔标记为底分型，最近一个顶分型在这个底分型下方，该标记无效；
         """
         last_bi = bi[-1]
 
@@ -255,12 +260,6 @@ class KlineAnalyze(object):
         if (last_bi['fx_mark'] == 'g' and last_k['high'] >= last_bi['bi']) or \
                 (last_bi['fx_mark'] == 'd' and last_k['low'] <= last_bi['bi']):
             bi.pop()
-
-        # fx_last_d = [x for x in self.fx if x['fx_mark'] == "d"][-1]
-        # fx_last_g = [x for x in self.fx if x['fx_mark'] == "g"][-1]
-        # if (last_bi['fx_mark'] == 'g' and fx_last_d['fx'] >= last_bi['bi']) or \
-        #         (last_bi['fx_mark'] == 'd' and fx_last_g['fx'] <= last_bi['bi']):
-        #     bi.pop()
         return bi
 
     def _find_bi(self):
@@ -354,30 +353,15 @@ class KlineAnalyze(object):
         return xd_v
 
     def __handle_last_xd(self, xd_v):
-        """判断最后一个线段标记是否有效，有以下两个方案：
-
-        方案一规则如下：
+        """判断最后一个线段标记是否有效，规则如下：
         1）如果最后一个线段标记为顶分型，最近一根K线的最高价在这个顶分型上方，该标记无效；
         2）如果最后一个线段标记为底分型，最近一根K线的最低价在这个底分型下方，该标记无效；
-
-
-        方案二规则如下：
-        1）如果最后一个线段标记为顶分型，最近一个向下笔结束在这个顶分型上方，该线段标记无效；
-        2）如果最后一个线段标记为底分型，最近一个向上笔结束在这个底分型下方，该线段标记无效；
-
         """
         last_xd = xd_v[-1]
-
         last_k = self.kline_new[-1]
         if (last_xd['fx_mark'] == 'g' and last_k['high'] >= last_xd['xd']) or \
                 (last_xd['fx_mark'] == 'd' and last_k['low'] <= last_xd['xd']):
             xd_v.pop()
-
-        # bi_last_d = [x for x in self.bi if x['fx_mark'] == "d"][-1]
-        # bi_last_g = [x for x in self.bi if x['fx_mark'] == "g"][-1]
-        # if (last_xd['fx_mark'] == 'g' and bi_last_d['bi'] >= last_xd['xd']) or \
-        #         (last_xd['fx_mark'] == 'd' and bi_last_g['bi'] <= last_xd['xd']):
-        #     xd_v.pop()
         return xd_v
 
     def __get_potential_xd_v2(self):
@@ -390,7 +374,6 @@ class KlineAnalyze(object):
         （3）经过步骤（2）的处理后，余下的笔标记，如果相邻的是顶和底，那么这就可以划为线段。
         """
         bi_p = sorted(deepcopy(self.bi), key=lambda x: x['dt'], reverse=False)
-        # 确认哪些笔标记可以构成线段
         xd = []
         for i in range(len(bi_p)):
             k = deepcopy(bi_p[i])
@@ -411,7 +394,26 @@ class KlineAnalyze(object):
                             (k0['fx_mark'] == 'd' and k['xd'] <= k0['xd']):
                         xd.pop(-1)
                         continue
-                    xd.append(k)
+
+                    bi_m = [x for x in self.bi if k0['dt'] <= x['dt'] <= k['dt']]
+                    bi_r = [x for x in self.bi if x['dt'] >= k['dt']]
+                    # 一线段内部至少三笔
+                    if len(bi_m) >= 4:
+                        if len(bi_m) == 4:
+                            if len(bi_r) <= 1:
+                                continue
+                            # 两个连续线段标记之间只有三笔的处理
+                            lp2 = bi_m[-2]
+                            rp2 = bi_r[1]
+                            if lp2['fx_mark'] != rp2['fx_mark']:
+                                continue
+
+                            if (k['fx_mark'] == "g" and lp2['bi'] < rp2['bi'] and bi_m[-1]['bi'] > bi_m[-3]['bi']) \
+                                    or (k['fx_mark'] == "d" and lp2['bi'] > rp2['bi']
+                                        and bi_m[-1]['bi'] < bi_m[-3]['bi']):
+                                xd.append(k)
+                        else:
+                            xd.append(k)
         return xd
 
     def _find_xd(self):
@@ -419,7 +421,6 @@ class KlineAnalyze(object):
             # xd = self.__get_potential_xd()
             # xd = self.__get_valid_xd(xd)
             xd = self.__get_potential_xd_v2()
-            xd = self.__get_valid_xd(xd)
             xd = self.__handle_last_xd(xd)
             dts = [x['dt'] for x in xd]
 
