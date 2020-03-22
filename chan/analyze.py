@@ -272,86 +272,6 @@ class KlineAnalyze(object):
                 k['bi'] = k['fx']
         return bi
 
-    def __get_potential_xd(self):
-        """依据不创新高、新低的近似标准找出所有潜在线段标记"""
-        bi = deepcopy(self.bi)
-        xd = []
-        potential = bi[0]
-
-        i = 0
-        while i < len(bi) - 3:
-            k1, k2, k3 = bi[i + 1], bi[i + 2], bi[i + 3]
-
-            if potential['fx_mark'] == "d":
-                assert k2['fx_mark'] == 'd'
-                if k3['bi'] < k1['bi']:
-                    potential['xd'] = potential['bi']
-                    xd.append(potential)
-                    i += 1
-                    potential = deepcopy(bi[i])
-                else:
-                    i += 2
-            elif potential['fx_mark'] == "g":
-                assert k2['fx_mark'] == 'g'
-                if k3['bi'] > k1['bi']:
-                    potential['xd'] = potential['bi']
-                    xd.append(potential)
-                    i += 1
-                    potential = deepcopy(bi[i])
-                else:
-                    i += 2
-            else:
-                raise ValueError
-
-        potential['xd'] = potential['bi']
-        xd.append(potential)
-        xd = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "xd": x['xd']} for x in xd]
-        return xd
-
-    def __get_valid_xd(self, xd_p):
-        bi = deepcopy(self.bi)
-        xd_v = []
-        for i in range(len(xd_p)):
-            p2 = deepcopy(xd_p[i])
-            if i == 0:
-                xd_v.append(p2)
-            else:
-                p1 = deepcopy(xd_v[-1])
-                if p1['fx_mark'] == p2['fx_mark']:
-                    if (p1['fx_mark'] == 'g' and p1['xd'] < p2['xd']) or \
-                            (p1['fx_mark'] == 'd' and p1['xd'] > p2['xd']):
-                        xd_v.pop(-1)
-                        xd_v.append(p2)
-                else:
-                    # 连续两个不同类型线段标记不允许出现“线段高点低于线段低点”和“线段低点高于线段高点”的情况；
-                    if (p1['fx_mark'] == "g" and p1['xd'] < p2['xd']) or \
-                            (p1['fx_mark'] == "d" and p1['xd'] > p2['xd']):
-                        continue
-
-                    # bi_l = [x for x in bi if x['dt'] <= p1['dt']]
-                    bi_m = [x for x in bi if p1['dt'] <= x['dt'] <= p2['dt']]
-                    bi_r = [x for x in bi if x['dt'] >= p2['dt']]
-                    if len(bi_m) == 2:
-                        # 两个连续线段标记之间只有一笔的处理
-                        if i == len(xd_p) - 1:
-                            break
-                        p3 = deepcopy(xd_p[i + 1])
-                        if (p1['fx_mark'] == "g" and p1['xd'] < p3['xd']) or \
-                                (p1['fx_mark'] == "d" and p1['xd'] > p3['xd']):
-                            xd_v.pop(-1)
-                            xd_v.append(p3)
-                    elif len(bi_m) == 4 and len(bi_r) >= 2:
-                        # 两个连续线段标记之间只有三笔的处理
-                        lp2 = bi_m[-2]
-                        rp2 = bi_r[1]
-                        if lp2['fx_mark'] == rp2['fx_mark']:
-                            if (p2['fx_mark'] == "g" and lp2['bi'] < rp2['bi']) or \
-                                    (p2['fx_mark'] == "d" and lp2['bi'] > rp2['bi']):
-                                xd_v.append(p2)
-                    else:
-                        xd_v.append(p2)
-        return xd_v
-
     def __handle_last_xd(self, xd_v):
         """判断最后一个线段标记是否有效，规则如下：
         1）如果最后一个线段标记为顶分型，最近一根K线的最高价在这个顶分型上方，该标记无效；
@@ -364,7 +284,7 @@ class KlineAnalyze(object):
             xd_v.pop()
         return xd_v
 
-    def __get_potential_xd_v2(self):
+    def __get_potential_xd(self):
         """识别线段标记：从已经识别出来的笔中识别线段
 
         划分线段的步骤：
@@ -418,9 +338,7 @@ class KlineAnalyze(object):
 
     def _find_xd(self):
         try:
-            # xd = self.__get_potential_xd()
-            # xd = self.__get_valid_xd(xd)
-            xd = self.__get_potential_xd_v2()
+            xd = self.__get_potential_xd()
             xd = self.__handle_last_xd(xd)
             dts = [x['dt'] for x in xd]
 
