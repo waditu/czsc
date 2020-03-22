@@ -36,16 +36,6 @@ def down_zs_number(ka):
     return zs_num
 
 
-def is_macd_cross(ka, direction="up"):
-    """判断macd的向上金叉、向下死叉"""
-    df = pd.DataFrame(ka.kline)
-    df = macd(df)
-    if (direction == "up" and df.iloc[-1]['diff'] > df.iloc[-1]['dea']) \
-            or (direction == "down" and df.iloc[-1]['diff'] < df.iloc[-1]['dea']):
-        return True
-    return False
-
-
 def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
     """判断 zs1 对 zs2 是否有背驰
 
@@ -304,6 +294,7 @@ class KlineAnalyze(object):
             else:
                 k0 = xd[-1]
                 if k0['fx_mark'] == k['fx_mark']:
+                    # 处理同一性质的笔标记
                     if (k0['fx_mark'] == "g" and k0['xd'] < k['xd']) or \
                             (k0['fx_mark'] == "d" and k0['xd'] > k['xd']):
                         xd.pop(-1)

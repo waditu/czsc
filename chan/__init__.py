@@ -10,7 +10,7 @@ from .solid import is_second_buy, is_second_sell
 from .solid import is_third_buy, is_third_sell
 
 
-__version__ = "0.2.18"
+__version__ = "0.2.19"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 

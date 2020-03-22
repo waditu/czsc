@@ -8,12 +8,12 @@ from pyecharts.charts import Kline, Line, Bar, Grid, Scatter
 from .ta import macd
 
 
-def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px"):
+def plot_kline(ka, bs=None, file_html="chan.html", width="1400px", height="680px"):
     """
 
     :param ka: KlineAnalyze
     :param bs: pd.DataFrame
-        买卖点，包含三个字段 ["操作提示", "基准价格", "出现时间"]
+        买卖点，包含三个字段 ["操作提示", "交易时间", "交易价格"]
     :param file_html: str
     :param width: str
     :param height: str
@@ -61,7 +61,7 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px
                     is_show=False, type_="inside", xaxis_index=[0, 0], range_end=100
                 ),
                 opts.DataZoomOpts(
-                    is_show=True, xaxis_index=[0, 1], pos_top="97%", range_end=100
+                    is_show=True, xaxis_index=[0, 1], pos_top="96%", range_end=100
                 ),
                 opts.DataZoomOpts(is_show=False, xaxis_index=[0, 2], range_end=100),
             ],
@@ -84,7 +84,7 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px
             is_connect_nones=True,
             symbol='diamond',
             symbol_size=8,
-            linestyle_opts=opts.LineStyleOpts(opacity=1, type_='dotted', width=1.5),
+            linestyle_opts=opts.LineStyleOpts(opacity=1, type_='dotted', width=2),
             label_opts=opts.LabelOpts(is_show=False),
         )
             .add_yaxis(
@@ -94,7 +94,7 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px
             is_connect_nones=True,
             symbol='triangle',
             symbol_size=12,
-            linestyle_opts=opts.LineStyleOpts(opacity=1, type_='solid', width=1.5),
+            linestyle_opts=opts.LineStyleOpts(opacity=1, type_='solid', width=2),
             label_opts=opts.LabelOpts(is_show=True, position='right'),
         )
             .set_global_opts(
@@ -119,10 +119,10 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px
     if isinstance(bs, pd.DataFrame) and len(bs) > 0:
         c = (
             Scatter()
-                .add_xaxis(bs['出现时间'].to_list())
+                .add_xaxis(bs['交易时间'].to_list())
                 .add_yaxis(
                 "买卖点",
-                bs['基准价格'].to_list(),
+                bs['交易价格'].to_list(),
                 label_opts=opts.LabelOpts(
                     is_show=True,
                     position="left",
@@ -243,7 +243,7 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1900px", height="800px
     grid_chart = Grid(init_opts=opts.InitOpts(width=width, height=height, page_title=title))
     grid_chart.add_js_funcs("var barData = {}".format(df[['open', 'close', 'low', 'high']].values.tolist()))
     if isinstance(bs, pd.DataFrame) and len(bs) > 0:
-        grid_chart.add_js_funcs("var bsName = {}".format(bs[["操作提示", "基准价格"]].values.tolist()))
+        grid_chart.add_js_funcs("var bsName = {}".format(bs[["操作提示", "交易价格"]].values.tolist()))
 
     grid_chart.add(
         overlap_kline_line,

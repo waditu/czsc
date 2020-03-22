@@ -1,6 +1,8 @@
 # coding: utf-8
 
+import pandas as pd
 import traceback
+from .ta import macd
 from .analyze import is_bei_chi, KlineAnalyze, down_zs_number, up_zs_number
 
 
@@ -27,8 +29,18 @@ def __get_sub_xds(ka, ka1):
     return xds
 
 
+def is_macd_cross(ka, direction="up"):
+    """判断macd的向上金叉、向下死叉"""
+    df = pd.DataFrame(ka.kline)
+    df = macd(df)
+    if (direction == "up" and df.iloc[-1]['diff'] > df.iloc[-1]['dea']) \
+            or (direction == "down" and df.iloc[-1]['diff'] < df.iloc[-1]['dea']):
+        return True
+    return False
+
+
 def is_first_buy(ka, ka1, ka2=None, tolerance=0.03):
-    """确定某一级别一买，包括由盘整背驰引发的类一买
+    """确定某一级别一买
     注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
     :param ka: KlineAnalyze
@@ -78,7 +90,7 @@ def is_first_buy(ka, ka1, ka2=None, tolerance=0.03):
 
 
 def is_first_sell(ka, ka1, ka2=None, tolerance=0.03):
-    """确定某一级别一卖，包括由盘整背驰引发的类一卖
+    """确定某一级别一卖
 
     注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
 
@@ -142,11 +154,7 @@ def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if (not isinstance(ka, KlineAnalyze)) \
-            or len(ka.xd) < 6 \
-            or (not isinstance(ka1, KlineAnalyze))\
-            or (not ka1.xd) \
-            or ka1.xd[-1]['fx_mark'] == 'g':
+    if len(ka.xd) < 6 or not ka1.xd or ka1.xd[-1]['fx_mark'] == 'g':
         return False, None
 
     b = False
@@ -189,11 +197,7 @@ def is_second_sell(ka, ka1, ka2=None, tolerance=0.03):
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
     :return:
     """
-    if (not isinstance(ka, KlineAnalyze)) \
-            or len(ka.xd) < 6 \
-            or (not isinstance(ka1, KlineAnalyze))\
-            or (not ka1.xd) \
-            or ka1.xd[-1]['fx_mark'] == 'd':
+    if len(ka.xd) < 6 or not ka1.xd or ka1.xd[-1]['fx_mark'] == 'd':
         return False, None
 
     b = False
@@ -220,7 +224,7 @@ def is_second_sell(ka, ka1, ka2=None, tolerance=0.03):
     return b, detail
 
 
-def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03):
+def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03, max_num=4):
     """确定某一级别三买
 
     第三类买点: 一个第三类买点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段不跌回中枢。
@@ -233,6 +237,8 @@ def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03):
         下级别，默认为 None
     :param tolerance: float
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
+    :param max_num: int
+        前面的最大中枢数量
     :return:
     """
     if len(ka.xd) < 6 or ka.xd[-1]['fx_mark'] == 'g':
@@ -241,7 +247,7 @@ def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03):
     uz = up_zs_number(ka)
     zs_g = min([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "g"])
     zs_d = max([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "d"])
-    if zs_d > zs_g or uz >= 4:
+    if zs_d > zs_g or uz >= max_num:
         return False, None
 
     b = False
@@ -267,7 +273,7 @@ def is_third_buy(ka, ka1=None, ka2=None, tolerance=0.03):
     return b, detail
 
 
-def is_third_sell(ka, ka1=None, ka2=None, tolerance=0.03):
+def is_third_sell(ka, ka1=None, ka2=None, tolerance=0.03, max_num=4):
     """确定某一级别三卖
 
     第三类卖点: 一个第三类卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段不升破中枢的低点。
@@ -280,6 +286,8 @@ def is_third_sell(ka, ka1=None, ka2=None, tolerance=0.03):
         下级别，默认为 None
     :param tolerance: float
         相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
+    :param max_num: int
+        前面的最大中枢数量
     :return:
     """
     if not isinstance(ka, KlineAnalyze) or len(ka.xd) < 6 or ka.xd[-1]['fx_mark'] == 'd':
@@ -288,7 +296,7 @@ def is_third_sell(ka, ka1=None, ka2=None, tolerance=0.03):
     dz = down_zs_number(ka)
     zs_g = min([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "g"])
     zs_d = max([x['xd'] for x in ka.xd[-6:-1] if x['fx_mark'] == "d"])
-    if zs_d > zs_g or dz >= 4:
+    if zs_d > zs_g or dz >= max_num:
         return False, None
 
     b = False

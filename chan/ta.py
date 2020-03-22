@@ -16,8 +16,7 @@ def ma(kline, params=(5, 10, 20, 60, 120, 250)):
     """
     for p in params:
         col = "ma" + str(p)
-        kline[col] = kline['close'].rolling(p).mean()
-        kline[col] = kline[col].apply(round, args=(2,))
+        kline.loc[:, col] = kline['close'].rolling(p).mean().apply(round, args=(2,))
     return kline
 
 
@@ -31,14 +30,13 @@ def macd(kline):
     """
 
     short_, long_, m = 12, 26, 9
-    kline['diff'] = kline['close'].ewm(adjust=False, alpha=2 / (short_ + 1), ignore_na=True).mean() - \
-                    kline['close'].ewm(adjust=False, alpha=2 / (long_ + 1), ignore_na=True).mean()
-    kline['dea'] = kline['diff'].ewm(adjust=False, alpha=2 / (m + 1), ignore_na=True).mean()
-    kline['macd'] = 2 * (kline['diff'] - kline['dea'])
+    kline.loc[:, 'diff'] = kline['close'].ewm(adjust=False, alpha=2 / (short_ + 1), ignore_na=True).mean() - \
+                            kline['close'].ewm(adjust=False, alpha=2 / (long_ + 1), ignore_na=True).mean()
+    kline.loc[:, 'dea'] = kline['diff'].ewm(adjust=False, alpha=2 / (m + 1), ignore_na=True).mean()
+    kline.loc[:, 'macd'] = 2 * (kline['diff'] - kline['dea'])
 
-    kline['diff'] = kline['diff'].apply(round, args=(2,))
-    kline['dea'] = kline['dea'].apply(round, args=(2,))
-    kline['macd'] = kline['macd'].apply(round, args=(2,))
+    for col in ['diff', 'dea', 'macd']:
+        kline.loc[:, col] = kline[col].apply(round, args=(2,))
     return kline
 
 
@@ -50,13 +48,11 @@ def boll(kline):
     :return: pd.DataFrame
         在原始数据中新增 BOLL 指标结果
     """
-    kline['boll-mid'] = kline['close'].rolling(26).mean()
-    kline['boll-tmp2'] = kline['close'].rolling(20).std()
-    kline['boll-top'] = kline['boll-mid'] + 2 * kline['boll-tmp2']
-    kline['boll-bottom'] = kline['boll-mid'] - 2 * kline['boll-tmp2']
+    kline.loc[:, 'boll-mid'] = kline['close'].rolling(26).mean()
+    kline.loc[:, 'boll-tmp2'] = kline['close'].rolling(20).std()
+    kline.loc[:, 'boll-top'] = kline['boll-mid'] + 2 * kline['boll-tmp2']
+    kline.loc[:, 'boll-bottom'] = kline['boll-mid'] - 2 * kline['boll-tmp2']
 
-    kline['boll-mid'] = kline['boll-mid'].apply(round, args=(2,))
-    kline['boll-tmp2'] = kline['boll-tmp2'].apply(round, args=(2,))
-    kline['boll-top'] = kline['boll-top'].apply(round, args=(2,))
-    kline['boll-bottom'] = kline['boll-bottom'].apply(round, args=(2,))
+    for col in ['boll-mid', 'boll-tmp2', 'boll-top', 'boll-bottom']:
+        kline.loc[:, col] = kline[col].apply(round, args=(2,))
     return kline
