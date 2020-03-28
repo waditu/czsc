@@ -2,7 +2,8 @@
 
 import pandas as pd
 import traceback
-from .ta import macd
+from copy import deepcopy
+from .ta import macd, ma
 from .analyze import is_bei_chi, KlineAnalyze, down_zs_number, up_zs_number
 
 
@@ -556,3 +557,180 @@ class SolidAnalyze(object):
         ka, ka1, ka2 = self._get_ka(freq)
         return is_xd_sell(ka, ka1, ka2, tolerance)
 
+
+def is_single_ma_buy(kline, p=5, max_distant=0.1):
+    """单均线买点"""
+    kline = deepcopy(kline)
+    kline = ma(kline, params=(p,))
+    ma_col = "ma%i" % p
+    kline['d'] = kline[ma_col].diff(1)
+
+    b = False
+    detail = {
+        "标的代码": kline.iloc[0]['symbol'],
+        "操作提示": "单均线买",
+        "出现时间": kline.iloc[-1]['dt'],
+        "基准价格": kline.iloc[-1]['close'],
+        "其他信息": ""
+    }
+
+    distant = (kline.iloc[-1]['close'] - kline.iloc[-1][ma_col]) / kline.iloc[-1][ma_col]
+
+    # 在均线下出现的买点
+    if distant < 0:
+        if kline.iloc[-1]['d'] > kline.iloc[-2]['d'] * 1.2 \
+                and kline.iloc[-2]['d'] > kline.iloc[-3]['d'] * 1.2 \
+                and kline.iloc[-3]['d'] > 0:
+            b = True
+            detail['其他信息'] = "买点一：价格跌破均线，但均线仍维持上行"
+            return b, detail
+
+        if abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 1.5) \
+                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 1.5) \
+                and abs(distant) > max_distant \
+                and kline.iloc[-3]['d'] < 0:
+            b = True
+            detail['其他信息'] = "买点二：价格在连续的暴跌走势中远离均线"
+            return b, detail
+
+    # 在均线上出现的买点
+    if distant > 0:
+        if kline.iloc[-1]['d'] > kline.iloc[-2]['d'] > kline.iloc[-3]['d'] > 0 > kline.iloc[-4]['d']:
+            b = True
+            detail['其他信息'] = "买点三：均线从前期的下行逐渐走平，此时价格突破均线，在均线上运行"
+            return b, detail
+
+        if kline.iloc[-2]['close'] < kline.iloc[-3]['close'] < kline.iloc[-4]['close'] \
+                and kline.iloc[-1]['close'] > kline.iloc[-2]['close'] \
+                and abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 1.2) \
+                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 1.2) \
+                and kline.iloc[-3]['d'] > 0:
+            b = True
+            detail['其他信息'] = "买点四：价格上升过程中突然下跌靠近均线，在未跌破均线的时候再次上涨"
+            return b, detail
+
+    return b, detail
+
+
+def is_single_ma_sell(kline, p=5, max_distant=0.1):
+    """单均线卖点"""
+    kline = ma(kline, params=(p,))
+    ma_col = "ma%i" % p
+    kline['d'] = kline[ma_col].diff(1)
+
+    b = False
+    detail = {
+        "标的代码": kline.iloc[0]['symbol'],
+        "操作提示": "单均线卖",
+        "出现时间": kline.iloc[-1]['dt'],
+        "基准价格": kline.iloc[-1]['close'],
+        "其他信息": ""
+    }
+
+    distant = (kline.iloc[-1]['close'] - kline.iloc[-1][ma_col]) / kline.iloc[-1][ma_col]
+
+    # 在均线下形成卖点
+    if distant < 0:
+        if abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d']) \
+                and kline.iloc[-2]['d'] < 0 \
+                and kline.iloc[-3]['d'] > 0:
+            b = True
+            detail['其他信息'] = "卖点一：价格跌破均线，并且均线转向下行"
+            return b, detail
+
+        if kline.iloc[-2]['close'] > kline.iloc[-3]['close'] \
+                and kline.iloc[-1]['close'] < kline.iloc[-2]['close']:
+            b = True
+            detail['其他信息'] = "卖点二：价格在均线之下试图突破均线，但未成功，之后继续下跌"
+            return b, detail
+
+    # 在均线上形成卖点
+    if distant > 0:
+        if abs(distant) > max_distant \
+                and abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 2) \
+                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 2):
+            b = True
+            detail['其他信息'] = "卖点三：价格在不断的暴涨中逐渐远离均线"
+            return b, detail
+
+        if kline.iloc[-1]['close'] < kline.iloc[-2]['close'] < kline.iloc[-3]['close'] \
+                and kline.iloc[-1]['d'] < 0:
+            b = True
+            detail['其他信息'] = "卖点四：价格短期突破均线，之后立即跌回"
+            return b, detail
+
+    return b, detail
+
+
+def __macd_cross_bs(kline):
+    kline = deepcopy(kline)
+    kline = macd(kline)
+    kline.loc[:, "macd_cross"] = kline.apply(lambda x: "金叉" if x['diff'] >= x['dea'] else "死叉", axis=1)
+
+    kline['m_'] = kline['macd_cross'].shift(1)
+    idx = kline[kline['m_'] != kline['macd_cross']].index.tolist()
+
+    g_max = []  # 金叉的最大值序列
+    d_min = []  # 死叉的最小值序列
+    for i in range(len(idx)):
+        if i == len(idx)-1:
+            k = kline.iloc[idx[i]:]
+        else:
+            k = kline.iloc[idx[i]:idx[i+1]]
+
+        if k.iloc[0]['macd_cross'] == '金叉':
+            g_max.append(max(k.high))
+        elif k.iloc[0]['macd_cross'] == '死叉':
+            d_min.append(min(k.low))
+        else:
+            raise ValueError
+
+    if kline.iloc[-1]['macd_cross'] == '金叉' and d_min[-1] > d_min[-2]:
+        return "buy"
+
+    if kline.iloc[-1]['macd_cross'] == '死叉' and g_max[-1] < g_max[-2]:
+        return "sell"
+
+    return None
+
+
+def is_macd_buy(kline):
+    """当下是金叉，前一个死叉不创新低，做多
+
+    :param kline:
+    :return:
+    """
+    b = False
+    detail = {
+        "标的代码": kline.iloc[0]['symbol'],
+        "操作提示": "MACD买",
+        "出现时间": kline.iloc[-1]['dt'],
+        "基准价格": kline.iloc[-1]['close'],
+        "其他信息": ""
+    }
+    bs = __macd_cross_bs(kline)
+    if bs == "buy":
+        b = True
+        detail['其他信息'] = "MACD当下金叉，前一个死叉不创新低，做多"
+    return b, detail
+
+
+def is_macd_sell(kline):
+    """当下是死叉，前一个金叉不创新高，做空
+
+    :param kline:
+    :return:
+    """
+    b = False
+    detail = {
+        "标的代码": kline.iloc[0]['symbol'],
+        "操作提示": "MACD卖",
+        "出现时间": kline.iloc[-1]['dt'],
+        "基准价格": kline.iloc[-1]['close'],
+        "其他信息": ""
+    }
+    bs = __macd_cross_bs(kline)
+    if bs == "sell":
+        b = True
+        detail['其他信息'] = "MACD当下死叉，前一个金叉不创新高，做空"
+    return b, detail
