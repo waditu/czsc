@@ -129,6 +129,7 @@ def is_first_sell(ka, ka1, ka2=None, tolerance=0.03):
         zs1 = [xds[-2]['dt'], xds[-1]['dt']]
         zs2 = [xds[-4]['dt'], xds[-3]['dt']]
         base_price = xds[-1]['xd']
+
         if is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') \
                 and __in_tolerance(base_price, ka.latest_price, tolerance):
             detail["出现时间"] = xds[-1]['dt']
@@ -685,10 +686,18 @@ def __macd_cross_bs(kline):
         else:
             raise ValueError
 
-    if kline.iloc[-1]['macd_cross'] == '金叉' and d_min[-1] > d_min[-2]:
+    # if kline.iloc[-1]['macd_cross'] == '金叉' and d_min[-1] > d_min[-2]:
+    #     return "buy"
+    #
+    # if kline.iloc[-1]['macd_cross'] == '死叉' and g_max[-1] < g_max[-2]:
+    #     return "sell"
+    #
+    # return None
+    m1, m2, m3 = kline['macd'][-3:]
+    if kline.iloc[-1]['macd_cross'] == '死叉' and d_min[-1] > d_min[-2] and m1 > m2 < m3:
         return "buy"
 
-    if kline.iloc[-1]['macd_cross'] == '死叉' and g_max[-1] < g_max[-2]:
+    if kline.iloc[-1]['macd_cross'] == '金叉' and g_max[-1] < g_max[-2] and m1 < m2 > m3:
         return "sell"
 
     return None
