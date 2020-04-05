@@ -452,6 +452,13 @@ class SolidAnalyze(object):
             raise ValueError
         return ka, ka1, ka2
 
+    def _m_detail(self, detail, freq):
+        detail['交易级别'] = freq
+        ka = self.kas['1分钟']
+        detail['最新时间'] = ka.end_dt
+        detail['最新价格'] = ka.latest_price
+        return detail
+
     def is_first_buy(self, freq, tolerance=0.03):
         """确定某一级别一买，包括由盘整背驰引发的类一买
 
@@ -465,7 +472,10 @@ class SolidAnalyze(object):
         """
         ka, ka1, ka2 = self._get_ka(freq)
         assert freq != "日线", "日线级别不能识别一买"
-        return is_first_buy(ka, ka1, ka2, tolerance)
+        b, detail = is_first_buy(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_first_sell(self, freq, tolerance=0.03):
         """确定某一级别一卖，包括由盘整背驰引发的类一卖
@@ -480,7 +490,10 @@ class SolidAnalyze(object):
         """
         ka, ka1, ka2 = self._get_ka(freq)
         assert freq != "日线", "日线级别不能识别一卖"
-        return is_first_sell(ka, ka1, ka2, tolerance)
+        b, detail = is_first_sell(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_second_buy(self, freq, tolerance=0.03):
         """确定某一级别二买，包括类二买
@@ -495,7 +508,10 @@ class SolidAnalyze(object):
         """
         ka, ka1, ka2 = self._get_ka(freq)
         assert freq != "日线", "日线级别不能识别二买"
-        return is_second_buy(ka, ka1, ka2, tolerance)
+        b, detail = is_second_buy(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_second_sell(self, freq, tolerance=0.03):
         """确定某一级别二卖，包括类二卖
@@ -508,7 +524,10 @@ class SolidAnalyze(object):
         """
         ka, ka1, ka2 = self._get_ka(freq)
         assert freq != "日线", "日线级别不能识别二卖"
-        return is_second_sell(ka, ka1, ka2, tolerance)
+        b, detail = is_second_sell(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_third_buy(self, freq, tolerance=0.03):
         """确定某一级别三买
@@ -520,7 +539,10 @@ class SolidAnalyze(object):
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
-        return is_third_buy(ka, ka1, ka2, tolerance)
+        b, detail = is_third_buy(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_third_sell(self, freq, tolerance=0.03):
         """确定某一级别三卖
@@ -532,7 +554,10 @@ class SolidAnalyze(object):
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
-        return is_third_sell(ka, ka1, ka2, tolerance)
+        b, detail = is_third_sell(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_xd_buy(self, freq, tolerance=0.03):
         """同级别分解买点，我称之为线买，即线段买点
@@ -544,7 +569,10 @@ class SolidAnalyze(object):
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
-        return is_xd_buy(ka, ka1, ka2, tolerance)
+        b, detail = is_xd_buy(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
     def is_xd_sell(self, freq, tolerance=0.03):
         """同级别分解卖点，我称之为线卖，即线段卖点
@@ -556,7 +584,10 @@ class SolidAnalyze(object):
         :return:
         """
         ka, ka1, ka2 = self._get_ka(freq)
-        return is_xd_sell(ka, ka1, ka2, tolerance)
+        b, detail = is_xd_sell(ka, ka1, ka2, tolerance)
+        if b:
+            detail = self._m_detail(detail, freq)
+        return b, detail
 
 
 def is_single_ma_buy(kline, p=5, max_distant=0.1):
