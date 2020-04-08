@@ -590,8 +590,9 @@ class SolidAnalyze(object):
         return b, detail
 
 
-def is_single_ma_buy(kline, p=5, max_distant=0.1):
+def is_single_ma_buy(ka, p=5, max_distant=0.1):
     """单均线买点"""
+    kline = pd.DataFrame(ka.kline)
     kline = deepcopy(kline)
     kline = ma(kline, params=(p,))
     ma_col = "ma%i" % p
@@ -644,8 +645,10 @@ def is_single_ma_buy(kline, p=5, max_distant=0.1):
     return b, detail
 
 
-def is_single_ma_sell(kline, p=5, max_distant=0.1):
+def is_single_ma_sell(ka, p=5, max_distant=0.1):
     """单均线卖点"""
+    kline = pd.DataFrame(ka.kline)
+    kline = deepcopy(kline)
     kline = ma(kline, params=(p,))
     ma_col = "ma%i" % p
     kline['d'] = kline[ma_col].diff(1)
@@ -694,7 +697,9 @@ def is_single_ma_sell(kline, p=5, max_distant=0.1):
     return b, detail
 
 
-def __macd_cross_bs(kline):
+def __macd_cross_bs(ka):
+    kline = pd.DataFrame(ka.kline)
+    kline = deepcopy(kline)
     kline = deepcopy(kline)
     kline = macd(kline)
     kline.loc[:, "macd_cross"] = kline.apply(lambda x: "金叉" if x['diff'] >= x['dea'] else "死叉", axis=1)
@@ -717,13 +722,6 @@ def __macd_cross_bs(kline):
         else:
             raise ValueError
 
-    # if kline.iloc[-1]['macd_cross'] == '金叉' and d_min[-1] > d_min[-2]:
-    #     return "buy"
-    #
-    # if kline.iloc[-1]['macd_cross'] == '死叉' and g_max[-1] < g_max[-2]:
-    #     return "sell"
-    #
-    # return None
     m1, m2, m3 = kline['macd'][-3:]
     if kline.iloc[-1]['macd_cross'] == '死叉' and d_min[-1] > d_min[-2] and m1 > m2 < m3:
         return "buy"
@@ -734,42 +732,42 @@ def __macd_cross_bs(kline):
     return None
 
 
-def is_macd_buy(kline):
-    """当下是金叉，前一个死叉不创新低，做多
+def is_macd_buy(ka):
+    """
 
-    :param kline:
+    :param ka:
     :return:
     """
     b = False
     detail = {
-        "标的代码": kline.iloc[0]['symbol'],
+        "标的代码": ka.kline[0]['symbol'],
         "操作提示": "MACD买",
-        "出现时间": kline.iloc[-1]['dt'],
-        "基准价格": kline.iloc[-1]['close'],
+        "出现时间": ka.kline[-1]['dt'],
+        "基准价格": ka.kline[-1]['close'],
         "其他信息": ""
     }
-    bs = __macd_cross_bs(kline)
+    bs = __macd_cross_bs(ka)
     if bs == "buy":
         b = True
         detail['其他信息'] = "MACD当下金叉，前一个死叉不创新低，做多"
     return b, detail
 
 
-def is_macd_sell(kline):
-    """当下是死叉，前一个金叉不创新高，做空
+def is_macd_sell(ka):
+    """
 
-    :param kline:
+    :param ka:
     :return:
     """
     b = False
     detail = {
-        "标的代码": kline.iloc[0]['symbol'],
+        "标的代码": ka.kline[0]['symbol'],
         "操作提示": "MACD卖",
-        "出现时间": kline.iloc[-1]['dt'],
-        "基准价格": kline.iloc[-1]['close'],
+        "出现时间": ka.kline[-1]['dt'],
+        "基准价格": ka.kline[-1]['close'],
         "其他信息": ""
     }
-    bs = __macd_cross_bs(kline)
+    bs = __macd_cross_bs(ka)
     if bs == "sell":
         b = True
         detail['其他信息'] = "MACD当下死叉，前一个金叉不创新高，做空"
