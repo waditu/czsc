@@ -233,7 +233,7 @@ class KlineAnalyze(object):
                         bi.pop(-1)
                         continue
 
-                    # 一笔的顶底分型之间至少包含5根K线
+                    # 一笔的顶底分型之间至少包含5根K线（新笔只需要4根）
                     k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
                     if len(k_num) >= 4:
                         bi.append(k)
