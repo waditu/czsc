@@ -235,7 +235,7 @@ class KlineAnalyze(object):
 
                     # 一笔的顶底分型之间至少包含5根K线
                     k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
-                    if len(k_num) >= 5:
+                    if len(k_num) >= 4:
                         bi.append(k)
         return bi
 
@@ -318,6 +318,10 @@ class KlineAnalyze(object):
                             rp2 = bi_r[1]
                             if lp2['fx_mark'] != rp2['fx_mark']:
                                 continue
+
+                            # if (k['fx_mark'] == "g" and bi_m[-1]['bi'] > bi_m[-3]['bi']) \
+                            #         or (k['fx_mark'] == "d" and bi_m[-1]['bi'] < bi_m[-3]['bi']):
+                            #     xd.append(k)
 
                             if (k['fx_mark'] == "g" and lp2['bi'] < rp2['bi'] and bi_m[-1]['bi'] > bi_m[-3]['bi']) \
                                     or (k['fx_mark'] == "d" and lp2['bi'] > rp2['bi']
