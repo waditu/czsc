@@ -50,11 +50,12 @@ def get_kline(symbol, end_date=None, freq='1d', k_count=5000):
 
 def get_klines(symbol, end_date=None, freqs='60s,300s,1800s,1d', k_count=5000):
     """获取不同级别K线"""
+    freq_map = {"60s": "1分钟", "300s": "5分钟", "1800s": "30分钟", "1d": "日线"}
     klines = dict()
     freqs = freqs.split(",")
     for freq in freqs:
         df = get_kline(symbol, end_date, freq, k_count)
-        klines[freq] = df
+        klines[freq_map[freq]] = df
     return klines
 
 
@@ -74,7 +75,7 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb, _ = sa.is_third_buy('1800s')
+    tb, _ = sa.is_third_buy('30分钟')
     print("指定级别三买：", tb, "\n")
 
 

@@ -42,23 +42,7 @@ pip install git+git://github.com/zengbin93/chan.git -U
 
 > 前端页面（使用掘金的数据）: https://github.com/zengbin93/gm_chan
 
-
-```python
-from chan import KlineAnalyze
-
-
-ka = KlineAnalyze(kline)  # kline 的格式见K先数据样例
-
-# 笔的识别结果
-ka.bi
-
-# 线段的识别结果
-ka.xd
-
-# 中枢的识别结果
-ka.zs
-
-```
+> 前端页面（使用聚宽的数据）: https://github.com/zengbin93/jq_chan
 
 ## 结合 tushare.pro 的数据使用
 
@@ -142,11 +126,12 @@ def get_kline(ts_code, end_date, freq='30min', asset='E'):
 
 def get_klines(ts_code, end_date, freqs='1min,5min,30min,D', asset='E'):
     """获取不同级别K线"""
+    freq_map = {"1min": "1分钟", "5min": "5分钟", "30min": "30分钟", "D": "日线"}
     klines = dict()
     freqs = freqs.split(",")
     for freq in freqs:
         df = get_kline(ts_code, end_date, freq=freq, asset=asset)
-        klines[freq] = df
+        klines[freq_map[freq]] = df
     return klines
 
 
@@ -166,7 +151,7 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb, _ = sa.is_third_buy('30min')
+    tb, _ = sa.is_third_buy('30分钟')
     print("指定级别三买：", tb, "\n")
 
 
@@ -180,15 +165,6 @@ if __name__ == '__main__':
 py 文件地址： examples/combine_with_goldminer.py
 
 ```python
-# coding: utf-8
-"""
-结合掘金的数据使用 chan 进行缠论技术分析
-
-author: zengbin93
-email: zeng_bin8888@163.com
-date: 2020-02-02
-========================================================================================================================
-"""
 
 from gm.api import *
 from datetime import datetime
@@ -232,11 +208,12 @@ def get_kline(symbol, end_date=None, freq='1d', k_count=5000):
 
 def get_klines(symbol, end_date=None, freqs='60s,300s,1800s,1d', k_count=5000):
     """获取不同级别K线"""
+    freq_map = {"60s": "1分钟", "300s": "5分钟", "1800s": "30分钟", "1d": "日线"}
     klines = dict()
     freqs = freqs.split(",")
     for freq in freqs:
         df = get_kline(symbol, end_date, freq, k_count)
-        klines[freq] = df
+        klines[freq_map[freq]] = df
     return klines
 
 
@@ -256,7 +233,7 @@ def use_solid_analyze():
     sa = SolidAnalyze(klines)
 
     # 查看指定级别的三买
-    tb, _ = sa.is_third_buy('1800s')
+    tb, _ = sa.is_third_buy('30分钟')
     print("指定级别三买：", tb, "\n")
 
 
