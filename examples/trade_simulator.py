@@ -3,8 +3,6 @@
 交易模拟器，用于研究单标的的买卖点变化过程
 
 """
-import sys
-sys.path.insert(0, "C:\git_repo\zengbin93\chan")
 import chan
 print(chan.__version__)
 
@@ -12,6 +10,7 @@ import os
 import time
 import traceback
 import pandas as pd
+from copy import deepcopy
 import tushare as ts
 from datetime import datetime, timedelta
 from chan import SolidAnalyze, KlineAnalyze
@@ -116,7 +115,7 @@ def get_kline(ts_code, end_date, start_date=None, freq='30min', asset='E'):
     k = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
 
     for col in ['open', 'close', 'high', 'low']:
-        k[col] = k[col].apply(round, args=(2,))
+        k.loc[:, col] = k[col].apply(round, args=(2,))
     return k
 
 
@@ -173,6 +172,13 @@ def make_klines(k1):
             k2.append(k)
             i += 1
         k2 = pd.DataFrame(k2)
+        if len(k2) > 1:
+            last_dt = datetime.strptime(k2.iloc[-2]['dt'], "%Y-%m-%d %H:%M:%S") \
+                      + timedelta(minutes=d)
+        else:
+            last_dt = datetime.strptime(k1.iloc[0]['dt'], "%Y-%m-%d %H:%M:%S") \
+                      + timedelta(minutes=d-1)
+        k2.loc[len(k2)-1, "dt"] = last_dt.strftime("%Y-%m-%d %H:%M:%S")
         return k2[cols]
 
     klines = {"1分钟": k1, '5分钟': _minute_kline('5min'), '30分钟': _minute_kline('30min'), "日线": kd[cols]}
@@ -200,12 +206,13 @@ def kline_simulator(ts_code, trade_dt, asset="E", count=5000):
         k1 = k1.iloc[1:]
 
     for i in range(1, len(k1)+1):
-        k1_ = k1.iloc[:i]
+        k1_ = deepcopy(k1.iloc[:i])
         klines = make_klines(k1_)
         # 合并成新K线
         new_klines = dict()
         for freq in init_klines.keys():
             new_klines[freq] = pd.concat([init_klines[freq], klines[freq]]).tail(count)
+            print(freq, new_klines[freq].tail(2), '\n')
         yield new_klines
 
 
@@ -241,15 +248,14 @@ def trade_simulator(ts_code, end_date, file_bs, start_date=None, days=3, asset="
 
         ks = kline_simulator(ts_code, trade_dt=start_date.strftime('%Y%m%d'), asset=asset)
         for i, klines in enumerate(ks.__iter__(), 1):
-            latest_dt = klines['1分钟'].iloc[-1]['dt']
-            latest_price = klines['1分钟'].iloc[-1]['close']
             if i % watch_interval != 0:
                 continue
-            print(latest_dt)
             sa = SolidAnalyze(klines)
             for func in [sa.is_first_buy, sa.is_second_buy, sa.is_third_buy, sa.is_xd_buy,
                          sa.is_first_sell, sa.is_second_sell, sa.is_third_sell, sa.is_xd_sell]:
                 for freq in ['1分钟', '5分钟', '30分钟']:
+                    latest_dt = klines[freq].iloc[-1]['dt']
+                    latest_price = klines[freq].iloc[-1]['close']
                     try:
                         b, detail = func(freq, tolerance=0.1)
                         if b:
@@ -274,24 +280,26 @@ def trade_simulator(ts_code, end_date, file_bs, start_date=None, days=3, asset="
 def check_trade(ts_code, file_bs, freq, end_date="20200314", asset="E", file_html="bs.html"):
     """在图上画出买卖点"""
     bs = pd.read_excel(file_bs)
-    bs['f'] = bs['操作提示'].apply(lambda x: 1 if freq_map[freq] in x and "线" not in x else 0)
+    bs.loc[:, 'f'] = bs.apply(lambda x: 1 if x['交易级别'] == freq_map[freq] else 0, axis=1)
     bs = bs[bs.f == 1]
-    bs['操作提示'] = bs['操作提示'].apply(lambda x: x.replace(freq_map[freq], ""))
+    bs.loc[:, '操作提示'] = bs['操作提示'].apply(lambda x: x.replace(freq_map[freq], ""))
+    bs = bs[["操作提示", "交易时间", "交易价格"]]
+    print(bs)
     df = get_kline(ts_code, freq=freq, end_date=end_date, asset=asset)
     ka = KlineAnalyze(df)
-    plot_kline(ka, bs, file_html)
+    plot_kline(ka, bs, file_html, width="1400px", height="680px")
 
 
 if __name__ == '__main__':
-    ts_code = '000001.SH'
-    asset = "I"
-    end_date = '20200101'
+    ts_code = '300671.SZ'
+    asset = "E"
+    end_date = '20200321'
     freq = '1min'
     file_bs = f"{ts_code}买卖点变化过程_{end_date}.xlsx"
     file_html = f"{ts_code}_{freq}_{end_date}_bs.html"
 
     # step 1. 仿真交易
-    trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=3, asset=asset, watch_interval=5)
+    trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=150, asset=asset, watch_interval=5)
 
     # step 2. 查看仿真交易过程的买卖点提示
     check_trade(ts_code, file_bs, freq=freq, asset=asset, end_date=end_date, file_html=file_html)
