@@ -6,7 +6,7 @@ from functools import lru_cache
 sys.path.insert(0, r'C:\git_repo\zengbin93\chan')
 
 import chan
-from chan import KlineAnalyze, SolidAnalyze
+from chan import KlineAnalyze
 
 print(chan.__version__)
 
@@ -90,35 +90,6 @@ def get_klines(ts_code, end_date, freqs='1min,5min,30min,D', asset='E'):
 def test_kline_analyze():
     df = get_kline(ts_code="300803.SZ", freq='5min', end_date="20200316")
     ka = KlineAnalyze(df)
+    print(ka.bi)
 
-
-@lru_cache(maxsize=128)
-def create_sa(ts_code, end_date):
-    klines = get_klines(ts_code=ts_code, freqs='1min,5min,30min,D', asset="E", end_date=end_date)
-    sa = SolidAnalyze(klines)
-    return sa
-
-
-def test_solid_analyze():
-    test_data = [
-        {"ts_code": '300033.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "二买"},
-        {"ts_code": '300033.SZ', "freq": "1分钟", "end_date": "20200307", "bs": "二买"},
-        {"ts_code": '000012.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "二卖"},
-        {"ts_code": '002405.SZ', "freq": "5分钟", "end_date": "20200307", "bs": "一卖"},
-        {"ts_code": '603383.SH', "freq": "日线", "end_date": "20200227", "bs": "线卖"},
-    ]
-    for row in test_data:
-        print("=" * 100)
-        print(row)
-        sa = create_sa(row['ts_code'], row['end_date'])
-        if row['bs'] == '二买':
-            b, detail = sa.is_second_buy(row['freq'], tolerance=0.1)
-            print(b, detail)
-        elif row['bs'] == '二卖':
-            b, detail = sa.is_second_sell(row['freq'], tolerance=0.1)
-            print(b, detail)
-        elif row['bs'] == '一卖':
-            b, detail = sa.is_first_sell(row['freq'], tolerance=0.1)
-            print(b, detail)
-        print('\n')
 
