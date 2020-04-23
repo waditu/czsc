@@ -54,6 +54,46 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
     return bc
 
 
+def up_zs_number(ka):
+    """检查最新走势的连续向上中枢数量"""
+    zs_num = 1
+    if len(ka.zs) > 1:
+        k_zs = ka.zs[::-1]
+        zs_cur = k_zs[0]
+        for zs_next in k_zs[1:]:
+            if zs_cur['zs'][0] >= zs_next['zs'][1]:
+                zs_num += 1
+                zs_cur = zs_next
+            else:
+                break
+    return zs_num
+
+
+def down_zs_number(ka):
+    """检查最新走势的连续向下中枢数量"""
+    zs_num = 1
+    if len(ka.zs) > 1:
+        k_zs = ka.zs[::-1]
+        zs_cur = k_zs[0]
+        for zs_next in k_zs[1:]:
+            if zs_cur['zs'][1] <= zs_next['zs'][0]:
+                zs_num += 1
+                zs_cur = zs_next
+            else:
+                break
+    return zs_num
+
+
+def is_macd_cross(ka, direction="up"):
+    """判断macd的向上金叉、向下死叉"""
+    df = pd.DataFrame(ka.kline)
+    df = macd(df)
+    if (direction == "up" and df.iloc[-1]['diff'] > df.iloc[-1]['dea']) \
+            or (direction == "down" and df.iloc[-1]['diff'] < df.iloc[-1]['dea']):
+        return True
+    return False
+
+
 class KlineAnalyze(object):
     def __init__(self, kline):
         """
