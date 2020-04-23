@@ -206,10 +206,21 @@ class KlineAnalyze(object):
         （5）经过步骤（4）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
         """
         # 符合标准的分型
-        kn = deepcopy(self.kline_new)
+        kn = self.kline_new
         fx_p = []   # 存储潜在笔标记
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='d'))
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='g'))
+
+        # 加入满足笔条件的连续两个分型
+        fx = self.fx
+        for i in range(len(fx)-1):
+            fx1 = fx[i]
+            fx2 = fx[i+1]
+            k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
+            if len(k_num) >= 4:
+                fx_p.append(fx1)
+                fx_p.append(fx2)
+
         fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
 
         # 确认哪些分型可以构成笔
@@ -253,14 +264,7 @@ class KlineAnalyze(object):
         return bi
 
     def __handle_hist_xd(self):
-        """识别线段标记：从已经识别出来的笔中识别线段
-
-        划分线段的步骤：
-        （1）确定所有符合标准的笔标记。
-        （2）如果前后两个笔标记是同一性质的，对于顶，前面的低于后面的，只保留后面的，前面那个可以忽略掉；对于底，
-            前面的高于后面的，只保留后面的，前面那个可以忽略掉。不满足上面情况的，例如相等的，都可以先保留。
-        （3）经过步骤（2）的处理后，余下的笔标记，如果相邻的是顶和底，那么这就可以划为线段。
-        """
+        """识别线段标记：从已经识别出来的笔中识别线段"""
         bi_p = []   # 存储潜在线段标记
         bi_p.extend(self.__extract_potential(mode='bi', fx_mark='d'))
         bi_p.extend(self.__extract_potential(mode='bi', fx_mark='g'))
