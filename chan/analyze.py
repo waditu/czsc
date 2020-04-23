@@ -195,15 +195,6 @@ class KlineAnalyze(object):
 
     def __handle_hist_bi(self):
         """识别笔标记：从已经识别出来的分型中确定能够构建笔的分型
-
-        划分笔的步骤：
-        （1）确定所有符合标准的分型。
-        （2）取出所有分型中的顶分型序列，用大小为3的窗口在顶分型序列上滑动，如果中间的分型值最大，则保留窗口中间的顶分型；
-        （3）取出所有分型中的底分型序列，同样用大小为3的窗口进行滑动，如果中间的分型值最小，则保留窗口中间的底分型；
-        （4）合并第2/3步保留下来的顶底分型序列，遍历，如果前后两分型是同一性质的，对于顶，前面的低于后面的，只保留后面的，
-            前面那个可以忽略掉；对于底，前面的高于后面的，只保留后面的，前面那个可以忽略掉。
-            不满足上面情况的，例如相等的，都可以先保留。
-        （5）经过步骤（4）的处理后，余下的分型，如果相邻的是顶和底，那么这就可以划为一笔。
         """
         # 符合标准的分型
         kn = self.kline_new
@@ -256,7 +247,6 @@ class KlineAnalyze(object):
 
     def _find_bi(self):
         bi = self.__handle_hist_bi()
-        # bi = self.__handle_last_bi(bi)
         dts = [x["dt"] for x in bi]
         for k in self.kline_new:
             if k['dt'] in dts:
@@ -291,7 +281,6 @@ class KlineAnalyze(object):
                             (k0['fx_mark'] == 'd' and k['xd'] <= k0['xd']):
                         xd.pop(-1)
                         continue
-
                     bi_m = [x for x in self.bi if k0['dt'] <= x['dt'] <= k['dt']]
                     # 一线段内部至少三笔
                     if len(bi_m) >= 4:
@@ -329,7 +318,6 @@ class KlineAnalyze(object):
     def _find_xd(self):
         try:
             xd = self.__handle_hist_xd()
-            # xd = self.__handle_last_xd(xd)
             dts = [x["dt"] for x in xd]
             for k in self.kline_new:
                 if k['dt'] in dts:
