@@ -24,6 +24,7 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
         bi  判断两笔之间是否存在背驰
     :return:
     """
+    assert zs1[0] > zs2[0], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
     df = pd.DataFrame(ka.kline)
     df = macd(df)
     k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
@@ -283,10 +284,18 @@ class KlineAnalyze(object):
         return bi
 
     def __handle_last_bi(self, bi):
-        pass
+        """处理最后一个笔标记"""
+        last_bi = bi[-1]
+        seq = [x for x in self.kline_new if x['dt'] >= last_bi['dt']]
+        sor = sorted(deepcopy(seq), key=lambda x: x['close'], reverse=False)
+        if (last_bi['fx_mark'] == 'd' and sor[0]['close'] < last_bi['bi']) \
+                or (last_bi['fx_mark'] == 'g' and sor[-1]['close'] > last_bi['bi']):
+            bi.pop(-1)
+        return bi
 
     def _find_bi(self):
         bi = self.__handle_hist_bi()
+        bi = self.__handle_last_bi(bi)
         dts = [x["dt"] for x in bi]
         for k in self.kline_new:
             if k['dt'] in dts:
@@ -325,39 +334,60 @@ class KlineAnalyze(object):
                     # 一线段内部至少三笔
                     if len(bi_m) >= 4:
                         xd.append(k)
-
-        # 后处理：在任一线段内部，底分型一定是最低点，顶分型一定是最高点
-        xd_new = []
-        for i in range(len(xd)):
-            if i == 0:
-                xd2 = xd[i+1]
-                bi_m = [x for x in self.bi if x['dt'] <= xd2['dt']]
-            elif i == len(xd)-1:
-                xd1 = xd[i-1]
-                bi_m = [x for x in self.bi if x['dt'] >= xd1['dt']]
-            else:
-                xd1, xd2 = xd[i-1], xd[i+1]
-                bi_m = [x for x in self.bi if xd1['dt'] <= x['dt'] <= xd2['dt']]
-
-            xd0 = xd[i]
-            if xd0['fx_mark'] == 'd':
-                bi_m = sorted(bi_m, key=lambda x: x['bi'], reverse=False)
-            elif xd0['fx_mark'] == 'g':
-                bi_m = sorted(bi_m, key=lambda x: x['bi'], reverse=True)
-            else:
-                raise ValueError
-            new = deepcopy(bi_m[0])
-            new['xd'] = new['bi']
-            del new['bi']
-            xd_new.append(new)
         return xd
 
-    def __handle_last_xd(self, xd_v):
-        pass
+    def __handle_last_xd(self, xd):
+        """处理最后一个线段标记"""
+        last_xd = xd[-1]
+        bi_seq = [x for x in self.bi if x['dt'] >= last_xd['dt']]
+        bi_sor = sorted(deepcopy(bi_seq), key=lambda x: x['bi'], reverse=False)
+        # 最后一个线段标记为底，且该标记后笔序列的最小值小于该线段标记，移动
+        if last_xd['fx_mark'] == 'd' and bi_sor[0]['bi'] < last_xd['xd']:
+            xd.pop(-1)
+            new = deepcopy(bi_sor[0])
+            new['xd'] = new['bi']
+            del new["bi"]
+            xd.append(new)
+
+        # 最后一个线段标记为顶，且该标记后笔序列的最大值大于该线段标记，移动
+        if last_xd['fx_mark'] == 'g' and bi_sor[-1]['bi'] > last_xd['xd']:
+            xd.pop(-1)
+            new = deepcopy(bi_sor[-1])
+            new['xd'] = new['bi']
+            del new["bi"]
+            xd.append(new)
+
+        # 最后一个线段标记为底，且与该标记后笔序列的最大值之间满足线段成立的条件，新增一个线段标记
+        if last_xd['fx_mark'] == 'd':
+            bi_m = [x for x in self.bi if bi_sor[-1]['dt'] >= x['dt'] >= last_xd['dt']]
+            # 线段条件：内部有三笔，且最后一笔新高背驰
+            if len(bi_m) > 4:
+                zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
+                zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
+                if is_bei_chi(self, zs1, zs2, mode='bi'):
+                    new = deepcopy(bi_sor[-1])
+                    new['xd'] = new['bi']
+                    del new["bi"]
+                    xd.append(new)
+
+        # 最后一个线段标记为顶，且与该标记后笔序列的最小值之间满足线段成立的条件，新增一个线段标记
+        if last_xd['fx_mark'] == 'g':
+            bi_m = [x for x in self.bi if bi_sor[0]['dt'] >= x['dt'] >= last_xd['dt']]
+            # 向下线段条件：内部有三笔，且最后一笔新低背驰
+            if len(bi_m) > 4:
+                zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
+                zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
+                if is_bei_chi(self, zs1, zs2, mode='bi'):
+                    new = deepcopy(bi_sor[0])
+                    new['xd'] = new['bi']
+                    del new["bi"]
+                    xd.append(new)
+        return xd
 
     def _find_xd(self):
         try:
             xd = self.__handle_hist_xd()
+            xd = self.__handle_last_xd(xd)
             dts = [x["dt"] for x in xd]
             for k in self.kline_new:
                 if k['dt'] in dts:
