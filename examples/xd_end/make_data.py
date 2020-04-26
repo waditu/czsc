@@ -8,7 +8,7 @@ from datetime import timedelta, datetime
 from cobra.data.kline import kline_simulator, get_kline
 from cobra.data.basic import is_trade_day
 from chan import SolidAnalyze, KlineAnalyze
-from chan.solid import is_macd_cross
+from chan.analyze import is_macd_cross
 
 data_path = "./data"
 if not os.path.exists(data_path):
@@ -43,8 +43,7 @@ def trade_simulator(ts_code, end_date, start_date, asset="E", watch_interval=5):
         看盘间隔，单位：分钟；默认值为 5分钟看盘一次
     :return: None
     """
-    file_signals = os.path.join(data_path, f"{ts_code}_{start_date}_{end_date}_signals.txt")
-
+    file_signals = os.path.join(data_path, "%s_%s_%s_signals.txt" % (ts_code, start_date, end_date))
     end_date = datetime.strptime(end_date.replace("-", ""), "%Y%m%d")
     start_date = datetime.strptime(start_date.replace("-", ""), "%Y%m%d")
 
@@ -111,7 +110,8 @@ def make_one_day(ts_code, trade_date, asset="E"):
 
         col = f'{freq}线段状态'
         df[col] = df['交易时间'].apply(___xd_status)
-        df.to_excel(f"./data/{ts_code}_{start_date}_{end_date}_{freq}.xlsx", index=False)
+        file_excel = "./data/%s_%s_%s_%s.xlsx" % (ts_code, start_date, end_date, freq)
+        df.to_excel(file_excel, index=False)
 
 
 if __name__ == '__main__':

@@ -295,8 +295,8 @@ if __name__ == '__main__':
     asset = "E"
     end_date = '20200321'
     freq = '1min'
-    file_bs = f"{ts_code}买卖点变化过程_{end_date}.xlsx"
-    file_html = f"{ts_code}_{freq}_{end_date}_bs.html"
+    file_bs = "%s买卖点变化过程_%s.xlsx" % (ts_code, end_date)
+    file_html = f"%s_%s_%s_bs.html" % (ts_code, freq, end_date)
 
     # step 1. 仿真交易
     trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=150, asset=asset, watch_interval=5)
