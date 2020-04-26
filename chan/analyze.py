@@ -109,7 +109,7 @@ class KlineAnalyze(object):
                 {'symbol': '600797.SH', 'dt': '2020-01-08 15:00:00', 'open': 10.42, 'close': 10.39, 'high': 10.48, 'low': 10.36, 'vol': 7160500.0}
             ]
         :param bi_mode: str
-           笔识别控制参数，默认为 new，表示新笔；如果不用新笔定义识别，设置为 old
+           笔识别控制参数，默认为 new，表示新笔；如果不想用新笔定义识别，设置为 old
         :param xd_mode: str
             线段识别控制参数，默认为 loose，在这种模式下，只要线段标记内有三笔就满足会识别；另外一个可选值是 strict，
             在 strict 模式下，对于三笔形成的线段，要求其后的一笔不跌破或升破线段最后一笔的起始位置。
@@ -252,9 +252,9 @@ class KlineAnalyze(object):
             min_k_num = 5
         else:
             raise ValueError
+        kn = self.kline_new
 
         # 符合标准的分型
-        kn = self.kline_new
         fx_p = []  # 存储潜在笔标记
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='d'))
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='g'))
@@ -265,7 +265,7 @@ class KlineAnalyze(object):
             fx1 = fx[i]
             fx2 = fx[i + 1]
             k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
-            if len(k_num) >= 4:
+            if len(k_num) >= min_k_num:
                 fx_p.append(fx1)
                 fx_p.append(fx2)
 
@@ -304,6 +304,8 @@ class KlineAnalyze(object):
         last_bi = bi[-1]
         seq = [x for x in self.kline_new if x['dt'] >= last_bi['dt']]
         sor = sorted(deepcopy(seq), key=lambda x: x['close'], reverse=False)
+
+        # 笔标记后出现新高或新低，则这个笔标记不成立
         if (last_bi['fx_mark'] == 'd' and sor[0]['close'] < last_bi['bi']) \
                 or (last_bi['fx_mark'] == 'g' and sor[-1]['close'] > last_bi['bi']):
             bi.pop(-1)
@@ -356,9 +358,28 @@ class KlineAnalyze(object):
                             xd.pop(-1)
                             xd.append(k)
 
+                    bi_r = [x for x in self.bi if x['dt'] >= k['dt']]
                     # 一线段内部至少三笔
                     if len(bi_m) >= 4:
-                        xd.append(k)
+                        # 两个连续线段标记之间只有三笔的处理，这里区分 loose 和 strict 两种模式
+                        if len(bi_m) == 4:
+                            if self.xd_mode == 'loose':
+                                if (k['fx_mark'] == "g" and bi_m[-1]['bi'] > bi_m[-3]['bi']) \
+                                        or (k['fx_mark'] == "d" and bi_m[-1]['bi'] < bi_m[-3]['bi']):
+                                    xd.append(k)
+                            elif self.xd_mode == 'strict':
+                                if len(bi_r) <= 1:
+                                    continue
+                                lp2 = bi_m[-2]
+                                rp2 = bi_r[1]
+                                if (k['fx_mark'] == "g" and lp2['bi'] < rp2['bi'] and bi_m[-1]['bi'] > bi_m[-3]['bi']) \
+                                        or (k['fx_mark'] == "d" and lp2['bi'] > rp2['bi']
+                                            and bi_m[-1]['bi'] < bi_m[-3]['bi']):
+                                    xd.append(k)
+                            else:
+                                raise ValueError("xd_mode value error")
+                        else:
+                            xd.append(k)
         return xd
 
     def __handle_last_xd(self, xd):
