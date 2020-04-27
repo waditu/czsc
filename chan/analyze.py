@@ -334,8 +334,9 @@ class KlineAnalyze(object):
                 bi.append(k)
 
         # 笔标记后出现新高或新低，则这个笔标记不成立
-        if (last_bi['fx_mark'] == 'd' and sor[0]['fx'] < last_bi['bi']) \
-                or (last_bi['fx_mark'] == 'g' and sor[-1]['fx'] > last_bi['bi']):
+        last_k = self.kline_new[-1]
+        if (last_bi['fx_mark'] == 'd' and last_k['low'] < last_bi['bi']) \
+                or (last_bi['fx_mark'] == 'g' and last_k['high'] > last_bi['bi']):
             bi.pop(-1)
         return bi
 
