@@ -6,7 +6,7 @@ import pandas as pd
 from .ta import macd
 
 
-def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
+def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi", adjust=0.9):
     """判断 zs1 对 zs2 是否有背驰
 
     :param ka: KlineAnalyze
@@ -22,6 +22,9 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
         zs  判断两个走势类型之间是否存在背驰
         xd  判断两个线段之间是否存在背驰
         bi  判断两笔之间是否存在背驰
+    :param adjust: float
+        调整 zs2 的力度，建议设置范围在 0.6 ~ 1.0 之间，默认设置为 0.9；
+        其作用是确保 zs1 相比于 zs2 的力度足够小。
     :return:
     """
     assert zs1[0] > zs2[0], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
@@ -34,7 +37,7 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
     if mode == 'bi':
         macd_sum1 = sum([abs(x) for x in k1.macd])
         macd_sum2 = sum([abs(x) for x in k2.macd])
-        if macd_sum1 < macd_sum2 * 0.9:
+        if macd_sum1 < macd_sum2 * adjust:
             bc = True
 
     elif mode == 'xd':
@@ -46,7 +49,7 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi"):
             macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
         else:
             raise ValueError('direction value error')
-        if macd_sum1 < macd_sum2 * 0.9:
+        if macd_sum1 < macd_sum2 * adjust:
             bc = True
 
     else:
@@ -96,7 +99,7 @@ def is_macd_cross(ka, direction="up"):
 
 
 class KlineAnalyze(object):
-    def __init__(self, kline, bi_mode="new", xd_mode="loose", handle_last=False):
+    def __init__(self, kline, bi_mode="new", xd_mode="loose", handle_last=True):
         """
 
         :param kline: list of dict or pd.DataFrame
@@ -255,6 +258,7 @@ class KlineAnalyze(object):
             min_k_num = 5
         else:
             raise ValueError
+        self.min_k_num = min_k_num
         kn = self.kline_new
 
         # 符合标准的分型
@@ -303,14 +307,35 @@ class KlineAnalyze(object):
         return bi
 
     def __handle_last_bi(self, bi):
-        """处理最后一个笔标记"""
+        """处理最后一个笔标记
+
+        最后一个笔标记后有两种情况：
+        1） 出现顶、底分型，使得最后一笔满足定义，加上对应的标记；
+        2） 没有出现使得最后一笔满足定义的顶底分型，耐心等待。
+
+        特别的，对应最后一个笔标记：最后一根K线的最高价大于顶，或最后一根K线的最低价大于底，则删除这个标记。
+        """
         last_bi = bi[-1]
-        seq = [x for x in self.kline_new if x['dt'] >= last_bi['dt']]
-        sor = sorted(deepcopy(seq), key=lambda x: x['close'], reverse=False)
+        seq = [x for x in self.fx if x['dt'] >= last_bi['dt']]
+        sor = sorted(deepcopy(seq), key=lambda x: x['fx'], reverse=False)
+
+        if last_bi['fx_mark'] == 'd' and sor[-1]['fx_mark'] == 'g':
+            k = deepcopy(sor[-1])
+        elif last_bi['fx_mark'] == 'g' and sor[0]['fx_mark'] == 'd':
+            k = deepcopy(sor[0])
+        else:
+            k = None
+
+        if k:
+            k_num = [x for x in self.kline_new if last_bi['dt'] <= x['dt'] <= k['dt']]
+            if len(k_num) >= self.min_k_num:
+                k['bi'] = k['fx']
+                del k['fx']
+                bi.append(k)
 
         # 笔标记后出现新高或新低，则这个笔标记不成立
-        if (last_bi['fx_mark'] == 'd' and sor[0]['close'] < last_bi['bi']) \
-                or (last_bi['fx_mark'] == 'g' and sor[-1]['close'] > last_bi['bi']):
+        if (last_bi['fx_mark'] == 'd' and sor[0]['fx'] < last_bi['bi']) \
+                or (last_bi['fx_mark'] == 'g' and sor[-1]['fx'] > last_bi['bi']):
             bi.pop(-1)
         return bi
 
@@ -388,31 +413,21 @@ class KlineAnalyze(object):
         return xd
 
     def __handle_last_xd(self, xd):
-        """处理最后一个线段标记"""
+        """处理最后一个线段标记
+
+        最后一个线段后有两种情况：
+        1） 出现笔的顶、底背驰，对这种情况，在背驰出现的位置加上对应的线段标记；
+        2） 没有出现笔的顶、底背驰，不需要进行处理，耐心等待笔的顶、底背驰出现或者小转大出现。
+
+        特别的，对最后一个线段标记：最后一根K线的最高价大于顶，或最后一根K线的最低价大于底，则删除这个标记。
+        """
         last_xd = xd[-1]
         bi_seq = [x for x in self.bi if x['dt'] >= last_xd['dt']]
         bi_sor = sorted(deepcopy(bi_seq), key=lambda x: x['bi'], reverse=False)
-        # 最后一个线段标记为底，且该标记后笔序列的最小值小于该线段标记，移动
-        if last_xd['fx_mark'] == 'd' and bi_sor[0]['bi'] < last_xd['xd']:
-            xd.pop(-1)
-            new = deepcopy(bi_sor[0])
-            new['xd'] = new['bi']
-            del new["bi"]
-            xd.append(new)
 
-        # 最后一个线段标记为顶，且该标记后笔序列的最大值大于该线段标记，移动
-        if last_xd['fx_mark'] == 'g' and bi_sor[-1]['bi'] > last_xd['xd']:
-            xd.pop(-1)
-            new = deepcopy(bi_sor[-1])
-            new['xd'] = new['bi']
-            del new["bi"]
-            xd.append(new)
-
-        # 最后一个线段标记为底，且与该标记后笔序列的最大值之间满足线段成立的条件，新增一个线段标记
         if last_xd['fx_mark'] == 'd':
             bi_m = [x for x in self.bi if bi_sor[-1]['dt'] >= x['dt'] >= last_xd['dt']]
-            # 线段条件：内部有三笔，且最后一笔新高背驰
-            if len(bi_m) > 4:
+            if len(bi_m) >= 4:
                 zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
                 zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
                 if is_bei_chi(self, zs1, zs2, mode='bi'):
@@ -421,11 +436,9 @@ class KlineAnalyze(object):
                     del new["bi"]
                     xd.append(new)
 
-        # 最后一个线段标记为顶，且与该标记后笔序列的最小值之间满足线段成立的条件，新增一个线段标记
         if last_xd['fx_mark'] == 'g':
             bi_m = [x for x in self.bi if bi_sor[0]['dt'] >= x['dt'] >= last_xd['dt']]
-            # 向下线段条件：内部有三笔，且最后一笔新低背驰
-            if len(bi_m) > 4:
+            if len(bi_m) >= 4:
                 zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
                 zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
                 if is_bei_chi(self, zs1, zs2, mode='bi'):
@@ -433,6 +446,11 @@ class KlineAnalyze(object):
                     new['xd'] = new['bi']
                     del new["bi"]
                     xd.append(new)
+
+        last_k = self.kline_new[-1]
+        if (xd[-1]['fx_mark'] == 'd' and last_k['low'] < xd[-1]['xd']) \
+                or (xd[-1]['fx_mark'] == 'g' and last_k['high'] > xd[-1]['xd']):
+            xd.pop(-1)
         return xd
 
     def _find_xd(self):
