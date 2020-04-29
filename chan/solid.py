@@ -112,8 +112,8 @@ def is_first_sell(ka, ka1, ka2=None, pf=False):
         if len(bi_inside) >= 6 and ka.xd[-1]['fx_mark'] == 'g':
 
             # 本级别向上线段背驰 或 本级别向上笔背驰
-            if (ka2.xd_bei_chi() or
-                    (ka2.bi[-1]['fx_mark'] == 'g' and ka2.bi_bei_chi())):
+            if (ka.xd_bei_chi() or
+                    (ka.bi[-1]['fx_mark'] == 'g' and ka.bi_bei_chi())):
                 detail['操作提示'] = "一卖"
                 detail['出现时间'] = ka.xd[-1]['dt']
                 detail['基准价格'] = ka.xd[-1]['xd']
