@@ -2,8 +2,9 @@
 import traceback
 from copy import deepcopy
 import pandas as pd
+from functools import lru_cache
 
-from .ta import macd
+from .ta import macd, ma
 
 
 def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi", adjust=0.9):
@@ -28,8 +29,12 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi", adjust=0.9):
     :return:
     """
     assert zs1[0] > zs2[0], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
-    df = pd.DataFrame(ka.kline)
-    df = macd(df)
+    assert zs1[0] < zs1[1], "走势的时间区间定义错误，必须满足 zs[0] < zs[1]"
+    assert zs2[0] < zs2[1], "走势的时间区间定义错误，必须满足 zs[0] < zs[1]"
+
+    # df = pd.DataFrame(deepcopy(ka.kline))
+    # df = macd(df)
+    df = create_df(ka)
     k1 = df[(df['dt'] >= zs1[0]) & (df['dt'] <= zs1[1])]
     k2 = df[(df['dt'] >= zs2[0]) & (df['dt'] <= zs2[1])]
 
@@ -37,6 +42,7 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi", adjust=0.9):
     if mode == 'bi':
         macd_sum1 = sum([abs(x) for x in k1.macd])
         macd_sum2 = sum([abs(x) for x in k2.macd])
+        # print("bi: ", macd_sum1, macd_sum2)
         if macd_sum1 < macd_sum2 * adjust:
             bc = True
 
@@ -49,6 +55,7 @@ def is_bei_chi(ka, zs1, zs2, direction="down", mode="bi", adjust=0.9):
             macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
         else:
             raise ValueError('direction value error')
+        # print("xd: ", macd_sum1, macd_sum2)
         if macd_sum1 < macd_sum2 * adjust:
             bc = True
 
@@ -88,14 +95,24 @@ def down_zs_number(ka):
     return zs_num
 
 
+@lru_cache(maxsize=64)
 def is_macd_cross(ka, direction="up"):
     """判断macd的向上金叉、向下死叉"""
-    df = pd.DataFrame(ka.kline)
-    df = macd(df)
+    # df = pd.DataFrame(ka.kline)
+    # df = macd(df)
+    df = create_df(ka)
     if (direction == "up" and df.iloc[-1]['diff'] > df.iloc[-1]['dea']) \
             or (direction == "down" and df.iloc[-1]['diff'] < df.iloc[-1]['dea']):
         return True
     return False
+
+
+@lru_cache(maxsize=64)
+def create_df(ka, ma_params=(5, 20, 120, 250)):
+    df = pd.DataFrame(deepcopy(ka.kline))
+    df = macd(df)
+    df = ma(df, params=ma_params)
+    return df
 
 
 class KlineAnalyze(object):
@@ -334,6 +351,7 @@ class KlineAnalyze(object):
                 bi.append(k)
 
         # 笔标记后出现新高或新低，则这个笔标记不成立
+        last_bi = bi[-1]
         last_k = self.kline_new[-1]
         if (last_bi['fx_mark'] == 'd' and last_k['low'] < last_bi['bi']) \
                 or (last_bi['fx_mark'] == 'g' and last_k['high'] > last_bi['bi']):
