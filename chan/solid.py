@@ -1,10 +1,7 @@
 # coding: utf-8
 
-import pandas as pd
 import traceback
-from copy import deepcopy
-from .ta import macd, ma
-from .analyze import is_bei_chi, KlineAnalyze, down_zs_number, up_zs_number
+from .analyze import KlineAnalyze, is_bei_chi
 
 
 def is_in_tolerance(base_price, latest_price, tolerance):
@@ -15,29 +12,16 @@ def is_in_tolerance(base_price, latest_price, tolerance):
         return False
 
 
-def __get_sub_xds(ka, ka1):
-    """根据上级别线段标记获取本级别最后一个走势的线段"""
-    xds_l = [x for x in ka.xd if x['dt'] <= ka1.xd[-1]['dt']]
-    xds_r = [x for x in ka.xd if x['dt'] > ka1.xd[-1]['dt']]
-    if not xds_r:
-        xds = [xds_l[-1]]
-        return xds
-
-    if xds_r[0]['fx_mark'] != ka1.xd[-1]['fx_mark'] and len(xds_l) > 0:
-        xds = [xds_l[-1]] + xds_r
-    else:
-        xds = xds_r
-    return xds
-
-
-def nested_intervals(ka, ka1, ka2):
-    """区间套识别"""
-    pass
-
-
-def is_first_buy(ka, ka1, ka2=None):
+def is_first_buy(ka, ka1, ka2=None, pf=False):
     """确定某一级别一买
-    注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+    注意：如果本级别上一级别的 ka 不存在，无法识别本级别一买，返回 `无操作` !!!
+
+    一买识别逻辑：
+    1）必须：上级别最后一个线段标记和最后一个笔标记重合且为底分型；
+    2）必须：上级别最后一个向下线段内部笔标记数量大于等于6，且本级别最后一个线段标记为底分型；
+    3）必须：本级别向下线段背驰 或 本级别向下笔背驰；
+
+    4）辅助：下级别向下线段背驰 或 下级别向下笔背驰。
 
     :param ka: KlineAnalyze
         本级别
@@ -45,46 +29,56 @@ def is_first_buy(ka, ka1, ka2=None):
         上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-
-    if len(ka.xd) < 6 or not ka1.xd or ka1.xd[-1]['fx_mark'] == 'g':
-        return False, None
-
-    if ka1.xd[-1]['xd'] == ka1.bi[-1]['bi']:
-        ka1.xd.pop(-1)
-    else:
-        return False, None
-
     detail = {
         "标的代码": ka.symbol,
-        "操作提示": None,
+        "操作提示": "无操作",
         "出现时间": None,
         "基准价格": None,
         "其他信息": None
     }
 
-    # 趋势至少有5段；底背驰一定要创新低
-    xds = __get_sub_xds(ka, ka1)
-    if len(xds) >= 6 and xds[-1]['fx_mark'] == 'd' \
-            and ka1.bi[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd']:
-        zs1 = [xds[-2]['dt'], xds[-1]['dt']]
-        zs2 = [xds[-4]['dt'], xds[-3]['dt']]
-        base_price = xds[-1]['xd']
-        if is_bei_chi(ka, zs1, zs2, direction='down', mode='xd'):
-            detail["出现时间"] = xds[-1]['dt']
-            detail["基准价格"] = base_price
-            b = True
+    if not isinstance(ka1, KlineAnalyze):
+        return detail
 
-    if isinstance(ka2, KlineAnalyze) and (ka2.xd[-1]['fx_mark'] == 'g' or ka2.bi[-1]['fx_mark'] == 'g'):
-        b = False
-    return b, detail
+    # 上级别最后一个线段标记和最后一个笔标记重合且为底分型；
+    if len(ka1.xd) >= 2 and ka1.xd[-1]['xd'] == ka1.bi[-1]['bi'] \
+            and ka1.xd[-1]['fx_mark'] == ka1.bi[-1]['fx_mark'] == 'd':
+        bi_inside = [x for x in ka1.bi if ka1.xd[-2]['dt'] <= x['dt'] <= ka1.xd[-1]['dt']]
+
+        # 上级别最后一个向下线段内部笔标记数量大于等于6，且本级别最后一个线段标记为底分型；
+        if len(bi_inside) >= 6 and ka.xd[-1]['fx_mark'] == 'd':
+            # 本级别向下线段背驰 或 本级别向下笔背驰；
+            if (ka.xd_bei_chi() or
+                    (ka.bi[-1]['fx_mark'] == 'd' and ka.bi_bei_chi())):
+                detail['操作提示'] = "一买"
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail["操作提示"] == "一买" and isinstance(ka2, KlineAnalyze):
+        # 下级别线段背驰 或 下级别笔背驰
+        if not ((ka2.xd[-1]['fx_mark'] == 'd' and ka2.xd_bei_chi()) or
+                (ka2.bi[-1]['fx_mark'] == 'd' and ka2.bi_bei_chi())):
+            detail['操作提示'] = "无操作"
+    return detail
 
 
-def is_first_sell(ka, ka1, ka2=None):
+def is_first_sell(ka, ka1, ka2=None, pf=False):
     """确定某一级别一卖
 
-    注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+    注意：如果本级别上一级别的 ka 不存在，无法识别本级别一卖，返回 `无操作` !!!
+
+    一卖识别逻辑：
+    1）必须：上级别最后一个线段标记和最后一个笔标记重合且为顶分型；
+    2）必须：上级别最后一个向上线段内部笔标记数量大于等于6，且本级别最后一个线段标记为顶分型；
+    3）必须：本级别向上线段背驰 或 本级别向上笔背驰；
+
+    4）辅助：下级别向上线段背驰 或 下级别向上笔背驰。
 
     :param ka: KlineAnalyze
         本级别
@@ -92,15 +86,57 @@ def is_first_sell(ka, ka1, ka2=None):
         上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    raise NotImplementedError
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    if not isinstance(ka1, KlineAnalyze):
+        return detail
+
+    # 上级别最后一个线段标记和最后一个笔标记重合且为顶分型；
+    if len(ka1.xd) >= 2 and ka1.xd[-1]['xd'] == ka1.bi[-1]['bi'] \
+            and ka1.xd[-1]['fx_mark'] == ka1.bi[-1]['fx_mark'] == 'g':
+        bi_inside = [x for x in ka1.bi if ka1.xd[-2]['dt'] <= x['dt'] <= ka1.xd[-1]['dt']]
+
+        # 上级别最后一个向上线段内部笔标记数量大于等于6，且本级别最后一个线段标记为顶分型；
+        if len(bi_inside) >= 6 and ka.xd[-1]['fx_mark'] == 'g':
+
+            # 本级别向上线段背驰 或 本级别向上笔背驰
+            if (ka2.xd_bei_chi() or
+                    (ka2.bi[-1]['fx_mark'] == 'g' and ka2.bi_bei_chi())):
+                detail['操作提示'] = "一卖"
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail["操作提示"] == "一卖" and isinstance(ka2, KlineAnalyze):
+        # 下级别线段背驰 或 下级别笔背驰
+        if not ((ka2.xd[-1]['fx_mark'] == 'g' and ka2.xd_bei_chi()) or
+                (ka2.bi[-1]['fx_mark'] == 'g' and ka2.bi_bei_chi())):
+            detail['操作提示'] = "无操作"
+    return detail
 
 
-def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
-    """确定某一级别二买，包括类二买
+def is_second_buy(ka, ka1, ka2=None, pf=False):
+    """确定某一级别二买
 
-    注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+    注意：如果本级别上一级别的 ka 不存在，无法识别本级别二买，返回 `无操作` !!!
+
+    二买识别逻辑：
+    1）必须：上级别最后一个线段标记和最后一个笔标记都是底分型；
+    2）必须：上级别最后一个向下线段内部笔标记数量大于等于6，且本级别最后一个线段标记为底分型，不创新低；
+    3）必须：上级别最后一个线段标记后有且只有三个笔标记，且上级别向下笔不创新低；
+
+    4）辅助：下级别向下线段背驰 或 下级别向下笔背驰
 
     :param ka: KlineAnalyze
         本级别
@@ -108,17 +144,58 @@ def is_second_buy(ka, ka1, ka2=None, tolerance=0.03):
         上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :param tolerance: float
-        相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    if not isinstance(ka1, KlineAnalyze):
+        return detail
+
+    # 上级别最后一个线段标记和最后一个笔标记都是底分型；
+    if len(ka1.xd) >= 2 and ka1.xd[-1]['fx_mark'] == ka1.bi[-1]['fx_mark'] == 'd':
+        bi_inside = [x for x in ka1.bi if ka1.xd[-2]['dt'] <= x['dt'] <= ka1.xd[-1]['dt']]
+
+        # 上级别最后一个向上线段内部笔标记数量大于等于6，且本级别最后一个线段标记为底分型，不创新低；
+        if len(bi_inside) >= 6 and ka.xd[-1]['fx_mark'] == 'd' \
+                and ka.xd[-1]["xd"] > ka.xd[-3]['xd']:
+
+            # 上级别最后一个线段标记后有且只有三个笔标记，且上级别向下笔不创新低；
+            bi_next = [x for x in ka1.bi if x['dt'] >= ka1.xd[-1]['dt']]
+            if len(bi_next) == 3 and bi_next[-1]['fx_mark'] == 'd' \
+                    and bi_next[-1]['bi'] > bi_next[-3]['bi']:
+                detail['操作提示'] = "二买"
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail["操作提示"] == "二买" and isinstance(ka2, KlineAnalyze):
+        # 下级别向下线段背驰 或 下级别向下笔背驰
+        if not ((ka2.xd[-1]['fx_mark'] == 'd' and ka2.xd_bei_chi()) or
+                (ka2.bi[-1]['fx_mark'] == 'd' and ka2.bi_bei_chi())):
+            detail['操作提示'] = "无操作"
+    return detail
 
 
-def is_second_sell(ka, ka1, ka2=None):
+def is_second_sell(ka, ka1, ka2=None, pf=False):
     """确定某一级别二卖，包括类二卖
 
-    注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+    注意：如果本级别上一级别的 ka 不存在，无法识别本级别一买，返回 `无操作` !!!
+
+    二卖识别逻辑：
+    1）必须：上级别最后一个线段标记和最后一个笔标记都是顶分型；
+    2）必须：上级别最后一个向上线段内部笔标记数量大于等于6，且本级别最后一个线段标记为顶分型，不创新高；
+    3）必须：上级别最后一个线段标记后有且只有三个笔标记，且上级别向上笔不创新低；
+
+    4）辅助：下级别向上线段背驰 或 下级别向上笔背驰
 
     :param ka: KlineAnalyze
         本级别
@@ -126,75 +203,269 @@ def is_second_sell(ka, ka1, ka2=None):
         上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :param tolerance: float
-        相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    if not isinstance(ka1, KlineAnalyze):
+        return detail
+
+    # 上级别最后一个线段标记和最后一个笔标记都是顶分型
+    if len(ka1.xd) >= 2 and ka1.xd[-1]['fx_mark'] == ka1.bi[-1]['fx_mark'] == 'g':
+        bi_inside = [x for x in ka1.bi if ka1.xd[-2]['dt'] <= x['dt'] <= ka1.xd[-1]['dt']]
+
+        # 上级别最后一个向上线段内部笔标记数量大于等于6，且本级别最后一个线段标记为顶分型，不创新高
+        if len(bi_inside) >= 6 and ka.xd[-1]['fx_mark'] == 'g' \
+                and ka.xd[-1]["xd"] < ka.xd[-3]['xd']:
+
+            # 上级别最后一个线段标记后有且只有三个笔标记，且上级别向上笔不创新低
+            bi_next = [x for x in ka1.bi if x['dt'] >= ka1.xd[-1]['dt']]
+            if len(bi_next) == 3 and bi_next[-1]['fx_mark'] == 'g' \
+                    and bi_next[-1]['bi'] < bi_next[-3]['bi']:
+                detail['操作提示'] = "二卖"
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail["操作提示"] == "二卖" and isinstance(ka2, KlineAnalyze):
+        # 下级别向上线段背驰 或 下级别向上笔背驰
+        if not ((ka2.xd[-1]['fx_mark'] == 'g' and ka2.xd_bei_chi()) or
+                (ka2.bi[-1]['fx_mark'] == 'g' and ka2.bi_bei_chi())):
+            detail['操作提示'] = "无操作"
+    return detail
 
 
-def is_third_buy(ka, ka1=None, ka2=None):
+def is_third_buy(ka, ka1=None, ka2=None, pf=False):
     """确定某一级别三买
 
     第三类买点: 一个第三类买点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段不跌回中枢。
 
+    三买识别逻辑：
+    1）必须：本级别有6个以上线段标记，且最后一个线段标记为底分型；
+    2）必须：前三段有价格重叠部分，构成中枢；
+    2）必须：第4段比第2段新高无背驰，第5段不跌回中枢；
+
+    4）辅助：暂无
+
     :param ka: KlineAnalyze
         本级别
     :param ka1: KlineAnalyze
-        上级别，默认为 None
+        上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :param tolerance: float
-        相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-    :param max_num: int
-        前面的最大中枢数量
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    # 本级别有6个以上线段标记，且最后一个线段标记为底分型；
+    if len(ka.xd) >= 6 and ka.xd[-1]['fx_mark'] == 'd':
+
+        # 前三段有价格重叠部分，构成中枢；
+        zs_g = min([x['xd'] for x in ka.xd[-6:-2] if x['fx_mark'] == "g"])
+        zs_d = max([x['xd'] for x in ka.xd[-6:-2] if x['fx_mark'] == "d"])
+        if zs_g > zs_d:
+
+            # 第4段比第2段有新高或新低，且无背驰，第5段不跌回中枢；
+            zs1 = [ka.xd[-3]['dt'], ka.xd[-2]['dt']]
+            zs2 = [ka.xd[-5]['dt'], ka.xd[-4]['dt']]
+            if ka.xd[-2]['xd'] > ka.xd[-4]['xd'] \
+                    and not is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') \
+                    and ka.xd[-1]['xd'] > zs_g:
+                detail['操作提示'] = '三买'
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail['操作提示'] == '三买':
+        if isinstance(ka1, KlineAnalyze):
+            pass
+
+        if isinstance(ka2, KlineAnalyze):
+            pass
+    return detail
 
 
-def is_third_sell(ka, ka1=None, ka2=None):
+def is_third_sell(ka, ka1=None, ka2=None, pf=False):
     """确定某一级别三卖
 
     第三类卖点: 一个第三类卖点，至少需要有5段次级别的走势，前三段构成中枢，第四段离开中枢，第5段不升破中枢的低点。
 
+    三卖识别逻辑：
+    1）必须：本级别有6个以上线段标记，且最后一个线段标记为顶分型；
+    2）必须：前三段有价格重叠部分，构成中枢；
+    2）必须：第4段比第2段新低无背驰，第5段不升回中枢；
+
+    4）辅助：暂无
+
     :param ka: KlineAnalyze
         本级别
     :param ka1: KlineAnalyze
-        上级别，默认为 None
+        上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    # 本级别有6个以上线段标记，且最后一个线段标记为顶分型；
+    if len(ka.xd) >= 6 and ka.xd[-1]['fx_mark'] == 'g':
+
+        # 前三段有价格重叠部分，构成中枢；
+        zs_g = min([x['xd'] for x in ka.xd[-6:-2] if x['fx_mark'] == "g"])
+        zs_d = max([x['xd'] for x in ka.xd[-6:-2] if x['fx_mark'] == "d"])
+        if zs_g > zs_d:
+
+            # 第4段比第2段新低无背驰，第5段不升回中枢；
+            zs1 = [ka.xd[-3]['dt'], ka.xd[-2]['dt']]
+            zs2 = [ka.xd[-5]['dt'], ka.xd[-4]['dt']]
+            if ka.xd[-2]['xd'] < ka.xd[-4]['xd'] \
+                    and not is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') \
+                    and ka.xd[-1]['xd'] > zs_g:
+                detail['操作提示'] = '三卖'
+                detail['出现时间'] = ka.xd[-1]['dt']
+                detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail['操作提示'] == '三卖':
+        if isinstance(ka1, KlineAnalyze):
+            pass
+
+        if isinstance(ka2, KlineAnalyze):
+            pass
+    return detail
 
 
-def is_xd_buy(ka, ka1=None, ka2=None):
+def is_xd_buy(ka, ka1=None, ka2=None, pf=False):
     """同级别分解买点，我称之为线买，即线段买点
 
+    线买识别逻辑：
+    1） 必须：本级别至少有 3 个线段标记且最后一个线段标记为底分型；
+    2） 必须：本级别向下线段背驰 或 本级别向下线段不创新低；
+
+    3） 辅助：上级别向下笔背驰 或 上级别向下笔不创新低
+    4） 辅助：下级别向下笔背驰
+
     :param ka: KlineAnalyze
         本级别
     :param ka1: KlineAnalyze
-        上级别，默认为 None
+        上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    # 本级别至少有 3 个线段标记且最后一个线段标记为底分型；
+    if len(ka.xd) > 3 and ka.xd[-1]['fx_mark'] == 'd':
+
+        # 本级别向下线段背驰 或 本级别向下线段不创新低；
+        if ka.xd_bei_chi() or ka.xd[-1]['xd'] > ka.xd[-3]['xd']:
+            detail['操作提示'] = "线买"
+            detail['出现时间'] = ka.xd[-1]['dt']
+            detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail['操作提示'] == "线买":
+        if isinstance(ka1, KlineAnalyze):
+            # 上级别向下笔背驰 或 上级别向下笔不创新低
+            if not (ka1.bi[-1]['fx_mark'] == 'd' and
+                    (ka1.bi[-1]['bi'] > ka1.bi[-3]['bi'] or ka1.bi_bei_chi())):
+                detail['操作提示'] = "无操作"
+
+        if isinstance(ka2, KlineAnalyze):
+            # 下级别向下笔背驰
+            if not (ka2.bi[-1]['fx_mark'] == 'd' and ka2.bi_bei_chi()):
+                detail['操作提示'] = "无操作"
+    return detail
 
 
-def is_xd_sell(ka, ka1=None, ka2=None):
+def is_xd_sell(ka, ka1=None, ka2=None, pf=False):
     """同级别分解卖点，我称之为线卖，即线段卖点
 
+    线卖识别逻辑：
+    1） 必须：本级别至少有 3 个线段标记且最后一个线段标记为顶分型；
+    2） 必须：本级别向上线段背驰 或 本级别向上线段不创新高；
+
+    3） 辅助：上级别向上笔背驰 或 上级别向上笔不创新高
+    4） 辅助：下级别向上笔背驰
+
     :param ka: KlineAnalyze
         本级别
     :param ka1: KlineAnalyze
-        上级别，默认为 None
+        上级别
     :param ka2: KlineAnalyze
         下级别，默认为 None
-    :return:
+    :param pf: bool
+        pf 为 precision first 的缩写， 控制是否使用 `高精度优先模式` ，默认为 False ，即 `高召回优先模式`。
+        在 `高精度优先模式` 下，会充分利用辅助判断条件提高识别准确率。
+
+    :return: dict
     """
-    pass
+    detail = {
+        "标的代码": ka.symbol,
+        "操作提示": "无操作",
+        "出现时间": None,
+        "基准价格": None,
+        "其他信息": None
+    }
+
+    # 本级别至少有 3 个线段标记且最后一个线段标记为顶分型；
+    if len(ka.xd) > 3 and ka.xd[-1]['fx_mark'] == 'g':
+
+        # 本级别向上线段背驰 或 本级别向上线段不创新高
+        if ka.xd_bei_chi() or ka.xd[-1]['xd'] < ka.xd[-3]['xd']:
+            detail['操作提示'] = "线卖"
+            detail['出现时间'] = ka.xd[-1]['dt']
+            detail['基准价格'] = ka.xd[-1]['xd']
+
+    if pf and detail['操作提示'] == "线卖":
+        if isinstance(ka1, KlineAnalyze):
+            # 上级别向上笔背驰 或 上级别向上笔不创新高
+            if not (ka1.bi[-1]['fx_mark'] == 'g' and
+                    (ka1.bi[-1]['bi'] < ka1.bi[-3]['bi'] or ka1.bi_bei_chi())):
+                detail['操作提示'] = "无操作"
+
+        if isinstance(ka2, KlineAnalyze):
+            # 下级别向上笔背驰
+            if not (ka2.bi[-1]['fx_mark'] == 'g' and ka2.bi_bei_chi()):
+                detail['操作提示'] = "无操作"
+    return detail
 
 
 class SolidAnalyze(object):
@@ -221,6 +492,19 @@ class SolidAnalyze(object):
                 self.kas[freq] = None
                 traceback.print_exc()
         self.symbol = self.kas['1分钟'].symbol
+        self.bs_func = {
+            "一买": is_first_buy,
+            "一卖": is_first_sell,
+
+            "二买": is_second_buy,
+            "二卖": is_second_sell,
+
+            "三买": is_third_buy,
+            "三卖": is_third_sell,
+
+            "线买": is_xd_buy,
+            "线卖": is_xd_sell,
+        }
 
     def _get_ka(self, freq):
         """输入级别，返回该级别 ka，以及上一级别 ka1，下一级别 ka2"""
@@ -244,316 +528,27 @@ class SolidAnalyze(object):
         detail['最新价格'] = ka.latest_price
         return detail
 
-    def is_first_buy(self, freq, tolerance=0.03):
-        """确定某一级别一买，包括由盘整背驰引发的类一买
-
-        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
+    def check_bs(self, freq, name, pf=False, tolerance=0.03):
+        """
 
         :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
+            级别，可选值 1分钟、5分钟、30分钟、日线
+        :param name: str
+            买卖点名称，可选值 一买、一卖、二买、二卖、三买、三卖、线买、线卖
+        :param pf: bool
+            是否使用 `高精度优先模式`
         :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
+            买卖点的价格容忍区间
+        :return:dict
         """
+        func = self.bs_func[name]
         ka, ka1, ka2 = self._get_ka(freq)
-        assert freq != "日线", "日线级别不能识别一买"
-        b, detail = is_first_buy(ka, ka1, ka2, tolerance)
-        if b:
+        detail = func(ka, ka1, ka2, pf)
+        if detail['操作提示'] == name:
             detail = self._m_detail(detail, freq)
-        return b, detail
+            base_price = detail["基准价格"]
+            latest_price = detail['最新价格']
 
-    def is_first_sell(self, freq, tolerance=0.03):
-        """确定某一级别一卖，包括由盘整背驰引发的类一卖
-
-        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        assert freq != "日线", "日线级别不能识别一卖"
-        b, detail = is_first_sell(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_second_buy(self, freq, tolerance=0.03):
-        """确定某一级别二买，包括类二买
-
-        注意：如果本级别上一级别的 ka 不存在，默认返回 False !!!
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        assert freq != "日线", "日线级别不能识别二买"
-        b, detail = is_second_buy(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_second_sell(self, freq, tolerance=0.03):
-        """确定某一级别二卖，包括类二卖
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        assert freq != "日线", "日线级别不能识别二卖"
-        b, detail = is_second_sell(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_third_buy(self, freq, tolerance=0.03):
-        """确定某一级别三买
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        b, detail = is_third_buy(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_third_sell(self, freq, tolerance=0.03):
-        """确定某一级别三卖
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        b, detail = is_third_sell(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_xd_buy(self, freq, tolerance=0.03):
-        """同级别分解买点，我称之为线买，即线段买点
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        b, detail = is_xd_buy(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-    def is_xd_sell(self, freq, tolerance=0.03):
-        """同级别分解卖点，我称之为线卖，即线段卖点
-
-        :param freq: str
-            K线级别，如 1分钟；这个级别可以是你定义的任何名称
-        :param tolerance: float
-            相对于基准价格的操作容差，默认为 0.03，表示在基准价格附近上下3个点的波动范围内都是允许操作的
-        :return:
-        """
-        ka, ka1, ka2 = self._get_ka(freq)
-        b, detail = is_xd_sell(ka, ka1, ka2, tolerance)
-        if b:
-            detail = self._m_detail(detail, freq)
-        return b, detail
-
-
-def is_single_ma_buy(ka, p=5, max_distant=0.1):
-    """单均线买点"""
-    kline = pd.DataFrame(ka.kline)
-    kline = deepcopy(kline)
-    kline = ma(kline, params=(p,))
-    ma_col = "ma%i" % p
-    kline['d'] = kline[ma_col].diff(1)
-
-    b = False
-    detail = {
-        "标的代码": kline.iloc[0]['symbol'],
-        "操作提示": "单均线买",
-        "出现时间": kline.iloc[-1]['dt'],
-        "基准价格": kline.iloc[-1]['close'],
-        "其他信息": ""
-    }
-
-    distant = (kline.iloc[-1]['close'] - kline.iloc[-1][ma_col]) / kline.iloc[-1][ma_col]
-
-    # 在均线下出现的买点
-    if distant < 0:
-        if kline.iloc[-1]['d'] > kline.iloc[-2]['d'] * 1.2 \
-                and kline.iloc[-2]['d'] > kline.iloc[-3]['d'] * 1.2 \
-                and kline.iloc[-3]['d'] > 0:
-            b = True
-            detail['其他信息'] = "买点一：价格跌破均线，但均线仍维持上行"
-            return b, detail
-
-        if abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 1.5) \
-                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 1.5) \
-                and abs(distant) > max_distant \
-                and kline.iloc[-3]['d'] < 0:
-            b = True
-            detail['其他信息'] = "买点二：价格在连续的暴跌走势中远离均线"
-            return b, detail
-
-    # 在均线上出现的买点
-    if distant > 0:
-        if kline.iloc[-1]['d'] > kline.iloc[-2]['d'] > kline.iloc[-3]['d'] > 0 > kline.iloc[-4]['d']:
-            b = True
-            detail['其他信息'] = "买点三：均线从前期的下行逐渐走平，此时价格突破均线，在均线上运行"
-            return b, detail
-
-        if kline.iloc[-2]['close'] < kline.iloc[-3]['close'] < kline.iloc[-4]['close'] \
-                and kline.iloc[-1]['close'] > kline.iloc[-2]['close'] \
-                and abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 1.2) \
-                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 1.2) \
-                and kline.iloc[-3]['d'] > 0:
-            b = True
-            detail['其他信息'] = "买点四：价格上升过程中突然下跌靠近均线，在未跌破均线的时候再次上涨"
-            return b, detail
-
-    return b, detail
-
-
-def is_single_ma_sell(ka, p=5, max_distant=0.1):
-    """单均线卖点"""
-    kline = pd.DataFrame(ka.kline)
-    kline = deepcopy(kline)
-    kline = ma(kline, params=(p,))
-    ma_col = "ma%i" % p
-    kline['d'] = kline[ma_col].diff(1)
-
-    b = False
-    detail = {
-        "标的代码": kline.iloc[0]['symbol'],
-        "操作提示": "单均线卖",
-        "出现时间": kline.iloc[-1]['dt'],
-        "基准价格": kline.iloc[-1]['close'],
-        "其他信息": ""
-    }
-
-    distant = (kline.iloc[-1]['close'] - kline.iloc[-1][ma_col]) / kline.iloc[-1][ma_col]
-
-    # 在均线下形成卖点
-    if distant < 0:
-        if abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d']) \
-                and kline.iloc[-2]['d'] < 0 \
-                and kline.iloc[-3]['d'] > 0:
-            b = True
-            detail['其他信息'] = "卖点一：价格跌破均线，并且均线转向下行"
-            return b, detail
-
-        if kline.iloc[-2]['close'] > kline.iloc[-3]['close'] \
-                and kline.iloc[-1]['close'] < kline.iloc[-2]['close']:
-            b = True
-            detail['其他信息'] = "卖点二：价格在均线之下试图突破均线，但未成功，之后继续下跌"
-            return b, detail
-
-    # 在均线上形成卖点
-    if distant > 0:
-        if abs(distant) > max_distant \
-                and abs(kline.iloc[-1]['d']) > abs(kline.iloc[-2]['d'] * 2) \
-                and abs(kline.iloc[-2]['d']) > abs(kline.iloc[-3]['d'] * 2):
-            b = True
-            detail['其他信息'] = "卖点三：价格在不断的暴涨中逐渐远离均线"
-            return b, detail
-
-        if kline.iloc[-1]['close'] < kline.iloc[-2]['close'] < kline.iloc[-3]['close'] \
-                and kline.iloc[-1]['d'] < 0:
-            b = True
-            detail['其他信息'] = "卖点四：价格短期突破均线，之后立即跌回"
-            return b, detail
-
-    return b, detail
-
-
-def __macd_cross_bs(ka):
-    kline = pd.DataFrame(ka.kline)
-    kline = deepcopy(kline)
-    kline = deepcopy(kline)
-    kline = macd(kline)
-    kline.loc[:, "macd_cross"] = kline.apply(lambda x: "金叉" if x['diff'] >= x['dea'] else "死叉", axis=1)
-
-    kline['m_'] = kline['macd_cross'].shift(1)
-    idx = kline[kline['m_'] != kline['macd_cross']].index.tolist()
-
-    g_max = []  # 金叉的最大值序列
-    d_min = []  # 死叉的最小值序列
-    for i in range(len(idx)):
-        if i == len(idx)-1:
-            k = kline.iloc[idx[i]:]
-        else:
-            k = kline.iloc[idx[i]:idx[i+1]]
-
-        if k.iloc[0]['macd_cross'] == '金叉':
-            g_max.append(max(k.high))
-        elif k.iloc[0]['macd_cross'] == '死叉':
-            d_min.append(min(k.low))
-        else:
-            raise ValueError
-
-    m1, m2, m3 = kline['macd'][-3:]
-    if kline.iloc[-1]['macd_cross'] == '死叉' and d_min[-1] > d_min[-2] and m1 > m2 < m3:
-        return "buy"
-
-    if kline.iloc[-1]['macd_cross'] == '金叉' and g_max[-1] < g_max[-2] and m1 < m2 > m3:
-        return "sell"
-
-    return None
-
-
-def is_macd_buy(ka):
-    """
-
-    :param ka:
-    :return:
-    """
-    b = False
-    detail = {
-        "标的代码": ka.kline[0]['symbol'],
-        "操作提示": "MACD买",
-        "出现时间": ka.kline[-1]['dt'],
-        "基准价格": ka.kline[-1]['close'],
-        "其他信息": ""
-    }
-    bs = __macd_cross_bs(ka)
-    if bs == "buy":
-        b = True
-        detail['其他信息'] = "MACD当下金叉，前一个死叉不创新低，做多"
-    return b, detail
-
-
-def is_macd_sell(ka):
-    """
-
-    :param ka:
-    :return:
-    """
-    b = False
-    detail = {
-        "标的代码": ka.kline[0]['symbol'],
-        "操作提示": "MACD卖",
-        "出现时间": ka.kline[-1]['dt'],
-        "基准价格": ka.kline[-1]['close'],
-        "其他信息": ""
-    }
-    bs = __macd_cross_bs(ka)
-    if bs == "sell":
-        b = True
-        detail['其他信息'] = "MACD当下死叉，前一个金叉不创新高，做空"
-    return b, detail
+            if not is_in_tolerance(base_price, latest_price, tolerance):
+                detail['操作提示'] = "无操作"
+        return detail
