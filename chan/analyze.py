@@ -134,7 +134,7 @@ class KlineAnalyze(object):
             线段识别控制参数，默认为 loose，在这种模式下，只要线段标记内有三笔就满足会识别；另外一个可选值是 strict，
             在 strict 模式下，对于三笔形成的线段，要求其后的一笔不跌破或升破线段最后一笔的起始位置。
         :param handle_last: bool
-            是否使用默认的 handle_last 方法，默认值为 False，即不使用。
+            是否使用默认的 handle_last 方法，默认值为 True
         """
         assert bi_mode in ['new', 'old'], "bi_mode 参数错误"
         assert xd_mode in ['loose', 'strict'], "bi_mode 参数错误"
