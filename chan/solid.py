@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import traceback
-from .analyze import KlineAnalyze, is_bei_chi
+from .analyze import KlineAnalyze, is_bei_chi, down_zs_number, up_zs_number
 
 
 def is_in_tolerance(base_price, latest_price, tolerance):
@@ -254,7 +254,7 @@ def is_third_buy(ka, ka1=None, ka2=None, pf=False):
     2）必须：前三段有价格重叠部分，构成中枢；
     2）必须：第4段比第2段新高无背驰，第5段不跌回中枢；
 
-    4）辅助：暂无
+    4）辅助：向上中枢数量小于等于3
 
     :param ka: KlineAnalyze
         本级别
@@ -295,6 +295,11 @@ def is_third_buy(ka, ka1=None, ka2=None, pf=False):
                 detail['基准价格'] = ka.xd[-1]['xd']
 
     if pf and detail['操作提示'] == '三买':
+        # 向上中枢数量小于等于3
+        un = up_zs_number(ka)
+        if un > 3:
+            detail['操作提示'] = '无操作'
+
         if isinstance(ka1, KlineAnalyze):
             pass
 
@@ -313,7 +318,7 @@ def is_third_sell(ka, ka1=None, ka2=None, pf=False):
     2）必须：前三段有价格重叠部分，构成中枢；
     2）必须：第4段比第2段新低无背驰，第5段不升回中枢；
 
-    4）辅助：暂无
+    4）辅助：向下中枢数量小于等于3
 
     :param ka: KlineAnalyze
         本级别
@@ -354,6 +359,11 @@ def is_third_sell(ka, ka1=None, ka2=None, pf=False):
                 detail['基准价格'] = ka.xd[-1]['xd']
 
     if pf and detail['操作提示'] == '三卖':
+        # 向下中枢数量小于等于3
+        dn = down_zs_number(ka)
+        if dn > 3:
+            detail['操作提示'] = '无操作'
+
         if isinstance(ka1, KlineAnalyze):
             pass
 
