@@ -1,6 +1,7 @@
 # coding: utf-8
 import os
 import json
+import traceback
 import requests
 import time
 import pandas as pd
@@ -132,17 +133,13 @@ def monitor(symbol='000001.XSHG'):
         sa = SolidAnalyze(klines)
         for freq in ['1分钟', '5分钟', '30分钟']:
             print(f"{latest_dt}: monitor {symbol} at {freq}")
-
-            for func in [sa.is_first_buy, sa.is_first_sell,
-                         sa.is_second_buy, sa.is_second_sell,
-                         sa.is_third_buy, sa.is_third_sell,
-                         sa.is_xd_buy, sa.is_xd_buy]:
-
-                b1, event = func(freq, tolerance=0.1)
-                if b1:
-                    event['级别'] = freq
-                    event['最新价格'] = sa.kas['1分钟'].latest_price
-                    __send_event(event)
+            for name in sa.bs_func.keys():
+                try:
+                    event = sa.check_bs(freq=freq, name=name, pf=False, tolerance=0.1)
+                    if event['操作提示'] == name:
+                        __send_event(event)
+                except:
+                    traceback.print_exc()
 
         t = latest_dt.split(' ')[1]
         if "13:00" > t > "11:30" or t > "15:00":

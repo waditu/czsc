@@ -212,7 +212,7 @@ def kline_simulator(ts_code, trade_dt, asset="E", count=5000):
         new_klines = dict()
         for freq in init_klines.keys():
             new_klines[freq] = pd.concat([init_klines[freq], klines[freq]]).tail(count)
-            print(freq, new_klines[freq].tail(2), '\n')
+            # print(freq, new_klines[freq].tail(2), '\n')
         yield new_klines
 
 
@@ -250,19 +250,16 @@ def trade_simulator(ts_code, end_date, file_bs, start_date=None, days=3, asset="
         for i, klines in enumerate(ks.__iter__(), 1):
             if i % watch_interval != 0:
                 continue
+
             sa = SolidAnalyze(klines)
-            for func in [sa.is_first_buy, sa.is_second_buy, sa.is_third_buy, sa.is_xd_buy,
-                         sa.is_first_sell, sa.is_second_sell, sa.is_third_sell, sa.is_xd_sell]:
-                for freq in ['1分钟', '5分钟', '30分钟']:
-                    latest_dt = klines[freq].iloc[-1]['dt']
-                    latest_price = klines[freq].iloc[-1]['close']
+            for freq in ['1分钟', '5分钟', '30分钟']:
+                for name in sa.bs_func.keys():
                     try:
-                        b, detail = func(freq, tolerance=0.1)
-                        if b:
-                            detail['交易时间'] = latest_dt
-                            detail['交易价格'] = latest_price
-                            detail['交易级别'] = freq
+                        detail = sa.check_bs(freq=freq, name=name, pf=False, tolerance=0.1)
+                        if detail['操作提示'] == name:
                             print(detail)
+                            detail['交易时间'] = detail['最新时间']
+                            detail['交易价格'] = detail['最新价格']
                             results.append(detail)
                     except:
                         traceback.print_exc()
@@ -291,15 +288,15 @@ def check_trade(ts_code, file_bs, freq, end_date="20200314", asset="E", file_htm
 
 
 if __name__ == '__main__':
-    ts_code = '300671.SZ'
+    ts_code = '300033.SZ'
     asset = "E"
     end_date = '20200321'
-    freq = '1min'
+    freq = '30min'
     file_bs = "%s买卖点变化过程_%s.xlsx" % (ts_code, end_date)
     file_html = f"%s_%s_%s_bs.html" % (ts_code, freq, end_date)
 
     # step 1. 仿真交易
-    trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=150, asset=asset, watch_interval=5)
+    # trade_simulator(ts_code, end_date=end_date, file_bs=file_bs, days=100, asset=asset, watch_interval=5)
 
     # step 2. 查看仿真交易过程的买卖点提示
     check_trade(ts_code, file_bs, freq=freq, asset=asset, end_date=end_date, file_html=file_html)
