@@ -4,6 +4,8 @@ from .analyze import KlineAnalyze
 from .ta import ma, macd, boll
 from .utils import plot_kline
 from .solid import SolidAnalyze
+from .solid import is_in_tolerance, is_first_buy, is_first_sell, is_second_buy, \
+    is_second_sell, is_third_buy, is_third_sell, is_xd_buy, is_xd_sell
 
 __version__ = "0.3.1"
 __author__ = "zengbin93"
