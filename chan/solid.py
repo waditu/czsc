@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import traceback
-from .analyze import KlineAnalyze, is_bei_chi, down_zs_number, up_zs_number
+from .analyze import KlineAnalyze, is_bei_chi, down_zs_number, up_zs_number, get_ka_feature
 
 
 def is_in_tolerance(base_price, latest_price, tolerance):
@@ -478,6 +478,31 @@ def is_xd_sell(ka, ka1=None, ka2=None, pf=False):
     return detail
 
 
+bs_func = {
+            "一买": is_first_buy,
+            "一卖": is_first_sell,
+
+            "二买": is_second_buy,
+            "二卖": is_second_sell,
+
+            "三买": is_third_buy,
+            "三卖": is_third_sell,
+
+            "线买": is_xd_buy,
+            "线卖": is_xd_sell,
+        }
+
+
+def get_sa_feature(sa):
+    signals = {"交易标的": sa.symbol, "交易时间": sa.kas['1分钟'].end_dt, "chan_version": 0.3}
+    for freq, ka in sa.kas.items():
+        feature = get_ka_feature(ka)
+        for k, v in feature.items():
+            signals[freq+k] = v
+    # print(signals)
+    return signals
+
+
 class SolidAnalyze(object):
     """多级别（日线、30分钟、5分钟、1分钟）K线联合分析
 
@@ -502,19 +527,9 @@ class SolidAnalyze(object):
                 self.kas[freq] = None
                 traceback.print_exc()
         self.symbol = self.kas['1分钟'].symbol
-        self.bs_func = {
-            "一买": is_first_buy,
-            "一卖": is_first_sell,
-
-            "二买": is_second_buy,
-            "二卖": is_second_sell,
-
-            "三买": is_third_buy,
-            "三卖": is_third_sell,
-
-            "线买": is_xd_buy,
-            "线卖": is_xd_sell,
-        }
+        self.end_dt = self.kas['1分钟'].end_dt
+        self.latest_price = self.kas['1分钟'].latest_price
+        self.bs_func = bs_func
 
     def _get_ka(self, freq):
         """输入级别，返回该级别 ka，以及上一级别 ka1，下一级别 ka2"""

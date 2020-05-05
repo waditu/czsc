@@ -95,6 +95,32 @@ def down_zs_number(ka):
     return zs_num
 
 
+def get_ka_feature(ka):
+    """获取 KlineAnalyze 的特征"""
+    feature = dict()
+
+    feature["分型标记"] = 1 if ka.fx[-1]['fx_mark'] == 'g' else 0
+    feature["笔标记"] = 1 if ka.bi[-1]['fx_mark'] == 'g' else 0
+    feature["线段标记"] = 1 if ka.xd[-1]['fx_mark'] == 'g' else 0
+
+    feature['向上笔背驰'] = 1 if ka.bi[-1]['fx_mark'] == 'g' and ka.bi_bei_chi() else 0
+    feature['向下笔背驰'] = 1 if ka.bi[-1]['fx_mark'] == 'd' and ka.bi_bei_chi() else 0
+    feature['向上线段背驰'] = 1 if ka.xd[-1]['fx_mark'] == 'g' and ka.xd_bei_chi() else 0
+    feature['向下线段背驰'] = 1 if ka.xd[-1]['fx_mark'] == 'd' and ka.xd_bei_chi() else 0
+
+    # 均线/MACD相关特征
+    ma_params = (5, 20, 120, 250)
+    df = create_df(ka, ma_params)
+    last = df.iloc[-1].to_dict()
+    for p in ma_params:
+        feature['收于MA%i上方' % p] = 1 if last['close'] > last['ma%i' % p] else 0
+
+    feature["MACD金叉"] = 1 if last['diff'] > last['dea'] else 0
+    feature["MACD死叉"] = 1 if last['diff'] < last['dea'] else 0
+
+    return feature
+
+
 @lru_cache(maxsize=64)
 def is_macd_cross(ka, direction="up"):
     """判断macd的向上金叉、向下死叉"""
@@ -592,3 +618,5 @@ class KlineAnalyze(object):
             return is_bei_chi(self, zs1, zs2, direction=direction, mode="xd")
         else:
             return False
+
+
