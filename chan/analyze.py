@@ -348,31 +348,8 @@ class KlineAnalyze(object):
     def __handle_last_bi(self, bi):
         """处理最后一个笔标记
 
-        最后一个笔标记后有两种情况：
-        1） 出现顶、底分型，使得最后一笔满足定义，加上对应的标记；
-        2） 没有出现使得最后一笔满足定义的顶底分型，耐心等待。
-
         特别的，对应最后一个笔标记：最后一根K线的最高价大于顶，或最后一根K线的最低价大于底，则删除这个标记。
         """
-        # last_bi = bi[-1]
-        # seq = [x for x in self.fx if x['dt'] >= last_bi['dt']]
-        # sor = sorted(deepcopy(seq), key=lambda x: x['fx'], reverse=False)
-        #
-        # if last_bi['fx_mark'] == 'd' and sor[-1]['fx_mark'] == 'g':
-        #     k = deepcopy(sor[-1])
-        # elif last_bi['fx_mark'] == 'g' and sor[0]['fx_mark'] == 'd':
-        #     k = deepcopy(sor[0])
-        # else:
-        #     k = None
-        #
-        # if k:
-        #     k_num = [x for x in self.kline_new if last_bi['dt'] <= x['dt'] <= k['dt']]
-        #     if len(k_num) >= self.min_k_num:
-        #         k['bi'] = k['fx']
-        #         del k['fx']
-        #         bi.append(k)
-
-        # 笔标记后出现新高或新低，则这个笔标记不成立
         last_bi = bi[-1]
         last_k = self.kline_new[-1]
         if (last_bi['fx_mark'] == 'd' and last_k['low'] < last_bi['bi']) \
@@ -451,38 +428,8 @@ class KlineAnalyze(object):
     def __handle_last_xd(self, xd):
         """处理最后一个线段标记
 
-        最后一个线段后有两种情况：
-        1） 出现笔的顶、底背驰，对这种情况，在背驰出现的位置加上对应的线段标记；
-        2） 没有出现笔的顶、底背驰，不需要进行处理，耐心等待笔的顶、底背驰出现或者小转大出现。
-
         特别的，对最后一个线段标记：最后一根K线的最高价大于顶，或最后一根K线的最低价大于底，则删除这个标记。
         """
-        # last_xd = xd[-1]
-        # bi_seq = [x for x in self.bi if x['dt'] >= last_xd['dt']]
-        # bi_sor = sorted(deepcopy(bi_seq), key=lambda x: x['bi'], reverse=False)
-        #
-        # if last_xd['fx_mark'] == 'd':
-        #     bi_m = [x for x in self.bi if bi_sor[-1]['dt'] >= x['dt'] >= last_xd['dt']]
-        #     if len(bi_m) >= 4:
-        #         zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
-        #         zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
-        #         if is_bei_chi(self, zs1, zs2, mode='bi'):
-        #             new = deepcopy(bi_sor[-1])
-        #             new['xd'] = new['bi']
-        #             del new["bi"]
-        #             xd.append(new)
-        #
-        # if last_xd['fx_mark'] == 'g':
-        #     bi_m = [x for x in self.bi if bi_sor[0]['dt'] >= x['dt'] >= last_xd['dt']]
-        #     if len(bi_m) >= 4:
-        #         zs1 = [bi_m[-2]['dt'], bi_m[-1]['dt']]
-        #         zs2 = [bi_m[-4]['dt'], bi_m[-3]['dt']]
-        #         if is_bei_chi(self, zs1, zs2, mode='bi'):
-        #             new = deepcopy(bi_sor[0])
-        #             new['xd'] = new['bi']
-        #             del new["bi"]
-        #             xd.append(new)
-
         last_k = self.kline_new[-1]
         if (xd[-1]['fx_mark'] == 'd' and last_k['low'] < xd[-1]['xd']) \
                 or (xd[-1]['fx_mark'] == 'g' and last_k['high'] > xd[-1]['xd']):
