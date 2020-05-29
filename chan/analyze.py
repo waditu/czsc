@@ -461,27 +461,31 @@ class KlineAnalyze(object):
         zs_xd = []
 
         for i in range(len(k_xd)):
-            if len(zs_xd) < 3:
+            if len(zs_xd) < 5:
                 zs_xd.append(k_xd[i])
                 continue
             xd_p = k_xd[i]
-            zs_d = max([x['xd'] for x in zs_xd[:3] if x['fx_mark'] == 'd'])
-            zs_g = min([x['xd'] for x in zs_xd[:3] if x['fx_mark'] == 'g'])
+            zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+            zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
+            if zs_g <= zs_d:
+                zs_xd.append(k_xd[i])
+                zs_xd.pop(0)
+                continue
 
             if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
                 # 线段在中枢上方结束，形成三买
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = deepcopy(k_xd[i - 2:i + 1])
+                zs_xd = deepcopy(k_xd[i: i+1])
             elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
                 # 线段在中枢下方结束，形成三卖
                 k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-                zs_xd = deepcopy(k_xd[i - 2:i + 1])
+                zs_xd = deepcopy(k_xd[i: i+1])
             else:
                 zs_xd.append(deepcopy(xd_p))
 
-        if len(zs_xd) >= 4:
-            zs_d = max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd'])
-            zs_g = min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g'])
+        if len(zs_xd) >= 5:
+            zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+            zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
             k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
 
         return k_zs

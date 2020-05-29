@@ -15,21 +15,21 @@ def test_bei_chi():
     ka = KlineAnalyze(df)
 
     # 线段背驰
-    zs1 = ['2018-07-26 15:00:00', '2018-10-19 15:00:00']
-    zs2 = ['2018-01-29 15:00:00', '2018-07-06 15:00:00']
-    assert is_bei_chi(ka, zs1, zs2, direction='down', mode='xd', adjust=0.9)
+    zs1 = {"start_dt": '2018-07-26 15:00:00', "end_dt": '2018-10-19 15:00:00', "direction": "down"}
+    zs2 = {"start_dt": '2018-01-29 15:00:00', "end_dt": '2018-07-06 15:00:00', "direction": "down"}
+    assert is_bei_chi(ka, zs1, zs2, mode='xd', adjust=0.9)
 
-    zs1 = ['2013-12-10 15:00:00', '2014-01-20 15:00:00']
-    zs2 = ['2013-09-12 15:00:00', '2013-11-14 15:00:00']
-    assert not is_bei_chi(ka, zs1, zs2, direction='down', mode='xd', adjust=0.9)
+    zs1 = {"start_dt": '2013-12-10 15:00:00', "end_dt": '2014-01-20 15:00:00', "direction": "down"}
+    zs2 = {"start_dt": '2013-09-12 15:00:00', "end_dt": '2013-11-14 15:00:00', "direction": "down"}
+    assert not is_bei_chi(ka, zs1, zs2, mode='xd', adjust=0.9)
 
     # 笔背驰
-    zs1 = ['2019-05-17 15:00:00', '2019-06-10 15:00:00']
-    zs2 = ['2019-04-08 15:00:00', '2019-05-10 15:00:00']
+    zs1 = {"start_dt": '2019-05-17 15:00:00', "end_dt": '2019-06-10 15:00:00'}
+    zs2 = {"start_dt": '2019-04-08 15:00:00', "end_dt": '2019-05-10 15:00:00'}
     assert is_bei_chi(ka, zs1, zs2, mode='bi', adjust=0.9)
 
-    zs1 = ['2018-09-28 15:00:00', '2018-10-19 15:00:00']
-    zs2 = ['2018-08-28 15:00:00', '2018-09-12 15:00:00']
+    zs1 = {"start_dt": '2018-09-28 15:00:00', "end_dt": '2018-10-19 15:00:00'}
+    zs2 = {"start_dt": '2018-08-28 15:00:00', "end_dt": '2018-09-12 15:00:00'}
     assert not is_bei_chi(ka, zs1, zs2, mode='bi', adjust=0.9)
 
 
@@ -44,5 +44,6 @@ def test_kline_analyze():
     # 测试背驰识别
     assert not ka.bi_bei_chi()
     assert not ka.xd_bei_chi()
+    print(ka.zs[-2])
 
 
