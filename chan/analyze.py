@@ -424,15 +424,6 @@ class KlineAnalyze(object):
                         xd.pop(-1)
                         continue
                     bi_m = [x for x in self.bi if k0['dt'] <= x['dt'] <= k['dt']]
-
-                    # if len(bi_m) == 2 and len(xd) >= 2:
-                    #     k1 = xd[-2]
-                    #     if (k1['fx_mark'] == 'g' and k1['xd'] < k['xd']) or \
-                    #             (k1['fx_mark'] == 'd' and k1['xd'] > k['xd']):
-                    #         xd.pop(-1)
-                    #         xd.pop(-1)
-                    #         xd.append(k)
-
                     bi_r = [x for x in self.bi if x['dt'] >= k['dt']]
                     # 一线段内部至少三笔
                     if len(bi_m) >= 4:
