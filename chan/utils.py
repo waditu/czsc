@@ -4,6 +4,9 @@ import pandas as pd
 from pyecharts import options as opts
 from pyecharts.commons.utils import JsCode
 from pyecharts.charts import Kline, Line, Bar, Grid, Scatter
+import mplfinance as mpf
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 from .ta import macd
 
@@ -258,3 +261,59 @@ def plot_kline(ka, bs=None, file_html="chan.html", width="1400px", height="680px
         grid_opts=opts.GridOpts(pos_left="3%", pos_right="1%", pos_top="82%", height="14%"),
     )
     grid_chart.render(path=file_html)
+
+
+def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000):
+    """绘制 ka，保存到 file_image"""
+    df = pd.DataFrame(ka.kline)
+    df.rename({"open": "Open", "close": "Close", "high": "High",
+               "low": "Low", "vol": "Volume"}, axis=1, inplace=True)
+    df.index = pd.to_datetime(df['dt'])
+    df = df.tail(max_k_count)
+    kwargs = dict(type='candle', mav=mav, volume=True)
+
+    bi_xd = [
+        [(x['dt'], x['bi']) for _, x in df.iterrows() if x['bi'] > 0],
+        [(x['dt'], x['xd']) for _, x in df.iterrows() if x['xd'] > 0]
+    ]
+
+    mc = mpf.make_marketcolors(
+        up='red',
+        down='green',
+        edge='i',
+        wick='i',
+        volume='in',
+        inherit=True)
+
+    s = mpf.make_mpf_style(
+        gridaxis='both',
+        gridstyle='-.',
+        y_on_right=False,
+        marketcolors=mc)
+
+    mpl.rcParams['font.sans-serif'] = ['KaiTi']
+    mpl.rcParams['font.serif'] = ['KaiTi']
+    mpl.rcParams['font.size'] = 48
+    mpl.rcParams['axes.unicode_minus'] = False
+    mpl.rcParams['lines.linewidth'] = 1.0
+
+    title = '%s缠论分析结果（%s - %s）' % (ka.symbol, df.index[0].__str__(), df.index[-1].__str__())
+    fig, axes = mpf.plot(df, columns=['Open', 'High', 'Low', 'Close', 'Volume'], style=s,
+                         title=title, ylabel='K线', ylabel_lower='成交量', **kwargs,
+                         alines=dict(alines=bi_xd, colors=['r', 'g'], linewidths=8, alpha=0.35),
+                         returnfig=True)
+
+    if len(df) < 1000:
+        w = len(df) * 0.2
+    elif len(df) < 2000:
+        w = len(df) * 0.1
+    elif len(df) < 5000:
+        w = len(df) * 0.04
+    else:
+        w = len(df) * 0.02
+    fig.set_size_inches(w, 30)
+    ax = plt.gca()
+    ax.set_xbound(-1, len(df)+1)
+    fig.savefig(fname=file_image, dpi=50, bbox_inches='tight')
+
+
