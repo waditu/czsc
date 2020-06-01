@@ -7,7 +7,7 @@ setup(
     version=chan.__version__,
     author=chan.__author__,
     author_email=chan.__email__,
-    keywords=("缠论", "技术分析"),
+    keywords=["缠论", "技术分析", "A股", "期货"],
     description="缠论技术分析工具",
     long_description="缠论技术分析工具",
     license="MIT",
@@ -15,7 +15,7 @@ setup(
     url="https://github.com/zengbin93/chan",
     packages=find_packages(exclude=['test', 'images', 'docs']),
     include_package_data=True,
-    install_requires=["pandas"],
+    install_requires=["pandas", "pyecharts", "mplfinance", "tushare"],
 
     classifiers=[
             'License :: OSI Approved :: Apache Software License',
