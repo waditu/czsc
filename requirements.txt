@@ -1,4 +1,5 @@
 pyecharts
+mplfinance
 tqdm
 pandas
 tushare
