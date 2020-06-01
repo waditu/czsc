@@ -474,11 +474,19 @@ class KlineAnalyze(object):
 
             if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
                 # 线段在中枢上方结束，形成三买
-                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+                k_zs.append({
+                    'zs': (zs_d, zs_g),
+                    "zs_xd": deepcopy(zs_xd),
+                    "third_buy": deepcopy(xd_p)
+                })
                 zs_xd = deepcopy(k_xd[i: i+1])
             elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
                 # 线段在中枢下方结束，形成三卖
-                k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+                k_zs.append({
+                    'zs': (zs_d, zs_g),
+                    "zs_xd": deepcopy(zs_xd),
+                    "third_sell": deepcopy(xd_p)
+                })
                 zs_xd = deepcopy(k_xd[i: i+1])
             else:
                 zs_xd.append(deepcopy(xd_p))
