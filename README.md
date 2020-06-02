@@ -6,14 +6,14 @@
 
 ## 安装
 
-执行以下代码直接从github安装：
+直接从github安装：
 ```
 pip install git+git://github.com/zengbin93/czsc.git -U
 ```
 
-执行以下代码从 pypi 安装：
+从`pypi`安装：
 ```
-pip install czsc -U -i 
+pip install czsc -U -i https://pypi.python.org/simple
 ```
 
 ## K线数据样例

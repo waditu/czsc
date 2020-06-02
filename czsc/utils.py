@@ -263,7 +263,7 @@ def plot_kline(ka, bs=None, file_html="kline.html", width="1400px", height="680p
     grid_chart.render(path=file_html)
 
 
-def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000):
+def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     """绘制 ka，保存到 file_image"""
     df = pd.DataFrame(ka.kline)
     df.rename({"open": "Open", "close": "Close", "high": "High",
@@ -303,17 +303,10 @@ def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000):
                          alines=dict(alines=bi_xd, colors=['r', 'g'], linewidths=8, alpha=0.35),
                          returnfig=True)
 
-    if len(df) < 1000:
-        w = len(df) * 0.2
-    elif len(df) < 2000:
-        w = len(df) * 0.1
-    elif len(df) < 5000:
-        w = len(df) * 0.04
-    else:
-        w = len(df) * 0.02
+    w = len(df) * 0.15
     fig.set_size_inches(w, 30)
     ax = plt.gca()
     ax.set_xbound(-1, len(df)+1)
-    fig.savefig(fname=file_image, dpi=50, bbox_inches='tight')
+    fig.savefig(fname=file_image, dpi=dpi, bbox_inches='tight')
 
 
