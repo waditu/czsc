@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from .ta import macd
 
 
-def plot_kline(ka, bs=None, file_html="chan.html", width="1400px", height="680px"):
+def plot_kline(ka, bs=None, file_html="kline.html", width="1400px", height="680px"):
     """
 
     :param ka: KlineAnalyze

@@ -7,7 +7,7 @@ import time
 import pandas as pd
 from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
-from chan import SolidAnalyze
+from czsc import SolidAnalyze
 
 # 企业微信群聊机器人 web hook
 hook = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=******"

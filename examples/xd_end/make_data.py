@@ -7,8 +7,8 @@ from copy import deepcopy
 from datetime import timedelta, datetime
 from cobra.data.kline import kline_simulator, get_kline
 from cobra.data.basic import is_trade_day
-from chan import SolidAnalyze, KlineAnalyze
-from chan.analyze import is_macd_cross
+from czsc import SolidAnalyze, KlineAnalyze
+from czsc.analyze import is_macd_cross
 
 data_path = "./data"
 if not os.path.exists(data_path):

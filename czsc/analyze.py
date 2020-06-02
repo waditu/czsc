@@ -176,7 +176,7 @@ class KlineAnalyze(object):
         self.__update_kline()
 
     def __repr__(self):
-        return "<chan.analyze.KlineAnalyze of %s, from %s to %s>" % (self.symbol, self.start_dt, self.end_dt)
+        return "<KlineAnalyze of %s, from %s to %s>" % (self.symbol, self.start_dt, self.end_dt)
 
     @staticmethod
     def _preprocess(kline):

@@ -3,8 +3,8 @@
 交易模拟器，用于研究单标的的买卖点变化过程
 
 """
-import chan
-print(chan.__version__)
+import czsc
+print(czsc.__version__)
 
 import os
 import time
@@ -13,8 +13,8 @@ import pandas as pd
 from copy import deepcopy
 import tushare as ts
 from datetime import datetime, timedelta
-from chan import SolidAnalyze, KlineAnalyze
-from chan import plot_kline
+from czsc import SolidAnalyze, KlineAnalyze
+from czsc import plot_kline
 
 
 # 首次使用，需要在这里设置你的 tushare token，用于获取数据；在同一台机器上，tushare token 只需要设置一次

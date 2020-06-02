@@ -1,6 +1,6 @@
 # coding: utf-8
 """
-结合掘金的数据使用 chan 进行缠论技术分析
+结合掘金的数据使用 czsc 进行缠论技术分析
 
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -10,7 +10,7 @@ date: 2020-02-02
 
 from gm.api import *
 from datetime import datetime
-from chan import KlineAnalyze, SolidAnalyze
+from czsc import KlineAnalyze, SolidAnalyze
 
 # 在这里设置你的掘金token，用于获取数据
 set_token("your gm token")

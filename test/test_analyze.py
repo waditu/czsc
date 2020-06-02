@@ -3,11 +3,11 @@ import sys
 from cobra.data.kline import get_kline
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
-import chan
-from chan import KlineAnalyze
-from chan.analyze import is_bei_chi
+import czsc
+from czsc import KlineAnalyze
+from czsc.analyze import is_bei_chi
 
-print(chan.__version__)
+print(czsc.__version__)
 
 
 def test_bei_chi():

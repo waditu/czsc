@@ -1,6 +1,6 @@
 # coding: utf-8
 """
-结合 tushare.pro 的数据使用 chan 进行缠论技术分析
+结合 tushare.pro 的数据使用 czsc 进行缠论技术分析
 
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -10,7 +10,7 @@ date: 2020-02-02
 
 import tushare as ts
 from datetime import datetime, timedelta
-from chan import KlineAnalyze, SolidAnalyze
+from czsc import KlineAnalyze, SolidAnalyze
 
 # 首次使用，需要在这里设置你的 tushare token，用于获取数据；在同一台机器上，tushare token 只需要设置一次
 # 没有 token，到 https://tushare.pro/register?reg=7 注册获取
