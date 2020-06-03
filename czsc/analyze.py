@@ -138,7 +138,7 @@ def create_df(ka, ma_params=(5, 20, 120, 250)):
 
 
 class KlineAnalyze(object):
-    def __init__(self, kline, bi_mode="new", xd_mode="strict", handle_last=True):
+    def __init__(self, kline, name="本级别", bi_mode="new", xd_mode="strict", handle_last=True):
         """
 
         :param kline: list of dict or pd.DataFrame
@@ -150,6 +150,8 @@ class KlineAnalyze(object):
                 {'symbol': '600797.SH', 'dt': '2020-01-08 14:30:00', 'open': 10.42, 'close': 10.41, 'high': 10.48, 'low': 10.35, 'vol': 6610000.0},
                 {'symbol': '600797.SH', 'dt': '2020-01-08 15:00:00', 'open': 10.42, 'close': 10.39, 'high': 10.48, 'low': 10.36, 'vol': 7160500.0}
             ]
+        :param name: str
+           级别名称，默认为 “本级别”
         :param bi_mode: str
            笔识别控制参数，默认为 new，表示新笔；如果不想用新笔定义识别，设置为 old
         :param xd_mode: str
@@ -158,6 +160,7 @@ class KlineAnalyze(object):
         :param handle_last: bool
             是否使用默认的 handle_last 方法，默认值为 True
         """
+        self.name = name
         assert bi_mode in ['new', 'old'], "bi_mode 参数错误"
         assert xd_mode in ['loose', 'strict'], "bi_mode 参数错误"
         self.bi_mode = bi_mode
