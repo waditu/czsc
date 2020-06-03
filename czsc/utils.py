@@ -297,7 +297,7 @@ def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     mpl.rcParams['axes.unicode_minus'] = False
     mpl.rcParams['lines.linewidth'] = 1.0
 
-    title = '%s缠论分析结果（%s - %s）' % (ka.symbol, df.index[0].__str__(), df.index[-1].__str__())
+    title = '%s@%s（%s - %s）' % (ka.symbol, ka.name, df.index[0].__str__(), df.index[-1].__str__())
     fig, axes = mpf.plot(df, columns=['Open', 'High', 'Low', 'Close', 'Volume'], style=s,
                          title=title, ylabel='K线', ylabel_lower='成交量', **kwargs,
                          alines=dict(alines=bi_xd, colors=['r', 'g'], linewidths=8, alpha=0.35),

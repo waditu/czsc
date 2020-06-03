@@ -6,13 +6,16 @@ sys.path.insert(0, '..')
 import czsc
 from czsc import KlineAnalyze
 from czsc.analyze import is_bei_chi
+from czsc.utils import plot_ka
+
 
 print(czsc.__version__)
 
 
 def test_bei_chi():
     df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
-    ka = KlineAnalyze(df)
+    ka = KlineAnalyze(df, name="日线")
+    plot_ka(ka, file_image="test.jpg")
 
     # 线段背驰
     zs1 = {"start_dt": '2018-07-26 15:00:00', "end_dt": '2018-10-19 15:00:00', "direction": "down"}
