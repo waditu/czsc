@@ -80,7 +80,7 @@ def up_zs_number(ka):
         k_zs = ka.zs[::-1]
         zs_cur = k_zs[0]
         for zs_next in k_zs[1:]:
-            if zs_cur['zs'][0] >= zs_next['zs'][1]:
+            if zs_cur["ZD"] >= zs_next["ZG"]:
                 zs_num += 1
                 zs_cur = zs_next
             else:
@@ -95,7 +95,7 @@ def down_zs_number(ka):
         k_zs = ka.zs[::-1]
         zs_cur = k_zs[0]
         for zs_next in k_zs[1:]:
-            if zs_cur['zs'][1] <= zs_next['zs'][0]:
+            if zs_cur["ZG"] <= zs_next["ZD"]:
                 zs_num += 1
                 zs_cur = zs_next
             else:
@@ -127,6 +127,80 @@ def get_ka_feature(ka):
     feature["MACD死叉"] = 1 if last['diff'] < last['dea'] else 0
 
     return feature
+
+
+def find_zs(points):
+    """输入笔或线段标记点，输出中枢识别结果"""
+    if len(points) <= 4:
+        return []
+
+    # 当输入为笔的标记点时，新增 xd 值
+    for i, x in enumerate(points):
+        if x.get("bi", 0):
+            points[i]['xd'] = x["bi"]
+
+    k_xd = points
+    k_zs = []
+    zs_xd = []
+
+    for i in range(len(k_xd)):
+        if len(zs_xd) < 5:
+            zs_xd.append(k_xd[i])
+            continue
+        xd_p = k_xd[i]
+        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
+        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
+        if zs_g <= zs_d:
+            zs_xd.append(k_xd[i])
+            zs_xd.pop(0)
+            continue
+
+        # 定义四个指标,GG=max(gn),G=min(gn),D=max(dn),DD=min(dn)，
+        # n遍历中枢中所有Zn。特别地，再定义ZG=min(g1、g2),
+        # ZD=max(d1、d2)，显然，[ZD，ZG]就是缠中说禅走势中枢的区间
+        if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
+            # 线段在中枢上方结束，形成三买
+            k_zs.append({
+                'ZD': zs_d,
+                "ZG": zs_g,
+                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                "points": deepcopy(zs_xd),
+                "third_buy": deepcopy(xd_p)
+            })
+            zs_xd = deepcopy(k_xd[i - 1: i + 1])
+        elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
+            # 线段在中枢下方结束，形成三卖
+            k_zs.append({
+                'ZD': zs_d,
+                "ZG": zs_g,
+                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                "points": deepcopy(zs_xd),
+                "third_sell": deepcopy(xd_p)
+            })
+            zs_xd = deepcopy(k_xd[i - 1: i + 1])
+        else:
+            zs_xd.append(deepcopy(xd_p))
+
+    if len(zs_xd) >= 5:
+        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
+        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
+        k_zs.append({
+            'ZD': zs_d,
+            "ZG": zs_g,
+            'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+            'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+            'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+            'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+            "points": deepcopy(zs_xd),
+        })
+
+    return k_zs
 
 
 @lru_cache(maxsize=64)
@@ -175,7 +249,8 @@ class KlineAnalyze(object):
         self.fx = self._find_fx()
         self.bi = self._find_bi()
         self.xd = self._find_xd()
-        self.zs = self._find_zs()
+        self.zs = find_zs(self.xd)
+        # self.zs = self._find_zs()
         self.__update_kline()
 
     def __repr__(self):
@@ -454,52 +529,52 @@ class KlineAnalyze(object):
             traceback.print_exc()
             return []
 
-    def _find_zs(self):
-        """查找中枢"""
-        if len(self.xd) <= 4:
-            return []
-
-        k_xd = self.xd
-        k_zs = []
-        zs_xd = []
-
-        for i in range(len(k_xd)):
-            if len(zs_xd) < 5:
-                zs_xd.append(k_xd[i])
-                continue
-            xd_p = k_xd[i]
-            zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
-            zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
-            if zs_g <= zs_d:
-                zs_xd.append(k_xd[i])
-                zs_xd.pop(0)
-                continue
-
-            if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
-                # 线段在中枢上方结束，形成三买
-                k_zs.append({
-                    'zs': (zs_d, zs_g),
-                    "zs_xd": deepcopy(zs_xd),
-                    "third_buy": deepcopy(xd_p)
-                })
-                zs_xd = deepcopy(k_xd[i: i+1])
-            elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
-                # 线段在中枢下方结束，形成三卖
-                k_zs.append({
-                    'zs': (zs_d, zs_g),
-                    "zs_xd": deepcopy(zs_xd),
-                    "third_sell": deepcopy(xd_p)
-                })
-                zs_xd = deepcopy(k_xd[i: i+1])
-            else:
-                zs_xd.append(deepcopy(xd_p))
-
-        if len(zs_xd) >= 5:
-            zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
-            zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
-            k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-
-        return k_zs
+    # def _find_zs(self):
+    #     """查找中枢"""
+    #     if len(self.xd) <= 4:
+    #         return []
+    #
+    #     k_xd = self.xd
+    #     k_zs = []
+    #     zs_xd = []
+    #
+    #     for i in range(len(k_xd)):
+    #         if len(zs_xd) < 5:
+    #             zs_xd.append(k_xd[i])
+    #             continue
+    #         xd_p = k_xd[i]
+    #         zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+    #         zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
+    #         if zs_g <= zs_d:
+    #             zs_xd.append(k_xd[i])
+    #             zs_xd.pop(0)
+    #             continue
+    #
+    #         if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
+    #             # 线段在中枢上方结束，形成三买
+    #             k_zs.append({
+    #                 'zs': (zs_d, zs_g),
+    #                 "zs_xd": deepcopy(zs_xd),
+    #                 "third_buy": deepcopy(xd_p)
+    #             })
+    #             zs_xd = deepcopy(k_xd[i: i+1])
+    #         elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
+    #             # 线段在中枢下方结束，形成三卖
+    #             k_zs.append({
+    #                 'zs': (zs_d, zs_g),
+    #                 "zs_xd": deepcopy(zs_xd),
+    #                 "third_sell": deepcopy(xd_p)
+    #             })
+    #             zs_xd = deepcopy(k_xd[i: i+1])
+    #         else:
+    #             zs_xd.append(deepcopy(xd_p))
+    #
+    #     if len(zs_xd) >= 5:
+    #         zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+    #         zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
+    #         k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
+    #
+    #     return k_zs
 
     def __update_kline(self):
         kn_map = {x['dt']: x for x in self.kline_new}

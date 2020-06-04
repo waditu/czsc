@@ -5,17 +5,27 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import czsc
 from czsc import KlineAnalyze
-from czsc.analyze import is_bei_chi
+from czsc.analyze import is_bei_chi, find_zs, down_zs_number, up_zs_number
 from czsc.utils import plot_ka
-
 
 print(czsc.__version__)
 
+df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
+ka = KlineAnalyze(df, name="日线")
+
+
+def test_kline_analyze():
+    assert ka.bi[-1]['fx_mark'] == 'g'
+    assert ka.xd[-1]['fx_mark'] == 'd'
+
+    # 测试背驰识别
+    assert not ka.bi_bei_chi()
+    assert ka.xd_bei_chi()
+    print(ka.zs[-2])
+
 
 def test_bei_chi():
-    df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
-    ka = KlineAnalyze(df, name="日线")
-    plot_ka(ka, file_image="test.jpg")
+    plot_ka(ka, file_image="test.png")
 
     # 线段背驰
     zs1 = {"start_dt": '2018-07-26 15:00:00', "end_dt": '2018-10-19 15:00:00', "direction": "down"}
@@ -36,17 +46,21 @@ def test_bei_chi():
     assert not is_bei_chi(ka, zs1, zs2, mode='bi', adjust=0.9)
 
 
-def test_kline_analyze():
-    df = get_kline(ts_code="300008.SZ", end_dt="2020-03-23 15:00:00", freq='30min', asset='E')
-    ka = KlineAnalyze(df)
+def test_find_zs():
+    assert down_zs_number(ka) == 2
+    assert up_zs_number(ka) == 1
+    xd_zs = find_zs(ka.xd)
+    bi_zs = find_zs(ka.bi)
 
-    # 测试识别结果
-    assert ka.bi[-1]['fx_mark'] == 'g'
-    assert ka.xd[-1]['fx_mark'] == 'g'
+    assert xd_zs[-2]["ZD"] == 2850.71
+    assert xd_zs[-2]["ZG"] == 3684.57
 
-    # 测试背驰识别
-    assert not ka.bi_bei_chi()
-    assert not ka.xd_bei_chi()
-    print(ka.zs[-2])
+    assert xd_zs[-1]["ZD"] == 2691.02
+    assert xd_zs[-1]["ZG"] == 2827.34
 
+    assert bi_zs[-2]['ZD'] == 2987.77
+    assert bi_zs[-2]['ZG'] == 3125.02
+
+    assert bi_zs[-1]['ZD'] == 2838.38
+    assert bi_zs[-1]['ZG'] == 2956.78
 
