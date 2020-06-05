@@ -22,12 +22,10 @@ def test_solid_analyze():
     klines = get_klines(ts_code, end_date='2020-04-03 14:00:00', asset='I', freqs='1min,5min,30min,D')
     sa = SolidAnalyze(klines)
 
-    # for func in [sa.is_first_buy, sa.is_first_sell, sa.is_second_buy, sa.is_second_sell,
-    #              sa.is_third_buy, sa.is_third_sell, sa.is_xd_buy, sa.is_xd_sell]:
-    #     for freq in ['1分钟', '5分钟', '30分钟']:
-    #         b, detail = func(freq, tolerance=0.1)
-    #         if b:
-    #             print(detail)
+    for name in sa.bs_func.keys():
+        for freq in ['1分钟', '5分钟', '30分钟']:
+            detail = sa.check_bs(freq, name, pf=False, tolerance=0.03)
+            print(detail, "\n\n")
 
 
 
