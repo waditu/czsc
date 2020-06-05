@@ -285,10 +285,11 @@ def is_third_buy(ka, ka1=None, ka2=None, pf=False):
         if zs_g > zs_d:
 
             # 第4段比第2段有新高或新低，且无背驰，第5段不跌回中枢；
-            zs1 = [ka.xd[-3]['dt'], ka.xd[-2]['dt']]
-            zs2 = [ka.xd[-5]['dt'], ka.xd[-4]['dt']]
+            direction = 'up'
+            zs1 = {"start_dt": ka.xd[-3]['dt'], "end_dt": ka.xd[-2]['dt'], "direction": direction}
+            zs2 = {"start_dt": ka.xd[-5]['dt'], "end_dt": ka.xd[-4]['dt'], "direction": direction}
             if ka.xd[-2]['xd'] > ka.xd[-4]['xd'] \
-                    and not is_bei_chi(ka, zs1, zs2, direction='up', mode='xd') \
+                    and not is_bei_chi(ka, zs1, zs2, mode='xd') \
                     and ka.xd[-1]['xd'] > zs_g:
                 detail['操作提示'] = '三买'
                 detail['出现时间'] = ka.xd[-1]['dt']
@@ -349,10 +350,11 @@ def is_third_sell(ka, ka1=None, ka2=None, pf=False):
         if zs_g > zs_d:
 
             # 第4段比第2段新低无背驰，第5段不升回中枢；
-            zs1 = [ka.xd[-3]['dt'], ka.xd[-2]['dt']]
-            zs2 = [ka.xd[-5]['dt'], ka.xd[-4]['dt']]
+            direction = 'down'
+            zs1 = {"start_dt": ka.xd[-3]['dt'], "end_dt": ka.xd[-2]['dt'], "direction": direction}
+            zs2 = {"start_dt": ka.xd[-5]['dt'], "end_dt": ka.xd[-4]['dt'], "direction": direction}
             if ka.xd[-2]['xd'] < ka.xd[-4]['xd'] \
-                    and not is_bei_chi(ka, zs1, zs2, direction='down', mode='xd') \
+                    and not is_bei_chi(ka, zs1, zs2, mode='xd') \
                     and ka.xd[-1]['xd'] > zs_g:
                 detail['操作提示'] = '三卖'
                 detail['出现时间'] = ka.xd[-1]['dt']
