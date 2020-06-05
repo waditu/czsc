@@ -1,6 +1,6 @@
 # coding: utf-8
 
-from .analyze import KlineAnalyze, down_zs_number, up_zs_number, is_bei_chi
+from .analyze import KlineAnalyze, is_bei_chi
 from .ta import ma, macd, boll
 from .utils import plot_kline
 from .solid import SolidAnalyze

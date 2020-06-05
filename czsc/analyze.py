@@ -228,7 +228,7 @@ class KlineAnalyze(object):
         self.__update_kline()
 
     def __repr__(self):
-        return "<KlineAnalyze of %s @ %s, from %s to %s>" % (self.symbol, self.name, self.start_dt, self.end_dt)
+        return "<KlineAnalyze of %s@%s, from %s to %s>" % (self.symbol, self.name, self.start_dt, self.end_dt)
 
     @staticmethod
     def _preprocess(kline):

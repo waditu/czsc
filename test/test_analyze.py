@@ -5,7 +5,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import czsc
 from czsc import KlineAnalyze
-from czsc.analyze import is_bei_chi, find_zs, down_zs_number, up_zs_number
+from czsc.analyze import is_bei_chi, find_zs
 from czsc.utils import plot_ka
 
 print(czsc.__version__)
@@ -23,13 +23,12 @@ def test_kline_analyze():
     assert not ka.bi_bei_chi()
     assert ka.xd_bei_chi()
     print(ka.zs[-2])
+
     ka.to_html("kline.html")
     ka.to_image("kline.png")
 
 
 def test_bei_chi():
-    plot_ka(ka, file_image="test.png")
-
     # 线段背驰
     zs1 = {"start_dt": '2018-07-26 15:00:00', "end_dt": '2018-10-19 15:00:00', "direction": "down"}
     zs2 = {"start_dt": '2018-01-29 15:00:00', "end_dt": '2018-07-06 15:00:00', "direction": "down"}
@@ -50,8 +49,8 @@ def test_bei_chi():
 
 
 def test_find_zs():
-    assert down_zs_number(ka) == 2
-    assert up_zs_number(ka) == 1
+    assert ka.down_zs_number() == 2
+    assert ka.up_zs_number() == 1
     xd_zs = find_zs(ka.xd)
     bi_zs = find_zs(ka.bi)
 

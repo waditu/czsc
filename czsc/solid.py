@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import traceback
-from .analyze import KlineAnalyze, is_bei_chi, down_zs_number, up_zs_number, get_ka_feature
+from .analyze import KlineAnalyze, is_bei_chi, get_ka_feature
 
 
 def is_in_tolerance(base_price, latest_price, tolerance):
@@ -297,7 +297,7 @@ def is_third_buy(ka, ka1=None, ka2=None, pf=False):
 
     if pf and detail['操作提示'] == '三买':
         # 向上中枢数量小于等于3
-        un = up_zs_number(ka)
+        un = ka.up_zs_number()
         if un > 3:
             detail['操作提示'] = '无操作'
 
@@ -362,7 +362,7 @@ def is_third_sell(ka, ka1=None, ka2=None, pf=False):
 
     if pf and detail['操作提示'] == '三卖':
         # 向下中枢数量小于等于3
-        dn = down_zs_number(ka)
+        dn = ka.down_zs_number()
         if dn > 3:
             detail['操作提示'] = '无操作'
 
