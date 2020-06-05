@@ -53,6 +53,6 @@ def boll(kline):
     kline.loc[:, 'boll-top'] = kline['boll-mid'] + 2 * kline['boll-tmp2']
     kline.loc[:, 'boll-bottom'] = kline['boll-mid'] - 2 * kline['boll-tmp2']
 
-    for col in ['boll-mid', 'boll-tmp2', 'boll-top', 'boll-bottom']:
+    for col in ['boll-mid', 'boll-top', 'boll-bottom']:
         kline.loc[:, col] = kline[col].apply(round, args=(2,))
     return kline

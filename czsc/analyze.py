@@ -4,7 +4,7 @@ from copy import deepcopy
 import pandas as pd
 from functools import lru_cache
 
-from .ta import macd, ma
+from .ta import macd, ma, boll
 from .utils import plot_kline, plot_ka
 
 
@@ -72,36 +72,6 @@ def is_bei_chi(ka, zs1, zs2, mode="bi", adjust=0.9):
         raise ValueError("mode value error")
 
     return bc
-
-
-def up_zs_number(ka):
-    """检查最新走势的连续向上中枢数量"""
-    zs_num = 1
-    if len(ka.zs) > 1:
-        k_zs = ka.zs[::-1]
-        zs_cur = k_zs[0]
-        for zs_next in k_zs[1:]:
-            if zs_cur["ZD"] >= zs_next["ZG"]:
-                zs_num += 1
-                zs_cur = zs_next
-            else:
-                break
-    return zs_num
-
-
-def down_zs_number(ka):
-    """检查最新走势的连续向下中枢数量"""
-    zs_num = 1
-    if len(ka.zs) > 1:
-        k_zs = ka.zs[::-1]
-        zs_cur = k_zs[0]
-        for zs_next in k_zs[1:]:
-            if zs_cur["ZG"] <= zs_next["ZD"]:
-                zs_num += 1
-                zs_cur = zs_next
-            else:
-                break
-    return zs_num
 
 
 def get_ka_feature(ka):
@@ -211,6 +181,7 @@ def create_df(ka, ma_params=(5, 20, 120, 250)):
     df = pd.DataFrame(deepcopy(ka.kline))
     df = macd(df)
     df = ma(df, params=ma_params)
+    df = boll(df)
     return df
 
 
@@ -631,3 +602,33 @@ class KlineAnalyze(object):
         :return:
         """
         plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
+
+    def up_zs_number(self):
+        """检查最新走势的连续向上中枢数量"""
+        ka = self
+        zs_num = 1
+        if len(ka.zs) > 1:
+            k_zs = ka.zs[::-1]
+            zs_cur = k_zs[0]
+            for zs_next in k_zs[1:]:
+                if zs_cur["ZD"] >= zs_next["ZG"]:
+                    zs_num += 1
+                    zs_cur = zs_next
+                else:
+                    break
+        return zs_num
+
+    def down_zs_number(self):
+        """检查最新走势的连续向下中枢数量"""
+        ka = self
+        zs_num = 1
+        if len(ka.zs) > 1:
+            k_zs = ka.zs[::-1]
+            zs_cur = k_zs[0]
+            for zs_next in k_zs[1:]:
+                if zs_cur["ZG"] <= zs_next["ZD"]:
+                    zs_num += 1
+                    zs_cur = zs_next
+                else:
+                    break
+        return zs_num
