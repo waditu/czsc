@@ -12,6 +12,7 @@ print(czsc.__version__)
 
 df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
 ka = KlineAnalyze(df, name="日线")
+print(ka)
 
 
 def test_kline_analyze():
@@ -22,6 +23,8 @@ def test_kline_analyze():
     assert not ka.bi_bei_chi()
     assert ka.xd_bei_chi()
     print(ka.zs[-2])
+    ka.to_html("kline.html")
+    ka.to_image("kline.png")
 
 
 def test_bei_chi():

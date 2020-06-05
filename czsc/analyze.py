@@ -5,6 +5,7 @@ import pandas as pd
 from functools import lru_cache
 
 from .ta import macd, ma
+from .utils import plot_kline, plot_ka
 
 
 def is_bei_chi(ka, zs1, zs2, mode="bi", adjust=0.9):
@@ -104,7 +105,10 @@ def down_zs_number(ka):
 
 
 def get_ka_feature(ka):
-    """获取 KlineAnalyze 的特征"""
+    """获取 KlineAnalyze 的特征
+
+    这只是一个样例，想做多因子的，可以发挥自己的想法，大幅扩展特征数量。
+    """
     feature = dict()
 
     feature["分型标记"] = 1 if ka.fx[-1]['fx_mark'] == 'g' else 0
@@ -116,7 +120,6 @@ def get_ka_feature(ka):
     feature['向上线段背驰'] = 1 if ka.xd[-1]['fx_mark'] == 'g' and ka.xd_bei_chi() else 0
     feature['向下线段背驰'] = 1 if ka.xd[-1]['fx_mark'] == 'd' and ka.xd_bei_chi() else 0
 
-    # 均线/MACD相关特征
     ma_params = (5, 20, 120, 250)
     df = create_df(ka, ma_params)
     last = df.iloc[-1].to_dict()
@@ -126,7 +129,7 @@ def get_ka_feature(ka):
     feature["MACD金叉"] = 1 if last['diff'] > last['dea'] else 0
     feature["MACD死叉"] = 1 if last['diff'] < last['dea'] else 0
 
-    return feature
+    return {ka.name + k: v for k, v in feature.items()}
 
 
 def find_zs(points):
@@ -254,7 +257,7 @@ class KlineAnalyze(object):
         self.__update_kline()
 
     def __repr__(self):
-        return "<KlineAnalyze of %s, from %s to %s>" % (self.symbol, self.start_dt, self.end_dt)
+        return "<KlineAnalyze of %s @ %s, from %s to %s>" % (self.symbol, self.name, self.start_dt, self.end_dt)
 
     @staticmethod
     def _preprocess(kline):
@@ -529,53 +532,6 @@ class KlineAnalyze(object):
             traceback.print_exc()
             return []
 
-    # def _find_zs(self):
-    #     """查找中枢"""
-    #     if len(self.xd) <= 4:
-    #         return []
-    #
-    #     k_xd = self.xd
-    #     k_zs = []
-    #     zs_xd = []
-    #
-    #     for i in range(len(k_xd)):
-    #         if len(zs_xd) < 5:
-    #             zs_xd.append(k_xd[i])
-    #             continue
-    #         xd_p = k_xd[i]
-    #         zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
-    #         zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
-    #         if zs_g <= zs_d:
-    #             zs_xd.append(k_xd[i])
-    #             zs_xd.pop(0)
-    #             continue
-    #
-    #         if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
-    #             # 线段在中枢上方结束，形成三买
-    #             k_zs.append({
-    #                 'zs': (zs_d, zs_g),
-    #                 "zs_xd": deepcopy(zs_xd),
-    #                 "third_buy": deepcopy(xd_p)
-    #             })
-    #             zs_xd = deepcopy(k_xd[i: i+1])
-    #         elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
-    #             # 线段在中枢下方结束，形成三卖
-    #             k_zs.append({
-    #                 'zs': (zs_d, zs_g),
-    #                 "zs_xd": deepcopy(zs_xd),
-    #                 "third_sell": deepcopy(xd_p)
-    #             })
-    #             zs_xd = deepcopy(k_xd[i: i+1])
-    #         else:
-    #             zs_xd.append(deepcopy(xd_p))
-    #
-    #     if len(zs_xd) >= 5:
-    #         zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
-    #         zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
-    #         k_zs.append({'zs': (zs_d, zs_g), "zs_xd": deepcopy(zs_xd)})
-    #
-    #     return k_zs
-
     def __update_kline(self):
         kn_map = {x['dt']: x for x in self.kline_new}
         for k in self.kline:
@@ -648,4 +604,30 @@ class KlineAnalyze(object):
         else:
             return False
 
+    def to_html(self, file_html="kline.html", width="1400px", height="680px"):
+        """保存成 html
 
+        :param file_html: str
+            html文件名
+        :param width: str
+            页面宽度
+        :param height: str
+            页面高度
+        :return:
+        """
+        plot_kline(self, file_html=file_html, width=width, height=height)
+
+    def to_image(self, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
+        """保存成图片
+
+        :param file_image: str
+            图片名称，支持 jpg/png/svg 格式，注意后缀
+        :param mav: tuple of int
+            均线系统参数
+        :param max_k_count: int
+            设定最大K线数量，这个值越大，生成的图片越长
+        :param dpi: int
+            图片分辨率
+        :return:
+        """
+        plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
