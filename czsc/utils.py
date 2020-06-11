@@ -308,5 +308,6 @@ def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     ax = plt.gca()
     ax.set_xbound(-1, len(df)+1)
     fig.savefig(fname=file_image, dpi=dpi, bbox_inches='tight')
+    plt.close()
 
 
