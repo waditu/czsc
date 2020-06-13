@@ -39,13 +39,8 @@ pip install czsc -U -i https://pypi.python.org/simple
 ## 使用方法
 
 目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `chan.analyze` 中；
-此外，基于这个库，开发了一个web页面，关联 tushare.pro 的数据，输入相应的交易代码等就可以直接查看对应的分析结果。
 
-> 前端页面（使用Tushare的数据）: https://github.com/waditu/tushare_chan
-
-> 前端页面（使用掘金的数据）: https://github.com/zengbin93/gm_chan
-
-> 前端页面（使用聚宽的数据）: https://github.com/zengbin93/jq_chan
+使用 Tushare Pro / 聚宽 / 掘金 / 天勤 的数据进行缠中说禅技术分析结果展示: `https://github.com/zengbin93/czsc_web_ui`
 
 ## 结合 tushare.pro 的数据使用
 
