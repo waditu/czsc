@@ -7,7 +7,7 @@ from .solid import SolidAnalyze
 from .solid import is_in_tolerance, is_first_buy, is_first_sell, is_second_buy, \
     is_second_sell, is_third_buy, is_third_sell, is_xd_buy, is_xd_sell
 
-__version__ = "0.3.7"
+__version__ = "0.3.8"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 
