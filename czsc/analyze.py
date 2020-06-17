@@ -234,7 +234,9 @@ class KlineAnalyze(object):
     def _preprocess(kline):
         """新增分析所需字段"""
         if isinstance(kline, pd.DataFrame):
-            kline = [row.to_dict() for _, row in kline.iterrows()]
+            columns = kline.columns.to_list()
+            kline = [{k: v for k, v in zip(columns, row)} for row in kline.values]
+            # kline = [row.to_dict() for _, row in kline.iterrows()]
 
         results = []
         for k in kline:

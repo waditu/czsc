@@ -1,14 +1,14 @@
 # coding: utf-8
 import sys
+import warnings
 from cobra.data.kline import get_kline
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import czsc
 from czsc import KlineAnalyze
 from czsc.analyze import is_bei_chi, find_zs
-from czsc.utils import plot_ka
 
-print(czsc.__version__)
+warnings.warn(f"czsc version is {czsc.__version__}")
 
 df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
 ka = KlineAnalyze(df, name="日线")

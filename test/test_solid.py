@@ -1,11 +1,12 @@
 # coding: utf-8
 import sys
+import warnings
 from cobra.data.kline import get_klines
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import czsc
 from czsc.solid import SolidAnalyze, is_in_tolerance
-print(czsc.__version__)
+warnings.warn(f"czsc version is {czsc.__version__}")
 
 
 def test_in_tolerance():
