@@ -186,7 +186,7 @@ def create_df(ka, ma_params=(5, 20, 120, 250)):
 
 
 class KlineAnalyze(object):
-    def __init__(self, kline, name="本级别", bi_mode="new", xd_mode="strict", handle_last=True):
+    def __init__(self, kline, name="本级别", bi_mode="new", xd_mode="strict", handle_last=True, debug=False):
         """
 
         :param kline: list of dict or pd.DataFrame
@@ -214,6 +214,7 @@ class KlineAnalyze(object):
         self.bi_mode = bi_mode
         self.xd_mode = xd_mode
         self.handle_last = handle_last
+        self.debug = debug
         self.kline = self._preprocess(kline)
         self.symbol = self.kline[0]['symbol']
         self.latest_price = self.kline[-1]['close']
@@ -224,7 +225,6 @@ class KlineAnalyze(object):
         self.bi = self._find_bi()
         self.xd = self._find_xd()
         self.zs = find_zs(self.xd)
-        # self.zs = self._find_zs()
         self.__update_kline()
 
     def __repr__(self):
@@ -421,7 +421,8 @@ class KlineAnalyze(object):
                     k['bi'] = k['fx']
             return bi
         except:
-            traceback.print_exc()
+            if self.debug:
+                traceback.print_exc()
             return []
 
     def __handle_hist_xd(self):
@@ -500,7 +501,8 @@ class KlineAnalyze(object):
                     k['xd'] = k['fx']
             return xd
         except:
-            traceback.print_exc()
+            if self.debug:
+                traceback.print_exc()
             return []
 
     def __update_kline(self):
