@@ -38,7 +38,7 @@ def is_bei_chi(ka, zs1, zs2, mode="bi", adjust=0.9):
     assert zs1["start_dt"] < zs1["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
     assert zs2["start_dt"] < zs2["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
 
-    df = create_df(ka)
+    df = create_df(ka, ma_params=(5,), use_macd=True, use_boll=False)
     k1 = df[(df['dt'] >= zs1["start_dt"]) & (df['dt'] <= zs1["end_dt"])]
     k2 = df[(df['dt'] >= zs2["start_dt"]) & (df['dt'] <= zs2["end_dt"])]
 
@@ -177,11 +177,13 @@ def find_zs(points):
 
 
 @lru_cache(maxsize=64)
-def create_df(ka, ma_params=(5, 20, 120, 250)):
-    df = pd.DataFrame(deepcopy(ka.kline))
-    df = macd(df)
+def create_df(ka, ma_params=(5, 20, 120, 250), use_macd=True, use_boll=True):
+    df = pd.DataFrame(ka.kline)
     df = ma(df, params=ma_params)
-    df = boll(df)
+    if use_macd:
+        df = macd(df)
+    if use_boll:
+        df = boll(df)
     return df
 
 
