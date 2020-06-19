@@ -11,7 +11,7 @@ from czsc.analyze import is_bei_chi, find_zs
 warnings.warn(f"czsc version is {czsc.__version__}")
 
 df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
-ka = KlineAnalyze(df, name="日线")
+ka = KlineAnalyze(df, name="日线", bi_mode='old')
 print(ka)
 
 
@@ -20,7 +20,7 @@ def test_kline_analyze():
     assert ka.xd[-1]['fx_mark'] == 'd'
 
     # 测试背驰识别
-    assert not ka.bi_bei_chi()
+    assert ka.bi_bei_chi()
     assert ka.xd_bei_chi()
     print(ka.zs[-2])
 
