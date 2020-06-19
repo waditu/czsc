@@ -140,10 +140,10 @@ def find_zs(points):
                 'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
                 'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                "points": deepcopy(zs_xd),
-                "third_buy": deepcopy(xd_p)
+                "points": zs_xd,
+                "third_buy": xd_p
             })
-            zs_xd = deepcopy(k_xd[i - 1: i + 1])
+            zs_xd = k_xd[i - 1: i + 1]
         elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
             # 线段在中枢下方结束，形成三卖
             k_zs.append({
@@ -153,12 +153,12 @@ def find_zs(points):
                 'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
                 'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                "points": deepcopy(zs_xd),
-                "third_sell": deepcopy(xd_p)
+                "points": zs_xd,
+                "third_sell": xd_p
             })
-            zs_xd = deepcopy(k_xd[i - 1: i + 1])
+            zs_xd = k_xd[i - 1: i + 1]
         else:
-            zs_xd.append(deepcopy(xd_p))
+            zs_xd.append(xd_p)
 
     if len(zs_xd) >= 5:
         zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
@@ -170,7 +170,7 @@ def find_zs(points):
             'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
             'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
             'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-            "points": deepcopy(zs_xd),
+            "points": zs_xd,
         })
 
     return k_zs
@@ -238,7 +238,6 @@ class KlineAnalyze(object):
         if isinstance(kline, pd.DataFrame):
             columns = kline.columns.to_list()
             kline = [{k: v for k, v in zip(columns, row)} for row in kline.values]
-            # kline = [row.to_dict() for _, row in kline.iterrows()]
 
         results = []
         for k in kline:
@@ -248,11 +247,25 @@ class KlineAnalyze(object):
 
     def _remove_include(self):
         """去除包含关系，得到新的K线数据"""
-        # 取前两根 K 线放入 k_new，完成初始化
-        kline = deepcopy(self.kline)
-        k_new = kline[:2]
+        k_new = []
 
-        for k in kline[2:]:
+        for k in self.kline:
+            if len(k_new) <= 2:
+                k_new.append({
+                    "symbol": k['symbol'],
+                    "dt": k['dt'],
+                    "open": k['open'],
+                    "close": k['close'],
+                    "high": k['high'],
+                    "low": k['low'],
+                    "vol": k['vol'],
+                    "fx_mark": k['fx_mark'],
+                    "fx": k['fx'],
+                    "bi": k['bi'],
+                    "xd": k['xd'],
+                })
+                continue
+
             # 从 k_new 中取最后两根 K 线计算方向
             k1, k2 = k_new[-2:]
             if k2['high'] > k1['high']:
@@ -278,13 +291,35 @@ class KlineAnalyze(object):
                 else:
                     raise ValueError
 
-                k['high'] = last_h
-                k['low'] = last_l
                 k_new.pop(-1)
-                k_new.append(k)
+                k_new.append({
+                    "symbol": k['symbol'],
+                    "dt": k['dt'],
+                    "open": k['open'],
+                    "close": k['close'],
+                    "high": last_h,
+                    "low": last_l,
+                    "vol": k['vol'],
+                    "fx_mark": k['fx_mark'],
+                    "fx": k['fx'],
+                    "bi": k['bi'],
+                    "xd": k['xd'],
+                })
             else:
                 # 无包含关系，更新 K 线
-                k_new.append(k)
+                k_new.append({
+                    "symbol": k['symbol'],
+                    "dt": k['dt'],
+                    "open": k['open'],
+                    "close": k['close'],
+                    "high": k['high'],
+                    "low": k['low'],
+                    "vol": k['vol'],
+                    "fx_mark": k['fx_mark'],
+                    "fx": k['fx'],
+                    "bi": k['bi'],
+                    "xd": k['xd'],
+                })
         return k_new
 
     def _find_fx(self):
@@ -296,13 +331,12 @@ class KlineAnalyze(object):
 
         :return:
         """
-        kn = deepcopy(self.kline_new)
         i = 0
-        while i < len(kn):
-            if i == 0 or i == len(kn) - 1:
+        while i < len(self.kline_new):
+            if i == 0 or i == len(self.kline_new) - 1:
                 i += 1
                 continue
-            k1, k2, k3 = kn[i - 1: i + 2]
+            k1, k2, k3 = self.kline_new[i - 1: i + 2]
             i += 1
 
             # 顶分型标记
@@ -314,17 +348,16 @@ class KlineAnalyze(object):
             if k2['low'] < k1['low'] and k2['low'] < k3['low']:
                 k2['fx_mark'] = 'd'
                 k2['fx'] = k2['low']
-        self.kline_new = kn
 
-        fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']} for x in self.kline_new
-              if x['fx_mark'] in ['d', 'g']]
+        fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']}
+              for x in self.kline_new if x['fx_mark'] in ['d', 'g']]
         return fx
 
     def __extract_potential(self, mode='fx', fx_mark='d'):
         if mode == 'fx':
-            points = deepcopy(self.fx)
+            points = self.fx
         elif mode == 'bi':
-            points = deepcopy(self.bi)
+            points = self.bi
         else:
             raise ValueError
 
@@ -332,14 +365,16 @@ class KlineAnalyze(object):
         seq = sorted(seq, key=lambda x: x['dt'], reverse=False)
 
         p = []
-        for i in range(len(seq) - 2):
-            window = seq[i: i + 3]
+        for i in range(len(seq) - 1):
+            window = seq[i: i + 2]
             if fx_mark == 'd':
-                if window[0][mode] >= window[1][mode] <= window[2][mode]:
-                    p.append(deepcopy(window[1]))
+                # 对于底，前面的高于后面的，只保留后面的
+                if window[0][mode] >= window[1][mode]:
+                    p.append(window[1])
             elif fx_mark == 'g':
-                if window[0][mode] <= window[1][mode] >= window[2][mode]:
-                    p.append(deepcopy(window[1]))
+                # 对于顶，前面的低于后面的，只保留后面的
+                if window[0][mode] <= window[1][mode]:
+                    p.append(window[1])
             else:
                 raise ValueError
         return p
@@ -356,7 +391,6 @@ class KlineAnalyze(object):
         self.min_k_num = min_k_num
         kn = self.kline_new
 
-        # 符合标准的分型
         fx_p = []  # 存储潜在笔标记
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='d'))
         fx_p.extend(self.__extract_potential(mode='fx', fx_mark='g'))
@@ -526,27 +560,23 @@ class KlineAnalyze(object):
         :return: float
         """
         if mode == 'xd':
-            latest_zs = deepcopy(self.xd[-n - 1:])
-            for x in latest_zs:
-                x['fx'] = x['xd']
+            latest_zs = self.xd[-n - 1:]
         elif mode == 'bi':
-            latest_zs = deepcopy(self.bi[-n - 1:])
-            for x in latest_zs:
-                x['fx'] = x['bi']
+            latest_zs = self.bi[-n - 1:]
         else:
             raise ValueError("mode value error, only support 'xd' or 'bi'")
 
         wave = []
         for i in range(len(latest_zs) - 1):
-            x1 = latest_zs[i]['fx']
-            x2 = latest_zs[i + 1]['fx']
+            x1 = latest_zs[i][mode]
+            x2 = latest_zs[i + 1][mode]
             w = abs(x1 - x2) / x1
             wave.append(w)
         return round(sum(wave) / len(wave), 2)
 
     def bi_bei_chi(self):
         """判断最后一笔是否背驰"""
-        bi = deepcopy(self.bi)
+        bi = self.bi
 
         # 最后一笔背驰出现的两种情况：
         # 1）向上笔新高且和前一个向上笔不存在包含关系；
@@ -561,7 +591,7 @@ class KlineAnalyze(object):
 
     def xd_bei_chi(self):
         """判断最后一个线段是否背驰"""
-        xd = deepcopy(self.xd)
+        xd = self.xd
         last_xd = xd[-1]
         if last_xd['fx_mark'] == 'g':
             direction = "up"
