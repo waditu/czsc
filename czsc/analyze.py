@@ -364,19 +364,24 @@ class KlineAnalyze(object):
         seq = [x for x in points if x['fx_mark'] == fx_mark]
         seq = sorted(seq, key=lambda x: x['dt'], reverse=False)
 
-        p = []
-        for i in range(len(seq) - 1):
-            window = seq[i: i + 2]
+        p = [seq[0]]
+        i = 1
+        while i < len(seq):
+            s1 = p[-1]
+            s2 = seq[i]
             if fx_mark == 'd':
                 # 对于底，前面的高于后面的，只保留后面的
-                if window[0][mode] >= window[1][mode]:
-                    p.append(window[1])
+                if s1[mode] >= s2[mode]:
+                    p.pop(-1)
+                p.append(s2)
             elif fx_mark == 'g':
                 # 对于顶，前面的低于后面的，只保留后面的
-                if window[0][mode] <= window[1][mode]:
-                    p.append(window[1])
+                if s1[mode] <= s2[mode]:
+                    p.pop(-1)
+                p.append(s2)
             else:
                 raise ValueError
+            i += 1
         return p
 
     def __handle_hist_bi(self):
