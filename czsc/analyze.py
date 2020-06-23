@@ -1,6 +1,5 @@
 # coding: utf-8
 import traceback
-from copy import deepcopy
 import pandas as pd
 from functools import lru_cache
 
@@ -292,19 +291,34 @@ class KlineAnalyze(object):
                     raise ValueError
 
                 k_new.pop(-1)
-                k_new.append({
-                    "symbol": k['symbol'],
-                    "dt": k['dt'],
-                    "open": k['open'],
-                    "close": k['close'],
-                    "high": last_h,
-                    "low": last_l,
-                    "vol": k['vol'],
-                    "fx_mark": k['fx_mark'],
-                    "fx": k['fx'],
-                    "bi": k['bi'],
-                    "xd": k['xd'],
-                })
+                if k['open'] >= k['close']:
+                    k_new.append({
+                        "symbol": k['symbol'],
+                        "dt": k['dt'],
+                        "open": last_h,
+                        "close": last_l,
+                        "high": last_h,
+                        "low": last_l,
+                        "vol": k['vol'],
+                        "fx_mark": k['fx_mark'],
+                        "fx": k['fx'],
+                        "bi": k['bi'],
+                        "xd": k['xd'],
+                    })
+                else:
+                    k_new.append({
+                        "symbol": k['symbol'],
+                        "dt": k['dt'],
+                        "open": last_l,
+                        "close": last_h,
+                        "high": last_h,
+                        "low": last_l,
+                        "vol": k['vol'],
+                        "fx_mark": k['fx_mark'],
+                        "fx": k['fx'],
+                        "bi": k['bi'],
+                        "xd": k['xd'],
+                    })
             else:
                 # 无包含关系，更新 K 线
                 k_new.append({
@@ -367,21 +381,31 @@ class KlineAnalyze(object):
         p = [seq[0]]
         i = 1
         while i < len(seq):
-            s1 = p[-1]
-            s2 = seq[i]
             if fx_mark == 'd':
                 # 对于底，前面的高于后面的，只保留后面的
-                if s1[mode] >= s2[mode]:
-                    p.pop(-1)
-                p.append(s2)
+                s1 = seq[i-1]
+                s2 = seq[i]
+                if i == len(seq) - 1:
+                    p.append(s2)
+                else:
+                    s3 = seq[i + 1]
+                    if s1[mode] > s2[mode] < s3[mode]:
+                        p.append(s2)
+
             elif fx_mark == 'g':
                 # 对于顶，前面的低于后面的，只保留后面的
-                if s1[mode] <= s2[mode]:
-                    p.pop(-1)
-                p.append(s2)
+                s1 = seq[i-1]
+                s2 = seq[i]
+                if i == len(seq) - 1:
+                    p.append(s2)
+                else:
+                    s3 = seq[i + 1]
+                    if s1[mode] < s2[mode] > s3[mode]:
+                        p.append(s2)
             else:
                 raise ValueError
             i += 1
+
         return p
 
     def __handle_hist_bi(self):
@@ -415,9 +439,11 @@ class KlineAnalyze(object):
         # 确认哪些分型可以构成笔
         bi = []
         for i in range(len(fx_p)):
-            k = deepcopy(fx_p[i])
-            k['bi'] = k['fx']
-            del k['fx']
+            k = {
+                "dt": fx_p[i]['dt'],
+                "fx_mark": fx_p[i]['fx_mark'],
+                "bi": fx_p[i]['fx'],
+            }
             if len(bi) == 0:
                 bi.append(k)
             else:
@@ -434,7 +460,7 @@ class KlineAnalyze(object):
                         bi.pop(-1)
                         continue
 
-                    # 一笔的顶底分型之间至少包含5根K线（新笔只需要4根）
+                    # 一笔的顶底分型之间至少包含5根K线
                     k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
                     if len(k_num) >= min_k_num:
                         bi.append(k)
@@ -477,9 +503,11 @@ class KlineAnalyze(object):
 
         xd = []
         for i in range(len(bi_p)):
-            k = deepcopy(bi_p[i])
-            k['xd'] = k['bi']
-            del k['bi']
+            k = {
+                "dt": bi_p[i]['dt'],
+                "fx_mark": bi_p[i]['fx_mark'],
+                "xd": bi_p[i]['bi'],
+            }
             if len(xd) == 0:
                 xd.append(k)
             else:
@@ -496,6 +524,7 @@ class KlineAnalyze(object):
                             (k0['fx_mark'] == 'd' and k['xd'] <= k0['xd']):
                         xd.pop(-1)
                         continue
+
                     bi_m = [x for x in self.bi if k0['dt'] <= x['dt'] <= k['dt']]
                     bi_r = [x for x in self.bi if x['dt'] >= k['dt']]
                     # 一线段内部至少三笔
