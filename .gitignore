@@ -4,6 +4,10 @@ __pycache__/
 *$py.class
 
 .idea/
+*.csv
+*.xlsx
+*.html
+*.png
 
 # C extensions
 *.so
