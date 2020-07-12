@@ -420,21 +420,22 @@ class KlineAnalyze(object):
         self.min_k_num = min_k_num
         kn = self.kline_new
 
-        fx_p = []  # 存储潜在笔标记
-        fx_p.extend(self.__extract_potential(mode='fx', fx_mark='d'))
-        fx_p.extend(self.__extract_potential(mode='fx', fx_mark='g'))
-
-        # 加入满足笔条件的连续两个分型
-        fx = self.fx
-        for i in range(len(fx) - 1):
-            fx1 = fx[i]
-            fx2 = fx[i + 1]
-            k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
-            if len(k_num) >= min_k_num:
-                fx_p.append(fx1)
-                fx_p.append(fx2)
-
-        fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
+        # fx_p = []  # 存储潜在笔标记
+        # fx_p.extend(self.__extract_potential(mode='fx', fx_mark='d'))
+        # fx_p.extend(self.__extract_potential(mode='fx', fx_mark='g'))
+        #
+        # # 加入满足笔条件的连续两个分型
+        # fx = self.fx
+        # for i in range(len(fx) - 1):
+        #     fx1 = fx[i]
+        #     fx2 = fx[i + 1]
+        #     k_num = [x for x in kn if fx1['dt'] <= x['dt'] <= fx2['dt']]
+        #     if len(k_num) >= min_k_num:
+        #         fx_p.append(fx1)
+        #         fx_p.append(fx2)
+        #
+        # fx_p = sorted(fx_p, key=lambda x: x['dt'], reverse=False)
+        fx_p = self.fx
 
         # 确认哪些分型可以构成笔
         bi = []
@@ -454,16 +455,45 @@ class KlineAnalyze(object):
                         bi.pop(-1)
                         bi.append(k)
                 else:
-                    # 确保相邻两个顶底之间顶大于底
-                    if (k0['fx_mark'] == 'g' and k['bi'] >= k0['bi']) or \
-                            (k0['fx_mark'] == 'd' and k['bi'] <= k0['bi']):
-                        bi.pop(-1)
+                    k_inside = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
+
+                    # 缺口处理：缺口的出现说明某一方力量很强，当做N根K线处理
+                    k_pair = [k_inside[x: x+2] for x in range(len(k_inside)-2)]
+                    has_gap = False
+                    for pair in k_pair:
+                        kr, kl = pair
+                        # 向下缺口
+                        if kr['low'] > kl['high']:
+                            has_gap = True
+                            break
+
+                        # 向上缺口
+                        if kr['high'] < kl['low']:
+                            has_gap = True
+                            break
+
+                    if has_gap:
+                        bi.append(k)
                         continue
 
-                    # 一笔的顶底分型之间至少包含5根K线
-                    k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
-                    if len(k_num) >= min_k_num:
-                        bi.append(k)
+                    max_high = max([x['high'] for x in k_inside])
+                    min_low = min([x['low'] for x in k_inside])
+                    if len(k_inside) >= min_k_num:
+                        # 确保相邻两个顶底之间顶大于底，并且笔分型是极值
+                        if (k0['fx_mark'] == 'g' and k['bi'] < k0['bi'] and k['bi'] == min_low) or \
+                                (k0['fx_mark'] == 'd' and k['bi'] > k0['bi'] and k['bi'] == max_high):
+                            bi.append(k)
+
+                    # # 确保相邻两个顶底之间顶大于底
+                    # if (k0['fx_mark'] == 'g' and k['bi'] >= k0['bi']) or \
+                    #         (k0['fx_mark'] == 'd' and k['bi'] <= k0['bi']):
+                    #     bi.pop(-1)
+                    #     continue
+                    #
+                    # # 一笔的顶底分型之间至少包含5根K线
+                    # k_num = [x for x in kn if k0['dt'] <= x['dt'] <= k['dt']]
+                    # if len(k_num) >= min_k_num:
+                    #     bi.append(k)
         return bi
 
     def __handle_last_bi(self, bi):
@@ -473,6 +503,7 @@ class KlineAnalyze(object):
         """
         last_bi = bi[-1]
         last_k = self.kline_new[-1]
+
         if (last_bi['fx_mark'] == 'd' and last_k['low'] < last_bi['bi']) \
                 or (last_bi['fx_mark'] == 'g' and last_k['high'] > last_bi['bi']):
             bi.pop(-1)
