@@ -126,7 +126,7 @@ class BI:
             fx_inside = [x for x in self.elements if x.dt >= self.dt]
             bars_inside = [y for x in fx_inside for y in x.elements]
             num_k = len(set([x['dt'] for x in bars_inside])) - len(mid_fx.elements) + 3
-            if num_k >= 7:
+            if num_k >= 6:
                 self.is_end = True
 
     def __repr__(self):
@@ -253,8 +253,43 @@ class XD:
 
 class ZS:
     """中枢"""
+    def __init__(self):
+        # 组成中枢的元件：笔标记、线段标记、走势标记
+        self.elements = []
+        self.ZD = 0
+        self.ZG = 0
+        self.D = None
+        self.G = None
+        self.DD = None
+        self.GG = None
+        self.third_buy = None
+        self.third_sell = None
+        self.is_end = False
+
     def __repr__(self):
-        pass
+        return f"<ZS({self.ZD}~{self.ZG})>"
+
+    def update(self, mark):
+        self.elements.append(mark)
+        if len(self.elements) < 4:
+            return
+
+        if not self.ZD and not self.ZG:
+            zd = max([x.price for x in self.elements[-4:] if x.mark == "d"])
+            zg = min([x.price for x in self.elements[-4:] if x.mark == "g"])
+            if zg > zd:
+                self.ZD = zd
+                self.ZG = zg
+            else:
+                return
+        else:
+            if mark.mark == 'g' and mark.price < self.ZD:
+                self.third_sell = mark
+                self.is_end = True
+
+            if mark.mark == 'd' and mark.price > self.ZG:
+                self.third_buy = mark
+                self.is_end = True
 
 
 class PZ:
@@ -335,6 +370,8 @@ class KlineAnalyze(object):
     def update(self, bar, save=True):
         """每次输入一根K线进行分析"""
         if save:
+            if bar['dt'] == self.kline[-1]['dt']:
+                self.kline.pop(-1)
             self.kline.append(bar)
 
         if not self.fxs:
