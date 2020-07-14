@@ -4,6 +4,7 @@
 """
 
 import pandas as pd
+from .utils import plot_ka, plot_kline
 
 
 class FX:
@@ -16,6 +17,8 @@ class FX:
         self.dt = None
         self.price = None
         self.is_end = False
+        self.fx_g = 0
+        self.fx_d = 0
 
     def __remove_include(self, bar: dict):
         """去除包含关系"""
@@ -73,12 +76,16 @@ class FX:
                 self.price = k2['high']
                 self.dt = k2['dt']
                 self.is_end = True
+                self.fx_g = k2['high']
+                self.fx_d = min(k1['close'], k2['close'], k3['close'])
 
             if k1['low'] > k2['low'] < k3['low']:
                 self.mark = "d"
                 self.price = k2['low']
                 self.dt = k2['dt']
                 self.is_end = True
+                self.fx_g = max(k1['close'], k2['close'], k3['close'])
+                self.fx_d = k2['low']
 
     def __repr__(self):
         return f"<FX - {self.mark} - {self.dt} - {self.price}>"
@@ -126,8 +133,9 @@ class BI:
             fx_inside = [x for x in self.elements if x.dt >= self.dt]
             bars_inside = [y for x in fx_inside for y in x.elements]
             num_k = len(set([x['dt'] for x in bars_inside])) - len(mid_fx.elements) + 3
-            if num_k >= 6:
-                self.is_end = True
+            if num_k >= 7:
+                if (fx.mark == "d" and fx.fx_d < mid_fx.fx_d) or (fx.mark == "g" and fx.fx_g > mid_fx.fx_g):
+                    self.is_end = True
 
     def __repr__(self):
         return f"<BI - {self.mark} - {self.dt} - {self.price}>"
@@ -265,31 +273,50 @@ class ZS:
         self.third_buy = None
         self.third_sell = None
         self.is_end = False
+        self.start_dt = None
+        self.end_dt = None
+        self.left = []
+        self.right = []
+        self.inside = []
 
     def __repr__(self):
         return f"<ZS({self.ZD}~{self.ZG})>"
 
     def update(self, mark):
         self.elements.append(mark)
-        if len(self.elements) < 4:
+        if len(self.elements) < 5:
             return
 
         if not self.ZD and not self.ZG:
             zd = max([x.price for x in self.elements[-4:] if x.mark == "d"])
             zg = min([x.price for x in self.elements[-4:] if x.mark == "g"])
             if zg > zd:
+                self.start_dt = self.elements[-4].dt
                 self.ZD = zd
                 self.ZG = zg
             else:
                 return
         else:
             if mark.mark == 'g' and mark.price < self.ZD:
+                self.end_dt = self.elements[-3].dt
                 self.third_sell = mark
                 self.is_end = True
 
             if mark.mark == 'd' and mark.price > self.ZG:
+                self.end_dt = self.elements[-3].dt
                 self.third_buy = mark
                 self.is_end = True
+
+            # 限制中枢延伸数量
+            mark_n = len([x for x in self.elements if x.dt >= self.start_dt])
+            if mark_n > 9:
+                self.end_dt = self.elements[-3].dt
+                self.is_end = True
+
+        if self.is_end:
+            self.left = [x for x in self.elements if x.dt <= self.start_dt]
+            self.right = [x for x in self.elements if x.dt >= self.end_dt]
+            self.inside = [x for x in self.elements if self.start_dt <= x.dt <= self.end_dt]
 
 
 class PZ:
@@ -395,6 +422,13 @@ class KlineAnalyze(object):
             xd = self.xds[-1]
             assert not xd.is_end, "最后一线段必须处于未完成状态"
 
+        if not self.zss:
+            zs = ZS()
+            self.zss.append(zs)
+        else:
+            zs = self.zss[-1]
+            assert not zs.is_end, "最后一线段必须处于未完成状态"
+
         fx.update(bar)
         self.fxs[-1] = fx
         if fx.is_end:
@@ -417,6 +451,7 @@ class KlineAnalyze(object):
             self.bis.append(bi_new)
 
         if xd.is_end:
+            zs.update(xd)
             for i in range(5):
                 xd_new = XD()
                 for bi_ in xd.right:
@@ -425,6 +460,41 @@ class KlineAnalyze(object):
                 if xd_new.is_end:
                     # print(f"{xd}确认结束，创建第{i}个线段标记 ...")
                     xd = xd_new
+                    zs.update(xd)
                     continue
                 else:
                     break
+            self.zss[-1] = zs
+
+        if zs.is_end:
+            zs_new = ZS()
+            zs_new.update(zs.elements[-1])
+            self.zss.append(zs_new)
+
+    def to_html(self, file_html="kline.html", width="1400px", height="680px"):
+        """保存成 html
+
+        :param file_html: str
+            html文件名
+        :param width: str
+            页面宽度
+        :param height: str
+            页面高度
+        :return:
+        """
+        plot_kline(self, file_html=file_html, width=width, height=height)
+
+    def to_image(self, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
+        """保存成图片
+
+        :param file_image: str
+            图片名称，支持 jpg/png/svg 格式，注意后缀
+        :param mav: tuple of int
+            均线系统参数
+        :param max_k_count: int
+            设定最大K线数量，这个值越大，生成的图片越长
+        :param dpi: int
+            图片分辨率
+        :return:
+        """
+        plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
