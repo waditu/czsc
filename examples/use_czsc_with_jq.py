@@ -63,10 +63,10 @@ def use_kline_analyze():
     ka = KlineAnalyze(kline, name="日线")
 
     # 查看结果
-    print("分型识别结果：", ka.fx[-3:])
-    print("笔识别结果：", ka.bi[-3:])
-    print("线段识别结果：", ka.xd[-3:])
-    print("中枢识别结果：", ka.zs[-1])
+    print("分型识别结果：", ka.fxs[-3:])
+    print("笔识别结果：", ka.bis[-3:])
+    print("线段识别结果：", ka.xds[-3:])
+    print("中枢识别结果：", ka.zss[-1])
 
     # 用图片或者HTML可视化
     ka.to_image("test.png")

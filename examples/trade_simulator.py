@@ -13,7 +13,7 @@ import pandas as pd
 from copy import deepcopy
 import tushare as ts
 from datetime import datetime, timedelta
-from czsc import SolidAnalyze, KlineAnalyze
+from czsc import KlineAnalyze
 from czsc import plot_kline
 
 

@@ -1,4 +1,11 @@
 # coding: utf-8
+import sys
+import warnings
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+import czsc
+warnings.warn(f"czsc version is {czsc.__version__}")
+
 import os
 from tqsdk import TqApi, TqBacktest, TqSim
 from datetime import date, datetime, timedelta
@@ -6,8 +13,6 @@ from copy import deepcopy
 from pathlib import Path
 import traceback
 from czsc import KlineAnalyze
-from czsc.analyze import create_df
-from czsc.solid import is_xd_buy, is_xd_sell
 from zb.utils import create_logger
 
 # 环境准备： pip install tqsdk zb czsc
