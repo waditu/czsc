@@ -137,14 +137,14 @@ class FX:
                 self.dt = k2['dt']
                 self.is_end = True
                 self.fx_g = k2['high']
-                self.fx_d = min(k1['close'], k2['close'], k3['close'])
+                self.fx_d = k1['low']
 
             if k1['low'] > k2['low'] < k3['low']:
                 self.mark = "d"
                 self.price = k2['low']
                 self.dt = k2['dt']
                 self.is_end = True
-                self.fx_g = max(k1['close'], k2['close'], k3['close'])
+                self.fx_g = k1['high']
                 self.fx_d = k2['low']
 
     def __repr__(self):
@@ -194,8 +194,8 @@ class BI:
             fx_inside = [x for x in self.elements if x.dt >= self.dt]
             bars_inside = [y for x in fx_inside for y in x.elements]
             num_k = len(set([x['dt'] for x in bars_inside])) - len(mid_fx.elements) + 3
-            if num_k >= 7:
-                if (fx.mark == "d" and fx.fx_d < mid_fx.fx_d) or (fx.mark == "g" and fx.fx_g > mid_fx.fx_g):
+            if num_k >= 6:
+                if (fx.mark == "d" and fx.fx_g < mid_fx.fx_d) or (fx.mark == "g" and fx.fx_d > mid_fx.fx_g):
                     self.is_end = True
 
     def __repr__(self):
