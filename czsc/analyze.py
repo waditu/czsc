@@ -366,7 +366,7 @@ class KlineAnalyze(object):
                     "fx_mark": "g",
                     "fx": k2['high'],
                     "fx_high": k2['high'],
-                    "fx_low": k1['low']
+                    "fx_low": max(k1['low'], k2['low'])
                 })
 
             # 底分型标记
@@ -377,7 +377,7 @@ class KlineAnalyze(object):
                     "dt": k2['dt'],
                     "fx_mark": "d",
                     "fx": k2['low'],
-                    "fx_high": k1['high'],
+                    "fx_high": min(k1['high'], k2['high']),
                     "fx_low": k2['low']
                 })
 
