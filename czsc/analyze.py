@@ -349,6 +349,7 @@ class KlineAnalyze(object):
         :return:
         """
         i = 0
+        fx = []
         while i < len(self.kline_new):
             if i == 0 or i == len(self.kline_new) - 1:
                 i += 1
@@ -360,14 +361,28 @@ class KlineAnalyze(object):
             if k2['high'] > k1['high'] and k2['high'] > k3['high']:
                 k2['fx_mark'] = 'g'
                 k2['fx'] = k2['high']
+                fx.append({
+                    "dt": k2['dt'],
+                    "fx_mark": "g",
+                    "fx": k2['high'],
+                    "fx_high": k2['high'],
+                    "fx_low": k1['low']
+                })
 
             # 底分型标记
             if k2['low'] < k1['low'] and k2['low'] < k3['low']:
                 k2['fx_mark'] = 'd'
                 k2['fx'] = k2['low']
+                fx.append({
+                    "dt": k2['dt'],
+                    "fx_mark": "d",
+                    "fx": k2['low'],
+                    "fx_high": k1['high'],
+                    "fx_low": k2['low']
+                })
 
-        fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']}
-              for x in self.kline_new if x['fx_mark'] in ['d', 'g']]
+        # fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']}
+        #       for x in self.kline_new if x['fx_mark'] in ['d', 'g']]
         return fx
 
     def __extract_potential(self, mode='fx', fx_mark='d'):
@@ -431,6 +446,8 @@ class KlineAnalyze(object):
                 "dt": fx_p[i]['dt'],
                 "fx_mark": fx_p[i]['fx_mark'],
                 "bi": fx_p[i]['fx'],
+                "fx_high": fx_p[i]['fx_high'],
+                "fx_low": fx_p[i]['fx_low'],
             }
             if len(bi) == 0:
                 bi.append(k)
@@ -460,15 +477,18 @@ class KlineAnalyze(object):
                             break
 
                     if has_gap:
-                        bi.append(k)
+                        # bi.append(k)
+                        if (k0['fx_mark'] == 'g' and k['fx_high'] < k0['fx_low']) or \
+                                (k0['fx_mark'] == 'd' and k['fx_low'] > k0['fx_high']):
+                            bi.append(k)
                         continue
 
-                    max_high = max([x['high'] for x in k_inside])
-                    min_low = min([x['low'] for x in k_inside])
+                    # max_high = max([x['high'] for x in k_inside])
+                    # min_low = min([x['low'] for x in k_inside])
                     if len(k_inside) >= min_k_num:
                         # 确保相邻两个顶底之间顶大于底，并且笔分型是极值
-                        if (k0['fx_mark'] == 'g' and k['bi'] < k0['bi'] and k['bi'] == min_low) or \
-                                (k0['fx_mark'] == 'd' and k['bi'] > k0['bi'] and k['bi'] == max_high):
+                        if (k0['fx_mark'] == 'g' and k['fx_high'] < k0['fx_low']) or \
+                                (k0['fx_mark'] == 'd' and k['fx_low'] > k0['fx_high']):
                             bi.append(k)
         return bi
 
