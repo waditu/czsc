@@ -7,7 +7,7 @@ import czsc
 warnings.warn(f"czsc version is {czsc.__version__}")
 
 import os
-from tqsdk import TqApi, TqBacktest, TqSim
+from tqsdk import TqApi, TqBacktest, TqSim, TargetPosTask
 from datetime import date, datetime, timedelta
 from copy import deepcopy
 from pathlib import Path
@@ -15,7 +15,12 @@ import traceback
 from czsc import KlineAnalyze
 from zb.utils import create_logger
 
-# 环境准备： pip install tqsdk zb czsc
+# 环境准备： pip install tqsdk>=1.8.2 zb>=0.0.14 czsc>=0.5.1
+
+
+def get_ka_signals(ka):
+    """计算单个级别的信号"""
+    freq = ka.name
 
 
 class TradeAnalyze:
@@ -31,36 +36,31 @@ class TradeAnalyze:
         self.s = self.signals()
         self.desc = self.__doc__
 
+    @property
+    def target_position(self):
+        return 0
+
     def signals(self):
         """计算交易决策需要的状态信息"""
         s = {"symbol": self.symbol,
              "dt": self.end_dt,
-             "base_price": self.ka_5min.xd[-1]['xd'],
              "latest_price": self.latest_price,
              "5分钟顶分型后有效跌破MA5": False,
              "5分钟底分型后有效升破MA5": False,
              "5分钟三买": False,
              "5分钟三卖": False,
-             "5分钟线段标记": self.ka_5min.xd[-1]['fx_mark'],
-             "5分钟笔标记": self.ka_5min.bi[-1]['fx_mark'],
-             "日线最后一个分型": self.ka_D.fx[-1]['fx_mark'],
+             "5分钟线段标记": self.ka_5min.xds[-2].mark,
+             "5分钟笔标记": self.ka_5min.bis[-1].mark,
+             "日线最后一个分型": self.ka_D.fxs[-2].mark,
              "1分钟有线买": False,
              "1分钟有线卖": False,
              }
 
-        b1 = is_xd_buy(self.ka_1min, self.ka_5min, pf=True)
-        if b1["操作提示"] == "线买":
-            s['1分钟有线买'] = True
-
-        s1 = is_xd_sell(self.ka_1min, self.ka_5min, pf=True)
-        if s1["操作提示"] == "线卖":
-            s['1分钟有线卖'] = True
-
         ka = self.ka_5min
-        xds = ka.xd[-6:]
+        xds = ka.xds[-7:]
 
         # 至少需要6个线段标记
-        if len(xds) < 6:
+        if len(xds) < 7:
             return s
 
         zs_d = max([x['xd'] for x in xds[:4] if x['fx_mark'] == 'd'])
@@ -72,14 +72,14 @@ class TradeAnalyze:
             if xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] < zs_d:
                 s['5分钟三卖'] = True
 
-        df = create_df(ka, ma_params=(5,))
-        last_fx = ka.fx[-1]
+        df = ka.to_df(ma_params=(5,))
+        last_fx = ka.fxs[-1]
         df_last = df[df.dt >= last_fx['dt']]
 
-        if last_fx['fx_mark'] == 'g' and df_last.iloc[1]['close'] < df_last.iloc[1]['ma5']:
+        if last_fx.mark == 'g' and df_last.iloc[1]['close'] < df_last.iloc[1]['ma5']:
             s['5分钟顶分型后有效跌破MA5'] = True
 
-        if last_fx['fx_mark'] == 'd' and df_last.iloc[1]['close'] > df_last.iloc[1]['ma5']:
+        if last_fx.mark == 'd' and df_last.iloc[1]['close'] > df_last.iloc[1]['ma5']:
             s['5分钟底分型后有效升破MA5'] = True
 
         return {k: v for k, v in s.items()}
