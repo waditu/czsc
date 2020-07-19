@@ -1,8 +1,7 @@
 # czsc - 缠中说禅技术分析工具
 >源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加微信探讨，我的微信号是 `zengbin93`
 
-* [在线体验](http://103.235.232.152:8005/?ts_code=000001.SH&asset=I&trade_date=20200228&freqs=5min,30min)
-* 参数说明：1）ts_code 是 tushare 的代码；2）asset 现在有两个值，E 表示股票，I 表示指数
+> 考虑到我自己对缠论的理解还在“四不像”水平，czsc 这个库只有参考的价值。画画笔和线段也还行，但这个离缠论分析还很远
 
 ## 安装
 

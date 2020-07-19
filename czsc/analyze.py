@@ -366,7 +366,7 @@ class KlineAnalyze(object):
                     "fx_mark": "g",
                     "fx": k2['high'],
                     "fx_high": k2['high'],
-                    "fx_low": max(k1['low'], k2['low'])
+                    "fx_low": max(k1['low'], k3['low'])
                 })
 
             # 底分型标记
@@ -380,9 +380,6 @@ class KlineAnalyze(object):
                     "fx_high": min(k1['high'], k2['high']),
                     "fx_low": k2['low']
                 })
-
-        # fx = [{"dt": x['dt'], "fx_mark": x['fx_mark'], "fx": x['fx']}
-        #       for x in self.kline_new if x['fx_mark'] in ['d', 'g']]
         return fx
 
     def __extract_potential(self, mode='fx', fx_mark='d'):
@@ -476,17 +473,8 @@ class KlineAnalyze(object):
                             has_gap = True
                             break
 
-                    if has_gap:
-                        # bi.append(k)
-                        if (k0['fx_mark'] == 'g' and k['fx_high'] < k0['fx_low']) or \
-                                (k0['fx_mark'] == 'd' and k['fx_low'] > k0['fx_high']):
-                            bi.append(k)
-                        continue
-
-                    # max_high = max([x['high'] for x in k_inside])
-                    # min_low = min([x['low'] for x in k_inside])
-                    if len(k_inside) >= min_k_num:
-                        # 确保相邻两个顶底之间顶大于底，并且笔分型是极值
+                    if has_gap or len(k_inside) >= min_k_num:
+                        # 确保相邻两个顶底之间不存在包含关系
                         if (k0['fx_mark'] == 'g' and k['fx_high'] < k0['fx_low']) or \
                                 (k0['fx_mark'] == 'd' and k['fx_low'] > k0['fx_high']):
                             bi.append(k)
@@ -577,12 +565,14 @@ class KlineAnalyze(object):
 
                     if k['fx_mark'] == 'd':
                         max_g = max([x['bi'] for x in bi_r[:8] if x['fx_mark'] == 'g'])
-                        if max_g > right_first['bi'] and max_g > left_last['bi']:
+                        # if max_g > right_first['bi'] and max_g > left_last['bi']:
+                        if max_g > right_first['bi']:
                             xd.append(k)
 
                     if k['fx_mark'] == 'g':
                         min_d = min([x['bi'] for x in bi_r[:8] if x['fx_mark'] == 'd'])
-                        if min_d < right_first['bi'] and min_d < left_last['bi']:
+                        # if min_d < right_first['bi'] and min_d < left_last['bi']:
+                        if min_d < right_first['bi']:
                             xd.append(k)
         return xd
 
