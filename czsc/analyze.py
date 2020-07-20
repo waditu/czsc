@@ -565,14 +565,12 @@ class KlineAnalyze(object):
 
                     if k['fx_mark'] == 'd':
                         max_g = max([x['bi'] for x in bi_r[:8] if x['fx_mark'] == 'g'])
-                        # if max_g > right_first['bi'] and max_g > left_last['bi']:
-                        if max_g > right_first['bi']:
+                        if max_g > right_first['bi'] and max_g > left_last['bi']:
                             xd.append(k)
 
                     if k['fx_mark'] == 'g':
                         min_d = min([x['bi'] for x in bi_r[:8] if x['fx_mark'] == 'd'])
-                        # if min_d < right_first['bi'] and min_d < left_last['bi']:
-                        if min_d < right_first['bi']:
+                        if min_d < right_first['bi'] and min_d < left_last['bi']:
                             xd.append(k)
         return xd
 
