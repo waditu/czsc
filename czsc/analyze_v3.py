@@ -138,7 +138,7 @@ def find_zs(points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, verbose=True):
+    def __init__(self, kline, name="本级别", min_bi_k=5, verbose=False):
         self.name = name
         self.verbose = verbose
         self.min_bi_k = min_bi_k
@@ -445,10 +445,24 @@ class KlineAnalyze:
                 bi_inside = [x for x in right_bi if last_xd['dt'] <= x['dt'] <= xd['dt']]
                 if len(bi_inside) < 4:
                     if self.verbose:
-                        print(f"{last_xd['dt']} - {xd['dt']} 之间没有4个笔标记，跳过")
+                        print(f"{last_xd['dt']} - {xd['dt']} 之间笔标记数量少于4，跳过")
                     continue
                 else:
-                    self.xd_list.append(xd)
+                    if len(bi_inside) >= 6:
+                        self.xd_list.append(xd)
+                        continue
+
+                    bi_r = [x for x in right_bi if x['dt'] >= xd['dt']]
+                    assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark'], f"{bi_r[1]} - {bi_inside[-2]}"
+                    if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] < bi_inside[-2]['bi']) \
+                            or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] > bi_inside[-2]['bi']):
+                        self.xd_list.append(xd)
+
+        if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
+                or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
+            if self.verbose:
+                print(f"最后一个线段标记无效，{self.xd_list[-1]}")
+            self.xd_list.pop(-1)
 
     def update(self, k):
         """更新分析结果
