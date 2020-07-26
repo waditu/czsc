@@ -196,21 +196,22 @@ class KlineAnalyze:
           'is_end': True,
           'direction': 'down'}
         """
-        if len(self.kline_new) < 3:
-            last_k = self.kline_raw[-1]
-            new_k = dict(last_k)
-            new_k['direction'] = "up"
-            self.kline_new.append(new_k)
+        if len(self.kline_new) < 4:
+            for x in self.kline_raw:
+                self.kline_new.append(dict(x))
             return
 
         # 新K线只会对最后一个去除包含关系K线的结果产生影响
-        self.kline_new = self.kline_new[:-1]
+        self.kline_new = self.kline_new[:-2]
         right_k = [x for x in self.kline_raw if x['dt'] > self.kline_new[-1]['dt']]
 
         for k in right_k:
             k = dict(k)
             last_kn = self.kline_new[-1]
-            direction = last_kn['direction']
+            if self.kline_new[-1]['high'] > self.kline_new[-2]['high']:
+                direction = "up"
+            else:
+                direction = "down"
 
             # 判断是否存在包含关系
             cur_h, cur_l = k['high'], k['low']
@@ -233,14 +234,6 @@ class KlineAnalyze:
                     k.update({"open": last_h, "close": last_l})
                 else:
                     k.update({"open": last_l, "close": last_h})
-
-            # 加上 direction 信息
-            if k['high'] > self.kline_new[-1]['high']:
-                k['direction'] = "up"
-            elif k['low'] < self.kline_new[-1]["low"]:
-                k['direction'] = "down"
-            else:
-                raise ValueError
             self.kline_new.append(k)
 
         if self.verbose:
@@ -358,6 +351,12 @@ class KlineAnalyze:
                             print(f"新增笔标记：{bi}")
                         self.bi_list.append(bi)
 
+        if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
+                or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
+            if self.verbose:
+                print(f"最后一个笔标记无效，{self.bi_list[-1]}")
+            self.bi_list.pop(-1)
+
     @staticmethod
     def _make_standard_seq(bi_seq):
         """计算标准特征序列
@@ -448,15 +447,26 @@ class KlineAnalyze:
                         print(f"{last_xd['dt']} - {xd['dt']} 之间笔标记数量少于4，跳过")
                     continue
                 else:
-                    if len(bi_inside) >= 6:
+                    if len(bi_inside) > 4:
+                        if self.verbose:
+                            print(f"新增线段标记（笔标记数量大于4）：{xd}")
                         self.xd_list.append(xd)
-                        continue
-
-                    bi_r = [x for x in right_bi if x['dt'] >= xd['dt']]
-                    assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark'], f"{bi_r[1]} - {bi_inside[-2]}"
-                    if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] < bi_inside[-2]['bi']) \
-                            or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] > bi_inside[-2]['bi']):
-                        self.xd_list.append(xd)
+                    else:
+                        bi_r = [x for x in right_bi if x['dt'] >= xd['dt']]
+                        assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark'], f"{bi_r[1]} - {bi_inside[-2]}"
+                        # 第一种情况：没有缺口
+                        if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] > bi_inside[-3]['bi']) \
+                                or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] < bi_inside[-3]['bi']):
+                            if self.verbose:
+                                print(f"新增线段标记（第一种情况）：{xd}")
+                            self.xd_list.append(xd)
+                        # 第二种情况：有缺口
+                        else:
+                            if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] < bi_inside[-2]['bi']) \
+                                    or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] > bi_inside[-2]['bi']):
+                                if self.verbose:
+                                    print(f"新增线段标记（第二种情况）：{xd}")
+                                self.xd_list.append(xd)
 
         if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
                 or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
@@ -500,7 +510,7 @@ class KlineAnalyze:
         if self.verbose:
             print("更新结束\n\n")
 
-    def to_df(self, ma_params=(5, 20), use_macd=True, use_boll=False, max_count=5000):
+    def to_df(self, ma_params=(5, 20), use_macd=True, use_boll=False, max_count=1000):
         """整理成 df 输出
 
         :param ma_params: tuple of int
