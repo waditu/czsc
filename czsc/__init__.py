@@ -2,7 +2,7 @@
 
 from .ta import ma, macd, boll
 from .utils import plot_kline
-from .analyze_v3 import KlineAnalyze
+from .analyze import KlineAnalyze, is_bei_chi, find_zs
 
 __version__ = "0.5.1"
 __author__ = "zengbin93"
