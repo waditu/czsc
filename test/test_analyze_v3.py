@@ -18,15 +18,15 @@ kline.loc[:, "is_end"] = True
 # print(ka)
 
 
-def test_objects():
-    if isinstance(kline, pd.DataFrame):
-        columns = kline.columns.to_list()
-        bars = [{k: v for k, v in zip(columns, row)} for row in kline.values]
-    else:
-        bars = kline
+def test_kline_analyze():
+    ka = KlineAnalyze(kline, name="日线")
 
-    ka = KlineAnalyze(name="日线")
-    for bar in bars:
-        ka.update(bar)
-
+    # 测试增量更新
+    ka_raw_len = len(ka.kline_raw)
+    for x in [2890, 2910, 2783, 3120]:
+        k = dict(ka.kline_raw[-1])
+        k['close'] = x
+        ka.update(k)
+        assert len(ka.kline_raw) == ka_raw_len
+        assert ka.kline_raw[-1]['close'] == x
 
