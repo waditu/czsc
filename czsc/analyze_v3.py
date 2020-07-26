@@ -90,9 +90,8 @@ def find_zs(points):
             zs_xd.pop(0)
             continue
 
-        # 定义四个指标,GG=max(gn),G=min(gn),D=max(dn),DD=min(dn)，
-        # n遍历中枢中所有Zn。特别地，再定义ZG=min(g1、g2),
-        # ZD=max(d1、d2)，显然，[ZD，ZG]就是缠中说禅走势中枢的区间
+        # 定义四个指标,GG=max(gn),G=min(gn),D=max(dn),DD=min(dn)，n遍历中枢中所有Zn。
+        # 特别地，再定义ZG=min(g1、g2), ZD=max(d1、d2)，显然，[ZD，ZG]就是缠中说禅走势中枢的区间
         if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
             # 线段在中枢上方结束，形成三买
             k_zs.append({
