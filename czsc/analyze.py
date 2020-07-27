@@ -527,10 +527,13 @@ class KlineAnalyze:
 
         # 根据最大原始K线序列长度限制分析结果长度
         self.kline_raw = self.kline_raw[-self.max_raw_len:]
-        self.kline_new = self.kline_new[-int(self.max_raw_len * 0.9):]
-        self.fx_list = self.fx_list[-(self.max_raw_len//2):]
-        self.bi_list = self.bi_list[-(self.max_raw_len//4):]
-        self.xd_list = self.xd_list[-(self.max_raw_len//8):]
+        self.kline_new = self.kline_new[-self.max_raw_len:]
+        if len(self.fx_list) > 1000:
+            self.fx_list = self.fx_list[-(self.max_raw_len//2):]
+        if len(self.bi_list) > 500:
+            self.bi_list = self.bi_list[-(self.max_raw_len//4):]
+        if len(self.xd_list) > 100:
+            self.xd_list = self.xd_list[-(self.max_raw_len//8):]
 
         if self.verbose:
             print("更新结束\n\n")
