@@ -204,7 +204,8 @@ class KlineAnalyze:
 
         # 新K线只会对最后一个去除包含关系K线的结果产生影响
         self.kline_new = self.kline_new[:-2]
-        right_k = [x for x in self.kline_raw if x['dt'] > self.kline_new[-1]['dt']]
+        slice_ = len(self.kline_raw) - len(self.kline_new) + 1
+        right_k = [x for x in self.kline_raw[-slice_:] if x['dt'] > self.kline_new[-1]['dt']]
         if len(right_k) == 0:
             return
 
@@ -266,7 +267,8 @@ class KlineAnalyze:
         if len(self.fx_list) == 0:
             kn = self.kline_new
         else:
-            kn = [x for x in self.kline_new if x['dt'] >= self.fx_list[-1]['dt']]
+            kn = [x for x in self.kline_new[-100:] if x['dt'] >= self.fx_list[-1]['dt']]
+            # kn = [x for x in self.kline_new if x['dt'] >= self.fx_list[-1]['dt']]
 
         i = 1
         while i <= len(kn)-2:
@@ -331,8 +333,13 @@ class KlineAnalyze:
         if len(self.bi_list) == 0:
             return
 
-        right_fx = [x for x in self.fx_list if x['dt'] > self.bi_list[-1]['dt']]
-        right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
+        # right_fx = [x for x in self.fx_list if x['dt'] > self.bi_list[-1]['dt']]
+        # right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
+
+        fx_slice_ = len(self.fx_list) - len(self.bi_list)*2 + 1
+        right_fx = [x for x in self.fx_list[-fx_slice_:] if x['dt'] > self.bi_list[-1]['dt']]
+        kn_slice_ = len(self.kline_new) - len(self.bi_list)*4 + 1
+        right_kn = [x for x in self.kline_new[-kn_slice_:] if x['dt'] >= self.bi_list[-1]['dt']]
 
         for fx in right_fx:
             last_bi = self.bi_list[-1]
@@ -419,7 +426,8 @@ class KlineAnalyze:
         if len(self.xd_list) == 0:
             return
 
-        right_bi = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
+        bi_slice_ = len(self.bi_list) - len(self.xd_list) * 2 + 1
+        right_bi = [x for x in self.bi_list[-bi_slice_:] if x['dt'] >= self.xd_list[-1]['dt']]
         xd_p = []
         bi_d = [x for x in right_bi if x['fx_mark'] == 'd']
         bi_g = [x for x in right_bi if x['fx_mark'] == 'g']
@@ -499,8 +507,6 @@ class KlineAnalyze:
             if self.verbose:
                 print(f"输入K线处于未完成状态，更新：replace {self.kline_raw[-1]} with {k}")
             self.kline_raw[-1] = k
-
-
 
         self._update_kline_new()
         self._update_fx_list()
