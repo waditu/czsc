@@ -164,13 +164,16 @@ class KlineAnalyze:
         # self.fd_list_l2 = []
         # self.fd_list_l3 = []
 
+        # 根据输入K线初始化
         if isinstance(kline, pd.DataFrame):
             columns = kline.columns.to_list()
-            bars = [{k: v for k, v in zip(columns, row)} for row in kline.values]
+            self.kline_raw = [{k: v for k, v in zip(columns, row)} for row in kline.values]
         else:
-            bars = kline
-        for bar in bars:
-            self.update(bar)
+            self.kline_raw = kline
+        self._update_kline_new()
+        self._update_fx_list()
+        self._update_bi_list()
+        self._update_xd_list()
 
     def _update_kline_new(self):
         """更新去除包含关系的K线序列
@@ -197,13 +200,14 @@ class KlineAnalyze:
           'direction': 'down'}
         """
         if len(self.kline_new) < 4:
-            for x in self.kline_raw:
+            for x in self.kline_raw[:4]:
                 self.kline_new.append(dict(x))
-            return
 
         # 新K线只会对最后一个去除包含关系K线的结果产生影响
         self.kline_new = self.kline_new[:-2]
         right_k = [x for x in self.kline_raw if x['dt'] > self.kline_new[-1]['dt']]
+        if len(right_k) == 0:
+            return
 
         for k in right_k:
             k = dict(k)
@@ -318,8 +322,8 @@ class KlineAnalyze:
         if len(self.fx_list) < 2:
             return
 
-        if len(self.bi_list) == 0:
-            for fx in self.fx_list:
+        if len(self.bi_list) < 2:
+            for fx in self.fx_list[:2]:
                 bi = dict(fx)
                 bi['bi'] = bi.pop('fx')
                 self.bi_list.append(bi)
@@ -406,7 +410,7 @@ class KlineAnalyze:
         if len(self.bi_list) < 4:
             return
 
-        if len(self.xd_list) == 0:
+        if len(self.xd_list) < 3:
             for i in range(3):
                 xd = dict(self.bi_list[i])
                 xd['xd'] = xd.pop('bi')
@@ -510,7 +514,7 @@ class KlineAnalyze:
         if self.verbose:
             print("更新结束\n\n")
 
-    def to_df(self, ma_params=(5, 20), use_macd=True, use_boll=False, max_count=1000):
+    def to_df(self, ma_params=(5, 20), use_macd=False, use_boll=False, max_count=1000):
         """整理成 df 输出
 
         :param ma_params: tuple of int
@@ -521,9 +525,9 @@ class KlineAnalyze:
         :return: pd.DataFrame
         """
         bars = self.kline_raw[-max_count:]
-        fx_list = {x["dt"]: {"fx_mark": x["fx_mark"], "fx": x['fx']} for x in self.fx_list}
-        bi_list = {x["dt"]: {"fx_mark": x["fx_mark"], "bi": x['bi']} for x in self.bi_list}
-        xd_list = {x["dt"]: {"fx_mark": x["fx_mark"], "xd": x['xd']} for x in self.xd_list}
+        fx_list = {x["dt"]: {"fx_mark": x["fx_mark"], "fx": x['fx']} for x in self.fx_list[-(max_count // 2):]}
+        bi_list = {x["dt"]: {"fx_mark": x["fx_mark"], "bi": x['bi']} for x in self.bi_list[-(max_count // 4):]}
+        xd_list = {x["dt"]: {"fx_mark": x["fx_mark"], "xd": x['xd']} for x in self.xd_list[-(max_count // 8):]}
         results = []
         for k in bars:
             k['fx_mark'], k['fx'], k['bi'], k['xd'] = "o", None, None, None
