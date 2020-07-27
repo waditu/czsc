@@ -138,10 +138,21 @@ def find_zs(points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, verbose=False):
+    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=5000, verbose=False):
+        """
+
+        :param kline: list or pd.DataFrame
+        :param name: str
+        :param min_bi_k: int
+            笔内部的最少K线数量
+        :param max_raw_len: int
+            原始K线序列的最大长度
+        :param verbose: bool
+        """
         self.name = name
         self.verbose = verbose
         self.min_bi_k = min_bi_k
+        self.max_raw_len = max_raw_len
         self.kline_raw = []     # 原始K线序列
         self.kline_new = []     # 去除包含关系的K线序列
 
@@ -167,6 +178,7 @@ class KlineAnalyze:
         else:
             self.kline_raw = kline
 
+        self.kline_raw = self.kline_raw[-self.max_raw_len:]
         self.symbol = self.kline_raw[0]['symbol']
         self.start_dt = self.kline_raw[0]['dt']
         self.end_dt = self.kline_raw[-1]['dt']
@@ -512,6 +524,13 @@ class KlineAnalyze:
         self._update_fx_list()
         self._update_bi_list()
         self._update_xd_list()
+
+        # 根据最大原始K线序列长度限制分析结果长度
+        self.kline_raw = self.kline_raw[-self.max_raw_len:]
+        self.kline_new = self.kline_new[-int(self.max_raw_len * 0.9):]
+        self.fx_list = self.fx_list[-(self.max_raw_len//2):]
+        self.bi_list = self.bi_list[-(self.max_raw_len//4):]
+        self.xd_list = self.xd_list[-(self.max_raw_len//8):]
 
         if self.verbose:
             print("更新结束\n\n")

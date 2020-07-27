@@ -18,7 +18,7 @@ kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
 
 
 def test_kline_analyze():
-    ka = KlineAnalyze(kline, name="日线")
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000)
 
     # 测试绘图
     file_img = "kline.png"
