@@ -142,10 +142,6 @@ class KlineAnalyze:
         self.name = name
         self.verbose = verbose
         self.min_bi_k = min_bi_k
-        self.symbol = None
-        self.latest_price = None
-        self.start_dt = None
-        self.end_dt = None
         self.kline_raw = []     # 原始K线序列
         self.kline_new = []     # 去除包含关系的K线序列
 
@@ -170,6 +166,12 @@ class KlineAnalyze:
             self.kline_raw = [{k: v for k, v in zip(columns, row)} for row in kline.values]
         else:
             self.kline_raw = kline
+
+        self.symbol = self.kline_raw[0]['symbol']
+        self.start_dt = self.kline_raw[0]['dt']
+        self.end_dt = self.kline_raw[-1]['dt']
+        self.latest_price = self.kline_raw[-1]['close']
+
         self._update_kline_new()
         self._update_fx_list()
         self._update_bi_list()
@@ -185,8 +187,7 @@ class KlineAnalyze:
           'close': 3210.1,
           'high': 3373.53,
           'low': 3209.76,
-          'vol': 486366915.0,
-          'is_end': True}
+          'vol': 486366915.0}
 
         无包含关系K线对象样例：
          {'symbol': '000001.SH',
@@ -195,9 +196,7 @@ class KlineAnalyze:
           'close': 3210.1,
           'high': 3373.53,
           'low': 3209.76,
-          'vol': 486366915.0,
-          'is_end': True,
-          'direction': 'down'}
+          'vol': 486366915.0}
         """
         if len(self.kline_new) < 4:
             for x in self.kline_raw[:4]:
@@ -501,10 +500,7 @@ class KlineAnalyze:
                 print(f"输入K线处于未完成状态，更新：replace {self.kline_raw[-1]} with {k}")
             self.kline_raw[-1] = k
 
-        self.symbol = k['symbol']
-        self.end_dt = k['dt']
-        self.latest_price = k['close']
-        self.start_dt = self.kline_raw[0]['dt']
+
 
         self._update_kline_new()
         self._update_fx_list()
