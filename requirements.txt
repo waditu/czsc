@@ -6,4 +6,3 @@ pandas
 tushare
 matplotlib
 zb>=0.0.14
-ta-lib~=0.4.18
