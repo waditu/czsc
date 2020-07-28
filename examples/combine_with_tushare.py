@@ -96,9 +96,9 @@ def use_kline_analyze():
     print('=' * 100, '\n')
     print("KlineAnalyze 的使用方法：\n")
     kline = get_kline(ts_code="000009.SZ", end_date="20200210", freq='30min', asset="I")
-    ka = KlineAnalyze(kline)
-    print("线段：", ka.xds, "\n")
-    print("中枢：", ka.zss, "\n")
+    ka = KlineAnalyze(kline, name="本级别", min_bi_k=5, max_raw_len=10000, verbose=False)
+    print("分型：", ka.fx_list, "\n")
+    print("线段：", ka.xd_list, "\n")
 
 
 if __name__ == '__main__':
