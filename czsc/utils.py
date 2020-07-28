@@ -8,8 +8,6 @@ import mplfinance as mpf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from .ta import macd
-
 
 def plot_kline(ka, bs=None, file_html="kline.html", width="1400px", height="680px"):
     """
@@ -22,8 +20,7 @@ def plot_kline(ka, bs=None, file_html="kline.html", width="1400px", height="680p
     :param height: str
     :return: None
     """
-    df = pd.DataFrame(ka.kline)
-    df = macd(df)
+    df = ka.to_df(use_macd=True, ma_params=(5, 20,))
     x = df.dt.to_list()
     title = "%s | %s 至 %s" % (ka.symbol, ka.start_dt, ka.end_dt)
     kline = (
@@ -265,7 +262,7 @@ def plot_kline(ka, bs=None, file_html="kline.html", width="1400px", height="680p
 
 def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     """绘制 ka，保存到 file_image"""
-    df = pd.DataFrame(ka.kline)
+    df = ka.to_df(use_macd=True, ma_params=(5, 20,))
     df.rename({"open": "Open", "close": "Close", "high": "High",
                "low": "Low", "vol": "Volume"}, axis=1, inplace=True)
     df.index = pd.to_datetime(df['dt'])

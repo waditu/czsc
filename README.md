@@ -47,8 +47,8 @@ py 文件地址： examples/combine_with_tushare.py
 
 没有 token，到 https://tushare.pro/register?reg=7 注册下
 
-## 结合掘金的数据使用
+## 结合聚宽的数据使用
 
-py 文件地址： examples/combine_with_goldminer.py
+py 文件地址： examples/use_czsc_with_jq.py
 
 

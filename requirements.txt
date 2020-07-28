@@ -6,3 +6,5 @@ pandas
 tushare
 git+git://github.com/zengbin93/cobra.git
 matplotlib
+zb>=0.1.14
+ta-lib~=0.4.17

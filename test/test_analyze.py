@@ -1,68 +1,54 @@
 # coding: utf-8
+
 import sys
 import warnings
-from cobra.data.kline import get_kline
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
+import os
+import pandas as pd
 import czsc
-from czsc import KlineAnalyze
-from czsc.analyze import is_bei_chi, find_zs
+from czsc.analyze import KlineAnalyze
 
 warnings.warn(f"czsc version is {czsc.__version__}")
 
-df = get_kline(ts_code="000001.SH", end_dt="2020-04-28 15:00:00", freq='D', asset='I')
-ka = KlineAnalyze(df, name="日线", bi_mode='old')
-print(ka)
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+kline = pd.read_csv(file_kline, encoding="utf-8")
+kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
 
 
 def test_kline_analyze():
-    assert ka.bi[-1]['fx_mark'] == 'g'
-    assert ka.xd[-1]['fx_mark'] == 'd'
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000)
 
-    # 测试背驰识别
-    assert ka.bi_bei_chi()
-    assert ka.xd_bei_chi()
-    print(ka.zs[-2])
+    # 测试绘图
+    file_img = "kline.png"
+    ka.to_image(file_img, max_k_count=5000)
+    assert os.path.exists(file_img)
+    os.remove(file_img)
 
-    ka.to_html("kline.html")
-    ka.to_image("kline.png")
+    file_html = "kline.html"
+    ka.to_html(file_html)
+    assert os.path.exists(file_html)
+    os.remove(file_html)
 
+    # 测试分型识别结果
+    assert ka.fx_list[-1]['fx_mark'] == 'g' and ka.fx_list[-1]['fx'] == 3456.97
+    assert ka.fx_list[-5]['fx_mark'] == 'g' and ka.fx_list[-5]['fx'] == 2983.44
 
-def test_bei_chi():
-    # 线段背驰
-    zs1 = {"start_dt": '2018-07-26 15:00:00', "end_dt": '2018-10-19 15:00:00', "direction": "down"}
-    zs2 = {"start_dt": '2018-01-29 15:00:00', "end_dt": '2018-07-06 15:00:00', "direction": "down"}
-    assert is_bei_chi(ka, zs1, zs2, mode='xd', adjust=0.9)
+    # 测试笔识别结果
+    assert ka.bi_list[-1]['fx_mark'] == 'g' and ka.bi_list[-1]['bi'] == 3456.97
+    assert ka.bi_list[-4]['fx_mark'] == 'd' and ka.bi_list[-4]['bi'] == 2646.8
 
-    zs1 = {"start_dt": '2013-12-10 15:00:00', "end_dt": '2014-01-20 15:00:00', "direction": "down"}
-    zs2 = {"start_dt": '2013-09-12 15:00:00', "end_dt": '2013-11-14 15:00:00', "direction": "down"}
-    assert not is_bei_chi(ka, zs1, zs2, mode='xd', adjust=0.9)
+    # 测试线段识别结果
+    assert ka.xd_list[-2]['fx_mark'] == 'g' and ka.xd_list[-2]['xd'] == 3288.45
+    assert ka.xd_list[-3]['fx_mark'] == 'd' and ka.xd_list[-3]['xd'] == 2440.91
 
-    # 笔背驰
-    zs1 = {"start_dt": '2019-05-17 15:00:00', "end_dt": '2019-06-10 15:00:00'}
-    zs2 = {"start_dt": '2019-04-08 15:00:00', "end_dt": '2019-05-10 15:00:00'}
-    assert is_bei_chi(ka, zs1, zs2, mode='bi', adjust=0.9)
-
-    zs1 = {"start_dt": '2018-09-28 15:00:00', "end_dt": '2018-10-19 15:00:00'}
-    zs2 = {"start_dt": '2018-08-28 15:00:00', "end_dt": '2018-09-12 15:00:00'}
-    assert not is_bei_chi(ka, zs1, zs2, mode='bi', adjust=0.9)
-
-
-def test_find_zs():
-    assert ka.down_zs_number() == 2
-    assert ka.up_zs_number() == 1
-    xd_zs = find_zs(ka.xd)
-    bi_zs = find_zs(ka.bi)
-
-    assert xd_zs[-2]["ZD"] == 2850.71
-    assert xd_zs[-2]["ZG"] == 3684.57
-
-    assert xd_zs[-1]["ZD"] == 2691.02
-    assert xd_zs[-1]["ZG"] == 2827.34
-
-    assert bi_zs[-2]['ZD'] == 2987.77
-    assert bi_zs[-2]['ZG'] == 3125.02
-
-    assert bi_zs[-1]['ZD'] == 2838.38
-    assert bi_zs[-1]['ZG'] == 2956.78
+    # 测试增量更新
+    ka_raw_len = len(ka.kline_raw)
+    for x in [2890, 2910, 2783, 3120]:
+        k = dict(ka.kline_raw[-1])
+        k['close'] = x
+        ka.update(k)
+        assert len(ka.kline_raw) == ka_raw_len
+        assert ka.kline_raw[-1]['close'] == x
 

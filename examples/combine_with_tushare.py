@@ -10,7 +10,7 @@ date: 2020-02-02
 
 import tushare as ts
 from datetime import datetime, timedelta
-from czsc import KlineAnalyze, SolidAnalyze
+from czsc import KlineAnalyze
 
 # 首次使用，需要在这里设置你的 tushare token，用于获取数据；在同一台机器上，tushare token 只需要设置一次
 # 没有 token，到 https://tushare.pro/register?reg=7 注册获取
@@ -96,24 +96,11 @@ def use_kline_analyze():
     print('=' * 100, '\n')
     print("KlineAnalyze 的使用方法：\n")
     kline = get_kline(ts_code="000009.SZ", end_date="20200210", freq='30min', asset="I")
-    ka = KlineAnalyze(kline)
-    print("线段：", ka.xd, "\n")
-    print("中枢：", ka.zs, "\n")
-
-
-def use_solid_analyze():
-    print('=' * 100, '\n')
-    print("SolidAnalyze 的使用方法：\n")
-    klines = get_klines(ts_code="300455.SZ", end_date="20200202", freqs='1min,5min,30min,D', asset='E')
-    sa = SolidAnalyze(klines)
-
-    # 查看指定级别的三买
-    tb, _ = sa.is_third_buy('30分钟')
-    print("指定级别三买：", tb, "\n")
+    ka = KlineAnalyze(kline, name="本级别", min_bi_k=5, max_raw_len=10000, verbose=False)
+    print("分型：", ka.fx_list, "\n")
+    print("线段：", ka.xd_list, "\n")
 
 
 if __name__ == '__main__':
     use_kline_analyze()
-    use_solid_analyze()
-
 
