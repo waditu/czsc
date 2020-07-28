@@ -337,13 +337,13 @@ class KlineAnalyze:
         if len(self.fx_list) < 2:
             return
 
+        self.bi_list = self.bi_list[:-1]
         if len(self.bi_list) == 0:
             for fx in self.fx_list[:2]:
                 bi = dict(fx)
                 bi['bi'] = bi.pop('fx')
                 self.bi_list.append(bi)
 
-        self.bi_list = self.bi_list[:-1]
         if len(self.bi_list) <= 2:
             right_fx = [x for x in self.fx_list if x['dt'] > self.bi_list[-1]['dt']]
             right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
