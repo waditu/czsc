@@ -138,7 +138,7 @@ def find_zs(points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=5000, verbose=False):
+    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=10000, verbose=False):
         """
 
         :param kline: list or pd.DataFrame
@@ -523,13 +523,11 @@ class KlineAnalyze:
         self._update_xd_list()
 
         # 根据最大原始K线序列长度限制分析结果长度
-        self.kline_raw = self.kline_raw[-self.max_raw_len:]
-        self.kline_new = self.kline_new[-self.max_raw_len:]
-        if len(self.fx_list) > 1000:
+        if len(self.kline_raw) > self.max_raw_len:
+            self.kline_raw = self.kline_raw[-self.max_raw_len:]
+            self.kline_new = self.kline_new[-self.max_raw_len:]
             self.fx_list = self.fx_list[-(self.max_raw_len//2):]
-        if len(self.bi_list) > 500:
             self.bi_list = self.bi_list[-(self.max_raw_len//4):]
-        if len(self.xd_list) > 100:
             self.xd_list = self.xd_list[-(self.max_raw_len//8):]
 
         if self.verbose:
