@@ -3,7 +3,11 @@
 
 常用技术分析指标：MA, MACD, BOLL
 """
-import talib as ta
+import warnings
+try:
+    import talib as ta
+except:
+    warnings.warn("ta-lib 没有安装成功，请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib 下载对应版本安装")
 
 # def ma(kline, params=(5, 10, 20, 60, 120, 250)):
 #     """计算指定周期的若干 MA 均线
