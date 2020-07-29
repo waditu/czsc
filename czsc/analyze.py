@@ -522,6 +522,9 @@ class KlineAnalyze:
         self._update_bi_list()
         self._update_xd_list()
 
+        self.end_dt = self.kline_raw[-1]['dt']
+        self.latest_price = self.kline_raw[-1]['close']
+
         # 根据最大原始K线序列长度限制分析结果长度
         if len(self.kline_raw) > self.max_raw_len:
             self.kline_raw = self.kline_raw[-self.max_raw_len:]
