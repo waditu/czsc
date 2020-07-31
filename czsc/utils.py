@@ -308,3 +308,148 @@ def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     plt.close()
 
 
+class KlineGenerator:
+    """K线生成器，仿实盘"""
+    def __init__(self):
+        self.m1 = []
+        self.m5 = []
+        self.m15 = []
+        self.m30 = []
+        self.m60 = []
+        self.D = []
+        self.W = []
+        self.freqs = {"1分钟": self.m1, "5分钟": self.m5, "15分钟": self.m15,
+                      "30分钟": self.m30, "60分钟": self.m60, "日线": self.D, "周线": self.W}
+
+    def __repr__(self):
+        return f"<KlineGenerator for {self.m1[0]['symbol']}; latest_dt={self.m5[-1]['dt']}>"
+
+    def update(self, k):
+        """输入1分钟最新K线，更新其他级别K线
+
+        :param k: dict
+            {'symbol': '000001.XSHG',
+             'dt': Timestamp('2020-07-16 14:51:00'),  # 必须是K线结束时间
+             'open': 3216.8,
+             'close': 3216.63,
+             'high': 3216.95,
+             'low': 3216.2,
+             'vol': '270429600'}
+        """
+        if not self.m1 or k['dt'].minute != self.m1[-1]['dt'].minute:
+            self.m1.append(k)
+
+        # 更新5分钟线
+        if not self.m5:
+            self.m5.append(k)
+        last_m5 = self.m5[-1]
+        if last_m5['dt'].minute % 5 == 0 and k['dt'].minute % 5 != 0:
+            self.m5.append(k)
+        else:
+            new = dict(last_m5)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_m5['high']),
+                "low": min(k['low'], last_m5['low']),
+                "vol": k['vol'] + last_m5['vol']
+            })
+            self.m5[-1] = new
+
+        # 更新15分钟线
+        if not self.m15:
+            self.m15.append(k)
+        last_m15 = self.m15[-1]
+        if last_m15['dt'].minute % 15 == 0 and k['dt'].minute % 15 != 0:
+            self.m15.append(k)
+        else:
+            new = dict(last_m15)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_m15['high']),
+                "low": min(k['low'], last_m15['low']),
+                "vol": k['vol'] + last_m15['vol']
+            })
+            self.m15[-1] = new
+
+        # 更新30分钟线
+        if not self.m30:
+            self.m30.append(k)
+        last_m30 = self.m30[-1]
+        if last_m30['dt'].minute % 30 == 0 and k['dt'].minute % 30 != 0:
+            self.m30.append(k)
+        else:
+            new = dict(last_m30)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_m30['high']),
+                "low": min(k['low'], last_m30['low']),
+                "vol": k['vol'] + last_m30['vol']
+            })
+            self.m30[-1] = new
+
+        # 更新60分钟线
+        if not self.m60:
+            self.m60.append(k)
+        last_m60 = self.m60[-1]
+        if last_m60['dt'].minute % 60 == 0 and k['dt'].minute % 60 != 0:
+            self.m60.append(k)
+        else:
+            new = dict(last_m60)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_m60['high']),
+                "low": min(k['low'], last_m60['low']),
+                "vol": k['vol'] + last_m60['vol']
+            })
+            self.m60[-1] = new
+
+        # 更新日线
+        if not self.D:
+            self.D.append(k)
+        last_d = self.D[-1]
+        if k['dt'].date() != last_d['dt'].date():
+            self.D.append(k)
+        else:
+            new = dict(last_d)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_d['high']),
+                "low": min(k['low'], last_d['low']),
+                "vol": k['vol'] + last_d['vol']
+            })
+            self.D[-1] = new
+
+        # 更新周线
+        if not self.W:
+            self.W.append(k)
+        last_w = self.W[-1]
+        if k['dt'].weekday() == 0 and k['dt'].weekday() != last_w['dt'].weekday():
+            self.W.append(k)
+        else:
+            new = dict(last_w)
+            new.update({
+                'close': k['close'],
+                "dt": k['dt'],
+                "high": max(k['high'], last_w['high']),
+                "low": min(k['low'], last_w['low']),
+                "vol": k['vol'] + last_w['vol']
+            })
+            self.W[-1] = new
+
+    def get_kline(self, freq, count):
+        """获取单个级别的K线"""
+        return [dict(x) for x in self.freqs[freq][-count:]]
+
+    def get_klines(self, counts=None):
+        """获取多个级别的K线"""
+        if counts is None:
+            counts = {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
+        return {k: [dict(x) for x in self.freqs[k][-v:]] for k, v in counts.items()}
+
+
+
