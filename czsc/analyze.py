@@ -611,6 +611,7 @@ class KlineAnalyze:
 
     def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9):
         """判断 zs1 对 zs2 是否有背驰
+
         注意：力度的比较，并没有要求两段走势方向一致；但是如果两段走势之间存在包含关系，这样的力度比较是没有意义的。
 
         :param zs1: dict

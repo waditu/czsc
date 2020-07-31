@@ -2,17 +2,19 @@
 
 import sys
 import warnings
+
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import os
+from datetime import datetime
 import pandas as pd
 import czsc
 from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn(f"czsc version is {czsc.__version__}")
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -66,6 +68,16 @@ def test_kline_analyze():
         ka.update(k)
         assert len(ka.kline_raw) == ka_raw_len
         assert ka.kline_raw[-1]['close'] == x
+
+
+def test_bei_chi():
+    bi1 = {"start_dt": ka.bi_list[-11]['dt'], "end_dt": ka.bi_list[-10]['dt'], "direction": "down"}
+    bi2 = {"start_dt": ka.bi_list[-13]['dt'], "end_dt": ka.bi_list[-12]['dt'], "direction": "down"}
+    assert ka.is_bei_chi(bi1, bi2, mode="bi", adjust=0.9)
+
+    xd1 = {"start_dt": ka.xd_list[-4]['dt'], "end_dt": ka.xd_list[-3]['dt'], "direction": "down"}
+    xd2 = {"start_dt": ka.xd_list[-6]['dt'], "end_dt": ka.xd_list[-5]['dt'], "direction": "down"}
+    assert ka.is_bei_chi(xd1, xd2, mode='xd', adjust=0.9)
 
 
 def test_find_zs():
