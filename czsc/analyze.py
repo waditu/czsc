@@ -161,12 +161,15 @@ class KlineAnalyze:
             ma_ = {'ma%i' % p: sum([x['close'] for x in self.kline_raw[-p:]]) / p
                    for p in self.ma_params}
             ma_.update({"dt": self.kline_raw[-1]['dt']})
+            if self.verbose:
+                print("ma new: %s" % str(ma_))
+
             if self.kline_raw[-2]['dt'] == self.ma[-1]['dt']:
                 self.ma.append(ma_)
             else:
                 self.ma[-1] = ma_
 
-        assert len(self.ma) == len(self.kline_raw)
+        assert self.ma[-2]['dt'] == self.kline_raw[-2]['dt']
 
         if not self.macd:
             close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
@@ -189,10 +192,15 @@ class KlineAnalyze:
                     "dea": m2[-1],
                     "macd": m3[-1]
                 }
-            if self.kline_raw[-2]['dt'] == self.ma[-1]['dt']:
+            if self.verbose:
+                print("macd new: %s" % str(macd_))
+
+            if self.kline_raw[-2]['dt'] == self.macd[-1]['dt']:
                 self.macd.append(macd_)
             else:
                 self.macd[-1] = macd_
+
+        assert self.macd[-2]['dt'] == self.kline_raw[-2]['dt']
 
     def _update_kline_new(self):
         """更新去除包含关系的K线序列
@@ -534,6 +542,8 @@ class KlineAnalyze:
         # 根据最大原始K线序列长度限制分析结果长度
         if len(self.kline_raw) > self.max_raw_len:
             self.kline_raw = self.kline_raw[-self.max_raw_len:]
+            self.ma = self.ma[-self.max_raw_len:]
+            self.macd = self.macd[-self.max_raw_len:]
             self.kline_new = self.kline_new[-self.max_raw_len:]
             self.fx_list = self.fx_list[-(self.max_raw_len//2):]
             self.bi_list = self.bi_list[-(self.max_raw_len//4):]

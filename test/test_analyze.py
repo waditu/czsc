@@ -13,13 +13,19 @@ from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn(f"czsc version is {czsc.__version__}")
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-ka = KlineAnalyze(kline, name="日线", max_raw_len=2000)
+kline1 = kline.iloc[:2000]
+kline2 = kline.iloc[2000:]
+ka = KlineAnalyze(kline1, name="日线", max_raw_len=2000, verbose=True)
 
+def test_update():
+    for _, row in kline2.iterrows():
+        ka.update(row.to_dict())
+        assert ka.kline_raw[-1]['dt'] == row['dt']
 
 def test_update_ta():
     ma_x1 = dict(ka.ma[-1])
