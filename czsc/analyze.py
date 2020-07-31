@@ -1,67 +1,14 @@
 # coding: utf-8
 
+import warnings
+try:
+    import talib
+except:
+    warnings.warn("ta-lib 没有安装成功，请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib 下载对应版本安装")
 import pandas as pd
+import numpy as np
 from czsc.ta import ma, macd, boll
 from czsc.utils import plot_ka, plot_kline
-
-def is_bei_chi(ka, zs1, zs2, mode="bi", adjust=0.9):
-    """判断 zs1 对 zs2 是否有背驰
-    注意：力度的比较，并没有要求两段走势方向一致；但是如果两段走势之间存在包含关系，这样的力度比较是没有意义的。
-    :param ka: KlineAnalyze
-        缠论的分析结果，即去除包含关系后，识别出分型、笔、线段的K线
-    :param zs1: dict
-        用于比较的走势，通常是最近的走势，示例如下：
-        zs1 = {"start_dt": "2020-02-20 11:30:00", "end_dt": "2020-02-20 14:30:00", "direction": "up"}
-    :param zs2: dict
-        被比较的走势，通常是较前的走势，示例如下：
-        zs2 = {"start_dt": "2020-02-21 11:30:00", "end_dt": "2020-02-21 14:30:00", "direction": "down"}
-    :param mode: str
-        default `bi`, optional value [`xd`, `bi`]
-        xd  判断两个线段之间是否存在背驰
-        bi  判断两笔之间是否存在背驰
-    :param adjust: float
-        调整 zs2 的力度，建议设置范围在 0.6 ~ 1.0 之间，默认设置为 0.9；
-        其作用是确保 zs1 相比于 zs2 的力度足够小。
-    :return:
-    """
-    assert zs1["start_dt"] > zs2["end_dt"], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
-    assert zs1["start_dt"] < zs1["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
-    assert zs2["start_dt"] < zs2["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
-
-    df = ka.to_df(ma_params=(5,), use_macd=True, use_boll=False)
-    k1 = df[(df['dt'] >= zs1["start_dt"]) & (df['dt'] <= zs1["end_dt"])]
-    k2 = df[(df['dt'] >= zs2["start_dt"]) & (df['dt'] <= zs2["end_dt"])]
-
-    bc = False
-    if mode == 'bi':
-        macd_sum1 = sum([abs(x) for x in k1.macd])
-        macd_sum2 = sum([abs(x) for x in k2.macd])
-        # print("bi: ", macd_sum1, macd_sum2)
-        if macd_sum1 < macd_sum2 * adjust:
-            bc = True
-
-    elif mode == 'xd':
-        assert zs1['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
-        assert zs2['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
-
-        if zs1['direction'] == "down":
-            macd_sum1 = sum([abs(x) for x in k1.macd if x < 0])
-        else:
-            macd_sum1 = sum([abs(x) for x in k1.macd if x > 0])
-
-        if zs2['direction'] == "down":
-            macd_sum2 = sum([abs(x) for x in k2.macd if x < 0])
-        else:
-            macd_sum2 = sum([abs(x) for x in k2.macd if x > 0])
-
-        # print("xd: ", macd_sum1, macd_sum2)
-        if macd_sum1 < macd_sum2 * adjust:
-            bc = True
-
-    else:
-        raise ValueError("mode value error")
-
-    return bc
 
 
 def find_zs(points):
@@ -138,7 +85,7 @@ def find_zs(points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=10000, verbose=False):
+    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame
@@ -153,8 +100,13 @@ class KlineAnalyze:
         self.verbose = verbose
         self.min_bi_k = min_bi_k
         self.max_raw_len = max_raw_len
+        self.ma_params = ma_params
         self.kline_raw = []     # 原始K线序列
         self.kline_new = []     # 去除包含关系的K线序列
+
+        # 辅助技术指标
+        self.ma = []
+        self.macd = []
 
         # 分型、笔、线段
         self.fx_list = []
@@ -184,10 +136,63 @@ class KlineAnalyze:
         self.end_dt = self.kline_raw[-1]['dt']
         self.latest_price = self.kline_raw[-1]['close']
 
+        self._update_ta()
         self._update_kline_new()
         self._update_fx_list()
         self._update_bi_list()
         self._update_xd_list()
+
+    def _update_ta(self):
+        """更新辅助技术指标"""
+        if len(self.kline_raw) < max(self.ma_params) + 50:
+            return
+
+        if not self.ma:
+            ma_temp = dict()
+            close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
+            for p in self.ma_params:
+                ma_temp['ma%i' % p] = talib.MA(close_, timeperiod=p, matype=talib.MA_Type.SMA)
+
+            for i in range(len(self.kline_raw)):
+                ma_ = {'ma%i' % p: ma_temp['ma%i' % p][i] for p in self.ma_params}
+                ma_.update({"dt": self.kline_raw[i]['dt']})
+                self.ma.append(ma_)
+        else:
+            ma_ = {'ma%i' % p: sum([x['close'] for x in self.kline_raw[-p:]]) / p
+                   for p in self.ma_params}
+            ma_.update({"dt": self.kline_raw[-1]['dt']})
+            if self.kline_raw[-2]['dt'] == self.ma[-1]['dt']:
+                self.ma.append(ma_)
+            else:
+                self.ma[-1] = ma_
+
+        assert len(self.ma) == len(self.kline_raw)
+
+        if not self.macd:
+            close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
+            # m1 is diff; m2 is dea; m3 is macd
+            m1, m2, m3 = talib.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
+            for i in range(len(self.kline_raw)):
+                self.macd.append({
+                    "dt": self.kline_raw[i]['dt'],
+                    "diff": m1[i],
+                    "dea": m2[i],
+                    "macd": m3[i]
+                })
+        else:
+            close_ = np.array([x["close"] for x in self.kline_raw[-200:]], dtype=np.double)
+            # m1 is diff; m2 is dea; m3 is macd
+            m1, m2, m3 = talib.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
+            macd_ = {
+                    "dt": self.kline_raw[-1]['dt'],
+                    "diff": m1[-1],
+                    "dea": m2[-1],
+                    "macd": m3[-1]
+                }
+            if self.kline_raw[-2]['dt'] == self.ma[-1]['dt']:
+                self.macd.append(macd_)
+            else:
+                self.macd[-1] = macd_
 
     def _update_kline_new(self):
         """更新去除包含关系的K线序列
@@ -517,6 +522,7 @@ class KlineAnalyze:
                 print(f"输入K线处于未完成状态，更新：replace {self.kline_raw[-1]} with {k}")
             self.kline_raw[-1] = k
 
+        self._update_ta()
         self._update_kline_new()
         self._update_fx_list()
         self._update_bi_list()
@@ -603,4 +609,63 @@ class KlineAnalyze:
         """
         plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
 
+    def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9):
+        """判断 zs1 对 zs2 是否有背驰
+        注意：力度的比较，并没有要求两段走势方向一致；但是如果两段走势之间存在包含关系，这样的力度比较是没有意义的。
+
+        :param zs1: dict
+            用于比较的走势，通常是最近的走势，示例如下：
+            zs1 = {"start_dt": "2020-02-20 11:30:00", "end_dt": "2020-02-20 14:30:00", "direction": "up"}
+        :param zs2: dict
+            被比较的走势，通常是较前的走势，示例如下：
+            zs2 = {"start_dt": "2020-02-21 11:30:00", "end_dt": "2020-02-21 14:30:00", "direction": "down"}
+        :param mode: str
+            default `bi`, optional value [`xd`, `bi`]
+            xd  判断两个线段之间是否存在背驰
+            bi  判断两笔之间是否存在背驰
+        :param adjust: float
+            调整 zs2 的力度，建议设置范围在 0.6 ~ 1.0 之间，默认设置为 0.9；
+            其作用是确保 zs1 相比于 zs2 的力度足够小。
+        :return: bool
+        """
+        assert zs1["start_dt"] > zs2["end_dt"], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
+        assert zs1["start_dt"] < zs1["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
+        assert zs2["start_dt"] < zs2["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
+
+        min_dt = min(zs1["start_dt"], zs2["start_dt"])
+        max_dt = max(zs1["end_dt"], zs2["end_dt"])
+        macd_ = [x for x in self.macd if max_dt >= x['dt'] >= min_dt]
+        k1 = [x for x in macd_ if zs1["end_dt"] >= x['dt'] >= zs1["start_dt"]]
+        k2 = [x for x in macd_ if zs2["end_dt"] >= x['dt'] >= zs2["start_dt"]]
+
+        bc = False
+        if mode == 'bi':
+            macd_sum1 = sum([abs(x['macd']) for x in k1])
+            macd_sum2 = sum([abs(x['macd']) for x in k2])
+            # print("bi: ", macd_sum1, macd_sum2)
+            if macd_sum1 < macd_sum2 * adjust:
+                bc = True
+
+        elif mode == 'xd':
+            assert zs1['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
+            assert zs2['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
+
+            if zs1['direction'] == "down":
+                macd_sum1 = sum([abs(x['macd']) for x in k1 if x['macd'] < 0])
+            else:
+                macd_sum1 = sum([abs(x['macd']) for x in k1 if x['macd'] > 0])
+
+            if zs2['direction'] == "down":
+                macd_sum2 = sum([abs(x['macd']) for x in k2 if x['macd'] < 0])
+            else:
+                macd_sum2 = sum([abs(x['macd']) for x in k2 if x['macd'] > 0])
+
+            # print("xd: ", macd_sum1, macd_sum2)
+            if macd_sum1 < macd_sum2 * adjust:
+                bc = True
+
+        else:
+            raise ValueError("mode value error")
+
+        return bc
 

@@ -7,19 +7,34 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 import czsc
-from czsc.analyze import KlineAnalyze
+from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn(f"czsc version is {czsc.__version__}")
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+ka = KlineAnalyze(kline, name="日线", max_raw_len=2000)
+
+
+def test_update_ta():
+    ma_x1 = dict(ka.ma[-1])
+    macd_x1 = dict(ka.macd[-1])
+    ka.update(kline.iloc[-1].to_dict())
+    ma_x2 = dict(ka.ma[-1])
+    macd_x2 = dict(ka.macd[-1])
+    assert ma_x1['dt'] == ma_x2['dt']
+    assert [round(x, 2) for x in ma_x1.values() if isinstance(x, float)] == \
+           [round(x, 2) for x in ma_x2.values() if isinstance(x, float)]
+
+    assert macd_x1['dt'] == macd_x2['dt']
+    assert [round(x, 2) for x in macd_x1.values() if isinstance(x, float)] == \
+           [round(x, 2) for x in macd_x2.values() if isinstance(x, float)]
 
 
 def test_kline_analyze():
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000)
-
     # 测试绘图
     file_img = "kline.png"
     ka.to_image(file_img, max_k_count=5000)
@@ -52,3 +67,7 @@ def test_kline_analyze():
         assert len(ka.kline_raw) == ka_raw_len
         assert ka.kline_raw[-1]['close'] == x
 
+
+def test_find_zs():
+    bi_zs = find_zs(ka.bi_list)
+    xd_zs = find_zs(ka.xd_list)
