@@ -442,11 +442,23 @@ class KlineGenerator:
             self.W[-1] = new
 
     def get_kline(self, freq, count):
-        """获取单个级别的K线"""
+        """获取单个级别的K线
+
+        :param freq: str
+            级别名称，可选值 1分钟；5分钟；15分钟；30分钟；60分钟；日线；周线
+        :param count: int
+            数量
+        :return: list of dict
+        """
         return [dict(x) for x in self.freqs[freq][-count:]]
 
     def get_klines(self, counts=None):
-        """获取多个级别的K线"""
+        """获取多个级别的K线
+
+        :param counts: dict
+            默认值 {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
+        :return: dict of list of dict
+        """
         if counts is None:
             counts = {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
         return {k: [dict(x) for x in self.freqs[k][-v:]] for k, v in counts.items()}
