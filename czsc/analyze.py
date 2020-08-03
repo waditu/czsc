@@ -384,11 +384,11 @@ class KlineAnalyze:
                             print(f"新增笔标记：{bi}")
                         self.bi_list.append(bi)
 
-        if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
-                or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
-            if self.verbose:
-                print(f"最后一个笔标记无效，{self.bi_list[-1]}")
-            self.bi_list.pop(-1)
+        # if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
+        #         or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
+        #     if self.verbose:
+        #         print(f"最后一个笔标记无效，{self.bi_list[-1]}")
+        #     self.bi_list.pop(-1)
 
     @staticmethod
     def _make_standard_seq(bi_seq):
@@ -501,11 +501,11 @@ class KlineAnalyze:
                                     print(f"新增线段标记（第二种情况）：{xd}")
                                 self.xd_list.append(xd)
 
-        if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
-                or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
-            if self.verbose:
-                print(f"最后一个线段标记无效，{self.xd_list[-1]}")
-            self.xd_list.pop(-1)
+        # if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
+        #         or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
+        #     if self.verbose:
+        #         print(f"最后一个线段标记无效，{self.xd_list[-1]}")
+        #     self.xd_list.pop(-1)
 
     def update(self, k):
         """更新分析结果
