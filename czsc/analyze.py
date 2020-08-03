@@ -85,20 +85,26 @@ def find_zs(points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
+    def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
+                 max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame
         :param name: str
         :param min_bi_k: int
             笔内部的最少K线数量
+        :param bi_mode: str
+            new 新笔；old 老笔；默认值为 old
         :param max_raw_len: int
             原始K线序列的最大长度
+        :param ma_params: tuple of int
+            均线系统参数
         :param verbose: bool
         """
         self.name = name
         self.verbose = verbose
         self.min_bi_k = min_bi_k
+        self.bi_mode = bi_mode
         self.max_raw_len = max_raw_len
         self.ma_params = ma_params
         self.kline_raw = []     # 原始K线序列
@@ -359,10 +365,20 @@ class KlineAnalyze:
 
         if len(self.bi_list) <= 2:
             right_fx = [x for x in self.fx_list if x['dt'] > self.bi_list[-1]['dt']]
-            right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
+            if self.bi_mode == "old":
+                right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
+            elif self.bi_mode == 'new':
+                right_kn = [x for x in self.kline_raw if x['dt'] >= self.bi_list[-1]['dt']]
+            else:
+                raise ValueError
         else:
-            right_fx = [x for x in self.fx_list[-100:] if x['dt'] > self.bi_list[-1]['dt']]
-            right_kn = [x for x in self.kline_new[-500:] if x['dt'] >= self.bi_list[-1]['dt']]
+            right_fx = [x for x in self.fx_list[-50:] if x['dt'] > self.bi_list[-1]['dt']]
+            if self.bi_mode == "old":
+                right_kn = [x for x in self.kline_new[-300:] if x['dt'] >= self.bi_list[-1]['dt']]
+            elif self.bi_mode == 'new':
+                right_kn = [x for x in self.kline_raw[-300:] if x['dt'] >= self.bi_list[-1]['dt']]
+            else:
+                raise ValueError
 
         for fx in right_fx:
             last_bi = self.bi_list[-1]
@@ -645,7 +661,8 @@ class KlineAnalyze:
 
         min_dt = min(zs1["start_dt"], zs2["start_dt"])
         max_dt = max(zs1["end_dt"], zs2["end_dt"])
-        macd_ = [x for x in self.macd if max_dt >= x['dt'] >= min_dt]
+        macd_ = [x for x in self.macd if x['dt'] >= min_dt]
+        macd_ = [x for x in macd_ if max_dt >= x['dt']]
         k1 = [x for x in macd_ if zs1["end_dt"] >= x['dt'] >= zs1["start_dt"]]
         k2 = [x for x in macd_ if zs2["end_dt"] >= x['dt'] >= zs2["start_dt"]]
 
