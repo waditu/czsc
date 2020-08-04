@@ -7,7 +7,4 @@ tushare~=1.2.50
 matplotlib~=3.0.3
 zb>=0.0.14
 numpy~=1.16.2
-czsc~=0.5.1
-cobra~=0.0.2
 tqsdk~=1.8.2
-setuptools~=46.4.0
