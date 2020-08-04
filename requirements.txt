@@ -7,4 +7,3 @@ tushare~=1.2.50
 matplotlib~=3.0.3
 zb>=0.0.14
 numpy~=1.16.2
-tqsdk~=1.8.2
