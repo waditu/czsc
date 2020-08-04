@@ -274,9 +274,6 @@ class KlineAnalyze:
                     k.update({"open": last_l, "close": last_h})
             self.kline_new.append(k)
 
-        if self.verbose:
-            print(f"原始序列长度：{len(self.kline_raw)}；去除包含关系之后的序列长度：{len(self.kline_new)}")
-
     def _update_fx_list(self):
         """更新分型序列
 
@@ -309,7 +306,7 @@ class KlineAnalyze:
 
             if k1['high'] < k2['high'] > k3['high']:
                 if self.verbose:
-                    print(f"顶分型：{k1['dt']} - {k2['dt']} - {k3['dt']}")
+                    print("顶分型：{} - {} - {}".format(k1['dt'], k2['dt'], k3['dt']))
                 fx = {
                     "dt": k2['dt'],
                     "fx_mark": "g",
@@ -321,7 +318,7 @@ class KlineAnalyze:
 
             elif k1['low'] > k2['low'] < k3['low']:
                 if self.verbose:
-                    print(f"底分型：{k1['dt']} - {k2['dt']} - {k3['dt']}")
+                    print("底分型：{} - {} - {}".format(k1['dt'], k2['dt'], k3['dt']))
                 fx = {
                     "dt": k2['dt'],
                     "fx_mark": "d",
@@ -333,7 +330,7 @@ class KlineAnalyze:
 
             else:
                 if self.verbose:
-                    print(f"无分型：{k1['dt']} - {k2['dt']} - {k3['dt']}")
+                    print("无分型：{} - {} - {}".format(k1['dt'], k2['dt'], k3['dt']))
             i += 1
 
     def _update_bi_list(self):
@@ -388,7 +385,7 @@ class KlineAnalyze:
                 if (last_bi['fx_mark'] == 'g' and last_bi['bi'] < bi['bi']) \
                         or (last_bi['fx_mark'] == 'd' and last_bi['bi'] > bi['bi']):
                     if self.verbose:
-                        print(f"笔标记移动：from {self.bi_list[-1]} to {bi}")
+                        print("笔标记移动：from {} to {}".format(self.bi_list[-1], bi))
                     self.bi_list[-1] = bi
             else:
                 kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
@@ -397,13 +394,13 @@ class KlineAnalyze:
                     if (last_bi['fx_mark'] == 'g' and bi['fx_high'] < last_bi['fx_low']) or \
                             (last_bi['fx_mark'] == 'd' and bi['fx_low'] > last_bi['fx_high']):
                         if self.verbose:
-                            print(f"新增笔标记：{bi}")
+                            print("新增笔标记：{}".format(bi))
                         self.bi_list.append(bi)
 
         if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
                 or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
             if self.verbose:
-                print(f"最后一个笔标记无效，{self.bi_list[-1]}")
+                print("最后一个笔标记无效，{}".format(self.bi_list[-1]))
             self.bi_list.pop(-1)
 
     @staticmethod
@@ -487,40 +484,40 @@ class KlineAnalyze:
                 if (last_xd['fx_mark'] == 'd' and last_xd['xd'] > xd['xd']) \
                         or (last_xd['fx_mark'] == 'g' and last_xd['xd'] < xd['xd']):
                     if self.verbose:
-                        print(f"更新线段标记：from {last_xd} to {xd}")
+                        print("更新线段标记：from {} to {}".format(last_xd, xd))
                     self.xd_list[-1] = xd
             else:
                 bi_inside = [x for x in right_bi if last_xd['dt'] <= x['dt'] <= xd['dt']]
                 if len(bi_inside) < 4:
                     if self.verbose:
-                        print(f"{last_xd['dt']} - {xd['dt']} 之间笔标记数量少于4，跳过")
+                        print("{} - {} 之间笔标记数量少于4，跳过".format(last_xd['dt'], xd['dt']))
                     continue
                 else:
                     if len(bi_inside) > 4:
                         if self.verbose:
-                            print(f"新增线段标记（笔标记数量大于4）：{xd}")
+                            print("新增线段标记（笔标记数量大于4）：{}".format(xd))
                         self.xd_list.append(xd)
                     else:
                         bi_r = [x for x in right_bi if x['dt'] >= xd['dt']]
-                        assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark'], f"{bi_r[1]} - {bi_inside[-2]}"
+                        assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark']
                         # 第一种情况：没有缺口
                         if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] > bi_inside[-3]['bi']) \
                                 or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] < bi_inside[-3]['bi']):
                             if self.verbose:
-                                print(f"新增线段标记（第一种情况）：{xd}")
+                                print("新增线段标记（第一种情况）：{}".format(xd))
                             self.xd_list.append(xd)
                         # 第二种情况：有缺口
                         else:
                             if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] < bi_inside[-2]['bi']) \
                                     or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] > bi_inside[-2]['bi']):
                                 if self.verbose:
-                                    print(f"新增线段标记（第二种情况）：{xd}")
+                                    print("新增线段标记（第二种情况）：{}".format(xd))
                                 self.xd_list.append(xd)
 
         if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
                 or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
             if self.verbose:
-                print(f"最后一个线段标记无效，{self.xd_list[-1]}")
+                print("最后一个线段标记无效，{}".format(self.xd_list[-1]))
             self.xd_list.pop(-1)
 
     def update(self, k):
@@ -538,12 +535,12 @@ class KlineAnalyze:
         """
         if self.verbose:
             print("=" * 100)
-            print(f"输入新K线：{k}")
+            print("输入新K线：{}".format(k))
         if not self.kline_raw or k['open'] != self.kline_raw[-1]['open']:
             self.kline_raw.append(k)
         else:
             if self.verbose:
-                print(f"输入K线处于未完成状态，更新：replace {self.kline_raw[-1]} with {k}")
+                print("输入K线处于未完成状态，更新：replace {} with {}".format(self.kline_raw[-1], k))
             self.kline_raw[-1] = k
 
         self._update_ta()
