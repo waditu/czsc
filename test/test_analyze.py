@@ -6,7 +6,6 @@ import warnings
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import os
-from datetime import datetime
 import pandas as pd
 import czsc
 from czsc.analyze import KlineAnalyze, find_zs
