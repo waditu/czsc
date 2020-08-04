@@ -4,7 +4,7 @@ import warnings
 sys.path.insert(0, ".")
 sys.path.insert(0, "..")
 import czsc
-warnings.warn(f"czsc version is {czsc.__version__}")
+warnings.warn("czsc version is {}".format(czsc.__version__))
 
 from cobra.data.kline import get_kline
 import pandas as pd

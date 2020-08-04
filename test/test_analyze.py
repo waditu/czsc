@@ -11,7 +11,7 @@ import pandas as pd
 import czsc
 from czsc.analyze import KlineAnalyze, find_zs
 
-warnings.warn(f"czsc version is {czsc.__version__}")
+warnings.warn("czsc version is {}".format(czsc.__version__))
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 # cur_path = "./test"

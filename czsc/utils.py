@@ -322,7 +322,7 @@ class KlineGenerator:
                       "30分钟": self.m30, "60分钟": self.m60, "日线": self.D, "周线": self.W}
 
     def __repr__(self):
-        return f"<KlineGenerator for {self.m1[0]['symbol']}; latest_dt={self.m5[-1]['dt']}>"
+        return "<KlineGenerator for {}; latest_dt={}>".format(self.m1[0]['symbol'], self.m5[-1]['dt'])
 
     def update(self, k):
         """输入1分钟最新K线，更新其他级别K线
