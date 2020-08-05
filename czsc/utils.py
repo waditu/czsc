@@ -320,9 +320,11 @@ class KlineGenerator:
         self.W = []
         self.freqs = {"1分钟": self.m1, "5分钟": self.m5, "15分钟": self.m15,
                       "30分钟": self.m30, "60分钟": self.m60, "日线": self.D, "周线": self.W}
+        self.end_dt = None
+        self.symbol = None
 
     def __repr__(self):
-        return "<KlineGenerator for {}; latest_dt={}>".format(self.m1[0]['symbol'], self.m5[-1]['dt'])
+        return "<KlineGenerator for {}; latest_dt={}>".format(self.m1[0]['symbol'], self.m1[-1]['dt'])
 
     def update(self, k):
         """输入1分钟最新K线，更新其他级别K线
@@ -336,8 +338,17 @@ class KlineGenerator:
              'low': 3216.2,
              'vol': '270429600'}
         """
-        if not self.m1 or k['dt'].minute != self.m1[-1]['dt'].minute:
+        # 更新1分钟线
+        if not self.m1:
             self.m1.append(k)
+        else:
+            if k['dt'] > self.m1[-1]['dt']:
+                self.m1.append(k)
+            elif k['dt'] == self.m1[-1]['dt']:
+                self.m1[-1] = k
+            else:
+                raise ValueError("1分钟新K线的时间必须大于等于最后一根K线的时间")
+        self.end_dt = self.m1[-1]['dt']
 
         # 更新5分钟线
         if not self.m5:
