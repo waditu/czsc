@@ -150,9 +150,6 @@ class KlineAnalyze:
 
     def _update_ta(self):
         """更新辅助技术指标"""
-        if len(self.kline_raw) < max(self.ma_params) + 50:
-            return
-
         if not self.ma:
             ma_temp = dict()
             close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
@@ -487,6 +484,10 @@ class KlineAnalyze:
                         print("更新线段标记：from {} to {}".format(last_xd, xd))
                     self.xd_list[-1] = xd
             else:
+                if (last_xd['fx_mark'] == 'd' and last_xd['xd'] > xd['xd']) \
+                        or (last_xd['fx_mark'] == 'g' and last_xd['xd'] < xd['xd']):
+                    continue
+
                 bi_inside = [x for x in right_bi if last_xd['dt'] <= x['dt'] <= xd['dt']]
                 if len(bi_inside) < 4:
                     if self.verbose:
