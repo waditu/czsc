@@ -17,10 +17,13 @@ def get_fx_signals(ka):
         "底分型后有效升破MA5": False,
     }
 
-    last_klines_ = [dict(x) for x in ka.kline_raw[-50:]]
-    last_ma_ = ka.ma[-50:]
+    last_klines_ = [dict(x) for x in ka.kline_raw[-10:]]
+    if len(last_klines_) != 10:
+        return s
+
+    last_ma_ = ka.ma[-10:]
     for i, x in enumerate(last_klines_):
-        assert last_ma_[i]['dt'] == x['dt']
+        assert last_ma_[i]['dt'] == x['dt'], "{}：计算均线错误".format(ka.name)
         last_klines_[i].update(last_ma_[i])
 
     last_k = last_klines_[-1]
@@ -178,6 +181,198 @@ def get_bi_signals(ka):
 
 
 def get_xd_signals(ka, use_zs=False):
+    """计算线段方向特征"""
+    s = {
+        "最后一个未确认的线段标记为底": False,
+        "最后一个未确认的线段标记为顶": False,
+        "最后一个已确认的线段标记为底": False,
+        "最后一个已确认的线段标记为顶": False,
+
+        "最后一个线段内部笔标记数量": 0,
+        "最近上一线段内部笔标记数量": 0,
+
+        '类趋势顶背驰（段）': False,
+        '类趋势底背驰（段）': False,
+        '类盘整顶背驰（段）': False,
+        '类盘整底背驰（段）': False,
+
+        "同级别分解买": False,
+        "同级别分解卖": False,
+
+        # '趋势顶背驰（段）': False,
+        # '趋势底背驰（段）': False,
+        # '盘整顶背驰（段）': False,
+        # '盘整底背驰（段）': False,
+        # "最后一个中枢上沿": 0,
+        # "最后一个中枢下沿": 0,
+    }
+
+    # ------------------------------------------------------------------------------------------------------------------
+    assert ka.xd_list[-1]['fx_mark'] in ['g', 'd']
+    if ka.xd_list[-1]['fx_mark'] == 'd':
+        s["最后一个未确认的线段标记为底"] = True
+    else:
+        s["最后一个未确认的线段标记为顶"] = True
+
+    assert ka.xd_list[-2]['fx_mark'] in ['g', 'd']
+    if ka.xd_list[-2]['fx_mark'] == 'd':
+        s["最后一个已确认的线段标记为底"] = True
+    else:
+        s["最后一个已确认的线段标记为顶"] = True
+
+    # ------------------------------------------------------------------------------------------------------------------
+    bi_after = [x for x in ka.bi_list[-60:] if x['dt'] >= ka.xd_list[-1]['dt']]
+    s["最后一个线段内部笔标记数量"] = len(bi_after)
+    s["最近上一线段内部笔标记数量"] = len([x for x in ka.bi_list[-100:]
+                              if ka.xd_list[-2]['dt'] <= x['dt'] <= ka.xd_list[-1]['dt']])
+
+    # ------------------------------------------------------------------------------------------------------------------
+    xds = ka.xd_list[-50:]
+    if len(xds) >= 6:
+        if xds[-1]['fx_mark'] == 'd' and xds[-1]['xd'] < xds[-3]['xd'] and xds[-2]['xd'] < xds[-4]['xd']:
+            zs1 = {"start_dt": xds[-2]['dt'], "end_dt": xds[-1]['dt'], "direction": "down"}
+            zs2 = {"start_dt": xds[-4]['dt'], "end_dt": xds[-3]['dt'], "direction": "down"}
+            if ka.is_bei_chi(zs1, zs2, mode="xd", adjust=0.9):
+                # 类趋势
+                if xds[-2]['xd'] < xds[-5]['xd']:
+                    s['类趋势底背驰（段）'] = True
+                else:
+                    s['类盘整底背驰（段）'] = True
+
+        if xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd'] and xds[-2]['xd'] > xds[-4]['xd']:
+            zs1 = {"start_dt": xds[-2]['dt'], "end_dt": xds[-1]['dt'], "direction": "up"}
+            zs2 = {"start_dt": xds[-4]['dt'], "end_dt": xds[-3]['dt'], "direction": "up"}
+            if ka.is_bei_chi(zs1, zs2, mode="xd", adjust=0.9):
+                # 类趋势
+                if xds[-2]['xd'] > xds[-5]['xd']:
+                    s['类趋势顶背驰（段）'] = True
+                else:
+                    s['类盘整顶背驰（段）'] = True
+
+    # ------------------------------------------------------------------------------------------------------------------
+    last_xd_inside = [x for x in ka.bi_list[-60:] if x['dt'] >= xds[-1]['dt']]
+    if len(xds) >= 6 and len(last_xd_inside) >= 6:
+        if xds[-1]['fx_mark'] == 'g' and xds[-2]['xd'] < xds[-5]['xd']:
+            if xds[-1]['xd'] < xds[-3]['xd'] or s['类盘整底背驰（段）']:
+                s['同级别分解买'] = True
+
+        if xds[-1]['fx_mark'] == 'd' and xds[-2]['xd'] > xds[-5]['xd']:
+            if xds[-1]['xd'] > xds[-3]['xd'] or s['类盘整顶背驰（段）']:
+                s['同级别分解卖'] = True
+
+    # ------------------------------------------------------------------------------------------------------------------
+    freq = ka.name
+    return {freq + k: v for k, v in s.items()}
+
+
+def get_fx_signals_v1(ka):
+    """计算分型特征"""
+    s = {
+        "SFX01_收于MA5上方": None,
+        "SFX02_收于MA20上方": None,
+        "SFX03_收于MA120上方": None,
+        "SFX04_最近一个分型类型": None,
+        "SFX05_有效跌破MA5": None,
+        "SFX06_有效升破MA5": None,
+    }
+
+    last_klines_ = [dict(x) for x in ka.kline_raw[-10:]]
+    last_ma_ = ka.ma[-10:]
+    for i, x in enumerate(last_klines_):
+        assert last_ma_[i]['dt'] == x['dt'], "{}：计算均线错误".format(ka.name)
+        last_klines_[i].update(last_ma_[i])
+
+    last_k = last_klines_[-1]
+    s["SFX01_收于MA5上方"] = True if last_k['close'] >= last_k['ma5'] > 0 else False
+    s["SFX02_收于MA20上方"] = True if last_k['close'] >= last_k['ma20'] > 0 else False
+    s["SFX03_收于MA120上方"] = True if last_k['close'] >= last_k['ma120'] > 0 else False
+    s["SFX04_最近一个分型类型"] = ka.fx_list[-1]['fx_mark']
+
+    if sum([1 for x in last_klines_[-5:] if x['low'] < x['ma5']]) >= 5 \
+            or sum([1 for x in last_klines_[-3:] if x['close'] < x['ma5']]) >= 3:
+        s["SFX05_有效跌破MA5"] = True
+
+    if sum([1 for x in last_klines_[-5:] if x['high'] > x['ma5']]) >= 5 \
+            or sum([1 for x in last_klines_[-3:] if x['close'] > x['ma5']]) >= 3:
+        s["SFX06_有效升破MA5"] = True
+
+    freq = ka.name
+    return {freq + "_" + k: v for k, v in s.items()}
+
+
+def get_bi_signals_v1(ka):
+    """计算笔信号"""
+    s = {
+        "SBI01_最近一个未确认的笔标记类型": None,
+        "SBI02_最近一个已确认的笔标记类型": None,
+        "SBI03_最近一笔不创新高": False,
+        "SBI04_最近一笔不创新低": False,
+
+        'SBI05_最近一笔进入类盘整顶背驰段': None,
+        'SBI06_最近一笔进入类盘整底背驰段': None,
+        'SBI07_最近一笔进入类趋势顶背驰段': None,
+        'SBI08_最近一笔进入类趋势底背驰段': None,
+
+        "SBI09_收盘价相对于最近笔中枢位置": None,  # 上面（1）、内部（0）、下面（-1）
+        "SBI10_最近笔中枢出现三买": False,
+        "SBI11_最近笔中枢出现三卖": False,
+    }
+
+    # ------------------------------------------------------------------------------------------------------------------
+    if len(ka.bi_list) > 3:
+        s["SBI01_最近一个未确认的笔标记类型"] = ka.bi_list[-1]['fx_mark']
+        s["SBI02_最近一个已确认的笔标记类型"] = ka.bi_list[-2]['fx_mark']
+        if ka.bi_list[-1]['fx_mark'] == 'g' and ka.bi_list[-1]['bi'] < ka.bi_list[-3]['bi']:
+            s["SBI03_最近一笔不创新高"] = True
+
+        if ka.bi_list[-1]['fx_mark'] == 'd' and ka.bi_list[-1]['bi'] > ka.bi_list[-3]['bi']:
+            s["SBI04_最近一笔不创新低"] = True
+
+    # ------------------------------------------------------------------------------------------------------------------
+    bis = ka.bi_list[-30:]
+    if len(bis) >= 6:
+        if bis[-1]['fx_mark'] == 'd' and bis[-1]['bi'] < bis[-3]['bi'] and bis[-2]['bi'] < bis[-4]['bi']:
+            zs1 = {"start_dt": bis[-2]['dt'], "end_dt": bis[-1]['dt'], "direction": "down"}
+            zs2 = {"start_dt": bis[-4]['dt'], "end_dt": bis[-3]['dt'], "direction": "down"}
+            if ka.is_bei_chi(zs1, zs2, mode="bi", adjust=0.9):
+                # 类趋势
+                if bis[-2]['bi'] < bis[-5]['bi']:
+                    s['SBI08_最近一笔进入类趋势底背驰段'] = True
+                else:
+                    s['SBI06_最近一笔进入类盘整底背驰段'] = True
+
+        if bis[-1]['fx_mark'] == 'g' and bis[-1]['bi'] > bis[-3]['bi'] and bis[-2]['bi'] > bis[-4]['bi']:
+            zs1 = {"start_dt": bis[-2]['dt'], "end_dt": bis[-1]['dt'], "direction": "up"}
+            zs2 = {"start_dt": bis[-4]['dt'], "end_dt": bis[-3]['dt'], "direction": "up"}
+            if ka.is_bei_chi(zs1, zs2, mode="bi", adjust=0.9):
+                # 类趋势
+                if bis[-2]['bi'] > bis[-5]['bi']:
+                    s['SBI07_最近一笔进入类趋势顶背驰段'] = True
+                else:
+                    s['SBI05_最近一笔进入类盘整顶背驰段'] = True
+
+        bi_zs = find_zs(bis)
+        if bi_zs:
+            last_bi_zs = bi_zs[-1]
+            last_k = ka.kline_new[-1]
+            if last_k['close'] > last_bi_zs['ZG']:
+                s['SBI09_收盘价相对于最近笔中枢位置'] = 1
+            elif last_k['close'] < last_bi_zs['ZD']:
+                s['SBI09_收盘价相对于最近笔中枢位置'] = -1
+            else:
+                s['SBI09_收盘价相对于最近笔中枢位置'] = 0
+
+            if bis[-1]['fx_mark'] == 'd' and bis[-1]['bi'] > last_bi_zs['ZG']:
+                s["SBI10_最近笔中枢出现三买"] = True
+
+            if bis[-1]['fx_mark'] == 'g' and bis[-1]['bi'] < last_bi_zs['ZD']:
+                s["SBI11_最近笔中枢出现三卖"] = True
+
+    freq = ka.name
+    return {freq + "_" + k: v for k, v in s.items()}
+
+
+def get_xd_signals_v1(ka, use_zs=False):
     """计算线段方向特征"""
     s = {
         "最后一个未确认的线段标记为底": False,
