@@ -375,48 +375,32 @@ def get_bi_signals_v1(ka):
 def get_xd_signals_v1(ka, use_zs=False):
     """计算线段方向特征"""
     s = {
-        "最后一个未确认的线段标记为底": False,
-        "最后一个未确认的线段标记为顶": False,
-        "最后一个已确认的线段标记为底": False,
-        "最后一个已确认的线段标记为顶": False,
+        "SXD01_最近一个未确认的线段标记类型": None,
+        "SXD02_最近一个已确认的线段标记类型": None,
 
-        "最后一个线段内部笔标记数量": 0,
-        "最近上一线段内部笔标记数量": 0,
+        "SXD03_最近一个线段内部笔标记数量": 0,
+        "SXD04_最近上一线段内部笔标记数量": 0,
 
-        '类趋势顶背驰（段）': False,
-        '类趋势底背驰（段）': False,
-        '类盘整顶背驰（段）': False,
-        '类盘整底背驰（段）': False,
+        'SXD05_最近一个线段进入类趋势顶背驰段': False,
+        'SXD06_最近一个线段进入类趋势底背驰段': False,
+        'SXD07_最近一个线段进入类盘整顶背驰段': False,
+        'SXD08_最近一个线段进入类盘整底背驰段': False,
 
-        "同级别分解买": False,
-        "同级别分解卖": False,
-
-        # '趋势顶背驰（段）': False,
-        # '趋势底背驰（段）': False,
-        # '盘整顶背驰（段）': False,
-        # '盘整底背驰（段）': False,
-        # "最后一个中枢上沿": 0,
-        # "最后一个中枢下沿": 0,
+        "SXD09_最近向下线段不创新低": False,
+        "SXD10_最近向上线段不创新高": False,
+        "SXD11_最近两个向下线段有价格重叠区间": False,
+        "SXD12_最近两个向上线段有价格重叠区间": False,
     }
 
     # ------------------------------------------------------------------------------------------------------------------
-    assert ka.xd_list[-1]['fx_mark'] in ['g', 'd']
-    if ka.xd_list[-1]['fx_mark'] == 'd':
-        s["最后一个未确认的线段标记为底"] = True
-    else:
-        s["最后一个未确认的线段标记为顶"] = True
+    if len(ka.xd_list) >= 2:
+        s["SXD01_最近一个未确认的线段标记类型"] = ka.xd_list[-1]['fx_mark']
+        s["SXD02_最近一个已确认的线段标记类型"] = ka.xd_list[-2]['fx_mark']
 
-    assert ka.xd_list[-2]['fx_mark'] in ['g', 'd']
-    if ka.xd_list[-2]['fx_mark'] == 'd':
-        s["最后一个已确认的线段标记为底"] = True
-    else:
-        s["最后一个已确认的线段标记为顶"] = True
-
-    # ------------------------------------------------------------------------------------------------------------------
-    bi_after = [x for x in ka.bi_list[-60:] if x['dt'] >= ka.xd_list[-1]['dt']]
-    s["最后一个线段内部笔标记数量"] = len(bi_after)
-    s["最近上一线段内部笔标记数量"] = len([x for x in ka.bi_list[-100:]
-                              if ka.xd_list[-2]['dt'] <= x['dt'] <= ka.xd_list[-1]['dt']])
+        bi1_ = [x for x in ka.bi_list[-30:] if x['dt'] >= ka.xd_list[-1]['dt']]
+        s["SXD03_最近一个线段内部笔标记数量"] = len(bi1_)
+        bi2_ = [x for x in ka.bi_list[-60:] if ka.xd_list[-2]['dt'] <= x['dt'] <= ka.xd_list[-1]['dt']]
+        s["SXD04_最近上一线段内部笔标记数量"] = len(bi2_)
 
     # ------------------------------------------------------------------------------------------------------------------
     xds = ka.xd_list[-50:]
@@ -427,9 +411,9 @@ def get_xd_signals_v1(ka, use_zs=False):
             if ka.is_bei_chi(zs1, zs2, mode="xd", adjust=0.9):
                 # 类趋势
                 if xds[-2]['xd'] < xds[-5]['xd']:
-                    s['类趋势底背驰（段）'] = True
+                    s['SXD06_最近一个线段进入类趋势底背驰段'] = True
                 else:
-                    s['类盘整底背驰（段）'] = True
+                    s['SXD08_最近一个线段进入类盘整底背驰段'] = True
 
         if xds[-1]['fx_mark'] == 'g' and xds[-1]['xd'] > xds[-3]['xd'] and xds[-2]['xd'] > xds[-4]['xd']:
             zs1 = {"start_dt": xds[-2]['dt'], "end_dt": xds[-1]['dt'], "direction": "up"}
@@ -437,20 +421,26 @@ def get_xd_signals_v1(ka, use_zs=False):
             if ka.is_bei_chi(zs1, zs2, mode="xd", adjust=0.9):
                 # 类趋势
                 if xds[-2]['xd'] > xds[-5]['xd']:
-                    s['类趋势顶背驰（段）'] = True
+                    s['SXD05_最近一个线段进入类趋势顶背驰段'] = True
                 else:
-                    s['类盘整顶背驰（段）'] = True
+                    s['SXD07_最近一个线段进入类盘整顶背驰段'] = True
 
     # ------------------------------------------------------------------------------------------------------------------
     last_xd_inside = [x for x in ka.bi_list[-60:] if x['dt'] >= xds[-1]['dt']]
-    if len(xds) >= 6 and len(last_xd_inside) >= 6:
-        if xds[-1]['fx_mark'] == 'g' and xds[-2]['xd'] < xds[-5]['xd']:
-            if xds[-1]['xd'] < xds[-3]['xd'] or s['类盘整底背驰（段）']:
-                s['同级别分解买'] = True
+    if len(xds) >= 6 and len(last_xd_inside) >= 4:
+        if xds[-1]['fx_mark'] == 'g':
+            min_bi = min(x['bi'] for x in last_xd_inside if x['fx_mark'] == 'd')
+            if min_bi > xds[-2]['xd']:
+                s["SXD09_最近向下线段不创新低"] = True
+            if xds[-1]['xd'] > xds[-4]['xd']:
+                s['SXD12_最近两个向上线段有价格重叠区间'] = True
 
-        if xds[-1]['fx_mark'] == 'd' and xds[-2]['xd'] > xds[-5]['xd']:
-            if xds[-1]['xd'] > xds[-3]['xd'] or s['类盘整顶背驰（段）']:
-                s['同级别分解卖'] = True
+        if xds[-1]['fx_mark'] == 'd':
+            max_bi = max(x['bi'] for x in last_xd_inside if x['fx_mark'] == 'g')
+            if max_bi < xds[-2]['xd']:
+                s["SXD10_最近向上线段不创新高"] = True
+            if xds[-1]['xd'] < xds[-4]['xd']:
+                s["SXD11_最近两个向下线段有价格重叠区间"] = True
 
     # ------------------------------------------------------------------------------------------------------------------
     freq = ka.name
