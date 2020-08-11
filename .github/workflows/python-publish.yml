@@ -30,6 +30,3 @@ jobs:
       run: |
         python setup.py sdist bdist_wheel
         twine upload dist/*
-    - name: Test with pytest
-      run: |
-        pytest
