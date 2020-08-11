@@ -361,22 +361,21 @@ class KlineAnalyze:
             right_fx = [x for x in self.fx_list if x['dt'] > self.bi_list[-1]['dt']]
             if self.bi_mode == "old":
                 right_kn = [x for x in self.kline_new if x['dt'] >= self.bi_list[-1]['dt']]
-                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
             elif self.bi_mode == 'new':
                 right_kn = [x for x in self.kline_raw if x['dt'] >= self.bi_list[-1]['dt']]
-                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
             else:
                 raise ValueError
         else:
             right_fx = [x for x in self.fx_list[-50:] if x['dt'] > self.bi_list[-1]['dt']]
             if self.bi_mode == "old":
                 right_kn = [x for x in self.kline_new[-300:] if x['dt'] >= self.bi_list[-1]['dt']]
-                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
             elif self.bi_mode == 'new':
                 right_kn = [x for x in self.kline_raw[-300:] if x['dt'] >= self.bi_list[-1]['dt']]
-                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
             else:
                 raise ValueError
+
+        # 给数据加索引，加速计算K线的数量
+        standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
 
         for fx in right_fx:
             last_bi = self.bi_list[-1]
@@ -389,7 +388,6 @@ class KlineAnalyze:
                         print("笔标记移动：from {} to {}".format(self.bi_list[-1], bi))
                     self.bi_list[-1] = bi
             else:
-                # kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
                 kn_count = len(standard_kn[last_bi['dt']:bi['dt']])
                 if kn_count >= self.min_bi_k:
                     # 确保相邻两个顶底之间不存在包含关系
