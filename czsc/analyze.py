@@ -386,11 +386,8 @@ class KlineAnalyze:
                         print("笔标记移动：from {} to {}".format(self.bi_list[-1], bi))
                     self.bi_list[-1] = bi
             else:
-                # 给数据加索引，加速计算K线的数量
-                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
-                kn_count = len(standard_kn[last_bi['dt']:bi['dt']])
-
-                if kn_count >= self.min_bi_k:
+                kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
+                if len(kn_inside) >= self.min_bi_k:
                     # 确保相邻两个顶底之间不存在包含关系
                     if (last_bi['fx_mark'] == 'g' and bi['fx_high'] < last_bi['fx_low']) or \
                             (last_bi['fx_mark'] == 'd' and bi['fx_low'] > last_bi['fx_high']):
