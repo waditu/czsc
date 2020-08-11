@@ -1,6 +1,5 @@
 # coding: utf-8
 
-from .ta import ma, macd, boll
 from .utils import plot_kline
 from .analyze import KlineAnalyze, find_zs
 

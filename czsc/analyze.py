@@ -2,12 +2,13 @@
 
 import warnings
 try:
-    import talib
-except:
-    warnings.warn("ta-lib 没有安装成功，请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib 下载对应版本安装")
+    import talib as ta
+except ImportError:
+    from czsc import ta
+    warnings.warn("没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib "
+                  "下载对应版本安装，预计分析速度提升2倍")
 import pandas as pd
 import numpy as np
-from czsc.ta import ma, macd, boll
 from czsc.utils import plot_ka, plot_kline
 
 
@@ -154,7 +155,7 @@ class KlineAnalyze:
             ma_temp = dict()
             close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
             for p in self.ma_params:
-                ma_temp['ma%i' % p] = talib.MA(close_, timeperiod=p, matype=talib.MA_Type.SMA)
+                ma_temp['ma%i' % p] = ta.SMA(close_, p)
 
             for i in range(len(self.kline_raw)):
                 ma_ = {'ma%i' % p: ma_temp['ma%i' % p][i] for p in self.ma_params}
@@ -177,7 +178,7 @@ class KlineAnalyze:
         if not self.macd:
             close_ = np.array([x["close"] for x in self.kline_raw], dtype=np.double)
             # m1 is diff; m2 is dea; m3 is macd
-            m1, m2, m3 = talib.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
+            m1, m2, m3 = ta.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
             for i in range(len(self.kline_raw)):
                 self.macd.append({
                     "dt": self.kline_raw[i]['dt'],
@@ -188,7 +189,7 @@ class KlineAnalyze:
         else:
             close_ = np.array([x["close"] for x in self.kline_raw[-200:]], dtype=np.double)
             # m1 is diff; m2 is dea; m3 is macd
-            m1, m2, m3 = talib.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
+            m1, m2, m3 = ta.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
             macd_ = {
                     "dt": self.kline_raw[-1]['dt'],
                     "diff": m1[-1],
@@ -374,9 +375,6 @@ class KlineAnalyze:
             else:
                 raise ValueError
 
-        # 给数据加索引，加速计算K线的数量
-        standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
-
         for fx in right_fx:
             last_bi = self.bi_list[-1]
             bi = dict(fx)
@@ -388,7 +386,10 @@ class KlineAnalyze:
                         print("笔标记移动：from {} to {}".format(self.bi_list[-1], bi))
                     self.bi_list[-1] = bi
             else:
+                # 给数据加索引，加速计算K线的数量
+                standard_kn = pd.Series(right_kn, index=[x['dt'] for x in right_kn])
                 kn_count = len(standard_kn[last_bi['dt']:bi['dt']])
+
                 if kn_count >= self.min_bi_k:
                     # 确保相邻两个顶底之间不存在包含关系
                     if (last_bi['fx_mark'] == 'g' and bi['fx_high'] < last_bi['fx_low']) or \
@@ -569,13 +570,12 @@ class KlineAnalyze:
         if self.verbose:
             print("更新结束\n\n")
 
-    def to_df(self, ma_params=(5, 20), use_macd=False, use_boll=False, max_count=1000):
+    def to_df(self, ma_params=(5, 20), use_macd=False, max_count=1000):
         """整理成 df 输出
 
         :param ma_params: tuple of int
             均线系统参数
         :param use_macd: bool
-        :param use_boll: bool
         :param max_count: int
         :return: pd.DataFrame
         """
@@ -601,11 +601,13 @@ class KlineAnalyze:
 
             results.append(k)
         df = pd.DataFrame(results)
-        df = ma(df, ma_params)
+        for p in ma_params:
+            df.loc[:, "ma{}".format(p)] = ta.SMA(df.close.values, p)
         if use_macd:
-            df = macd(df)
-        if use_boll:
-            df = boll(df)
+            diff, dea, macd = ta.MACD(df.close.values)
+            df.loc[:, "diff"] = diff
+            df.loc[:, "dea"] = diff
+            df.loc[:, "macd"] = diff
         return df
 
     def to_html(self, file_html="kline.html", width="1400px", height="680px"):
