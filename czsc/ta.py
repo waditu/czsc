@@ -49,13 +49,19 @@ def EMA(close: np.array, timeperiod=5):
 
 @numba.njit()
 def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
-    """
+    """MACD 异同移动平均线
+    https://baike.baidu.com/item/MACD%E6%8C%87%E6%A0%87/6271283
 
-    :param close:
-    :param fastperiod:
-    :param slowperiod:
-    :param signalperiod:
-    :return:
+    :param close: np.array
+        收盘价序列
+    :param fastperiod: int
+        快周期，默认值 12
+    :param slowperiod: int
+        慢周期，默认值 26
+    :param signalperiod: int
+        信号周期，默认值 9
+    :return: (np.array, np.array, np.array)
+        diff, dea, macd
     """
     ema12 = EMA(close, timeperiod=fastperiod)
     ema26 = EMA(close, timeperiod=slowperiod)

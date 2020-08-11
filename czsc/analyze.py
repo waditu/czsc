@@ -5,8 +5,9 @@ try:
     import talib as ta
 except ImportError:
     from czsc import ta
-    warnings.warn("没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib "
-                  "下载对应版本安装，预计分析速度提升2倍")
+    ta_lib_hint = "没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib " \
+                  "下载对应版本安装，预计分析速度提升2倍"
+    warnings.warn(ta_lib_hint)
 import pandas as pd
 import numpy as np
 from czsc.utils import plot_ka, plot_kline
