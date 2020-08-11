@@ -48,10 +48,10 @@ def test_kline_analyze():
     assert os.path.exists(file_img)
     os.remove(file_img)
 
-    file_html = "kline.html"
-    ka.to_html(file_html)
-    assert os.path.exists(file_html)
-    os.remove(file_html)
+    # file_html = "kline.html"
+    # ka.to_html(file_html)
+    # assert os.path.exists(file_html)
+    # os.remove(file_html)
 
     # 测试分型识别结果
     assert ka.fx_list[-1]['fx_mark'] == 'g' and ka.fx_list[-1]['fx'] == 3456.97
