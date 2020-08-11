@@ -10,6 +10,7 @@ except ImportError:
     warnings.warn(ta_lib_hint)
 import pandas as pd
 import numpy as np
+from datetime import datetime
 from czsc.utils import plot_ka, plot_kline
 
 
@@ -697,4 +698,17 @@ class KlineAnalyze:
             raise ValueError("mode value error")
 
         return bc
+
+    def get_sub_section(self, start_dt: datetime, end_dt: datetime, mode="bi"):
+        """获取子区间
+
+        :param start_dt: datetime
+            子区间开始时间
+        :param end_dt: datetime
+            子区间结束时间
+        :param mode: str
+            需要获取的子区间对象类型，可取值 ['k', 'fx', 'bi', 'xd']
+        :return: list of dict
+        """
+        raise NotImplementedError
 
