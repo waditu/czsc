@@ -48,7 +48,7 @@ def EMA(close: np.array, timeperiod=5):
     return np.array(res, dtype=np.double)
 
 @numba.njit()
-def MACD(close: np.array, fastperiod=12, slowperiod=16, signalperiod=9):
+def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     """
 
     :param close:
