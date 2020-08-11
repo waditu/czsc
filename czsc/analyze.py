@@ -1,15 +1,16 @@
 # coding: utf-8
 
-import warnings
-try:
-    import talib as ta
-except ImportError:
-    from czsc import ta
-    warnings.warn("没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib "
-                  "下载对应版本安装，预计分析速度提升2倍")
+# import warnings
+# try:
+#     import talib as ta
+# except ImportError:
+#     from czsc import ta
+#     warnings.warn("没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib "
+#                   "下载对应版本安装，预计分析速度提升2倍")
 import pandas as pd
 import numpy as np
-from czsc.utils import plot_ka, plot_kline
+from .utils import plot_ka, plot_kline
+from . import ta
 
 
 def find_zs(points):
