@@ -87,6 +87,15 @@ def find_zs(points):
     return k_zs
 
 
+class Section:
+    """走势截面"""
+    def __init__(self, kline_new, fx_list, bi_list, xd_list):
+        self.kline_new = kline_new
+        self.fx_list = fx_list
+        self.bi_list = bi_list
+        self.xd_list = xd_list
+
+
 class KlineAnalyze:
     def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
                  max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
@@ -209,26 +218,7 @@ class KlineAnalyze:
         assert self.macd[-2]['dt'] == self.kline_raw[-2]['dt']
 
     def _update_kline_new(self):
-        """更新去除包含关系的K线序列
-
-        原始K线序列样例：
-         {'symbol': '000001.SH',
-          'dt': Timestamp('2020-07-16 15:00:00'),
-          'open': 3356.11,
-          'close': 3210.1,
-          'high': 3373.53,
-          'low': 3209.76,
-          'vol': 486366915.0}
-
-        无包含关系K线对象样例：
-         {'symbol': '000001.SH',
-          'dt': Timestamp('2020-07-16 15:00:00'),
-          'open': 3356.11,
-          'close': 3210.1,
-          'high': 3373.53,
-          'low': 3209.76,
-          'vol': 486366915.0}
-        """
+        """更新去除包含关系的K线序列"""
         if len(self.kline_new) == 0:
             for x in self.kline_raw[:4]:
                 self.kline_new.append(dict(x))
@@ -275,22 +265,7 @@ class KlineAnalyze:
             self.kline_new.append(k)
 
     def _update_fx_list(self):
-        """更新分型序列
-
-        分型对象样例：
-
-         {'dt': Timestamp('2020-06-29 15:00:00'),
-          'fx_mark': 'd',
-          'fx': 2951.77,
-          'fx_high': 2977.91,
-          'fx_low': 2951.77}
-
-         {'dt': Timestamp('2020-07-09 15:00:00'),
-          'fx_mark': 'g',
-          'fx': 3456.97,
-          'fx_high': 3456.97,
-          'fx_low': 3366.08}
-        """
+        """更新分型序列"""
         if len(self.kline_new) < 3:
             return
 

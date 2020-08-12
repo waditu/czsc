@@ -4,7 +4,7 @@ import os
 import numba
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import talib as ta
 
 # cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -13,8 +13,11 @@ file_kline = os.path.join(cur_path, "data/000001.XSHG_1MIN.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, 'dt'] = pd.to_datetime(kline['dt'])
 bars = kline.to_dict("records")
-close = np.array([x['close'] for x in bars], dtype=np.double)
+# bars_dt = [x['dt'] for x in bars]
 
+# 测试 MA、EMA、MACD 计算性能
+# ----------------------------------------------------------------------------------------------------------------------
+close = np.array([x['close'] for x in bars], dtype=np.double)
 
 def SMA_V1(close: np.array, p=5):
     res = []
@@ -109,3 +112,30 @@ def MACD_V3(close: np.array):
 # %timeit x1 = MACD_V1(close)
 # %timeit x2 = MACD_V2(close)
 # %timeit x3 = MACD_V3(close)
+
+
+# 测试长list截取
+# ----------------------------------------------------------------------------------------------------------------------
+
+bars = []
+for i in range(500):
+    bars.append({"dt": datetime.now() - timedelta(minutes=i), "value": i})
+bars_dt = {x['dt']: i for i, x in enumerate(bars)}
+
+def split_v1():
+    start_dt = bars[-500]['dt']
+    end_dt = bars[-200]['dt']
+    return [x for x in bars if end_dt >= x['dt'] >= start_dt]
+
+def split_v2():
+    start_dt = bars[-500]['dt']
+    end_dt = bars[-200]['dt']
+
+    start_i = bars_dt[start_dt]
+    end_i = bars_dt[end_dt]
+    return bars[start_i: end_i+1]
+
+# %timeit x1 = split_v1()
+# %timeit x2 = split_v2()
+
+
