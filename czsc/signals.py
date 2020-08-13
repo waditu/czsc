@@ -24,9 +24,9 @@ def get_fx_signals(ka):
             s["最近三K线形态"] = "g"
         elif last_tri[-3]['low'] > last_tri[-2]['low'] < last_tri[-1]['low']:
             s["最近三K线形态"] = "d"
-        elif last_tri[-3]['close'] > last_tri[-2]['close'] > last_tri[-1]['close']:
+        elif last_tri[-3]['low'] > last_tri[-2]['low'] > last_tri[-1]['low']:
             s["最近三K线形态"] = "down"
-        elif last_tri[-3]['close'] < last_tri[-2]['close'] < last_tri[-1]['close']:
+        elif last_tri[-3]['high'] < last_tri[-2]['high'] < last_tri[-1]['high']:
             s["最近三K线形态"] = "up"
 
     last_klines_ = [dict(x) for x in ka.kline_raw[-10:]]
