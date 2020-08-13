@@ -15,19 +15,19 @@ def get_fx_signals(ka):
         "最后一个分型为底": False,
         "顶分型后有效跌破MA5": False,
         "底分型后有效升破MA5": False,
-        "最后三K线形态": None,
+        "最近三K线形态": None,
     }
 
     last_tri = ka.kline_new[-3:]
     if len(last_tri) == 3:
         if last_tri[-3]['high'] < last_tri[-2]['high'] > last_tri[-1]['high']:
-            s["最后三K线形态"] = "g"
+            s["最近三K线形态"] = "g"
         elif last_tri[-3]['low'] > last_tri[-2]['low'] < last_tri[-1]['low']:
-            s["最后三K线形态"] = "d"
+            s["最近三K线形态"] = "d"
         elif last_tri[-3]['close'] > last_tri[-2]['close'] > last_tri[-1]['close']:
-            s["最后三K线形态"] = "down"
+            s["最近三K线形态"] = "down"
         elif last_tri[-3]['close'] < last_tri[-2]['close'] < last_tri[-1]['close']:
-            s["最后三K线形态"] = "up"
+            s["最近三K线形态"] = "up"
 
     last_klines_ = [dict(x) for x in ka.kline_raw[-10:]]
     if len(last_klines_) != 10:
