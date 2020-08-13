@@ -2,7 +2,7 @@ requests~=2.23.0
 pyecharts~=1.8.1
 mplfinance~=0.12.4a0
 tqdm
-pandas~=0.24.2
+pandas>=1.1.0
 tushare~=1.2.50
 matplotlib~=3.0.3
 zb>=0.0.14
