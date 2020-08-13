@@ -15,7 +15,19 @@ def get_fx_signals(ka):
         "最后一个分型为底": False,
         "顶分型后有效跌破MA5": False,
         "底分型后有效升破MA5": False,
+        "最后三K线形态": None,
     }
+
+    last_tri = ka.kline_new[-3:]
+    if len(last_tri) == 3:
+        if last_tri[-3]['high'] < last_tri[-2]['high'] > last_tri[-1]['high']:
+            s["最后三K线形态"] = "g"
+        elif last_tri[-3]['low'] > last_tri[-2]['low'] < last_tri[-1]['low']:
+            s["最后三K线形态"] = "d"
+        elif last_tri[-3]['close'] > last_tri[-2]['close'] > last_tri[-1]['close']:
+            s["最后三K线形态"] = "down"
+        elif last_tri[-3]['close'] < last_tri[-2]['close'] < last_tri[-1]['close']:
+            s["最后三K线形态"] = "up"
 
     last_klines_ = [dict(x) for x in ka.kline_raw[-10:]]
     if len(last_klines_) != 10:
@@ -97,17 +109,18 @@ def get_bi_signals(ka):
     }
 
     # ------------------------------------------------------------------------------------------------------------------
-    assert ka.bi_list[-1]['fx_mark'] in ['d', 'g']
-    if ka.bi_list[-1]['fx_mark'] == 'd':
-        s["最后一个未确认的笔标记为底"] = True
-    else:
-        s["最后一个未确认的笔标记为顶"] = True
+    if len(ka.bi_list) > 2:
+        assert ka.bi_list[-1]['fx_mark'] in ['d', 'g']
+        if ka.bi_list[-1]['fx_mark'] == 'd':
+            s["最后一个未确认的笔标记为底"] = True
+        else:
+            s["最后一个未确认的笔标记为顶"] = True
 
-    assert ka.bi_list[-2]['fx_mark'] in ['d', 'g']
-    if ka.bi_list[-2]['fx_mark'] == 'd':
-        s["最后一个已确认的笔标记为底"] = True
-    else:
-        s["最后一个已确认的笔标记为顶"] = True
+        assert ka.bi_list[-2]['fx_mark'] in ['d', 'g']
+        if ka.bi_list[-2]['fx_mark'] == 'd':
+            s["最后一个已确认的笔标记为底"] = True
+        else:
+            s["最后一个已确认的笔标记为顶"] = True
 
     # ------------------------------------------------------------------------------------------------------------------
     last_bi = ka.bi_list[-1]
