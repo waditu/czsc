@@ -11,7 +11,7 @@ except ImportError:
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from czsc.utils import plot_ka, plot_kline
+from czsc.utils import plot_ka
 
 
 def find_zs(points):
@@ -287,7 +287,8 @@ class KlineAnalyze:
                     "fx_mark": "g",
                     "fx": k2['high'],
                     "fx_high": k2['high'],
-                    "fx_low": max(k1['low'], k3['low']),
+                    # "fx_low": min(k1['low'], k3['low']),
+                    "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
 
@@ -298,7 +299,8 @@ class KlineAnalyze:
                     "dt": k2['dt'],
                     "fx_mark": "d",
                     "fx": k2['low'],
-                    "fx_high": min(k1['high'], k2['high']),
+                    # "fx_high": max(k1['high'], k2['high']),
+                    "fx_high": k2['high'],
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -366,8 +368,8 @@ class KlineAnalyze:
                 kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
                 if len(kn_inside) >= self.min_bi_k:
                     # 确保相邻两个顶底之间不存在包含关系
-                    if (last_bi['fx_mark'] == 'g' and bi['fx_high'] < last_bi['fx_low']) or \
-                            (last_bi['fx_mark'] == 'd' and bi['fx_low'] > last_bi['fx_high']):
+                    if (last_bi['fx_mark'] == 'g' and bi['fx_low'] < last_bi['fx_low']) or \
+                            (last_bi['fx_mark'] == 'd' and bi['fx_high'] > last_bi['fx_high']):
                         if self.verbose:
                             print("新增笔标记：{}".format(bi))
                         self.bi_list.append(bi)
@@ -544,16 +546,24 @@ class KlineAnalyze:
         if self.verbose:
             print("更新结束\n\n")
 
-    def to_df(self, ma_params=(5, 20), use_macd=False, max_count=1000):
+    def to_df(self, ma_params=(5, 20), use_macd=False, max_count=1000, mode="raw"):
         """整理成 df 输出
 
         :param ma_params: tuple of int
             均线系统参数
         :param use_macd: bool
         :param max_count: int
+        :param mode: str
+            使用K线类型， raw = 原始K线，new = 去除包含关系的K线
         :return: pd.DataFrame
         """
-        bars = self.kline_raw[-max_count:]
+        if mode == "raw":
+            bars = self.kline_raw[-max_count:]
+        elif mode == "new":
+            bars = self.kline_raw[-max_count:]
+        else:
+            raise ValueError
+
         fx_list = {x["dt"]: {"fx_mark": x["fx_mark"], "fx": x['fx']} for x in self.fx_list[-(max_count // 2):]}
         bi_list = {x["dt"]: {"fx_mark": x["fx_mark"], "bi": x['bi']} for x in self.bi_list[-(max_count // 4):]}
         xd_list = {x["dt"]: {"fx_mark": x["fx_mark"], "xd": x['xd']} for x in self.xd_list[-(max_count // 8):]}
@@ -583,19 +593,6 @@ class KlineAnalyze:
             df.loc[:, "dea"] = diff
             df.loc[:, "macd"] = diff
         return df
-
-    def to_html(self, file_html="kline.html", width="1400px", height="680px"):
-        """保存成 html
-
-        :param file_html: str
-            html文件名
-        :param width: str
-            页面宽度
-        :param height: str
-            页面高度
-        :return:
-        """
-        plot_kline(self, file_html=file_html, width=width, height=height)
 
     def to_image(self, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
         """保存成图片
