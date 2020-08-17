@@ -16,7 +16,7 @@ from czsc.utils import plot_ka
 
 def find_zs(points):
     """输入笔或线段标记点，输出中枢识别结果"""
-    if len(points) <= 4:
+    if len(points) < 5:
         return []
 
     # 当输入为笔的标记点时，新增 xd 值
@@ -33,8 +33,8 @@ def find_zs(points):
             zs_xd.append(k_xd[i])
             continue
         xd_p = k_xd[i]
-        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
-        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
+        zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+        zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
         if zs_g <= zs_d:
             zs_xd.append(k_xd[i])
             zs_xd.pop(0)
@@ -51,10 +51,12 @@ def find_zs(points):
                 'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
                 'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'start_point': zs_xd[2],
+                'end_point': zs_xd[-2],
                 "points": zs_xd,
                 "third_buy": xd_p
             })
-            zs_xd = k_xd[i - 1: i + 1]
+            zs_xd = k_xd[i: i + 1]
         elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
             # 线段在中枢下方结束，形成三卖
             k_zs.append({
@@ -64,26 +66,30 @@ def find_zs(points):
                 'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
                 'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'start_point': zs_xd[2],
+                'end_point': zs_xd[-2],
                 "points": zs_xd,
                 "third_sell": xd_p
             })
-            zs_xd = k_xd[i - 1: i + 1]
+            zs_xd = k_xd[i: i + 1]
         else:
             zs_xd.append(xd_p)
 
     if len(zs_xd) >= 5:
-        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
-        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
-        k_zs.append({
-            'ZD': zs_d,
-            "ZG": zs_g,
-            'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-            'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-            'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-            'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-            "points": zs_xd,
-        })
-
+        zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
+        zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
+        if zs_g > zs_d:
+            k_zs.append({
+                'ZD': zs_d,
+                "ZG": zs_g,
+                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
+                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
+                'start_point': zs_xd[2],
+                'end_point': None,
+                "points": zs_xd,
+            })
     return k_zs
 
 
@@ -682,5 +688,4 @@ class KlineAnalyze:
             需要获取的子区间对象类型，可取值 ['k', 'fx', 'bi', 'xd']
         :return: list of dict
         """
-        raise NotImplementedError
-
+        pass

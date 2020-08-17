@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def plot_ka(ka, file_image, mav=(5, 20, 120, 250), max_k_count=1000, dpi=50):
     """绘制 ka，保存到 file_image"""
-    df = ka.to_df(use_macd=True, ma_params=(5, 20,))
+    df = ka.to_df(use_macd=True, ma_params=(5, 20,), max_count=max_k_count)
     df.rename({"open": "Open", "close": "Close", "high": "High",
                "low": "Low", "vol": "Volume"}, axis=1, inplace=True)
     df.index = pd.to_datetime(df['dt'])

@@ -12,8 +12,8 @@ from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -25,6 +25,7 @@ def test_update():
     for _, row in kline2.iterrows():
         ka.update(row.to_dict())
         assert ka.kline_raw[-1]['dt'] == row['dt']
+
 
 def test_update_ta():
     ma_x1 = dict(ka.ma[-1])
@@ -46,12 +47,6 @@ def test_kline_analyze():
     file_img = "kline.png"
     ka.to_image(file_img, max_k_count=5000)
     assert os.path.exists(file_img)
-    os.remove(file_img)
-
-    # file_html = "kline.html"
-    # ka.to_html(file_html)
-    # assert os.path.exists(file_html)
-    # os.remove(file_html)
 
     # 测试分型识别结果
     assert ka.fx_list[-1]['fx_mark'] == 'g' and ka.fx_list[-1]['fx'] == 3456.97
@@ -86,5 +81,51 @@ def test_bei_chi():
 
 
 def test_find_zs():
-    bi_zs = find_zs(ka.bi_list)
-    xd_zs = find_zs(ka.xd_list)
+    # bi_zs = find_zs(ka.bi_list)
+    # xd_zs = find_zs(ka.xd_list)
+
+    # 造数测试
+    points = [
+        {"dt": 0, "fx_mark": "d", "xd": 8},
+        {"dt": 1, "fx_mark": "g", "xd": 10},
+        {"dt": 2, "fx_mark": "d", "xd": 9},
+        {"dt": 3, "fx_mark": "g", "xd": 11},
+        {"dt": 4, "fx_mark": "d", "xd": 10.5},
+        {"dt": 5, "fx_mark": "g", "xd": 12},
+        {"dt": 6, "fx_mark": "d", "xd": 11.1},
+
+        {"dt": 7, "fx_mark": "g", "xd": 14},
+        {"dt": 8, "fx_mark": "d", "xd": 13},
+        {"dt": 9, "fx_mark": "g", "xd": 13.8},
+        {"dt": 10, "fx_mark": "d", "xd": 12.9},
+        {"dt": 11, "fx_mark": "g", "xd": 14.5},
+        {"dt": 12, "fx_mark": "d", "xd": 13.2},
+        {"dt": 13, "fx_mark": "g", "xd": 15},
+        {"dt": 14, "fx_mark": "d", "xd": 14.3},
+
+        {"dt": 15, "fx_mark": "g", "xd": 16.2},
+        {"dt": 16, "fx_mark": "d", "xd": 15.3},
+        {"dt": 17, "fx_mark": "g", "xd": 17.6},
+        {"dt": 18, "fx_mark": "d", "xd": 15.9},
+        {"dt": 19, "fx_mark": "g", "xd": 18.2},
+        {"dt": 20, "fx_mark": "d", "xd": 16.8},
+        {"dt": 21, "fx_mark": "g", "xd": 17.8},
+        {"dt": 22, "fx_mark": "d", "xd": 16.9},
+        {"dt": 23, "fx_mark": "g", "xd": 18.1},
+    ]
+    zss = find_zs(points[:8])
+    assert len(zss) == 1
+
+    zss = find_zs(points[:15])
+    assert len(zss) == 2
+
+    zss = find_zs(points)
+    assert len(zss) == 3 and zss[0]['ZG'] < zss[1]['ZD'] and zss[1]['ZG'] < zss[2]['ZD']
+
+    # 获取用于比较趋势背驰的两端
+    fd1 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[1]['end_point']['dt']]
+    fd2 = [x for x in points if x['dt'] >= zss[2]['end_point']['dt']]
+    fd3 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[0]['end_point']['dt']]
+
+
+
