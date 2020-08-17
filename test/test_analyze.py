@@ -123,9 +123,10 @@ def test_find_zs():
     assert len(zss) == 3 and zss[0]['ZG'] < zss[1]['ZD'] and zss[1]['ZG'] < zss[2]['ZD']
 
     # 获取用于比较趋势背驰的两端
-    fd1 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[1]['end_point']['dt']]
-    fd2 = [x for x in points if x['dt'] >= zss[2]['end_point']['dt']]
-    fd3 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[0]['end_point']['dt']]
+    fd1 = [x for x in points if x['dt'] >= zss[2]['end_point']['dt']]
+    fd2 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[1]['end_point']['dt']]
+    fd3 = [x for x in points if zss[1]['start_point']['dt'] > x['dt'] >= zss[0]['end_point']['dt']]
+    fd4 = [x for x in points if x['dt'] <= zss[0]['start_point']['dt']]
 
 
 

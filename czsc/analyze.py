@@ -137,16 +137,6 @@ class KlineAnalyze:
         self.bi_list = []
         self.xd_list = []
 
-        # # 中枢识别结果
-        # self.zs_list_l1 = []
-        # self.zs_list_l2 = []
-        # self.zs_list_l3 = []
-        #
-        # # 走势分段结果
-        # self.fd_list_l1 = []
-        # self.fd_list_l2 = []
-        # self.fd_list_l3 = []
-
         # 根据输入K线初始化
         if isinstance(kline, pd.DataFrame):
             columns = kline.columns.to_list()
