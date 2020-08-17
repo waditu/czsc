@@ -93,15 +93,6 @@ def find_zs(points):
     return k_zs
 
 
-class Section:
-    """走势截面"""
-    def __init__(self, kline_new, fx_list, bi_list, xd_list):
-        self.kline_new = kline_new
-        self.fx_list = fx_list
-        self.bi_list = bi_list
-        self.xd_list = xd_list
-
-
 class KlineAnalyze:
     def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
                  max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
@@ -667,7 +658,7 @@ class KlineAnalyze:
 
         return bc
 
-    def get_sub_section(self, start_dt: datetime, end_dt: datetime, mode="bi"):
+    def get_sub_section(self, start_dt: datetime, end_dt: datetime, mode="bi", is_last=True):
         """获取子区间
 
         :param start_dt: datetime
@@ -676,6 +667,33 @@ class KlineAnalyze:
             子区间结束时间
         :param mode: str
             需要获取的子区间对象类型，可取值 ['k', 'fx', 'bi', 'xd']
+        :param is_last: bool
+            是否是最近一段子区间
         :return: list of dict
         """
-        pass
+        if mode == "kn":
+            if is_last:
+                points = self.kline_new[-200:]
+            else:
+                points = self.kline_new
+        elif mode == "fx":
+            if is_last:
+                points = self.fx_list[-100:]
+            else:
+                points = self.fx_list
+        elif mode == "bi":
+            if is_last:
+                points = self.bi_list[-50:]
+            else:
+                points = self.bi_list
+        elif mode == "xd":
+            if is_last:
+                points = self.xd_list[-30:]
+            else:
+                points = self.xd_list
+        else:
+            raise ValueError
+
+        return [x for x in points if end_dt >= x['dt'] >= start_dt]
+
+
