@@ -3,7 +3,7 @@ import sys
 from .analyze import KlineAnalyze, find_zs
 
 
-class KASignals(KlineAnalyze):
+class KlineSignals(KlineAnalyze):
     """单级别信号计算"""
     def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
                  max_raw_len=10000, ma_params=(5, 20, 120)):
@@ -151,5 +151,13 @@ class KASignals(KlineAnalyze):
             v = None
         return {k: v}
 
-
+    # # 笔信号
+    # # ------------------------------------------------------------------------------------------------------------------
+    # def SBI01(self):
+    #     pass
+    #
+    # # 线段信号
+    # # ------------------------------------------------------------------------------------------------------------------
+    # def SXD01(self):
+    #     pass
 
