@@ -1,10 +1,12 @@
 # coding: utf-8
 
 import warnings
+
 try:
     import talib as ta
 except ImportError:
     from czsc import ta
+
     ta_lib_hint = "没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib " \
                   "下载对应版本安装，预计分析速度提升2倍"
     warnings.warn(ta_lib_hint)
@@ -20,9 +22,9 @@ def find_zs(points):
         return []
 
     # 当输入为笔的标记点时，新增 xd 值
-    for i, x in enumerate(points):
+    for j, x in enumerate(points):
         if x.get("bi", 0):
-            points[i]['xd'] = x["bi"]
+            points[j]['xd'] = x["bi"]
 
     def __get_zn(zn_points_):
         """把与中枢方向一致的次级别走势类型称为Z走势段，按中枢中的时间顺序，
@@ -34,11 +36,18 @@ def find_zs(points):
             z_direction = "up"
         else:
             z_direction = "down"
-        zn = [{"start_dt": zn_points_[i]['dt'], "end_dt": zn_points_[i + 1]['dt'],
-               "high": max(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
-               "low": min(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
-               "direction": z_direction
-               } for i in range(0, len(zn_points_), 2)]
+
+        zn = []
+        for i in range(0, len(zn_points_), 2):
+            zn_ = {
+                "start_dt": zn_points_[i]['dt'],
+                "end_dt": zn_points_[i + 1]['dt'],
+                "high": max(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
+                "low": min(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
+                "direction": z_direction
+            }
+            zn_['mid'] = zn_['low'] + (zn_['high'] - zn_['low']) / 2
+            zn.append(zn_)
         return zn
 
     k_xd = points
@@ -139,8 +148,8 @@ class KlineAnalyze:
         self.bi_mode = bi_mode
         self.max_raw_len = max_raw_len
         self.ma_params = ma_params
-        self.kline_raw = []     # 原始K线序列
-        self.kline_new = []     # 去除包含关系的K线序列
+        self.kline_raw = []  # 原始K线序列
+        self.kline_new = []  # 去除包含关系的K线序列
 
         # 辅助技术指标
         self.ma = []
@@ -212,11 +221,11 @@ class KlineAnalyze:
             # m1 is diff; m2 is dea; m3 is macd
             m1, m2, m3 = ta.MACD(close_, fastperiod=12, slowperiod=26, signalperiod=9)
             macd_ = {
-                    "dt": self.kline_raw[-1]['dt'],
-                    "diff": m1[-1],
-                    "dea": m2[-1],
-                    "macd": m3[-1]
-                }
+                "dt": self.kline_raw[-1]['dt'],
+                "diff": m1[-1],
+                "dea": m2[-1],
+                "macd": m3[-1]
+            }
             if self.verbose:
                 print("macd new: %s" % str(macd_))
 
@@ -286,8 +295,8 @@ class KlineAnalyze:
             kn = [x for x in self.kline_new[-100:] if x['dt'] >= self.fx_list[-1]['dt']]
 
         i = 1
-        while i <= len(kn)-2:
-            k1, k2, k3 = kn[i-1: i+2]
+        while i <= len(kn) - 2:
+            k1, k2, k3 = kn[i - 1: i + 2]
 
             if k1['high'] < k2['high'] > k3['high']:
                 if self.verbose:
@@ -453,12 +462,12 @@ class KlineAnalyze:
         xd_p = []
         bi_d = [x for x in right_bi if x['fx_mark'] == 'd']
         bi_g = [x for x in right_bi if x['fx_mark'] == 'g']
-        for i in range(1, len(bi_d)-2):
-            d1, d2, d3 = bi_d[i-1: i+2]
+        for i in range(1, len(bi_d) - 2):
+            d1, d2, d3 = bi_d[i - 1: i + 2]
             if d1['bi'] > d2['bi'] < d3['bi']:
                 xd_p.append(d2)
-        for j in range(1, len(bi_g)-2):
-            g1, g2, g3 = bi_g[j-1: j+2]
+        for j in range(1, len(bi_g) - 2):
+            g1, g2, g3 = bi_g[j - 1: j + 2]
             if g1['bi'] < g2['bi'] > g3['bi']:
                 xd_p.append(g2)
 
@@ -549,9 +558,9 @@ class KlineAnalyze:
             self.ma = self.ma[-self.max_raw_len:]
             self.macd = self.macd[-self.max_raw_len:]
             self.kline_new = self.kline_new[-self.max_raw_len:]
-            self.fx_list = self.fx_list[-(self.max_raw_len//2):]
-            self.bi_list = self.bi_list[-(self.max_raw_len//4):]
-            self.xd_list = self.xd_list[-(self.max_raw_len//8):]
+            self.fx_list = self.fx_list[-(self.max_raw_len // 2):]
+            self.bi_list = self.bi_list[-(self.max_raw_len // 4):]
+            self.xd_list = self.xd_list[-(self.max_raw_len // 8):]
 
         if self.verbose:
             print("更新结束\n\n")
@@ -718,5 +727,3 @@ class KlineAnalyze:
             raise ValueError
 
         return [x for x in points if end_dt >= x['dt'] >= start_dt]
-
-
