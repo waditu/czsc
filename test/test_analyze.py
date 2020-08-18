@@ -12,8 +12,8 @@ from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -141,6 +141,7 @@ def test_find_zs():
     fd2 = [x for x in points if zss[2]['start_point']['dt'] > x['dt'] >= zss[1]['end_point']['dt']]
     fd3 = [x for x in points if zss[1]['start_point']['dt'] > x['dt'] >= zss[0]['end_point']['dt']]
     fd4 = [x for x in points if x['dt'] <= zss[0]['start_point']['dt']]
-
+    assert fd1[0]['fx_mark'] == fd2[0]['fx_mark'] == fd3[0]['fx_mark'] == fd4[0]['fx_mark'] == 'd'
+    assert fd1[-1]['fx_mark'] == fd2[-1]['fx_mark'] == fd3[-1]['fx_mark'] == fd4[-1]['fx_mark'] == 'g'
 
 
