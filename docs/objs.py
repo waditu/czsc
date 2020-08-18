@@ -40,8 +40,10 @@ zs = {
     'DD': 9.0,
     'start_point': {},
     'end_point': {},
-    "points": [],
-    "third_sell": {}
+    "points": [],   # 元素为点标记
+    "zn": [],       # 元素为与中枢方向相反的走势段
+    "third_sell": {},
+    "third_buy": {},
 }
 
 
