@@ -24,6 +24,23 @@ def find_zs(points):
         if x.get("bi", 0):
             points[i]['xd'] = x["bi"]
 
+    def __get_zn(zn_points_):
+        """把与中枢方向一致的次级别走势类型称为Z走势段，按中枢中的时间顺序，
+        分别记为Zn等，而相应的高、低点分别记为gn、dn"""
+        if len(zn_points_) % 2 != 0:
+            zn_points_ = zn_points_[:-1]
+
+        if zn_points_[0]['fx_mark'] == "d":
+            z_direction = "up"
+        else:
+            z_direction = "down"
+        zn = [{"start_dt": zn_points_[i]['dt'], "end_dt": zn_points_[i + 1]['dt'],
+               "high": max(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
+               "low": min(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
+               "direction": z_direction
+               } for i in range(0, len(zn_points_), 2)]
+        return zn
+
     k_xd = points
     k_zs = []
     zs_xd = []
@@ -43,6 +60,20 @@ def find_zs(points):
         # 定义四个指标,GG=max(gn),G=min(gn),D=max(dn),DD=min(dn)，n遍历中枢中所有Zn。
         # 特别地，再定义ZG=min(g1、g2), ZD=max(d1、d2)，显然，[ZD，ZG]就是缠中说禅走势中枢的区间
         if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
+            # 计算对应的 Z 走势段
+            zn_points = zs_xd[3:]
+            print("d: ", zn_points)
+            # assert len(zn_points) % 2 == 0 and zn_points[0]['fx_mark'] != zn_points[-1]['fx_mark']
+            # if zn_points[0]['fx_mark'] == "d":
+            #     z_direction = "up"
+            # else:
+            #     z_direction = "down"
+            # zn = [{"start_dt": zn_points[i]['dt'], "end_dt": zn_points[i + 1]['dt'],
+            #        "high": max(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "low": min(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "direction": z_direction
+            #        } for i in range(0, len(zn_points), 2)]
+
             # 线段在中枢上方结束，形成三买
             k_zs.append({
                 'ZD': zs_d,
@@ -53,11 +84,27 @@ def find_zs(points):
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'start_point': zs_xd[2],
                 'end_point': zs_xd[-2],
+                "zn": __get_zn(zn_points),
                 "points": zs_xd,
                 "third_buy": xd_p
             })
-            zs_xd = k_xd[i: i + 1]
+            # zs_xd = k_xd[i: i + 1]
+            zs_xd = []
         elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
+            # 计算对应的 Z 走势段
+            zn_points = zs_xd[3:]
+            print("g: ", zn_points)
+            # assert len(zn_points) % 2 == 0 and zn_points[0]['fx_mark'] != zn_points[-1]['fx_mark']
+            # if zn_points[0]['fx_mark'] == "d":
+            #     z_direction = "up"
+            # else:
+            #     z_direction = "down"
+            # zn = [{"start_dt": zn_points[i]['dt'], "end_dt": zn_points[i + 1]['dt'],
+            #        "high": max(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "low": min(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "direction": z_direction
+            #        } for i in range(0, len(zn_points), 2)]
+
             # 线段在中枢下方结束，形成三卖
             k_zs.append({
                 'ZD': zs_d,
@@ -69,9 +116,11 @@ def find_zs(points):
                 'start_point': zs_xd[2],
                 'end_point': zs_xd[-2],
                 "points": zs_xd,
+                "zn": __get_zn(zn_points),
                 "third_sell": xd_p
             })
-            zs_xd = k_xd[i: i + 1]
+            # zs_xd = k_xd[i: i + 1]
+            zs_xd = []
         else:
             zs_xd.append(xd_p)
 
@@ -79,6 +128,21 @@ def find_zs(points):
         zs_d = max([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'd'])
         zs_g = min([x['xd'] for x in zs_xd[1:5] if x['fx_mark'] == 'g'])
         if zs_g > zs_d:
+            # 计算对应的 Z 走势段
+            zn_points = zs_xd[3:]
+            # if len(zn_points) % 2 != 0:
+            #     zn_points = zn_points[:-1]
+            # print(zn_points)
+            # if zn_points[0]['fx_mark'] == "d":
+            #     z_direction = "up"
+            # else:
+            #     z_direction = "down"
+            # zn = [{"start_dt": zn_points[i]['dt'], "end_dt": zn_points[i + 1]['dt'],
+            #        "high": max(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "low": min(zn_points[i]['xd'], zn_points[i + 1]['xd']),
+            #        "direction": z_direction
+            #        } for i in range(0, len(zn_points), 2)]
+
             k_zs.append({
                 'ZD': zs_d,
                 "ZG": zs_g,
@@ -88,6 +152,7 @@ def find_zs(points):
                 'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
                 'start_point': zs_xd[2],
                 'end_point': None,
+                "zn": __get_zn(zn_points),
                 "points": zs_xd,
             })
     return k_zs
