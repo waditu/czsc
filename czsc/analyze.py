@@ -13,9 +13,11 @@ except ImportError:
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from functools import lru_cache
 from czsc.utils import plot_ka
 
 
+@lru_cache(maxsize=64)
 def find_zs(points):
     """输入笔或线段标记点，输出中枢识别结果"""
     if len(points) < 5:
