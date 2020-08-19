@@ -305,8 +305,7 @@ class KlineAnalyze:
                     "fx_mark": "g",
                     "fx": k2['high'],
                     "fx_high": k2['high'],
-                    # "fx_low": min(k1['low'], k3['low']),
-                    "fx_low": k2['low'],
+                    "fx_low": max(k1['low'], k3['low']),
                 }
                 self.fx_list.append(fx)
 
@@ -317,8 +316,7 @@ class KlineAnalyze:
                     "dt": k2['dt'],
                     "fx_mark": "d",
                     "fx": k2['low'],
-                    # "fx_high": max(k1['high'], k2['high']),
-                    "fx_high": k2['high'],
+                    "fx_high": min(k1['high'], k3['high']),
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -627,7 +625,7 @@ class KlineAnalyze:
         """
         plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
 
-    def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9):
+    def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9, last_index: int = None):
         """判断 zs1 对 zs2 是否有背驰
 
         注意：力度的比较，并没有要求两段走势方向一致；但是如果两段走势之间存在包含关系，这样的力度比较是没有意义的。
@@ -645,6 +643,8 @@ class KlineAnalyze:
         :param adjust: float
             调整 zs2 的力度，建议设置范围在 0.6 ~ 1.0 之间，默认设置为 0.9；
             其作用是确保 zs1 相比于 zs2 的力度足够小。
+        :param last_index: int
+            在比较最后一个走势的时候，可以设置这个参数来提升速度，相当于只对 last_index 后面的K线进行力度比较
         :return: bool
         """
         assert zs1["start_dt"] > zs2["end_dt"], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
@@ -653,7 +653,11 @@ class KlineAnalyze:
 
         min_dt = min(zs1["start_dt"], zs2["start_dt"])
         max_dt = max(zs1["end_dt"], zs2["end_dt"])
-        macd_ = [x for x in self.macd if x['dt'] >= min_dt]
+        if last_index:
+            macd = self.macd[-last_index:]
+        else:
+            macd = self.macd
+        macd_ = [x for x in macd if x['dt'] >= min_dt]
         macd_ = [x for x in macd_ if max_dt >= x['dt']]
         k1 = [x for x in macd_ if zs1["end_dt"] >= x['dt'] >= zs1["start_dt"]]
         k2 = [x for x in macd_ if zs2["end_dt"] >= x['dt'] >= zs2["start_dt"]]

@@ -12,8 +12,8 @@ from czsc.analyze import KlineAnalyze, find_zs
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -80,6 +80,7 @@ def test_bei_chi():
 
 
 def test_update_ta():
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
     ma_x1 = dict(ka.ma[-1])
     macd_x1 = dict(ka.macd[-1])
     ka.update(kline.iloc[-1].to_dict())
