@@ -120,20 +120,24 @@ def MACD_V3(close: np.array):
 bars = []
 for i in range(500):
     bars.append({"dt": datetime.now() - timedelta(minutes=i), "value": i})
-bars_dt = {x['dt']: i for i, x in enumerate(bars)}
+
+start_dt = bars[-500]['dt']
+end_dt = bars[-200]['dt']
 
 def split_v1():
-    start_dt = bars[-500]['dt']
-    end_dt = bars[-200]['dt']
     return [x for x in bars if end_dt >= x['dt'] >= start_dt]
 
 def split_v2():
-    start_dt = bars[-500]['dt']
-    end_dt = bars[-200]['dt']
-
+    bars_dt = {x['dt']: i for i, x in enumerate(bars)}
     start_i = bars_dt[start_dt]
     end_i = bars_dt[end_dt]
     return bars[start_i: end_i+1]
+
+def split_v3():
+    a = np.array(bars)
+    dts = np.array([x['dt'] for x in bars])
+    x1 = dts > start_dt
+    x2 = x1 < end_dt
 
 # %timeit x1 = split_v1()
 # %timeit x2 = split_v2()
