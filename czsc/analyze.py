@@ -305,7 +305,7 @@ class KlineAnalyze:
                     "fx_mark": "g",
                     "fx": k2['high'],
                     "fx_high": k2['high'],
-                    "fx_low": max(k1['low'], k3['low']),
+                    "fx_low": min(k1['low'], k3['low']),
                 }
                 self.fx_list.append(fx)
 
@@ -316,7 +316,7 @@ class KlineAnalyze:
                     "dt": k2['dt'],
                     "fx_mark": "d",
                     "fx": k2['low'],
-                    "fx_high": min(k1['high'], k3['high']),
+                    "fx_high": max(k1['high'], k3['high']),
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -384,8 +384,8 @@ class KlineAnalyze:
                 kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
                 if len(kn_inside) >= self.min_bi_k:
                     # 确保相邻两个顶底之间不存在包含关系
-                    if (last_bi['fx_mark'] == 'g' and bi['fx_low'] < last_bi['fx_low']) or \
-                            (last_bi['fx_mark'] == 'd' and bi['fx_high'] > last_bi['fx_high']):
+                    if (last_bi['fx_mark'] == 'g' and bi['fx_low'] < last_bi['fx_low'] and bi['fx_high'] < last_bi['fx_high']) or \
+                            (last_bi['fx_mark'] == 'd' and bi['fx_high'] > last_bi['fx_high'] and bi['fx_low'] > last_bi['fx_low']):
                         if self.verbose:
                             print("新增笔标记：{}".format(bi))
                         self.bi_list.append(bi)
