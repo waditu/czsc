@@ -124,15 +124,21 @@ def find_zs(points):
     return k_zs
 
 
+def has_gap(k1, k2):
+    """判断 k1, k2 之间是否有缺口"""
+    assert k2['dt'] > k1['dt']
+    if k1['high'] < k2['low'] * 0.998 or k2['high'] < k1['low'] * 0.998:
+        return True
+    else:
+        return False
+
+
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
-                 max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
+    def __init__(self, kline, name="本级别", bi_mode="old", max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame
         :param name: str
-        :param min_bi_k: int
-            笔内部的最少K线数量
         :param bi_mode: str
             new 新笔；old 老笔；默认值为 old
         :param max_raw_len: int
@@ -143,7 +149,6 @@ class KlineAnalyze:
         """
         self.name = name
         self.verbose = verbose
-        self.min_bi_k = min_bi_k
         self.bi_mode = bi_mode
         self.max_raw_len = max_raw_len
         self.ma_params = ma_params
@@ -296,6 +301,12 @@ class KlineAnalyze:
         i = 1
         while i <= len(kn) - 2:
             k1, k2, k3 = kn[i - 1: i + 2]
+            fx_elements = [k1, k2, k3]
+            if has_gap(k1, k2):
+                fx_elements.pop(0)
+
+            if has_gap(k2, k3):
+                fx_elements.pop(-1)
 
             if k1['high'] < k2['high'] > k3['high']:
                 if self.verbose:
@@ -304,8 +315,10 @@ class KlineAnalyze:
                     "dt": k2['dt'],
                     "fx_mark": "g",
                     "fx": k2['high'],
+                    "start_dt": k1['dt'],
+                    "end_dt": k3['dt'],
                     "fx_high": k2['high'],
-                    "fx_low": min(k1['low'], k3['low']),
+                    "fx_low": min([x['low'] for x in fx_elements]),
                 }
                 self.fx_list.append(fx)
 
@@ -316,7 +329,9 @@ class KlineAnalyze:
                     "dt": k2['dt'],
                     "fx_mark": "d",
                     "fx": k2['low'],
-                    "fx_high": max(k1['high'], k3['high']),
+                    "start_dt": k1['dt'],
+                    "end_dt": k3['dt'],
+                    "fx_high": max([x['high'] for x in fx_elements]),
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -381,14 +396,18 @@ class KlineAnalyze:
                         print("笔标记移动：from {} to {}".format(self.bi_list[-1], bi))
                     self.bi_list[-1] = bi
             else:
-                kn_inside = [x for x in right_kn if last_bi['dt'] <= x['dt'] <= bi['dt']]
-                if len(kn_inside) >= self.min_bi_k:
-                    # 确保相邻两个顶底之间不存在包含关系
-                    if (last_bi['fx_mark'] == 'g' and bi['fx_low'] < last_bi['fx_low'] and bi['fx_high'] < last_bi['fx_high']) or \
-                            (last_bi['fx_mark'] == 'd' and bi['fx_high'] > last_bi['fx_high'] and bi['fx_low'] > last_bi['fx_low']):
-                        if self.verbose:
-                            print("新增笔标记：{}".format(bi))
-                        self.bi_list.append(bi)
+                kn_inside = [x for x in right_kn if last_bi['end_dt'] < x['dt'] < bi['start_dt']]
+                if len(kn_inside) <= 0:
+                    continue
+
+                # 确保相邻两个顶底之间不存在包含关系
+                if (last_bi['fx_mark'] == 'g' and bi['fx_low'] < last_bi['fx_low']
+                    and bi['fx_high'] < last_bi['fx_high']) or \
+                        (last_bi['fx_mark'] == 'd' and bi['fx_high'] > last_bi['fx_high']
+                         and bi['fx_low'] > last_bi['fx_low']):
+                    if self.verbose:
+                        print("新增笔标记：{}".format(bi))
+                    self.bi_list.append(bi)
 
         if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
                 or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
