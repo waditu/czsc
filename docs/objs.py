@@ -10,7 +10,9 @@ fx = {
     "dt": datetime.now(),
     "fx_mark": 'd',     # 可选值 d, g
     "fx": 10.0,
-    "right": [],    # fx 对象 right 存储K线
+    # "right": [],    # fx 对象 right 存储K线
+    "start_dt": datetime.now(),
+    "end_dt": datetime.now(),
     "fx_high": 11.0,
     "fx_low": 9.0,
 }
@@ -20,14 +22,14 @@ bi = {
     "dt": datetime.now(),
     "fx_mark": 'd',
     "bi": 9.0,
-    "right": [],    # bi 对象 right 存储 fx 对象，必须以一个能够构成笔的分型开始，且以一个能够构成笔的分型结束
+    # "right": [],    # bi 对象 right 存储 fx 对象，必须以一个能够构成笔的分型开始，且以一个能够构成笔的分型结束
 }
 
 xd = {
     "dt": datetime.now(),
     "fx_mark": 'd',
     "xd": 9.0,
-    "right": [],    # xd 对象 right 存储 bi 对象，必须以一个能够构成笔的分型开始，且以一个能够构成笔的分型结束
+    # "right": [],    # xd 对象 right 存储 bi 对象，必须以一个能够构成笔的分型开始，且以一个能够构成笔的分型结束
 }
 
 

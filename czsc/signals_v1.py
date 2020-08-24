@@ -5,10 +5,8 @@ from .analyze import KlineAnalyze, find_zs
 
 class KlineSignals(KlineAnalyze):
     """单级别信号计算"""
-    def __init__(self, kline, name="本级别", min_bi_k=5, bi_mode="old",
-                 max_raw_len=10000, ma_params=(5, 20, 120)):
-        super().__init__(kline, name, min_bi_k, bi_mode,
-                         max_raw_len, ma_params, verbose=False)
+    def __init__(self, kline, name="本级别", bi_mode="old", max_raw_len=10000, ma_params=(5, 20, 120)):
+        super().__init__(kline, name, bi_mode, max_raw_len, ma_params, verbose=False)
 
     def get_signals(self):
         """获取单级别信号"""

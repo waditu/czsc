@@ -8,12 +8,12 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 import czsc
-from czsc.analyze import KlineAnalyze, find_zs
+from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -146,3 +146,108 @@ def test_find_zs():
     assert fd1[-1]['fx_mark'] == fd2[-1]['fx_mark'] == fd3[-1]['fx_mark'] == fd4[-1]['fx_mark'] == 'g'
 
 
+def test_make_standard_seq():
+    seq = [
+        {"dt": 1, "bi": 10, "fx_mark": "d"},
+        {"dt": 2, "bi": 11, "fx_mark": "g"},
+        {"dt": 3, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 4, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+        {"dt": 7, "bi": 10.8, "fx_mark": "d"},
+        {"dt": 8, "bi": 11.8, "fx_mark": "g"},
+        {"dt": 9, "bi": 11, "fx_mark": "d"},
+        {"dt": 10, "bi": 11.6, "fx_mark": "g"},
+    ]
+
+    standard_seq1 = make_standard_seq(seq[:8])
+    standard_seq2 = make_standard_seq(seq)
+    assert len(standard_seq1) == len(standard_seq2)
+    assert standard_seq1[-1]['end_dt'] == 7
+    assert standard_seq2[-1]['end_dt'] == 9
+
+
+def test_is_valid_xd():
+
+    # 向上线段第一种情况
+    bi_seq1 = [
+        {"dt": 1, "bi": 10, "fx_mark": "d"},
+        {"dt": 2, "bi": 11, "fx_mark": "g"},
+        {"dt": 3, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 4, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+    ]
+
+    bi_seq2 = [
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+        {"dt": 7, "bi": 10.8, "fx_mark": "d"},
+        {"dt": 8, "bi": 11.8, "fx_mark": "g"},
+        {"dt": 9, "bi": 11, "fx_mark": "d"},
+        {"dt": 10, "bi": 11.6, "fx_mark": "g"},
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+    ]
+
+    bi_seq3 = [
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+        # {"dt": 12, "bi": 12, "fx_mark": "g"},
+        # {"dt": 13, "bi": 10.2, "fx_mark": "d"},
+        # {"dt": 14, "bi": 12.2, "fx_mark": "g"},
+    ]
+
+    is_valid_xd(bi_seq1, bi_seq2, bi_seq3)
+
+    # 向上线段第二种情况
+    bi_seq1 = [
+        {"dt": 1, "bi": 10, "fx_mark": "d"},
+        {"dt": 2, "bi": 11, "fx_mark": "g"},
+        {"dt": 3, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 4, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+    ]
+
+    bi_seq2 = [
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+        {"dt": 7, "bi": 11.6, "fx_mark": "d"},
+        {"dt": 8, "bi": 11.8, "fx_mark": "g"},
+        {"dt": 9, "bi": 11, "fx_mark": "d"},
+        {"dt": 10, "bi": 11.6, "fx_mark": "g"},
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+    ]
+
+    bi_seq3 = [
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+        {"dt": 12, "bi": 12, "fx_mark": "g"},
+        {"dt": 13, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 14, "bi": 12.2, "fx_mark": "g"},
+    ]
+
+    assert not is_valid_xd(bi_seq1, bi_seq2, bi_seq3)
+
+    bi_seq1 = [
+        {"dt": 1, "bi": 10, "fx_mark": "d"},
+        {"dt": 2, "bi": 11, "fx_mark": "g"},
+        {"dt": 3, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 4, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+    ]
+
+    bi_seq2 = [
+        {"dt": 6, "bi": 12, "fx_mark": "g"},
+        {"dt": 7, "bi": 11.6, "fx_mark": "d"},
+        {"dt": 8, "bi": 11.8, "fx_mark": "g"},
+        {"dt": 9, "bi": 11, "fx_mark": "d"},
+        {"dt": 10, "bi": 11.6, "fx_mark": "g"},
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+    ]
+
+    bi_seq3 = [
+        {"dt": 11, "bi": 9.8, "fx_mark": "d"},
+        {"dt": 12, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 13, "bi": 10.2, "fx_mark": "d"},
+        {"dt": 14, "bi": 11.6, "fx_mark": "g"},
+    ]
+
+    assert is_valid_xd(bi_seq1, bi_seq2, bi_seq3)

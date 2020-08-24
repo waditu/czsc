@@ -22,7 +22,7 @@ kline1 = kline.iloc[:2000]
 kline2 = kline.iloc[2000:]
 
 def test_ka_signals():
-    ka = KlineSignals(kline1, name="日线", max_raw_len=2000,)
+    ka = KlineSignals(kline1, name="日线", max_raw_len=2000)
 
     for _, bar in kline2.iterrows():
         ka.update(bar)
