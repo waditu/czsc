@@ -251,3 +251,28 @@ def test_is_valid_xd():
     ]
 
     assert is_valid_xd(bi_seq1, bi_seq2, bi_seq3)
+
+    # 向下线段第二种情况
+    bi_seq1 = [
+        {"dt": 1, "bi": 10, "fx_mark": "g"},
+        {"dt": 2, "bi": 9.5, "fx_mark": "d"},
+        {"dt": 3, "bi": 9.8, "fx_mark": "g"},
+        {"dt": 4, "bi": 8.6, "fx_mark": "d"},
+    ]
+
+    bi_seq2 = [
+        {"dt": 4, "bi": 8.6, "fx_mark": "d"},
+        {"dt": 5, "bi": 9.2, "fx_mark": "g"},
+        {"dt": 6, "bi": 8.8, "fx_mark": "d"},
+        {"dt": 7, "bi": 9.8, "fx_mark": "g"},
+    ]
+
+    bi_seq3 = [
+        {"dt": 7, "bi": 9.8, "fx_mark": "g"},
+        {"dt": 8, "bi": 9.2, "fx_mark": "d"},
+        {"dt": 9, "bi": 9.6, "fx_mark": "g"},
+        {"dt": 10, "bi": 8.1, "fx_mark": "d"},
+    ]
+
+    assert not is_valid_xd(bi_seq1, bi_seq2, bi_seq3)
+

@@ -207,7 +207,7 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
 
     # 第二种情况（向下线段）
     if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < standard_bi_seq1[-1]['low']:
-        bi_seq2.extend(bi_seq3)
+        bi_seq2.extend(bi_seq3[1:])
         standard_bi_seq2 = make_standard_seq(bi_seq2)
         if len(standard_bi_seq2) < 3:
             return False
