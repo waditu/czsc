@@ -517,7 +517,7 @@ class KlineAnalyze:
         if len(self.bi_list) < 4:
             return
 
-        # self.xd_list = self.xd_list[:-2]
+        self.xd_list = self.xd_list[:-2]
         if len(self.xd_list) == 0:
             for i in range(3):
                 xd = dict(self.bi_list[i])
@@ -583,12 +583,6 @@ class KlineAnalyze:
                                     print("新增线段标记（第二种情况）：{}".format(xd))
                                 self.xd_list.append(xd)
 
-        # if (self.xd_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.xd_list[-1]['xd']) \
-        #         or (self.xd_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.xd_list[-1]['xd']):
-        #     if self.verbose:
-        #         print("最后一个线段标记无效，{}".format(self.xd_list[-1]))
-        #     self.xd_list.pop(-1)
-
     def _xd_after_process(self):
         if not len(self.xd_list) > 4:
             return
@@ -599,6 +593,9 @@ class KlineAnalyze:
             bi_seq1 = [x for x in self.bi_list if xd2['dt'] >= x['dt'] >= xd1['dt']]
             bi_seq2 = [x for x in self.bi_list if xd3['dt'] >= x['dt'] >= xd2['dt']]
             bi_seq3 = [x for x in self.bi_list if xd4['dt'] >= x['dt'] >= xd3['dt']]
+            if len(bi_seq1) == 0 or len(bi_seq2) == 0 or len(bi_seq3) == 0:
+                continue
+
             if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
                 keep_xd_index.append(i)
 
@@ -606,8 +603,9 @@ class KlineAnalyze:
         bi_seq1 = [x for x in self.bi_list if self.xd_list[-2]['dt'] >= x['dt'] >= self.xd_list[-3]['dt']]
         bi_seq2 = [x for x in self.bi_list if self.xd_list[-1]['dt'] >= x['dt'] >= self.xd_list[-2]['dt']]
         bi_seq3 = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
-        if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
-            keep_xd_index.append(len(self.xd_list)-2)
+        if not (len(bi_seq1) == 0 or len(bi_seq2) == 0 or len(bi_seq3) == 0):
+            if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
+                keep_xd_index.append(len(self.xd_list)-2)
 
         new_xd_list = []
         for j in keep_xd_index:
@@ -661,12 +659,17 @@ class KlineAnalyze:
         # 根据最大原始K线序列长度限制分析结果长度
         if len(self.kline_raw) > self.max_raw_len:
             self.kline_raw = self.kline_raw[-self.max_raw_len:]
+            self.kline_new = self.kline_new[-self.max_raw_len:]
             self.ma = self.ma[-self.max_raw_len:]
             self.macd = self.macd[-self.max_raw_len:]
-            self.kline_new = self.kline_new[-self.max_raw_len:]
-            self.fx_list = self.fx_list[-(self.max_raw_len // 2):]
-            self.bi_list = self.bi_list[-(self.max_raw_len // 4):]
-            self.xd_list = self.xd_list[-(self.max_raw_len // 8):]
+            last_dt = self.kline_new[0]['dt']
+            self.fx_list = [x for x in self.fx_list if x['dt'] > last_dt]
+            self.bi_list = [x for x in self.bi_list if x['dt'] > last_dt]
+            self.xd_list = [x for x in self.xd_list if x['dt'] > last_dt]
+
+            # self.fx_list = self.fx_list[-(self.max_raw_len // 2):]
+            # self.bi_list = self.bi_list[-(self.max_raw_len // 4):]
+            # self.xd_list = self.xd_list[-(self.max_raw_len // 8):]
 
         if self.verbose:
             print("更新结束\n\n")
