@@ -279,7 +279,7 @@ def handle_last_xd(bi_points):
     当下段是指当下进行中的无法确认完成的线段，对于操作而言，必须在当下对其进行分析，判断是延续还是转折。
 
     :param bi_points: list of dict
-        最近一个线段标记后面的全部笔标记。在这些笔标记中可能存在 1个、2个或3个需要需要确认的线段标记。
+        最近一个线段标记后面的全部笔标记
     :return: list of dict
         返回判断结果
     """
@@ -288,7 +288,6 @@ def handle_last_xd(bi_points):
     if len(xd_p) == 0:
         if bi_points[0]['fx_mark'] != bi_points[-1]['fx_mark']:
             bi_points.pop(-1)
-
 
 
 class KlineAnalyze:
@@ -597,26 +596,7 @@ class KlineAnalyze:
                         print("{} - {} 之间笔标记数量少于4，跳过".format(last_xd['dt'], xd['dt']))
                     continue
                 else:
-                    if len(bi_inside) > 4:
-                        if self.verbose:
-                            print("新增线段标记（笔标记数量大于4）：{}".format(xd))
-                        self.xd_list.append(xd)
-                    else:
-                        bi_r = [x for x in right_bi if x['dt'] >= xd['dt']]
-                        assert bi_r[1]['fx_mark'] == bi_inside[-2]['fx_mark']
-                        # 第一种情况：没有缺口
-                        if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] > bi_inside[-3]['bi']) \
-                                or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] < bi_inside[-3]['bi']):
-                            if self.verbose:
-                                print("新增线段标记（第一种情况）：{}".format(xd))
-                            self.xd_list.append(xd)
-                        # 第二种情况：有缺口
-                        else:
-                            if (bi_r[1]['fx_mark'] == "g" and bi_r[1]['bi'] < bi_inside[-2]['bi']) \
-                                    or (bi_r[1]['fx_mark'] == "d" and bi_r[1]['bi'] > bi_inside[-2]['bi']):
-                                if self.verbose:
-                                    print("新增线段标记（第二种情况）：{}".format(xd))
-                                self.xd_list.append(xd)
+                    self.xd_list.append(xd)
 
     def _xd_after_process(self):
         """线段标记后处理，使用标准特征序列判断线段标记是否成立"""

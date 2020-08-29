@@ -12,14 +12,25 @@ from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq, 
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
 kline1 = kline.iloc[:2000]
 kline2 = kline.iloc[2000:]
 ka = KlineAnalyze(kline1, name="日线", max_raw_len=2000, verbose=True)
+
+def test_ka_update():
+    ka1 = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
+    ka2 = KlineAnalyze(kline1, name="日线", max_raw_len=5000, verbose=False)
+
+    for _, row in kline2.iterrows():
+        ka2.update(row.to_dict())
+
+    assert len(ka1.kline_new) == len(ka2.kline_new)
+    assert len(ka1.fx_list) == len(ka2.fx_list)
+    assert len(ka1.bi_list) == len(ka2.bi_list)
 
 
 def test_get_sub_section():
