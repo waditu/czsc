@@ -8,7 +8,7 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 import czsc
-from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq
+from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq, get_potential_xd, handle_last_xd
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
@@ -32,8 +32,8 @@ def test_get_sub_section():
     sub_bi = ka.get_sub_section(ka.xd_list[-2]['dt'], ka.xd_list[-1]['dt'], mode='bi', is_last=True)
     assert sub_bi[0]['dt'] == ka.xd_list[-2]['dt'] and sub_bi[-1]['dt'] == ka.xd_list[-1]['dt']
 
-    sub_xd = ka.get_sub_section(ka.xd_list[-10]['dt'], ka.xd_list[-1]['dt'], mode='xd', is_last=True)
-    assert sub_xd[0]['dt'] == ka.xd_list[-10]['dt'] and sub_xd[-1]['dt'] == ka.xd_list[-1]['dt']
+    sub_xd = ka.get_sub_section(ka.xd_list[-4]['dt'], ka.xd_list[-1]['dt'], mode='xd', is_last=True)
+    assert sub_xd[0]['dt'] == ka.xd_list[-4]['dt'] and sub_xd[-1]['dt'] == ka.xd_list[-1]['dt']
 
 
 def test_kline_analyze():
@@ -73,8 +73,8 @@ def test_bei_chi():
     bi2 = {"start_dt": ka.bi_list[-13]['dt'], "end_dt": ka.bi_list[-12]['dt'], "direction": "down"}
     x1 = ka.is_bei_chi(bi1, bi2, mode="bi", adjust=0.9)
 
-    xd1 = {"start_dt": ka.xd_list[-4]['dt'], "end_dt": ka.xd_list[-3]['dt'], "direction": "down"}
-    xd2 = {"start_dt": ka.xd_list[-6]['dt'], "end_dt": ka.xd_list[-5]['dt'], "direction": "down"}
+    xd1 = {"start_dt": ka.xd_list[-2]['dt'], "end_dt": ka.xd_list[-1]['dt'], "direction": "down"}
+    xd2 = {"start_dt": ka.xd_list[-4]['dt'], "end_dt": ka.xd_list[-3]['dt'], "direction": "down"}
     x2 = ka.is_bei_chi(xd1, xd2, mode='xd', adjust=0.9)
     print('背驰计算结果：{}，{}'.format(x1, x2))
 
@@ -275,4 +275,20 @@ def test_is_valid_xd():
     ]
 
     assert not is_valid_xd(bi_seq1, bi_seq2, bi_seq3)
+
+
+def test_handle_last_xd():
+    # 0个需要确认的线段标记
+    bi_points = [
+        {"dt": 1, "bi": 10, "fx_mark": "d"},
+        {"dt": 2, "bi": 11, "fx_mark": "g"},
+        {"dt": 3, "bi": 10.4, "fx_mark": "d"},
+        {"dt": 4, "bi": 11.1, "fx_mark": "g"},
+        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
+        {"dt": 6, "bi": 11.2, "fx_mark": "g"},
+        {"dt": 7, "bi": 11, "fx_mark": "d"},
+    ]
+
+    pass
+
 

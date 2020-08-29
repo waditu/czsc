@@ -137,7 +137,10 @@ def has_gap(k1, k2, min_gap=0.002):
 def make_standard_seq(bi_seq):
     """计算标准特征序列
 
+    :param bi_seq: list of dict
+        笔标记序列
     :return: list of dict
+        标准特征序列
     """
     if bi_seq[0]['fx_mark'] == 'd':
         direction = "up"
@@ -244,6 +247,49 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
         if len(standard_bi_seq2_d) == 0:
             return False
     return True
+
+
+def get_potential_xd(bi_points):
+    """获取潜在线段标记点
+
+    :param bi_points: list of dict
+        笔标记点
+    :return: list of dict
+        潜在线段标记点
+    """
+    xd_p = []
+    bi_d = [x for x in bi_points if x['fx_mark'] == 'd']
+    bi_g = [x for x in bi_points if x['fx_mark'] == 'g']
+    for i in range(1, len(bi_d) - 1):
+        d1, d2, d3 = bi_d[i - 1: i + 2]
+        if d1['bi'] > d2['bi'] < d3['bi']:
+            xd_p.append(d2)
+    for j in range(1, len(bi_g) - 1):
+        g1, g2, g3 = bi_g[j - 1: j + 2]
+        if g1['bi'] < g2['bi'] > g3['bi']:
+            xd_p.append(g2)
+
+    xd_p = sorted(xd_p, key=lambda x: x['dt'], reverse=False)
+    return xd_p
+
+
+def handle_last_xd(bi_points):
+    """处理当下段
+
+    当下段是指当下进行中的无法确认完成的线段，对于操作而言，必须在当下对其进行分析，判断是延续还是转折。
+
+    :param bi_points: list of dict
+        最近一个线段标记后面的全部笔标记。在这些笔标记中可能存在 1个、2个或3个需要需要确认的线段标记。
+    :return: list of dict
+        返回判断结果
+    """
+    # step 1. 获取潜在分段标记点
+    xd_p = get_potential_xd(bi_points)
+    if len(xd_p) == 0:
+        if bi_points[0]['fx_mark'] != bi_points[-1]['fx_mark']:
+            bi_points.pop(-1)
+
+
 
 class KlineAnalyze:
     def __init__(self, kline, name="本级别", bi_mode="old", max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
@@ -528,19 +574,8 @@ class KlineAnalyze:
             right_bi = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
         else:
             right_bi = [x for x in self.bi_list[-200:] if x['dt'] >= self.xd_list[-1]['dt']]
-        xd_p = []
-        bi_d = [x for x in right_bi if x['fx_mark'] == 'd']
-        bi_g = [x for x in right_bi if x['fx_mark'] == 'g']
-        for i in range(1, len(bi_d) - 2):
-            d1, d2, d3 = bi_d[i - 1: i + 2]
-            if d1['bi'] > d2['bi'] < d3['bi']:
-                xd_p.append(d2)
-        for j in range(1, len(bi_g) - 2):
-            g1, g2, g3 = bi_g[j - 1: j + 2]
-            if g1['bi'] < g2['bi'] > g3['bi']:
-                xd_p.append(g2)
 
-        xd_p = sorted(xd_p, key=lambda x: x['dt'], reverse=False)
+        xd_p = get_potential_xd(right_bi)
         for xp in xd_p:
             xd = dict(xp)
             xd['xd'] = xd.pop('bi')
@@ -584,6 +619,7 @@ class KlineAnalyze:
                                 self.xd_list.append(xd)
 
     def _xd_after_process(self):
+        """线段标记后处理，使用标准特征序列判断线段标记是否成立"""
         if not len(self.xd_list) > 4:
             return
 
