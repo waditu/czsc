@@ -12,14 +12,14 @@ from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq, 
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
 kline1 = kline.iloc[:2000]
 kline2 = kline.iloc[2000:]
-ka = KlineAnalyze(kline1, name="日线", max_raw_len=2000, verbose=True)
+ka = KlineAnalyze(kline1, name="日线", max_raw_len=2000, verbose=False)
 
 def test_ka_update():
     ka1 = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
@@ -289,17 +289,46 @@ def test_is_valid_xd():
 
 
 def test_handle_last_xd():
-    # 0个需要确认的线段标记
+    # 只有一个线段标记的例子；300803.XSHE - 30min - 20200830
     bi_points = [
-        {"dt": 1, "bi": 10, "fx_mark": "d"},
-        {"dt": 2, "bi": 11, "fx_mark": "g"},
-        {"dt": 3, "bi": 10.4, "fx_mark": "d"},
-        {"dt": 4, "bi": 11.1, "fx_mark": "g"},
-        {"dt": 5, "bi": 10.6, "fx_mark": "d"},
-        {"dt": 6, "bi": 11.2, "fx_mark": "g"},
-        {"dt": 7, "bi": 11, "fx_mark": "d"},
+         {'dt': 0, 'fx_mark': 'g', 'bi': 73.66},
+         {'dt': 1, 'fx_mark': 'd', 'bi': 66.67},
+         {'dt': 2, 'fx_mark': 'g', 'bi': 68.93},
+         {'dt': 3, 'fx_mark': 'd', 'bi': 56.5},
+         {'dt': 4, 'fx_mark': 'g', 'bi': 59.55},
+         {'dt': 5, 'fx_mark': 'd', 'bi': 50.11},
+         {'dt': 6, 'fx_mark': 'g', 'bi': 55.69},
+         {'dt': 7, 'fx_mark': 'd', 'bi': 51.5},
+         {'dt': 8, 'fx_mark': 'g', 'bi': 52.96},
+         {'dt': 9, 'fx_mark': 'd', 'bi': 47.7},
+         {'dt': 10, 'fx_mark': 'g', 'bi': 52.94},
+         {'dt': 11, 'fx_mark': 'd', 'bi': 49.21},
+         {'dt': 12, 'fx_mark': 'g', 'bi': 51.29},
+         {'dt': 13, 'fx_mark': 'd', 'bi': 49.07},
+         {'dt': 14, 'fx_mark': 'g', 'bi': 55.21},
+         {'dt': 15, 'fx_mark': 'd', 'bi': 46.01}
     ]
 
-    pass
+    # 有两个线段标记的例子；300803.XSHE - 5min - 20200830
+    bi_points = [
+        {'dt': 0, 'fx_mark': 'd', 'bi': 49.79},
+        {'dt': 1, 'fx_mark': 'g', 'bi': 51.07},
+        {'dt': 2, 'fx_mark': 'd', 'bi': 49.9},
+        {'dt': 3, 'fx_mark': 'g', 'bi': 51.6},
+        {'dt': 4, 'fx_mark': 'd', 'bi': 50.64},
+        {'dt': 5, 'fx_mark': 'g', 'bi': 55.21},
+        {'dt': 6, 'fx_mark': 'd', 'bi': 53.18},
+        {'dt': 7, 'fx_mark': 'g', 'bi': 54.05},
+        {'dt': 8, 'fx_mark': 'd', 'bi': 51.7},
+        {'dt': 9, 'fx_mark': 'g', 'bi': 52.3},
+        {'dt': 10, 'fx_mark': 'd', 'bi': 51.0},
+        {'dt': 11, 'fx_mark': 'g', 'bi': 51.99},
+        {'dt': 12, 'fx_mark': 'd', 'bi': 48.02},
+        {'dt': 13, 'fx_mark': 'g', 'bi': 50.97},
+        {'dt': 14, 'fx_mark': 'd', 'bi': 47.72},
+        {'dt': 15, 'fx_mark': 'g', 'bi': 53.89}
+    ]
+
+
 
 

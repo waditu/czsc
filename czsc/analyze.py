@@ -199,17 +199,20 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
         return False
 
     # 第一种情况（向下线段）
-    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] >= standard_bi_seq1[-1]['low']:
+    # if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] >= standard_bi_seq1[-1]['low']:
+    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] >= min([x['low'] for x in standard_bi_seq1]):
         if bi_seq2[-1]['bi'] < bi_seq2[1]['bi']:
             return False
 
     # 第一种情况（向上线段）
-    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] <= standard_bi_seq1[-1]['high']:
+    # if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] <= standard_bi_seq1[-1]['high']:
+    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] <= max([x['high'] for x in standard_bi_seq1]):
         if bi_seq2[-1]['bi'] > bi_seq2[1]['bi']:
             return False
 
     # 第二种情况（向下线段）
-    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < standard_bi_seq1[-1]['low']:
+    # if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < standard_bi_seq1[-1]['low']:
+    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < min([x['low'] for x in standard_bi_seq1]):
         bi_seq2.extend(bi_seq3[1:])
         standard_bi_seq2 = make_standard_seq(bi_seq2)
         if len(standard_bi_seq2) < 3:
@@ -221,15 +224,16 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
             if bi1['high'] < bi2['high'] > bi3['high']:
                 standard_bi_seq2_g.append(bi2)
 
-                # 如果特征序列顶分型最小值小于底分型，返回 False
-                if min([x['low'] for x in standard_bi_seq2[i-1: i+2]]) < bi_seq2[0]['bi']:
+                # 特征序列顶分型完全在底分型区间，返回 False
+                if min(bi1['low'], bi2['low'], bi3['low']) < bi_seq2[0]['bi']:
                     return False
 
         if len(standard_bi_seq2_g) == 0:
             return False
 
     # 第二种情况（向上线段）
-    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] > standard_bi_seq1[-1]['high']:
+    # if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] > standard_bi_seq1[-1]['high']:
+    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] > max([x['high'] for x in standard_bi_seq1]):
         bi_seq2.extend(bi_seq3[1:])
         standard_bi_seq2 = make_standard_seq(bi_seq2)
         if len(standard_bi_seq2) < 3:
@@ -241,9 +245,10 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
             if bi1['low'] > bi2['low'] < bi3['low']:
                 standard_bi_seq2_d.append(bi2)
 
-                # 如果特征序列的底分型最大值大于顶分型，返回 False
-                if max([x['high'] for x in standard_bi_seq2[i-1: i+2]]) > bi_seq2[0]['bi']:
+                # 特征序列的底分型在顶分型区间，返回 False
+                if max(bi1['high'], bi2['high'], bi3['high']) > bi_seq2[0]['bi']:
                     return False
+
         if len(standard_bi_seq2_d) == 0:
             return False
     return True
@@ -271,23 +276,6 @@ def get_potential_xd(bi_points):
 
     xd_p = sorted(xd_p, key=lambda x: x['dt'], reverse=False)
     return xd_p
-
-
-def handle_last_xd(bi_points):
-    """处理当下段
-
-    当下段是指当下进行中的无法确认完成的线段，对于操作而言，必须在当下对其进行分析，判断是延续还是转折。
-
-    :param bi_points: list of dict
-        最近一个线段标记后面的全部笔标记
-    :return: list of dict
-        返回判断结果
-    """
-    # step 1. 获取潜在分段标记点
-    xd_p = get_potential_xd(bi_points)
-    if len(xd_p) == 0:
-        if bi_points[0]['fx_mark'] != bi_points[-1]['fx_mark']:
-            bi_points.pop(-1)
 
 
 class KlineAnalyze:
@@ -615,13 +603,17 @@ class KlineAnalyze:
             if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
                 keep_xd_index.append(i)
 
-        # 处理最后一个确定的线段标记
+        # 处理最近一个确定的线段标记
         bi_seq1 = [x for x in self.bi_list if self.xd_list[-2]['dt'] >= x['dt'] >= self.xd_list[-3]['dt']]
         bi_seq2 = [x for x in self.bi_list if self.xd_list[-1]['dt'] >= x['dt'] >= self.xd_list[-2]['dt']]
         bi_seq3 = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
         if not (len(bi_seq1) == 0 or len(bi_seq2) == 0 or len(bi_seq3) == 0):
             if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
-                keep_xd_index.append(len(self.xd_list)-2)
+                keep_xd_index.append(len(self.xd_list) - 2)
+
+        # 处理最近一个未确定的线段标记
+        if len(bi_seq3) >= 4:
+            keep_xd_index.append(len(self.xd_list) - 1)
 
         new_xd_list = []
         for j in keep_xd_index:
