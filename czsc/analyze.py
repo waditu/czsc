@@ -539,11 +539,11 @@ class KlineAnalyze:
                         print("新增笔标记：{}".format(bi))
                     self.bi_list.append(bi)
 
-        # if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
-        #         or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
-        #     if self.verbose:
-        #         print("最后一个笔标记无效，{}".format(self.bi_list[-1]))
-        #     self.bi_list.pop(-1)
+        if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
+                or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
+            if self.verbose:
+                print("最后一个笔标记无效，{}".format(self.bi_list[-1]))
+            self.bi_list.pop(-1)
 
     def _update_xd_list_v1(self):
         """更新线段序列"""
@@ -821,7 +821,7 @@ class KlineAnalyze:
         :param end_dt: datetime
             子区间结束时间
         :param mode: str
-            需要获取的子区间对象类型，可取值 ['k', 'fx', 'bi', 'xd']
+            需要获取的子区间对象类型，可取值 ['kn', 'fx', 'bi', 'xd']
         :param is_last: bool
             是否是最近一段子区间
         :return: list of dict
