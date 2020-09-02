@@ -852,7 +852,7 @@ class KlineAnalyze:
         return [x for x in points if end_dt >= x['dt'] >= start_dt]
 
     def calculate_macd_power(self, start_dt: datetime, end_dt: datetime, mode='bi', direction="up"):
-        """计算走势段（start_dt ~ end_dt）的力度
+        """用 MACD 计算走势段（start_dt ~ end_dt）的力度
 
         :param start_dt: datetime
             走势开始时间
@@ -881,4 +881,18 @@ class KlineAnalyze:
             raise ValueError
         return power
 
+    def calculate_vol_power(self, start_dt: datetime, end_dt: datetime):
+        """用 VOL 计算走势段（start_dt ~ end_dt）的力度
+
+        :param start_dt: datetime
+            走势开始时间
+        :param end_dt: datetime
+            走势结束时间
+        :return: float
+            走势力度
+        """
+        fd_vol = [x for x in self.kline_raw if x['dt'] >= start_dt]
+        fd_vol = [x for x in fd_vol if end_dt >= x['dt']]
+        power = sum([x['vol'] for x in fd_vol])
+        return int(power)
 

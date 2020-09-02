@@ -8,20 +8,20 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 import czsc
-from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq, get_potential_xd, handle_last_xd
+from czsc.analyze import KlineAnalyze, find_zs, is_valid_xd, make_standard_seq
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 # cur_path = "./test"
-file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
-kline = pd.read_csv(file_kline, encoding="utf-8")
-kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-kline1 = kline.iloc[:2000]
-kline2 = kline.iloc[2000:]
-ka = KlineAnalyze(kline1, name="日线", max_raw_len=2000, verbose=False)
 
 def test_ka_update():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    kline1 = kline.iloc[:2000]
+    kline2 = kline.iloc[2000:]
+
     ka1 = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
     ka2 = KlineAnalyze(kline1, name="日线", max_raw_len=5000, verbose=False)
 
@@ -32,8 +32,35 @@ def test_ka_update():
     assert len(ka1.fx_list) == len(ka2.fx_list)
     assert len(ka1.bi_list) == len(ka2.bi_list)
 
+def test_calculate_power():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
+
+    # 测试 macd 力度
+    last_xd_power = ka.calculate_macd_power(start_dt=ka.xd_list[-2]['dt'], end_dt=ka.xd_list[-1]['dt'],
+                                            mode='xd', direction="up" if ka.xd_list[-1]['fx_mark'] == 'g' else "down")
+
+    last_bi_power = ka.calculate_macd_power(start_dt=ka.bi_list[-2]['dt'], end_dt=ka.bi_list[-1]['dt'], mode='bi')
+
+    assert int(last_xd_power) == 389
+    assert int(last_bi_power) == 300
+
+    # 测试 vol 力度
+    last_xd_power = ka.calculate_vol_power(start_dt=ka.xd_list[-2]['dt'], end_dt=ka.xd_list[-1]['dt'])
+    last_bi_power = ka.calculate_vol_power(start_dt=ka.bi_list[-2]['dt'], end_dt=ka.bi_list[-1]['dt'])
+
+    assert int(last_xd_power) == 13329239053
+    assert int(last_bi_power) == 9291793337
+
 
 def test_get_sub_section():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+
     sub_kn = ka.get_sub_section(ka.fx_list[-2]['dt'], ka.fx_list[-1]['dt'], mode='kn', is_last=True)
     assert sub_kn[0]['dt'] == ka.fx_list[-2]['dt'] and sub_kn[-1]['dt'] == ka.fx_list[-1]['dt']
 
@@ -48,14 +75,15 @@ def test_get_sub_section():
 
 
 def test_kline_analyze():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+
     # 测试绘图
     file_img = "kline.png"
     ka.to_image(file_img, max_k_count=5000)
     assert os.path.exists(file_img)
-
-    for _, row in kline2.iterrows():
-        ka.update(row.to_dict())
-        assert ka.kline_raw[-1]['dt'] == row['dt']
 
     # 测试分型识别结果
     assert ka.fx_list[-1]['fx_mark'] == 'g'
@@ -80,6 +108,11 @@ def test_kline_analyze():
 
 
 def test_bei_chi():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+
     bi1 = {"start_dt": ka.bi_list[-11]['dt'], "end_dt": ka.bi_list[-10]['dt'], "direction": "down"}
     bi2 = {"start_dt": ka.bi_list[-13]['dt'], "end_dt": ka.bi_list[-12]['dt'], "direction": "down"}
     x1 = ka.is_bei_chi(bi1, bi2, mode="bi", adjust=0.9)
@@ -91,7 +124,11 @@ def test_bei_chi():
 
 
 def test_update_ta():
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
     ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+
     ma_x1 = dict(ka.ma[-1])
     macd_x1 = dict(ka.macd[-1])
     ka.update(kline.iloc[-1].to_dict())
@@ -107,9 +144,6 @@ def test_update_ta():
 
 
 def test_find_zs():
-    bi_zs = find_zs(ka.bi_list)
-    xd_zs = find_zs(ka.xd_list)
-
     # 造数测试
     points = [
         {"dt": 0, "fx_mark": "d", "xd": 8},
