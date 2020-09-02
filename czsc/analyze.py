@@ -850,3 +850,35 @@ class KlineAnalyze:
             raise ValueError
 
         return [x for x in points if end_dt >= x['dt'] >= start_dt]
+
+    def calculate_macd_power(self, start_dt: datetime, end_dt: datetime, mode='bi', direction="up"):
+        """计算走势段（start_dt ~ end_dt）的力度
+
+        :param start_dt: datetime
+            走势开始时间
+        :param end_dt: datetime
+            走势结束时间
+        :param mode: str
+            分段走势类型，默认值为 bi，可选值 ['bi', 'xd']，分别表示笔分段走势和线段分段走势
+        :param direction: str
+            线段分段走势计算力度需要指明方向，可选值 ['up', 'down']
+        :return: float
+            走势力度
+        """
+        fd_macd = [x for x in self.macd if x['dt'] >= start_dt]
+        fd_macd = [x for x in fd_macd if end_dt >= x['dt']]
+
+        if mode == 'bi':
+            power = sum([abs(x['macd']) for x in fd_macd])
+        elif mode == 'xd':
+            if direction == 'up':
+                power = sum([abs(x['macd']) for x in fd_macd if x['macd'] > 0])
+            elif direction == 'down':
+                power = sum([abs(x['macd']) for x in fd_macd if x['macd'] < 0])
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+        return power
+
+

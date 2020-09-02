@@ -1,6 +1,80 @@
 # coding: utf-8
 from .analyze import KlineAnalyze, find_zs
 
+def check_jing(fd1, fd2, fd3, fd4, fd5):
+    """检查最近5个分段走势是否构成井
+    井的定义：
+    12345，五段，是构造井的基本形态，形成井的位置肯定是5，而5出井的
+    前提条件是对于向上5至少比3和1其中之一高，向下反过来; 并且，234
+    构成一个中枢。
+
+    井只有两类，大井和小井（以向上为例）：
+    大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5；
+    小井对应的形式是：
+        1：12345向上，3最高5次之1最低，力度上5的力度比1小，注意这时候
+           不需要再考虑5和3的关系了，因为5比3低，所以不需要考虑力度。
+        2：12345向上，5最高3次之1最低，力度上1大于5，5大于3。
+
+    小井的构造，关键是满足5一定至少大于1、3中的一个。
+    注意有一种情况不归为井：就是12345向上，1的力度最小，5的力度次之，3的力度最大此类不算井，
+    因为345后面必然还有走势在67的时候才能再判断，个中道理各位好好体会。
+
+
+    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
+
+    fd = {
+        "start_dt": "",
+        "end_dt": "",
+        "power": 0,         # 力度
+        "k_nums": 0,
+        "fx_nums": 0,
+        "bi_nums": 0,
+        "direction": "up",
+        "high": 0,
+        "low": 0,
+        "mode": "bi"
+    }
+
+    """
+    assert fd1['direction'] == fd3['direction'] == fd5['direction']
+    assert fd2['direction'] == fd4['direction']
+    direction = fd1['direction']
+
+    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
+    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
+
+    jing = "没有出井"
+    if zs_d < zs_g:
+        if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
+
+            # 大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5
+            if fd5["high"] > fd3['high'] > fd1['high'] and fd5['power'] < fd3['power'] < fd1['power']:
+                jing = "向上大井"
+
+            # 第一种小井：12345向上，3最高5次之1最低，力度上5的力度比1小
+            if fd1['high'] < fd5['high'] < fd3['high'] and fd5['power'] < fd1['power']:
+                jing = "向上小井"
+
+            # 第二种小井：12345向上，5最高3次之1最低，力度上1大于5，5大于3
+            if fd5["high"] > fd3['high'] > fd1['high'] and fd1['power'] > fd5['power'] > fd3['power']:
+                jing = "向上小井"
+
+        if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
+
+            # 大井对应的形式是：12345向下，5最低3次之1最高，力度上1大于3，3大于5；
+            if fd5['low'] < fd3['low'] < fd1['low'] and fd5['power'] < fd3['power'] < fd1['power']:
+                jing = "向下大井"
+
+            # 第一种小井：12345向下，3最低5次之1最高，力度上5的力度比1小
+            if fd1["low"] > fd5['low'] > fd3['low'] and fd5['power'] < fd1['power']:
+                jing = "向下小井"
+
+            # 第二种小井：12345向下，5最低3次之1最高，力度上1大于5，5大于3
+            if fd3["low"] > fd5['low'] > fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
+                jing = "向下小井"
+
+    return jing
+
 
 def get_fx_signals(ka):
     """计算分型特征"""
