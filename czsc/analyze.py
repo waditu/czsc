@@ -865,8 +865,7 @@ class KlineAnalyze:
         :return: float
             走势力度
         """
-        fd_macd = [x for x in self.macd if x['dt'] >= start_dt]
-        fd_macd = [x for x in fd_macd if end_dt >= x['dt']]
+        fd_macd = [x for x in self.macd if end_dt >= x['dt'] >= start_dt]
 
         if mode == 'bi':
             power = sum([abs(x['macd']) for x in fd_macd])
@@ -891,8 +890,7 @@ class KlineAnalyze:
         :return: float
             走势力度
         """
-        fd_vol = [x for x in self.kline_raw if x['dt'] >= start_dt]
-        fd_vol = [x for x in fd_vol if end_dt >= x['dt']]
+        fd_vol = [x for x in self.kline_raw if end_dt >= x['dt'] >= start_dt]
         power = sum([x['vol'] for x in fd_vol])
         return int(power)
 
