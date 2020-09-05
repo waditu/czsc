@@ -18,7 +18,7 @@ def set_token(jq_mob, jq_pwd):
         mob是申请JQData时所填写的手机号
     :param jq_pwd: str
         Password为聚宽官网登录密码，新申请用户默认为手机号后6位
-    :return:
+    :return: None
     """
     pickle.dump([jq_mob, jq_pwd], open(file_token, 'wb'))
 
