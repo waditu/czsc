@@ -6,6 +6,7 @@ import requests
 import warnings
 import pandas as pd
 from datetime import datetime, timedelta
+from typing import List, Union
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
@@ -43,6 +44,87 @@ def text2df(text):
     rows = [x.split(",") for x in text.strip().split('\n')]
     df = pd.DataFrame(rows[1:], columns=rows[0])
     return df
+
+
+def get_concepts() -> pd.DataFrame:
+    """获取概念列表
+
+    https://dataapi.joinquant.com/docs#get_concepts---%E8%8E%B7%E5%8F%96%E6%A6%82%E5%BF%B5%E5%88%97%E8%A1%A8
+
+    :return: df
+    """
+    data = {
+        "method": "get_concepts",
+        "token": get_token(),
+    }
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    return df
+
+def get_concept_stocks(symbol: str,
+                       date: Union[datetime, str] = None) -> List:
+    """获取概念成份股
+
+    https://dataapi.joinquant.com/docs#get_concept_stocks---%E8%8E%B7%E5%8F%96%E6%A6%82%E5%BF%B5%E6%88%90%E4%BB%BD%E8%82%A1
+
+    :param symbol: str
+        如 GN036
+    :param date: str or datetime
+        日期，如 2020-08-08
+    :return: list
+
+    examples:
+    -------
+    >>> symbols1 = get_concept_stocks("GN036", date="2020-07-08")
+    >>> symbols2 = get_concept_stocks("GN036", date=datetime.now())
+    """
+    if not date:
+        date = str(datetime.now().date())
+
+    if isinstance(date, datetime):
+        date = str(date.date())
+
+    data = {
+        "method": "get_concept_stocks",
+        "token": get_token(),
+        "code": symbol,
+        "date": date
+    }
+    r = requests.post(url, data=json.dumps(data))
+    return r.text.split('\n')
+
+
+def get_index_stocks(symbol: str,
+                     date: Union[datetime, str] = None) -> List:
+    """获取指数成份股
+
+    https://dataapi.joinquant.com/docs#get_index_stocks---%E8%8E%B7%E5%8F%96%E6%8C%87%E6%95%B0%E6%88%90%E4%BB%BD%E8%82%A1
+
+    :param symbol: str
+        如 000300.XSHG
+    :param date: str or datetime
+        日期，如 2020-08-08
+    :return: list
+
+    examples:
+    -------
+    >>> symbols1 = get_index_stocks("000300.XSHG", date="2020-07-08")
+    >>> symbols2 = get_index_stocks("000300.XSHG", date=datetime.now())
+    """
+    if not date:
+        date = str(datetime.now().date())
+
+    if isinstance(date, datetime):
+        date = str(date.date())
+
+    data = {
+        "method": "get_index_stocks",
+        "token": get_token(),
+        "code": symbol,
+        "date": date
+    }
+    r = requests.post(url, data=json.dumps(data))
+    return r.text.split('\n')
 
 
 def get_kline(symbol,  end_date: datetime, freq: str, start_date: datetime = None, count=None):
