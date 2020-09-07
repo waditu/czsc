@@ -22,8 +22,8 @@ def test_ka_update():
     kline1 = kline.iloc[:2000]
     kline2 = kline.iloc[2000:]
 
-    ka1 = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
-    ka2 = KlineAnalyze(kline1, name="日线", max_raw_len=5000, verbose=False)
+    ka1 = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
+    ka2 = KlineAnalyze(kline1, name="日线", max_xd_len=10, verbose=False)
 
     for _, row in kline2.iterrows():
         ka2.update(row.to_dict())
@@ -36,7 +36,7 @@ def test_calculate_power():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=5000, verbose=False)
+    ka = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
 
     # 测试 macd 力度
     last_xd_power = ka.calculate_macd_power(start_dt=ka.xd_list[-2]['dt'], end_dt=ka.xd_list[-1]['dt'],
@@ -59,7 +59,7 @@ def test_get_sub_section():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+    ka = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
 
     sub_kn = ka.get_sub_section(ka.fx_list[-2]['dt'], ka.fx_list[-1]['dt'], mode='kn', is_last=True)
     assert sub_kn[0]['dt'] == ka.fx_list[-2]['dt'] and sub_kn[-1]['dt'] == ka.fx_list[-1]['dt']
@@ -78,7 +78,7 @@ def test_kline_analyze():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+    ka = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
 
     # 测试绘图
     file_img = "kline.png"
@@ -111,7 +111,7 @@ def test_bei_chi():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+    ka = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
 
     bi1 = {"start_dt": ka.bi_list[-11]['dt'], "end_dt": ka.bi_list[-10]['dt'], "direction": "down"}
     bi2 = {"start_dt": ka.bi_list[-13]['dt'], "end_dt": ka.bi_list[-12]['dt'], "direction": "down"}
@@ -127,7 +127,7 @@ def test_update_ta():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
-    ka = KlineAnalyze(kline, name="日线", max_raw_len=2000, verbose=False)
+    ka = KlineAnalyze(kline, name="日线", max_xd_len=10, verbose=False)
 
     ma_x1 = dict(ka.ma[-1])
     macd_x1 = dict(ka.macd[-1])

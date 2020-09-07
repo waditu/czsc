@@ -279,15 +279,15 @@ def get_potential_xd(bi_points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", bi_mode="old", max_raw_len=10000, ma_params=(5, 20, 120), verbose=False):
+    def __init__(self, kline, name="本级别", bi_mode="old", max_xd_len=10, ma_params=(5, 20, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame
         :param name: str
         :param bi_mode: str
             new 新笔；old 老笔；默认值为 old
-        :param max_raw_len: int
-            原始K线序列的最大长度
+        :param max_xd_len: int
+            线段标记序列的最大长度
         :param ma_params: tuple of int
             均线系统参数
         :param verbose: bool
@@ -295,7 +295,7 @@ class KlineAnalyze:
         self.name = name
         self.verbose = verbose
         self.bi_mode = bi_mode
-        self.max_raw_len = max_raw_len
+        self.max_xd_len = max_xd_len
         self.ma_params = ma_params
         self.kline_raw = []  # 原始K线序列
         self.kline_new = []  # 去除包含关系的K线序列
@@ -316,7 +316,6 @@ class KlineAnalyze:
         else:
             self.kline_raw = kline
 
-        self.kline_raw = self.kline_raw[-self.max_raw_len:]
         self.symbol = self.kline_raw[0]['symbol']
         self.start_dt = self.kline_raw[0]['dt']
         self.end_dt = self.kline_raw[-1]['dt']
@@ -550,7 +549,7 @@ class KlineAnalyze:
         if len(self.bi_list) < 4:
             return
 
-        self.xd_list = self.xd_list[:-2]
+        # self.xd_list = self.xd_list[:-2]
         if len(self.xd_list) == 0:
             for i in range(3):
                 xd = dict(self.bi_list[i])
@@ -562,6 +561,7 @@ class KlineAnalyze:
         else:
             right_bi = [x for x in self.bi_list[-200:] if x['dt'] >= self.xd_list[-1]['dt']]
 
+        right_bi = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
         xd_p = get_potential_xd(right_bi)
         for xp in xd_p:
             xd = dict(xp)
@@ -669,20 +669,15 @@ class KlineAnalyze:
         self.end_dt = self.kline_raw[-1]['dt']
         self.latest_price = self.kline_raw[-1]['close']
 
-        # 根据最大原始K线序列长度限制分析结果长度
-        if len(self.kline_raw) > self.max_raw_len:
-            self.kline_raw = self.kline_raw[-self.max_raw_len:]
-            self.kline_new = self.kline_new[-self.max_raw_len:]
-            self.ma = self.ma[-self.max_raw_len:]
-            self.macd = self.macd[-self.max_raw_len:]
-            last_dt = self.kline_new[0]['dt']
+        if len(self.xd_list) > self.max_xd_len:
+            last_dt = self.xd_list[-self.max_xd_len:][0]['dt']
+            self.kline_raw = [x for x in self.kline_raw if x['dt'] > last_dt]
+            self.kline_new = [x for x in self.kline_new if x['dt'] > last_dt]
+            self.ma = [x for x in self.ma if x['dt'] > last_dt]
+            self.macd = [x for x in self.macd if x['dt'] > last_dt]
             self.fx_list = [x for x in self.fx_list if x['dt'] > last_dt]
             self.bi_list = [x for x in self.bi_list if x['dt'] > last_dt]
             self.xd_list = [x for x in self.xd_list if x['dt'] > last_dt]
-
-            # self.fx_list = self.fx_list[-(self.max_raw_len // 2):]
-            # self.bi_list = self.bi_list[-(self.max_raw_len // 4):]
-            # self.xd_list = self.xd_list[-(self.max_raw_len // 8):]
 
         if self.verbose:
             print("更新结束\n\n")
