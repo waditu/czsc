@@ -28,9 +28,10 @@ def test_ka_update():
     for _, row in kline2.iterrows():
         ka2.update(row.to_dict())
 
-    assert len(ka1.kline_new) == len(ka2.kline_new)
-    assert len(ka1.fx_list) == len(ka2.fx_list)
-    assert len(ka1.bi_list) == len(ka2.bi_list)
+    assert ka1.kline_new[-1]['dt'] == ka2.kline_new[-1]['dt']
+    assert ka1.fx_list[-1]['dt'] == ka2.fx_list[-1]['dt']
+    assert ka1.bi_list[-1]['dt'] == ka2.bi_list[-1]['dt']
+    assert ka1.xd_list[-1]['dt'] == ka2.xd_list[-1]['dt']
 
 def test_calculate_power():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")

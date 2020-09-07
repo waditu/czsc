@@ -549,19 +549,15 @@ class KlineAnalyze:
         if len(self.bi_list) < 4:
             return
 
-        # self.xd_list = self.xd_list[:-2]
+        self.xd_list = []
         if len(self.xd_list) == 0:
             for i in range(3):
                 xd = dict(self.bi_list[i])
                 xd['xd'] = xd.pop('bi')
                 self.xd_list.append(xd)
 
-        if len(self.xd_list) <= 3:
-            right_bi = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
-        else:
-            right_bi = [x for x in self.bi_list[-200:] if x['dt'] >= self.xd_list[-1]['dt']]
-
         right_bi = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
+
         xd_p = get_potential_xd(right_bi)
         for xp in xd_p:
             xd = dict(xp)
