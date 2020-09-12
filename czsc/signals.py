@@ -357,9 +357,7 @@ class Signals:
             K线数据
         """
         self.klines = klines
-        self.kas = {k: KlineAnalyze(self.klines[k], name=k, min_bi_k=5,
-                                    ma_params=(5, 20, 120),
-                                    max_raw_len=5000, verbose=False)
+        self.kas = {k: KlineAnalyze(self.klines[k], name=k, ma_params=(5, 20, 120), max_xd_len=20, verbose=False)
                     for k in self.klines.keys()}
         self.symbol = self.kas["1分钟"].symbol
         self.end_dt = self.kas["1分钟"].end_dt

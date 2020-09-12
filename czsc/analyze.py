@@ -12,7 +12,6 @@ except ImportError:
     warnings.warn(ta_lib_hint)
 import pandas as pd
 import numpy as np
-from datetime import datetime
 from czsc.utils import plot_ka
 
 def find_zs(points):
@@ -809,7 +808,7 @@ class KlineAnalyze:
 
         return bc
 
-    def get_sub_section(self, start_dt: datetime, end_dt: datetime, mode="bi", is_last=True):
+    def get_sub_section(self, start_dt, end_dt, mode="bi", is_last=True):
         """获取子区间
 
         :param start_dt: datetime
@@ -847,7 +846,7 @@ class KlineAnalyze:
 
         return [x for x in points if end_dt >= x['dt'] >= start_dt]
 
-    def calculate_macd_power(self, start_dt: datetime, end_dt: datetime, mode='bi', direction="up"):
+    def calculate_macd_power(self, start_dt, end_dt, mode='bi', direction="up"):
         """用 MACD 计算走势段（start_dt ~ end_dt）的力度
 
         :param start_dt: datetime
@@ -876,7 +875,7 @@ class KlineAnalyze:
             raise ValueError
         return power
 
-    def calculate_vol_power(self, start_dt: datetime, end_dt: datetime):
+    def calculate_vol_power(self, start_dt, end_dt):
         """用 VOL 计算走势段（start_dt ~ end_dt）的力度
 
         :param start_dt: datetime
@@ -890,3 +889,105 @@ class KlineAnalyze:
         power = sum([x['vol'] for x in fd_vol])
         return int(power)
 
+    def get_latest_fd(self, n=6, mode="bi"):
+        """获取最近的走势分段
+
+        fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
+
+        fd = {
+            "start_dt": "",
+            "end_dt": "",
+            "power": 0,         # 力度
+            "direction": "up",
+            "high": 0,
+            "low": 0,
+            "mode": "bi"
+        }
+
+        :param n:
+        :param mode:
+        :return: list of dict
+        """
+        if mode == 'bi':
+            points = self.bi_list[-(n + 1):]
+        elif mode == 'xd':
+            points = self.xd_list[-(n + 1):]
+        else:
+            raise ValueError
+
+        res = []
+        for i in range(len(points)-1):
+            p1 = points[i]
+            p2 = points[i+1]
+            direction = "up" if p1[mode] < p2[mode] else "down"
+            power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode=mode, direction=direction)
+            res.append({
+                "start_dt": p1['dt'],
+                "end_dt": p2['dt'],
+                "power": power,
+                "direction": direction,
+                "high": max(p1[mode], p2[mode]),
+                "low": min(p1[mode], p2[mode]),
+                "mode": mode
+            })
+        return res
+
+    def get_last_fd(self, mode='bi'):
+        """获取最后一个分段走势
+
+        :param mode: str
+            可选值 ['bi', 'xd']，默认值 'bi'
+        :return:
+        """
+        if mode == 'bi':
+            p1 = self.bi_list[-1]
+            points = [x for x in self.fx_list[-60:] if x['dt'] >= p1['dt']]
+            if len(points) < 2:
+                return None
+
+            if p1['fx_mark'] == 'd':
+                direction = "up"
+                max_fx = max([x['fx'] for x in points if x['fx_mark'] == 'g'])
+                p2 = [x for x in points if x['fx'] == max_fx][0]
+            elif p1['fx_mark'] == 'g':
+                direction = "down"
+                min_fx = min([x['fx'] for x in points if x['fx_mark'] == 'd'])
+                p2 = [x for x in points if x['fx'] == min_fx][0]
+            else:
+                raise ValueError
+
+            p2 = dict(p2)
+            p2['bi'] = p2.pop('fx')
+
+        elif mode == 'xd':
+            p1 = self.xd_list[-1]
+            points = [x for x in self.bi_list[-60:] if x['dt'] >= p1['dt']]
+            if len(points) < 4:
+                return None
+
+            if p1['fx_mark'] == 'd':
+                direction = "up"
+                max_fx = max([x['bi'] for x in points if x['fx_mark'] == 'g'])
+                p2 = [x for x in points if x['bi'] == max_fx][0]
+            elif p1['fx_mark'] == 'g':
+                direction = "down"
+                min_fx = min([x['bi'] for x in points if x['fx_mark'] == 'd'])
+                p2 = [x for x in points if x['bi'] == min_fx][0]
+            else:
+                raise ValueError
+
+            p2 = dict(p2)
+            p2['xd'] = p2.pop('bi')
+        else:
+            raise ValueError
+
+        power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode=mode, direction=direction)
+        return {
+            "start_dt": p1['dt'],
+            "end_dt": p2['dt'],
+            "power": power,
+            "direction": direction,
+            "high": max(p1[mode], p2[mode]),
+            "low": min(p1[mode], p2[mode]),
+            "mode": mode
+        }
