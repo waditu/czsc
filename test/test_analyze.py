@@ -99,12 +99,10 @@ def test_kline_analyze():
     assert ka.xd_list[-3]['fx_mark'] == 'd'
 
     # 测试增量更新
-    ka_raw_len = len(ka.kline_raw)
     for x in [2890, 2910, 2783, 3120]:
         k = dict(ka.kline_raw[-1])
         k['close'] = x
         ka.update(k)
-        assert len(ka.kline_raw) == ka_raw_len
         assert ka.kline_raw[-1]['close'] == x
 
 
