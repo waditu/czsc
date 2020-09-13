@@ -6,7 +6,6 @@ import requests
 import warnings
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List, Union
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
@@ -46,7 +45,7 @@ def text2df(text):
     return df
 
 
-def get_concepts() -> pd.DataFrame:
+def get_concepts():
     """获取概念列表
 
     https://dataapi.joinquant.com/docs#get_concepts---%E8%8E%B7%E5%8F%96%E6%A6%82%E5%BF%B5%E5%88%97%E8%A1%A8
@@ -61,8 +60,7 @@ def get_concepts() -> pd.DataFrame:
     df = text2df(r.text)
     return df
 
-def get_concept_stocks(symbol: str,
-                       date: Union[datetime, str] = None) -> List:
+def get_concept_stocks(symbol, date=None):
     """获取概念成份股
 
     https://dataapi.joinquant.com/docs#get_concept_stocks---%E8%8E%B7%E5%8F%96%E6%A6%82%E5%BF%B5%E6%88%90%E4%BB%BD%E8%82%A1
@@ -94,8 +92,7 @@ def get_concept_stocks(symbol: str,
     return r.text.split('\n')
 
 
-def get_index_stocks(symbol: str,
-                     date: Union[datetime, str] = None) -> List:
+def get_index_stocks(symbol, date=None):
     """获取指数成份股
 
     https://dataapi.joinquant.com/docs#get_index_stocks---%E8%8E%B7%E5%8F%96%E6%8C%87%E6%95%B0%E6%88%90%E4%BB%BD%E8%82%A1
@@ -127,7 +124,7 @@ def get_index_stocks(symbol: str,
     return r.text.split('\n')
 
 
-def get_kline(symbol,  end_date: datetime, freq: str, start_date: datetime = None, count=None):
+def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     """获取K线数据
 
     :param symbol: str
@@ -187,7 +184,7 @@ def get_kline(symbol,  end_date: datetime, freq: str, start_date: datetime = Non
     return df
 
 
-def download_kline(symbol, freq: str, start_date: datetime, end_date: datetime, delta: timedelta, save=True):
+def download_kline(symbol, freq, start_date, end_date, delta, save=True):
     """下载K线数据
 
     :param save:
