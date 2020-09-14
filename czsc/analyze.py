@@ -278,7 +278,7 @@ def get_potential_xd(bi_points):
 
 
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", bi_mode="old", max_xd_len=10, ma_params=(5, 20, 120), verbose=False):
+    def __init__(self, kline, name="本级别", bi_mode="new", max_xd_len=20, ma_params=(5, 34, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame

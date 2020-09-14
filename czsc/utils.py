@@ -93,8 +93,8 @@ def ka_to_echarts(ka, width="1500px", height='800px'):
 
     axis_pointer_opts = opts.AxisPointerOpts(is_show=True, link=[{"xAxisIndex": "all"}])
 
-    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2])
-    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%", pos_bottom="0%")
+    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2], range_start=80, range_end=100)
+    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%", pos_bottom="0.5%", range_start=80, range_end=100)
 
     yaxis_opts = opts.AxisOpts(is_scale=True, axislabel_opts=opts.LabelOpts(color="#c7c7c7", font_size=8, position="inside"))
 

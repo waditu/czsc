@@ -20,7 +20,8 @@ def set_token(jq_mob, jq_pwd):
         Password为聚宽官网登录密码，新申请用户默认为手机号后6位
     :return: None
     """
-    pickle.dump([jq_mob, jq_pwd], open(file_token, 'wb'))
+    with open(file_token, 'wb') as f:
+        pickle.dump([jq_mob, jq_pwd], f)
 
 
 def get_token():
@@ -28,7 +29,9 @@ def get_token():
     if not os.path.exists(file_token):
         raise ValueError(f"{file_token} 文件不存在，请先调用 set_token 进行设置")
 
-    jq_mob, jq_pwd = pickle.load(open(file_token, 'rb'))
+    with open(file_token, 'rb') as f:
+        jq_mob, jq_pwd = pickle.load(f)
+
     body = {
         "method": "get_current_token",
         "mob": jq_mob,  # mob是申请JQData时所填写的手机号

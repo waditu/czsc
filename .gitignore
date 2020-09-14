@@ -7,7 +7,7 @@ __pycache__/
 *.xlsx
 *.html
 *.png
-*.ipynb_checkpoints/
+*/.ipynb_checkpoints/
 # C extensions
 *.so
 
