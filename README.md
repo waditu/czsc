@@ -42,6 +42,12 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 使用 Tushare Pro / 聚宽 / 掘金 / 天勤 的数据进行缠中说禅技术分析结果展示: https://github.com/zengbin93/czsc_web_ui
 
+## examples
+
+* [pyecharts 可视化分析结果](https://github.com/zengbin93/czsc/blob/master/examples/pyecharts%20%E5%8F%AF%E8%A7%86%E5%8C%96%E5%88%86%E6%9E%90%E7%BB%93%E6%9E%9C.ipynb)
+* [使用 czsc 进行选股](https://github.com/zengbin93/czsc/blob/master/examples/%E4%BD%BF%E7%94%A8CZSC%E8%BF%9B%E8%A1%8C%E9%80%89%E8%82%A1.ipynb)
+
+
 ## 结合 tushare.pro 的数据使用
 
 py 文件地址： examples/combine_with_tushare.py
@@ -51,5 +57,6 @@ py 文件地址： examples/combine_with_tushare.py
 ## 结合聚宽的数据使用
 
 py 文件地址： examples/use_czsc_with_jq.py
+
 
 
