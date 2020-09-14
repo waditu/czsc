@@ -191,7 +191,8 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
 
     line = Line()
     line.add_xaxis(dts)
-    line.add_yaxis(series_name="DIFF", y_axis=diff, label_opts=label_not_show_opts, is_symbol_show=False, linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color="#da6ee8"))
+    line.add_yaxis(series_name="DIFF", y_axis=diff, label_opts=label_not_show_opts, is_symbol_show=False,
+                   linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color="#da6ee8"))
     line.add_yaxis(series_name="DEA", y_axis=dea, label_opts=label_not_show_opts, is_symbol_show=False,
                    linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color="#39afe6"))
 
