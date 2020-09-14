@@ -13,30 +13,38 @@ from czsc.analyze import KlineAnalyze
 
 def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     # 配置项设置
+    # ------------------------------------------------------------------------------------------------------------------
     bg_color = "#1f212d"    # 背景
     up_color = "#F9293E"
     down_color = "#00aa3b"
 
-    init_opts = opts.InitOpts(bg_color=bg_color, width=width, height=height)
+    init_opts = opts.InitOpts(bg_color=bg_color, width=width, height=height, animation_opts=opts.AnimationOpts(False))
     title_opts = opts.TitleOpts(title="{} - {}".format(ka.symbol, ka.name),
                                 subtitle="from {} to {}".format(ka.start_dt, ka.end_dt),
                                 pos_top="1%",
                                 title_textstyle_opts=opts.TextStyleOpts(color=up_color, font_size=20),
                                 subtitle_textstyle_opts=opts.TextStyleOpts(color=down_color, font_size=12))
 
-    legend_opts = opts.LegendOpts(is_show=True, pos_top="1%", pos_left="30%", item_width=14, item_height=6,
-                                  textstyle_opts=opts.TextStyleOpts(font_size=12, color="#0e99e2"))
-    brush_opts = opts.BrushOpts(x_axis_index="all", brush_link="all", out_of_brush={"colorAlpha": 0.1}, brush_type="lineX")
-    axis_pointer_opts = opts.AxisPointerOpts(is_show=True, link=[{"xAxisIndex": "all"}])
-    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2])
-    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%", pos_bottom="1%")
-
-    yaxis_opts = opts.AxisOpts(is_scale=True, axislabel_opts=opts.LabelOpts(color="#c7c7c7", font_size=8, position="inside"))
     label_not_show_opts = opts.LabelOpts(is_show=False)
     legend_not_show_opts = opts.LegendOpts(is_show=False)
     red_item_style = opts.ItemStyleOpts(color=up_color)
     green_item_style = opts.ItemStyleOpts(color=down_color)
-    k_style_opts = opts.ItemStyleOpts(color=up_color, color0=down_color, border_color=up_color, border_color0=down_color, opacity=0.8)
+    k_style_opts = opts.ItemStyleOpts(color=up_color, color0=down_color, border_color=up_color,
+                                      border_color0=down_color, opacity=0.8)
+
+    legend_opts = opts.LegendOpts(is_show=True, pos_top="1%", pos_left="30%", item_width=14, item_height=8,
+                                  textstyle_opts=opts.TextStyleOpts(font_size=12, color="#0e99e2"))
+    brush_opts = opts.BrushOpts(tool_box=["rect", "polygon", "keep", "clear"],
+                                x_axis_index="all", brush_link="all",
+                                out_of_brush={"colorAlpha": 0.1}, brush_type="lineX")
+
+    axis_pointer_opts = opts.AxisPointerOpts(is_show=True, link=[{"xAxisIndex": "all"}])
+
+    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2])
+    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%", pos_bottom="0%")
+
+    yaxis_opts = opts.AxisOpts(is_scale=True, axislabel_opts=opts.LabelOpts(color="#c7c7c7", font_size=8, position="inside"))
+
     grid0_xaxis_opts = opts.AxisOpts(type_="category", grid_index=0, axislabel_opts=label_not_show_opts,
                                      split_number=20, min_="dataMin", max_="dataMax",
                                      is_scale=True, boundary_gap=False, axisline_opts=opts.AxisLineOpts(is_on_zero=False))
@@ -58,6 +66,7 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     )
 
     # 数据预处理
+    # ------------------------------------------------------------------------------------------------------------------
     dts = [x['dt'] for x in ka.kline_raw]
     k_data = [[x['open'], x['close'], x['low'], x['high']] for x in ka.kline_raw]
     ma = ka.ma
@@ -103,8 +112,9 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     ma_colors = ["#39afe6", "#da6ee8", "#00940b"]
     for i, k in enumerate(ma_keys):
         y_data = [x[k] for x in ma]
-        chart_ma.add_yaxis(series_name=k.upper(), y_axis=y_data, is_smooth=True, is_selected=False, symbol_size=0,
-                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color=ma_colors[i]), label_opts=label_not_show_opts)
+        chart_ma.add_yaxis(series_name=k.upper(), y_axis=y_data, is_smooth=True,
+                           is_selected=False, symbol_size=0, label_opts=label_not_show_opts,
+                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color=ma_colors[i]))
 
     chart_ma.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_ma)
@@ -115,8 +125,9 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     fx_val = [x['fx'] for x in ka.fx_list]
     chart_fx = Scatter()
     chart_fx.add_xaxis(fx_dts)
-    chart_fx.add_yaxis(series_name="FX", y_axis=fx_val, is_selected=False, color="rgba(184, 117, 225, 1.0)",
-                       symbol="circle", symbol_size=6, label_opts=label_not_show_opts)
+    chart_fx.add_yaxis(series_name="FX", y_axis=fx_val, is_selected=False,
+                       symbol="circle", symbol_size=6, label_opts=label_not_show_opts,
+                       itemstyle_opts=opts.ItemStyleOpts(color="rgba(152, 147, 193, 1.0)",))
 
     chart_fx.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_fx)
@@ -125,8 +136,9 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     bi_val = [x['bi'] for x in ka.bi_list]
     chart_bi = Scatter()
     chart_bi.add_xaxis(bi_dts)
-    chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True, color="rgba(184, 117, 225, 1.0)",
-                       symbol="diamond", symbol_size=10, label_opts=label_not_show_opts)
+    chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,
+                       symbol="diamond", symbol_size=10, label_opts=label_not_show_opts,
+                       itemstyle_opts=opts.ItemStyleOpts(color="rgba(184, 117, 225, 1.0)",))
 
     chart_bi.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_bi)
@@ -135,8 +147,8 @@ def ka_to_echarts(ka: KlineAnalyze, width="1500px", height='800px'):
     xd_val = [x['xd'] for x in ka.xd_list]
     chart_xd = Scatter()
     chart_xd.add_xaxis(xd_dts)
-    chart_xd.add_yaxis(series_name="XD", y_axis=xd_val, is_selected=True, color="rgba(37, 141, 54, 1.0)",
-                       symbol="triangle", symbol_size=10)
+    chart_xd.add_yaxis(series_name="XD", y_axis=xd_val, is_selected=True, symbol="triangle", symbol_size=10,
+                       itemstyle_opts=opts.ItemStyleOpts(color="rgba(37, 141, 54, 1.0)",))
 
     chart_xd.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_xd)
