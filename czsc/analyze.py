@@ -284,7 +284,7 @@ class KlineAnalyze:
         :param kline: list or pd.DataFrame
         :param name: str
         :param bi_mode: str
-            new 新笔；old 老笔；默认值为 old
+            new 新笔；old 老笔；默认值为 new
         :param max_xd_len: int
             线段标记序列的最大长度
         :param ma_params: tuple of int
@@ -960,6 +960,9 @@ class KlineAnalyze:
             p2['bi'] = p2.pop('fx')
 
         elif mode == 'xd':
+            if not self.xd_list:
+                return None
+
             p1 = self.xd_list[-1]
             points = [x for x in self.bi_list[-60:] if x['dt'] >= p1['dt']]
             if len(points) < 4:
