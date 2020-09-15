@@ -624,9 +624,10 @@ class KlineAnalyze:
         self.xd_list = new_xd_list
 
         # 针对最近一个线段标记处理
-        if (self.xd_list[-1]['fx_mark'] == 'd' and self.bi_list[-1]['bi'] < self.xd_list[-1]['xd']) \
-                or (self.xd_list[-1]['fx_mark'] == 'g' and self.bi_list[-1]['bi'] > self.xd_list[-1]['xd']):
-            self.xd_list.pop(-1)
+        if self.xd_list:
+            if (self.xd_list[-1]['fx_mark'] == 'd' and self.bi_list[-1]['bi'] < self.xd_list[-1]['xd']) \
+                    or (self.xd_list[-1]['fx_mark'] == 'g' and self.bi_list[-1]['bi'] > self.xd_list[-1]['xd']):
+                self.xd_list.pop(-1)
 
     def _update_xd_list(self):
         self._update_xd_list_v1()
