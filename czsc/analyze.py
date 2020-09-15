@@ -125,7 +125,7 @@ def find_zs(points):
 
 def has_gap(k1, k2, min_gap=0.002):
     """判断 k1, k2 之间是否有缺口"""
-    # assert k2['dt'] > k1['dt']
+    assert k2['dt'] > k1['dt']
     if k1['high'] < k2['low'] * (1-min_gap) \
             or k2['high'] < k1['low'] * (1-min_gap):
         return True
@@ -388,7 +388,6 @@ class KlineAnalyze:
         if len(self.kline_new) < 4:
             for x in self.kline_raw[:4]:
                 self.kline_new.append(dict(x))
-            return
 
         # 新K线只会对最后一个去除包含关系K线的结果产生影响
         self.kline_new = self.kline_new[:-2]
