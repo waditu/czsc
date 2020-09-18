@@ -77,7 +77,7 @@ def check_jing(fd1, fd2, fd3, fd4, fd5):
                 jing = {"jing": "向下小井", "notes": "12345向下，3最低5次之1最高，力度上5的力度比1小"}
 
             # 第二种小井：12345向下，5最低3次之1最高，力度上1大于5，5大于3
-            if fd3["low"] > fd5['low'] > fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
+            if fd5['low'] < fd3['low'] < fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
                 jing = {"jing": "向下小井", "notes": "12345向下，5最低3次之1最高，力度上1大于5，5大于3"}
     else:
         # 第三种小井：12345类趋势，力度依次降低，可以看成小井
