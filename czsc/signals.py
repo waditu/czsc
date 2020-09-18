@@ -33,6 +33,9 @@ def check_jing(fd1, fd2, fd3, fd4, fd5):
         "mode": "bi"
     }
 
+    假定最近一段走势为第N段；则 fd1 为第N-4段走势, fd2为第N-3段走势,
+    fd3为第N-2段走势, fd4为第N-1段走势, fd5为第N段走势
+
     """
     assert fd1['direction'] == fd3['direction'] == fd5['direction']
     assert fd2['direction'] == fd4['direction']
@@ -41,37 +44,97 @@ def check_jing(fd1, fd2, fd3, fd4, fd5):
     zs_g = min(fd2['high'], fd3['high'], fd4['high'])
     zs_d = max(fd2['low'], fd3['low'], fd4['low'])
 
-    jing = "没有出井"
-    if zs_d < zs_g:
+    jing = {"jing": "没有出井", "notes": ""}
+
+    # 1的力度最小，5的力度次之，3的力度最大，此类不算井
+    if fd1['power'] < fd5['power'] < fd3['power']:
+        jing['notes'] = "1的力度最小，5的力度次之，3的力度最大，此类不算井"
+        return jing
+
+    if zs_d < zs_g:     # 234有中枢的情况
         if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
 
             # 大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5
             if fd5["high"] > fd3['high'] > fd1['high'] and fd5['power'] < fd3['power'] < fd1['power']:
-                jing = "向上大井"
+                jing = {"jing": "向上大井", "notes": "12345向上，5最高3次之1最低，力度上1大于3，3大于5"}
 
             # 第一种小井：12345向上，3最高5次之1最低，力度上5的力度比1小
             if fd1['high'] < fd5['high'] < fd3['high'] and fd5['power'] < fd1['power']:
-                jing = "向上小井"
+                jing = {"jing": "向上小井", "notes": "12345向上，3最高5次之1最低，力度上5的力度比1小"}
 
             # 第二种小井：12345向上，5最高3次之1最低，力度上1大于5，5大于3
             if fd5["high"] > fd3['high'] > fd1['high'] and fd1['power'] > fd5['power'] > fd3['power']:
-                jing = "向上小井"
+                jing = {"jing": "向上小井", "notes": "12345向上，5最高3次之1最低，力度上1大于5，5大于3"}
 
         if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
 
-            # 大井对应的形式是：12345向下，5最低3次之1最高，力度上1大于3，3大于5；
+            # 大井对应的形式是：12345向下，5最低3次之1最高，力度上1大于3，3大于5
             if fd5['low'] < fd3['low'] < fd1['low'] and fd5['power'] < fd3['power'] < fd1['power']:
-                jing = "向下大井"
+                jing = {"jing": "向下大井", "notes": "12345向下，5最低3次之1最高，力度上1大于3，3大于5"}
 
             # 第一种小井：12345向下，3最低5次之1最高，力度上5的力度比1小
             if fd1["low"] > fd5['low'] > fd3['low'] and fd5['power'] < fd1['power']:
-                jing = "向下小井"
+                jing = {"jing": "向下小井", "notes": "12345向下，3最低5次之1最高，力度上5的力度比1小"}
 
             # 第二种小井：12345向下，5最低3次之1最高，力度上1大于5，5大于3
             if fd3["low"] > fd5['low'] > fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
-                jing = "向下小井"
+                jing = {"jing": "向下小井", "notes": "12345向下，5最低3次之1最高，力度上1大于5，5大于3"}
+    else:
+        # 第三种小井：12345类趋势，力度依次降低，可以看成小井
+        if fd1['power'] > fd3['power'] > fd5['power']:
+            if direction == 'up' and fd5["high"] > fd3['high'] > fd1['high']:
+                jing = {"jing": "向上小井", "notes": "12345类上涨趋势，力度依次降低"}
+
+            if direction == 'down' and fd5["low"] < fd3['low'] < fd1['low']:
+                jing = {"jing": "向下小井", "notes": "12345类下跌趋势，力度依次降低"}
 
     return jing
+
+
+def check_bei_chi(fd1, fd2, fd3, fd4, fd5):
+    """检查最近5个分段走势是否有背驰
+
+    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
+
+    fd = {
+        "start_dt": "",
+        "end_dt": "",
+        "power": 0,         # 力度
+        "direction": "up",
+        "high": 0,
+        "low": 0,
+        "mode": "bi"
+    }
+
+    """
+    assert fd1['direction'] == fd3['direction'] == fd5['direction']
+    assert fd2['direction'] == fd4['direction']
+    direction = fd1['direction']
+
+    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
+    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
+
+    bc = {"bc": "没有背驰", "notes": ""}
+    if max(fd5['power'], fd3['power'], fd1['power']) == fd5['power']:
+        bc = {"bc": "没有背驰", "notes": "5的力度最大，没有背驰"}
+        return bc
+
+    if zs_d < zs_g:
+        if fd5['power'] < fd1['power']:
+            if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
+                bc = {"bc": "向上趋势背驰", "notes": "12345向上，234构成中枢，5最高，力度上1大于5"}
+
+            if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
+                bc = {"bc": "向下趋势背驰", "notes": "12345向下，234构成中枢，5最低，力度上1大于5"}
+    else:
+        if fd5['power'] < fd3['power']:
+            if direction == 'up' and fd5["high"] > fd3['high']:
+                bc = {"bc": "向上盘整背驰", "notes": "12345向上，234不构成中枢，5最高，力度上1大于5"}
+
+            if direction == 'down' and fd5["low"] < fd3['low']:
+                bc = {"bc": "向下盘整背驰", "notes": "12345向下，234不构成中枢，5最低，力度上1大于5"}
+
+    return bc
 
 
 def get_fx_signals(ka):
