@@ -161,13 +161,12 @@ def ka_to_echarts(ka, width="1500px", height='800px'):
     chart_ma = Line()
     chart_ma.add_xaxis(xaxis_data=dts)
 
-    ma_keys = [x for x in ma[0].keys() if "ma" in x][:3]
-    ma_colors = ["#39afe6", "#da6ee8", "#00940b"]
+    ma_keys = [x for x in ma[0].keys() if "ma" in x]
     for i, k in enumerate(ma_keys):
         y_data = [x[k] for x in ma]
         chart_ma.add_yaxis(series_name=k.upper(), y_axis=y_data, is_smooth=True,
                            is_selected=False, symbol_size=0, label_opts=label_not_show_opts,
-                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color=ma_colors[i]))
+                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0))
 
     chart_ma.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_ma)
