@@ -137,6 +137,24 @@ def check_bei_chi(fd1, fd2, fd3, fd4, fd5):
     return bc
 
 
+def check_third_bs(fd1, fd2, fd3, fd4, fd5):
+    """输入5段走势，判断是否存在第三类买卖点"""
+    zs_d = max(fd1['low'], fd2['low'], fd3['low'])
+    zs_g = min(fd1['high'], fd2['high'], fd3['high'])
+
+    third_bs = {"third_bs": "没有第三类买卖点", "notes": ""}
+    if zs_g < zs_d:
+        third_bs = {"third_bs": "没有第三类买卖点", "notes": "前三段不构成中枢，无第三类买卖点"}
+        return third_bs
+    else:
+        if fd4['low'] < zs_d and fd5['high'] < zs_d:
+            third_bs = {"third_bs": "三卖", "notes": "前三段构成中枢，第四段向下离开，第五段不回中枢"}
+
+        if fd4['high'] > zs_g and fd5['low'] > zs_g:
+            third_bs = {"third_bs": "三买", "notes": "前三段构成中枢，第四段向上离开，第五段不回中枢"}
+    return third_bs
+
+
 def get_fx_signals(ka):
     """计算分型特征"""
     s = {
