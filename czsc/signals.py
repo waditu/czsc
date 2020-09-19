@@ -143,9 +143,13 @@ def check_third_bs(fd1, fd2, fd3, fd4, fd5):
     zs_g = min(fd1['high'], fd2['high'], fd3['high'])
 
     third_bs = {"third_bs": "没有第三类买卖点", "notes": ""}
+
+    if max(fd1['power'], fd2['power'], fd3['power'], fd4['power'], fd5['power']) != fd4['power']:
+        third_bs = {"third_bs": "没有第三类买卖点", "notes": "第四段不是力度最大的段"}
+        return third_bs
+
     if zs_g < zs_d:
         third_bs = {"third_bs": "没有第三类买卖点", "notes": "前三段不构成中枢，无第三类买卖点"}
-        return third_bs
     else:
         if fd4['low'] < zs_d and fd5['high'] < zs_d:
             third_bs = {"third_bs": "三卖", "notes": "前三段构成中枢，第四段向下离开，第五段不回中枢"}
