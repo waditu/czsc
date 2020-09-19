@@ -22,12 +22,6 @@ def get_token():
     return ts.get_token()
 
 
-def text2df(text):
-    rows = [x.split(",") for x in text.strip().split('\n')]
-    df = pd.DataFrame(rows[1:], columns=rows[0])
-    return df
-
-
 def get_concepts():
     """获取概念列表
 
@@ -104,6 +98,8 @@ def _get_start_date(end_date, freq):
         start_date = end_date - timedelta(weeks=500)
     elif freq == 'W':
         start_date = end_date - timedelta(weeks=1000)
+    elif freq == 'M':
+        start_date = end_date - timedelta(weeks=2000)
     else:
         raise ValueError("'freq' value error, current value is %s, "
                          "optional valid values are ['1min', '5min', '30min', "
@@ -120,7 +116,7 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     :param end_date: datetime
         截止日期
     :param freq: str
-        K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W']
+        K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W', "M"]
     :param count: int
         K线数量，最大值为 5000
     :return: pd.DataFrame

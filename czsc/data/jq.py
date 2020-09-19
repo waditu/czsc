@@ -137,7 +137,7 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     :param end_date: datetime
         截止日期
     :param freq: str
-        K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W']
+        K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W', 'M']
     :param count: int
         K线数量，最大值为 5000
     :return: pd.DataFrame
@@ -152,7 +152,7 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
 
     # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
     freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
-                    "30min": "30m", "60min": '60m', "D": "1d", "W": '1w'}
+                    "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
     if start_date:
         data = {
             "method": "get_price_period",
