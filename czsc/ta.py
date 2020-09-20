@@ -71,3 +71,51 @@ def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     return diff, dea, macd
 
 
+def KDJ(close: np.array, high: np.array, low: np.array):
+    """
+
+    :param close: np.array
+        收盘价序列
+    :param high:
+    :param low:
+    :return:
+    """
+    n = 9
+    hv = []
+    lv = []
+    for i in range(len(close)):
+        if i < n:
+            h_ = high[0: i+1]
+            l_ = low[0: i+1]
+        else:
+            h_ = high[i - n + 1: i + 1]
+            l_ = low[i - n + 1: i + 1]
+        hv.append(max(h_))
+        lv.append(min(l_))
+
+    hv = np.array(hv, dtype=np.double)
+    lv = np.array(lv, dtype=np.double)
+    rsv = np.where(hv == lv, 0, (close - lv) / (hv - lv) * 100)
+
+    k = []
+    d = []
+    j = []
+    for i in range(len(rsv)):
+        if i < n:
+            k_ = rsv[i]
+            d_ = k_
+        else:
+            k_ = (2 / 3) * k[i-1] + (1 / 3) * rsv[i]
+            d_ = (2 / 3) * d[i-1] + (1 / 3) * k_
+
+        k.append(k_)
+        d.append(d_)
+        j.append(3 * k_ - 2 * d_)
+
+    k = np.array(k, dtype=np.double)
+    d = np.array(d, dtype=np.double)
+    j = np.array(j, dtype=np.double)
+    return k, d, j
+
+
+

@@ -11,8 +11,8 @@ import czsc
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
 kline = pd.read_csv(file_kline, encoding="utf-8")
 kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
@@ -37,3 +37,13 @@ def test_macd():
 
     assert round(dea[-1], 2) == 110.62
     assert round(dea[-5], 2) == 83.51
+
+def test_jdk():
+    high = np.array([x['high'] for x in bars], dtype=np.double)
+    low = np.array([x['low'] for x in bars], dtype=np.double)
+    k, d, j = czsc.KDJ(close, high, low)
+
+    assert round(k[-1], 2) == 59.94
+    assert round(d[-1], 2) == 80.47
+    assert round(j[-1], 2) == 18.87
+
