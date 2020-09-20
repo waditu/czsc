@@ -125,7 +125,7 @@ def test_check_third_bs():
     fd1 = {"start_dt": 0, "end_dt": 1, "power": 5, "direction": "down", "high": 3, "low": 1, "mode": "bi"}
     fd2 = {"start_dt": 1, "end_dt": 2, "power": 4, "direction": "up", "high": 2, "low": 1, "mode": "bi"}
     fd3 = {"start_dt": 2, "end_dt": 3, "power": 3, "direction": "down", "high": 2, "low": 1.5, "mode": "bi"}
-    fd4 = {"start_dt": 4, "end_dt": 5, "power": 2, "direction": "up", "high": 5, "low": 1.5, "mode": "bi"}
+    fd4 = {"start_dt": 4, "end_dt": 5, "power": 9, "direction": "up", "high": 5, "low": 1.5, "mode": "bi"}
     fd5 = {"start_dt": 5, "end_dt": 6, "power": 1, "direction": "down", "high": 5, "low": 4, "mode": "bi"}
 
     third_bs = check_third_bs(fd1, fd2, fd3, fd4, fd5)
@@ -134,7 +134,7 @@ def test_check_third_bs():
     fd1 = {"start_dt": 0, "end_dt": 1, "power": 5, "direction": "up", "high": 8, "low": 7, "mode": "bi"}
     fd2 = {"start_dt": 1, "end_dt": 2, "power": 4, "direction": "down", "high": 8, "low": 6, "mode": "bi"}
     fd3 = {"start_dt": 2, "end_dt": 3, "power": 3, "direction": "up", "high": 9, "low": 6, "mode": "bi"}
-    fd4 = {"start_dt": 4, "end_dt": 5, "power": 2, "direction": "down", "high": 9, "low": 3, "mode": "bi"}
+    fd4 = {"start_dt": 4, "end_dt": 5, "power": 9, "direction": "down", "high": 9, "low": 3, "mode": "bi"}
     fd5 = {"start_dt": 5, "end_dt": 6, "power": 1, "direction": "up", "high": 5, "low": 3, "mode": "bi"}
 
     third_bs = check_third_bs(fd1, fd2, fd3, fd4, fd5)
