@@ -49,7 +49,7 @@ def get_concept_stocks(symbol, date=None):
     """
     del date
     df = pro.concept_detail(id=symbol, fields='ts_code')
-    return [x + "-E" for x in df.ts_code]
+    return list(set([x + "-E" for x in df.ts_code]))
 
 def get_index_stocks(symbol, date=None):
     """获取指数成份股
@@ -81,7 +81,7 @@ def get_index_stocks(symbol, date=None):
 
     df = pro.index_weight(index_code=symbol, start_date=start_date.strftime("%Y%m%d"),
                           end_date=end_date.strftime("%Y%m%d"))
-    return [x + "-E" for x in df.con_code]
+    return list(set([x + "-E" for x in df.con_code]))
 
 
 def _get_start_date(end_date, freq):
