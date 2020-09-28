@@ -4,7 +4,7 @@ import sys
 
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
-from czsc.signals import check_jing, check_bei_chi, check_third_bs
+from czsc.analyze import check_jing, check_bei_chi, check_third_bs
 
 
 def test_check_jing_up():

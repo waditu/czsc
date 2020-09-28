@@ -12,7 +12,7 @@ except ImportError:
     warnings.warn(ta_lib_hint)
 import pandas as pd
 import numpy as np
-from czsc.utils import plot_ka
+from czsc.utils import ka_to_image
 
 def find_zs(points):
     """输入笔或线段标记点，输出中枢识别结果"""
@@ -275,6 +275,164 @@ def get_potential_xd(bi_points):
 
     xd_p = sorted(xd_p, key=lambda x: x['dt'], reverse=False)
     return xd_p
+
+
+def check_jing(fd1, fd2, fd3, fd4, fd5):
+    """检查最近5个分段走势是否构成井
+
+    井的定义：
+        12345，五段，是构造井的基本形态，形成井的位置肯定是5，而5出井的
+        前提条件是对于向上5至少比3和1其中之一高，向下反过来; 并且，234
+        构成一个中枢。
+
+        井只有两类，大井和小井（以向上为例）：
+        大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5；
+        小井对应的形式是：
+            1：12345向上，3最高5次之1最低，力度上5的力度比1小，注意这时候
+               不需要再考虑5和3的关系了，因为5比3低，所以不需要考虑力度。
+            2：12345向上，5最高3次之1最低，力度上1大于5，5大于3。
+
+        小井的构造，关键是满足5一定至少大于1、3中的一个。
+        注意有一种情况不归为井：就是12345向上，1的力度最小，5的力度次之，3的力度最大此类不算井，
+        因为345后面必然还有走势在67的时候才能再判断，个中道理各位好好体会。
+
+
+    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
+
+    fd = {
+        "start_dt": "",
+        "end_dt": "",
+        "power": 0,         # 力度
+        "direction": "up",
+        "high": 0,
+        "low": 0,
+        "mode": "bi"
+    }
+
+    假定最近一段走势为第N段；则 fd1 为第N-4段走势, fd2为第N-3段走势,
+    fd3为第N-2段走势, fd4为第N-1段走势, fd5为第N段走势
+
+    """
+    assert fd1['direction'] == fd3['direction'] == fd5['direction']
+    assert fd2['direction'] == fd4['direction']
+    direction = fd1['direction']
+
+    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
+    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
+
+    jing = {"jing": "没有出井", "notes": ""}
+
+    # 1的力度最小，5的力度次之，3的力度最大，此类不算井
+    if fd1['power'] < fd5['power'] < fd3['power']:
+        jing['notes'] = "1的力度最小，5的力度次之，3的力度最大，此类不算井"
+        return jing
+
+    if zs_d < zs_g:     # 234有中枢的情况
+        if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
+
+            # 大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5
+            if fd5["high"] > fd3['high'] > fd1['high'] and fd5['power'] < fd3['power'] < fd1['power']:
+                jing = {"jing": "向上大井", "notes": "12345向上，5最高3次之1最低，力度上1大于3，3大于5"}
+
+            # 第一种小井：12345向上，3最高5次之1最低，力度上5的力度比1小
+            if fd1['high'] < fd5['high'] < fd3['high'] and fd5['power'] < fd1['power']:
+                jing = {"jing": "向上小井", "notes": "12345向上，3最高5次之1最低，力度上5的力度比1小"}
+
+            # 第二种小井：12345向上，5最高3次之1最低，力度上1大于5，5大于3
+            if fd5["high"] > fd3['high'] > fd1['high'] and fd1['power'] > fd5['power'] > fd3['power']:
+                jing = {"jing": "向上小井", "notes": "12345向上，5最高3次之1最低，力度上1大于5，5大于3"}
+
+        if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
+
+            # 大井对应的形式是：12345向下，5最低3次之1最高，力度上1大于3，3大于5
+            if fd5['low'] < fd3['low'] < fd1['low'] and fd5['power'] < fd3['power'] < fd1['power']:
+                jing = {"jing": "向下大井", "notes": "12345向下，5最低3次之1最高，力度上1大于3，3大于5"}
+
+            # 第一种小井：12345向下，3最低5次之1最高，力度上5的力度比1小
+            if fd1["low"] > fd5['low'] > fd3['low'] and fd5['power'] < fd1['power']:
+                jing = {"jing": "向下小井", "notes": "12345向下，3最低5次之1最高，力度上5的力度比1小"}
+
+            # 第二种小井：12345向下，5最低3次之1最高，力度上1大于5，5大于3
+            if fd5['low'] < fd3['low'] < fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
+                jing = {"jing": "向下小井", "notes": "12345向下，5最低3次之1最高，力度上1大于5，5大于3"}
+    else:
+        # 第三种小井：12345类趋势，力度依次降低，可以看成小井
+        if fd1['power'] > fd3['power'] > fd5['power']:
+            if direction == 'up' and fd5["high"] > fd3['high'] > fd1['high']:
+                jing = {"jing": "向上小井", "notes": "12345类上涨趋势，力度依次降低"}
+
+            if direction == 'down' and fd5["low"] < fd3['low'] < fd1['low']:
+                jing = {"jing": "向下小井", "notes": "12345类下跌趋势，力度依次降低"}
+
+    return jing
+
+
+def check_bei_chi(fd1, fd2, fd3, fd4, fd5):
+    """检查最近5个分段走势是否有背驰
+
+    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
+
+    fd = {
+        "start_dt": "",
+        "end_dt": "",
+        "power": 0,         # 力度
+        "direction": "up",
+        "high": 0,
+        "low": 0,
+        "mode": "bi"
+    }
+
+    """
+    assert fd1['direction'] == fd3['direction'] == fd5['direction']
+    assert fd2['direction'] == fd4['direction']
+    direction = fd1['direction']
+
+    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
+    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
+
+    bc = {"bc": "没有背驰", "notes": ""}
+    if max(fd5['power'], fd3['power'], fd1['power']) == fd5['power']:
+        bc = {"bc": "没有背驰", "notes": "5的力度最大，没有背驰"}
+        return bc
+
+    if zs_d < zs_g:
+        if fd5['power'] < fd1['power']:
+            if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
+                bc = {"bc": "向上趋势背驰", "notes": "12345向上，234构成中枢，5最高，力度上1大于5"}
+
+            if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
+                bc = {"bc": "向下趋势背驰", "notes": "12345向下，234构成中枢，5最低，力度上1大于5"}
+    else:
+        if fd5['power'] < fd3['power']:
+            if direction == 'up' and fd5["high"] > fd3['high']:
+                bc = {"bc": "向上盘整背驰", "notes": "12345向上，234不构成中枢，5最高，力度上1大于5"}
+
+            if direction == 'down' and fd5["low"] < fd3['low']:
+                bc = {"bc": "向下盘整背驰", "notes": "12345向下，234不构成中枢，5最低，力度上1大于5"}
+
+    return bc
+
+
+def check_third_bs(fd1, fd2, fd3, fd4, fd5):
+    """输入5段走势，判断是否存在第三类买卖点"""
+    zs_d = max(fd1['low'], fd2['low'], fd3['low'])
+    zs_g = min(fd1['high'], fd2['high'], fd3['high'])
+
+    third_bs = {"third_bs": "没有第三类买卖点", "notes": ""}
+
+    if max(fd1['power'], fd2['power'], fd3['power'], fd4['power'], fd5['power']) != fd4['power']:
+        third_bs = {"third_bs": "没有第三类买卖点", "notes": "第四段不是力度最大的段"}
+        return third_bs
+
+    if zs_g < zs_d:
+        third_bs = {"third_bs": "没有第三类买卖点", "notes": "前三段不构成中枢，无第三类买卖点"}
+    else:
+        if fd4['low'] < zs_d and fd5['high'] < zs_d:
+            third_bs = {"third_bs": "三卖", "notes": "前三段构成中枢，第四段向下离开，第五段不回中枢"}
+
+        if fd4['high'] > zs_g and fd5['low'] > zs_g:
+            third_bs = {"third_bs": "三买", "notes": "前三段构成中枢，第四段向上离开，第五段不回中枢"}
+    return third_bs
 
 
 class KlineAnalyze:
@@ -739,7 +897,7 @@ class KlineAnalyze:
             图片分辨率
         :return:
         """
-        plot_ka(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
+        ka_to_image(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
 
     def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9, last_index: int = None):
         """判断 zs1 对 zs2 是否有背驰
