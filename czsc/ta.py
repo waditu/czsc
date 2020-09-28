@@ -93,8 +93,8 @@ def KDJ(close: np.array, high: np.array, low: np.array):
         hv.append(max(h_))
         lv.append(min(l_))
 
-    hv = np.array(hv, dtype=np.double)
-    lv = np.array(lv, dtype=np.double)
+    hv = np.around(hv, decimals=2)
+    lv = np.around(lv, decimals=2)
     rsv = np.where(hv == lv, 0, (close - lv) / (hv - lv) * 100)
 
     k = []
