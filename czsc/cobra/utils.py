@@ -61,6 +61,7 @@ def kdj_gold_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
         traceback.print_exc()
         return False
 
+
 def kdj_dead_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
     """输入K线，判断KDJ是否死叉
 

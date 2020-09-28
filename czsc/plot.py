@@ -4,11 +4,10 @@
 
 """
 
-from pyecharts.options import HeatMapItem
 from pyecharts import options as opts
 from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid
 from pyecharts.commons.utils import JsCode
-from typing import List, Callable
+from typing import List
 
 
 def heat_map(data: List[dict],
@@ -33,7 +32,7 @@ def heat_map(data: List[dict],
     :return: 图表
     """
 
-    value = [HeatMapItem(value=[s['x'], s['y'], s['heat']]) for s in data]
+    value = [opts.HeatMapItem(value=[s['x'], s['y'], s['heat']]) for s in data]
     heat = [s['heat'] for s in data]
 
     if not x_label:
