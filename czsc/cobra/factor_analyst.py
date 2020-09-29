@@ -5,6 +5,10 @@ from typing import List
 def cal_nbar_percentile(k: dict, kn: List[dict], n: int) -> float:
     """计算 N 周期区间百分位
 
+    假设选股策略确认选股时间为 T，股价为 P，T+N 区间内的K线最高价为 MAX_P，最低价为 MIN_P，则
+    N周期区间百分位 = (MAX_P - P) / (MAX_P - MIN_P) * 100;
+    N周期区间百分位值域为(0, 100)，值越大，说明离区间最大值越远，对于做多交易而言有更高的安全性。
+
     :param k: dict
         信号出现时的 K 线，如：
         {'symbol': '000001.SH',
@@ -45,11 +49,15 @@ def cal_nbar_percentile(k: dict, kn: List[dict], n: int) -> float:
     if max_p == min_p:
         return 0
     else:
-        percentile = round((c-min_p) / (max_p-min_p) * 100, 2)
+        percentile = round((max_p-c) / (max_p-min_p) * 100, 2)
         return percentile
 
 def cal_nbar_income(k: dict, kn: List[dict], n: int) -> float:
     """计算 N 周期区间收益
+
+    假设选股策略确认选股时间为 T，股价为 P，第T+N 根K线收盘价为 C，则
+    N周期绝对收益 = (C - P) / P * 100;
+    N周期绝对收益值域为(-100, +inf)，值越大，说明绝对收益越大，对于做多交易而言有更高的收益率。
 
     :param k: dict
         信号出现时的 K 线，如：
