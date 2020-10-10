@@ -11,8 +11,8 @@ from czsc.cobra.factor_analyst import cal_nbar_income, cal_nbar_percentile
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-cur_path = os.path.split(os.path.realpath(__file__))[0]
-# cur_path = "./test"
+# cur_path = os.path.split(os.path.realpath(__file__))[0]
+cur_path = "./test"
 
 
 def test_nbar():
@@ -29,7 +29,7 @@ def test_nbar():
     assert ni == 3.91
 
     np = cal_nbar_percentile(k1, kn, n)
-    assert np == 12.94
+    assert np == 87.06
 
 
 

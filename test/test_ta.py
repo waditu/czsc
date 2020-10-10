@@ -19,11 +19,13 @@ kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
 bars = kline.to_dict("records")
 close = np.array([x['close'] for x in bars], dtype=np.double)
 
+
 def test_sma():
     ma5 = czsc.SMA(close, 5)
     assert len(ma5) == len(close)
     assert round(ma5[-1], 2) == 3362.53
     assert round(ma5[-2], 2) == 3410.62
+
 
 def test_macd():
     diff, dea, macd = czsc.MACD(close)
@@ -38,6 +40,7 @@ def test_macd():
     assert round(dea[-1], 2) == 110.62
     assert round(dea[-5], 2) == 83.51
 
+
 def test_jdk():
     high = np.array([x['high'] for x in bars], dtype=np.double)
     low = np.array([x['low'] for x in bars], dtype=np.double)
@@ -46,4 +49,3 @@ def test_jdk():
     assert round(k[-1], 2) == 59.94
     assert round(d[-1], 2) == 80.47
     assert round(j[-1], 2) == 18.87
-
