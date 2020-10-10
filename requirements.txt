@@ -1,10 +1,10 @@
-requests~=2.23.0
+requests>=2.23.0
 pyecharts>=1.8.1
-mplfinance~=0.12.4a0
+mplfinance>=0.12.4a0
 tqdm
 pandas>=1.1.0
 tushare>=1.2.60
-matplotlib~=3.0.3
+matplotlib>=3.0.3
 zb>=0.0.14
 numpy>=1.16.2
 numba>=0.43.1
