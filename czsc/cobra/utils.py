@@ -50,6 +50,9 @@ def kdj_gold_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
 
         k, d, j = KDJ(close=close, high=high, low=low)
 
+        if d[-1] > 30:
+            return False
+
         if not just and j[-1] > k[-1] > d[-1]:
             return True
         elif just and j[-1] > k[-1] > d[-1] and not (j[-2] > k[-2] > d[-2]):
@@ -81,6 +84,9 @@ def kdj_dead_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
             low = kline.low.values
 
         k, d, j = KDJ(close=close, high=high, low=low)
+
+        if d[-1] < 70:
+            return False
 
         if not just and j[-1] < k[-1] < d[-1]:
             return True

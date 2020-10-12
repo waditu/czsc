@@ -12,8 +12,9 @@ from czsc.cobra.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
+# cur_path = "./test"
+
 
 def test_kdj_cross():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
