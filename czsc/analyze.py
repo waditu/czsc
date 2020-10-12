@@ -14,6 +14,7 @@ import pandas as pd
 import numpy as np
 from czsc.utils import ka_to_image
 
+
 def find_zs(points):
     """输入笔或线段标记点，输出中枢识别结果"""
     if len(points) < 5:
@@ -126,8 +127,8 @@ def find_zs(points):
 def has_gap(k1, k2, min_gap=0.002):
     """判断 k1, k2 之间是否有缺口"""
     assert k2['dt'] > k1['dt']
-    if k1['high'] < k2['low'] * (1-min_gap) \
-            or k2['high'] < k1['low'] * (1-min_gap):
+    if k1['high'] < k2['low'] * (1 - min_gap) \
+            or k2['high'] < k1['low'] * (1 - min_gap):
         return True
     else:
         return False
@@ -148,7 +149,7 @@ def make_standard_seq(bi_seq):
     else:
         raise ValueError
 
-    raw_seq = [{"start_dt": bi_seq[i]['dt'], "end_dt": bi_seq[i+1]['dt'],
+    raw_seq = [{"start_dt": bi_seq[i]['dt'], "end_dt": bi_seq[i + 1]['dt'],
                 'high': max(bi_seq[i]['bi'], bi_seq[i + 1]['bi']),
                 'low': min(bi_seq[i]['bi'], bi_seq[i + 1]['bi'])}
                for i in range(1, len(bi_seq), 2) if i <= len(bi_seq) - 2]
@@ -219,7 +220,7 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
 
         standard_bi_seq2_g = []
         for i in range(1, len(standard_bi_seq2) - 1):
-            bi1, bi2, bi3 = standard_bi_seq2[i-1: i+2]
+            bi1, bi2, bi3 = standard_bi_seq2[i - 1: i + 2]
             if bi1['high'] < bi2['high'] > bi3['high']:
                 standard_bi_seq2_g.append(bi2)
 
@@ -240,7 +241,7 @@ def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
 
         standard_bi_seq2_d = []
         for i in range(1, len(standard_bi_seq2) - 1):
-            bi1, bi2, bi3 = standard_bi_seq2[i-1: i+2]
+            bi1, bi2, bi3 = standard_bi_seq2[i - 1: i + 2]
             if bi1['low'] > bi2['low'] < bi3['low']:
                 standard_bi_seq2_d.append(bi2)
 
@@ -322,41 +323,40 @@ def check_jing(fd1, fd2, fd3, fd4, fd5):
 
     jing = {"jing": "没有出井", "notes": ""}
 
-    # 1的力度最小，5的力度次之，3的力度最大，此类不算井
     if fd1['power'] < fd5['power'] < fd3['power']:
         jing['notes'] = "1的力度最小，5的力度次之，3的力度最大，此类不算井"
         return jing
 
-    if zs_d < zs_g:     # 234有中枢的情况
+    if zs_d < zs_g:  # 234有中枢的情况
         if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
 
-            # 大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5
+            # 大井对应的形式
             if fd5["high"] > fd3['high'] > fd1['high'] and fd5['power'] < fd3['power'] < fd1['power']:
                 jing = {"jing": "向上大井", "notes": "12345向上，5最高3次之1最低，力度上1大于3，3大于5"}
 
-            # 第一种小井：12345向上，3最高5次之1最低，力度上5的力度比1小
+            # 第一种小井
             if fd1['high'] < fd5['high'] < fd3['high'] and fd5['power'] < fd1['power']:
                 jing = {"jing": "向上小井", "notes": "12345向上，3最高5次之1最低，力度上5的力度比1小"}
 
-            # 第二种小井：12345向上，5最高3次之1最低，力度上1大于5，5大于3
+            # 第二种小井
             if fd5["high"] > fd3['high'] > fd1['high'] and fd1['power'] > fd5['power'] > fd3['power']:
                 jing = {"jing": "向上小井", "notes": "12345向上，5最高3次之1最低，力度上1大于5，5大于3"}
 
         if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
 
-            # 大井对应的形式是：12345向下，5最低3次之1最高，力度上1大于3，3大于5
+            # 大井对应的形式
             if fd5['low'] < fd3['low'] < fd1['low'] and fd5['power'] < fd3['power'] < fd1['power']:
                 jing = {"jing": "向下大井", "notes": "12345向下，5最低3次之1最高，力度上1大于3，3大于5"}
 
-            # 第一种小井：12345向下，3最低5次之1最高，力度上5的力度比1小
+            # 第一种小井
             if fd1["low"] > fd5['low'] > fd3['low'] and fd5['power'] < fd1['power']:
                 jing = {"jing": "向下小井", "notes": "12345向下，3最低5次之1最高，力度上5的力度比1小"}
 
-            # 第二种小井：12345向下，5最低3次之1最高，力度上1大于5，5大于3
+            # 第二种小井
             if fd5['low'] < fd3['low'] < fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
                 jing = {"jing": "向下小井", "notes": "12345向下，5最低3次之1最高，力度上1大于5，5大于3"}
     else:
-        # 第三种小井：12345类趋势，力度依次降低，可以看成小井
+        # 第三种小井
         if fd1['power'] > fd3['power'] > fd5['power']:
             if direction == 'up' and fd5["high"] > fd3['high'] > fd1['high']:
                 jing = {"jing": "向上小井", "notes": "12345类上涨趋势，力度依次降低"}
@@ -745,8 +745,8 @@ class KlineAnalyze:
             return
 
         keep_xd_index = []
-        for i in range(1, len(self.xd_list)-2):
-            xd1, xd2, xd3, xd4 = self.xd_list[i-1: i+3]
+        for i in range(1, len(self.xd_list) - 2):
+            xd1, xd2, xd3, xd4 = self.xd_list[i - 1: i + 3]
             bi_seq1 = [x for x in self.bi_list if xd2['dt'] >= x['dt'] >= xd1['dt']]
             bi_seq2 = [x for x in self.bi_list if xd3['dt'] >= x['dt'] >= xd2['dt']]
             bi_seq3 = [x for x in self.bi_list if xd4['dt'] >= x['dt'] >= xd3['dt']]
@@ -1075,9 +1075,9 @@ class KlineAnalyze:
             raise ValueError
 
         res = []
-        for i in range(len(points)-1):
+        for i in range(len(points) - 1):
             p1 = points[i]
-            p2 = points[i+1]
+            p2 = points[i + 1]
             direction = "up" if p1[mode] < p2[mode] else "down"
             power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode=mode, direction=direction)
             res.append({
