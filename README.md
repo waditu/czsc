@@ -47,7 +47,7 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 ## 使用方法
 
-目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `chan.analyze` 中；
+目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `czsc.analyze` 中；
 
 使用 Tushare Pro / 聚宽 / 掘金 / 天勤 的数据进行缠中说禅技术分析结果展示: https://github.com/zengbin93/czsc_web_ui
 
