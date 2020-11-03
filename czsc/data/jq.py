@@ -146,6 +146,8 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     >>> end_date = datetime.strptime("20200719", "%Y%m%d")
     >>> df1 = get_kline(symbol="000001.XSHG", start_date=start_date, end_date=end_date, freq="1min")
     >>> df2 = get_kline(symbol="000001.XSHG", end_date=end_date, freq="1min", count=1000)
+    >>> df3 = get_kline(symbol="000001.XSHG", start_date='20200701', end_date='20200719', freq="1min")
+    >>> df4 = get_kline(symbol="000001.XSHG", end_date='20200719', freq="1min", count=1000)
     """
     if count and count > 5000:
         warnings.warn(f"count={count}, 超过5000的最大值限制，仅返回最后5000条记录")
@@ -153,7 +155,9 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
     freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
                     "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
+    end_date = pd.to_datetime(end_date)
     if start_date:
+        start_date = pd.to_datetime(start_date)
         data = {
             "method": "get_price_period",
             "token": get_token(),
@@ -202,6 +206,9 @@ def download_kline(symbol, freq, start_date, end_date, delta, save=True):
     >>> end_date = datetime.strptime("20200719", "%Y%m%d")
     >>> df = download_kline("000001.XSHG", "1min", start_date, end_date, delta=timedelta(days=10), save=False)
     """
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
+
     data = []
     end_dt = start_date + delta
     print("开始下载数据：{} - {} - {}".format(symbol, start_date, end_date))
