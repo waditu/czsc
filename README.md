@@ -54,7 +54,7 @@ pip install czsc -U -i https://pypi.python.org/simple
 ## examples
 
 * [pyecharts 可视化分析结果](https://github.com/zengbin93/czsc/blob/master/examples/pyecharts%20%E5%8F%AF%E8%A7%86%E5%8C%96%E5%88%86%E6%9E%90%E7%BB%93%E6%9E%9C.ipynb)
-* [使用 czsc 进行选股](https://github.com/zengbin93/czsc/blob/master/examples/%E4%BD%BF%E7%94%A8CZSC%E8%BF%9B%E8%A1%8C%E9%80%89%E8%82%A1.ipynb)
+* [使用CZSC进行三买选股](https://github.com/zengbin93/czsc/blob/master/examples/%E4%BD%BF%E7%94%A8CZSC%E8%BF%9B%E8%A1%8C%E4%B8%89%E4%B9%B0%E9%80%89%E8%82%A1.ipynb)
 
 
 ## 结合 tushare.pro 的数据使用
