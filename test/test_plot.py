@@ -1,19 +1,12 @@
 # coding: utf-8
-import sys
-import warnings
-
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
 import os
 import pandas as pd
 import random
-import czsc
-from czsc.utils import plot
+from czsc.utils import echarts_plot as plot
+from czsc.analyze import KlineAnalyze
 
-warnings.warn("czsc version is {}".format(czsc.__version__))
+cur_path = os.path.split(os.path.realpath(__file__))[0]
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
 
 def test_heat_map():
     data = [{"x": "{}hour".format(i), "y": "{}day".format(j), "heat": random.randint(0, 50)}
@@ -28,7 +21,7 @@ def test_kline_pro():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
     bars = kline.to_dict("records")
-    ka = czsc.KlineAnalyze(bars)
+    ka = KlineAnalyze(bars)
 
     bs = []
     for x in ka.xd_list:
@@ -38,6 +31,6 @@ def test_kline_pro():
             mark = "sell"
         bs.append({"dt": x['dt'], "mark": mark, mark: x['xd']})
 
-    chart = plot.kline_pro(ka.kline_raw, ma=ka.ma, macd=ka.macd, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list, bs=bs)
+    chart = plot.kline_pro(ka.kline_raw, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list, bs=bs)
     chart.render()
 
