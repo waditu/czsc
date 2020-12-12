@@ -18,19 +18,19 @@ def format_bi_points(bi_points):
 
 def use_kline_analyze():
     kline = get_kline(symbol="000001.XSHG", end_date=datetime.strptime("20200830", "%Y%m%d"), freq="D", count=5000)
-    ka = KlineAnalyze(kline, name="日线", bi_mode="new", max_xd_len=20, ma_params=(5, 34, 120), verbose=False)
+    ka = KlineAnalyze(kline, name="日线", bi_mode="new", use_xd=True, max_count=2000, ma_params=(5, 34, 120), verbose=False)
     print("分型识别结果：", ka.fx_list[-3:])
     print("笔识别结果：", ka.bi_list[-3:])
     print("线段识别结果：", ka.xd_list[-3:])
 
     kline = get_kline(symbol="300803.XSHE", end_date=datetime.strptime("20200830", "%Y%m%d"), freq="30min", count=5000)
-    ka = KlineAnalyze(kline, name="30分钟", bi_mode="new", max_xd_len=20, ma_params=(5, 34, 120), verbose=False)
+    ka = KlineAnalyze(kline, name="30分钟", bi_mode="new", use_xd=True, max_count=2000, ma_params=(5, 34, 120), verbose=False)
     print("分型识别结果：", ka.fx_list[-3:])
     print("笔识别结果：", ka.bi_list[-3:])
     print("线段识别结果：", ka.xd_list[-3:])
 
     kline = get_kline(symbol="300803.XSHE", end_date=datetime.strptime("20200830", "%Y%m%d"), freq="5min", count=5000)
-    ka = KlineAnalyze(kline, name="5分钟",  bi_mode="new", max_xd_len=20, ma_params=(5, 34, 120), verbose=False)
+    ka = KlineAnalyze(kline, name="5分钟",  bi_mode="new", use_xd=True, max_count=2000, ma_params=(5, 34, 120), verbose=False)
     print("分型识别结果：", ka.fx_list[-3:])
     print("笔识别结果：", ka.bi_list[-3:])
     print("线段识别结果：", ka.xd_list[-3:])
