@@ -8,6 +8,8 @@ from pyecharts import options as opts
 from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid
 from pyecharts.commons.utils import JsCode
 from typing import List
+import numpy as np
+from .ta import SMA, MACD
 
 
 def heat_map(data: List[dict],
@@ -58,8 +60,6 @@ def heat_map(data: List[dict],
 
 
 def kline_pro(kline: List[dict],
-              ma: List[dict],
-              macd: List[dict],
               fx: List[dict] = None,
               bi: List[dict] = None,
               xd: List[dict] = None,
@@ -70,8 +70,6 @@ def kline_pro(kline: List[dict],
     """绘制缠中说禅K线分析结果
 
     :param kline: K线
-    :param ma: 均线
-    :param macd: MACD
     :param fx: 分型识别结果
     :param bi: 笔识别结果
     :param xd: 线段识别结果
@@ -107,8 +105,9 @@ def kline_pro(kline: List[dict],
 
     axis_pointer_opts = opts.AxisPointerOpts(is_show=True, link=[{"xAxisIndex": "all"}])
 
-    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2])
-    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%", pos_bottom="0%")
+    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2], range_start=80, range_end=100)
+    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%",
+                                  pos_bottom="0%", range_start=80, range_end=100)
 
     yaxis_opts = opts.AxisOpts(is_scale=True, axislabel_opts=opts.LabelOpts(color="#c7c7c7", font_size=8, position="inside"))
 
@@ -135,22 +134,32 @@ def kline_pro(kline: List[dict],
     # 数据预处理
     # ------------------------------------------------------------------------------------------------------------------
     dts = [x['dt'] for x in kline]
-    k_data = [[x['open'], x['close'], x['low'], x['high']] for x in kline]
+    # k_data = [[x['open'], x['close'], x['low'], x['high']] for x in kline]
+    k_data = [opts.CandleStickItem(name=i, value=[x['open'], x['close'], x['low'], x['high']])
+              for i, x in enumerate(kline)]
 
     vol = []
-    for row in kline:
+    for i, row in enumerate(kline):
         item_style = red_item_style if row['close'] > row['open'] else green_item_style
-        bar = opts.BarItem(value=row['vol'], itemstyle_opts=item_style, label_opts=label_not_show_opts)
+        bar = opts.BarItem(name=i, value=row['vol'], itemstyle_opts=item_style, label_opts=label_not_show_opts)
         vol.append(bar)
 
+    close = np.array([x['close'] for x in kline], dtype=np.double)
+    diff, dea, macd = MACD(close)
+
+    ma5 = SMA(close, timeperiod=5)
+    ma34 = SMA(close, timeperiod=34)
+    ma233 = SMA(close, timeperiod=233)
+
     macd_bar = []
-    for row in macd:
-        item_style = red_item_style if row['macd'] > 0 else green_item_style
-        bar = opts.BarItem(value=round(row['macd'], 4), itemstyle_opts=item_style, label_opts=label_not_show_opts)
+    for i, v in enumerate(macd.tolist()):
+        item_style = red_item_style if v > 0 else green_item_style
+        bar = opts.BarItem(name=i, value=round(v, 4), itemstyle_opts=item_style,
+                           label_opts=label_not_show_opts)
         macd_bar.append(bar)
 
-    diff = [round(x['diff'], 4) for x in macd]
-    dea = [round(x['dea'], 4) for x in macd]
+    diff = diff.round(4)
+    dea = dea.round(4)
 
     # K 线主图
     # ------------------------------------------------------------------------------------------------------------------
@@ -174,11 +183,10 @@ def kline_pro(kline: List[dict],
     chart_ma = Line()
     chart_ma.add_xaxis(xaxis_data=dts)
 
-    ma_keys = [x for x in ma[0].keys() if "ma" in x][:3]
+    ma_keys = {"MA5": ma5, "MA34": ma34, "MA233": ma233}
     ma_colors = ["#39afe6", "#da6ee8", "#00940b"]
-    for i, k in enumerate(ma_keys):
-        y_data = [x[k] for x in ma]
-        chart_ma.add_yaxis(series_name=k.upper(), y_axis=y_data, is_smooth=True,
+    for i, (name, ma) in enumerate(ma_keys.items()):
+        chart_ma.add_yaxis(series_name=name, y_axis=ma, is_smooth=True,
                            is_selected=False, symbol_size=0, label_opts=label_not_show_opts,
                            linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color=ma_colors[i]))
 

@@ -5,14 +5,13 @@ import warnings
 try:
     import talib as ta
 except ImportError:
-    from czsc import ta
-
     ta_lib_hint = "没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib " \
                   "下载对应版本安装，预计分析速度提升2倍"
     warnings.warn(ta_lib_hint)
+    from .utils import ta
 import pandas as pd
 import numpy as np
-from czsc.utils import ka_to_image
+from .utils.plot import ka_to_image
 
 
 def find_zs(points):
@@ -134,126 +133,6 @@ def has_gap(k1, k2, min_gap=0.002):
         return False
 
 
-def make_standard_seq(bi_seq):
-    """计算标准特征序列
-
-    :param bi_seq: list of dict
-        笔标记序列
-    :return: list of dict
-        标准特征序列
-    """
-    if bi_seq[0]['fx_mark'] == 'd':
-        direction = "up"
-    elif bi_seq[0]['fx_mark'] == 'g':
-        direction = "down"
-    else:
-        raise ValueError
-
-    raw_seq = [{"start_dt": bi_seq[i]['dt'], "end_dt": bi_seq[i + 1]['dt'],
-                'high': max(bi_seq[i]['bi'], bi_seq[i + 1]['bi']),
-                'low': min(bi_seq[i]['bi'], bi_seq[i + 1]['bi'])}
-               for i in range(1, len(bi_seq), 2) if i <= len(bi_seq) - 2]
-
-    seq = []
-    for row in raw_seq:
-        if not seq:
-            seq.append(row)
-            continue
-        last = seq[-1]
-        cur_h, cur_l = row['high'], row['low']
-        last_h, last_l = last['high'], last['low']
-
-        # 左包含 or 右包含
-        if (cur_h <= last_h and cur_l >= last_l) or (cur_h >= last_h and cur_l <= last_l):
-            seq.pop(-1)
-            # 有包含关系，按方向分别处理
-            if direction == "up":
-                last_h = max(last_h, cur_h)
-                last_l = max(last_l, cur_l)
-            elif direction == "down":
-                last_h = min(last_h, cur_h)
-                last_l = min(last_l, cur_l)
-            else:
-                raise ValueError
-            seq.append({"start_dt": last['start_dt'], "end_dt": row['end_dt'], "high": last_h, "low": last_l})
-        else:
-            seq.append(row)
-    return seq
-
-
-def is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
-    """判断线段标记是否有效（第二个线段标记）
-
-    :param bi_seq1: list of dict
-        第一个线段标记到第二个线段标记之间的笔序列
-    :param bi_seq2:
-        第二个线段标记到第三个线段标记之间的笔序列
-    :param bi_seq3:
-        第三个线段标记之后的笔序列
-    :return:
-    """
-    assert bi_seq2[0]['dt'] == bi_seq1[-1]['dt'] and bi_seq3[0]['dt'] == bi_seq2[-1]['dt']
-
-    standard_bi_seq1 = make_standard_seq(bi_seq1)
-    if len(standard_bi_seq1) == 0 or len(bi_seq2) < 4:
-        return False
-
-    # 第一种情况（向下线段）
-    # if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] >= standard_bi_seq1[-1]['low']:
-    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] >= min([x['low'] for x in standard_bi_seq1]):
-        if bi_seq2[-1]['bi'] < bi_seq2[1]['bi']:
-            return False
-
-    # 第一种情况（向上线段）
-    # if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] <= standard_bi_seq1[-1]['high']:
-    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] <= max([x['high'] for x in standard_bi_seq1]):
-        if bi_seq2[-1]['bi'] > bi_seq2[1]['bi']:
-            return False
-
-    # 第二种情况（向下线段）
-    # if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < standard_bi_seq1[-1]['low']:
-    if bi_seq2[0]['fx_mark'] == 'd' and bi_seq2[1]['bi'] < min([x['low'] for x in standard_bi_seq1]):
-        bi_seq2.extend(bi_seq3[1:])
-        standard_bi_seq2 = make_standard_seq(bi_seq2)
-        if len(standard_bi_seq2) < 3:
-            return False
-
-        standard_bi_seq2_g = []
-        for i in range(1, len(standard_bi_seq2) - 1):
-            bi1, bi2, bi3 = standard_bi_seq2[i - 1: i + 2]
-            if bi1['high'] < bi2['high'] > bi3['high']:
-                standard_bi_seq2_g.append(bi2)
-
-                # 特征序列顶分型完全在底分型区间，返回 False
-                if min(bi1['low'], bi2['low'], bi3['low']) < bi_seq2[0]['bi']:
-                    return False
-
-        if len(standard_bi_seq2_g) == 0:
-            return False
-
-    # 第二种情况（向上线段）
-    # if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] > standard_bi_seq1[-1]['high']:
-    if bi_seq2[0]['fx_mark'] == 'g' and bi_seq2[1]['bi'] > max([x['high'] for x in standard_bi_seq1]):
-        bi_seq2.extend(bi_seq3[1:])
-        standard_bi_seq2 = make_standard_seq(bi_seq2)
-        if len(standard_bi_seq2) < 3:
-            return False
-
-        standard_bi_seq2_d = []
-        for i in range(1, len(standard_bi_seq2) - 1):
-            bi1, bi2, bi3 = standard_bi_seq2[i - 1: i + 2]
-            if bi1['low'] > bi2['low'] < bi3['low']:
-                standard_bi_seq2_d.append(bi2)
-
-                # 特征序列的底分型在顶分型区间，返回 False
-                if max(bi1['high'], bi2['high'], bi3['high']) > bi_seq2[0]['bi']:
-                    return False
-
-        if len(standard_bi_seq2_d) == 0:
-            return False
-    return True
-
-
 def get_potential_xd(bi_points):
     """获取潜在线段标记点
 
@@ -278,173 +157,21 @@ def get_potential_xd(bi_points):
     return xd_p
 
 
-def check_jing(fd1, fd2, fd3, fd4, fd5):
-    """检查最近5个分段走势是否构成井
-
-    井的定义：
-        12345，五段，是构造井的基本形态，形成井的位置肯定是5，而5出井的
-        前提条件是对于向上5至少比3和1其中之一高，向下反过来; 并且，234
-        构成一个中枢。
-
-        井只有两类，大井和小井（以向上为例）：
-        大井对应的形式是：12345向上，5最高3次之1最低，力度上1大于3，3大于5；
-        小井对应的形式是：
-            1：12345向上，3最高5次之1最低，力度上5的力度比1小，注意这时候
-               不需要再考虑5和3的关系了，因为5比3低，所以不需要考虑力度。
-            2：12345向上，5最高3次之1最低，力度上1大于5，5大于3。
-
-        小井的构造，关键是满足5一定至少大于1、3中的一个。
-        注意有一种情况不归为井：就是12345向上，1的力度最小，5的力度次之，3的力度最大此类不算井，
-        因为345后面必然还有走势在67的时候才能再判断，个中道理各位好好体会。
-
-
-    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
-
-    fd = {
-        "start_dt": "",
-        "end_dt": "",
-        "power": 0,         # 力度
-        "direction": "up",
-        "high": 0,
-        "low": 0,
-        "mode": "bi"
-    }
-
-    假定最近一段走势为第N段；则 fd1 为第N-4段走势, fd2为第N-3段走势,
-    fd3为第N-2段走势, fd4为第N-1段走势, fd5为第N段走势
-
-    """
-    assert fd1['direction'] == fd3['direction'] == fd5['direction']
-    assert fd2['direction'] == fd4['direction']
-    direction = fd1['direction']
-
-    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
-    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
-
-    jing = {"jing": "没有出井", "notes": ""}
-
-    if fd1['power'] < fd5['power'] < fd3['power']:
-        jing['notes'] = "1的力度最小，5的力度次之，3的力度最大，此类不算井"
-        return jing
-
-    if zs_d < zs_g:  # 234有中枢的情况
-        if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
-
-            # 大井对应的形式
-            if fd5["high"] > fd3['high'] > fd1['high'] and fd5['power'] < fd3['power'] < fd1['power']:
-                jing = {"jing": "向上大井", "notes": "12345向上，5最高3次之1最低，力度上1大于3，3大于5"}
-
-            # 第一种小井
-            if fd1['high'] < fd5['high'] < fd3['high'] and fd5['power'] < fd1['power']:
-                jing = {"jing": "向上小井", "notes": "12345向上，3最高5次之1最低，力度上5的力度比1小"}
-
-            # 第二种小井
-            if fd5["high"] > fd3['high'] > fd1['high'] and fd1['power'] > fd5['power'] > fd3['power']:
-                jing = {"jing": "向上小井", "notes": "12345向上，5最高3次之1最低，力度上1大于5，5大于3"}
-
-        if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
-
-            # 大井对应的形式
-            if fd5['low'] < fd3['low'] < fd1['low'] and fd5['power'] < fd3['power'] < fd1['power']:
-                jing = {"jing": "向下大井", "notes": "12345向下，5最低3次之1最高，力度上1大于3，3大于5"}
-
-            # 第一种小井
-            if fd1["low"] > fd5['low'] > fd3['low'] and fd5['power'] < fd1['power']:
-                jing = {"jing": "向下小井", "notes": "12345向下，3最低5次之1最高，力度上5的力度比1小"}
-
-            # 第二种小井
-            if fd5['low'] < fd3['low'] < fd1['low'] and fd1['power'] > fd5['power'] > fd3['power']:
-                jing = {"jing": "向下小井", "notes": "12345向下，5最低3次之1最高，力度上1大于5，5大于3"}
-    else:
-        # 第三种小井
-        if fd1['power'] > fd3['power'] > fd5['power']:
-            if direction == 'up' and fd5["high"] > fd3['high'] > fd1['high']:
-                jing = {"jing": "向上小井", "notes": "12345类上涨趋势，力度依次降低"}
-
-            if direction == 'down' and fd5["low"] < fd3['low'] < fd1['low']:
-                jing = {"jing": "向下小井", "notes": "12345类下跌趋势，力度依次降低"}
-
-    return jing
-
-
-def check_bei_chi(fd1, fd2, fd3, fd4, fd5):
-    """检查最近5个分段走势是否有背驰
-
-    fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
-
-    fd = {
-        "start_dt": "",
-        "end_dt": "",
-        "power": 0,         # 力度
-        "direction": "up",
-        "high": 0,
-        "low": 0,
-        "mode": "bi"
-    }
-
-    """
-    assert fd1['direction'] == fd3['direction'] == fd5['direction']
-    assert fd2['direction'] == fd4['direction']
-    direction = fd1['direction']
-
-    zs_g = min(fd2['high'], fd3['high'], fd4['high'])
-    zs_d = max(fd2['low'], fd3['low'], fd4['low'])
-
-    bc = {"bc": "没有背驰", "notes": ""}
-    if max(fd5['power'], fd3['power'], fd1['power']) == fd5['power']:
-        bc = {"bc": "没有背驰", "notes": "5的力度最大，没有背驰"}
-        return bc
-
-    if zs_d < zs_g:
-        if fd5['power'] < fd1['power']:
-            if direction == 'up' and fd5["high"] > min(fd3['high'], fd1['high']):
-                bc = {"bc": "向上趋势背驰", "notes": "12345向上，234构成中枢，5最高，力度上1大于5"}
-
-            if direction == 'down' and fd5["low"] < max(fd3['low'], fd1['low']):
-                bc = {"bc": "向下趋势背驰", "notes": "12345向下，234构成中枢，5最低，力度上1大于5"}
-    else:
-        if fd5['power'] < fd3['power']:
-            if direction == 'up' and fd5["high"] > fd3['high']:
-                bc = {"bc": "向上盘整背驰", "notes": "12345向上，234不构成中枢，5最高，力度上1大于5"}
-
-            if direction == 'down' and fd5["low"] < fd3['low']:
-                bc = {"bc": "向下盘整背驰", "notes": "12345向下，234不构成中枢，5最低，力度上1大于5"}
-
-    return bc
-
-
-def check_third_bs(fd1, fd2, fd3, fd4, fd5):
-    """输入5段走势，判断是否存在第三类买卖点"""
-    zs_d = max(fd1['low'], fd2['low'], fd3['low'])
-    zs_g = min(fd1['high'], fd2['high'], fd3['high'])
-
-    third_bs = {"third_bs": "没有第三类买卖点", "notes": ""}
-
-    if max(fd1['power'], fd2['power'], fd3['power'], fd4['power'], fd5['power']) != fd4['power']:
-        third_bs = {"third_bs": "没有第三类买卖点", "notes": "第四段不是力度最大的段"}
-        return third_bs
-
-    if zs_g < zs_d:
-        third_bs = {"third_bs": "没有第三类买卖点", "notes": "前三段不构成中枢，无第三类买卖点"}
-    else:
-        if fd4['low'] < zs_d and fd5['high'] < zs_d:
-            third_bs = {"third_bs": "三卖", "notes": "前三段构成中枢，第四段向下离开，第五段不回中枢"}
-
-        if fd4['high'] > zs_g and fd5['low'] > zs_g:
-            third_bs = {"third_bs": "三买", "notes": "前三段构成中枢，第四段向上离开，第五段不回中枢"}
-    return third_bs
-
-
 class KlineAnalyze:
-    def __init__(self, kline, name="本级别", bi_mode="new", max_xd_len=20, ma_params=(5, 34, 120), verbose=False):
+    def __init__(self, kline, name="本级别", bi_mode="new", max_count=1000,
+                 use_xd=False, use_ta=True, ma_params=(5, 34, 120), verbose=False):
         """
 
         :param kline: list or pd.DataFrame
         :param name: str
         :param bi_mode: str
             new 新笔；old 老笔；默认值为 new
-        :param max_xd_len: int
-            线段标记序列的最大长度
+        :param max_count: int
+            最大保存的K线数量
+        :param use_xd: bool
+            是否进行线段识别，对于以笔作为 f0 的交易策略而言，不进行线段识别可以加快分析速度
+        :param use_ta: bool
+            是否进行辅助技术指标的计算，不进行辅助技术指标的计算可以加快分析速度
         :param ma_params: tuple of int
             均线系统参数
         :param verbose: bool
@@ -452,7 +179,9 @@ class KlineAnalyze:
         self.name = name
         self.verbose = verbose
         self.bi_mode = bi_mode
-        self.max_xd_len = max_xd_len
+        self.max_count = max_count
+        self.use_xd = use_xd
+        self.use_ta = use_ta
         self.ma_params = ma_params
         self.kline_raw = []  # 原始K线序列
         self.kline_new = []  # 去除包含关系的K线序列
@@ -478,11 +207,16 @@ class KlineAnalyze:
         self.end_dt = self.kline_raw[-1]['dt']
         self.latest_price = self.kline_raw[-1]['close']
 
-        self._update_ta()
         self._update_kline_new()
+
+        if self.use_ta:
+            self._update_ta()
+
         self._update_fx_list()
         self._update_bi_list()
-        self._update_xd_list()
+
+        if self.use_xd:
+            self._update_xd_list()
 
     def _update_ta(self):
         """更新辅助技术指标"""
@@ -589,7 +323,25 @@ class KlineAnalyze:
             self.kline_new.append(k)
 
     def _update_fx_list(self):
-        """更新分型序列"""
+        """更新分型序列
+
+        分型标记对象样例：
+         {'dt': Timestamp('2020-11-26 00:00:00'),
+          'fx_mark': 'd',
+          'fx': 138.0,
+          'start_dt': Timestamp('2020-11-25 00:00:00'),
+          'end_dt': Timestamp('2020-11-27 00:00:00'),
+          'fx_high': 144.87,
+          'fx_low': 138.0}
+
+         {'dt': Timestamp('2020-12-02 00:00:00'),
+          'fx_mark': 'g',
+          'fx': 150.67,
+          'start_dt': Timestamp('2020-12-01 00:00:00'),
+          'end_dt': Timestamp('2020-12-03 00:00:00'),
+          'fx_high': 150.67,
+          'fx_low': 141.6}
+        """
         if len(self.kline_new) < 3:
             return
 
@@ -602,12 +354,6 @@ class KlineAnalyze:
         i = 1
         while i <= len(kn) - 2:
             k1, k2, k3 = kn[i - 1: i + 2]
-            fx_elements = [k1, k2, k3]
-            if has_gap(k1, k2):
-                fx_elements.pop(0)
-
-            if has_gap(k2, k3):
-                fx_elements.pop(-1)
 
             if k1['high'] < k2['high'] > k3['high']:
                 if self.verbose:
@@ -619,7 +365,7 @@ class KlineAnalyze:
                     "start_dt": k1['dt'],
                     "end_dt": k3['dt'],
                     "fx_high": k2['high'],
-                    "fx_low": min([x['low'] for x in fx_elements]),
+                    "fx_low": k2['low'] if has_gap(k1, k2) else k1['low'],
                 }
                 self.fx_list.append(fx)
 
@@ -632,7 +378,7 @@ class KlineAnalyze:
                     "fx": k2['low'],
                     "start_dt": k1['dt'],
                     "end_dt": k3['dt'],
-                    "fx_high": max([x['high'] for x in fx_elements]),
+                    "fx_high": k2['high'] if has_gap(k1, k2) else k1['high'],
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -643,7 +389,25 @@ class KlineAnalyze:
             i += 1
 
     def _update_bi_list(self):
-        """更新笔序列"""
+        """更新笔序列
+
+        笔标记对象样例：
+         {'dt': Timestamp('2020-11-26 00:00:00'),
+          'fx_mark': 'd',
+          'start_dt': Timestamp('2020-11-25 00:00:00'),
+          'end_dt': Timestamp('2020-11-27 00:00:00'),
+          'fx_high': 144.87,
+          'fx_low': 138.0,
+          'bi': 138.0}
+
+         {'dt': Timestamp('2020-12-02 00:00:00'),
+          'fx_mark': 'g',
+          'start_dt': Timestamp('2020-12-01 00:00:00'),
+          'end_dt': Timestamp('2020-12-03 00:00:00'),
+          'fx_high': 150.67,
+          'fx_low': 141.6,
+          'bi': 150.67}
+        """
         if len(self.fx_list) < 2:
             return
 
@@ -695,14 +459,26 @@ class KlineAnalyze:
                         print("新增笔标记：{}".format(bi))
                     self.bi_list.append(bi)
 
-        if (self.bi_list[-1]['fx_mark'] == 'd' and self.kline_new[-1]['low'] < self.bi_list[-1]['bi']) \
-                or (self.bi_list[-1]['fx_mark'] == 'g' and self.kline_new[-1]['high'] > self.bi_list[-1]['bi']):
-            if self.verbose:
-                print("最后一个笔标记无效，{}".format(self.bi_list[-1]))
-            self.bi_list.pop(-1)
+    def _update_xd_list(self):
+        """更新线段序列
 
-    def _update_xd_list_v1(self):
-        """更新线段序列"""
+        线段标记对象样例：
+         {'dt': Timestamp('2020-07-09 00:00:00'),
+          'fx_mark': 'g',
+          'start_dt': Timestamp('2020-07-08 00:00:00'),
+          'end_dt': Timestamp('2020-07-14 00:00:00'),
+          'fx_high': 187.99,
+          'fx_low': 163.12,
+          'xd': 187.99}
+
+         {'dt': Timestamp('2020-11-02 00:00:00'),
+          'fx_mark': 'd',
+          'start_dt': Timestamp('2020-10-29 00:00:00'),
+          'end_dt': Timestamp('2020-11-03 00:00:00'),
+          'fx_high': 142.38,
+          'fx_low': 135.0,
+          'xd': 135.0}
+        """
         if len(self.bi_list) < 4:
             return
 
@@ -739,58 +515,6 @@ class KlineAnalyze:
                 else:
                     self.xd_list.append(xd)
 
-    def _xd_after_process(self):
-        """线段标记后处理，使用标准特征序列判断线段标记是否成立"""
-        if not len(self.xd_list) > 4:
-            return
-
-        keep_xd_index = []
-        for i in range(1, len(self.xd_list) - 2):
-            xd1, xd2, xd3, xd4 = self.xd_list[i - 1: i + 3]
-            bi_seq1 = [x for x in self.bi_list if xd2['dt'] >= x['dt'] >= xd1['dt']]
-            bi_seq2 = [x for x in self.bi_list if xd3['dt'] >= x['dt'] >= xd2['dt']]
-            bi_seq3 = [x for x in self.bi_list if xd4['dt'] >= x['dt'] >= xd3['dt']]
-            if len(bi_seq1) == 0 or len(bi_seq2) == 0 or len(bi_seq3) == 0:
-                continue
-
-            if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
-                keep_xd_index.append(i)
-
-        # 处理最近一个确定的线段标记
-        bi_seq1 = [x for x in self.bi_list if self.xd_list[-2]['dt'] >= x['dt'] >= self.xd_list[-3]['dt']]
-        bi_seq2 = [x for x in self.bi_list if self.xd_list[-1]['dt'] >= x['dt'] >= self.xd_list[-2]['dt']]
-        bi_seq3 = [x for x in self.bi_list if x['dt'] >= self.xd_list[-1]['dt']]
-        if not (len(bi_seq1) == 0 or len(bi_seq2) == 0 or len(bi_seq3) == 0):
-            if is_valid_xd(bi_seq1, bi_seq2, bi_seq3):
-                keep_xd_index.append(len(self.xd_list) - 2)
-
-        # 处理最近一个未确定的线段标记
-        if len(bi_seq3) >= 4:
-            keep_xd_index.append(len(self.xd_list) - 1)
-
-        new_xd_list = []
-        for j in keep_xd_index:
-            if not new_xd_list:
-                new_xd_list.append(self.xd_list[j])
-            else:
-                if new_xd_list[-1]['fx_mark'] == self.xd_list[j]['fx_mark']:
-                    if (new_xd_list[-1]['fx_mark'] == 'd' and new_xd_list[-1]['xd'] > self.xd_list[j]['xd']) \
-                            or (new_xd_list[-1]['fx_mark'] == 'g' and new_xd_list[-1]['xd'] < self.xd_list[j]['xd']):
-                        new_xd_list[-1] = self.xd_list[j]
-                else:
-                    new_xd_list.append(self.xd_list[j])
-        self.xd_list = new_xd_list
-
-        # 针对最近一个线段标记处理
-        if self.xd_list:
-            if (self.xd_list[-1]['fx_mark'] == 'd' and self.bi_list[-1]['bi'] < self.xd_list[-1]['xd']) \
-                    or (self.xd_list[-1]['fx_mark'] == 'g' and self.bi_list[-1]['bi'] > self.xd_list[-1]['xd']):
-                self.xd_list.pop(-1)
-
-    def _update_xd_list(self):
-        self._update_xd_list_v1()
-        self._xd_after_process()
-
     def update(self, k):
         """更新分析结果
 
@@ -814,24 +538,29 @@ class KlineAnalyze:
                 print("输入K线处于未完成状态，更新：replace {} with {}".format(self.kline_raw[-1], k))
             self.kline_raw[-1] = k
 
-        self._update_ta()
+        if self.use_ta:
+            self._update_ta()
+
         self._update_kline_new()
         self._update_fx_list()
         self._update_bi_list()
-        self._update_xd_list()
+
+        if self.use_xd:
+            self._update_xd_list()
 
         self.end_dt = self.kline_raw[-1]['dt']
         self.latest_price = self.kline_raw[-1]['close']
 
-        if len(self.xd_list) > self.max_xd_len:
-            last_dt = self.xd_list[-self.max_xd_len:][0]['dt']
-            self.kline_raw = [x for x in self.kline_raw if x['dt'] > last_dt]
-            self.kline_new = [x for x in self.kline_new if x['dt'] > last_dt]
+        if len(self.kline_raw) > self.max_count:
+            last_dt = self.kline_raw[-self.max_count:][0]['dt']
+            self.kline_raw = self.kline_raw[-self.max_count:]
+            self.kline_new = self.kline_new[-self.max_count:]
             self.ma = [x for x in self.ma if x['dt'] > last_dt]
             self.macd = [x for x in self.macd if x['dt'] > last_dt]
             self.fx_list = [x for x in self.fx_list if x['dt'] > last_dt]
             self.bi_list = [x for x in self.bi_list if x['dt'] > last_dt]
-            self.xd_list = [x for x in self.xd_list if x['dt'] > last_dt]
+            if self.use_xd:
+                self.xd_list = [x for x in self.xd_list if x['dt'] > last_dt]
 
         if self.verbose:
             print("更新结束\n\n")
@@ -899,112 +628,6 @@ class KlineAnalyze:
         """
         ka_to_image(self, file_image=file_image, mav=mav, max_k_count=max_k_count, dpi=dpi)
 
-    def is_bei_chi(self, zs1, zs2, mode="bi", adjust=0.9, last_index: int = None):
-        """判断 zs1 对 zs2 是否有背驰
-
-        注意：力度的比较，并没有要求两段走势方向一致；但是如果两段走势之间存在包含关系，这样的力度比较是没有意义的。
-
-        :param zs1: dict
-            用于比较的走势，通常是最近的走势，示例如下：
-            zs1 = {"start_dt": "2020-02-20 11:30:00", "end_dt": "2020-02-20 14:30:00", "direction": "up"}
-        :param zs2: dict
-            被比较的走势，通常是较前的走势，示例如下：
-            zs2 = {"start_dt": "2020-02-21 11:30:00", "end_dt": "2020-02-21 14:30:00", "direction": "down"}
-        :param mode: str
-            default `bi`, optional value [`xd`, `bi`]
-            xd  判断两个线段之间是否存在背驰
-            bi  判断两笔之间是否存在背驰
-        :param adjust: float
-            调整 zs2 的力度，建议设置范围在 0.6 ~ 1.0 之间，默认设置为 0.9；
-            其作用是确保 zs1 相比于 zs2 的力度足够小。
-        :param last_index: int
-            在比较最后一个走势的时候，可以设置这个参数来提升速度，相当于只对 last_index 后面的K线进行力度比较
-        :return: bool
-        """
-        assert zs1["start_dt"] > zs2["end_dt"], "zs1 必须是最近的走势，用于比较；zs2 必须是较前的走势，被比较。"
-        assert zs1["start_dt"] < zs1["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
-        assert zs2["start_dt"] < zs2["end_dt"], "走势的时间区间定义错误，必须满足 start_dt < end_dt"
-
-        min_dt = min(zs1["start_dt"], zs2["start_dt"])
-        max_dt = max(zs1["end_dt"], zs2["end_dt"])
-        if last_index:
-            macd = self.macd[-last_index:]
-        else:
-            macd = self.macd
-        macd_ = [x for x in macd if x['dt'] >= min_dt]
-        macd_ = [x for x in macd_ if max_dt >= x['dt']]
-        k1 = [x for x in macd_ if zs1["end_dt"] >= x['dt'] >= zs1["start_dt"]]
-        k2 = [x for x in macd_ if zs2["end_dt"] >= x['dt'] >= zs2["start_dt"]]
-
-        bc = False
-        if mode == 'bi':
-            macd_sum1 = sum([abs(x['macd']) for x in k1])
-            macd_sum2 = sum([abs(x['macd']) for x in k2])
-            # print("bi: ", macd_sum1, macd_sum2)
-            if macd_sum1 < macd_sum2 * adjust:
-                bc = True
-
-        elif mode == 'xd':
-            assert zs1['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
-            assert zs2['direction'] in ['down', 'up'], "走势的 direction 定义错误，可取值为 up 或 down"
-
-            if zs1['direction'] == "down":
-                macd_sum1 = sum([abs(x['macd']) for x in k1 if x['macd'] < 0])
-            else:
-                macd_sum1 = sum([abs(x['macd']) for x in k1 if x['macd'] > 0])
-
-            if zs2['direction'] == "down":
-                macd_sum2 = sum([abs(x['macd']) for x in k2 if x['macd'] < 0])
-            else:
-                macd_sum2 = sum([abs(x['macd']) for x in k2 if x['macd'] > 0])
-
-            # print("xd: ", macd_sum1, macd_sum2)
-            if macd_sum1 < macd_sum2 * adjust:
-                bc = True
-
-        else:
-            raise ValueError("mode value error")
-
-        return bc
-
-    def get_sub_section(self, start_dt, end_dt, mode="bi", is_last=True):
-        """获取子区间
-
-        :param start_dt: datetime
-            子区间开始时间
-        :param end_dt: datetime
-            子区间结束时间
-        :param mode: str
-            需要获取的子区间对象类型，可取值 ['kn', 'fx', 'bi', 'xd']
-        :param is_last: bool
-            是否是最近一段子区间
-        :return: list of dict
-        """
-        if mode == "kn":
-            if is_last:
-                points = self.kline_new[-200:]
-            else:
-                points = self.kline_new
-        elif mode == "fx":
-            if is_last:
-                points = self.fx_list[-100:]
-            else:
-                points = self.fx_list
-        elif mode == "bi":
-            if is_last:
-                points = self.bi_list[-50:]
-            else:
-                points = self.bi_list
-        elif mode == "xd":
-            if is_last:
-                points = self.xd_list[-30:]
-            else:
-                points = self.xd_list
-        else:
-            raise ValueError
-
-        return [x for x in points if end_dt >= x['dt'] >= start_dt]
-
     def calculate_macd_power(self, start_dt, end_dt, mode='bi', direction="up"):
         """用 MACD 计算走势段（start_dt ~ end_dt）的力度
 
@@ -1019,6 +642,10 @@ class KlineAnalyze:
         :return: float
             走势力度
         """
+        if not self.use_ta:
+            warnings.warn("没有进行辅助技术指标的计算，macd_power 返回 0")
+            return 0
+
         fd_macd = [x for x in self.macd if end_dt >= x['dt'] >= start_dt]
 
         if mode == 'bi':
@@ -1048,15 +675,18 @@ class KlineAnalyze:
         power = sum([x['vol'] for x in fd_vol])
         return int(power)
 
-    def get_latest_fd(self, n=6, mode="bi"):
-        """获取最近的走势分段
+    def get_bi_fd(self, n=6):
+        """假定本级别笔为次级别线段，进行走势分段
 
         fd 为 dict 对象，表示一段走势，可以是笔、线段，样例如下：
 
         fd = {
             "start_dt": "",
             "end_dt": "",
-            "power": 0,         # 力度
+            "start_mark": p1,        # 笔开始标记
+            "end_mark": p2,          # 笔结束标记
+            "price_power": 0,        # 走势段价差
+            "vol_power": 0,          # 成交量面积（柱子和）
             "direction": "up",
             "high": 0,
             "low": 0,
@@ -1064,92 +694,28 @@ class KlineAnalyze:
         }
 
         :param n:
-        :param mode:
         :return: list of dict
         """
-        if mode == 'bi':
-            points = self.bi_list[-(n + 1):]
-        elif mode == 'xd':
-            points = self.xd_list[-(n + 1):]
-        else:
-            raise ValueError
+        points = self.bi_list[-(n + 1):]
+        assert len(points) == n + 1
 
         res = []
         for i in range(len(points) - 1):
             p1 = points[i]
             p2 = points[i + 1]
-            direction = "up" if p1[mode] < p2[mode] else "down"
-            power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode=mode, direction=direction)
+            direction = "up" if p1["bi"] < p2["bi"] else "down"
+            # macd_power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode="bi", direction=direction)
+            vol_power = self.calculate_vol_power(start_dt=p1['dt'], end_dt=p2['dt'])
             res.append({
                 "start_dt": p1['dt'],
                 "end_dt": p2['dt'],
-                "power": power,
+                "start_mark": p1,
+                "end_mark": p2,
+                "price_power": abs(p1['bi'] - p2['bi']),
+                "vol_power": vol_power,
                 "direction": direction,
-                "high": max(p1[mode], p2[mode]),
-                "low": min(p1[mode], p2[mode]),
-                "mode": mode
+                "high": max(p1["bi"], p2["bi"]),
+                "low": min(p1["bi"], p2["bi"]),
+                "mode": "bi"
             })
         return res
-
-    def get_last_fd(self, mode='bi'):
-        """获取最后一个分段走势
-
-        :param mode: str
-            可选值 ['bi', 'xd']，默认值 'bi'
-        :return:
-        """
-        if mode == 'bi':
-            p1 = self.bi_list[-1]
-            points = [x for x in self.fx_list[-60:] if x['dt'] >= p1['dt']]
-            if len(points) < 2:
-                return None
-
-            if p1['fx_mark'] == 'd':
-                direction = "up"
-                max_fx = max([x['fx'] for x in points if x['fx_mark'] == 'g'])
-                p2 = [x for x in points if x['fx'] == max_fx][0]
-            elif p1['fx_mark'] == 'g':
-                direction = "down"
-                min_fx = min([x['fx'] for x in points if x['fx_mark'] == 'd'])
-                p2 = [x for x in points if x['fx'] == min_fx][0]
-            else:
-                raise ValueError
-
-            p2 = dict(p2)
-            p2['bi'] = p2.pop('fx')
-
-        elif mode == 'xd':
-            if not self.xd_list:
-                return None
-
-            p1 = self.xd_list[-1]
-            points = [x for x in self.bi_list[-60:] if x['dt'] >= p1['dt']]
-            if len(points) < 4:
-                return None
-
-            if p1['fx_mark'] == 'd':
-                direction = "up"
-                max_fx = max([x['bi'] for x in points if x['fx_mark'] == 'g'])
-                p2 = [x for x in points if x['bi'] == max_fx][0]
-            elif p1['fx_mark'] == 'g':
-                direction = "down"
-                min_fx = min([x['bi'] for x in points if x['fx_mark'] == 'd'])
-                p2 = [x for x in points if x['bi'] == min_fx][0]
-            else:
-                raise ValueError
-
-            p2 = dict(p2)
-            p2['xd'] = p2.pop('bi')
-        else:
-            raise ValueError
-
-        power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode=mode, direction=direction)
-        return {
-            "start_dt": p1['dt'],
-            "end_dt": p2['dt'],
-            "power": power,
-            "direction": direction,
-            "high": max(p1[mode], p2[mode]),
-            "low": min(p1[mode], p2[mode]),
-            "mode": mode
-        }

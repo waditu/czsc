@@ -48,6 +48,20 @@ def text2df(text):
     return df
 
 
+def get_query_count() -> int:
+    """获取查询剩余条数
+    https://dataapi.joinquant.com/docs#get_query_count---%E8%8E%B7%E5%8F%96%E6%9F%A5%E8%AF%A2%E5%89%A9%E4%BD%99%E6%9D%A1%E6%95%B0
+
+    :return: int
+    """
+    data = {
+        "method": "get_query_count",
+        "token": get_token(),
+    }
+    r = requests.post(url, data=json.dumps(data))
+    return int(r.text)
+
+
 def get_concepts():
     """获取概念列表
 
@@ -94,7 +108,6 @@ def get_concept_stocks(symbol, date=None):
     r = requests.post(url, data=json.dumps(data))
     return r.text.split('\n')
 
-
 def get_index_stocks(symbol, date=None):
     """获取指数成份股
 
@@ -126,6 +139,33 @@ def get_index_stocks(symbol, date=None):
     r = requests.post(url, data=json.dumps(data))
     return r.text.split('\n')
 
+def get_all_securities(code, date=None) -> pd.DataFrame:
+    """
+    https://dataapi.joinquant.com/docs#get_all_securities---%E8%8E%B7%E5%8F%96%E6%89%80%E6%9C%89%E6%A0%87%E7%9A%84%E4%BF%A1%E6%81%AF
+    获取平台支持的所有股票、基金、指数、期货信息
+
+    参数：
+
+    code: 证券类型,可选: stock, fund, index, futures, etf, lof, fja, fjb, QDII_fund,
+                        open_fund, bond_fund, stock_fund, money_market_fund, mixture_fund, options
+    date: 日期，用于获取某日期还在上市的证券信息，date为空时表示获取所有日期的标的信息
+
+    :return:
+    """
+    if not date:
+        date = str(datetime.now().date())
+
+    if isinstance(date, datetime):
+        date = str(date.date())
+
+    data = {
+        "method": "get_all_securities",
+        "token": get_token(),
+        "code": code,
+        "date": date
+    }
+    r = requests.post(url, data=json.dumps(data))
+    return text2df(r.text)
 
 def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     """获取K线数据
@@ -190,7 +230,6 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
     df.loc[:, "dt"] = pd.to_datetime(df['dt'])
     return df
 
-
 def download_kline(symbol, freq, start_date, end_date, delta, save=True):
     """下载K线数据
 
@@ -235,3 +274,43 @@ def download_kline(symbol, freq, start_date, end_date, delta, save=True):
         df.to_csv(f"{symbol}_{freq}_{start_date.date()}_{end_date.date()}.csv", index=False, encoding="utf-8")
     else:
         return df
+
+def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> dict:
+    """
+    https://dataapi.joinquant.com/docs#get_fundamentals---%E8%8E%B7%E5%8F%96%E5%9F%BA%E6%9C%AC%E8%B4%A2%E5%8A%A1%E6%95%B0%E6%8D%AE
+
+    财务数据列表：
+    https://www.joinquant.com/help/api/help?name=Stock#%E8%B4%A2%E5%8A%A1%E6%95%B0%E6%8D%AE%E5%88%97%E8%A1%A8
+
+    :param table:
+    :param symbol:
+    :param date: str
+        查询日期2019-03-04或者年度2018或者季度2018q1 2018q2 2018q3 2018q4
+    :param columns:
+    :return: df
+
+    example:
+    ============
+    >>>> x1 = get_fundamental(table="indicator", symbol="300803.XSHE", date="2020-11-12")
+    >>>> x2 = get_fundamental(table="indicator", symbol="300803.XSHE", date="2020")
+    >>>> x3 = get_fundamental(table="indicator", symbol="300803.XSHE", date="2020q3")
+    """
+    data = {
+        "method": "get_fundamentals",
+        "token": get_token(),
+        "table": table,
+        "columns": columns,
+        "code": symbol,
+        "date": date,
+        "count": 1
+    }
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    try:
+        return df.iloc[0].to_dict()
+    except:
+        return {}
+
+
+
+

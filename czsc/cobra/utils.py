@@ -2,7 +2,7 @@
 
 import numpy as np
 import pandas as pd
-from czsc.ta import KDJ
+from ..utils.ta import KDJ
 import traceback
 from typing import List, Union
 

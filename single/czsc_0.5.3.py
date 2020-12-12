@@ -5,7 +5,7 @@ import warnings
 try:
     import talib as ta
 except ImportError:
-    from czsc import ta
+    from czsc.utils import ta
 
     ta_lib_hint = "没有安装 ta-lib !!! 请到 https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib " \
                   "下载对应版本安装，预计分析速度提升2倍"
