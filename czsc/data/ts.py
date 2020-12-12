@@ -71,10 +71,7 @@ def get_index_stocks(symbol, date=None):
         date = datetime.now()
 
     if isinstance(date, str):
-        if "-" in date:
-            date = datetime.strptime(date, "%Y-%m-%d")
-        else:
-            date = datetime.strptime(date, "%Y%m%d")
+        date = pd.to_datetime(date)
 
     start_date = date - timedelta(days=250)
     end_date = date
@@ -86,7 +83,7 @@ def get_index_stocks(symbol, date=None):
 
 def _get_start_date(end_date, freq):
     if isinstance(end_date, str):
-        end_date = datetime.strptime(end_date, '%Y%m%d')
+        end_date = pd.to_datetime(end_date)
 
     if freq == '1min':
         start_date = end_date - timedelta(days=30)
@@ -132,7 +129,7 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
         start_date = start_date.date().__str__().replace("-", "")
 
         if isinstance(end_date, str):
-            end_date = datetime.strptime(end_date, '%Y%m%d')
+            end_date = pd.to_datetime(end_date)
 
         end_date = end_date + timedelta(days=1)
         end_date = end_date.date().__str__().replace("-", "")
