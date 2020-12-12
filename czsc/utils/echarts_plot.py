@@ -34,7 +34,7 @@ def heat_map(data: List[dict],
     :return: 图表
     """
 
-    value = [opts.HeatMapItem(value=[s['x'], s['y'], s['heat']]) for s in data]
+    value = [[s['x'], s['y'], s['heat']] for s in data]
     heat = [s['heat'] for s in data]
 
     if not x_label:
