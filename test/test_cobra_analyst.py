@@ -7,7 +7,7 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 import czsc
-from czsc.cobra.factor_analyst import cal_nbar_income, cal_nbar_percentile
+from czsc.cobra.analyst import cal_nbar_income, cal_nbar_percentile
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
@@ -26,7 +26,7 @@ def test_nbar():
     kn = bars[i+1: i+n+1]
 
     ni = cal_nbar_income(k1, kn, n)
-    assert ni == 3.91
+    assert ni == 391.31
 
     np = cal_nbar_percentile(k1, kn, n)
     assert np == 87.06

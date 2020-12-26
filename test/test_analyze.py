@@ -1,7 +1,12 @@
 # coding: utf-8
+import sys
+
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 import os
 import pandas as pd
-from czsc.analyze import KlineAnalyze, find_zs
+from czsc.analyze import KlineAnalyze
+from czsc.signals import find_zs
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 

@@ -1,4 +1,10 @@
 # coding: utf-8
+import sys
+import warnings
+
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 import os
 import pandas as pd
 import random
