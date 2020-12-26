@@ -2,6 +2,30 @@
 import warnings
 from datetime import datetime, timedelta
 
+def get_next_end_time(dt: datetime, m=1):
+    """获取 dt 对应的分钟周期结束时间
+
+    :param dt: datetime
+    :param m: int
+        分钟周期，1 表示 1分钟，5 表示 5分钟 ...
+    :return: datetime
+    """
+    am_st = "09:30"
+    am_et = "11:30"
+    pm_st = "13:00"
+    pm_et = "15:00"
+
+    if dt.strftime("%H:%M") == am_et or dt.strftime("%H:%M") == pm_et:
+        return dt.replace(second=0)
+
+    delta = timedelta(minutes=1)
+    for _ in range(1000):
+        dt = dt + delta
+        if dt.minute % m == 0:
+            h = dt.strftime("%H:%M")
+            if am_et >= h > am_st or pm_et >= h > pm_st:
+                return dt.replace(second=0)
+    return dt.replace(second=0)
 
 class KlineGeneratorBase:
     """K线生成器，仿实盘"""
@@ -49,32 +73,6 @@ class KlineGeneratorBase:
 
     def __repr__(self):
         return "<KlineGenerator for {}; latest_dt={}>".format(self.symbol, self.end_dt)
-
-    @staticmethod
-    def get_next_end_time(dt: datetime, m=1):
-        """获取对应tick时间的分钟周期结束时间
-
-        :param dt: datetime
-        :param m: int
-            分钟周期，1 表示 1分钟，5 表示 5分钟 ...
-        :return: datetime
-        """
-        am_st = "09:30"
-        am_et = "11:30"
-        pm_st = "13:00"
-        pm_et = "15:00"
-
-        if dt.strftime("%H:%M") == am_et or dt.strftime("%H:%M") == pm_et:
-            return dt.replace(second=0)
-
-        delta = timedelta(minutes=1)
-        for _ in range(1000):
-            dt = dt + delta
-            if dt.minute % m == 0:
-                h = dt.strftime("%H:%M")
-                if am_et >= h > am_st or pm_et >= h > pm_st:
-                    return dt.replace(second=0)
-        return dt.replace(second=0)
 
     def __update_minutes(self):
         pass
@@ -171,11 +169,11 @@ class KlineGeneratorByTick(KlineGeneratorBase):
             m = fm_map[minute]
             if not m:
                 next_bar = self.__init_bar_from_tick(tick)
-                next_bar['dt'] = self.get_next_end_time(tick['dt'], m=minute)
+                next_bar['dt'] = get_next_end_time(tick['dt'], m=minute)
                 m.append(next_bar)
             else:
                 last = m[-1]
-                next_end_dt = self.get_next_end_time(tick['dt'], m=minute)
+                next_end_dt = get_next_end_time(tick['dt'], m=minute)
                 if next_end_dt > last['dt'] and next_end_dt.minute != last['dt'].minute:
                     next_bar = self.__init_bar_from_tick(tick)
                     next_bar['dt'] = next_end_dt

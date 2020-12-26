@@ -14,115 +14,6 @@ import numpy as np
 from .utils.plot import ka_to_image
 
 
-def find_zs(points):
-    """输入笔或线段标记点，输出中枢识别结果"""
-    if len(points) < 5:
-        return []
-
-    # 当输入为笔的标记点时，新增 xd 值
-    for j, x in enumerate(points):
-        if x.get("bi", 0):
-            points[j]['xd'] = x["bi"]
-
-    def __get_zn(zn_points_):
-        """把与中枢方向一致的次级别走势类型称为Z走势段，按中枢中的时间顺序，
-        分别记为Zn等，而相应的高、低点分别记为gn、dn"""
-        if len(zn_points_) % 2 != 0:
-            zn_points_ = zn_points_[:-1]
-
-        if zn_points_[0]['fx_mark'] == "d":
-            z_direction = "up"
-        else:
-            z_direction = "down"
-
-        zn = []
-        for i in range(0, len(zn_points_), 2):
-            zn_ = {
-                "start_dt": zn_points_[i]['dt'],
-                "end_dt": zn_points_[i + 1]['dt'],
-                "high": max(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
-                "low": min(zn_points_[i]['xd'], zn_points_[i + 1]['xd']),
-                "direction": z_direction
-            }
-            zn_['mid'] = zn_['low'] + (zn_['high'] - zn_['low']) / 2
-            zn.append(zn_)
-        return zn
-
-    k_xd = points
-    k_zs = []
-    zs_xd = []
-
-    for i in range(len(k_xd)):
-        if len(zs_xd) < 5:
-            zs_xd.append(k_xd[i])
-            continue
-        xd_p = k_xd[i]
-        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
-        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
-        if zs_g <= zs_d:
-            zs_xd.append(k_xd[i])
-            zs_xd.pop(0)
-            continue
-
-        # 定义四个指标,GG=max(gn),G=min(gn),D=max(dn),DD=min(dn)，n遍历中枢中所有Zn。
-        # 定义ZG=min(g1、g2), ZD=max(d1、d2)，显然，[ZD，ZG]就是缠中说禅走势中枢的区间
-        if xd_p['fx_mark'] == "d" and xd_p['xd'] > zs_g:
-            zn_points = zs_xd[3:]
-            # 线段在中枢上方结束，形成三买
-            k_zs.append({
-                'ZD': zs_d,
-                "ZG": zs_g,
-                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'start_point': zs_xd[1],
-                'end_point': zs_xd[-2],
-                "zn": __get_zn(zn_points),
-                "points": zs_xd,
-                "third_buy": xd_p
-            })
-            zs_xd = []
-        elif xd_p['fx_mark'] == "g" and xd_p['xd'] < zs_d:
-            zn_points = zs_xd[3:]
-            # 线段在中枢下方结束，形成三卖
-            k_zs.append({
-                'ZD': zs_d,
-                "ZG": zs_g,
-                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'start_point': zs_xd[1],
-                'end_point': zs_xd[-2],
-                "points": zs_xd,
-                "zn": __get_zn(zn_points),
-                "third_sell": xd_p
-            })
-            zs_xd = []
-        else:
-            zs_xd.append(xd_p)
-
-    if len(zs_xd) >= 5:
-        zs_d = max([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'd'])
-        zs_g = min([x['xd'] for x in zs_xd[:4] if x['fx_mark'] == 'g'])
-        if zs_g > zs_d:
-            zn_points = zs_xd[3:]
-            k_zs.append({
-                'ZD': zs_d,
-                "ZG": zs_g,
-                'G': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'GG': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'g']),
-                'D': max([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'DD': min([x['xd'] for x in zs_xd if x['fx_mark'] == 'd']),
-                'start_point': zs_xd[1],
-                'end_point': None,
-                "zn": __get_zn(zn_points),
-                "points": zs_xd,
-            })
-    return k_zs
-
-
 def has_gap(k1, k2, min_gap=0.002):
     """判断 k1, k2 之间是否有缺口"""
     assert k2['dt'] > k1['dt']
@@ -325,22 +216,18 @@ class KlineAnalyze:
     def _update_fx_list(self):
         """更新分型序列
 
+        对于底分型，第三元素收在第一元素的一半以上为强势，否则为弱势；
+        对于顶分型，第三元素收在第一元素的一半以下为强势，否则为弱势；
+
         分型标记对象样例：
          {'dt': Timestamp('2020-11-26 00:00:00'),
-          'fx_mark': 'd',
+          'fx_mark': 'd',       # 可选值：d / g
           'fx': 138.0,
           'start_dt': Timestamp('2020-11-25 00:00:00'),
           'end_dt': Timestamp('2020-11-27 00:00:00'),
+          'fx_power': 'strong', # 可选值：strong / weak
           'fx_high': 144.87,
           'fx_low': 138.0}
-
-         {'dt': Timestamp('2020-12-02 00:00:00'),
-          'fx_mark': 'g',
-          'fx': 150.67,
-          'start_dt': Timestamp('2020-12-01 00:00:00'),
-          'end_dt': Timestamp('2020-12-03 00:00:00'),
-          'fx_high': 150.67,
-          'fx_low': 141.6}
         """
         if len(self.kline_new) < 3:
             return
@@ -354,7 +241,7 @@ class KlineAnalyze:
         i = 1
         while i <= len(kn) - 2:
             k1, k2, k3 = kn[i - 1: i + 2]
-
+            k1_mid = (k1['high'] - k1['low']) / 2 + k1['low']
             if k1['high'] < k2['high'] > k3['high']:
                 if self.verbose:
                     print("顶分型：{} - {} - {}".format(k1['dt'], k2['dt'], k3['dt']))
@@ -364,8 +251,10 @@ class KlineAnalyze:
                     "fx": k2['high'],
                     "start_dt": k1['dt'],
                     "end_dt": k3['dt'],
+                    'fx_power': 'strong' if k3['close'] < k1_mid else 'weak',
                     "fx_high": k2['high'],
-                    "fx_low": k2['low'] if has_gap(k1, k2) else k1['low'],
+                    # "fx_low": k2['low'] if has_gap(k1, k2) else k1['low'],
+                    "fx_low": k1['low'],
                 }
                 self.fx_list.append(fx)
 
@@ -378,7 +267,9 @@ class KlineAnalyze:
                     "fx": k2['low'],
                     "start_dt": k1['dt'],
                     "end_dt": k3['dt'],
-                    "fx_high": k2['high'] if has_gap(k1, k2) else k1['high'],
+                    'fx_power': 'strong' if k3['close'] > k1_mid else 'weak',
+                    # "fx_high": k2['high'] if has_gap(k1, k2) else k1['high'],
+                    "fx_high": k1['high'],
                     "fx_low": k2['low'],
                 }
                 self.fx_list.append(fx)
@@ -687,6 +578,7 @@ class KlineAnalyze:
             "end_mark": p2,          # 笔结束标记
             "price_power": 0,        # 走势段价差
             "vol_power": 0,          # 成交量面积（柱子和）
+            "length": 0,             # 笔长度，即笔内部的原始K线数量
             "direction": "up",
             "high": 0,
             "low": 0,
@@ -704,8 +596,8 @@ class KlineAnalyze:
             p1 = points[i]
             p2 = points[i + 1]
             direction = "up" if p1["bi"] < p2["bi"] else "down"
-            # macd_power = self.calculate_macd_power(start_dt=p1['dt'], end_dt=p2['dt'], mode="bi", direction=direction)
-            vol_power = self.calculate_vol_power(start_dt=p1['dt'], end_dt=p2['dt'])
+            k_inside = [x for x in self.kline_raw if p2['dt'] >= x['dt'] >= p1['dt']]
+            vol_power = int(sum([x['vol'] for x in k_inside]))
             res.append({
                 "start_dt": p1['dt'],
                 "end_dt": p2['dt'],
@@ -713,6 +605,7 @@ class KlineAnalyze:
                 "end_mark": p2,
                 "price_power": abs(p1['bi'] - p2['bi']),
                 "vol_power": vol_power,
+                "length": len(k_inside),
                 "direction": direction,
                 "high": max(p1["bi"], p2["bi"]),
                 "low": min(p1["bi"], p2["bi"]),

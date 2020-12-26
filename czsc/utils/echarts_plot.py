@@ -65,8 +65,8 @@ def kline_pro(kline: List[dict],
               xd: List[dict] = None,
               bs: List[dict] = None,
               title: str = "缠中说禅K线分析",
-              width: str = "1200px",
-              height: str = '680px') -> Grid:
+              width: str = "1400px",
+              height: str = '580px') -> Grid:
     """绘制缠中说禅K线分析结果
 
     :param kline: K线
@@ -168,14 +168,14 @@ def kline_pro(kline: List[dict],
     chart_k.add_yaxis(series_name="Kline", y_axis=k_data, itemstyle_opts=k_style_opts)
 
     chart_k.set_global_opts(
-            legend_opts=legend_opts,
-            datazoom_opts=[dz_inside, dz_slider],
-            yaxis_opts=yaxis_opts,
-            tooltip_opts=tool_tip_opts,
-            axispointer_opts=axis_pointer_opts,
-            brush_opts=brush_opts,
-            title_opts=title_opts,
-            xaxis_opts=grid0_xaxis_opts
+        legend_opts=legend_opts,
+        datazoom_opts=[dz_inside, dz_slider],
+        yaxis_opts=yaxis_opts,
+        tooltip_opts=tool_tip_opts,
+        axispointer_opts=axis_pointer_opts,
+        brush_opts=brush_opts,
+        title_opts=title_opts,
+        xaxis_opts=grid0_xaxis_opts
     )
 
     # 均线图
@@ -233,7 +233,7 @@ def kline_pro(kline: List[dict],
     if bs:
         b_dts = [x['dt'] for x in bs if x['mark'] == 'buy']
         if len(b_dts) > 0:
-            b_val = [x['buy'] for x in bs if x['mark'] == 'buy']
+            b_val = [x['price'] for x in bs if x['mark'] == 'buy']
             chart_b = Scatter()
             chart_b.add_xaxis(b_dts)
             chart_b.add_yaxis(series_name="BUY", y_axis=b_val, is_selected=False, symbol="arrow", symbol_size=8,
@@ -244,7 +244,7 @@ def kline_pro(kline: List[dict],
 
         s_dts = [x['dt'] for x in bs if x['mark'] == 'sell']
         if len(s_dts) > 0:
-            s_val = [x['sell'] for x in bs if x['mark'] == 'sell']
+            s_val = [x['price'] for x in bs if x['mark'] == 'sell']
             chart_s = Scatter()
             chart_s.add_xaxis(s_dts)
             chart_s.add_yaxis(series_name="SELL", y_axis=s_val, is_selected=False, symbol="pin", symbol_size=12,
@@ -259,13 +259,13 @@ def kline_pro(kline: List[dict],
     chart_vol.add_xaxis(dts)
     chart_vol.add_yaxis(series_name="Volume", y_axis=vol, bar_width='60%')
     chart_vol.set_global_opts(
-            xaxis_opts=opts.AxisOpts(
-                type_="category",
-                grid_index=1,
-                axislabel_opts=opts.LabelOpts(is_show=True, font_size=8, color="#9b9da9"),
-            ),
-            yaxis_opts=yaxis_opts, legend_opts=legend_not_show_opts,
-        )
+        xaxis_opts=opts.AxisOpts(
+            type_="category",
+            grid_index=1,
+            axislabel_opts=opts.LabelOpts(is_show=True, font_size=8, color="#9b9da9"),
+        ),
+        yaxis_opts=yaxis_opts, legend_opts=legend_not_show_opts,
+    )
 
     # MACD图
     # ------------------------------------------------------------------------------------------------------------------
@@ -273,21 +273,21 @@ def kline_pro(kline: List[dict],
     chart_macd.add_xaxis(dts)
     chart_macd.add_yaxis(series_name="MACD", y_axis=macd_bar, bar_width='60%')
     chart_macd.set_global_opts(
-            xaxis_opts=opts.AxisOpts(
-                type_="category",
-                grid_index=2,
-                axislabel_opts=opts.LabelOpts(is_show=False),
-            ),
-            yaxis_opts=opts.AxisOpts(
-                grid_index=2,
-                split_number=4,
-                axisline_opts=opts.AxisLineOpts(is_on_zero=False),
-                axistick_opts=opts.AxisTickOpts(is_show=False),
-                splitline_opts=opts.SplitLineOpts(is_show=False),
-                axislabel_opts=opts.LabelOpts(is_show=True, color="#c7c7c7"),
-            ),
-            legend_opts=opts.LegendOpts(is_show=False),
-        )
+        xaxis_opts=opts.AxisOpts(
+            type_="category",
+            grid_index=2,
+            axislabel_opts=opts.LabelOpts(is_show=False),
+        ),
+        yaxis_opts=opts.AxisOpts(
+            grid_index=2,
+            split_number=4,
+            axisline_opts=opts.AxisLineOpts(is_on_zero=False),
+            axistick_opts=opts.AxisTickOpts(is_show=False),
+            splitline_opts=opts.SplitLineOpts(is_show=False),
+            axislabel_opts=opts.LabelOpts(is_show=True, color="#c7c7c7"),
+        ),
+        legend_opts=opts.LegendOpts(is_show=False),
+    )
 
     line = Line()
     line.add_xaxis(dts)

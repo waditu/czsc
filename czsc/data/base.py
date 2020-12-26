@@ -10,3 +10,4 @@ freq_map = {
     "M": "月线",
 }
 
+freq_inv = {v: k for k, v in freq_map.items()}
