@@ -1,17 +1,8 @@
 # coding: utf-8
-
-from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
-
-class Mark(Enum):
-    D = "底分型"
-    G = "顶分型"
-
-class Direction(Enum):
-    Up = "向上"
-    Down = "向下"
+from .enum import Mark, Direction
 
 @dataclass
 class Tick:
@@ -30,50 +21,51 @@ class Tick:
     pre_close: float = 0
 
 @dataclass
-class Bar1:
+class RawBar:
     """原始K线元素"""
     symbol: str
-    dt: datetime
-    freq: str
-    open: float
-    close: float
-    high: float
-    low: float
-    vol: float
+    dt: datetime = None
+    # freq: str = None
+    open: [float, int] = None
+    close: [float, int] = None
+    high: [float, int] = None
+    low: [float, int] = None
+    vol: [float, int] = None
 
 @dataclass
-class Bar2:
+class NewBar:
     """去除包含关系的K线元素"""
     symbol: str
-    dt: datetime
-    freq: str
-    open: float
-    close: float
-    high: float
-    low: float
-    vol: float
-    elements: List[Bar1] = None
+    dt: datetime = None
+    # freq: str = None
+    open: [float, int] = None
+    close: [float, int] = None
+    high: [float, int] = None
+    low: [float, int] = None
+    vol: [float, int] = None
+    elements: List[RawBar] = None   # 存入具有包含关系的原始K线
 
 @dataclass
 class FX:
     symbol: str
-    dt: datetime
-    mark: Mark
+    dt: datetime = None
+    mark: Mark = None
     high: float = None
     low: float = None
-    elements: List[Bar2] = None
-
+    fx: float = None
+    power: str = None
+    elements: List[NewBar] = None
 
 @dataclass
 class BI:
     symbol: str
-    fx_a: FX    # 笔开始的分型
-    fx_b: FX    # 笔结束的分型
-    direction: Direction
+    fx_a: FX = None    # 笔开始的分型
+    fx_b: FX = None    # 笔结束的分型
+    direction: Direction = None
     high: float = None
     low: float = None
-    elements: List[FX] = None
-
+    power: float = None
+    bars: List[NewBar] = None
 
 
 

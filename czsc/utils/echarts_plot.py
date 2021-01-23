@@ -72,6 +72,13 @@ def kline_pro(kline: List[dict],
     :param kline: K线
     :param fx: 分型识别结果
     :param bi: 笔识别结果
+        {'dt': Timestamp('2020-11-26 00:00:00'),
+          'fx_mark': 'd',
+          'start_dt': Timestamp('2020-11-25 00:00:00'),
+          'end_dt': Timestamp('2020-11-27 00:00:00'),
+          'fx_high': 144.87,
+          'fx_low': 138.0,
+          'bi': 138.0}
     :param xd: 线段识别结果
     :param bs: 买卖点
     :param title: 图表标题
@@ -210,7 +217,7 @@ def kline_pro(kline: List[dict],
     if bi:
         bi_dts = [x['dt'] for x in bi]
         bi_val = [x['bi'] for x in bi]
-        chart_bi = Scatter()
+        chart_bi = Line()
         chart_bi.add_xaxis(bi_dts)
         chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,
                            symbol="diamond", symbol_size=10, label_opts=label_not_show_opts,
@@ -222,7 +229,7 @@ def kline_pro(kline: List[dict],
     if xd:
         xd_dts = [x['dt'] for x in xd]
         xd_val = [x['xd'] for x in xd]
-        chart_xd = Scatter()
+        chart_xd = Line()
         chart_xd.add_xaxis(xd_dts)
         chart_xd.add_yaxis(series_name="XD", y_axis=xd_val, is_selected=True, symbol="triangle", symbol_size=10,
                            itemstyle_opts=opts.ItemStyleOpts(color="rgba(37, 141, 54, 1.0)",))
@@ -307,5 +314,4 @@ def kline_pro(kline: List[dict],
     grid_chart.add(chart_vol, grid_opts=grid1_opts)
     grid_chart.add(chart_macd, grid_opts=grid2_opts)
     return grid_chart
-
 

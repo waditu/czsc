@@ -4,10 +4,10 @@ import pandas as pd
 from pyecharts.charts import Page
 from tqdm import tqdm
 from typing import List, Callable
-from ..analyze import KlineAnalyze
-from ..utils.echarts_plot import kline_pro, heat_map
-from ..utils.kline_generator import KlineGeneratorBy1Min, get_next_end_time
-from ..factors import KlineFactors
+from ..analyze import CZSC, RawBar
+from ..utils.echarts_plot import heat_map
+from ..utils.kline_generator import KlineGeneratorBy1Min, bar_end_time
+from ..factors import CzscFactors
 
 
 def cal_nbar_percentile(k: dict, kn: List[dict], n: int) -> float:
@@ -122,17 +122,9 @@ class FactorsResearcher:
         # 使用 kg 合成各级别K线
         self.kg = KlineGeneratorBy1Min()
         for row in factors:
-            self.kg.update({
-                "symbol": row['symbol'],
-                "dt": row['dt'],
-                "open": row['open'],
-                "close": row['close'],
-                "high": row['high'],
-                "low": row['low'],
-                "vol": row['vol'],
-            })
+            self.kg.update(RawBar(symbol=row['symbol'], dt=pd.to_datetime(row['dt']), open=row['open'],
+                                  close=row['close'], high=row['high'], low=row['low'], vol=row['vol']))
         self.calculate_nbar()
-        # self.da = pd.DataFrame(self.factors)
 
     def remove_duplicates(self, name, replace_value=False):
         """清理指定因子的连续信号
@@ -152,7 +144,7 @@ class FactorsResearcher:
                     self.factors[i]['{}_duplicated'.format(name)] = rows[-1][name]
 
     def show_klines(self, file_html, open_in_browser=True):
-        kf = KlineFactors(self.kg, bi_mode='new', max_count=100000000)
+        kf = CzscFactors(self.kg, max_count=100000000)
         kf.take_snapshot(file_html)
         if open_in_browser:
             webbrowser.open(file_html)
@@ -173,6 +165,7 @@ class FactorsResearcher:
 
     def factors_performance(self, file_xlsx, factors_col):
         """查看所有因子的表现"""
+        esp = 0.00001
         if 'base' not in factors_col:
             factors_col = ['base'] + factors_col
 
@@ -186,18 +179,18 @@ class FactorsResearcher:
 
             for v, samples in groups.items():
                 res = {"factor_name": factor_name, "factor_value": v,
-                       "count": len(samples), "pct": len(samples) / len(self.factors)}
+                       "count": len(samples), "pct": (len(samples) / len(self.factors)) * 100}
                 for n in self.n_list:
                     k1 = 'n{}b_均收益'.format(n)
-                    res[k1] = sum([x[k1] for x in samples]) / len(samples)
+                    res[k1] = sum([x[k1] for x in samples]) / (len(samples) + esp)
                     k2 = 'n{}b_百分位'.format(n)
-                    res[k2] = sum([x[k2] for x in samples]) / len(samples)
+                    res[k2] = sum([x[k2] for x in samples]) / (len(samples) + esp)
                     s1 = [x for x in samples if x[k1] > 0]
                     s2 = [x for x in samples if x[k1] < 0]
-                    res[k1.replace("均收益", "胜率")] = len(s1) / len(samples)
-                    s1_mean = sum([x[k1] for x in s1]) / len(s1)
-                    s2_mean = sum([abs(x[k1]) for x in s2]) / len(s2)
-                    res[k1.replace("均收益", "盈亏比")] = s1_mean / s2_mean
+                    res[k1.replace("均收益", "胜率")] = (len(s1) / (len(samples) + esp)) * 100
+                    s1_mean = sum([x[k1] for x in s1]) / (len(s1) + esp)
+                    s2_mean = sum([abs(x[k1]) for x in s2]) / (len(s2) + esp)
+                    res[k1.replace("均收益", "盈亏比")] = s1_mean / (s2_mean + esp)
                 results.append(res)
 
         df = pd.DataFrame(results)
@@ -228,9 +221,8 @@ class FactorsResearcher:
         :return:
         """
         kline = self.kg.get_kline(freq, count=100000000)
-        ka = KlineAnalyze(kline, name=freq, bi_mode="new", max_count=100000000, use_xd=False, use_ta=False)
-        chart = kline_pro(ka.kline_raw, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list,
-                          bs=bs, width=width, height=height)
+        ka = CZSC(kline, max_count=100000000)
+        chart = ka.to_echarts(width=width, height=height)
         if file_html:
             chart.render(file_html)
             if open_in_browser:
@@ -249,6 +241,7 @@ class FactorsResearcher:
         :param open_in_browser: bool
         :return:
         """
+        freq_m = {"1分钟": 1, "5分钟": 5, "30分钟": 30}
         rows = [x for x in self.factors if x[name] == value]
         value1 = [{"x": s['dt'], "y": k, "heat": v} for s in rows for k, v in s.items() if "百分位" in k]
         value2 = [{"x": s['dt'], "y": k, "heat": v} for s in rows for k, v in s.items() if "均收益" in k]
@@ -261,7 +254,7 @@ class FactorsResearcher:
         hm2 = heat_map(value2, x_label=x_label, y_label=y_label2,
                        title="{}历史表现评估（N周期区间收益）".format(name), width="1400px", height="480px")
 
-        bs = [{"dt": get_next_end_time(s['dt'], m=30), "mark": "buy", "price": round(s['close'], 2)} for s in rows]
+        bs = [{"dt": bar_end_time(s['dt'], m=freq_m[freq]), "mark": "buy", "price": round(s['close'], 2)} for s in rows]
         chart_kline = self.show_bs(bs, freq=freq, width="1400px", height='480px')
         page = Page(layout=Page.DraggablePageLayout, page_title="{}".format(name))
         page.add(hm1, hm2, chart_kline)
@@ -282,7 +275,5 @@ class FactorsResearcher:
             name = factor.__doc__
             for row in tqdm(self.factors, desc="add {}".format(name)):
                 row[name] = factor(row)
-        # self.da = pd.DataFrame(self.factors)
-
 
 

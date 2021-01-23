@@ -11,8 +11,7 @@ from czsc.cobra.analyst import cal_nbar_income, cal_nbar_percentile
 
 warnings.warn("czsc version is {}".format(czsc.__version__))
 
-# cur_path = os.path.split(os.path.realpath(__file__))[0]
-cur_path = "./test"
+cur_path = os.path.split(os.path.realpath(__file__))[0]
 
 
 def test_nbar():

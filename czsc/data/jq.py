@@ -5,11 +5,18 @@ import json
 import requests
 import warnings
 import pandas as pd
+from tqdm import tqdm
 from datetime import datetime, timedelta
+from typing import List
+from ..objects import RawBar
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
 file_token = os.path.join(home_path, "jq.token")
+
+# 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
+freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
+                "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
 
 def set_token(jq_mob, jq_pwd):
     """
@@ -47,7 +54,6 @@ def text2df(text):
     df = pd.DataFrame(rows[1:], columns=rows[0])
     return df
 
-
 def get_query_count() -> int:
     """获取查询剩余条数
     https://dataapi.joinquant.com/docs#get_query_count---%E8%8E%B7%E5%8F%96%E6%9F%A5%E8%AF%A2%E5%89%A9%E4%BD%99%E6%9D%A1%E6%95%B0
@@ -60,7 +66,6 @@ def get_query_count() -> int:
     }
     r = requests.post(url, data=json.dumps(data))
     return int(r.text)
-
 
 def get_concepts():
     """获取概念列表
@@ -139,6 +144,57 @@ def get_index_stocks(symbol, date=None):
     r = requests.post(url, data=json.dumps(data))
     return r.text.split('\n')
 
+def get_industry(symbol):
+    """
+    https://www.joinquant.com/help/api/help#JQDataHttp:get_industry-%E6%9F%A5%E8%AF%A2%E8%82%A1%E7%A5%A8%E6%89%80%E5%B1%9E%E8%A1%8C%E4%B8%9A
+    :param symbol:
+    :return:
+    """
+    data = {
+        "method": "get_industry",
+        "token": get_token(),
+        "code": symbol,
+        "date": str(datetime.now().date())
+    }
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    res = {
+        "股票代码": symbol,
+        "证监会行业代码": df[df['industry'] == 'zjw']['industry_code'].iloc[0],
+        "证监会行业名称": df[df['industry'] == 'zjw']['industry_name'].iloc[0],
+        "聚宽一级行业代码": df[df['industry'] == 'jq_l1']['industry_code'].iloc[0],
+        "聚宽一级行业名称": df[df['industry'] == 'jq_l1']['industry_name'].iloc[0],
+        "聚宽二级行业代码": df[df['industry'] == 'jq_l2']['industry_code'].iloc[0],
+        "聚宽二级行业名称": df[df['industry'] == 'jq_l2']['industry_name'].iloc[0],
+        "申万一级行业代码": df[df['industry'] == 'sw_l1']['industry_code'].iloc[0],
+        "申万一级行业名称": df[df['industry'] == 'sw_l1']['industry_name'].iloc[0],
+        "申万二级行业代码": df[df['industry'] == 'sw_l2']['industry_code'].iloc[0],
+        "申万二级行业名称": df[df['industry'] == 'sw_l2']['industry_name'].iloc[0],
+        "申万三级行业代码": df[df['industry'] == 'sw_l3']['industry_code'].iloc[0],
+        "申万三级行业名称": df[df['industry'] == 'sw_l3']['industry_name'].iloc[0],
+    }
+    return res
+
+def get_stock_industry():
+    df = get_all_securities("stock")
+    rows = df.to_dict('records')
+    results = []
+    for i, row in tqdm(rows):
+        try:
+            res = dict(row)
+            res.update(get_industry(res['code']))
+            results.append(res)
+        except Exception as e:
+            print("get industry fail on {}: {}".format(row['code'], e))
+    stock_ind = pd.DataFrame(results)
+    stock_ind.rename({'display_name': '股票名称', 'start_date': '上市日期'}, axis=1, inplace=True)
+    cols = ['股票代码', '股票名称', '上市日期', '证监会行业代码', '证监会行业名称',
+            '聚宽一级行业代码', '聚宽一级行业名称', '聚宽二级行业代码', '聚宽二级行业名称', '申万一级行业代码',
+            '申万一级行业名称', '申万二级行业代码', '申万二级行业名称', '申万三级行业代码', '申万三级行业名称']
+    stock_ind = stock_ind[cols]
+    return stock_ind
+
+
 def get_all_securities(code, date=None) -> pd.DataFrame:
     """
     https://dataapi.joinquant.com/docs#get_all_securities---%E8%8E%B7%E5%8F%96%E6%89%80%E6%9C%89%E6%A0%87%E7%9A%84%E4%BF%A1%E6%81%AF
@@ -167,34 +223,29 @@ def get_all_securities(code, date=None) -> pd.DataFrame:
     r = requests.post(url, data=json.dumps(data))
     return text2df(r.text)
 
-def get_kline(symbol,  end_date, freq, start_date=None, count=None):
+def get_kline(symbol: str, end_date: [datetime, str], freq: str,
+              start_date: [datetime, str] = None, count=None, fq: bool = True) -> List[RawBar]:
     """获取K线数据
 
-    :param symbol: str
-        聚宽标的代码
-    :param start_date: datetime
-        截止日期
-    :param end_date: datetime
-        截止日期
-    :param freq: str
-        K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W', 'M']
-    :param count: int
-        K线数量，最大值为 5000
+    https://www.joinquant.com/help/api/help#JQDataHttp:get_priceget_bars-%E8%8E%B7%E5%8F%96%E6%8C%87%E5%AE%9A%E6%97%B6%E9%97%B4%E5%91%A8%E6%9C%9F%E7%9A%84%E8%A1%8C%E6%83%85%E6%95%B0%E6%8D%AE
+    :param symbol: 聚宽标的代码
+    :param start_date: 开始日期
+    :param end_date: 截止日期
+    :param freq: K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W', 'M']
+    :param count: K线数量，最大值为 5000
+    :param fq: 是否进行复权
     :return: pd.DataFrame
 
     >>> start_date = datetime.strptime("20200701", "%Y%m%d")
     >>> end_date = datetime.strptime("20200719", "%Y%m%d")
     >>> df1 = get_kline(symbol="000001.XSHG", start_date=start_date, end_date=end_date, freq="1min")
     >>> df2 = get_kline(symbol="000001.XSHG", end_date=end_date, freq="1min", count=1000)
-    >>> df3 = get_kline(symbol="000001.XSHG", start_date='20200701', end_date='20200719', freq="1min")
+    >>> df3 = get_kline(symbol="000001.XSHG", start_date='20200701', end_date='20200719', freq="1min", fq=True)
     >>> df4 = get_kline(symbol="000001.XSHG", end_date='20200719', freq="1min", count=1000)
     """
     if count and count > 5000:
         warnings.warn(f"count={count}, 超过5000的最大值限制，仅返回最后5000条记录")
 
-    # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
-    freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
-                    "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
     end_date = pd.to_datetime(end_date)
     if start_date:
         start_date = pd.to_datetime(start_date)
@@ -205,7 +256,6 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
             "unit": freq_convert[freq],
             "date": start_date.strftime("%Y-%m-%d"),
             "end_date": end_date.strftime("%Y-%m-%d"),
-            # "fq_ref_date": end_date
         }
     elif count:
         data = {
@@ -215,65 +265,84 @@ def get_kline(symbol,  end_date, freq, start_date=None, count=None):
             "count": count,
             "unit": freq_convert[freq],
             "end_date": end_date.strftime("%Y-%m-%d"),
-            # "fq_ref_date": end_date
         }
     else:
         raise ValueError("start_date 和 count 不能同时为空")
 
+    if fq:
+        data.update({"fq_ref_date": end_date.strftime("%Y-%m-%d")})
+
     r = requests.post(url, data=json.dumps(data))
-    df = text2df(r.text)
-    df['symbol'] = symbol
-    df.rename({'date': 'dt', 'volume': 'vol'}, axis=1, inplace=True)
-    df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
-    for col in ['open', 'close', 'high', 'low', 'vol']:
-        df.loc[:, col] = df[col].apply(lambda x: round(float(x), 2))
-    df.loc[:, "dt"] = pd.to_datetime(df['dt'])
-    return df
+    rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
+    bars = []
+    for row in rows:
+        # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
+        bars.append(RawBar(symbol=symbol, dt=pd.to_datetime(row[0]),
+                           open=round(float(row[1]), 2),
+                           close=round(float(row[2]), 2),
+                           high=round(float(row[3]), 2),
+                           low=round(float(row[4]), 2),
+                           vol=int(row[5])))
+    return bars
 
-def download_kline(symbol, freq, start_date, end_date, delta, save=True):
-    """下载K线数据
+    # df = text2df(r.text)
+    # df['symbol'] = symbol
+    # df.rename({'date': 'dt', 'volume': 'vol'}, axis=1, inplace=True)
+    # df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
+    # for col in ['open', 'close', 'high', 'low', 'vol']:
+    #     df.loc[:, col] = df[col].apply(lambda x: round(float(x), 2))
+    # df.loc[:, "dt"] = pd.to_datetime(df['dt'])
+    # return df
 
-    :param save:
-    :param symbol:
-    :param end_date:
-    :param freq:
-    :param start_date:
-    :param delta:
+
+def get_kline_period(symbol: str, start_date: [datetime, str],
+                     end_date: [datetime, str], freq: str, fq=True) -> List[RawBar]:
+    """获取指定时间段的行情数据
+
+    https://www.joinquant.com/help/api/help#JQDataHttp:get_price_periodget_bars_period-%E8%8E%B7%E5%8F%96%E6%8C%87%E5%AE%9A%E6%97%B6%E9%97%B4%E6%AE%B5%E7%9A%84%E8%A1%8C%E6%83%85%E6%95%B0%E6%8D%AE
+    :param symbol: 聚宽标的代码
+    :param start_date: 开始日期
+    :param end_date: 截止日期
+    :param freq: K线级别，可选值 ['1min', '5min', '30min', '60min', 'D', 'W', 'M']
+    :param fq: 是否进行复权
     :return:
-
-    >>> start_date = datetime.strptime("20200101", "%Y%m%d")
-    >>> end_date = datetime.strptime("20200719", "%Y%m%d")
-    >>> df = download_kline("000001.XSHG", "1min", start_date, end_date, delta=timedelta(days=10), save=False)
     """
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
 
-    data = []
-    end_dt = start_date + delta
-    print("开始下载数据：{} - {} - {}".format(symbol, start_date, end_date))
-    df_ = get_kline(symbol, start_date=start_date, end_date=end_dt, freq=freq)
-    if not df_.empty:
-        data.append(df_)
+    data = {
+        "method": "get_price_period",
+        "token": get_token(),
+        "code": symbol,
+        "unit": freq_convert[freq],
+        "date": start_date.strftime("%Y-%m-%d"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
+    }
+    if fq:
+        data.update({"fq_ref_date": end_date.strftime("%Y-%m-%d")})
 
-    while end_dt < end_date:
-        df_ = get_kline(symbol, start_date=start_date, end_date=end_dt, freq=freq)
-        if not df_.empty:
-            data.append(df_)
-        start_date = end_dt
-        end_dt += delta
-        print("当前下载进度：{} - {} - {}".format(symbol, start_date, end_dt))
+    r = requests.post(url, data=json.dumps(data))
+    rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
+    bars = []
+    for row in rows:
+        # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
+        bars.append(RawBar(symbol=symbol, dt=pd.to_datetime(row[0]),
+                           open=round(float(row[1]), 2),
+                           close=round(float(row[2]), 2),
+                           high=round(float(row[3]), 2),
+                           low=round(float(row[4]), 2),
+                           vol=int(row[5])))
+    return bars
 
-    df = pd.concat(data, ignore_index=True)
-    print("{} 去重前K线数量为 {}".format(symbol, len(df)))
-    df.drop_duplicates(['dt'], inplace=True)
-    df.sort_values('dt', ascending=True, inplace=True)
-    df.reset_index(drop=True, inplace=True)
-    print("{} 去重后K线数量为 {}".format(symbol, len(df)))
+    # df = text2df(r.text)
+    # df['symbol'] = symbol
+    # df.rename({'date': 'dt', 'volume': 'vol'}, axis=1, inplace=True)
+    # df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
+    # for col in ['open', 'close', 'high', 'low', 'vol']:
+    #     df.loc[:, col] = df[col].apply(lambda x: round(float(x), 2))
+    # df.loc[:, "dt"] = pd.to_datetime(df['dt'])
+    # return df
 
-    if save:
-        df.to_csv(f"{symbol}_{freq}_{start_date.date()}_{end_date.date()}.csv", index=False, encoding="utf-8")
-    else:
-        return df
 
 def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> dict:
     """
