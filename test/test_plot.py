@@ -31,14 +31,14 @@ def test_kline_pro():
             for _, row in kline.iterrows()]
     ka = CZSC(bars, freq="日线")
 
-    bs = []
-    for x in ka.bi_list:
-        if x.fx_b.mark == Mark.D:
-            mark = "buy"
-        else:
-            mark = "sell"
-        bs.append({"dt": x.dt, "mark": mark, mark: x.fx_b.fx})
-
-    chart = plot.kline_pro(ka.bars_ubi, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list, bs=bs)
-    chart.render()
+    # bs = []
+    # for x in ka.bi_list:
+    #     if x.fx_b.mark == Mark.D:
+    #         mark = "buy"
+    #     else:
+    #         mark = "sell"
+    #     bs.append({"dt": x.f, "mark": mark, mark: x.fx_b.fx})
+    #
+    # chart = plot.kline_pro(ka.bars_ubi, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list, bs=bs)
+    # chart.render()
 
