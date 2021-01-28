@@ -58,3 +58,9 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 使用聚宽数据的快速入门请查看 `examples\czsc 快速入门教程.ipynb`
 
+## 捐赠支持
+
+>如果这个项目对你的交易有些许帮助，可以扫码捐赠，让我知道一下，感谢！另外，**可以顺便提一个问题或需求，保证回复。**
+
+![](./docs/donate.png)
+
