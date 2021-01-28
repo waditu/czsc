@@ -62,5 +62,4 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 >如果这个项目对你的交易有些许帮助，可以扫码捐赠，让我知道一下，感谢！另外，**可以顺便提一个问题或需求，保证回复。**
 
-![](./docs/donate.png)
-
+<img src="https://github.com/zengbin93/czsc/blob/master/docs/donate.png" height="300" width="400">
