@@ -4,7 +4,7 @@ from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 from typing import List
-from .analyze import CZSC
+from .analyze import CZSC, get_sub_span, check_seven_fd, check_nine_fd, check_five_fd
 from .utils.kline_generator import KlineGeneratorBy1Min, KlineGeneratorByTick
 from .objects import RawBar
 from .enum import Factors, FdNine, FdFive, FdSeven, FdThree, Direction
@@ -46,12 +46,12 @@ class CzscFactors:
             tab.add(chart, freq)
 
         t1 = Table()
-        t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" in k])
+        t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" in k and v != "其他"])
         t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
         tab.add(t1, "信号表")
 
         t2 = Table()
-        t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k])
+        t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k and v != "其他"])
         t2.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅因子表", subtitle=""))
         tab.add(t2, "因子表")
 
@@ -74,11 +74,11 @@ class CzscFactors:
         s = self._calculate_signals()
 
         s.update({
-            "日线右侧多头因子": Factors.Other.value,
-            "日线左侧多头因子": Factors.Other.value,
+            "5分钟右侧多头因子": Factors.Other.value,
+            "5分钟左侧多头因子": Factors.Other.value,
 
-            "日线右侧空头因子": Factors.Other.value,
-            "日线左侧空头因子": Factors.Other.value,
+            "5分钟右侧空头因子": Factors.Other.value,
+            "5分钟左侧空头因子": Factors.Other.value,
 
             "30分钟右侧多头因子": Factors.Other.value,
             "30分钟左侧多头因子": Factors.Other.value,
@@ -86,49 +86,86 @@ class CzscFactors:
             "30分钟右侧空头因子": Factors.Other.value,
             "30分钟左侧空头因子": Factors.Other.value,
 
-            "5分钟右侧多头因子": Factors.Other.value,
-            "5分钟左侧多头因子": Factors.Other.value,
+            "日线右侧多头因子": Factors.Other.value,
+            "日线左侧多头因子": Factors.Other.value,
 
-            "5分钟右侧空头因子": Factors.Other.value,
-            "5分钟左侧空头因子": Factors.Other.value,
+            "日线右侧空头因子": Factors.Other.value,
+            "日线左侧空头因子": Factors.Other.value,
         })
 
-        if "日线" in self.freqs and "30分钟" in self.freqs and "5分钟" in self.freqs:
-            if s['日线_第N笔方向'] == Direction.Down.value and s['30分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
-                s['日线右侧多头因子'] = Factors.DLA1.value
+        five_left_short = [FdFive.S2A1.value, FdFive.S2B1.value, FdFive.S2C1.value, FdFive.S3A1.value]
+        five_left_long = [FdFive.L2A1.value, FdFive.L2B1.value, FdFive.L2C1.value, FdFive.L3A1.value]
+        five_third_buy = [FdFive.L4A1.value, FdFive.L4A2.value, FdFive.L4B1.value, FdFive.L4B2.value,
+                          FdFive.L4C1.value, FdFive.L4C2.value, FdFive.L4D1.value, FdFive.L4D2.value]
 
-            if s['日线_第N笔方向'] == Direction.Down.value and s['日线_第N笔结束标记的分型强弱'] == "强" \
-                    and s['5分钟_第N笔的七笔形态'] == FdSeven.L3A1.value:
-                s['日线右侧多头因子'] = Factors.DLA2.value
+        seven_left_short = [FdSeven.S1A1.value, FdSeven.S2A1.value,  FdSeven.S4A1.value]
+        seven_left_long = [FdSeven.L1A1.value, FdSeven.L2A1.value,  FdSeven.L4A1.value]
 
-            if "底背弛" in s['日线_第N笔的五笔形态'] and s['5分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
-                s['日线右侧多头因子'] = Factors.DLA3.value
+        if "5分钟" in self.freqs and "1分钟" in self.freqs:
+            if s['5分钟_第N笔方向'] == Direction.Down.value:
+                # 5分钟左侧空头因子
+                if s['1分钟_第N笔的七笔形态'] in seven_left_short:
+                    s['5分钟左侧空头因子'] = Factors.F5SB1.value
 
-            if "底背弛" in s['日线_第N笔的七笔形态'] and s['5分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
-                s['日线右侧多头因子'] = Factors.DLA4.value
+                if s['1分钟_第N笔的五笔形态'] in five_left_short:
+                    s['5分钟左侧空头因子'] = Factors.F5SB2.value
 
-            if s['日线_第N笔方向'] == Direction.Down.value and "底背弛" in s['30分钟_第N笔的五笔形态']:
-                s['日线左侧空头因子'] = Factors.DSB1.value
-
-            if s['日线_第N笔方向'] == Direction.Down.value and "底背弛" in s['30分钟_第N笔的七笔形态']:
-                s['日线左侧空头因子'] = Factors.DSB2.value
-
-        if "日线" in self.freqs and "5分钟" in self.freqs and "1分钟" in self.freqs:
-            if s['1分钟_第N笔的七笔形态'] == FdSeven.L3B1.value and s['日线_第N笔方向'] == Direction.Down.value:
-                if s['5分钟_第N笔方向'] == Direction.Down.value:
+                # 5分钟右侧多头因子
+                if s['1分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
                     s['5分钟右侧多头因子'] = Factors.F5LA1.value
-                if "底背弛" in s['5分钟_第N笔的五笔形态']:
-                    s['5分钟右侧多头因子'] = Factors.F5LA2.value
-                if "底背弛" in s['5分钟_第N笔的七笔形态']:
-                    s['5分钟右侧多头因子'] = Factors.F5LA3.value
 
-            if s['1分钟_第N笔的七笔形态'] == FdSeven.S3B1.value and s['日线_第N笔方向'] == Direction.Up.value:
-                if s['5分钟_第N笔方向'] == Direction.Up.value:
+            elif s['5分钟_第N笔方向'] == Direction.Up.value:
+                # 5分钟左侧多头因子
+                if s['1分钟_第N笔的七笔形态'] in seven_left_long:
+                    s['5分钟左侧多头因子'] = Factors.F5LB1.value
+
+                if s['1分钟_第N笔的五笔形态'] in five_left_long:
+                    s['5分钟左侧多头因子'] = Factors.F5LB2.value
+
+                # 5分钟右侧空头因子
+                if s['1分钟_第N笔的七笔形态'] == FdSeven.S3B1.value:
                     s['5分钟右侧空头因子'] = Factors.F5SA1.value
-                if "顶背弛" in s['5分钟_第N笔的五笔形态']:
-                    s['5分钟右侧空头因子'] = Factors.F5SA2.value
-                if "顶背弛" in s['5分钟_第N笔的七笔形态']:
-                    s['5分钟右侧空头因子'] = Factors.F5SA3.value
+
+        # ==============================================================================================================
+        if "日线" in self.freqs and "30分钟" in self.freqs and "5分钟" in self.freqs:
+            c1 = self.kas['5分钟']
+            c2 = self.kas['30分钟']
+            c3 = self.kas['日线']
+            if c2.bi_list and c3.bi_list:
+                bi1 = c3.bi_list[-1]
+                bi2 = c2.bi_list[-1]
+                sub1 = get_sub_span(c2.bi_list, bi1.fx_a.dt, bi1.fx_b.dt, bi1.direction)
+                sub2 = get_sub_span(c1.bi_list, bi2.fx_a.dt, bi2.fx_b.dt, bi2.direction)
+                # print("sub1 len: {}; sub2 len: {}".format(len(sub1), len(sub2)))
+            else:
+                sub1 = sub2 = []
+
+            if s['日线_第N笔方向'] == Direction.Down.value:
+
+                if s['30分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
+                    s['日线右侧多头因子'] = Factors.DLA1.value
+
+                if c3.bi_list[-1].fx_b.power == "强" and s['5分钟_第N笔的七笔形态'] == FdSeven.L3A1.value:
+                    s['日线右侧多头因子'] = Factors.DLA2.value
+
+                if len(sub1) == 7 and check_seven_fd(sub1) in seven_left_long and len(sub2) >= 3:
+                    s['日线右侧多头因子'] = Factors.DLA3.value
+
+                if len(sub1) == 5 and check_five_fd(sub1) in five_left_long and len(sub2) >= 3:
+                    s['日线右侧多头因子'] = Factors.DLA4.value
+
+                if len(c3.bars_ubi) <= 7 and s['30分钟_第N笔的五笔形态'] in five_third_buy and len(sub2) >= 3 \
+                        and c2.bi_list[-1].high == max([x.high for x in c2.bi_list[-9:]]):
+                    s['日线右侧多头因子'] = Factors.DLA5.value
+
+            if s['日线_第N笔方向'] == Direction.Down.value:
+
+                if s['30分钟_第N笔的五笔形态'] in five_left_short:
+                    s['日线左侧空头因子'] = Factors.DSB1.value
+
+                if s['30分钟_第N笔的七笔形态'] in seven_left_short:
+                    s['日线左侧空头因子'] = Factors.DSB2.value
+
         return s
 
     def update_factors(self, data: List[RawBar]):

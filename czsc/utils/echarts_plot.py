@@ -221,7 +221,8 @@ def kline_pro(kline: List[dict],
         chart_bi.add_xaxis(bi_dts)
         chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,
                            symbol="diamond", symbol_size=10, label_opts=label_not_show_opts,
-                           itemstyle_opts=opts.ItemStyleOpts(color="rgba(184, 117, 225, 1.0)",))
+                           itemstyle_opts=opts.ItemStyleOpts(color="rgba(184, 117, 225, 1.0)",),
+                           linestyle_opts=opts.LineStyleOpts(width=1.5))
 
         chart_bi.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
         chart_k = chart_k.overlap(chart_bi)

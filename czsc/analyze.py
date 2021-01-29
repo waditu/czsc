@@ -60,7 +60,7 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
     return fx
 
 
-def check_bi(bars: List[NewBar]):
+def check_bi_v1(bars: List[NewBar]):
     """输入一串无包含关系K线，查找其中的一笔"""
     fxs = []
     for i in range(1, len(bars)-1):
@@ -114,12 +114,72 @@ def check_bi(bars: List[NewBar]):
         return None, bars
 
 
-def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, str]) -> List[BI]:
+def check_bi(bars: List[NewBar]):
+    """输入一串无包含关系K线，查找其中的一笔"""
+    fxs = []
+    for i in range(1, len(bars)-1):
+        fx = check_fx(bars[i-1], bars[i], bars[i+1])
+        if isinstance(fx, FX):
+            fxs.append(fx)
+
+    if len(fxs) < 2:
+        return None, bars
+
+    fx_a = fxs[0]
+    fxs_a = [x for x in fxs if x.mark == fx_a.mark]
+    for fx in fxs_a:
+        if (fx_a.mark == Mark.D and fx.low <= fx_a.low) \
+                or (fx_a.mark == Mark.G and fx.high >= fx_a.high):
+            fx_a = fx
+    try:
+        if fxs[0].mark == Mark.D:
+            direction = Direction.Up
+            fxs_b = [x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt]
+            fx_b = fxs_b[0]
+            for fx in fxs_b:
+                if fx.high > fx_b.high:
+                    fx_b = fx
+            high = fx_b.high
+            low = fx_a.low
+        elif fxs[0].mark == Mark.G:
+            direction = Direction.Down
+            fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt]
+            fx_b = fxs_b[0]
+            for fx in fxs_b[1:]:
+                if fx.low < fx_b.low:
+                    fx_b = fx
+            high = fx_a.high
+            low = fx_b.low
+        else:
+            raise ValueError
+    except:
+        return None, bars
+
+    bars_a = [x for x in bars if x.dt <= fx_b.elements[2].dt]
+    bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
+    max_high_b = max([x.high for x in bars_b])
+    min_low_b = min([x.low for x in bars_b])
+    if (direction == Direction.Up and max_high_b > fx_b.high) \
+            or (direction == Direction.Down and min_low_b < fx_b.low):
+        return None, bars
+
+    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
+    if len(bars_a) >= 7 and not ab_include:
+        power_price = abs(fx_b.fx - fx_a.fx)
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, direction=direction,
+                power=power_price, high=high, low=low, bars=bars_a)
+        return bi, bars_b
+    else:
+        return None, bars
+
+
+def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, str], direction: Direction) -> List[BI]:
     """获取子区间（这是进行多级别联立分析的关键步骤）
 
     :param bis: 笔的列表
     :param start_dt: 子区间开始时间
     :param end_dt: 子区间结束时间
+    :param direction: 方向
     :return: 子区间
     """
     start_dt = pd.to_datetime(start_dt)
@@ -134,6 +194,11 @@ def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, st
             sub.append(bi)
         else:
             continue
+
+    if len(sub) > 0 and sub[0].direction != direction:
+        sub = sub[1:]
+    if len(sub) > 0 and sub[-1].direction != direction:
+        sub = sub[:-1]
     return sub
 
 
@@ -207,15 +272,7 @@ class CZSC:
         s.update({
             "最近三根无包含K线形态": "other",
             "未完成笔的延伸长度": 0,
-
             "第N笔方向": "other",
-            "第N笔结束标记的上边沿": 0,
-            "第N笔结束标记的下边沿": 0,
-            "第N笔结束标记的分型强弱": 0,
-
-            "第N-1笔结束标记的上边沿": 0,
-            "第N-1笔结束标记的下边沿": 0,
-            "第N-1笔结束标记的分型强弱": 0,
 
             "第N笔的三笔形态": "other",
             "第N-1笔的三笔形态": "other",
@@ -249,13 +306,6 @@ class CZSC:
         if len(bis) > 3:
             direction = bis[-1].direction
             s['第N笔方向'] = direction.value
-            s['第N笔结束标记的上边沿'] = bis[-1].fx_b.high
-            s['第N笔结束标记的下边沿'] = bis[-1].fx_b.low
-            s['第N笔结束标记的分型强弱'] = bis[-1].fx_b.power
-
-            s['第N-1笔结束标记的上边沿'] = bis[-2].fx_b.high
-            s['第N-1笔结束标记的下边沿'] = bis[-2].fx_b.low
-            s['第N-1笔结束标记的分型强弱'] = bis[-2].fx_b.power
 
         if len(self.bi_list) > 8:
             bis = self.bi_list

@@ -546,7 +546,7 @@ def check_seven_fd(fds: List[BI]) -> str:
             if fd2.low > fd4.high and fd6.high < min(fd2.low, fd4.low) and fd7.power < fd1.power:
                 v = FdSeven.L1A1.value  # "aAb式底背驰"
 
-            if fd2.low > fd4.high and fd4.low > fd6.high and fd7.power < fd5.power:
+            if fd2.low < fd4.high and fd4.low > fd6.high and fd7.power < fd5.power:
                 v = FdSeven.L2A1.value  # "aAbcd式底背驰"
 
         if min_low == fd3.low and fd1.high > fd3.high and max_high == max(fd1.high, fd4.high) \
@@ -568,7 +568,7 @@ def check_seven_fd(fds: List[BI]) -> str:
             if fd4.low < fd2.high and fd6.low > max(fd4.high, fd2.high) and fd7.power < fd5.power:
                 v = FdSeven.S2A1.value  # "aAbcd式顶背驰"
 
-        if max_high == fd4.high and min_low == min(fd4.low, fd1.low) and fd6.high < fd2.low \
+        if max_high == fd3.high and min_low == min(fd4.low, fd1.low) and fd6.high < fd2.low \
                 and fd5.high > fd7.high and fd5.low < fd7.low and fd1.low < fd3.low:
             v = FdSeven.S3A1.value  # "BaA式右侧顶A"
 
@@ -613,8 +613,8 @@ def check_nine_fd(fds: List[BI]) -> str:
 
             if fd2.high > fd4.low and fd4.high < fd6.low \
                     and fd6.high > fd8.low > max(fd2.high, fd4.high)\
-                    and fd6.low > max(fd2.high, fd4.high):
-                v = FdNine.S3A1.value   # 标准aAbBc向上趋势
+                    and fd6.low > max(fd2.high, fd4.high) and fd9.power < fd5.power:
+                v = FdNine.S3A1.value   # 标准aAbBc向上趋势顶背驰
 
             if fd2.high < fd4.low and fd4.high > fd6.low and fd4.high > fd8.low:
                 v = FdNine.S4A1.value   # 上中枢七段上涨
@@ -635,8 +635,8 @@ def check_nine_fd(fds: List[BI]) -> str:
 
             if fd2.low < fd4.high and fd4.low > fd6.high \
                     and fd6.low < fd8.high < min(fd2.low, fd4.low)\
-                    and fd6.high < min(fd2.low, fd4.low):
-                v = FdNine.L3A1.value   # 标准aAbBc向下趋势
+                    and fd6.high < min(fd2.low, fd4.low) and fd9.power < fd5.power:
+                v = FdNine.L3A1.value   # 标准aAbBc向下趋势底背弛
 
             if fd2.low < fd4.high and fd2.low < fd6.high and fd6.low > fd8.high:
                 v = FdNine.L4A1.value   # 上中枢七段下跌
