@@ -68,7 +68,7 @@ class CzscTrader:
         nine_values = [x.value for x in FdNine.__members__.values() if x.name[0] in ["L", "S"]]
         # seven_values = [x.value for x in FdSeven.__members__.values() if x.name[0] in ["L", "S"]]
 
-        for freq in self.freqs:
+        for freq in ["15分钟", "30分钟", "60分钟", "日线"]:
             if s['{}_第N笔的九笔形态'.format(freq)] in nine_values:
                 return "{}_第N笔的九笔形态_{}".format(freq, s['{}_第N笔的九笔形态'.format(freq)])
 

@@ -155,7 +155,7 @@ def check_bi(bars: List[NewBar]):
     except:
         return None, bars
 
-    bars_a = [x for x in bars if x.dt <= fx_b.elements[2].dt]
+    bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
     bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
     max_high_b = max([x.high for x in bars_b])
     min_low_b = min([x.low for x in bars_b])
@@ -270,29 +270,29 @@ class CZSC:
     def get_signals(self):
         s = OrderedDict({"symbol": self.symbol, "dt": self.bars_raw[-1].dt, "close": self.bars_raw[-1].close})
         s.update({
-            "最近三根无包含K线形态": "other",
+            "最近三根无包含K线形态": "其他",
             "未完成笔的延伸长度": 0,
-            "第N笔方向": "other",
+            "第N笔方向": "其他",
 
-            "第N笔的三笔形态": "other",
-            "第N-1笔的三笔形态": "other",
-            "第N-2笔的三笔形态": "other",
-            "第N-3笔的三笔形态": "other",
+            "第N笔的三笔形态": "其他",
+            "第N-1笔的三笔形态": "其他",
+            "第N-2笔的三笔形态": "其他",
+            "第N-3笔的三笔形态": "其他",
 
-            "第N笔的五笔形态": "other",
-            "第N-1笔的五笔形态": "other",
-            "第N-2笔的五笔形态": "other",
-            "第N-3笔的五笔形态": "other",
+            "第N笔的五笔形态": "其他",
+            "第N-1笔的五笔形态": "其他",
+            "第N-2笔的五笔形态": "其他",
+            "第N-3笔的五笔形态": "其他",
 
-            "第N笔的七笔形态": "other",
-            "第N-1笔的七笔形态": "other",
-            "第N-2笔的七笔形态": "other",
-            "第N-3笔的七笔形态": "other",
+            "第N笔的七笔形态": "其他",
+            "第N-1笔的七笔形态": "其他",
+            "第N-2笔的七笔形态": "其他",
+            "第N-3笔的七笔形态": "其他",
 
-            "第N笔的九笔形态": "other",
-            "第N-1笔的九笔形态": "other",
-            "第N-2笔的九笔形态": "other",
-            "第N-3笔的九笔形态": "other",
+            "第N笔的九笔形态": "其他",
+            "第N-1笔的九笔形态": "其他",
+            "第N-2笔的九笔形态": "其他",
+            "第N-3笔的九笔形态": "其他",
         })
         s['未完成笔的延伸长度'] = len(self.bars_ubi)
 
