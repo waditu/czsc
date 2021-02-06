@@ -4,4 +4,3 @@ tqdm
 pandas>=1.1.0
 zb>=0.0.14
 numpy>=1.16.5
-numba>=0.45.1

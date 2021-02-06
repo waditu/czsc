@@ -2,11 +2,13 @@
 """
 
 常用技术分析指标：MA, MACD, BOLL
+
+使用 @numba.njit 装饰器，可以大幅提升计算性能，10倍左右
+这里为了便于直接通过 github action 打包发布到 pypi，没有使用这个装饰器，需要的可以自己加上
+
 """
 import numpy as np
-import numba
 
-@numba.njit()
 def SMA(close: np.array, timeperiod=5):
     """简单移动平均
 
@@ -27,7 +29,6 @@ def SMA(close: np.array, timeperiod=5):
         res.append(seq.mean())
     return np.array(res, dtype=np.double)
 
-@numba.njit()
 def EMA(close: np.array, timeperiod=5):
     """
     https://baike.baidu.com/item/EMA/12646151
@@ -47,7 +48,6 @@ def EMA(close: np.array, timeperiod=5):
             res.append(ema)
     return np.array(res, dtype=np.double)
 
-@numba.njit()
 def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     """MACD 异同移动平均线
     https://baike.baidu.com/item/MACD%E6%8C%87%E6%A0%87/6271283
