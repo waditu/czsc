@@ -25,6 +25,8 @@
 
 ## 安装
 
+**注意:** python 版本必须大于等于 3.7 
+
 直接从github安装：
 ```
 pip install git+git://github.com/zengbin93/czsc.git -U
