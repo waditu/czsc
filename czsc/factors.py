@@ -101,30 +101,29 @@ class CzscFactors:
         seven_left_short = [FdSeven.S1A1.value, FdSeven.S2A1.value,  FdSeven.S4A1.value]
         seven_left_long = [FdSeven.L1A1.value, FdSeven.L2A1.value,  FdSeven.L4A1.value]
 
-        if "5分钟" in self.freqs and "1分钟" in self.freqs:
-            if s['5分钟_第N笔方向'] == Direction.Down.value:
-                # 5分钟左侧空头因子
-                if s['1分钟_第N笔的七笔形态'] in seven_left_short:
-                    s['5分钟左侧空头因子'] = Factors.F5SB1.value
+        if "5分钟" in self.freqs and "1分钟" in self.freqs and s['5分钟_第N笔方向'] == Direction.Down.value:
+            # 5分钟左侧空头因子
+            if s['1分钟_第N笔的七笔形态'] in seven_left_short:
+                s['5分钟左侧空头因子'] = Factors.F5SB1.value
 
-                if s['1分钟_第N笔的五笔形态'] in five_left_short:
-                    s['5分钟左侧空头因子'] = Factors.F5SB2.value
+            if s['1分钟_第N笔的五笔形态'] in five_left_short:
+                s['5分钟左侧空头因子'] = Factors.F5SB2.value
 
-                # 5分钟右侧多头因子
-                if s['1分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
-                    s['5分钟右侧多头因子'] = Factors.F5LA1.value
+            # 5分钟右侧多头因子
+            if s['1分钟_第N笔的七笔形态'] == FdSeven.L3B1.value:
+                s['5分钟右侧多头因子'] = Factors.F5LA1.value
 
-            elif s['5分钟_第N笔方向'] == Direction.Up.value:
-                # 5分钟左侧多头因子
-                if s['1分钟_第N笔的七笔形态'] in seven_left_long:
-                    s['5分钟左侧多头因子'] = Factors.F5LB1.value
+        if "5分钟" in self.freqs and "1分钟" in self.freqs and s['5分钟_第N笔方向'] == Direction.Up.value:
+            # 5分钟左侧多头因子
+            if s['1分钟_第N笔的七笔形态'] in seven_left_long:
+                s['5分钟左侧多头因子'] = Factors.F5LB1.value
 
-                if s['1分钟_第N笔的五笔形态'] in five_left_long:
-                    s['5分钟左侧多头因子'] = Factors.F5LB2.value
+            if s['1分钟_第N笔的五笔形态'] in five_left_long:
+                s['5分钟左侧多头因子'] = Factors.F5LB2.value
 
-                # 5分钟右侧空头因子
-                if s['1分钟_第N笔的七笔形态'] == FdSeven.S3B1.value:
-                    s['5分钟右侧空头因子'] = Factors.F5SA1.value
+            # 5分钟右侧空头因子
+            if s['1分钟_第N笔的七笔形态'] == FdSeven.S3B1.value:
+                s['5分钟右侧空头因子'] = Factors.F5SA1.value
 
         # ==============================================================================================================
         if "日线" in self.freqs and "30分钟" in self.freqs and "5分钟" in self.freqs:
@@ -154,11 +153,15 @@ class CzscFactors:
                 if len(sub1) == 5 and check_five_fd(sub1) in five_left_long and len(sub2) >= 3:
                     s['日线右侧多头因子'] = Factors.DLA4.value
 
-                if len(c3.bars_ubi) <= 7 and s['30分钟_第N笔的五笔形态'] in five_third_buy and len(sub2) >= 3 \
-                        and c2.bi_list[-1].high == max([x.high for x in c2.bi_list[-9:]]):
+                if len(c3.bars_ubi) <= 7 and s['30分钟_第N笔的五笔形态'] in five_third_buy and len(sub2) >= 3:
                     s['日线右侧多头因子'] = Factors.DLA5.value
 
-            if s['日线_第N笔方向'] == Direction.Down.value:
+            if s['日线_第N笔方向'] == Direction.Up.value:
+                if "底背驰" in s['30分钟_第N笔的七笔形态']:
+                    s['日线左侧多头因子'] = Factors.DLB1.value
+
+                if s['30分钟_第N笔的九笔形态'] == FdNine.L3A1.value:
+                    s['日线左侧多头因子'] = Factors.DLB2.value
 
                 if s['30分钟_第N笔的五笔形态'] in five_left_short:
                     s['日线左侧空头因子'] = Factors.DSB1.value

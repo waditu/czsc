@@ -13,35 +13,28 @@ def bar_end_time(dt: datetime, m=1):
         分钟周期，1 表示 1分钟，5 表示 5分钟 ...
     :return: datetime
     """
-    am_st = "09:30"
-    am_et = "11:30"
-    pm_st = "13:00"
-    pm_et = "15:00"
-
+    dt = dt.replace(second=0, microsecond=0)
     dt_span = {
-        60: ['10:30', "11:30", "14:00", "15:00"]
+        60: ["01:00", "2:00", "3:00", '10:30', "11:30", "14:00", "15:00", "22:00", "23:00", "23:59"],
     }
 
-    dt = dt.replace(second=0)
-    if dt.strftime("%H:%M") == am_et or dt.strftime("%H:%M") == pm_et:
-        return dt.replace(second=0)
-
     if m < 60:
-        delta = timedelta(minutes=1)
-        for _ in range(1000):
-            dt = dt + delta
-            if dt.minute % m == 0:
-                h = dt.strftime("%H:%M")
-                if am_et >= h > am_st or pm_et >= h > pm_st:
-                    return dt
-    else:
-        h = dt.strftime("%H:%M")
-        for edt in dt_span[m]:
-            if h <= edt:
-                hour, minute = edt.split(":")
-                return dt.replace(hour=int(hour), minute=int(minute))
-    return dt
+        if (dt.hour == 15 and dt.minute == 0) or (dt.hour == 11 and dt.minute == 30):
+            return dt
 
+        delta_m = dt.minute % m
+        if delta_m != 0:
+            dt += timedelta(minutes=m - delta_m)
+        else:
+            dt += timedelta(minutes=m)
+        return dt
+    else:
+        for v in dt_span[m]:
+            hour, minute = v.split(":")
+            edt = dt.replace(hour=int(hour), minute=int(minute))
+            if dt <= edt:
+                return edt
+    return dt
 
 class KlineGeneratorBase:
     """K线生成器，仿实盘"""

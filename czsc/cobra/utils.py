@@ -2,9 +2,10 @@
 
 import numpy as np
 import pandas as pd
-from ..utils.ta import KDJ
 import traceback
 from typing import List, Union
+from ..utils.ta import KDJ
+from ..objects import RawBar
 
 
 def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]):
@@ -30,7 +31,7 @@ def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]):
     return num
 
 
-def kdj_gold_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
+def kdj_gold_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True):
     """输入K线，判断KDJ是否金叉
 
     :param kline: pd.DataFrame
@@ -40,9 +41,9 @@ def kdj_gold_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
     """
     try:
         if isinstance(kline, list):
-            close = [x['close'] for x in kline]
-            high = [x['high'] for x in kline]
-            low = [x['low'] for x in kline]
+            close = [x.close for x in kline]
+            high = [x.high for x in kline]
+            low = [x.low for x in kline]
         else:
             close = kline.close.values
             high = kline.high.values
@@ -60,12 +61,11 @@ def kdj_gold_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
         else:
             return False
     except:
-        print("{}: run error kdj_gold_cross".format(kline.iloc[0]['symbol']))
         traceback.print_exc()
         return False
 
 
-def kdj_dead_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
+def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True):
     """输入K线，判断KDJ是否死叉
 
     :param kline: pd.DataFrame
@@ -75,9 +75,9 @@ def kdj_dead_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
     """
     try:
         if isinstance(kline, list):
-            close = [x['close'] for x in kline]
-            high = [x['high'] for x in kline]
-            low = [x['low'] for x in kline]
+            close = [x.close for x in kline]
+            high = [x.high for x in kline]
+            low = [x.low for x in kline]
         else:
             close = kline.close.values
             high = kline.high.values
@@ -95,6 +95,5 @@ def kdj_dead_cross(kline: Union[List[dict], pd.DataFrame], just: bool = True):
         else:
             return False
     except:
-        print("{}: run error kdj_dead_cross".format(kline.iloc[0]['symbol']))
         traceback.print_exc()
         return False

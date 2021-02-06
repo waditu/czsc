@@ -4,6 +4,7 @@ from typing import List
 from collections import OrderedDict
 from datetime import datetime
 import pandas as pd
+import traceback
 from .objects import Mark, Direction, BI, FX, RawBar, NewBar
 from .utils.echarts_plot import kline_pro
 from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd
@@ -37,8 +38,11 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
             open_ = low
             close = high
         vol = k2.vol + k3.vol
+        # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
+        # 临时解决方案是直接限定len(k2.elements)<=100
+        elements = [x for x in k2.elements[:100]] + [k3]
         k4 = NewBar(symbol=k3.symbol, dt=dt, open=open_,
-                    close=close, high=high, low=low, vol=vol, elements=k2.elements + [k3])
+                    close=close, high=high, low=low, vol=vol, elements=elements)
         return True, k4
     else:
         k4 = NewBar(symbol=k3.symbol, dt=k3.dt, open=k3.open,
@@ -58,60 +62,6 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
         fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high, low=k2.low,
                 fx=k2.low, elements=[k1, k2, k3], power=power)
     return fx
-
-
-def check_bi_v1(bars: List[NewBar]):
-    """输入一串无包含关系K线，查找其中的一笔"""
-    fxs = []
-    for i in range(1, len(bars)-1):
-        fx = check_fx(bars[i-1], bars[i], bars[i+1])
-        if isinstance(fx, FX):
-            fxs.append(fx)
-
-    if len(fxs) < 2:
-        return None, bars
-
-    fx_a = fxs[0]
-    try:
-        if fxs[0].mark == Mark.D:
-            direction = Direction.Up
-            fxs_b = [x for x in fxs if x.mark == Mark.G]
-            fx_b = fxs_b[0]
-            for fx in fxs_b:
-                if fx.high > fx_b.high:
-                    fx_b = fx
-            high = fx_b.high
-            low = fx_a.low
-        elif fxs[0].mark == Mark.G:
-            direction = Direction.Down
-            fxs_b = [x for x in fxs if x.mark == Mark.D]
-            fx_b = fxs_b[0]
-            for fx in fxs_b[1:]:
-                if fx.low < fx_b.low:
-                    fx_b = fx
-            high = fx_a.high
-            low = fx_b.low
-        else:
-            raise ValueError
-    except:
-        return None, bars
-
-    bars_a = [x for x in bars if x.dt <= fx_b.elements[2].dt]
-    bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
-    max_high_b = max([x.high for x in bars_b])
-    min_low_b = min([x.low for x in bars_b])
-    if (direction == Direction.Up and max_high_b > fx_b.high) \
-            or (direction == Direction.Down and min_low_b < fx_b.low):
-        return None, bars
-
-    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    if len(bars_a) >= 7 and not ab_include:
-        power_price = abs(fx_b.fx - fx_a.fx)
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, direction=direction,
-                power=power_price, high=high, low=low, bars=bars_a)
-        return bi, bars_b
-    else:
-        return None, bars
 
 
 def check_bi(bars: List[NewBar]):
@@ -134,25 +84,30 @@ def check_bi(bars: List[NewBar]):
     try:
         if fxs[0].mark == Mark.D:
             direction = Direction.Up
-            fxs_b = [x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt]
+            fxs_b = [x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt and x.fx > fx_a.fx]
+            if not fxs_b:
+                return None, bars
             fx_b = fxs_b[0]
             for fx in fxs_b:
-                if fx.high > fx_b.high:
+                if fx.high >= fx_b.high:
                     fx_b = fx
             high = fx_b.high
             low = fx_a.low
         elif fxs[0].mark == Mark.G:
             direction = Direction.Down
-            fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt]
+            fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt and x.fx < fx_a.fx]
+            if not fxs_b:
+                return None, bars
             fx_b = fxs_b[0]
             for fx in fxs_b[1:]:
-                if fx.low < fx_b.low:
+                if fx.low <= fx_b.low:
                     fx_b = fx
             high = fx_a.high
             low = fx_b.low
         else:
             raise ValueError
     except:
+        traceback.print_exc()
         return None, bars
 
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
@@ -222,6 +177,8 @@ class CZSC:
 
     def __update_bi(self):
         bars_ubi = self.bars_ubi
+        if len(bars_ubi) < 3:
+            return
 
         # 查找笔
         if not self.bi_list:
@@ -234,8 +191,8 @@ class CZSC:
         last_bi = self.bi_list[-1]
 
         # 如果上一笔被破坏，将上一笔的bars与bars_ubi进行合并
-        min_low_ubi = min([x.low for x in bars_ubi])
-        max_high_ubi = max([x.high for x in bars_ubi])
+        min_low_ubi = min([x.low for x in bars_ubi[2:]])
+        max_high_ubi = max([x.high for x in bars_ubi[2:]])
 
         if last_bi.direction == Direction.Up and max_high_ubi > last_bi.high:
             if min_low_ubi < last_bi.low and len(self.bi_list) > 2:
@@ -368,13 +325,12 @@ class CZSC:
                     bars_ubi[-1] = k3
                 else:
                     bars_ubi.append(k3)
-
         self.bars_ubi = bars_ubi
 
-        # 更新 笔
+        # 更新笔
         self.__update_bi()
         self.bars_raw = self.bars_raw[-self.max_count:]
-        self.bi_list = self.bi_list[-(self.max_count // 7):]
+        self.bi_list = [x for x in self.bi_list if x.fx_b.dt > self.bars_raw[0].dt]
 
     def to_echarts(self, width: str = "1400px", height: str = '580px'):
         kline = [x.__dict__ for x in self.bars_raw]

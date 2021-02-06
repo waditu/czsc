@@ -429,7 +429,7 @@ def check_five_fd(fds: List[BI]) -> str:
                 v = FdFive.L2A1.value     # "aAb式底背驰A"
 
         if max_high == fd1.high and min_low == fd3.low and fd5.power < fd1.power \
-                and fd4.high > fd2.low and fd5.low > fd3.low:
+                and fd4.high > fd2.low and fd1.low > fd5.low > fd3.low:
             v = FdFive.L2C1.value     # "aAb式底背驰C"
 
         if fd4.high < fd2.low and fd5.power < fd3.power and max_high == fd1.high and min_low == fd5.low:
@@ -441,17 +441,17 @@ def check_five_fd(fds: List[BI]) -> str:
         if fd1.high < fd3.high < fd5.high and fd1.low > fd3.low > fd5.low:
             v = FdFive.S1B1.value     # "向上三角扩张中枢"
 
-        if max_high == fd5.high and min_low == fd1.low and fd5.power < fd1.power:
+        if max_high == fd5.high and min_low == fd1.low and fd5.power < fd1.power and fd2.high > fd4.low:
             if fd2.high > fd4.high and fd2.low < fd4.low:
                 v = FdFive.S2B1.value     # "aAb式顶背驰B"
             else:
                 v = FdFive.S2A1.value     # "aAb式顶背驰A"
 
         if max_high == fd3.high and min_low == fd1.low and fd5.power < fd1.power \
-                and fd5.high < fd3.high and fd4.low < fd2.high:
+                and fd1.high < fd5.high < fd3.high and fd4.low < fd2.high:
             v = FdFive.S2C1.value     # "aAb式顶背驰C"
 
-        if max_high == fd5.high and min_low == fd1.low and fd5.power < fd1.power and fd4.low > fd4.low:
+        if max_high == fd5.high and min_low == fd1.low and fd5.power < fd1.power and fd4.low > fd2.high:
             v = FdFive.S3A1.value     # "类趋势顶背驰"
     else:
         raise ValueError("direction 的取值错误，必须是 down / up 之一，实际值为{}".format(fd5.direction))
@@ -550,7 +550,7 @@ def check_seven_fd(fds: List[BI]) -> str:
                 v = FdSeven.L2A1.value  # "aAbcd式底背驰"
 
         if min_low == fd3.low and fd1.high > fd3.high and max_high == max(fd1.high, fd4.high) \
-                and fd5.high > fd7.high and fd5.low < fd7.low:
+                and fd5.high > fd7.high and fd7.low > fd5.low > (fd4.low + (fd4.high - fd4.low) / 2):
             v = FdSeven.L3A1.value  # "BaA式右侧底A"
 
         if min_low == fd3.low and fd2.low > fd4.low < fd6.low \
@@ -602,7 +602,7 @@ def check_nine_fd(fds: List[BI]) -> str:
             if fd2.high < fd4.low and fd4.high < fd6.low and fd6.high < fd8.low and fd9.power < fd7.power:
                 v = FdNine.S1A1.value   # 类趋势顶背驰
 
-            if fd2.high < fd4.low and fd4.high < fd6.low and fd6.high > fd8.low:
+            if fd2.high < fd4.low and fd4.high < fd6.low and fd6.high > fd8.low and fd9.power < fd5.power:
                 v = FdNine.S2A1.value   # 含有一个下上下方向中枢A
 
             if fd2.high < fd4.low and fd4.high > fd6.low and fd6.high < fd8.low:
@@ -626,7 +626,7 @@ def check_nine_fd(fds: List[BI]) -> str:
             if fd2.low > fd4.high and fd4.low > fd6.high and fd6.low > fd8.high and fd9.power < fd7.power:
                 v = FdNine.L1A1.value   # 类趋势底背驰
 
-            if fd2.low > fd4.high and fd4.low > fd6.high and fd6.low < fd8.high:
+            if fd2.low > fd4.high and fd4.low > fd6.high and fd6.low < fd8.high and fd9.power < fd5.power:
                 v = FdNine.L2A1.value   # 含有一个上下上方向中枢A
             if fd2.low > fd4.high and fd4.low < fd6.high and fd6.low > fd8.high:
                 v = FdNine.L2B1.value   # 含有一个上下上方向中枢B
