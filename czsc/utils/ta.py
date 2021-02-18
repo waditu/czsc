@@ -70,14 +70,12 @@ def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     macd = (diff - dea) * 2
     return diff, dea, macd
 
-
 def KDJ(close: np.array, high: np.array, low: np.array):
     """
 
-    :param close: np.array
-        收盘价序列
-    :param high:
-    :param low:
+    :param close: 收盘价序列
+    :param high: 最高价序列
+    :param low: 最低价序列
     :return:
     """
     n = 9
@@ -117,5 +115,29 @@ def KDJ(close: np.array, high: np.array, low: np.array):
     j = np.array(j, dtype=np.double)
     return k, d, j
 
+def RSQ(close: [np.array, list]) -> float:
+    """拟合优度 R SQuare
 
+    :param close: 收盘价序列
+    :return:
+    """
+    x = list(range(len(close)))
+    y = np.array(close)
+    x_squred_sum = sum([x1 * x1 for x1 in x])
+    xy_product_sum = sum([x[i] * y[i] for i in range(len(x))])
+    num = len(x)
+    x_sum = sum(x)
+    y_sum = sum(y)
+    delta = float(num * x_squred_sum - x_sum * x_sum)
+    if delta == 0:
+        return 0
+    y_intercept = (1 / delta) * (x_squred_sum * y_sum - x_sum * xy_product_sum)
+    slope = (1 / delta) * (num * xy_product_sum - x_sum * y_sum)
+
+    y_mean = np.mean(y)
+    ss_tot = sum([(y1 - y_mean) * (y1 - y_mean) for y1 in y]) + 0.00001
+    ss_err = sum([(y[i] - slope * x[i] - y_intercept) * (y[i] - slope * x[i] - y_intercept) for i in range(len(x))])
+    rsq = 1 - ss_err / ss_tot
+
+    return round(rsq, 4)
 

@@ -317,11 +317,11 @@ class KlineGeneratorBy1Min(KlineGeneratorBase):
     def __update_d(self, k=None):
         if "日线" not in self.freqs:
             return
-
+        next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        k = RawBar(symbol=k.symbol, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.D:
             self.D.append(k)
         last = self.D[-1]
-        next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
         if next_end_dt.date() != last.dt.date():
             self.D.append(k)
         else:
@@ -332,10 +332,11 @@ class KlineGeneratorBy1Min(KlineGeneratorBase):
     def __update_w(self, k=None):
         if "周线" not in self.freqs:
             return
+        next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        k = RawBar(symbol=k.symbol, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.W:
             self.W.append(k)
         last = self.W[-1]
-        next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
         if next_end_dt.weekday() == 0 and k.dt.weekday() != last.dt.weekday():
             self.W.append(k)
         else:

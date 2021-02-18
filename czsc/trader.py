@@ -2,10 +2,9 @@
 import pandas as pd
 from datetime import datetime
 from .factors import KlineGeneratorBy1Min, CzscFactors
-from .data.jq import get_kline
+from .data.jq import get_kline, get_kline_period
 from .data import freq_map, freq_inv
-from .enum import FdNine, FdFive, FdSeven, FdThree, Factors
-from .objects import RawBar
+from .enum import Signals, Factors
 
 class CzscTrader:
     """缠中说禅股票 选股/择时"""
@@ -19,55 +18,52 @@ class CzscTrader:
         else:
             self.end_date = datetime.now()
         self.max_count = max_count
-        self.__generate_factors()
-
-    def __generate_factors(self):
-        symbol = self.symbol
-        max_count = self.max_count
-        end_date = self.end_date
-
         kg = KlineGeneratorBy1Min(max_count=max_count*2, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
         for freq in kg.freqs:
-            bars = get_kline(symbol, end_date=end_date, freq=freq_inv[freq], count=max_count)
+            bars = get_kline(symbol, end_date=self.end_date, freq=freq_inv[freq], count=max_count)
             kg.init_kline(freq, bars)
-        kf = CzscFactors(kg, max_count=max_count)
+        kf = CzscFactors(kg)
         self.kf = kf
         self.s = kf.s
-        self.end_dt = self.kf.end_dt
         self.freqs = kg.freqs
+
+    def __repr__(self):
+        return "<CzscTrader of {} @ {}>".format(self.symbol, self.kf.end_dt)
 
     def run_selector(self):
         """执行选股：优先输出大级别的机会"""
         s = self.s
-        factors_d = [Factors.DLA1.value, Factors.DLA2.value, Factors.DLA3.value,
-                     Factors.DLA4.value, Factors.DLA5.value,
-                     Factors.DLB1.value, Factors.DLB2.value]
-        if s['日线右侧多头因子'] in factors_d:
-            return s['日线右侧多头因子']
+        factors_d = [x.value for x in Factors.__members__.values() if x.name[:2] == 'DL']
+        if s['日线笔因子'] in factors_d:
+            return s['日线笔因子']
         return "other"
 
     def run_history(self):
         """查看第N-3笔的历史形态"""
         s = self.s
-        nine_values = [x.value for x in FdNine.__members__.values() if x.name[0] in ["L", "S"]]
-        seven_values = [x.value for x in FdSeven.__members__.values() if x.name[0] in ["L", "S"]]
-        five_values = [x.value for x in FdFive.__members__.values() if x.name[0] in ["L", "S"]]
+        nine_values = [x.value for x in Signals.__members__.values() if x.name[:3] in ["X9L", "X9S"]]
+        seven_values = [x.value for x in Signals.__members__.values() if x.name[:3] in ["X7L", "X7S"]]
+        five_values = [x.value for x in Signals.__members__.values() if x.name[:3] in ["X5L", "X5S"]]
 
         for freq in ["30分钟", "日线"]:
-            if s['{}_第N-3笔的五笔形态'.format(freq)] in five_values:
-                return "{}_第N-3笔的五笔形态_{}".format(freq, s['{}_第N-3笔的五笔形态'.format(freq)])
+            if s['{}_倒4的九笔形态'.format(freq)] in nine_values:
+                return "{}_倒4的九笔形态_{}".format(freq, s['{}_倒4的九笔形态'.format(freq)])
 
-            if s['{}_第N-3笔的七笔形态'.format(freq)] in seven_values:
-                return "{}_第N-3笔的七笔形态_{}".format(freq, s['{}_第N-3笔的七笔形态'.format(freq)])
+            if s['{}_倒4的七笔形态'.format(freq)] in seven_values:
+                return "{}_倒4的七笔形态_{}".format(freq, s['{}_倒4的七笔形态'.format(freq)])
 
-            if s['{}_第N-3笔的九笔形态'.format(freq)] in nine_values:
-                return "{}_第N-3笔的九笔形态_{}".format(freq, s['{}_第N-3笔的九笔形态'.format(freq)])
+            if s['{}_倒4的五笔形态'.format(freq)] in five_values:
+                return "{}_倒4的五笔形态_{}".format(freq, s['{}_倒4的五笔形态'.format(freq)])
         return "other"
 
     def take_snapshot(self, file_html, width="1400px", height="680px"):
         self.kf.take_snapshot(file_html, width, height)
 
-    def monitor(self, bar: RawBar):
-        """盘中实时监控函数"""
-        pass
+    def update_factors(self):
+        """更新K线数据到最新状态"""
+        bars = get_kline_period(symbol=self.symbol, start_date=self.kf.end_dt, end_date=datetime.now(), freq="1min")
+        for bar in bars:
+            self.kf.update_factors([bar])
+        self.s = self.kf.s
+
 

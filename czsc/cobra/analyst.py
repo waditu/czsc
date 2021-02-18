@@ -194,7 +194,8 @@ class FactorsResearcher:
                 results.append(res)
 
         df = pd.DataFrame(results)
-        cols = ['factor_name', 'factor_value', 'count', 'pct']
+        df['symbol'] = self.kg.symbol
+        cols = ['symbol', 'factor_name', 'factor_value', 'count', 'pct']
         for n in self.n_list:
             cols.append('n{}b_均收益'.format(n))
             cols.append('n{}b_百分位'.format(n))

@@ -66,6 +66,8 @@ class BI:
     low: float = None
     power: float = None
     bars: List[NewBar] = None
-
+    rsq: float = None
+    change: float = None
+    length: float = None
 
 

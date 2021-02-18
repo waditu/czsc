@@ -7,7 +7,8 @@ import pandas as pd
 import traceback
 from .objects import Mark, Direction, BI, FX, RawBar, NewBar
 from .utils.echarts_plot import kline_pro
-from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd
+from .signals import check_five_fd, check_seven_fd, check_nine_fd
+from .utils.ta import RSQ
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     """去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线"""
@@ -76,11 +77,6 @@ def check_bi(bars: List[NewBar]):
         return None, bars
 
     fx_a = fxs[0]
-    fxs_a = [x for x in fxs if x.mark == fx_a.mark]
-    for fx in fxs_a:
-        if (fx_a.mark == Mark.D and fx.low <= fx_a.low) \
-                or (fx_a.mark == Mark.G and fx.high >= fx_a.high):
-            fx_a = fx
     try:
         if fxs[0].mark == Mark.D:
             direction = Direction.Up
@@ -91,8 +87,6 @@ def check_bi(bars: List[NewBar]):
             for fx in fxs_b:
                 if fx.high >= fx_b.high:
                     fx_b = fx
-            high = fx_b.high
-            low = fx_a.low
         elif fxs[0].mark == Mark.G:
             direction = Direction.Down
             fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt and x.fx < fx_a.fx]
@@ -102,8 +96,6 @@ def check_bi(bars: List[NewBar]):
             for fx in fxs_b[1:]:
                 if fx.low <= fx_b.low:
                     fx_b = fx
-            high = fx_a.high
-            low = fx_b.low
         else:
             raise ValueError
     except:
@@ -121,8 +113,11 @@ def check_bi(bars: List[NewBar]):
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
     if len(bars_a) >= 7 and not ab_include:
         power_price = abs(fx_b.fx - fx_a.fx)
+        change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, direction=direction,
-                power=power_price, high=high, low=low, bars=bars_a)
+                power=power_price, high=max(fx_a.high, fx_b.high),
+                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
+                rsq=RSQ([x.close for x in bars_a[1:-1]]), change=change)
         return bi, bars_b
     else:
         return None, bars
@@ -157,15 +152,30 @@ def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, st
     return sub
 
 
+def get_sub_bis(bis: List[BI], bi: BI) -> List[BI]:
+    """获取大级别笔对象对应的小级别笔走势
+
+    :param bis: 小级别笔列表
+    :param bi: 大级别笔对象
+    :return:
+    """
+    sub_bis = get_sub_span(bis, start_dt=bi.fx_a.dt, end_dt=bi.fx_b.dt, direction=bi.direction)
+    if not sub_bis:
+        return []
+    return sub_bis
+
+
 class CZSC:
-    def __init__(self, bars: List[RawBar], freq: str, max_count=1000):
+    def __init__(self, bars: List[RawBar], freq: str, max_bi_count=20):
         """
 
         :param bars: K线数据
-        :param max_count: int
-            最大保存的K线数量
+        :param freq: K线级别
+        :param max_bi_count: 最大保存的笔数量
+            默认值为 20，仅使用内置的信号和因子，不需要调整这个参数。
+            如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
-        self.max_count = max_count
+        self.max_bi_count = max_bi_count
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
@@ -182,6 +192,23 @@ class CZSC:
 
         # 查找笔
         if not self.bi_list:
+            # 第一个笔的查找
+            fxs = []
+            for i in range(1, len(bars_ubi)-1):
+                fx = check_fx(bars_ubi[i-1], bars_ubi[i], bars_ubi[i+1])
+                if isinstance(fx, FX):
+                    fxs.append(fx)
+            if not fxs:
+                return
+
+            fx_a = fxs[0]
+            fxs_a = [x for x in fxs if x.mark == fx_a.mark]
+            for fx in fxs_a:
+                if (fx_a.mark == Mark.D and fx.low <= fx_a.low) \
+                        or (fx_a.mark == Mark.G and fx.high >= fx_a.high):
+                    fx_a = fx
+            bars_ubi = [x for x in bars_ubi if x.dt >= fx_a.elements[0].dt]
+
             bi, bars_ubi_ = check_bi(bars_ubi)
             if isinstance(bi, BI):
                 self.bi_list.append(bi)
@@ -226,74 +253,101 @@ class CZSC:
 
     def get_signals(self):
         s = OrderedDict({"symbol": self.symbol, "dt": self.bars_raw[-1].dt, "close": self.bars_raw[-1].close})
+        # 倒1，倒数第1笔的缩写，表示第N笔
+        # 倒2，倒数第2笔的缩写，表示第N-1笔
+        # 倒3，倒数第3笔的缩写，表示第N-2笔
+        # 倒4，倒数第4笔的缩写，表示第N-3笔
         s.update({
-            "最近三根无包含K线形态": "其他",
-            "未完成笔的延伸长度": 0,
-            "第N笔方向": "其他",
+            "倒1的长度": 0,
+            "倒1的涨跌幅": 0,
+            "倒1的拟合优度": 0,
+            # "倒1的有效分型数量": "其他",
 
-            "第N笔的三笔形态": "其他",
-            "第N-1笔的三笔形态": "其他",
-            "第N-2笔的三笔形态": "其他",
-            "第N-3笔的三笔形态": "其他",
+            "倒2的长度": 0,
+            "倒2的涨跌幅": 0,
+            "倒2的拟合优度": 0,
 
-            "第N笔的五笔形态": "其他",
-            "第N-1笔的五笔形态": "其他",
-            "第N-2笔的五笔形态": "其他",
-            "第N-3笔的五笔形态": "其他",
+            "倒3的长度": 0,
+            "倒3的涨跌幅": 0,
+            "倒3的拟合优度": 0,
 
-            "第N笔的七笔形态": "其他",
-            "第N-1笔的七笔形态": "其他",
-            "第N-2笔的七笔形态": "其他",
-            "第N-3笔的七笔形态": "其他",
+            "倒4的长度": 0,
+            "倒4的涨跌幅": 0,
+            "倒4的拟合优度": 0,
 
-            "第N笔的九笔形态": "其他",
-            "第N-1笔的九笔形态": "其他",
-            "第N-2笔的九笔形态": "其他",
-            "第N-3笔的九笔形态": "其他",
+            "倒5的长度": 0,
+            "倒5的涨跌幅": 0,
+            "倒5的拟合优度": 0,
+
+            "倒1的五笔形态": "其他",
+            "倒2的五笔形态": "其他",
+            "倒3的五笔形态": "其他",
+            "倒4的五笔形态": "其他",
+            "倒5的五笔形态": "其他",
+
+            "倒1的七笔形态": "其他",
+            "倒2的七笔形态": "其他",
+            "倒3的七笔形态": "其他",
+            "倒4的七笔形态": "其他",
+            "倒5的七笔形态": "其他",
+
+            "倒1的九笔形态": "其他",
+            "倒2的九笔形态": "其他",
+            "倒3的九笔形态": "其他",
+            "倒4的九笔形态": "其他",
+            "倒5的九笔形态": "其他",
         })
-        s['未完成笔的延伸长度'] = len(self.bars_ubi)
-
-        if s['未完成笔的延伸长度'] > 3:
-            k1, k2, k3 = self.bars_ubi[-3:]
-            tri = check_fx(k1, k2, k3)
-            if isinstance(tri, FX):
-                s['最近三根无包含K线形态'] = tri.power + tri.mark.value
 
         bis = self.bi_list
-        if len(bis) > 3:
-            direction = bis[-1].direction
-            s['第N笔方向'] = direction.value
+        if len(bis) > 7:
+            s['倒1的长度'] = bis[-1].length
+            s['倒1的涨跌幅'] = bis[-1].change
+            s['倒1的拟合优度'] = bis[-1].rsq
 
-        if len(self.bi_list) > 8:
+            s['倒2的长度'] = bis[-2].length
+            s['倒2的涨跌幅'] = bis[-2].change
+            s['倒2的拟合优度'] = bis[-2].rsq
+
+            s['倒3的长度'] = bis[-3].length
+            s['倒3的涨跌幅'] = bis[-3].change
+            s['倒3的拟合优度'] = bis[-3].rsq
+
+            s['倒4的长度'] = bis[-4].length
+            s['倒4的涨跌幅'] = bis[-4].change
+            s['倒4的拟合优度'] = bis[-4].rsq
+
+            s['倒5的长度'] = bis[-5].length
+            s['倒5的涨跌幅'] = bis[-5].change
+            s['倒5的拟合优度'] = bis[-5].rsq
+
+        if len(self.bi_list) > 9:
             bis = self.bi_list
-            s['第N笔的三笔形态'] = check_three_fd(bis[-3:])
-            s['第N-1笔的三笔形态'] = check_three_fd(bis[-4:-1])
-            s['第N-2笔的三笔形态'] = check_three_fd(bis[-5:-2])
-            s['第N-3笔的三笔形态'] = check_three_fd(bis[-6:-3])
+            s['倒1的五笔形态'] = check_five_fd(bis[-5:])
+            s['倒2的五笔形态'] = check_five_fd(bis[-6:-1])
 
-            s['第N笔的五笔形态'] = check_five_fd(bis[-5:])
-            s['第N-1笔的五笔形态'] = check_five_fd(bis[-6:-1])
-
-        if len(self.bi_list) > 10:
+        if len(self.bi_list) > 11:
             bis = self.bi_list
-            s['第N-2笔的五笔形态'] = check_five_fd(bis[-7:-2])
-            s['第N-3笔的五笔形态'] = check_five_fd(bis[-8:-3])
+            s['倒3的五笔形态'] = check_five_fd(bis[-7:-2])
+            s['倒4的五笔形态'] = check_five_fd(bis[-8:-3])
+            s['倒5的五笔形态'] = check_five_fd(bis[-9:-4])
 
-            s['第N笔的七笔形态'] = check_seven_fd(bis[-7:])
-            s['第N-1笔的七笔形态'] = check_seven_fd(bis[-8:-1])
+            s['倒1的七笔形态'] = check_seven_fd(bis[-7:])
+            s['倒2的七笔形态'] = check_seven_fd(bis[-8:-1])
 
-        if len(self.bi_list) > 12:
+        if len(self.bi_list) > 13:
             bis = self.bi_list
-            s['第N-2笔的七笔形态'] = check_seven_fd(bis[-9:-2])
-            s['第N-3笔的七笔形态'] = check_seven_fd(bis[-10:-3])
+            s['倒3的七笔形态'] = check_seven_fd(bis[-9:-2])
+            s['倒4的七笔形态'] = check_seven_fd(bis[-10:-3])
+            s['倒5的七笔形态'] = check_seven_fd(bis[-11:-4])
 
-            s['第N笔的九笔形态'] = check_nine_fd(bis[-9:])
-            s['第N-1笔的九笔形态'] = check_nine_fd(bis[-10:-1])
+            s['倒1的九笔形态'] = check_nine_fd(bis[-9:])
+            s['倒2的九笔形态'] = check_nine_fd(bis[-10:-1])
 
         if len(self.bi_list) > 15:
             bis = self.bi_list
-            s['第N-2笔的九笔形态'] = check_nine_fd(bis[-11:-2])
-            s['第N-3笔的九笔形态'] = check_nine_fd(bis[-12:-3])
+            s['倒3的九笔形态'] = check_nine_fd(bis[-11:-2])
+            s['倒4的九笔形态'] = check_nine_fd(bis[-12:-3])
+            s['倒5的九笔形态'] = check_nine_fd(bis[-13:-4])
 
         return {"{}_{}".format(self.freq, k) if k not in ['symbol', 'dt', 'close'] else k: v for k, v in s.items()}
 
@@ -329,8 +383,15 @@ class CZSC:
 
         # 更新笔
         self.__update_bi()
-        self.bars_raw = self.bars_raw[-self.max_count:]
-        self.bi_list = [x for x in self.bi_list if x.fx_b.dt > self.bars_raw[0].dt]
+        self.bi_list = self.bi_list[-self.max_bi_count:]
+        if self.bi_list:
+            sdt = self.bi_list[0].fx_a.elements[0].dt
+            s_index = 0
+            for i, bar in enumerate(self.bars_raw):
+                if bar.dt >= sdt:
+                    s_index = i
+                    break
+            self.bars_raw = self.bars_raw[s_index:]
 
     def to_echarts(self, width: str = "1400px", height: str = '580px'):
         kline = [x.__dict__ for x in self.bars_raw]

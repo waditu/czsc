@@ -9,6 +9,7 @@ from tqdm import tqdm
 from datetime import datetime, timedelta
 from typing import List
 from ..objects import RawBar
+from ..utils.kline_generator import bar_end_time
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
@@ -47,6 +48,9 @@ def get_token():
     response = requests.post(url, data=json.dumps(body))
     token = response.text
     return token
+
+
+to_jq_symbol = lambda x: x[:6] + ".XSHG" if x[0] == '6' else x[:6] + ".XSHE"
 
 
 def text2df(text):
@@ -277,22 +281,20 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
     bars = []
     for row in rows:
         # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
-        bars.append(RawBar(symbol=symbol, dt=pd.to_datetime(row[0]),
+        dt = pd.to_datetime(row[0])
+        if freq == "D":
+            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        bars.append(RawBar(symbol=symbol, dt=dt,
                            open=round(float(row[1]), 2),
                            close=round(float(row[2]), 2),
                            high=round(float(row[3]), 2),
                            low=round(float(row[4]), 2),
                            vol=int(row[5])))
+    if start_date:
+        bars = [x for x in bars if x.dt >= start_date]
+    if "min" in freq:
+        bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
     return bars
-
-    # df = text2df(r.text)
-    # df['symbol'] = symbol
-    # df.rename({'date': 'dt', 'volume': 'vol'}, axis=1, inplace=True)
-    # df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
-    # for col in ['open', 'close', 'high', 'low', 'vol']:
-    #     df.loc[:, col] = df[col].apply(lambda x: round(float(x), 2))
-    # df.loc[:, "dt"] = pd.to_datetime(df['dt'])
-    # return df
 
 
 def get_kline_period(symbol: str, start_date: [datetime, str],
@@ -326,22 +328,20 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
     bars = []
     for row in rows:
         # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
-        bars.append(RawBar(symbol=symbol, dt=pd.to_datetime(row[0]),
+        dt = pd.to_datetime(row[0])
+        if freq == "D":
+            dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        bars.append(RawBar(symbol=symbol, dt=dt,
                            open=round(float(row[1]), 2),
                            close=round(float(row[2]), 2),
                            high=round(float(row[3]), 2),
                            low=round(float(row[4]), 2),
                            vol=int(row[5])))
+    if start_date:
+        bars = [x for x in bars if x.dt >= start_date]
+    if "min" in freq:
+        bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
     return bars
-
-    # df = text2df(r.text)
-    # df['symbol'] = symbol
-    # df.rename({'date': 'dt', 'volume': 'vol'}, axis=1, inplace=True)
-    # df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol']]
-    # for col in ['open', 'close', 'high', 'low', 'vol']:
-    #     df.loc[:, col] = df[col].apply(lambda x: round(float(x), 2))
-    # df.loc[:, "dt"] = pd.to_datetime(df['dt'])
-    # return df
 
 
 def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> dict:
