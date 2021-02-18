@@ -42,7 +42,7 @@ def test_ka_update():
     bars = [RawBar(symbol=row['symbol'], open=row['open'], dt=row['dt'],
                    close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
             for _, row in kline.iterrows()]
-    c = CZSC(bars, freq="日线", max_count=1000)
+    c = CZSC(bars, freq="日线", max_bi_count=20)
 
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
