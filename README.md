@@ -20,8 +20,18 @@
 * [缠中说禅交易指南](https://blog.csdn.net/baidu_25764509/article/details/109598229)
 * [缠中说禅技术原理](https://blog.csdn.net/baidu_25764509/article/details/109597255)
 * [缠中说禅图解分析示范](https://blog.csdn.net/baidu_25764509/article/details/110195063)
+* [缠中说禅：缠非缠、禅非禅，枯木龙吟照大千（整理版）](https://blog.csdn.net/baidu_25764509/article/details/110775662)
+* [缠中说禅教你打坐（整理版）](https://blog.csdn.net/baidu_25764509/article/details/113735170)
 
 **注意：** 如果CSDN的连接打不开，可以直接在 `czsc/docs` 目录下查看 html 文件
+
+
+## 形态挖掘
+
+* [缠中说禅形态挖掘之五笔形态](https://blog.csdn.net/baidu_25764509/article/details/113639353)
+* [缠中说禅形态挖掘之七笔形态](https://blog.csdn.net/baidu_25764509/article/details/113649988)
+* [缠中说禅形态挖掘之九笔形态](https://blog.csdn.net/baidu_25764509/article/details/113688926)
+* [本级别笔对应的小级别形态](https://blog.csdn.net/baidu_25764509/article/details/113563530)
 
 ## 安装
 
