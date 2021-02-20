@@ -31,9 +31,9 @@ class CzscTrader:
         return "<CzscTrader of {} @ {}>".format(self.symbol, self.kf.end_dt)
 
     def run_selector(self):
-        """执行选股：优先输出大级别的机会"""
+        """输出日线笔因子"""
         s = self.s
-        factors_d = [x.value for x in Factors.__members__.values() if x.name[:2] == 'DL']
+        factors_d = [x.value for x in Factors.__members__.values() if x.name[:2] == 'C6']
         if s['日线笔因子'] in factors_d:
             return s['日线笔因子']
         return "other"
@@ -59,9 +59,14 @@ class CzscTrader:
     def take_snapshot(self, file_html, width="1400px", height="680px"):
         self.kf.take_snapshot(file_html, width, height)
 
+    def open_in_browser(self, width="1400px", height="580px"):
+        self.kf.open_in_browser(width, height)
+
     def update_factors(self):
         """更新K线数据到最新状态"""
         bars = get_kline_period(symbol=self.symbol, start_date=self.kf.end_dt, end_date=datetime.now(), freq="1min")
+        if not bars:
+            return
         for bar in bars:
             self.kf.update_factors([bar])
         self.s = self.kf.s

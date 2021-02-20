@@ -339,7 +339,7 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
                            vol=int(row[5])))
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
-    if "min" in freq:
+    if "min" in freq and bars:
         bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
     return bars
 

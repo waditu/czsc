@@ -3,12 +3,127 @@ from collections import OrderedDict
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
+import os
+import webbrowser
 from typing import List
-from .analyze import CZSC, get_sub_bis, get_sub_span, check_seven_fd, check_nine_fd, check_five_fd, check_fx
+from .analyze import CZSC, get_sub_bis, get_sub_span
 from .utils.kline_generator import KlineGeneratorBy1Min, KlineGeneratorByTick
 from .objects import RawBar
 from .enum import Factors, Signals, Direction
 
+
+def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
+    """三级别联立笔因子计算
+
+    c1, c2, c3 可能的组合
+    1）日线、60分钟、15分钟
+    2）日线、30分钟、5分钟
+    3）日线、15分钟、1分钟
+    4）60分钟、15分钟、1分钟
+    5）60分钟、5分钟、1分钟
+
+    :param c1: 本级别 CZSC 对象
+    :param c2: 次级别 CZSC 对象
+    :param c3: 小级别 CZSC 对象
+    :return:
+    """
+    c_map = {"日线": "C6", "60分钟": "C5", "30分钟": "C4", "15分钟": "C3", "5分钟": "C2", "1分钟": "C1"}
+    factor_key_base = "{}{}".format(c_map[c1.freq], c_map[c2.freq])
+
+    v = Factors.Other.value
+    c2_h9 = max([x.high for x in c2.bi_list[-9:]])
+    c2_l9 = max([x.high for x in c2.bi_list[-9:]])
+
+    if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) <= 7:
+        factor_l1 = factor_key_base + "L1"  # L1 - 向下笔转折右侧
+        if c2.signals['倒1的五笔形态'] == Signals.X5LB0.value:
+            if c2_h9 == c2.bi_list[-1].high:
+                v = Factors['{}A1'.format(factor_l1)].value
+            elif "顶背弛" in c1.signals['倒2的五笔形态'] \
+                    and "顶背弛" in c1.signals['倒2的七笔形态'] \
+                    and "顶背弛" in c1.signals['倒2的九笔形态']:
+                v = Factors['{}A2'.format(factor_l1)].value
+            elif "底背弛" in c1.signals['倒1的五笔形态'] \
+                    and "底背弛" in c1.signals['倒1的七笔形态'] \
+                    and "底背弛" in c1.signals['倒1的九笔形态']:
+                v = Factors['{}A3'.format(factor_l1)].value
+            else:
+                v = Factors['{}A0'.format(factor_l1)].value
+
+        if c1.bi_list[-1].fx_b.power == "强" and c2.signals['倒1的七笔形态'] == Signals.X7LE0.value:
+            v = Factors['{}B0'.format(factor_l1)].value
+
+        if v != Factors.Other.value:
+            return v
+
+    if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) > 7:
+        factor_l2 = factor_key_base + "L2"
+        if "底背弛" in c2.signals['倒1的五笔形态']:
+            v = Factors['{}A0'.format(factor_l2)].value
+
+        if "底背弛" in c2.signals['倒1的七笔形态']:
+            v = Factors['{}B0'.format(factor_l2)].value
+
+        if "底背弛" in c2.signals['倒1的九笔形态']:
+            v = Factors['{}C0'.format(factor_l2)].value
+            if c2.signals['倒1的九笔形态'] == Signals.X9LA0.value:
+                v = Factors['{}C1'.format(factor_l2)].value
+
+        if v != Factors.Other.value:
+            return v
+
+    if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) <= 7 \
+            and min([x.low for x in c1.bars_ubi]) > c1.bi_list[-1].low:
+        if c3.signals['倒1的五笔形态'] in [Signals.X5LF0.value, Signals.X5LB0.value]:
+            factor_l3 = factor_key_base + "L3"
+            if c2.signals['倒1的七笔形态'] == Signals.X7LE0.value:
+                v = Factors['{}A0'.format(factor_l3)].value
+        else:
+            factor_l4 = factor_key_base + "L4"
+            if "底背弛" in c2.signals['倒1的七笔形态']:
+                v = Factors['{}A0'.format(factor_l4)].value
+
+        if v != Factors.Other.value:
+            return v
+
+    if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) <= 7:
+        factor_s1 = factor_key_base + "S1"
+        if c2.signals['倒1的五笔形态'] == Signals.X5SB0.value:
+            if c2_l9 == c2.bi_list[-1].low:
+                v = Factors['{}A1'.format(factor_s1)].value
+            elif "底背弛" in c1.signals['倒2的五笔形态'] \
+                    and "底背弛" in c1.signals['倒2的七笔形态'] \
+                    and "底背弛" in c1.signals['倒2的九笔形态']:
+                v = Factors['{}A2'.format(factor_s1)].value
+            elif "顶背弛" in c1.signals['倒1的五笔形态'] \
+                    and "顶背弛" in c1.signals['倒1的七笔形态'] \
+                    and "顶背弛" in c1.signals['倒1的九笔形态']:
+                v = Factors['{}A3'.format(factor_s1)].value
+            else:
+                v = Factors['{}A0'.format(factor_s1)].value
+
+        if c2.signals['倒1的五笔形态'] == Signals.X5SA0.value:
+            v = Factors['{}B0'.format(factor_s1)].value
+
+        if v != Factors.Other.value:
+            return v
+
+    if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) > 7:
+        factor_s2 = factor_key_base + "S2"
+        if "顶背驰" in c2.signals['倒1的七笔形态']:
+            v = Factors['{}A0'.format(factor_s2)].value
+
+    if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) <= 7 \
+            and max([x.high for x in c1.bars_ubi]) < c1.bi_list[-1].high:
+        if c3.signals['倒1的五笔形态'] in [Signals.X5SF0.value, Signals.X5SB0.value]:
+            factor_s3 = factor_key_base + "S3"
+            if c2.signals['倒1的五笔形态'] == Signals.X5SF0.value:
+                v = Factors['{}A0'.format(factor_s3)].value
+        else:
+            factor_s4 = factor_key_base + "S4"
+            if "顶背弛" in c3.signals['倒1的五笔形态']:
+                v = Factors['{}A0'.format(factor_s4)].value
+    return v
 
 class CzscFactors:
     """缠中说禅技术分析理论之多级别联立因子"""
@@ -26,7 +141,7 @@ class CzscFactors:
         self.latest_price = self.kas["1分钟"].bars_raw[-1].close
         self.s = self._calculate_signals()
         self.s = self._calculate_factors_d()
-        self.s = self._calculate_factors_f30()
+        self.s = self._calculate_factors_f60()
         self.cache = OrderedDict()
 
     def take_snapshot(self, file_html=None, width="1400px", height="580px"):
@@ -60,17 +175,25 @@ class CzscFactors:
         else:
             return tab
 
+    def open_in_browser(self, width="1400px", height="580px"):
+        """直接在浏览器中打开分析结果"""
+        home_path = os.path.expanduser("~")
+        file_html = os.path.join(home_path, "temp_czsc_factors.html")
+        self.take_snapshot(file_html, width, height)
+        webbrowser.open(file_html)
+
     def _calculate_signals(self):
         """计算信号"""
         s = OrderedDict()
         for freq, ks in self.kas.items():
-            s.update(ks.get_signals())
+            # s.update(ks.signals)
+            s.update({"{}_{}".format(ks.freq, k) if k not in ['symbol', 'dt', 'close'] else k: v
+                      for k, v in ks.signals.items()})
 
         s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
         return s
 
     def _calculate_factors_d(self):
-        """计算因子"""
         s = self.s
         s.update({"日线笔因子": Factors.Other.value})
         c1: CZSC = self.kas['1分钟']
@@ -84,193 +207,53 @@ class CzscFactors:
             print("{} 日线笔数量为 0".format(self.symbol))
             return s
 
-        # 日线向下笔转折右侧 DLA
-        if c6.bi_list[-1].direction == Direction.Down:
-            if c6.bi_list[-1].fx_b.power == "强" and s['5分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                s['日线笔因子'] = Factors.DLA1.value
+        # 感知日线笔的真实级别，确定 c1, c2, c3
+        if len(c6.bars_ubi) > 9:
+            direction = Direction.Down if c6.bi_list[-1].direction == Direction.Up else Direction.Up
+            bis_c6_c4 = get_sub_span(c4.bi_list[-15:], start_dt=c6.bars_ubi[1].dt,
+                                     end_dt=c6.bars_ubi[-1].dt, direction=direction)
+        else:
+            bis_c6_c4 = get_sub_bis(c4.bi_list[-15:], c6.bi_list[-1])
 
-            bis_d_f30 = get_sub_bis(c4.bi_list[-15:], c6.bi_list[-1])
+        if 9 >= len(bis_c6_c4) >= 5:
+            c1_, c2_, c3_ = c6, c4, c2
+        elif len(bis_c6_c4) > 9:
+            c1_, c2_, c3_ = c6, c5, c3
+        elif len(bis_c6_c4) < 5:
+            c1_, c2_, c3_ = c6, c3, c1
+        else:
+            raise ValueError
 
-            if 5 <= len(bis_d_f30) <= 11:
-                f30_h9 = max([x.high for x in c4.bi_list[-9:]])
-                # f30_l9 = min([x.low for x in c4.bi_list[-9:]])
-
-                if s['30分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                    s['日线笔因子'] = Factors.DLA2.value
-                    if f30_h9 == c4.bi_list[-1].high:
-                        s['日线笔因子'] = Factors.DLA2a.value
-
-            elif len(bis_d_f30) > 11:
-                bis_d_f60 = get_sub_bis(c5.bi_list[-15:], c6.bi_list[-1])
-                f60_h9 = max([x.high for x in c5.bi_list[-9:]])
-                # f60_l9 = min([x.low for x in c5.bi_list[-9:]])
-
-                if 11 >= len(bis_d_f60) >= 5:
-                    if s['60分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                        s['日线笔因子'] = Factors.DLA5.value
-                        if f60_h9 == c5.bi_list[-1].high:
-                            s['日线笔因子'] = Factors.DLA5a.value
-
-            elif len(bis_d_f30) < 5:
-                bis_d_f15 = get_sub_bis(c3.bi_list[-15:], c6.bi_list[-1])
-                f15_h9 = max([x.high for x in c3.bi_list[-9:]])
-                # f15_l9 = min([x.low for x in c3.bi_list[-9:]])
-
-                if 11 >= len(bis_d_f15) >= 5:
-                    if s['15分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                        s['日线笔因子'] = Factors.DLA3.value
-                        if f15_h9 == c3.bi_list[-1].high:
-                            s['日线笔因子'] = Factors.DLA5a.value
-
-                    if s['15分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                        s['日线笔因子'] = Factors.DLA4.value
-
-        # 日线向下笔转折左侧因子 DLB
-        if c6.bi_list[-1].direction == Direction.Up and len(c6.bars_ubi) > 7:
-            bis_d_f30 = get_sub_span(c4.bi_list[-15:], start_dt=c6.bars_ubi[1].dt,
-                                     end_dt=c6.bars_ubi[-1].dt, direction=Direction.Down)
-            if 11 >= len(bis_d_f30) >= 5:
-                if "底背弛" in s['30分钟_倒1的五笔形态']:
-                    s['日线笔因子'] = Factors.DLB1.value
-
-                if "底背弛" in s['30分钟_倒1的七笔形态']:
-                    s['日线笔因子'] = Factors.DLB2.value
-
-                if "底背弛" in s['30分钟_倒1的九笔形态']:
-                    s['日线笔因子'] = Factors.DLB3.value
-                    if s['30分钟_倒1的九笔形态'] == Signals.X9LA0.value:
-                        s['日线笔因子'] = Factors.DLB3a.value
-
-            elif len(bis_d_f30) > 11:
-                bis_d_f60 = get_sub_span(c5.bi_list[-15:], start_dt=c6.bars_ubi[1].dt,
-                                         end_dt=c6.bars_ubi[-1].dt, direction=Direction.Down)
-                if 11 >= len(bis_d_f60) >= 5:
-                    if "底背弛" in s['60分钟_倒1的五笔形态']:
-                        s['日线笔因子'] = Factors.DLB4.value
-
-                    if "底背弛" in s['60分钟_倒1的七笔形态']:
-                        s['日线笔因子'] = Factors.DLB5.value
-
-                    if "底背弛" in s['60分钟_倒1的九笔形态']:
-                        s['日线笔因子'] = Factors.DLB6.value
-                        if s['60分钟_倒1的九笔形态'] == Signals.X9LA0.value:
-                            s['日线笔因子'] = Factors.DLB6a.value
-
-            elif len(bis_d_f30) < 5:
-                bis_d_f15 = get_sub_span(c3.bi_list[-15:], start_dt=c6.bars_ubi[1].dt,
-                                         end_dt=c6.bars_ubi[-1].dt, direction=Direction.Down)
-                if 11 >= len(bis_d_f15) >= 5:
-                    if "底背弛" in s['15分钟_倒1的五笔形态']:
-                        s['日线笔因子'] = Factors.DLB7.value
-
-                    if "底背弛" in s['15分钟_倒1的七笔形态']:
-                        s['日线笔因子'] = Factors.DLB8.value
-
-                    if "底背弛" in s['15分钟_倒1的九笔形态']:
-                        s['日线笔因子'] = Factors.DLB9.value
-                        if s['15分钟_倒1的九笔形态'] == Signals.X9LA0.value:
-                            s['日线笔因子'] = Factors.DLB9a.value
-
-        if c6.bi_list[-1].direction == Direction.Up and len(c6.bars_ubi) <= 7 \
-                and c6.bars_ubi[-1].low > c6.bi_list[-1].low:
-            # 日线向上笔中继右侧 DLC
-            if s['5分钟_倒1的五笔形态'] in [Signals.X5LF0.value, Signals.X5LB0.value]:
-                if s['5分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                    s['日线笔因子'] = Factors.DLC1.value
-
-            # 日线向上笔中继左侧 DLD
-            else:
-                if "底背弛" in s['30分钟_倒1的五笔形态']:
-                    s['日线笔因子'] = Factors.DLD1.value
-
-        # 日线向上笔转折右侧因子 DSA
-        if c6.bi_list[-1].direction == Direction.Up:
-            bis_d_f30 = get_sub_bis(c4.bi_list[-15:], c6.bi_list[-1])
-            if len(bis_d_f30) <= 9 and s['30分钟_倒1的五笔形态'] == Signals.X5SB0.value:
-                s['日线笔因子'] = Factors.DSA1.value
-
-        # 日线向上笔转折左侧因子 DSB
-        if c6.bi_list[-1].direction == Direction.Down and len(c6.bars_ubi) > 7:
-            if "顶背驰" in s['30分钟_倒1的七笔形态']:
-                s['日线笔因子'] = Factors.DSB1.value
-
-        if c6.bi_list[-1].direction == Direction.Down and len(c6.bars_ubi) <= 7 \
-                and c6.bars_ubi[-1].high < c6.bi_list[-1].high:
-            # 日线向下笔中继右侧因子 DSC
-            if s['5分钟_倒1的五笔形态'] in [Signals.X5SF0.value, Signals.X5SB0.value]:
-                if s['30分钟_倒1的五笔形态'] == Signals.X5SF0.value:
-                    s['日线笔因子'] = Factors.DSC1.value
-
-            # 日线向下笔中继左侧因子 DSD
-            else:
-                if "顶背弛" in s['30分钟_倒1的五笔形态']:
-                    s['日线笔因子'] = Factors.DSD1.value
+        s.update({"日线笔因子": check_triple_level(c1_, c2_, c3_)})
         return s
 
-    def _calculate_factors_f30(self):
+    def _calculate_factors_f60(self):
         """计算因子"""
         s = self.s
-        s.update({"30分钟笔因子": Factors.Other.value})
+        s.update({"60分钟笔因子": Factors.Other.value})
         c1: CZSC = self.kas['1分钟']
         c2: CZSC = self.kas['5分钟']
         c3: CZSC = self.kas['15分钟']
-        c4: CZSC = self.kas['30分钟']
+        c5: CZSC = self.kas['60分钟']
 
-        if not c4.bi_list:
-            print("{} 30分钟笔数量为 0".format(self.symbol))
+        if not c5.bi_list:
+            print("{} 60分钟笔数量为 0".format(self.symbol))
             return s
 
-        # 30分钟向下笔转折右侧因子
-        if c4.bi_list[-1].direction == Direction.Down:
-            bis_f30_f5 = get_sub_bis(c2.bi_list, c4.bi_list[-1])
+        # 感知60分钟笔的真实级别，确定 c1, c2, c3
+        if len(c5.bars_ubi) > 9:
+            direction = Direction.Down if c5.bi_list[-1].direction == Direction.Up else Direction.Up
+            bis_c5_c4 = get_sub_span(c3.bi_list[-15:], start_dt=c5.bars_ubi[1].dt,
+                                     end_dt=c5.bars_ubi[-1].dt, direction=direction)
+        else:
+            bis_c5_c4 = get_sub_bis(c3.bi_list[-15:], c5.bi_list[-1])
 
-            if 9 >= len(bis_f30_f5) >= 5:
-                if s['5分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                    s['30分钟笔因子'] = Factors.F30LA1.value
+        if len(bis_c5_c4) >= 5:
+            c1_, c2_, c3_ = c5, c3, c1
+        else:
+            c1_, c2_, c3_ = c5, c2, c1
 
-                if s['5分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                    s['30分钟笔因子'] = Factors.F30LA4.value
-
-            elif len(bis_f30_f5) > 9:
-                bis_f30_f15 = get_sub_bis(c3.bi_list, c4.bi_list[-1])
-                if 5 <= len(bis_f30_f15) <= 9:
-                    if s['15分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                        s['30分钟笔因子'] = Factors.F30LA2.value
-
-                    if s['15分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                        s['30分钟笔因子'] = Factors.F30LA5.value
-
-            elif len(bis_f30_f5) < 5:
-                bis_f30_f1 = get_sub_bis(c1.bi_list, c4.bi_list[-1])
-                if 5 <= len(bis_f30_f1) <= 9:
-                    if s['1分钟_倒1的七笔形态'] == Signals.X7LE0.value:
-                        s['30分钟笔因子'] = Factors.F30LA3.value
-
-                    if s['1分钟_倒1的五笔形态'] == Signals.X5LB0.value:
-                        s['30分钟笔因子'] = Factors.F30LA6.value
-
-        # 30分钟向下笔转折左侧因子
-        if c4.bi_list[-1].direction == Direction.Up and len(c4.bars_ubi) > 7:
-            bis_f5_f1 = get_sub_bis(c1.bi_list, c2.bi_list[-1])
-            if "底背弛" in s['5分钟_倒1的七笔形态'] and 9 >= len(bis_f5_f1) >= 3:
-                s['30分钟笔因子'] = Factors.F30LB1.value
-
-        # 30分钟向上笔中继
-        if c4.bi_list[-1].direction == Direction.Up and len(c4.bars_ubi) <= 7:
-            pass
-
-        # 30分钟向上笔转折右侧
-        if c4.bi_list[-1].direction == Direction.Up:
-            pass
-
-        # 30分钟向上笔转折左侧
-        if c4.bi_list[-1].direction == Direction.Down and len(c4.bars_ubi) > 7:
-            pass
-
-        # 30分钟向下笔中继
-        if c4.bi_list[-1].direction == Direction.Up and len(c4.bars_ubi) > 7:
-            pass
-
+        s.update({"60分钟笔因子": check_triple_level(c1_, c2_, c3_)})
         return s
 
     def update_factors(self, data: List[RawBar]):
@@ -289,5 +272,5 @@ class CzscFactors:
         self.latest_price = self.kas["1分钟"].bars_raw[-1].close
         self.s = self._calculate_signals()
         self.s = self._calculate_factors_d()
-        self.s = self._calculate_factors_f30()
+        self.s = self._calculate_factors_f60()
 

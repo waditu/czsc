@@ -184,6 +184,7 @@ class CZSC:
 
         for bar in bars:
             self.update(bar)
+        self.signals = self.get_signals()
 
     def __update_bi(self):
         bars_ubi = self.bars_ubi
@@ -349,7 +350,8 @@ class CZSC:
             s['倒4的九笔形态'] = check_nine_fd(bis[-12:-3])
             s['倒5的九笔形态'] = check_nine_fd(bis[-13:-4])
 
-        return {"{}_{}".format(self.freq, k) if k not in ['symbol', 'dt', 'close'] else k: v for k, v in s.items()}
+        # return {"{}_{}".format(self.freq, k) if k not in ['symbol', 'dt', 'close'] else k: v for k, v in s.items()}
+        return s
 
     def update(self, bar: RawBar):
         """更新分析结果
@@ -392,6 +394,7 @@ class CZSC:
                     s_index = i
                     break
             self.bars_raw = self.bars_raw[s_index:]
+        self.signals = self.get_signals()
 
     def to_echarts(self, width: str = "1400px", height: str = '580px'):
         kline = [x.__dict__ for x in self.bars_raw]
