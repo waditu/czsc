@@ -15,7 +15,7 @@ from .enum import Factors, Signals, Direction
 def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
     """三级别联立笔因子计算
 
-    c1, c2, c3 可能的组合
+    c1, c2, c3 可能组合
     1）日线、60分钟、15分钟
     2）日线、30分钟、5分钟
     3）日线、15分钟、1分钟
@@ -36,21 +36,22 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) <= 7:
         factor_l1 = factor_key_base + "L1"  # L1 - 向下笔转折右侧
-        if c2.signals['倒1的五笔形态'] == Signals.X5LB0.value:
+        # L1A
+        if c2.signals['倒1五笔'] in [Signals.X5LB0.value, Signals.X5LB1.value]:
             if c2_h9 == c2.bi_list[-1].high:
                 v = Factors['{}A1'.format(factor_l1)].value
-            elif "顶背弛" in c1.signals['倒2的五笔形态'] \
-                    and "顶背弛" in c1.signals['倒2的七笔形态'] \
-                    and "顶背弛" in c1.signals['倒2的九笔形态']:
+            elif "顶背弛" in c1.signals['倒2五笔'] \
+                    and "顶背弛" in c1.signals['倒2七笔'] \
+                    and "顶背弛" in c1.signals['倒2九笔']:
                 v = Factors['{}A2'.format(factor_l1)].value
-            elif "底背弛" in c1.signals['倒1的五笔形态'] \
-                    and "底背弛" in c1.signals['倒1的七笔形态'] \
-                    and "底背弛" in c1.signals['倒1的九笔形态']:
+            elif "底背弛" in c1.signals['倒1五笔'] \
+                    and "底背弛" in c1.signals['倒1七笔'] \
+                    and "底背弛" in c1.signals['倒1九笔']:
                 v = Factors['{}A3'.format(factor_l1)].value
             else:
                 v = Factors['{}A0'.format(factor_l1)].value
-
-        if c1.bi_list[-1].fx_b.power == "强" and c2.signals['倒1的七笔形态'] == Signals.X7LE0.value:
+        # L1B
+        if c1.bi_list[-1].fx_b.power == "强" and c2.signals['倒1七笔'] == Signals.X7LE0.value:
             v = Factors['{}B0'.format(factor_l1)].value
 
         if v != Factors.Other.value:
@@ -58,15 +59,16 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) > 7:
         factor_l2 = factor_key_base + "L2"
-        if "底背弛" in c2.signals['倒1的五笔形态']:
+        # L2A
+        if "底背弛" in c2.signals['倒1五笔']:
             v = Factors['{}A0'.format(factor_l2)].value
-
-        if "底背弛" in c2.signals['倒1的七笔形态']:
+        # L2B
+        if "底背弛" in c2.signals['倒1七笔']:
             v = Factors['{}B0'.format(factor_l2)].value
-
-        if "底背弛" in c2.signals['倒1的九笔形态']:
+        # L2C
+        if "底背弛" in c2.signals['倒1九笔']:
             v = Factors['{}C0'.format(factor_l2)].value
-            if c2.signals['倒1的九笔形态'] == Signals.X9LA0.value:
+            if c2.signals['倒1九笔'] == Signals.X9LA0.value:
                 v = Factors['{}C1'.format(factor_l2)].value
 
         if v != Factors.Other.value:
@@ -74,13 +76,15 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) <= 7 \
             and min([x.low for x in c1.bars_ubi]) > c1.bi_list[-1].low:
-        if c3.signals['倒1的五笔形态'] in [Signals.X5LF0.value, Signals.X5LB0.value]:
+        if c3.signals['倒1五笔'] in [Signals.X5LF0.value, Signals.X5LB0.value, Signals.X5LB1.value]:
             factor_l3 = factor_key_base + "L3"
-            if c2.signals['倒1的七笔形态'] == Signals.X7LE0.value:
+            # L3A
+            if c2.signals['倒1七笔'] == Signals.X7LE0.value:
                 v = Factors['{}A0'.format(factor_l3)].value
         else:
             factor_l4 = factor_key_base + "L4"
-            if "底背弛" in c2.signals['倒1的七笔形态']:
+            # L4A
+            if "底背弛" in c2.signals['倒1七笔']:
                 v = Factors['{}A0'.format(factor_l4)].value
 
         if v != Factors.Other.value:
@@ -88,21 +92,22 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) <= 7:
         factor_s1 = factor_key_base + "S1"
-        if c2.signals['倒1的五笔形态'] == Signals.X5SB0.value:
+        # S1A
+        if c2.signals['倒1五笔'] in [Signals.X5SB0.value, Signals.X5SB1.value]:
             if c2_l9 == c2.bi_list[-1].low:
                 v = Factors['{}A1'.format(factor_s1)].value
-            elif "底背弛" in c1.signals['倒2的五笔形态'] \
-                    and "底背弛" in c1.signals['倒2的七笔形态'] \
-                    and "底背弛" in c1.signals['倒2的九笔形态']:
+            elif "底背弛" in c1.signals['倒2五笔'] \
+                    and "底背弛" in c1.signals['倒2七笔'] \
+                    and "底背弛" in c1.signals['倒2九笔']:
                 v = Factors['{}A2'.format(factor_s1)].value
-            elif "顶背弛" in c1.signals['倒1的五笔形态'] \
-                    and "顶背弛" in c1.signals['倒1的七笔形态'] \
-                    and "顶背弛" in c1.signals['倒1的九笔形态']:
+            elif "顶背弛" in c1.signals['倒1五笔'] \
+                    and "顶背弛" in c1.signals['倒1七笔'] \
+                    and "顶背弛" in c1.signals['倒1九笔']:
                 v = Factors['{}A3'.format(factor_s1)].value
             else:
                 v = Factors['{}A0'.format(factor_s1)].value
-
-        if c2.signals['倒1的五笔形态'] == Signals.X5SA0.value:
+        # S1B
+        if c2.signals['倒1五笔'] == Signals.X5SA0.value:
             v = Factors['{}B0'.format(factor_s1)].value
 
         if v != Factors.Other.value:
@@ -110,18 +115,21 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) > 7:
         factor_s2 = factor_key_base + "S2"
-        if "顶背驰" in c2.signals['倒1的七笔形态']:
+        # S2A
+        if "顶背驰" in c2.signals['倒1七笔']:
             v = Factors['{}A0'.format(factor_s2)].value
 
     if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) <= 7 \
             and max([x.high for x in c1.bars_ubi]) < c1.bi_list[-1].high:
-        if c3.signals['倒1的五笔形态'] in [Signals.X5SF0.value, Signals.X5SB0.value]:
+        if c3.signals['倒1五笔'] in [Signals.X5SF0.value, Signals.X5SB0.value, Signals.X5SB1.value]:
             factor_s3 = factor_key_base + "S3"
-            if c2.signals['倒1的五笔形态'] == Signals.X5SF0.value:
+            # S3A
+            if c2.signals['倒1五笔'] == Signals.X5SF0.value:
                 v = Factors['{}A0'.format(factor_s3)].value
         else:
+            # S4A
             factor_s4 = factor_key_base + "S4"
-            if "顶背弛" in c3.signals['倒1的五笔形态']:
+            if "顶背弛" in c3.signals['倒1五笔']:
                 v = Factors['{}A0'.format(factor_s4)].value
     return v
 
@@ -161,12 +169,13 @@ class CzscFactors:
             tab.add(chart, freq)
 
         t1 = Table()
-        t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" in k and "~" in str(v)])
+        t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items()
+                              if "_" in k and isinstance(v, str) and v != "Other~其他"])
         t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
         tab.add(t1, "信号表")
 
         t2 = Table()
-        t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k and v != "其他"])
+        t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k and v != "Other~其他"])
         t2.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅因子表", subtitle=""))
         tab.add(t2, "因子表")
 

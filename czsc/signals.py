@@ -5,71 +5,12 @@ from typing import List
 from .objects import Direction, BI
 from .enum import Signals
 
-def check_three_fd(fds: List[BI]) -> str:
-    """识别三段形态
-
-    :param fds: list
-        由远及近的三段形态
-    :return: str
-    """
-    v = Signals.Other.value
-
-    if len(fds) != 3:
-        warnings.warn("len(fdx) != 3，无法识别三段形态")
-        return v
-
-    fd1, fd2, fd3 = fds
-    if not (fd1.direction == fd3.direction):
-        # warnings.warn("1,3的 direction 不一致，无法识别三段形态")
-        print("1,3的 direction 不一致，无法识别三段形态")
-        return v
-
-    if fd3.direction == Direction.Down:
-        if fd3.low > fd1.high:
-            v = Signals.X3LA0.value
-
-        if fd2.low < fd3.low < fd1.high < fd2.high:
-            v = Signals.X3LB0.value
-
-        if fd1.high > fd3.high and fd1.low < fd3.low:
-            v = Signals.X3LC0.value
-
-        if fd1.high < fd3.high and fd1.low > fd3.low:
-            v = Signals.X3LD0.value
-
-        if fd3.low < fd1.low and fd3.high < fd1.high:
-            if fd3.power < fd1.power:
-                v = Signals.X3LE0.value
-            else:
-                v = Signals.X3LF0.value
-    elif fd3.direction == Direction.Up:
-        if fd3.high > fd1.low:
-            v = Signals.X3SA0.value
-
-        if fd2.low < fd1.low < fd3.high < fd2.high:
-            v = Signals.X3SB0.value
-
-        if fd1.high > fd3.high and fd1.low < fd3.low:
-            v = Signals.X3SC0.value
-
-        if fd1.high < fd3.high and fd1.low > fd3.low:
-            v = Signals.X3SD0.value
-
-        if fd3.low > fd1.low and fd3.high > fd1.high:
-            if fd3.power < fd1.power:
-                v = Signals.X3SE0.value
-            else:
-                v = Signals.X3SF0.value
-    else:
-        raise ValueError("direction 的取值错误")
-
-    return v
-
-def check_five_fd(fds: List[BI]) -> str:
+def check_five_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
     """识别五段形态
 
-    :param fds: list
-        由远及近的五段走势
+    :param fds: 由远及近的五段走势
+    :param x9_high: 由远及近的九段走势的最高点
+    :param x9_low: 由远及近的九段走势的最低点
     :return: str
     """
     v = Signals.Other.value
@@ -87,15 +28,24 @@ def check_five_fd(fds: List[BI]) -> str:
     min_low = min([x.low for x in fds])
 
     if direction == Direction.Down:
+        assert x9_low <= min_low
         if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and max_high == fd1.high and fd5.power < fd1.power:
-            if (min_low == fd3.low and fd5.low < fd1.low) or (min_low == fd5.low):
+            if (x9_low == fd3.low and fd5.low < fd1.low) or (x9_low == fd5.low):
+                v = Signals.X5LA1.value
+            elif (min_low == fd3.low and fd5.low < fd1.low) or (min_low == fd5.low):
                 v = Signals.X5LA0.value
 
         if max(fd1.low, fd3.low) < min(fd1.high, fd3.high) < fd5.low:
-            v = Signals.X5LB0.value
+            if min_low == x9_low:
+                v = Signals.X5LB1.value
+            else:
+                v = Signals.X5LB0.value
 
-        if fd4.high < fd2.low and fd5.power < fd3.power and max_high == fd1.high and min_low == fd5.low:
-            v = Signals.X5LC0.value
+        if fd4.high < fd2.low and fd5.power < fd3.power and max_high == fd1.high:
+            if fd5.low == x9_low:
+                v = Signals.X5LC1.value
+            elif fd5.low == min_low:
+                v = Signals.X5LC0.value
 
         if fd1.high < fd3.high < fd5.high and fd1.low > fd3.low > fd5.low:
             v = Signals.X5LD0.value
@@ -103,20 +53,29 @@ def check_five_fd(fds: List[BI]) -> str:
         if fd1.high > fd3.high > fd5.high and fd1.low < fd3.low < fd5.low:
             v = Signals.X5LE0.value
 
-        if (min_low == fd1.low and fd5.high > min(fd1.high, fd2.high) > fd5.low > fd1.low) \
-                or (min_low == fd3.low and fd5.high > min(fd3.high, fd4.high) > fd5.low > fd3.low):
+        if (x9_low == fd1.low and fd5.high > min(fd1.high, fd2.high) > fd5.low > fd1.low) \
+                or (x9_low == fd3.low and fd5.high > min(fd3.high, fd4.high) > fd5.low > fd3.low):
             v = Signals.X5LF0.value
 
     elif direction == Direction.Up:
+        assert x9_high >= max_high
         if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and min_low == fd1.low and fd5.power < fd1.power:
-            if (max_high == fd3.high and fd5.high > fd1.high) or (max_high == fd5.high):
+            if (x9_high == fd3.high and fd5.high > fd1.high) or (x9_high == fd5.high):
+                v = Signals.X5SA1.value
+            elif (max_high == fd3.high and fd5.high > fd1.high) or (max_high == fd5.high):
                 v = Signals.X5SA0.value
 
         if min(fd1.high, fd3.high) > max(fd1.low, fd3.low) > fd5.high:
-            v = Signals.X5SB0.value
+            if max_high == x9_high:
+                v = Signals.X5SB1.value
+            else:
+                v = Signals.X5SB0.value
 
-        if max_high == fd5.high and min_low == fd1.low and fd5.power < fd1.power and fd4.low > fd2.high:
-            v = Signals.X5SC0.value
+        if min_low == fd1.low and fd5.power < fd1.power and fd4.low > fd2.high:
+            if fd5.high == x9_high:
+                v = Signals.X5SC1.value
+            elif fd5.high == max_high:
+                v = Signals.X5SC0.value
 
         if fd1.high < fd3.high < fd5.high and fd1.low > fd3.low > fd5.low:
             v = Signals.X5SD0.value
@@ -124,19 +83,20 @@ def check_five_fd(fds: List[BI]) -> str:
         if fd1.high > fd3.high > fd5.high and fd1.low < fd3.low < fd5.low:
             v = Signals.X5SE0.value
 
-        if (max_high == fd1.high and fd5.low < max(fd1.low, fd2.low) < fd5.high < fd1.high) \
-                or (max_high == fd3.high and fd5.low < max(fd3.low, fd4.low) < fd5.high < fd3.high):
+        if (x9_high == fd1.high and fd5.low < max(fd1.low, fd2.low) < fd5.high < fd1.high) \
+                or (x9_high == fd3.high and fd5.low < max(fd3.low, fd4.low) < fd5.high < fd3.high):
             v = Signals.X5SF0.value
 
     else:
         raise ValueError("direction 的取值错误")
     return v
 
-def check_seven_fd(fds: List[BI]) -> str:
+def check_seven_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
     """识别七段形态
 
-    :param fds: list
-        由远及近的七段走势
+    :param fds: 由远及近的七段走势
+    :param x9_high: 由远及近的九段走势的最高点
+    :param x9_low: 由远及近的九段走势的最低点
     :return: str
     """
     v = Signals.Other.value
@@ -149,20 +109,33 @@ def check_seven_fd(fds: List[BI]) -> str:
     min_low = min([x.low for x in fds])
 
     if fd7.direction == Direction.Down:
+        assert x9_low <= min_low
         if fd1.high == max_high and fd7.low == min_low:
             if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) > fd6.high and fd7.power < fd5.power:
-                v = Signals.X7LA0.value
+                if x9_low == min_low:
+                    v = Signals.X7LA1.value
+                else:
+                    v = Signals.X7LA0.value
 
             if fd2.low > min(fd4.high, fd6.high) > max(fd4.low, fd6.low) and fd7.power < (fd1.high - fd3.low):
-                v = Signals.X7LB0.value
+                if x9_low == min_low:
+                    v = Signals.X7LB1.value
+                else:
+                    v = Signals.X7LB0.value
 
             if min(fd2.high, fd4.high, fd6.high) > max(fd2.low, fd4.low, fd6.low) and fd7.power < fd1.power:
-                v = Signals.X7LC0.value
+                if x9_low == min_low:
+                    v = Signals.X7LC1.value
+                else:
+                    v = Signals.X7LC0.value
 
             if fd2.low > fd4.high and fd4.low > fd6.high and fd7.power < fd5.power:
-                v = Signals.X7LD0.value
+                if x9_low == min_low:
+                    v = Signals.X7LD1.value
+                else:
+                    v = Signals.X7LD0.value
 
-        if fd4.low == min_low and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
+        if fd4.low == x9_low and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
                 and min(fd5.high, fd7.high) > max(fd5.low, fd7.low) \
                 and max(fd4.high, fd6.high) > min(fd3.high, fd4.high):
             v = Signals.X7LE0.value
@@ -172,20 +145,33 @@ def check_seven_fd(fds: List[BI]) -> str:
             v = Signals.X7LF0.value
 
     elif fd7.direction == Direction.Up:
+        assert x9_high >= max_high
         if fd1.low == min_low and fd7.high == max_high:
             if fd6.low > min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and fd7.power < fd5.power:
-                v = Signals.X7SA0.value
+                if x9_high == max_high:
+                    v = Signals.X7SA1.value
+                else:
+                    v = Signals.X7SA0.value
 
             if min(fd4.high, fd6.high) > max(fd4.low, fd6.low) > fd2.high and fd7.power < (fd3.high - fd1.low):
-                v = Signals.X7SB0.value
+                if x9_high == max_high:
+                    v = Signals.X7SB1.value
+                else:
+                    v = Signals.X7SB0.value
 
             if min(fd2.high, fd4.high, fd6.high) > max(fd2.low, fd4.low, fd6.low) and fd7.power < fd1.power:
-                v = Signals.X7SC0.value
+                if x9_high == max_high:
+                    v = Signals.X7SC1.value
+                else:
+                    v = Signals.X7SC0.value
 
             if fd2.high < fd4.low and fd4.high < fd6.low and fd7.power < fd5.power:
-                v = Signals.X7SD0.value
+                if x9_high == max_high:
+                    v = Signals.X7SD1.value
+                else:
+                    v = Signals.X7SD0.value
 
-        if fd4.high == max_high and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
+        if fd4.high == x9_high and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
                 and min(fd5.high, fd7.high) > max(fd5.low, fd7.low) \
                 and min(fd4.low, fd6.low) < max(fd3.low, fd4.low):
             v = Signals.X7SE0.value

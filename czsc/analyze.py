@@ -7,7 +7,7 @@ import pandas as pd
 import traceback
 from .objects import Mark, Direction, BI, FX, RawBar, NewBar
 from .utils.echarts_plot import kline_pro
-from .signals import check_five_fd, check_seven_fd, check_nine_fd
+from .signals import check_five_fd, check_seven_fd, check_nine_fd, Signals
 from .utils.ta import RSQ
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -259,98 +259,95 @@ class CZSC:
         # 倒3，倒数第3笔的缩写，表示第N-2笔
         # 倒4，倒数第4笔的缩写，表示第N-3笔
         s.update({
-            "倒1的长度": 0,
-            "倒1的涨跌幅": 0,
-            "倒1的拟合优度": 0,
-            # "倒1的有效分型数量": "其他",
+            "倒1方向": Signals.Other.value,
+            "倒1长度": 0,
+            "倒1涨跌幅": 0,
+            "倒1拟合优度": 0,
+            # "倒1有效分型数量": "其他",
 
-            "倒2的长度": 0,
-            "倒2的涨跌幅": 0,
-            "倒2的拟合优度": 0,
+            "倒2方向": Signals.Other.value,
+            "倒2长度": 0,
+            "倒2涨跌幅": 0,
+            "倒2拟合优度": 0,
 
-            "倒3的长度": 0,
-            "倒3的涨跌幅": 0,
-            "倒3的拟合优度": 0,
+            "倒3方向": Signals.Other.value,
+            "倒3长度": 0,
+            "倒3涨跌幅": 0,
+            "倒3拟合优度": 0,
 
-            "倒4的长度": 0,
-            "倒4的涨跌幅": 0,
-            "倒4的拟合优度": 0,
+            "倒4方向": Signals.Other.value,
+            "倒4长度": 0,
+            "倒4涨跌幅": 0,
+            "倒4拟合优度": 0,
 
-            "倒5的长度": 0,
-            "倒5的涨跌幅": 0,
-            "倒5的拟合优度": 0,
+            "倒5方向": Signals.Other.value,
+            "倒5长度": 0,
+            "倒5涨跌幅": 0,
+            "倒5拟合优度": 0,
 
-            "倒1的五笔形态": "其他",
-            "倒2的五笔形态": "其他",
-            "倒3的五笔形态": "其他",
-            "倒4的五笔形态": "其他",
-            "倒5的五笔形态": "其他",
+            "倒1五笔": Signals.Other.value,
+            "倒2五笔": Signals.Other.value,
+            "倒3五笔": Signals.Other.value,
+            "倒4五笔": Signals.Other.value,
+            "倒5五笔": Signals.Other.value,
 
-            "倒1的七笔形态": "其他",
-            "倒2的七笔形态": "其他",
-            "倒3的七笔形态": "其他",
-            "倒4的七笔形态": "其他",
-            "倒5的七笔形态": "其他",
+            "倒1七笔": Signals.Other.value,
+            "倒2七笔": Signals.Other.value,
+            "倒3七笔": Signals.Other.value,
+            "倒4七笔": Signals.Other.value,
+            "倒5七笔": Signals.Other.value,
 
-            "倒1的九笔形态": "其他",
-            "倒2的九笔形态": "其他",
-            "倒3的九笔形态": "其他",
-            "倒4的九笔形态": "其他",
-            "倒5的九笔形态": "其他",
+            "倒1九笔": Signals.Other.value,
+            "倒2九笔": Signals.Other.value,
+            "倒3九笔": Signals.Other.value,
+            "倒4九笔": Signals.Other.value,
+            "倒5九笔": Signals.Other.value,
         })
 
         bis = self.bi_list
         if len(bis) > 7:
-            s['倒1的长度'] = bis[-1].length
-            s['倒1的涨跌幅'] = bis[-1].change
-            s['倒1的拟合优度'] = bis[-1].rsq
-
-            s['倒2的长度'] = bis[-2].length
-            s['倒2的涨跌幅'] = bis[-2].change
-            s['倒2的拟合优度'] = bis[-2].rsq
-
-            s['倒3的长度'] = bis[-3].length
-            s['倒3的涨跌幅'] = bis[-3].change
-            s['倒3的拟合优度'] = bis[-3].rsq
-
-            s['倒4的长度'] = bis[-4].length
-            s['倒4的涨跌幅'] = bis[-4].change
-            s['倒4的拟合优度'] = bis[-4].rsq
-
-            s['倒5的长度'] = bis[-5].length
-            s['倒5的涨跌幅'] = bis[-5].change
-            s['倒5的拟合优度'] = bis[-5].rsq
-
-        if len(self.bi_list) > 9:
-            bis = self.bi_list
-            s['倒1的五笔形态'] = check_five_fd(bis[-5:])
-            s['倒2的五笔形态'] = check_five_fd(bis[-6:-1])
-
-        if len(self.bi_list) > 11:
-            bis = self.bi_list
-            s['倒3的五笔形态'] = check_five_fd(bis[-7:-2])
-            s['倒4的五笔形态'] = check_five_fd(bis[-8:-3])
-            s['倒5的五笔形态'] = check_five_fd(bis[-9:-4])
-
-            s['倒1的七笔形态'] = check_seven_fd(bis[-7:])
-            s['倒2的七笔形态'] = check_seven_fd(bis[-8:-1])
+            for i in range(1, 6):
+                s['倒{}方向'.format(i)] = bis[-i].direction.value
+                s['倒{}长度'.format(i)] = bis[-i].length
+                s['倒{}涨跌幅'.format(i)] = bis[-i].change
+                s['倒{}拟合优度'.format(i)] = bis[-i].rsq
 
         if len(self.bi_list) > 13:
             bis = self.bi_list
-            s['倒3的七笔形态'] = check_seven_fd(bis[-9:-2])
-            s['倒4的七笔形态'] = check_seven_fd(bis[-10:-3])
-            s['倒5的七笔形态'] = check_seven_fd(bis[-11:-4])
+            r1x9_high = max([x.high for x in self.bi_list[-9:]])
+            r1x9_low = min([x.low for x in self.bi_list[-9:]])
+            s['倒1五笔'] = check_five_fd(bis[-5:], r1x9_high, r1x9_low)
+            s['倒1七笔'] = check_seven_fd(bis[-7:], r1x9_high, r1x9_low)
 
-            s['倒1的九笔形态'] = check_nine_fd(bis[-9:])
-            s['倒2的九笔形态'] = check_nine_fd(bis[-10:-1])
+            r2x9_high = max([x.high for x in self.bi_list[-10:-1]])
+            r2x9_low = min([x.low for x in self.bi_list[-10:-1]])
+            s['倒2五笔'] = check_five_fd(bis[-6:-1], r2x9_high, r2x9_low)
+            s['倒2七笔'] = check_seven_fd(bis[-8:-1], r2x9_high, r2x9_low)
+
+            r3x9_high = max([x.high for x in self.bi_list[-11:-2]])
+            r3x9_low = min([x.low for x in self.bi_list[-11:-2]])
+            s['倒3五笔'] = check_five_fd(bis[-7:-2], r3x9_high, r3x9_low)
+            s['倒3七笔'] = check_seven_fd(bis[-9:-2], r3x9_high, r3x9_low)
+
+            r4x9_high = max([x.high for x in self.bi_list[-12:-3]])
+            r4x9_low = min([x.low for x in self.bi_list[-12:-3]])
+            s['倒4五笔'] = check_five_fd(bis[-8:-3], r4x9_high, r4x9_low)
+            s['倒4七笔'] = check_seven_fd(bis[-10:-3], r4x9_high, r4x9_low)
+
+            r5x9_high = max([x.high for x in self.bi_list[-13:-4]])
+            r5x9_low = min([x.low for x in self.bi_list[-13:-4]])
+            s['倒5五笔'] = check_five_fd(bis[-9:-4], r5x9_high, r5x9_low)
+            s['倒5七笔'] = check_seven_fd(bis[-11:-4], r5x9_high, r5x9_low)
+
+            s['倒1九笔'] = check_nine_fd(bis[-9:])
+            s['倒2九笔'] = check_nine_fd(bis[-10:-1])
 
         if len(self.bi_list) > 15:
             bis = self.bi_list
-            s['倒3的九笔形态'] = check_nine_fd(bis[-11:-2])
-            s['倒4的九笔形态'] = check_nine_fd(bis[-12:-3])
-            s['倒5的九笔形态'] = check_nine_fd(bis[-13:-4])
+            s['倒3九笔'] = check_nine_fd(bis[-11:-2])
+            s['倒4九笔'] = check_nine_fd(bis[-12:-3])
+            s['倒5九笔'] = check_nine_fd(bis[-13:-4])
 
-        # return {"{}_{}".format(self.freq, k) if k not in ['symbol', 'dt', 'close'] else k: v for k, v in s.items()}
         return s
 
     def update(self, bar: RawBar):
