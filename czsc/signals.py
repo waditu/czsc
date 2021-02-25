@@ -32,8 +32,12 @@ def check_five_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
         if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and max_high == fd1.high and fd5.power < fd1.power:
             if (x9_low == fd3.low and fd5.low < fd1.low) or (x9_low == fd5.low):
                 v = Signals.X5LA1.value
+                if fd5.rsq > 0.8:
+                    v = Signals.X5LA2.value
             elif (min_low == fd3.low and fd5.low < fd1.low) or (min_low == fd5.low):
                 v = Signals.X5LA0.value
+                if fd5.rsq > 0.8:
+                    v = Signals.X5LA2.value
 
         if max(fd1.low, fd3.low) < min(fd1.high, fd3.high) < fd5.low:
             if min_low == x9_low:
@@ -62,8 +66,12 @@ def check_five_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
         if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and min_low == fd1.low and fd5.power < fd1.power:
             if (x9_high == fd3.high and fd5.high > fd1.high) or (x9_high == fd5.high):
                 v = Signals.X5SA1.value
+                if fd5.rsq > 0.8:
+                    v = Signals.X5SA2.value
             elif (max_high == fd3.high and fd5.high > fd1.high) or (max_high == fd5.high):
                 v = Signals.X5SA0.value
+                if fd5.rsq > 0.8:
+                    v = Signals.X5SA2.value
 
         if min(fd1.high, fd3.high) > max(fd1.low, fd3.low) > fd5.high:
             if max_high == x9_high:
@@ -114,18 +122,24 @@ def check_seven_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
             if min(fd2.high, fd4.high) > max(fd2.low, fd4.low) > fd6.high and fd7.power < fd5.power:
                 if x9_low == min_low:
                     v = Signals.X7LA1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7LA2.value
                 else:
                     v = Signals.X7LA0.value
 
             if fd2.low > min(fd4.high, fd6.high) > max(fd4.low, fd6.low) and fd7.power < (fd1.high - fd3.low):
                 if x9_low == min_low:
                     v = Signals.X7LB1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7LB2.value
                 else:
                     v = Signals.X7LB0.value
 
             if min(fd2.high, fd4.high, fd6.high) > max(fd2.low, fd4.low, fd6.low) and fd7.power < fd1.power:
                 if x9_low == min_low:
                     v = Signals.X7LC1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7LC2.value
                 else:
                     v = Signals.X7LC0.value
 
@@ -150,18 +164,24 @@ def check_seven_fd(fds: List[BI], x9_high: float, x9_low: float) -> str:
             if fd6.low > min(fd2.high, fd4.high) > max(fd2.low, fd4.low) and fd7.power < fd5.power:
                 if x9_high == max_high:
                     v = Signals.X7SA1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7SA2.value
                 else:
                     v = Signals.X7SA0.value
 
             if min(fd4.high, fd6.high) > max(fd4.low, fd6.low) > fd2.high and fd7.power < (fd3.high - fd1.low):
                 if x9_high == max_high:
                     v = Signals.X7SB1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7SB2.value
                 else:
                     v = Signals.X7SB0.value
 
             if min(fd2.high, fd4.high, fd6.high) > max(fd2.low, fd4.low, fd6.low) and fd7.power < fd1.power:
                 if x9_high == max_high:
                     v = Signals.X7SC1.value
+                elif fd7.rsq > 0.8:
+                    v = Signals.X7SC2.value
                 else:
                     v = Signals.X7SC0.value
 

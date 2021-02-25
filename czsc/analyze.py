@@ -263,27 +263,37 @@ class CZSC:
             "倒1长度": 0,
             "倒1涨跌幅": 0,
             "倒1拟合优度": 0,
+            "倒1大力度向下": Signals.Other.value,
+            "倒1大力度向上": Signals.Other.value,
             # "倒1有效分型数量": "其他",
 
             "倒2方向": Signals.Other.value,
             "倒2长度": 0,
             "倒2涨跌幅": 0,
             "倒2拟合优度": 0,
+            "倒2大力度向下": Signals.Other.value,
+            "倒2大力度向上": Signals.Other.value,
 
             "倒3方向": Signals.Other.value,
             "倒3长度": 0,
             "倒3涨跌幅": 0,
             "倒3拟合优度": 0,
+            "倒3大力度向下": Signals.Other.value,
+            "倒3大力度向上": Signals.Other.value,
 
             "倒4方向": Signals.Other.value,
             "倒4长度": 0,
             "倒4涨跌幅": 0,
             "倒4拟合优度": 0,
+            "倒4大力度向下": Signals.Other.value,
+            "倒4大力度向上": Signals.Other.value,
 
             "倒5方向": Signals.Other.value,
             "倒5长度": 0,
             "倒5涨跌幅": 0,
             "倒5拟合优度": 0,
+            "倒5大力度向下": Signals.Other.value,
+            "倒5大力度向上": Signals.Other.value,
 
             "倒1五笔": Signals.Other.value,
             "倒2五笔": Signals.Other.value,
@@ -311,6 +321,19 @@ class CZSC:
                 s['倒{}长度'.format(i)] = bis[-i].length
                 s['倒{}涨跌幅'.format(i)] = bis[-i].change
                 s['倒{}拟合优度'.format(i)] = bis[-i].rsq
+                if bis[-i].rsq > 0.8:
+                    if bis[-i].direction == Direction.Down:
+                        s['倒{}大力度向下'.format(i)] = Signals.Y.value
+                    else:
+                        s['倒{}大力度向下'.format(i)] = Signals.N.value
+
+                    if bis[-i].direction == Direction.Up:
+                        s['倒{}大力度向上'.format(i)] = Signals.Y.value
+                    else:
+                        s['倒{}大力度向上'.format(i)] = Signals.N.value
+                else:
+                    s['倒{}大力度向下'.format(i)] = Signals.N.value
+                    s['倒{}大力度向上'.format(i)] = Signals.N.value
 
         if len(self.bi_list) > 13:
             bis = self.bi_list

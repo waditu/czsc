@@ -28,7 +28,7 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
     :return:
     """
     c_map = {"日线": "C6", "60分钟": "C5", "30分钟": "C4", "15分钟": "C3", "5分钟": "C2", "1分钟": "C1"}
-    factor_key_base = "{}{}".format(c_map[c1.freq], c_map[c2.freq])
+    factor_key_base = "{}{}{}".format(c_map[c1.freq], c_map[c2.freq], c_map[c3.freq])
 
     v = Factors.Other.value
     c2_h9 = max([x.high for x in c2.bi_list[-9:]])
