@@ -32,7 +32,7 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
     v = Factors.Other.value
     c2_h9 = max([x.high for x in c2.bi_list[-9:]])
-    c2_l9 = max([x.high for x in c2.bi_list[-9:]])
+    c2_l9 = min([x.low for x in c2.bi_list[-9:]])
 
     if c1.bi_list[-1].direction == Direction.Down and len(c1.bars_ubi) <= 7:
         factor_l1 = factor_key_base + "L1"  # L1 - 向下笔转折右侧
