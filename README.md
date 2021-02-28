@@ -10,9 +10,9 @@
 
 ## 问题讨论
 
->在 [issues](https://github.com/zengbin93/czsc/issues) 中提出了一些值得探讨的实战问题，欢迎积极参与讨论，我可以负责实现一些好的想法，代码开源。
+>在 [discussions](https://github.com/zengbin93/czsc/discussions) 中提出了一些值得探讨的实战问题，欢迎积极参与讨论，我可以负责实现一些好的想法，代码开源。
 
-* [如何分析选股策略的历史表现？](https://github.com/zengbin93/czsc/issues/17)
+* [如何分析选股策略的历史表现？](https://github.com/zengbin93/czsc/discussions/34)
 * [常见问题（FAQ）](https://github.com/zengbin93/czsc/discussions/32)
 
 ## 原文整理
