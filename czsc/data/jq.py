@@ -294,6 +294,7 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq:
         bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
+    bars = [x for x in bars if x.dt <= end_date]
     return bars
 
 
