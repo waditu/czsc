@@ -186,6 +186,9 @@ class CZSC:
             self.update(bar)
         self.signals = self.get_signals()
 
+    def __repr__(self):
+        return "<CZSC for {}>".format(self.symbol)
+
     def __update_bi(self):
         bars_ubi = self.bars_ubi
         if len(bars_ubi) < 3:
@@ -257,43 +260,46 @@ class CZSC:
         # 倒1，倒数第1笔的缩写，表示第N笔
         # 倒2，倒数第2笔的缩写，表示第N-1笔
         # 倒3，倒数第3笔的缩写，表示第N-2笔
-        # 倒4，倒数第4笔的缩写，表示第N-3笔
+        # 以此类推
         s.update({
             "倒1方向": Signals.Other.value,
             "倒1长度": 0,
             "倒1涨跌幅": 0,
             "倒1拟合优度": 0,
-            "倒1大力度向下": Signals.Other.value,
-            "倒1大力度向上": Signals.Other.value,
+
+            "倒1近五笔最高点": 0,
+            "倒1近五笔最低点": 0,
+            "倒1近七笔最高点": 0,
+            "倒1近七笔最低点": 0,
+            "倒1近九笔最高点": 0,
+            "倒1近九笔最低点": 0,
+            "倒1近十一笔最高点": 0,
+            "倒1近十一笔最低点": 0,
+            "倒1近十三笔最高点": 0,
+            "倒1近十三笔最低点": 0,
+            "倒1近十五笔最高点": 0,
+            "倒1近十五笔最低点": 0,
             # "倒1有效分型数量": "其他",
 
             "倒2方向": Signals.Other.value,
             "倒2长度": 0,
             "倒2涨跌幅": 0,
             "倒2拟合优度": 0,
-            "倒2大力度向下": Signals.Other.value,
-            "倒2大力度向上": Signals.Other.value,
 
             "倒3方向": Signals.Other.value,
             "倒3长度": 0,
             "倒3涨跌幅": 0,
             "倒3拟合优度": 0,
-            "倒3大力度向下": Signals.Other.value,
-            "倒3大力度向上": Signals.Other.value,
 
             "倒4方向": Signals.Other.value,
             "倒4长度": 0,
             "倒4涨跌幅": 0,
             "倒4拟合优度": 0,
-            "倒4大力度向下": Signals.Other.value,
-            "倒4大力度向上": Signals.Other.value,
 
             "倒5方向": Signals.Other.value,
             "倒5长度": 0,
             "倒5涨跌幅": 0,
             "倒5拟合优度": 0,
-            "倒5大力度向下": Signals.Other.value,
-            "倒5大力度向上": Signals.Other.value,
 
             "倒1五笔": Signals.Other.value,
             "倒2五笔": Signals.Other.value,
@@ -315,52 +321,48 @@ class CZSC:
         })
 
         bis = self.bi_list
-        if len(bis) > 7:
+        if len(bis) > 20:
+            high_seq = [x.high for x in bis]
+            low_seq = [x.low for x in bis]
+            s['倒1近五笔最高点'] = max(high_seq[-5:])
+            s['倒1近五笔最低点'] = min(low_seq[-5:])
+
+            s['倒1近七笔最高点'] = max(high_seq[-7:])
+            s['倒1近七笔最低点'] = min(low_seq[-7:])
+
+            s['倒1近九笔最高点'] = max(high_seq[-9:])
+            s['倒1近九笔最低点'] = min(low_seq[-9:])
+
+            s['倒1近十一笔最高点'] = max(high_seq[-11:])
+            s['倒1近十一笔最低点'] = min(low_seq[-11:])
+
+            s['倒1近十三笔最高点'] = max(high_seq[-13:])
+            s['倒1近十三笔最低点'] = min(low_seq[-13:])
+
+            s['倒1近十五笔最高点'] = max(high_seq[-15:])
+            s['倒1近十五笔最低点'] = min(low_seq[-15:])
             for i in range(1, 6):
                 s['倒{}方向'.format(i)] = bis[-i].direction.value
                 s['倒{}长度'.format(i)] = bis[-i].length
                 s['倒{}涨跌幅'.format(i)] = bis[-i].change
                 s['倒{}拟合优度'.format(i)] = bis[-i].rsq
-                if bis[-i].rsq > 0.8:
-                    if bis[-i].direction == Direction.Down:
-                        s['倒{}大力度向下'.format(i)] = Signals.Y.value
-                    else:
-                        s['倒{}大力度向下'.format(i)] = Signals.N.value
-
-                    if bis[-i].direction == Direction.Up:
-                        s['倒{}大力度向上'.format(i)] = Signals.Y.value
-                    else:
-                        s['倒{}大力度向上'.format(i)] = Signals.N.value
-                else:
-                    s['倒{}大力度向下'.format(i)] = Signals.N.value
-                    s['倒{}大力度向上'.format(i)] = Signals.N.value
 
         if len(self.bi_list) > 13:
             bis = self.bi_list
-            r1x9_high = max([x.high for x in self.bi_list[-9:]])
-            r1x9_low = min([x.low for x in self.bi_list[-9:]])
-            s['倒1五笔'] = check_five_fd(bis[-5:], r1x9_high, r1x9_low)
-            s['倒1七笔'] = check_seven_fd(bis[-7:], r1x9_high, r1x9_low)
+            s['倒1五笔'] = check_five_fd(bis[-5:])
+            s['倒1七笔'] = check_seven_fd(bis[-7:])
 
-            r2x9_high = max([x.high for x in self.bi_list[-10:-1]])
-            r2x9_low = min([x.low for x in self.bi_list[-10:-1]])
-            s['倒2五笔'] = check_five_fd(bis[-6:-1], r2x9_high, r2x9_low)
-            s['倒2七笔'] = check_seven_fd(bis[-8:-1], r2x9_high, r2x9_low)
+            s['倒2五笔'] = check_five_fd(bis[-6:-1])
+            s['倒2七笔'] = check_seven_fd(bis[-8:-1])
 
-            r3x9_high = max([x.high for x in self.bi_list[-11:-2]])
-            r3x9_low = min([x.low for x in self.bi_list[-11:-2]])
-            s['倒3五笔'] = check_five_fd(bis[-7:-2], r3x9_high, r3x9_low)
-            s['倒3七笔'] = check_seven_fd(bis[-9:-2], r3x9_high, r3x9_low)
+            s['倒3五笔'] = check_five_fd(bis[-7:-2])
+            s['倒3七笔'] = check_seven_fd(bis[-9:-2])
 
-            r4x9_high = max([x.high for x in self.bi_list[-12:-3]])
-            r4x9_low = min([x.low for x in self.bi_list[-12:-3]])
-            s['倒4五笔'] = check_five_fd(bis[-8:-3], r4x9_high, r4x9_low)
-            s['倒4七笔'] = check_seven_fd(bis[-10:-3], r4x9_high, r4x9_low)
+            s['倒4五笔'] = check_five_fd(bis[-8:-3])
+            s['倒4七笔'] = check_seven_fd(bis[-10:-3])
 
-            r5x9_high = max([x.high for x in self.bi_list[-13:-4]])
-            r5x9_low = min([x.low for x in self.bi_list[-13:-4]])
-            s['倒5五笔'] = check_five_fd(bis[-9:-4], r5x9_high, r5x9_low)
-            s['倒5七笔'] = check_seven_fd(bis[-11:-4], r5x9_high, r5x9_low)
+            s['倒5五笔'] = check_five_fd(bis[-9:-4])
+            s['倒5七笔'] = check_seven_fd(bis[-11:-4])
 
             s['倒1九笔'] = check_nine_fd(bis[-9:])
             s['倒2九笔'] = check_nine_fd(bis[-10:-1])

@@ -4,6 +4,7 @@ import pickle
 import json
 import requests
 import warnings
+from collections import OrderedDict
 import pandas as pd
 from tqdm import tqdm
 from datetime import datetime, timedelta
@@ -381,6 +382,87 @@ def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> di
     except:
         return {}
 
+def run_query(table: str, conditions: str, columns=None, count=1):
+    """模拟JQDataSDK的run_query方法
+
+    https://www.joinquant.com/help/api/help#JQDataHttp:run_query-%E6%A8%A1%E6%8B%9FJQDataSDK%E7%9A%84run_query%E6%96%B9%E6%B3%95
+
+    :param table: 要查询的数据库和表名，格式为 database + . + tablename 如finance.STK_XR_XD
+    :param conditions: 查询条件，可以为空
+        格式为report_date#>=#2006-12-01&report_date#<=#2006-12-31，
+        条件内部#号分隔，格式： column # 判断符 # value，
+        多个条件使用&号分隔，表示and，conditions不能有空格等特殊字符
+    :param columns: 所查字段，为空时则查询所有字段，多个字段中间用,分隔。如id,company_id，columns不能有空格等特殊字符
+    :param count: 数量
+    :return:
+    """
+    data = {
+        "method": "run_query",
+        "token": get_token(),
+        "table": table,
+        "conditions": conditions,
+        "count": count
+    }
+    if columns:
+        data['columns'] = columns
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    return df
 
 
+def get_share_basic(symbol):
+    """获取单个标的的基本面基础数据
 
+    :param symbol:
+    :return:
+    """
+    basic_info = run_query(table="finance.STK_COMPANY_INFO", conditions="code#=#{}".format(symbol), count=1)
+    basic_info = basic_info.iloc[0].to_dict()
+
+    f10 = OrderedDict()
+    f10['股票代码'] = basic_info['code']
+    f10['股票名称'] = basic_info['short_name']
+    f10['行业'] = "{}-{}".format(basic_info['industry_1'], basic_info['industry_2'])
+    f10['地域'] = "{}{}".format(basic_info['province'], basic_info['city'])
+    f10['主营'] = basic_info['main_business']
+    f10['同花顺F10'] = "http://basic.10jqka.com.cn/{}".format(basic_info['code'][:6])
+
+    # 市盈率，总市值，流通市值，流通比
+    # ------------------------------------------------------------------------------------------------------------------
+    last_date = datetime.now() - timedelta(days=1)
+    res = get_fundamental(table="valuation", symbol=symbol, date=last_date.strftime("%Y-%m-%d"))
+    f10['总市值（亿）'] = float(res['market_cap'])
+    f10['流通市值（亿）'] = float(res['circulating_market_cap'])
+    f10['流通比（%）'] = round(float(res['circulating_market_cap']) / float(res['market_cap']) * 100, 2)
+    f10['PE_TTM'] = float(res['pe_ratio'])
+    f10['PE'] = float(res['pe_ratio_lyr'])
+    f10['PB'] = float(res['pb_ratio'])
+
+    # 净资产收益率
+    # ------------------------------------------------------------------------------------------------------------------
+    for year in ['2017', '2018', '2019', '2020']:
+        indicator = get_fundamental(table="indicator", symbol=symbol, date=year)
+        f10['{}EPS'.format(year)] = float(indicator.get('eps', 0)) if indicator.get('eps', 0) else 0
+        f10['{}ROA'.format(year)] = float(indicator.get('roa', 0)) if indicator.get('roa', 0) else 0
+        f10['{}ROE'.format(year)] = float(indicator.get('roe', 0)) if indicator.get('roe', 0) else 0
+        f10['{}销售净利率(%)'.format(year)] = float(indicator.get('net_profit_margin', 0)) if indicator.get('net_profit_margin', 0) else 0
+        f10['{}销售毛利率(%)'.format(year)] = float(indicator.get('gross_profit_margin', 0)) if indicator.get('gross_profit_margin', 0) else 0
+        f10['{}营业收入同比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_year_on_year', 0)) if indicator.get('inc_revenue_year_on_year', 0) else 0
+        f10['{}营业收入环比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_annual', 0)) if indicator.get('inc_revenue_annual', 0) else 0
+        f10['{}营业利润同比增长率(%)'.format(year)] = float(indicator.get('inc_operation_profit_year_on_year', 0)) if indicator.get('inc_operation_profit_year_on_year', 0) else 0
+        f10['{}经营活动产生的现金流量净额/营业收入(%)'.format(year)] = float(indicator.get('ocf_to_revenue', 0)) if indicator.get('ocf_to_revenue', 0) else 0
+
+    # 组合成可以用来推送的文本
+    msg = "{}（{}）@{}\n".format(f10['股票代码'], f10['股票名称'], f10['地域'])
+    msg += "\n{}\n".format("*" * 30)
+    for k in ['行业', '主营', 'PE_TTM', 'PE', 'PB', '总市值（亿）', '流通市值（亿）', '流通比（%）', '同花顺F10']:
+        msg += "{}：{}\n".format(k, f10[k])
+
+    msg += "\n{}\n".format("*" * 30)
+    cols = ['EPS', 'ROA', 'ROE', '销售净利率(%)', '销售毛利率(%)', '营业收入同比增长率(%)', '营业利润同比增长率(%)', '经营活动产生的现金流量净额/营业收入(%)']
+    msg += "2017~2020 财务变化\n\n"
+    for k in cols:
+        msg += k + "：{} | {} | {} | {}\n".format(*[f10['{}{}'.format(year, k)] for year in ['2017', '2018', '2019', '2020']])
+
+    f10['msg'] = msg
+    return f10

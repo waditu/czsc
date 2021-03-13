@@ -1,11 +1,6 @@
 # coding: utf-8
 """
-
-常用技术分析指标：MA, MACD, BOLL
-
-使用 @numba.njit 装饰器，可以大幅提升计算性能，10倍左右
-这里为了便于直接通过 github action 打包发布到 pypi，没有使用这个装饰器，需要的可以自己加上
-
+常用技术分析指标：MA, MACD
 """
 import numpy as np
 

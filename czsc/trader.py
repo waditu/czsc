@@ -33,7 +33,7 @@ class CzscTrader:
     def run_selector(self):
         """输出日线笔因子"""
         s = self.s
-        factors_d = [x.value for x in Factors.__members__.values() if x.name[:2] == 'C6']
+        factors_d = [x.value for x in Factors.__members__.values()]
         if s['日线笔因子'] in factors_d:
             return s['日线笔因子']
         return "other"
