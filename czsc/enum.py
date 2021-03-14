@@ -89,9 +89,6 @@ class Factors(Enum):
     Y = "Y~是"
     N = "N~否"
 
-    BUE = "BUE~向上笔结束"
-    BDE = "BDE~向下笔结束"
-
     BUE0 = "BUE0~向上笔结束"
     BUE1 = "BUE1~向上笔结束"
     BUE2 = "BUE2~向上笔结束"

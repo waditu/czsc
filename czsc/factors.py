@@ -12,6 +12,49 @@ from .utils.kline_generator import KlineGeneratorBy1Min, KlineGeneratorByTick
 from .objects import RawBar
 from .enum import Factors, Signals, Direction
 
+def get_trade_factors(name: str,
+                      long_open_values: List,
+                      long_close_values: List,
+                      short_open_values: List = None,
+                      short_close_values: List = None) -> dict:
+    """获取指定 name 下的交易因子
+
+    :param name: 因子系统的名称
+    :param long_open_values: 开多因子值
+    :param long_close_values: 平多因子值
+    :param short_open_values: 开空因子值
+    :param short_close_values: 平空因子值
+    :return: 因子交易系统
+
+    example:
+    ===================
+    >>> factors = get_trade_factors(name="日线笔结束", long_open_values=['BDE'], long_close_values=['BUE'])
+    """
+    if not short_close_values:
+        short_close_values = []
+
+    if not short_open_values:
+        short_open_values = []
+
+    long_open_factors = ["{}@{}".format(name, x.value) for x in Factors.__members__.values()
+                         if sum([1 if v in x.name else 0 for v in long_open_values]) > 0]
+
+    long_close_factors = ["{}@{}".format(name, x.value) for x in Factors.__members__.values()
+                          if sum([1 if v in x.name else 0 for v in long_close_values]) > 0]
+
+    short_open_factors = ["{}@{}".format(name, x.value) for x in Factors.__members__.values()
+                          if sum([1 if v in x.name else 0 for v in short_open_values]) > 0]
+
+    short_close_factors = ["{}@{}".format(name, x.value) for x in Factors.__members__.values()
+                           if sum([1 if v in x.name else 0 for v in short_close_values]) > 0]
+
+    factors = {
+        "long_open_factors": long_open_factors,
+        "long_close_factors": long_close_factors,
+        "short_open_factors": short_open_factors,
+        "short_close_factors": short_close_factors,
+    }
+    return factors
 
 def aware_level_pairs(c6: CZSC, c5: CZSC, c4: CZSC, c3: CZSC, c2: CZSC, c1: CZSC):
     """感知级别配对情况
@@ -216,6 +259,8 @@ def check_bi_end(c1: CZSC, c2: CZSC):
             v = Factors.BUE2.value
         elif c2.signals['倒1七笔'] in [Signals.X7SE0.value, Signals.X7SF0.value]:
             v = Factors.BUE3.value
+        else:
+            v = Factors.BUE0.value
 
     if c1_dir == c2_dir == Direction.Down and c2.bi_list[-1].low > c1.bi_list[-1].low:
         diff, dea, macd = __c2_macd()
@@ -225,6 +270,8 @@ def check_bi_end(c1: CZSC, c2: CZSC):
             v = Factors.BDE2.value
         elif c2.signals['倒1七笔'] in [Signals.X7LE0.value, Signals.X7LF0.value]:
             v = Factors.BDE3.value
+        else:
+            v = Factors.BDE0.value
 
     return v
 
@@ -244,7 +291,7 @@ class CzscFactors:
         self.symbol = self.kas["1分钟"].symbol
         self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
         self.latest_price = self.kas["1分钟"].bars_raw[-1].close
-        self.s = self._calculate_signals()
+        self.s = self.__cal_signals()
         self.calculate_factors()
         self.cache = OrderedDict()
 
@@ -292,7 +339,7 @@ class CzscFactors:
         self.take_snapshot(file_html, width, height)
         webbrowser.open(file_html)
 
-    def _calculate_signals(self):
+    def __cal_signals(self):
         """计算信号"""
         s = OrderedDict()
         for freq, ks in self.kas.items():
@@ -311,7 +358,7 @@ class CzscFactors:
         c6: CZSC = self.kas['日线']
         self.level_pairs = aware_level_pairs(c6, c5, c4, c3, c2, c1)
 
-    def _calculate_factors_d(self):
+    def __cal_factors_d(self):
         """计算日线笔因子"""
         s = self.s
         c1: CZSC = self.kas['日线']
@@ -328,7 +375,7 @@ class CzscFactors:
         })
         return s
 
-    def _calculate_factors_f60(self):
+    def __cal_factors_f60(self):
         """计算60分钟笔因子"""
         s = self.s
         c1: CZSC = self.kas['60分钟']
@@ -345,7 +392,7 @@ class CzscFactors:
         })
         return s
 
-    def _calculate_factors_f30(self):
+    def __cal_factors_f30(self):
         s = self.s
         c1: CZSC = self.kas['30分钟']
 
@@ -361,7 +408,7 @@ class CzscFactors:
         })
         return s
 
-    def _calculate_factors_f15(self):
+    def __cal_factors_f15(self):
         s = self.s
         c1: CZSC = self.kas['15分钟']
 
@@ -377,7 +424,7 @@ class CzscFactors:
         })
         return s
 
-    def _calculate_factors_f5(self):
+    def __cal_factors_f5(self):
         s = self.s
         c1: CZSC = self.kas['5分钟']
 
@@ -392,12 +439,13 @@ class CzscFactors:
         return s
 
     def calculate_factors(self):
+        """在这里定义因子计算的顺序，同时也可以根据需要，仅计算自己感兴趣的因子"""
         self.__aware_level_pairs()
-        self.s = self._calculate_factors_d()
-        self.s = self._calculate_factors_f60()
-        self.s = self._calculate_factors_f30()
-        self.s = self._calculate_factors_f15()
-        self.s = self._calculate_factors_f5()
+        self.s = self.__cal_factors_d()
+        self.s = self.__cal_factors_f60()
+        self.s = self.__cal_factors_f30()
+        self.s = self.__cal_factors_f15()
+        self.s = self.__cal_factors_f5()
 
     def update_factors(self, data: List[RawBar]):
         """更新多级别联立因子"""
@@ -413,6 +461,8 @@ class CzscFactors:
         self.symbol = self.kas["1分钟"].symbol
         self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
         self.latest_price = self.kas["1分钟"].bars_raw[-1].close
-        self.s = self._calculate_signals()
+        self.s = self.__cal_signals()
         self.calculate_factors()
+
+
 
