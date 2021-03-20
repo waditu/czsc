@@ -285,12 +285,14 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
         dt = pd.to_datetime(row[0])
         if freq == "D":
             dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        bars.append(RawBar(symbol=symbol, dt=dt,
-                           open=round(float(row[1]), 2),
-                           close=round(float(row[2]), 2),
-                           high=round(float(row[3]), 2),
-                           low=round(float(row[4]), 2),
-                           vol=int(row[5])))
+
+        if int(row[5]) > 0:
+            bars.append(RawBar(symbol=symbol, dt=dt,
+                               open=round(float(row[1]), 2),
+                               close=round(float(row[2]), 2),
+                               high=round(float(row[3]), 2),
+                               low=round(float(row[4]), 2),
+                               vol=int(row[5])))
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq:
@@ -333,16 +335,19 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
         dt = pd.to_datetime(row[0])
         if freq == "D":
             dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        bars.append(RawBar(symbol=symbol, dt=dt,
-                           open=round(float(row[1]), 2),
-                           close=round(float(row[2]), 2),
-                           high=round(float(row[3]), 2),
-                           low=round(float(row[4]), 2),
-                           vol=int(row[5])))
+
+        if int(row[5]) > 0:
+            bars.append(RawBar(symbol=symbol, dt=dt,
+                               open=round(float(row[1]), 2),
+                               close=round(float(row[2]), 2),
+                               high=round(float(row[3]), 2),
+                               low=round(float(row[4]), 2),
+                               vol=int(row[5])))
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq and bars:
         bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
+    bars = [x for x in bars if x.dt <= end_date]
     return bars
 
 

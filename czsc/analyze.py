@@ -10,6 +10,9 @@ from .utils.echarts_plot import kline_pro
 from .signals import check_five_fd, check_seven_fd, check_nine_fd, Signals
 from .utils.ta import RSQ
 
+# 各级别笔结束买卖点区间的容差范围
+bs_tolerance = {"日线": 0.21, "60分钟": 0.13, '30分钟': 0.08, '15分钟': 0.05, '5分钟': 0.03, '1分钟': 0.02}
+
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     """去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线"""
     if k1.high < k2.high:
@@ -262,8 +265,11 @@ class CZSC:
         # 倒3，倒数第3笔的缩写，表示第N-2笔
         # 以此类推
         s.update({
+            "未完成笔长度": len(self.bars_ubi),
+
             "倒1方向": Signals.Other.value,
             "倒1长度": 0,
+            "倒1价差力度": 0,
             "倒1涨跌幅": 0,
             "倒1拟合优度": 0,
 
@@ -283,23 +289,30 @@ class CZSC:
 
             "倒2方向": Signals.Other.value,
             "倒2长度": 0,
+            "倒2价差力度": 0,
             "倒2涨跌幅": 0,
             "倒2拟合优度": 0,
 
             "倒3方向": Signals.Other.value,
             "倒3长度": 0,
+            "倒3价差力度": 0,
             "倒3涨跌幅": 0,
             "倒3拟合优度": 0,
 
             "倒4方向": Signals.Other.value,
             "倒4长度": 0,
+            "倒4价差力度": 0,
             "倒4涨跌幅": 0,
             "倒4拟合优度": 0,
 
             "倒5方向": Signals.Other.value,
             "倒5长度": 0,
+            "倒5价差力度": 0,
             "倒5涨跌幅": 0,
             "倒5拟合优度": 0,
+
+            "倒1买卖区间": Signals.Other.value,
+            "倒1结束分型": Signals.Other.value,
 
             "倒1五笔": Signals.Other.value,
             "倒2五笔": Signals.Other.value,
@@ -344,8 +357,26 @@ class CZSC:
             for i in range(1, 6):
                 s['倒{}方向'.format(i)] = bis[-i].direction.value
                 s['倒{}长度'.format(i)] = bis[-i].length
+                s['倒{}价差力度'.format(i)] = bis[-i].power
                 s['倒{}涨跌幅'.format(i)] = bis[-i].change
                 s['倒{}拟合优度'.format(i)] = bis[-i].rsq
+
+            if len(self.bars_ubi) <= 7:
+                # 倒1买卖区间
+                if bis[-1].direction == Direction.Down and \
+                        self.bars_ubi[-1].high < bis[-1].low * (1 + bs_tolerance[self.freq]):
+                    s['倒1买卖区间'] = Signals.INB.value
+
+                if bis[-1].direction == Direction.Up and \
+                        self.bars_ubi[-1].low > bis[-1].high * (1 - bs_tolerance[self.freq]):
+                    s['倒1买卖区间'] = Signals.INS.value
+
+                # 倒1结束分型
+                if bis[-1].direction == Direction.Down and bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
+                    s['倒1结束分型'] = Signals.FXB.value
+
+                if bis[-1].direction == Direction.Up and bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
+                    s['倒1结束分型'] = Signals.FXS.value
 
         if len(self.bi_list) > 13:
             bis = self.bi_list
