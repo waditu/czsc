@@ -1,6 +1,6 @@
 # coding: utf-8
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from .factors import KlineGeneratorBy1Min, CzscFactors
 from .data.jq import get_kline, get_kline_period
 from .data import freq_inv
@@ -53,4 +53,19 @@ class CzscTrader:
             self.kf.update_factors([bar])
         self.s = self.kf.s
 
+    def forward(self, n: int = 3):
+        """向前推进N天"""
+        ed = self.kf.end_dt + timedelta(days=n)
+        if ed > datetime.now():
+            print(f"{ed} > {datetime.now()}，无法继续推进")
+            return
 
+        bars = get_kline_period(symbol=self.symbol, start_date=self.kf.end_dt, end_date=ed, freq="1min")
+        if not bars:
+            print(f"{self.kf.end_dt} ~ {ed} 没有交易数据")
+            return
+
+        for bar in bars:
+            self.kf.update_factors([bar])
+
+        self.s = self.kf.s
