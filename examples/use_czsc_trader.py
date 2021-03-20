@@ -8,7 +8,7 @@ from datetime import datetime
 import czsc
 from czsc.trader import CzscTrader
 
-assert czsc.__version__ == '0.6.7'
+assert czsc.__version__ >= '0.6.9'
 
 # 在默认浏览器中打开最新分析结果，
 ct = CzscTrader(symbol="000001.XSHG", end_date=datetime.now())
@@ -20,3 +20,11 @@ ct.open_in_browser(width="1400px", height="580px")
 # 在默认浏览器中打开指定结束日期的分析结果）
 ct = CzscTrader(symbol="000001.XSHG", end_date="2021-03-04")
 ct.open_in_browser(width="1400px", height="580px")
+
+# 推演分析：从某一天开始，逐步推进
+ct = CzscTrader(symbol="000001.XSHG", end_date="2008-01-01")
+ct.open_in_browser()
+ct.forward(n=10)    # 行情向前推进十天
+ct.open_in_browser()
+
+

@@ -13,7 +13,7 @@ import czsc
 from czsc.analyze import CZSC
 from czsc.enum import Signals
 
-assert czsc.__version__ == '0.6.7'
+assert czsc.__version__ >= '0.6.9'
 
 
 def is_third_buy(symbol):
