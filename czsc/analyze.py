@@ -27,11 +27,11 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
         if direction == Direction.Up:
             high = max(k2.high, k3.high)
             low = max(k2.low, k3.low)
-            dt = k2.dt if k2.high >= k3.high else k3.dt
+            dt = k2.dt if k2.high > k3.high else k3.dt
         elif direction == Direction.Down:
             high = min(k2.high, k3.high)
             low = min(k2.low, k3.low)
-            dt = k2.dt if k2.low <= k3.low else k3.dt
+            dt = k2.dt if k2.low < k3.low else k3.dt
         else:
             raise ValueError
 
@@ -59,11 +59,15 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
     fx = None
     if k1.high < k2.high > k3.high:
         power = "强" if k3.close < k1.low else "弱"
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=k2.low,
+        # 根据 k1 与 k2 是否有缺口，选择 low
+        low = k1.low if k1.high > k2.low else k2.low
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=low,
                 fx=k2.high, elements=[k1, k2, k3], power=power)
     if k1.low > k2.low < k3.low:
         power = "强" if k3.close > k1.high else "弱"
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high, low=k2.low,
+        # 根据 k1 与 k2 是否有缺口，选择 high
+        high = k1.high if k1.low < k2.high else k2.high
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=high, low=k2.low,
                 fx=k2.low, elements=[k1, k2, k3], power=power)
     return fx
 
@@ -107,16 +111,14 @@ def check_bi(bars: List[NewBar]):
 
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
     bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
-    max_high_b = max([x.high for x in bars_b])
-    min_low_b = min([x.low for x in bars_b])
-    if (direction == Direction.Up and max_high_b > fx_b.high) \
-            or (direction == Direction.Down and min_low_b < fx_b.low):
-        return None, bars
 
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    if len(bars_a) >= 7 and not ab_include:
-        power_price = abs(fx_b.fx - fx_a.fx)
-        change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
+    power_price = round(abs(fx_b.fx - fx_a.fx), 2)
+    change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
+    fx_power_price_sum = (fx_a.high - fx_a.low) + (fx_b.high - fx_b.low)
+
+    # 笔的一点小优化：1）无包含K线数量大于等于7；2）价差大于顶底分型价差之和的两倍。
+    if (len(bars_a) >= 7 or (power_price > 2 * fx_power_price_sum and len(bars_a) >= 5)) and not ab_include:
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, direction=direction,
                 power=power_price, high=max(fx_a.high, fx_b.high),
                 low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
@@ -313,6 +315,7 @@ class CZSC:
 
             "倒1买卖区间": Signals.Other.value,
             "倒1结束分型": Signals.Other.value,
+            "倒1表里关系": Signals.Other.value,
 
             "倒1五笔": Signals.Other.value,
             "倒2五笔": Signals.Other.value,
@@ -333,76 +336,92 @@ class CZSC:
             "倒5九笔": Signals.Other.value,
         })
 
-        bis = self.bi_list
-        if len(bis) > 20:
-            high_seq = [x.high for x in bis]
-            low_seq = [x.low for x in bis]
-            s['倒1近五笔最高点'] = max(high_seq[-5:])
-            s['倒1近五笔最低点'] = min(low_seq[-5:])
+        # 表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
+        if self.bi_list:
+            last_bi = self.bi_list[-1]
+            if last_bi.direction == Direction.Down:
+                if min([x.low for x in self.bars_ubi]) < last_bi.low:
+                    s['倒1表里关系'] = Signals.BID1.value
+                else:
+                    s['倒1表里关系'] = Signals.BID0.value
+            if last_bi.direction == Direction.Up:
+                if max([x.high for x in self.bars_ubi]) > last_bi.high:
+                    s['倒1表里关系'] = Signals.BIU1.value
+                else:
+                    s['倒1表里关系'] = Signals.BIU0.value
 
-            s['倒1近七笔最高点'] = max(high_seq[-7:])
-            s['倒1近七笔最低点'] = min(low_seq[-7:])
+        if s['倒1表里关系'] in [Signals.BIU0.value, Signals.BID0.value]:
+            bis = self.bi_list
+        else:
+            bis = self.bi_list[:-1]
 
-            s['倒1近九笔最高点'] = max(high_seq[-9:])
-            s['倒1近九笔最低点'] = min(low_seq[-9:])
+        if len(bis) < 16:
+            return s
 
-            s['倒1近十一笔最高点'] = max(high_seq[-11:])
-            s['倒1近十一笔最低点'] = min(low_seq[-11:])
+        high_seq = [x.high for x in bis]
+        low_seq = [x.low for x in bis]
+        s['倒1近五笔最高点'] = max(high_seq[-5:])
+        s['倒1近五笔最低点'] = min(low_seq[-5:])
 
-            s['倒1近十三笔最高点'] = max(high_seq[-13:])
-            s['倒1近十三笔最低点'] = min(low_seq[-13:])
+        s['倒1近七笔最高点'] = max(high_seq[-7:])
+        s['倒1近七笔最低点'] = min(low_seq[-7:])
 
-            s['倒1近十五笔最高点'] = max(high_seq[-15:])
-            s['倒1近十五笔最低点'] = min(low_seq[-15:])
-            for i in range(1, 6):
-                s['倒{}方向'.format(i)] = bis[-i].direction.value
-                s['倒{}长度'.format(i)] = bis[-i].length
-                s['倒{}价差力度'.format(i)] = bis[-i].power
-                s['倒{}涨跌幅'.format(i)] = bis[-i].change
-                s['倒{}拟合优度'.format(i)] = bis[-i].rsq
+        s['倒1近九笔最高点'] = max(high_seq[-9:])
+        s['倒1近九笔最低点'] = min(low_seq[-9:])
 
-            if len(self.bars_ubi) <= 7:
-                # 倒1买卖区间
-                if bis[-1].direction == Direction.Down and \
-                        self.bars_ubi[-1].high < bis[-1].low * (1 + bs_tolerance[self.freq]):
+        s['倒1近十一笔最高点'] = max(high_seq[-11:])
+        s['倒1近十一笔最低点'] = min(low_seq[-11:])
+
+        s['倒1近十三笔最高点'] = max(high_seq[-13:])
+        s['倒1近十三笔最低点'] = min(low_seq[-13:])
+
+        s['倒1近十五笔最高点'] = max(high_seq[-15:])
+        s['倒1近十五笔最低点'] = min(low_seq[-15:])
+        for i in range(1, 6):
+            s['倒{}方向'.format(i)] = bis[-i].direction.value
+            s['倒{}长度'.format(i)] = bis[-i].length
+            s['倒{}价差力度'.format(i)] = bis[-i].power
+            s['倒{}涨跌幅'.format(i)] = bis[-i].change
+            s['倒{}拟合优度'.format(i)] = bis[-i].rsq
+
+        if len(self.bars_ubi) <= 11:
+            if bis[-1].direction == self.bi_list[-1].direction == Direction.Down:
+                if bis[-1].low < self.bars_ubi[-1].high < bis[-1].low * (1 + bs_tolerance[self.freq]):
                     s['倒1买卖区间'] = Signals.INB.value
 
-                if bis[-1].direction == Direction.Up and \
-                        self.bars_ubi[-1].low > bis[-1].high * (1 - bs_tolerance[self.freq]):
-                    s['倒1买卖区间'] = Signals.INS.value
-
-                # 倒1结束分型
-                if bis[-1].direction == Direction.Down and bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
+                if bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
                     s['倒1结束分型'] = Signals.FXB.value
 
-                if bis[-1].direction == Direction.Up and bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
+            if bis[-1].direction == self.bi_list[-1].direction == Direction.Up:
+                if bis[-1].high > self.bars_ubi[-1].low > bis[-1].high * (1 - bs_tolerance[self.freq]):
+                    s['倒1买卖区间'] = Signals.INS.value
+
+                if bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
                     s['倒1结束分型'] = Signals.FXS.value
+            #
+            # if bis[-1].direction == Direction.Down and bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
+            #     s['倒1结束分型'] = Signals.FXB.value
+            #
+            # if bis[-1].direction == Direction.Up and bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
+            #     s['倒1结束分型'] = Signals.FXS.value
 
-        if len(self.bi_list) > 13:
-            bis = self.bi_list
-            s['倒1五笔'] = check_five_fd(bis[-5:])
-            s['倒1七笔'] = check_seven_fd(bis[-7:])
+        s['倒1五笔'] = check_five_fd(bis[-5:])
+        s['倒2五笔'] = check_five_fd(bis[-6:-1])
+        s['倒3五笔'] = check_five_fd(bis[-7:-2])
+        s['倒4五笔'] = check_five_fd(bis[-8:-3])
+        s['倒5五笔'] = check_five_fd(bis[-9:-4])
 
-            s['倒2五笔'] = check_five_fd(bis[-6:-1])
-            s['倒2七笔'] = check_seven_fd(bis[-8:-1])
+        s['倒1七笔'] = check_seven_fd(bis[-7:])
+        s['倒2七笔'] = check_seven_fd(bis[-8:-1])
+        s['倒3七笔'] = check_seven_fd(bis[-9:-2])
+        s['倒4七笔'] = check_seven_fd(bis[-10:-3])
+        s['倒5七笔'] = check_seven_fd(bis[-11:-4])
 
-            s['倒3五笔'] = check_five_fd(bis[-7:-2])
-            s['倒3七笔'] = check_seven_fd(bis[-9:-2])
-
-            s['倒4五笔'] = check_five_fd(bis[-8:-3])
-            s['倒4七笔'] = check_seven_fd(bis[-10:-3])
-
-            s['倒5五笔'] = check_five_fd(bis[-9:-4])
-            s['倒5七笔'] = check_seven_fd(bis[-11:-4])
-
-            s['倒1九笔'] = check_nine_fd(bis[-9:])
-            s['倒2九笔'] = check_nine_fd(bis[-10:-1])
-
-        if len(self.bi_list) > 15:
-            bis = self.bi_list
-            s['倒3九笔'] = check_nine_fd(bis[-11:-2])
-            s['倒4九笔'] = check_nine_fd(bis[-12:-3])
-            s['倒5九笔'] = check_nine_fd(bis[-13:-4])
+        s['倒1九笔'] = check_nine_fd(bis[-9:])
+        s['倒2九笔'] = check_nine_fd(bis[-10:-1])
+        s['倒3九笔'] = check_nine_fd(bis[-11:-2])
+        s['倒4九笔'] = check_nine_fd(bis[-12:-3])
+        s['倒5九笔'] = check_nine_fd(bis[-13:-4])
 
         return s
 

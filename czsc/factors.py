@@ -147,7 +147,7 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
     if c1.bi_list[-1].direction == Direction.Up and len(c1.bars_ubi) > 7:
         factor_l2 = "L2"
         # L2A
-        if "底背弛" in c2.signals['倒1五笔'] or "底背弛" in c2.signals['倒1七笔'] or "底背弛" in c2.signals['倒1九笔']:
+        if "底背驰" in c2.signals['倒1五笔'] or "底背驰" in c2.signals['倒1七笔'] or "底背驰" in c2.signals['倒1九笔']:
             v = Factors['{}A0'.format(factor_l2)].value
             if c3.signals['倒1五笔'] in [Signals.X5LF0.value, Signals.X5LB0.value] \
                     and c3.signals['倒1近七笔最低点'] == c3.signals['倒1近九笔最低点']:
@@ -182,7 +182,7 @@ def check_triple_level(c1: CZSC, c2: CZSC, c3: CZSC):
 
         factor_l4 = "L4"
         # L4A
-        if "底背弛" in c3.signals['倒1五笔'] or "底背弛" in c3.signals['倒1七笔'] or "底背弛" in c3.signals['倒1九笔']:
+        if "底背驰" in c3.signals['倒1五笔'] or "底背驰" in c3.signals['倒1七笔'] or "底背驰" in c3.signals['倒1九笔']:
             v = Factors['{}A0'.format(factor_l4)].value
 
         if v != Factors.Other.value:

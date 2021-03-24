@@ -103,7 +103,10 @@ def check_seven_fd(fds: List[BI]) -> str:
         if fd4.low == min_low and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
                 and min(fd5.high, fd7.high) > max(fd5.low, fd7.low) \
                 and max(fd4.high, fd6.high) > min(fd3.high, fd4.high):
-            v = Signals.X7LE0.value
+            if max(fd1.high, fd3.high) < max(fd5.high, fd7.high):
+                v = Signals.X7LE1.value
+            else:
+                v = Signals.X7LE0.value
 
         if fd1.high == max_high and fd5.low == min_low and fd4.high < fd2.low and fd5.power < fd3.power \
                 and fd6.high > fd5.high > fd7.low > fd6.low:
@@ -126,7 +129,10 @@ def check_seven_fd(fds: List[BI]) -> str:
         if fd4.high == max_high and min(fd1.high, fd3.high) > max(fd1.low, fd3.low) \
                 and min(fd5.high, fd7.high) > max(fd5.low, fd7.low) \
                 and min(fd4.low, fd6.low) < max(fd3.low, fd4.low):
-            v = Signals.X7SE0.value
+            if min(fd1.low, fd3.low) > min(fd5.low, fd7.low):
+                v = Signals.X7SE0.value
+            else:
+                v = Signals.X7SE1.value
 
         if fd1.low == min_low and fd5.high == max_high and fd4.low > fd2.high and fd5.power < fd3.power \
                 and fd6.low < fd5.low < fd7.high < fd6.high:
