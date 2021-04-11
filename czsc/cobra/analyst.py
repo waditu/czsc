@@ -41,9 +41,10 @@ def expand_category(factors: pd.DataFrame, category_cols):
     return factors
 
 
-def factors_to_bs(factors: pd.DataFrame, opens: List, exits: List, direction="long"):
+def factors_to_bs(factors: pd.DataFrame, opens: List, exits: List, direction="long", cost=0.3):
     """从因子生成交易序列
 
+    :param cost: 每一个交易对的固定交易成本
     :param factors:
     :param opens:
     :param exits:
@@ -85,15 +86,19 @@ def factors_to_bs(factors: pd.DataFrame, opens: List, exits: List, direction="lo
             "平仓价格": s['price'],
             "平仓因子": s['op_detail'],
             "持仓天数": (s['dt'] - b['dt']).days,
+            "盈亏(%)": round((s['price'] - b['price']) / b['price'] * 100 - cost, 2),
         })
+
+        if pairs:
+            pair['净值(%)'] = round((pairs[-1]['净值(%)']) * (1 + pair['盈亏(%)'] / 100), 2)
+        else:
+            pair['净值(%)'] = round(100 * (1 + pair['盈亏(%)'] / 100), 2)
         pairs.append(pair)
     if pairs:
         df1 = pd.DataFrame(pairs)
-        df1['盈亏价差'] = df1['平仓价格'] - df1['开仓价格']
-        df1['盈亏比例(%)'] = (df1['平仓价格'] - df1['开仓价格']) / df1['开仓价格'] * 100
-        df1['盈亏比例(%)'] = df1['盈亏比例(%)'].round(2)
     else:
         df1 = pd.DataFrame()
+
     return df, df1
 
 

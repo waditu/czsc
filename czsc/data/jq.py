@@ -252,6 +252,7 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
         warnings.warn(f"count={count}, 超过5000的最大值限制，仅返回最后5000条记录")
 
     end_date = pd.to_datetime(end_date)
+
     if start_date:
         start_date = pd.to_datetime(start_date)
         data = {

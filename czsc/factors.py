@@ -447,12 +447,11 @@ class CzscFactors:
         self.s = self.__cal_factors_f15()
         self.s = self.__cal_factors_f5()
 
-    def update_factors(self, data: List[RawBar]):
+    def update_factors(self, k: RawBar):
         """更新多级别联立因子"""
-        for row in data:
-            self.kg.update(row)
+        self.kg.update(k)
 
-        klines_one = self.kg.get_klines({k: 1 for k in self.freqs})
+        klines_one = self.kg.get_klines({freq: 1 for freq in self.freqs})
 
         for freq, klines_ in klines_one.items():
             k = klines_[-1]

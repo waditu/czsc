@@ -50,7 +50,7 @@ class CzscTrader:
         if not bars:
             return
         for bar in bars:
-            self.kf.update_factors([bar])
+            self.kf.update_factors(bar)
         self.s = self.kf.s
 
     def forward(self, n: int = 3):
@@ -66,6 +66,6 @@ class CzscTrader:
             return
 
         for bar in bars:
-            self.kf.update_factors([bar])
+            self.kf.update_factors(bar)
 
         self.s = self.kf.s

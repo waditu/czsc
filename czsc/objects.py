@@ -52,6 +52,7 @@ class BI:
     symbol: str
     fx_a: FX = None    # 笔开始的分型
     fx_b: FX = None    # 笔结束的分型
+    fxs: List[FX] = None    # 笔内部的分型列表
     direction: Direction = None
     high: float = None
     low: float = None

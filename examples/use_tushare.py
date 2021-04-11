@@ -8,11 +8,9 @@ import traceback
 import tushare as ts
 from datetime import datetime, timedelta
 from typing import List
-import czsc
 from czsc.analyze import CZSC, RawBar
 from czsc.enum import Signals
 
-assert czsc.__version__ >= '0.6.7'
 
 # 使用第三方数据，只需要定义一个K线转换函数
 def format_kline(kline: pd.DataFrame) -> List[RawBar]:
@@ -56,6 +54,8 @@ if __name__ == '__main__':
         try:
             if is_third_buy(ts_code):
                 print("{} - 日线三买".format(ts_code))
+            else:
+                print("{} - 不是日线三买".format(ts_code))
         except:
             traceback.print_exc()
             print("{} - 执行失败".format(ts_code))

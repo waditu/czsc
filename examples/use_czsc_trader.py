@@ -1,14 +1,14 @@
 # coding: utf-8
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
+from datetime import datetime
+from czsc.trader import CzscTrader
 
 # 首次使用需要设置聚宽账户
 # from czsc.data.jq import set_token
 # set_token("phone number", 'password') # 第一个参数是JQData的手机号，第二个参数是登录密码
-
-from datetime import datetime
-import czsc
-from czsc.trader import CzscTrader
-
-assert czsc.__version__ >= '0.6.9'
 
 # 在默认浏览器中打开最新分析结果，
 ct = CzscTrader(symbol="000001.XSHG", end_date=datetime.now())

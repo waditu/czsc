@@ -7,11 +7,12 @@ import pandas as pd
 import traceback
 from .objects import Mark, Direction, BI, FX, RawBar, NewBar
 from .utils.echarts_plot import kline_pro
-from .signals import check_five_fd, check_seven_fd, check_nine_fd, Signals
+from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd, Signals
 from .utils.ta import RSQ
 
 # 各级别笔结束买卖点区间的容差范围
-bs_tolerance = {"日线": 0.21, "60分钟": 0.13, '30分钟': 0.08, '15分钟': 0.05, '5分钟': 0.03, '1分钟': 0.02}
+bs_tolerance = {"月线": 0.21, "周线": 0.21, "日线": 0.21, "60分钟": 0.13,
+                '30分钟': 0.08, '15分钟': 0.05, '5分钟': 0.03, '1分钟': 0.02}
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     """去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线"""
@@ -20,7 +21,9 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     elif k1.high > k2.high:
         direction = Direction.Down
     else:
-        direction = Direction.Up
+        k4 = NewBar(symbol=k3.symbol, dt=k3.dt, open=k3.open,
+                    close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, elements=[k3])
+        return False, k4
 
     # 判断 k2 和 k3 之间是否存在包含关系，有则处理
     if (k2.high <= k3.high and k2.low >= k3.low) or (k2.high >= k3.high and k2.low <= k3.low):
@@ -44,7 +47,7 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
         vol = k2.vol + k3.vol
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
         # 临时解决方案是直接限定len(k2.elements)<=100
-        elements = [x for x in k2.elements[:100]] + [k3]
+        elements = [x for x in k2.elements[:100] if x.dt != k3.dt] + [k3]
         k4 = NewBar(symbol=k3.symbol, dt=dt, open=open_,
                     close=close, high=high, low=low, vol=vol, elements=elements)
         return True, k4
@@ -61,12 +64,22 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
         power = "强" if k3.close < k1.low else "弱"
         # 根据 k1 与 k2 是否有缺口，选择 low
         low = k1.low if k1.high > k2.low else k2.low
+
+        # 不允许分型的 high == low
+        if low == k2.high:
+            low = k1.low
+
         fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=low,
                 fx=k2.high, elements=[k1, k2, k3], power=power)
     if k1.low > k2.low < k3.low:
         power = "强" if k3.close > k1.high else "弱"
         # 根据 k1 与 k2 是否有缺口，选择 high
         high = k1.high if k1.low < k2.high else k2.high
+
+        # 不允许分型的 high == low
+        if high == k2.low:
+            high = k1.high
+
         fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=high, low=k2.low,
                 fx=k2.low, elements=[k1, k2, k3], power=power)
     return fx
@@ -115,12 +128,11 @@ def check_bi(bars: List[NewBar]):
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
     power_price = round(abs(fx_b.fx - fx_a.fx), 2)
     change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
-    fx_power_price_sum = (fx_a.high - fx_a.low) + (fx_b.high - fx_b.low)
+    fxs_ = [x for x in fxs if fx_a.dt <= x.dt <= fx_b.dt]
 
-    # 笔的一点小优化：1）无包含K线数量大于等于7；2）价差大于顶底分型价差之和的两倍。
-    if (len(bars_a) >= 7 or (power_price > 2 * fx_power_price_sum and len(bars_a) >= 5)) and not ab_include:
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, direction=direction,
-                power=power_price, high=max(fx_a.high, fx_b.high),
+    if len(bars_a) >= 7 and not ab_include:
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
+                direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
                 low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
                 rsq=RSQ([x.close for x in bars_a[1:-1]]), change=change)
         return bi, bars_b
@@ -268,12 +280,14 @@ class CZSC:
         # 以此类推
         s.update({
             "未完成笔长度": len(self.bars_ubi),
+            "三K形态": Signals.Other.value,
 
             "倒1方向": Signals.Other.value,
             "倒1长度": 0,
             "倒1价差力度": 0,
             "倒1涨跌幅": 0,
             "倒1拟合优度": 0,
+            "倒1分型数量": 0,
 
             "倒1近五笔最高点": 0,
             "倒1近五笔最低点": 0,
@@ -294,24 +308,28 @@ class CZSC:
             "倒2价差力度": 0,
             "倒2涨跌幅": 0,
             "倒2拟合优度": 0,
+            "倒2分型数量": 0,
 
             "倒3方向": Signals.Other.value,
             "倒3长度": 0,
             "倒3价差力度": 0,
             "倒3涨跌幅": 0,
             "倒3拟合优度": 0,
+            "倒3分型数量": 0,
 
             "倒4方向": Signals.Other.value,
             "倒4长度": 0,
             "倒4价差力度": 0,
             "倒4涨跌幅": 0,
             "倒4拟合优度": 0,
+            "倒4分型数量": 0,
 
             "倒5方向": Signals.Other.value,
             "倒5长度": 0,
             "倒5价差力度": 0,
             "倒5涨跌幅": 0,
             "倒5拟合优度": 0,
+            "倒5分型数量": 0,
 
             "倒1买卖区间": Signals.Other.value,
             "倒1结束分型": Signals.Other.value,
@@ -336,6 +354,17 @@ class CZSC:
             "倒5九笔": Signals.Other.value,
         })
 
+        if len(self.bars_ubi) >= 3:
+            tri = self.bars_ubi[-3:]
+            if tri[0].high > tri[1].high < tri[2].high:
+                s["三K形态"] = Signals.TK1.value
+            elif tri[0].high < tri[1].high < tri[2].high:
+                s["三K形态"] = Signals.TK2.value
+            elif tri[0].high < tri[1].high > tri[2].high:
+                s["三K形态"] = Signals.TK3.value
+            elif tri[0].high > tri[1].high > tri[2].high:
+                s["三K形态"] = Signals.TK4.value
+
         # 表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
         if self.bi_list:
             last_bi = self.bi_list[-1]
@@ -354,6 +383,8 @@ class CZSC:
             bis = self.bi_list
         else:
             bis = self.bi_list[:-1]
+            if self.bi_list:
+                s['未完成笔长度'] = len(self.bars_ubi) + self.bi_list[-1].length - 3
 
         if len(bis) < 16:
             return s
@@ -377,33 +408,34 @@ class CZSC:
 
         s['倒1近十五笔最高点'] = max(high_seq[-15:])
         s['倒1近十五笔最低点'] = min(low_seq[-15:])
+
         for i in range(1, 6):
             s['倒{}方向'.format(i)] = bis[-i].direction.value
             s['倒{}长度'.format(i)] = bis[-i].length
             s['倒{}价差力度'.format(i)] = bis[-i].power
             s['倒{}涨跌幅'.format(i)] = bis[-i].change
             s['倒{}拟合优度'.format(i)] = bis[-i].rsq
+            s['倒{}分型数量'.format(i)] = len(bis[-i].fxs)
 
-        if len(self.bars_ubi) <= 11:
-            if bis[-1].direction == self.bi_list[-1].direction == Direction.Down:
-                if bis[-1].low < self.bars_ubi[-1].high < bis[-1].low * (1 + bs_tolerance[self.freq]):
+        if s['未完成笔长度'] <= 15:
+            if bis[-1].direction == Direction.Down:
+                if bis[-1].low < self.bars_ubi[-1].close < bis[-1].low * (1 + bs_tolerance[self.freq]):
                     s['倒1买卖区间'] = Signals.INB.value
 
-                if bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
+                if bis[-1].fx_b.elements[0].high < max([x.high for x in self.bars_ubi]):
                     s['倒1结束分型'] = Signals.FXB.value
 
-            if bis[-1].direction == self.bi_list[-1].direction == Direction.Up:
-                if bis[-1].high > self.bars_ubi[-1].low > bis[-1].high * (1 - bs_tolerance[self.freq]):
+            if bis[-1].direction == Direction.Up:
+                if bis[-1].high > self.bars_ubi[-1].close > bis[-1].high * (1 - bs_tolerance[self.freq]):
                     s['倒1买卖区间'] = Signals.INS.value
 
-                if bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
+                if bis[-1].fx_b.elements[0].low > min([x.low for x in self.bars_ubi]):
                     s['倒1结束分型'] = Signals.FXS.value
-            #
-            # if bis[-1].direction == Direction.Down and bis[-1].fx_b.elements[0].high < self.bars_ubi[-1].high:
-            #     s['倒1结束分型'] = Signals.FXB.value
-            #
-            # if bis[-1].direction == Direction.Up and bis[-1].fx_b.elements[0].low > self.bars_ubi[-1].low:
-            #     s['倒1结束分型'] = Signals.FXS.value
+        s['倒1三笔'] = check_three_fd(bis[-3:])
+        s['倒2三笔'] = check_three_fd(bis[-4:-1])
+        s['倒3三笔'] = check_three_fd(bis[-5:-2])
+        s['倒4三笔'] = check_three_fd(bis[-6:-3])
+        s['倒5三笔'] = check_three_fd(bis[-7:-4])
 
         s['倒1五笔'] = check_five_fd(bis[-5:])
         s['倒2五笔'] = check_five_fd(bis[-6:-1])

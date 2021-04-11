@@ -5,6 +5,65 @@ from typing import List
 from .objects import Direction, BI
 from .enum import Signals
 
+def check_three_fd(fds: List[BI]) -> str:
+    """识别三段形态
+    :param fds: list
+        由远及近的三段形态
+    :return: str
+    """
+    v = Signals.Other.value
+
+    if len(fds) != 3:
+        print("len(fdx) != 3，无法识别三段形态")
+        return v
+
+    fd1, fd2, fd3 = fds
+    if not (fd1.direction == fd3.direction):
+        print("1,3的 direction 不一致，无法识别三段形态")
+        return v
+
+    if fd3.direction == Direction.Down:
+        if fd3.low > fd1.high:
+            v = Signals.X3LA0.value
+
+        if fd2.low < fd3.low < fd1.high < fd2.high:
+            v = Signals.X3LB0.value
+
+        if fd1.high > fd3.high and fd1.low < fd3.low:
+            v = Signals.X3LC0.value
+
+        if fd1.high < fd3.high and fd1.low > fd3.low:
+            v = Signals.X3LD0.value
+
+        if fd3.low < fd1.low and fd3.high < fd1.high:
+            if fd3.power < fd1.power:
+                v = Signals.X3LE0.value
+            else:
+                v = Signals.X3LF0.value
+    elif fd3.direction == Direction.Up:
+        if fd3.high > fd1.low:
+            v = Signals.X3SA0.value
+
+        if fd2.low < fd1.low < fd3.high < fd2.high:
+            v = Signals.X3SB0.value
+
+        if fd1.high > fd3.high and fd1.low < fd3.low:
+            v = Signals.X3SC0.value
+
+        if fd1.high < fd3.high and fd1.low > fd3.low:
+            v = Signals.X3SD0.value
+
+        if fd3.low > fd1.low and fd3.high > fd1.high:
+            if fd3.power < fd1.power:
+                v = Signals.X3SE0.value
+            else:
+                v = Signals.X3SF0.value
+    else:
+        raise ValueError("direction 的取值错误")
+
+    return v
+
+
 def check_five_fd(fds: List[BI]) -> str:
     """识别五段形态
 
@@ -14,7 +73,7 @@ def check_five_fd(fds: List[BI]) -> str:
     v = Signals.Other.value
 
     if len(fds) != 5:
-        warnings.warn("len(fdx) != 5，无法识别五段形态")
+        print("len(fdx) != 5，无法识别五段形态")
         return v
 
     fd1, fd2, fd3, fd4, fd5 = fds
