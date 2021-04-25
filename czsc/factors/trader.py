@@ -1,10 +1,10 @@
 # coding: utf-8
 import pandas as pd
 from datetime import datetime, timedelta
-from .factors import KlineGeneratorBy1Min, CzscFactors
-from .data.jq import get_kline, get_kline_period
-from .data import freq_inv
-from .enum import Factors
+from .factors import KlineGeneratorBy1Min, CzscFactors, factors_func
+from ..data.jq import get_kline, get_kline_period
+from ..data import freq_inv
+
 
 class CzscTrader:
     """缠中说禅股票 选股/择时"""
@@ -22,21 +22,13 @@ class CzscTrader:
         for freq in kg.freqs:
             bars = get_kline(symbol, end_date=self.end_date, freq=freq_inv[freq], count=max_count)
             kg.init_kline(freq, bars)
-        kf = CzscFactors(kg)
+        kf = CzscFactors(kg, factors=factors_func)
         self.kf = kf
         self.s = kf.s
         self.freqs = kg.freqs
 
     def __repr__(self):
         return "<CzscTrader of {} @ {}>".format(self.symbol, self.kf.end_dt)
-
-    def run_selector(self):
-        """输出日线笔因子"""
-        s = self.s
-        factors_d = [x.value for x in Factors.__members__.values()]
-        if s['日线笔因子'] in factors_d:
-            return s['日线笔因子']
-        return "other"
 
     def take_snapshot(self, file_html, width="1400px", height="680px"):
         self.kf.take_snapshot(file_html, width, height)
@@ -69,3 +61,5 @@ class CzscTrader:
             self.kf.update_factors(bar)
 
         self.s = self.kf.s
+        self.end_date = self.kf.end_dt.date()
+

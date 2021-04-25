@@ -62,4 +62,12 @@ class BI:
     change: float = None
     length: float = None
 
+@dataclass
+class FakeBI:
+    """虚拟笔：主要为笔的内部分析提供便利"""
+    symbol: str
+    direction: Direction = None
+    high: float = None
+    low: float = None
+    power: float = None
 
