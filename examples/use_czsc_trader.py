@@ -4,7 +4,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 from datetime import datetime
-from czsc.trader import CzscTrader
+from czsc.factors import CzscTrader
 
 # 首次使用需要设置聚宽账户
 # from czsc.data.jq import set_token
