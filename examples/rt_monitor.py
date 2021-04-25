@@ -12,7 +12,7 @@ import shutil
 import os
 import pickle
 from datetime import datetime
-from czsc.trader import CzscTrader, Factors
+from czsc.factors import CzscTrader, Factors
 from czsc.utils.qywx import push_text, push_file
 
 # =======================================================================================================
