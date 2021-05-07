@@ -6,10 +6,37 @@ from collections import OrderedDict
 from datetime import datetime
 import pandas as pd
 import traceback
-from .objects import Mark, Direction, BI, FX, RawBar, NewBar
+from .objects import Mark, Direction, BI, FakeBI, FX, RawBar, NewBar
 from .utils.echarts_plot import kline_pro
-from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd, check_eleven_fd, Signals
+from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd, \
+    check_eleven_fd, check_thirteen_fd, Signals
 from .utils.ta import RSQ
+
+
+def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
+    """创建 fake_bis 列表
+
+    :param fxs: 分型序列，必须顶底分型交替
+    :return: fake_bis
+    """
+    if len(fxs) % 2 != 0:
+        fxs = fxs[:-1]
+
+    fake_bis = []
+    for i in range(1, len(fxs)):
+        fx1 = fxs[i-1]
+        fx2 = fxs[i]
+        # assert fx1.mark != fx2.mark
+        if fx1.mark == Mark.D:
+            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Up,
+                             high=fx2.high, low=fx1.low, power=round(fx2.high-fx1.low, 2))
+        elif fx1.mark == Mark.G:
+            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Down,
+                             high=fx1.high, low=fx2.low, power=round(fx1.high-fx2.low, 2))
+        else:
+            raise ValueError
+        fake_bis.append(fake_bi)
+    return fake_bis
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -82,15 +109,23 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
                 fx=k2.low, elements=[k1, k2, k3], power=power)
     return fx
 
+def check_fxs(bars: List[NewBar]) -> List[FX]:
+    """输入一串无包含关系K线，查找其中所有分型"""
+    fxs = []
+    for i in range(1, len(bars)-1):
+        fx: FX = check_fx(bars[i-1], bars[i], bars[i+1])
+        if isinstance(fx, FX):
+            # 这里可能隐含Bug，默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样，这是不对的。
+            # 临时处理方案，强制要求fxs序列顶底交替
+            if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
+                fxs.pop()
+            fxs.append(fx)
+    return fxs
+
 
 def check_bi(bars: List[NewBar]):
     """输入一串无包含关系K线，查找其中的一笔"""
-    fxs = []
-    for i in range(1, len(bars)-1):
-        fx = check_fx(bars[i-1], bars[i], bars[i+1])
-        if isinstance(fx, FX):
-            fxs.append(fx)
-
+    fxs = check_fxs(bars)
     if len(fxs) < 2:
         return None, bars
 
@@ -123,19 +158,26 @@ def check_bi(bars: List[NewBar]):
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
     bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
 
-    max_b = max([x.high for x in bars_b])
-    min_b = min([x.low for x in bars_b])
-
+    # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    power_price = round(abs(fx_b.fx - fx_a.fx), 2)
-    change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
-    fxs_ = [x for x in fxs if fx_a.dt <= x.dt <= fx_b.dt]
 
-    if len(bars_a) >= 7 and not ab_include and (fx_b.high < max_b or fx_b.low > min_b):
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
+    # # 判断fx_b的左侧区间是否突破
+    # max_b = max([x.high for x in bars_b])
+    # min_b = min([x.low for x in bars_b])
+    # fx_b_end = fx_b.high < max_b or fx_b.low > min_b
+
+    if len(bars_a) >= 7 and not ab_include:
+        # 计算笔的相关属性
+        power_price = round(abs(fx_b.fx - fx_a.fx), 2)
+        change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
+        fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
+        fake_bis = create_fake_bis(fxs_)
+
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, fake_bis=fake_bis,
                 direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
                 low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
                 rsq=RSQ([x.close for x in bars_a[1:-1]]), change=change)
+
         return bi, bars_b
     else:
         return None, bars
@@ -215,11 +257,7 @@ class CZSC:
         # 查找笔
         if not self.bi_list:
             # 第一个笔的查找
-            fxs = []
-            for i in range(1, len(bars_ubi)-1):
-                fx = check_fx(bars_ubi[i-1], bars_ubi[i], bars_ubi[i+1])
-                if isinstance(fx, FX):
-                    fxs.append(fx)
+            fxs = check_fxs(bars_ubi)
             if not fxs:
                 return
 
@@ -275,6 +313,7 @@ class CZSC:
 
     def get_signals(self):
         s = OrderedDict({"symbol": self.symbol, "dt": self.bars_raw[-1].dt, "close": self.bars_raw[-1].close})
+        # 倒0，表示未确认完成笔
         # 倒1，倒数第1笔的缩写，表示第N笔
         # 倒2，倒数第2笔的缩写，表示第N-1笔
         # 倒3，倒数第3笔的缩写，表示第N-2笔
@@ -289,6 +328,7 @@ class CZSC:
             "倒1涨跌幅": 0,
             "倒1拟合优度": 0,
             "倒1分型数量": 0,
+            "倒1内部形态": Signals.Other.value,
 
             "倒2方向": Signals.Other.value,
             "倒2长度": 0,
@@ -319,8 +359,6 @@ class CZSC:
             "倒5分型数量": 0,
 
             "倒1表里关系": Signals.Other.value,
-            "倒1多头区间": False,
-            "倒1空头区间": False,
 
             "倒1三笔": Signals.Other.value,
             "倒2三笔": Signals.Other.value,
@@ -375,6 +413,13 @@ class CZSC:
         if not bis:
             return s
 
+        fake_bis = bis[-1].fake_bis
+        d1 = [check_five_fd(fake_bis[-5:]), check_seven_fd(fake_bis[-7:]), check_nine_fd(fake_bis[-9:]),
+              check_eleven_fd(fake_bis[-11:]), check_thirteen_fd(fake_bis[-13:])]
+        for v in d1:
+            if v != Signals.Other.value:
+                s['倒1内部形态'] = v
+
         for i in range(1, min(6, len(bis))):
             s['倒{}方向'.format(i)] = bis[-i].direction.value
             s['倒{}长度'.format(i)] = bis[-i].length
@@ -383,25 +428,25 @@ class CZSC:
             s['倒{}拟合优度'.format(i)] = bis[-i].rsq
             s['倒{}分型数量'.format(i)] = len(bis[-i].fxs)
 
-        # 笔的交易区间定义为 fx_b 的高低点
-        s['倒1多头区间'] = bis[-1].direction == Direction.Down and bis[-1].fx_b.low < self.bars_ubi[-1].low < bis[-1].fx_b.high
-        s['倒1空头区间'] = bis[-1].direction == Direction.Up and bis[-1].fx_b.high > self.bars_ubi[-1].high > bis[-1].fx_b.low
-
         s['倒1三笔'] = check_three_fd(bis[-3:])
         s['倒2三笔'] = check_three_fd(bis[-4:-1])
         s['倒3三笔'] = check_three_fd(bis[-5:-2])
         s['倒4三笔'] = check_three_fd(bis[-6:-3])
         s['倒5三笔'] = check_three_fd(bis[-7:-4])
 
-        d1 = [check_five_fd(bis[-5:]), check_seven_fd(bis[-7:]), check_nine_fd(bis[-9:]), check_eleven_fd(bis[-11:])]
+        d1 = [check_five_fd(bis[-5:]), check_seven_fd(bis[-7:]), check_nine_fd(bis[-9:]),
+              check_eleven_fd(bis[-11:]), check_thirteen_fd(bis[-13:])]
         for v in d1:
             if v != Signals.Other.value:
                 s['倒1形态'] = v
 
         for i in range(2, 8):
             last_i = 1 - i
-            v_seq = [check_five_fd(bis[last_i-5:last_i]), check_seven_fd(bis[last_i-7:last_i]),
-                     check_nine_fd(bis[last_i-9:last_i]), check_eleven_fd(bis[last_i-11:last_i])]
+            v_seq = [
+                check_five_fd(bis[last_i-5:last_i]), check_seven_fd(bis[last_i-7:last_i]),
+                check_nine_fd(bis[last_i-9:last_i]), check_eleven_fd(bis[last_i-11:last_i]),
+                check_thirteen_fd(bis[last_i-13:last_i])
+            ]
             for v in v_seq:
                 if v != Signals.Other.value:
                     s[f'倒{i}形态'] = v

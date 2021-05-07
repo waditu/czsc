@@ -48,6 +48,17 @@ class FX:
     elements: List[NewBar] = None
 
 @dataclass
+class FakeBI:
+    """虚拟笔：主要为笔的内部分析提供便利"""
+    symbol: str
+    sdt: datetime = None
+    edt: datetime = None
+    direction: Direction = None
+    high: float = None
+    low: float = None
+    power: float = None
+
+@dataclass
 class BI:
     symbol: str
     fx_a: FX = None    # 笔开始的分型
@@ -61,13 +72,6 @@ class BI:
     rsq: float = None
     change: float = None
     length: float = None
+    fake_bis: List[FakeBI] = None
 
-@dataclass
-class FakeBI:
-    """虚拟笔：主要为笔的内部分析提供便利"""
-    symbol: str
-    direction: Direction = None
-    high: float = None
-    low: float = None
-    power: float = None
 
