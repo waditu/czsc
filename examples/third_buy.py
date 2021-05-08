@@ -22,8 +22,7 @@ def is_third_buy(symbol):
     bars = get_kline(symbol, freq="D", end_date=datetime.now(), count=1000)
     c = CZSC(bars, freq="日线")
 
-    # 在这里判断是否有五笔三买形态，也可以换成自己感兴趣的形态
-    if c.signals['倒1五笔'] in [Signals.X5LB0.value]:
+    if c.signals['倒1形态'] in [Signals.LI0.value]:
         return True
     else:
         return False
