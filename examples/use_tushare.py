@@ -26,19 +26,19 @@ def format_kline(kline: pd.DataFrame) -> List[RawBar]:
         bar = RawBar(symbol=record['ts_code'], dt=pd.to_datetime(record['trade_date']), open=record['open'],
                      close=record['close'], high=record['high'], low=record['low'], vol=record['vol'])
         bars.append(bar)
-    return bars
+    return bars[::-1]   # K线时间必须是从小到大
 
 
 def is_third_buy(ts_code):
     """判断一个股票现在是否有日线三买"""
     # 调用tushare的K线获取方法，Tushare数据的使用方法，请参考：https://tushare.pro/document/2
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=1000)
-    df = ts.pro_bar(ts_code=ts_code, adj='qfq', asset="E",
+    start_date = end_date - timedelta(days=2000)
+    df = ts.pro_bar(ts_code=ts_code, adj='qfq', asset="E", freq='D',
                     start_date=start_date.strftime("%Y%m%d"),
                     end_date=end_date.strftime("%Y%m%d"))
     bars = format_kline(df)
-    c = CZSC(bars, freq="日线")
+    c = CZSC(bars, freq="日线", max_bi_count=20)
 
     if c.signals['倒1形态'] in [Signals.LI0.value]:
         return True
