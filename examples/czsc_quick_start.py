@@ -7,9 +7,7 @@
 """
 
 import czsc
-from czsc.analyze import CZSC
 from czsc.factors import CzscTrader
-from datetime import datetime
 # 聚宽数据为目前支持的数据源，需要接入第三方数据源的请参考这个文件进行编写
 from czsc.data.jq import *
 import pandas as pd
@@ -18,7 +16,8 @@ import tushare as ts
 from datetime import datetime, timedelta
 from typing import List
 from czsc.analyze import CZSC, RawBar
-from czsc.enum import Signals
+from czsc.enum import Signals, Freq
+from czsc.factors.utils import match_factor, match_factors
 
 assert czsc.__version__ == '0.7.2'
 
@@ -63,6 +62,26 @@ ct.open_in_browser(width="1400px", height="580px")
 # open_in_browser 方法可以在windows系统中使用，如果无法使用，可以直接保存结果到 html 文件
 # ct.take_snapshot(file_html="czsc_results.html", width="1400px", height="580px")
 
+# 多级别联立三买因子
+factor = [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.D.value}_倒1形态#{Signals.LH0.value}"]
+if match_factor(ct.s, factor):
+    print("is match")
+else:
+    print("is not match")
+
+factors = [
+    [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.D.value}_倒1形态#{Signals.LH0.value}"],
+    [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.D.value}_倒2形态#{Signals.LH0.value}"],
+
+    [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.F15.value}_倒5形态#{Signals.LA0.value}"],
+    [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.F15.value}_倒4形态#{Signals.SH0.value}"],
+    [f"{Freq.F15.value}_倒1形态#{Signals.LI0.value}", f"{Freq.F15.value}_倒6形态#{Signals.SI0.value}"],
+]
+if match_factors(ct.s, factors):
+    print("is match")
+else:
+    print("is not match")
+
 # 在默认浏览器中打开指定结束日期的分析结果）
 ct = CzscTrader(symbol="000001.XSHG", end_date="2021-03-04")
 ct.open_in_browser(width="1400px", height="580px")
@@ -97,7 +116,7 @@ def format_tushare_kline(kline: pd.DataFrame) -> List[RawBar]:
     return bars[::-1]   # K线时间必须是从小到大
 
 
-def is_third_buy(ts_code):
+def is_tushathird_buy(ts_code):
     """判断一个股票现在是否有日线三买"""
     # 调用tushare的K线获取方法，Tushare数据的使用方法，请参考：https://tushare.pro/document/2
     end_date = datetime.now()
