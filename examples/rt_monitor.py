@@ -10,32 +10,23 @@ import traceback
 import time
 import shutil
 import os
-import pickle
 from datetime import datetime
 from czsc.factors import CzscTrader, Factors
 from czsc.utils.qywx import push_text, push_file
+from czsc.utils.io import read_pkl, save_pkl
 
 # =======================================================================================================
 # 基础参数配置
 ct_path = os.path.join(".", "czsc_traders")
 os.makedirs(ct_path, exist_ok=True)
+
 # 关于企业微信群聊机器人的使用文档，参考：https://work.weixin.qq.com/api/doc/90000/90136/91770
 # 企业微信群聊机器人的key
 qywx_key = "4ad2e226-2519-4893-8670-*****"
 
 # 定义需要监控的股票列表
 symbols = ["300033.XSHE", "300803.XSHE", "002739.XSHE"]
-# =======================================================================================================
 
-
-def save_pkl(data, file):
-    with open(file, "wb") as f:
-        pickle.dump(data, f)
-
-def read_pkl(file):
-    with open(file, "rb") as f:
-        data = pickle.load(f)
-    return data
 
 def monitor(use_cache=True):
     push_text("自选股CZSC笔因子监控启动 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")), qywx_key)
