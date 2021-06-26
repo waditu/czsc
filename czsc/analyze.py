@@ -1,15 +1,21 @@
 # coding: utf-8
 import os
 import webbrowser
-from typing import List
-from collections import OrderedDict
+from typing import List, Callable
 from datetime import datetime
 import pandas as pd
 import traceback
-from .objects import Mark, Direction, BI, FakeBI, FX, RawBar, NewBar
+from collections import OrderedDict
+from pyecharts.charts import Tab
+from pyecharts.components import Table
+from pyecharts.options import ComponentTitleOpts
+
+from .utils.kline_generator import KlineGenerator
+from .enum import Mark, Direction, Freq, Operate
+from .objects import BI, FakeBI, FX, RawBar, NewBar, Signal, Event
+from .signals import check_three_bi, check_five_bi, check_seven_bi
+from .signals import check_nine_bi, check_eleven_bi, check_thirteen_bi
 from .utils.echarts_plot import kline_pro
-from .signals import check_three_fd, check_five_fd, check_seven_fd, check_nine_fd, \
-    check_eleven_fd, check_thirteen_fd, Signals
 from .utils.ta import RSQ
 
 
@@ -26,7 +32,7 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
     for i in range(1, len(fxs)):
         fx1 = fxs[i-1]
         fx2 = fxs[i]
-        # assert fx1.mark != fx2.mark
+        assert fx1.mark != fx2.mark
         if fx1.mark == Mark.D:
             fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Up,
                              high=fx2.high, low=fx1.low, power=round(fx2.high-fx1.low, 2))
@@ -46,7 +52,7 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     elif k1.high > k2.high:
         direction = Direction.Down
     else:
-        k4 = NewBar(symbol=k3.symbol, dt=k3.dt, open=k3.open,
+        k4 = NewBar(symbol=k3.symbol, id=k3.id, freq=k3.freq, dt=k3.dt, open=k3.open,
                     close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, elements=[k3])
         return False, k4
 
@@ -73,11 +79,11 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
         # 临时解决方案是直接限定len(k2.elements)<=100
         elements = [x for x in k2.elements[:100] if x.dt != k3.dt] + [k3]
-        k4 = NewBar(symbol=k3.symbol, dt=dt, open=open_,
+        k4 = NewBar(symbol=k3.symbol, id=k2.id, freq=k2.freq, dt=dt, open=open_,
                     close=close, high=high, low=low, vol=vol, elements=elements)
         return True, k4
     else:
-        k4 = NewBar(symbol=k3.symbol, dt=k3.dt, open=k3.open,
+        k4 = NewBar(symbol=k3.symbol, id=k3.id, freq=k3.freq, dt=k3.dt, open=k3.open,
                     close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, elements=[k3])
         return False, k4
 
@@ -85,29 +91,18 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
 def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
     """查找分型"""
     fx = None
-    if k1.high < k2.high > k3.high:
+    if k1.high < k2.high > k3.high and k1.low < k2.low > k3.low:
         power = "强" if k3.close < k1.low else "弱"
-        # 根据 k1 与 k2 是否有缺口，选择 low
-        low = k1.low if k1.high > k2.low else k2.low
-
-        # 不允许分型的 high == low
-        if low == k2.high:
-            low = k1.low
-
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=low,
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=k2.low,
                 fx=k2.high, elements=[k1, k2, k3], power=power)
-    if k1.low > k2.low < k3.low:
+
+    if k1.low > k2.low < k3.low and k1.high > k2.high < k3.high:
         power = "强" if k3.close > k1.high else "弱"
-        # 根据 k1 与 k2 是否有缺口，选择 high
-        high = k1.high if k1.low < k2.high else k2.high
-
-        # 不允许分型的 high == low
-        if high == k2.low:
-            high = k1.high
-
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=high, low=k2.low,
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high, low=k2.low,
                 fx=k2.low, elements=[k1, k2, k3], power=power)
+
     return fx
+
 
 def check_fxs(bars: List[NewBar]) -> List[FX]:
     """输入一串无包含关系K线，查找其中所有分型"""
@@ -160,11 +155,6 @@ def check_bi(bars: List[NewBar]):
 
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-
-    # # 判断fx_b的左侧区间是否突破
-    # max_b = max([x.high for x in bars_b])
-    # min_b = min([x.low for x in bars_b])
-    # fx_b_end = fx_b.high < max_b or fx_b.low > min_b
 
     if len(bars_a) >= 7 and not ab_include:
         # 计算笔的相关属性
@@ -226,13 +216,13 @@ def get_sub_bis(bis: List[BI], bi: BI) -> List[BI]:
 
 
 class CZSC:
-    def __init__(self, bars: List[RawBar], freq: str, max_bi_count=30):
+    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None):
         """
 
         :param bars: K线数据
-        :param freq: K线级别
+        :param get_signals: 自定义的信号计算函数
         :param max_bi_count: 最大保存的笔数量
-            默认值为 30，仅使用内置的信号和因子，不需要调整这个参数。
+            默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
         self.max_bi_count = max_bi_count
@@ -240,14 +230,15 @@ class CZSC:
         self.bars_ubi = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
         self.symbol = bars[0].symbol
-        self.freq = freq
+        self.freq = bars[0].freq
+        self.get_signals = get_signals
+        self.signals = None
 
         for bar in bars:
             self.update(bar)
-        self.signals = self.get_signals()
 
     def __repr__(self):
-        return "<CZSC for {}>".format(self.symbol)
+        return "<CZSC~{}~{}>".format(self.symbol, self.freq.value)
 
     def __update_bi(self):
         bars_ubi = self.bars_ubi
@@ -311,147 +302,6 @@ class CZSC:
         if isinstance(bi, BI):
             self.bi_list.append(bi)
 
-    def get_signals(self):
-        s = OrderedDict({"symbol": self.symbol, "dt": self.bars_raw[-1].dt, "close": self.bars_raw[-1].close})
-        # 倒0，表示未确认完成笔
-        # 倒1，倒数第1笔的缩写，表示第N笔
-        # 倒2，倒数第2笔的缩写，表示第N-1笔
-        # 倒3，倒数第3笔的缩写，表示第N-2笔
-        # 以此类推
-        s.update({
-            "未完成笔长度": len(self.bars_ubi),
-            "三K形态": Signals.Other.value,
-
-            "倒1方向": Signals.Other.value,
-            "倒1长度": 0,
-            "倒1价差力度": 0,
-            "倒1涨跌幅": 0,
-            "倒1拟合优度": 0,
-            "倒1分型数量": 0,
-            "倒1内部形态": Signals.Other.value,
-
-            "倒2方向": Signals.Other.value,
-            "倒2长度": 0,
-            "倒2价差力度": 0,
-            "倒2涨跌幅": 0,
-            "倒2拟合优度": 0,
-            "倒2分型数量": 0,
-
-            "倒3方向": Signals.Other.value,
-            "倒3长度": 0,
-            "倒3价差力度": 0,
-            "倒3涨跌幅": 0,
-            "倒3拟合优度": 0,
-            "倒3分型数量": 0,
-
-            "倒4方向": Signals.Other.value,
-            "倒4长度": 0,
-            "倒4价差力度": 0,
-            "倒4涨跌幅": 0,
-            "倒4拟合优度": 0,
-            "倒4分型数量": 0,
-
-            "倒5方向": Signals.Other.value,
-            "倒5长度": 0,
-            "倒5价差力度": 0,
-            "倒5涨跌幅": 0,
-            "倒5拟合优度": 0,
-            "倒5分型数量": 0,
-
-            "倒1表里关系": Signals.Other.value,
-
-            "倒1三笔": Signals.Other.value,
-            "倒2三笔": Signals.Other.value,
-            "倒3三笔": Signals.Other.value,
-            "倒4三笔": Signals.Other.value,
-            "倒5三笔": Signals.Other.value,
-
-            "倒1形态": Signals.Other.value,
-            "倒2形态": Signals.Other.value,
-            "倒3形态": Signals.Other.value,
-            "倒4形态": Signals.Other.value,
-            "倒5形态": Signals.Other.value,
-            "倒6形态": Signals.Other.value,
-            "倒7形态": Signals.Other.value,
-        })
-
-        if len(self.bars_ubi) >= 3:
-            tri = self.bars_ubi[-3:]
-            if tri[0].high > tri[1].high < tri[2].high:
-                s["三K形态"] = Signals.TK1.value
-            elif tri[0].high < tri[1].high < tri[2].high:
-                s["三K形态"] = Signals.TK2.value
-            elif tri[0].high < tri[1].high > tri[2].high:
-                s["三K形态"] = Signals.TK3.value
-            elif tri[0].high > tri[1].high > tri[2].high:
-                s["三K形态"] = Signals.TK4.value
-
-        # 表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
-        min_ubi = min([x.low for x in self.bars_ubi])
-        max_ubi = max([x.high for x in self.bars_ubi])
-
-        if self.bi_list:
-            last_bi = self.bi_list[-1]
-            if last_bi.direction == Direction.Down:
-                if min_ubi < last_bi.low:
-                    s['倒1表里关系'] = Signals.BD1.value
-                else:
-                    s['倒1表里关系'] = Signals.BD0.value
-            if last_bi.direction == Direction.Up:
-                if max_ubi > last_bi.high:
-                    s['倒1表里关系'] = Signals.BU1.value
-                else:
-                    s['倒1表里关系'] = Signals.BU0.value
-
-        if s['倒1表里关系'] in [Signals.BU0.value, Signals.BD0.value]:
-            bis = self.bi_list
-        else:
-            bis = self.bi_list[:-1]
-            if self.bi_list:
-                s['未完成笔长度'] = len(self.bars_ubi) + self.bi_list[-1].length - 3
-
-        if not bis:
-            return s
-
-        fake_bis = bis[-1].fake_bis
-        d1 = [check_five_fd(fake_bis[-5:]), check_seven_fd(fake_bis[-7:]), check_nine_fd(fake_bis[-9:]),
-              check_eleven_fd(fake_bis[-11:]), check_thirteen_fd(fake_bis[-13:])]
-        for v in d1:
-            if v != Signals.Other.value:
-                s['倒1内部形态'] = v
-
-        for i in range(1, min(6, len(bis))):
-            s['倒{}方向'.format(i)] = bis[-i].direction.value
-            s['倒{}长度'.format(i)] = bis[-i].length
-            s['倒{}价差力度'.format(i)] = bis[-i].power
-            s['倒{}涨跌幅'.format(i)] = bis[-i].change
-            s['倒{}拟合优度'.format(i)] = bis[-i].rsq
-            s['倒{}分型数量'.format(i)] = len(bis[-i].fxs)
-
-        s['倒1三笔'] = check_three_fd(bis[-3:])
-        s['倒2三笔'] = check_three_fd(bis[-4:-1])
-        s['倒3三笔'] = check_three_fd(bis[-5:-2])
-        s['倒4三笔'] = check_three_fd(bis[-6:-3])
-        s['倒5三笔'] = check_three_fd(bis[-7:-4])
-
-        d1 = [check_five_fd(bis[-5:]), check_seven_fd(bis[-7:]), check_nine_fd(bis[-9:]),
-              check_eleven_fd(bis[-11:]), check_thirteen_fd(bis[-13:])]
-        for v in d1:
-            if v != Signals.Other.value:
-                s['倒1形态'] = v
-
-        for i in range(2, 8):
-            last_i = 1 - i
-            v_seq = [
-                check_five_fd(bis[last_i-5:last_i]), check_seven_fd(bis[last_i-7:last_i]),
-                check_nine_fd(bis[last_i-9:last_i]), check_eleven_fd(bis[last_i-11:last_i]),
-                check_thirteen_fd(bis[last_i-13:last_i])
-            ]
-            for v in v_seq:
-                if v != Signals.Other.value:
-                    s[f'倒{i}形态'] = v
-        return s
-
     def update(self, bar: RawBar):
         """更新分析结果
 
@@ -471,7 +321,8 @@ class CZSC:
         bars_ubi = self.bars_ubi
         for bar in last_bars:
             if len(bars_ubi) < 2:
-                bars_ubi.append(NewBar(symbol=bar.symbol, dt=bar.dt, open=bar.open, close=bar.close,
+                bars_ubi.append(NewBar(symbol=bar.symbol, id=bar.id, freq=bar.freq, dt=bar.dt,
+                                       open=bar.open, close=bar.close,
                                        high=bar.high, low=bar.low, vol=bar.vol, elements=[bar]))
             else:
                 k1, k2 = bars_ubi[-2:]
@@ -493,7 +344,11 @@ class CZSC:
                     s_index = i
                     break
             self.bars_raw = self.bars_raw[s_index:]
-        self.signals = self.get_signals()
+
+        if self.get_signals:
+            self.signals = self.get_signals(c=self)
+        else:
+            self.signals = OrderedDict()
 
     def to_echarts(self, width: str = "1400px", height: str = '580px'):
         kline = [x.__dict__ for x in self.bars_raw]
@@ -502,7 +357,7 @@ class CZSC:
                  [{'dt': self.bi_list[-1].fx_b.dt, "bi": self.bi_list[-1].fx_b.fx}]
         else:
             bi = None
-        chart = kline_pro(kline, bi=bi, width=width, height=height, title="{}-{}".format(self.symbol, self.freq))
+        chart = kline_pro(kline, bi=bi, width=width, height=height, title="{}-{}".format(self.symbol, self.freq.value))
         return chart
 
     def open_in_browser(self, width: str = "1400px", height: str = '580px'):
@@ -518,3 +373,394 @@ class CZSC:
         chart.render(file_html)
         webbrowser.open(file_html)
 
+
+def get_default_signals(c: CZSC) -> OrderedDict:
+    """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
+    实盘时可以按照自己的需要自定义计算哪些信号
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    freq: Freq = c.freq
+    s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
+    # 倒0，特指未确认完成笔
+    # 倒1，倒数第1笔的缩写，表示第N笔
+    # 倒2，倒数第2笔的缩写，表示第N-1笔
+    # 倒3，倒数第3笔的缩写，表示第N-2笔
+    # 以此类推
+
+    default_signals = [
+        Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="其他", v2='其他', v3='其他'),
+
+        Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="其他", v2='其他', v3='其他'),
+
+        # 以下是在本级别利用 3笔 进行分析得到的一些基础形态信号
+        Signal(k1=str(freq.value), k2="倒1笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒2笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒3笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒4笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒5笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒6笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒7笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
+
+        # 以下是在本级别利用 5笔、7笔 进行分析得到的一些基础形态信号
+        Signal(k1=str(freq.value), k2="倒1笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒2笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒3笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒4笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒5笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒6笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒7笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
+
+        # 以下是在本级别利用 9笔、11笔、13笔 进行分析得到的类买卖点
+        Signal(k1=str(freq.value), k2="倒1笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒2笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒3笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒4笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒5笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒6笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=str(freq.value), k2="倒7笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    if not c.bi_list:
+        return s
+
+    # 倒0笔三K形态
+    if len(c.bars_ubi) > 3:
+        tri = c.bars_ubi[-3:]
+        v = None
+        if tri[0].high > tri[1].high < tri[2].high:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="底分型")
+        elif tri[0].high < tri[1].high < tri[2].high:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="向上走")
+        elif tri[0].high < tri[1].high > tri[2].high:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="顶分型")
+        elif tri[0].high > tri[1].high > tri[2].high:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="向下走")
+
+        if v and "其他" not in v.value:
+            s[v.key] = v.value
+
+    # 表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
+    min_ubi = min([x.low for x in c.bars_ubi])
+    max_ubi = max([x.high for x in c.bars_ubi])
+
+    if c.bi_list:
+        last_bi = c.bi_list[-1]
+        v = None
+        if last_bi.direction == Direction.Down:
+            if min_ubi < last_bi.low:
+                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="向下延伸")
+            else:
+                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="底分完成")
+        if last_bi.direction == Direction.Up:
+            if max_ubi > last_bi.high:
+                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="向上延伸")
+            else:
+                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="顶分完成")
+
+        if v and "其他" not in v.value:
+            s[v.key] = v.value
+
+    if (c.bi_list[-1].direction == Direction.Down and min_ubi >= c.bi_list[-1].low) \
+            or (c.bi_list[-1].direction == Direction.Up and max_ubi <= c.bi_list[-1].high):
+        bis = c.bi_list
+    else:
+        bis = c.bi_list[:-1]
+
+    if bis:
+        # 倒0笔方向
+        last_bi = bis[-1]
+        v = []
+        if last_bi.direction == Direction.Down:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上")
+        if last_bi.direction == Direction.Up:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向下")
+
+        if v and "其他" not in v.value:
+            s[v.key] = v.value
+
+        # 倒0笔长度
+        if len(c.bars_ubi) >= 9:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="9根K线以上")
+        elif 9 > len(c.bars_ubi) > 5:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5到9根K线")
+        else:
+            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5根K线以下")
+
+        if "其他" not in v.value:
+            s[v.key] = v.value
+
+        # 倒1笔长度
+        last_bi = bis[-1]
+        if len(last_bi.bars) >= 15:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="15根K线以上")
+        elif 15 > len(c.bars_ubi) > 9:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="9到15根K线")
+        else:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="9根K线以下")
+
+        if "其他" not in v.value:
+            s[v.key] = v.value
+
+        # 倒1笔拟合优度
+        if last_bi.rsq > 0.8:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="大于0.8")
+        elif last_bi.rsq < 0.2:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="小于0.2")
+        else:
+            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="0.2到0.8之间")
+
+        if "其他" not in v.value:
+            s[v.key] = v.value
+
+    if not bis:
+        return s
+
+    signals = [
+        check_three_bi(bis[-3:], freq, 1),
+        check_three_bi(bis[-4:-1], freq, 2),
+        check_three_bi(bis[-5:-2], freq, 3),
+        check_three_bi(bis[-6:-3], freq, 4),
+        check_three_bi(bis[-7:-4], freq, 5),
+        check_three_bi(bis[-8:-5], freq, 6),
+        check_three_bi(bis[-9:-6], freq, 7),
+
+        check_five_bi(bis[-5:], freq, 1),
+        check_five_bi(bis[-6:-1], freq, 2),
+        check_five_bi(bis[-7:-2], freq, 3),
+        check_five_bi(bis[-8:-3], freq, 4),
+        check_five_bi(bis[-9:-4], freq, 5),
+        check_five_bi(bis[-10:-5], freq, 6),
+        check_five_bi(bis[-11:-6], freq, 7),
+
+        check_seven_bi(bis[-7:], freq, 1),
+        check_seven_bi(bis[-8:-1], freq, 2),
+        check_seven_bi(bis[-9:-2], freq, 3),
+        check_seven_bi(bis[-10:-3], freq, 4),
+        check_seven_bi(bis[-11:-4], freq, 5),
+        check_seven_bi(bis[-12:-5], freq, 6),
+        check_seven_bi(bis[-13:-6], freq, 7),
+
+        check_nine_bi(bis[-9:], freq, 1),
+        check_nine_bi(bis[-10:-1], freq, 2),
+        check_nine_bi(bis[-11:-2], freq, 3),
+        check_nine_bi(bis[-12:-3], freq, 4),
+        check_nine_bi(bis[-13:-4], freq, 5),
+        check_nine_bi(bis[-14:-5], freq, 6),
+        check_nine_bi(bis[-15:-6], freq, 7),
+
+        check_eleven_bi(bis[-11:], freq, 1),
+        check_eleven_bi(bis[-12:-1], freq, 2),
+        check_eleven_bi(bis[-13:-2], freq, 3),
+        check_eleven_bi(bis[-14:-3], freq, 4),
+        check_eleven_bi(bis[-15:-4], freq, 5),
+        check_eleven_bi(bis[-16:-5], freq, 6),
+        check_eleven_bi(bis[-17:-6], freq, 7),
+
+        check_thirteen_bi(bis[-13:], freq, 1),
+        check_thirteen_bi(bis[-14:-1], freq, 2),
+        check_thirteen_bi(bis[-15:-2], freq, 3),
+        check_thirteen_bi(bis[-16:-3], freq, 4),
+        check_thirteen_bi(bis[-17:-4], freq, 5),
+        check_thirteen_bi(bis[-18:-5], freq, 6),
+        check_thirteen_bi(bis[-19:-6], freq, 7),
+    ]
+
+    for signal in signals:
+        if "其他" in signal.value:
+            continue
+        else:
+            s[signal.key] = signal.value
+    return s
+
+
+class CzscTrader:
+    """缠中说禅技术分析理论之多级别联立交易决策类"""
+    def __init__(self, kg: KlineGenerator, get_signals: Callable, events: List[Event] = None):
+        """
+
+        :param kg: K线合成器
+        :param get_signals: 自定义的单级别信号计算函数
+        :param events: 自定义的交易事件组合
+        """
+        self.name = "CzscTrader"
+        self.kg = kg
+        self.freqs = kg.freqs
+        self.events = events
+        self.op = dict()
+
+        klines = self.kg.get_klines({k: 3000 for k in self.freqs})
+        self.kas = {k: CZSC(klines[k], max_bi_count=50, get_signals=get_signals) for k in klines.keys()}
+        self.symbol = self.kas["1分钟"].symbol
+        self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
+        self.latest_price = self.kas["1分钟"].bars_raw[-1].close
+        self.s = self._cal_signals()
+
+        # cache 中会缓存一些实盘交易中需要的信息
+        self.cache = OrderedDict({
+            "last_op": None,            # 最近一个操作类型
+            "long_open_price": None,    # 多仓开仓价格
+            "long_max_high": None,      # 多仓开仓后的最高价
+            "long_open_k1_id": None,    # 多仓开仓时的1分钟K线ID
+            "short_open_price": None,   # 空仓开仓价格
+            "short_min_low": None,      # 空仓开仓后的最低价
+            "short_open_k1_id": None,   # 空仓开仓后的1分钟K线ID
+        })
+
+    def __repr__(self):
+        return "<{} for {}>".format(self.name, self.symbol)
+
+    def take_snapshot(self, file_html=None, width="1400px", height="580px"):
+        """获取快照
+
+        :param file_html: str
+            交易快照保存的 html 文件名
+        :param width: str
+            图表宽度
+        :param height: str
+            图表高度
+        :return:
+        """
+        tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
+        for freq in self.freqs:
+            chart = self.kas[freq].to_echarts(width, height)
+            tab.add(chart, freq)
+
+        for freq in self.freqs:
+            t1 = Table()
+            t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if k.startswith("{}_".format(freq))])
+            t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
+            tab.add(t1, "{}信号表".format(freq))
+
+        t2 = Table()
+        ths_ = [["同花顺F10",  "http://basic.10jqka.com.cn/{}".format(self.symbol[:6])]]
+        t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k] + ths_)
+        t2.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅因子表", subtitle=""))
+        tab.add(t2, "因子表")
+
+        if file_html:
+            tab.render(file_html)
+        else:
+            return tab
+
+    def open_in_browser(self, width="1400px", height="580px"):
+        """直接在浏览器中打开分析结果"""
+        home_path = os.path.expanduser("~")
+        file_html = os.path.join(home_path, "temp_czsc_factors.html")
+        self.take_snapshot(file_html, width, height)
+        webbrowser.open(file_html)
+
+    def _cal_signals(self):
+        """计算信号"""
+        s = OrderedDict()
+        for freq, ks in self.kas.items():
+            s.update(ks.signals)
+
+        s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
+        return s
+
+    def check_operate(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
+        """更新信号，计算下一个操作动作
+
+        :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
+        :param stoploss: 止损退出参数，0.1 表示10个点止损
+        :param bar: 单根K线对象
+        :return: 操作提示
+        """
+        self.kg.update(bar)
+        klines_one = self.kg.get_klines({freq: 1 for freq in self.freqs})
+
+        for freq, klines_ in klines_one.items():
+            self.kas[freq].update(klines_[-1])
+
+        self.symbol = self.kas["1分钟"].symbol
+        self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
+        self.latest_price = self.kas["1分钟"].bars_raw[-1].close
+        self.s = self._cal_signals()
+
+        # 遍历 events，获得 operate
+        op = {"operate": Operate.HO.value, 'symbol': self.symbol, 'dt': self.end_dt,
+              'price': self.latest_price, "desc": '', 'bid': self.kg.m1[-1].id}
+        if self.events:
+            for event in self.events:
+                m, f = event.is_match(self.s)
+                if m:
+                    op['operate'] = event.operate.value
+                    op['desc'] = f"{event.name}@{f}"
+                    break
+
+        # 判断是否达到异常退出条件
+        if op['operate'] == Operate.HO.value and self.cache['last_op']:
+            if self.cache['last_op'] == Operate.LO.value:
+                assert self.cache['long_open_price']
+                assert self.cache['long_open_k1_id']
+                if self.latest_price < self.cache.get('long_open_price', 0) * (1 - stoploss):
+                    op['operate'] = Operate.LE.value
+                    op['desc'] = f"long_pos_stoploss_{stoploss}"
+
+                if self.kg.m1[-1].id - self.cache.get('long_open_k1_id', 99999999999) > timeout:
+                    op['operate'] = Operate.LE.value
+                    op['desc'] = f"long_pos_timeout_{timeout}"
+
+            if self.cache['last_op'] == Operate.SO.value:
+                assert self.cache['short_open_price']
+                assert self.cache['short_open_k1_id']
+                self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
+                if self.latest_price > self.cache.get('long_open_price', 10000000000) * (1 + stoploss):
+                    op['operate'] = Operate.SE.value
+                    op['desc'] = f"short_pos_stoploss_{stoploss}"
+
+                if self.kg.m1[-1].id - self.cache.get('short_open_k1_id', 99999999999) > timeout:
+                    op['operate'] = Operate.SE.value
+                    op['desc'] = f"short_pos_timeout_{timeout}"
+
+        # update cache
+        if op['operate'] == Operate.LE.value:
+            self.cache.update({
+                "long_open_price": None,
+                "long_open_k1_id": None,
+                "long_max_high": None,
+                "last_op": Operate.LE.value
+            })
+        elif op['operate'] == Operate.LO.value:
+            self.cache.update({
+                "long_open_price": self.latest_price,
+                "long_open_k1_id": self.kg.m1[-1].id,
+                "long_max_high": self.latest_price,
+                "last_op": Operate.LO.value
+            })
+        elif op['operate'] == Operate.SE.value:
+            self.cache.update({
+                "short_open_price": None,
+                "short_open_k1_id": None,
+                "short_min_low": None,
+                "last_op": Operate.SE.value
+            })
+        elif op['operate'] == Operate.SO.value:
+            self.cache.update({
+                "short_open_price": self.latest_price,
+                "short_open_k1_id": self.kg.m1[-1].id,
+                "short_min_low": self.latest_price,
+                "last_op": Operate.SO.value
+            })
+        else:
+            assert op['operate'] == Operate.HO.value
+            if self.cache['last_op'] and self.cache['last_op'] == Operate.LO.value:
+                assert self.cache['long_open_price']
+                assert self.cache['long_open_k1_id']
+                self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
+
+            if self.cache['last_op'] and self.cache['last_op'] == Operate.SO.value:
+                assert self.cache['short_open_price']
+                assert self.cache['short_open_k1_id']
+                self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
+
+        self.op = op
+        return op
