@@ -1,10 +1,15 @@
 # coding: utf-8
+import sys
+import warnings
+
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 import os
 import pandas as pd
 import random
 from czsc.utils import echarts_plot as plot
-from czsc.analyze import CZSC, RawBar
-from czsc.enum import Freq
+from czsc.analyze import CZSC, RawBar, Mark
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 
@@ -15,18 +20,16 @@ def test_heat_map():
     x_label = ["{}hour".format(i) for i in range(24)]
     y_label = ["{}day".format(i) for i in range(7)]
     hm = plot.heat_map(data, x_label=x_label, y_label=y_label)
-    file_html = 'render.html'
-    hm.render(file_html)
-    os.remove(file_html)
+    hm.render()
 
 
 def test_kline_pro():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
-    bars = [RawBar(symbol=row['symbol'], id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+    bars = [RawBar(symbol=row['symbol'], open=row['open'], dt=row['dt'],
                    close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
-            for i, row in kline.iterrows()]
-    ka = CZSC(bars)
+            for _, row in kline.iterrows()]
+    ka = CZSC(bars, freq="日线")
 
     # bs = []
     # for x in ka.bi_list:

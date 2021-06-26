@@ -17,16 +17,16 @@ def push_text(content: str, key: str) -> None:
     """
     api_send = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={}".format(key)
     data = {"msgtype": "text", "text": {"content": content}}
+    response = requests.post(api_send, json=data)
     try:
-        response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
     except:
-        print(f"{data} - 文本消息推送失败")
+        print("文本消息推送失败，{}".format(response.json()))
 
 def push_file(file: str, key: str):
     """推送文件到企业微信群聊
 
-    :param file: 文件路径，不能包含中文
+    :param file: 文件路径
     :param key: 群聊机器人的key
     :return:
     """
@@ -43,7 +43,7 @@ def push_file(file: str, key: str):
         r2 = requests.post(api_send, json=data)
         assert r2.json()['errmsg'] == 'ok', str(r2.json())
     except:
-        print(f"推送文件{file_name}到企业微信群失败")
+        print("推送文件到企业微信群失败")
 
 
 def push_msg(msg_type, content, key):
@@ -53,8 +53,8 @@ def push_msg(msg_type, content, key):
     """
     api_send = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={}".format(key)
     data = {"msgtype": msg_type, msg_type: content}
+    response = requests.post(api_send, json=data)
     try:
-        response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
     except:
         print("消息推送失败")
