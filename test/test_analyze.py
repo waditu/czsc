@@ -125,7 +125,7 @@ def test_czsc_update():
     os.remove(file_html)
 
 
-def test_czsc_trader():
+def a_test_czsc_trader():
     bars = read_pkl(os.path.join(cur_path, "data/000001.XSHG_1MIN.pkl"))
     kg = KlineGenerator(max_count=3000, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
     for row in tqdm(bars[:-100], desc='init kg'):
