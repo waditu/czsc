@@ -6,11 +6,16 @@ import requests
 import warnings
 from collections import OrderedDict
 import pandas as pd
-from tqdm import tqdm
 from datetime import datetime, timedelta
 from typing import List
+
 from ..objects import RawBar
+from ..enum import Freq
+from .base import freq_inv
 from ..utils.kline_generator import bar_end_time
+from ..analyze import CzscTrader, KlineGenerator
+from ..signals import get_default_signals
+
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
@@ -19,6 +24,9 @@ file_token = os.path.join(home_path, "jq.token")
 # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
 freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
                 "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
+
+freq_map = {'1min': Freq.F1, '5min': Freq.F5, '15min': Freq.F15, '30min': Freq.F30,
+            '60min': Freq.F60, 'D': Freq.D, 'W': Freq.W, 'M': Freq.M}
 
 def set_token(jq_mob, jq_pwd):
     """
@@ -180,25 +188,6 @@ def get_industry(symbol):
     }
     return res
 
-def get_stock_industry():
-    df = get_all_securities("stock")
-    rows = df.to_dict('records')
-    results = []
-    for i, row in tqdm(rows):
-        try:
-            res = dict(row)
-            res.update(get_industry(res['code']))
-            results.append(res)
-        except Exception as e:
-            print("get industry fail on {}: {}".format(row['code'], e))
-    stock_ind = pd.DataFrame(results)
-    stock_ind.rename({'display_name': '股票名称', 'start_date': '上市日期'}, axis=1, inplace=True)
-    cols = ['股票代码', '股票名称', '上市日期', '证监会行业代码', '证监会行业名称',
-            '聚宽一级行业代码', '聚宽一级行业名称', '聚宽二级行业代码', '聚宽二级行业名称', '申万一级行业代码',
-            '申万一级行业名称', '申万二级行业代码', '申万二级行业名称', '申万三级行业代码', '申万三级行业名称']
-    stock_ind = stock_ind[cols]
-    return stock_ind
-
 
 def get_all_securities(code, date=None) -> pd.DataFrame:
     """
@@ -280,7 +269,9 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
 
     r = requests.post(url, data=json.dumps(data))
     rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
+
     bars = []
+    i = -1
     for row in rows:
         # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
         dt = pd.to_datetime(row[0])
@@ -288,7 +279,8 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
             dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
         if int(row[5]) > 0:
-            bars.append(RawBar(symbol=symbol, dt=dt,
+            i += 1
+            bars.append(RawBar(symbol=symbol, dt=dt, id=i, freq=freq_map[freq],
                                open=round(float(row[1]), 2),
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
@@ -317,6 +309,9 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
     start_date = pd.to_datetime(start_date)
     end_date = pd.to_datetime(end_date)
 
+    if (end_date - start_date).days * 5 / 7 > 1000:
+        warnings.warn(f"{end_date.date()} - {start_date.date()} 超过1000个交易日，K线获取可能失败，返回为0")
+
     data = {
         "method": "get_price_period",
         "token": get_token(),
@@ -331,6 +326,7 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
     r = requests.post(url, data=json.dumps(data))
     rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
     bars = []
+    i = -1
     for row in rows:
         # row = ['date', 'open', 'close', 'high', 'low', 'volume', 'money']
         dt = pd.to_datetime(row[0])
@@ -338,7 +334,8 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
             dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
         if int(row[5]) > 0:
-            bars.append(RawBar(symbol=symbol, dt=dt,
+            i += 1
+            bars.append(RawBar(symbol=symbol, dt=dt, id=i, freq=freq_map[freq],
                                open=round(float(row[1]), 2),
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
@@ -472,3 +469,42 @@ def get_share_basic(symbol):
 
     f10['msg'] = msg
     return f10
+
+
+class JqCzscTrader(CzscTrader):
+    def __init__(self, symbol, max_count=2000, end_date=None):
+        self.symbol = symbol
+        if end_date:
+            self.end_date = pd.to_datetime(end_date)
+        else:
+            self.end_date = datetime.now()
+        self.max_count = max_count
+        kg = KlineGenerator(max_count=max_count*2)
+        for freq in kg.freqs:
+            bars = get_kline(symbol, end_date=self.end_date, freq=freq_inv[freq], count=max_count)
+            kg.init_kline(freq, bars)
+        super(JqCzscTrader, self).__init__(kg, get_signals=get_default_signals, events=[])
+
+    def update_factors(self):
+        """更新K线数据到最新状态"""
+        bars = get_kline_period(symbol=self.symbol, start_date=self.end_dt, end_date=datetime.now(), freq="1min")
+        if not bars or bars[-1].dt <= self.end_dt:
+            return
+        for bar in bars:
+            self.check_operate(bar)
+
+    def forward(self, n: int = 3):
+        """向前推进N天"""
+        ed = self.end_dt + timedelta(days=n)
+        if ed > datetime.now():
+            print(f"{ed} > {datetime.now()}，无法继续推进")
+            return
+
+        bars = get_kline_period(symbol=self.symbol, start_date=self.end_dt, end_date=ed, freq="1min")
+        if not bars:
+            print(f"{self.end_dt} ~ {ed} 没有交易数据")
+            return
+
+        for bar in bars:
+            self.check_operate(bar)
+

@@ -4,11 +4,12 @@ import numpy as np
 import pandas as pd
 import traceback
 from typing import List, Union
+
 from ..utils.ta import KDJ
 from ..objects import RawBar
 
 
-def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]):
+def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]) -> int:
     """输入两个序列，计算 x1 下穿 x2 的次数
 
     :param x1: list
@@ -31,7 +32,7 @@ def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]):
     return num
 
 
-def kdj_gold_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True):
+def kdj_gold_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) -> bool:
     """输入K线，判断KDJ是否金叉
 
     :param kline: pd.DataFrame
@@ -65,7 +66,7 @@ def kdj_gold_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True):
         return False
 
 
-def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True):
+def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) -> bool:
     """输入K线，判断KDJ是否死叉
 
     :param kline: pd.DataFrame
