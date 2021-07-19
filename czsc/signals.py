@@ -625,7 +625,7 @@ def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
     return s
 
 def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
-    """倒数第i笔的表里关系信号
+    """倒数第0笔的信号
 
     :param c: CZSC 对象
     :return: 信号字典
@@ -668,7 +668,7 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     return s
 
 def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
-    """倒数第i笔的表里关系信号
+    """倒数第i笔的信号
 
     :param c: CZSC 对象
     :param di: 最近一笔为倒数第i笔
