@@ -24,7 +24,10 @@ def test_data():
         ]
     )
 
-    trander = JqCzscTrader(max_count=1000, freqs=['日线', '30分钟', '5分钟'])
+    trander = JqCzscTrader(symbol="002172.XSHE",max_count=1000)
+
+    print(factor_.is_match(trander.s))
+    trander.open_in_browser()
     # kg = KlineGenerator(max_count=1000, freqs=['5分钟', '30分钟', '日线'])
     # trader = CzscTrader(kg=kg, get_signals=get_default_signals)
     # trader.open_in_browser()
