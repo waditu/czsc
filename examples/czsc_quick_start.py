@@ -48,7 +48,7 @@ def is_third_buy(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    symbols: List = get_index_stocks("000016.XSHG")
+    symbols: List = get_index_stocks("000300.XSHG")
     for symbol in symbols:
         try:
             if is_third_buy(symbol):
