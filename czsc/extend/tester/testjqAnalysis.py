@@ -24,7 +24,7 @@ def test_data():
         ]
     )
 
-    trander = JqCzscTrader(symbol="002172.XSHE",max_count=1000)
+    trander = JqCzscTrader(symbol="002172.XSHE", max_count=1000)
 
     print(factor_.is_match(trander.s))
     trander.open_in_browser()
