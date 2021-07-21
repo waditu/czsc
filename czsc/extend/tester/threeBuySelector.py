@@ -39,11 +39,10 @@ def is_third_buy(symbol):
             Signal("日线_倒1笔_类买卖点_类三买_任意_任意_0"),
         ],
         signals_all=[
-            Signal("日线_倒1笔_拟合优度_小于0.2_任意_任意_0")
         ]
     )
+    c.open_in_browser()
     if factor_.is_match(c.signals):
-        c.open_in_browser()
         return True
     else:
         return False
@@ -70,7 +69,6 @@ def is_bc(symbol):
             Signal("30分钟_倒13笔_类买卖点_类一买_任意_任意_0"),
         ],
         signals_all=[
-            Signal("日线_倒1笔_拟合优度_小于0.2_任意_任意_0")
         ]
     )
     if factor_.is_match(c.signals):
@@ -81,7 +79,8 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    symbols: List = get_index_stocks("000300.XSHG")
+    #symbols: List = get_index_stocks("000300.XSHG")
+    symbols:List = ['300397.XSHE']
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
