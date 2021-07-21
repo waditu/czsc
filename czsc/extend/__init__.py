@@ -1,0 +1,1 @@
+from .analyzeExtend import CZSCExtendTrader
