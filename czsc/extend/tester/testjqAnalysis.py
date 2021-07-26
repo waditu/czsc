@@ -55,6 +55,6 @@ def test_extend():
         ]
     )
 
-    trader = CZSCExtendTrader(symbol="300397.XSHE", max_count=1000)
+    trader = CZSCExtendTrader(symbol="600282.XSHG", max_count=1000, end_date='2021-06-25')
     print(factor_.is_match(trader.s))
     trader.open_in_browser()

@@ -7,7 +7,7 @@ from czsc.data.jq import get_kline
 from czsc.data.base import freq_inv
 from czsc.signals import get_default_signals
 from typing import Union
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 
 class CZSCExtendTrader(CzscTrader):

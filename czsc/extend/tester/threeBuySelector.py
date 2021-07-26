@@ -13,7 +13,7 @@ import traceback
 from datetime import datetime
 from typing import List
 from czsc.analyze import CZSC
-from czsc.signals import get_default_signals
+from czsc.signals import get_default_signals, get_selector_signals
 from czsc.objects import Signal, Factor
 
 assert czsc.__version__ == '0.7.3'
@@ -29,8 +29,12 @@ print("聚宽剩余调用次数：{}".format(get_query_count()))
 
 def is_third_buy(symbol):
     """判断一个股票现在是否有日线三买"""
-    bars = get_kline(symbol, freq="D", end_date=datetime.now(), count=1000)
+    bars = get_kline(symbol, freq="D", end_date='2021-07-22', count=1000)
     c = CZSC(bars, get_signals=get_default_signals)
+    bars = get_kline(symbol, freq='D', end_date='2021-07-23', count=1)
+
+    for bar in bars:
+        c.update(bar)
 
     factor_ = Factor(
         name="类三买选股因子",
@@ -41,7 +45,7 @@ def is_third_buy(symbol):
         signals_all=[
         ]
     )
-    c.open_in_browser()
+    # c.open_in_browser()
     if factor_.is_match(c.signals):
         return True
     else:
@@ -55,18 +59,15 @@ def is_bc(symbol):
     :return:
     """
     bars = get_kline(symbol, freq="30min", end_date=datetime.now(), count=1000)
-    c = CZSC(bars, get_signals=get_default_signals)
+    c = CZSC(bars, get_signals=get_selector_signals)
 
     factor_ = Factor(
         name="背驰选股",
         signals_any=[
-            Signal("30分钟_倒3笔_三笔形态_向下盘背_任意_任意_0"),
-            Signal("30分钟_倒5笔_基础形态_底背驰_任意_任意_0"),
-            Signal("30分钟_倒7笔_基础形态_底背驰_任意_任意_0"),
-            Signal("30分钟_倒9笔_类买卖点_类一买_任意_任意_0"),
-            Signal("30分钟_倒11笔_类买卖点_类一买_任意_任意_0"),
-            Signal("30分钟_倒11笔_类买卖点_类二买_任意_任意_0"),
-            Signal("30分钟_倒13笔_类买卖点_类一买_任意_任意_0"),
+            Signal("30分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"),
+            Signal("30分钟_倒1笔_基础形态_底背驰_任意_任意_0"),
+            Signal("30分钟_倒1笔_类买卖点_类一买_任意_任意_0"),
+            Signal("30分钟_倒1笔_类买卖点_类二买_任意_任意_0"),
         ],
         signals_all=[
         ]
@@ -79,8 +80,8 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    #symbols: List = get_index_stocks("000300.XSHG")
-    symbols:List = ['300397.XSHE']
+    # symbols: List = get_index_stocks("000001.XSHG")
+    symbols: List = ['600338.XSHG']
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
