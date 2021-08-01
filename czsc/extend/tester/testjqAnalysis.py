@@ -51,10 +51,10 @@ def test_extend():
             Signal("日线_倒1笔_类买卖点_类三买_任意_任意_0"),
         ],
         signals_all=[
-
+            Signal("日线_倒0笔_长度_5根K线以下_任意_任意_0")
         ]
     )
 
-    trader = CZSCExtendTrader(symbol="600282.XSHG", max_count=1000, end_date='2021-06-25')
+    trader = CZSCExtendTrader(symbol="300397.XSHE", max_count=1000, end_date='2021-07-06')
     print(factor_.is_match(trader.s))
     trader.open_in_browser()

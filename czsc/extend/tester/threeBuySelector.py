@@ -29,7 +29,7 @@ print("聚宽剩余调用次数：{}".format(get_query_count()))
 
 def is_third_buy(symbol):
     """判断一个股票现在是否有日线三买"""
-    bars = get_kline(symbol, freq="D", end_date='2021-07-22', count=1000)
+    bars = get_kline(symbol, freq="D", end_date='2021-07-22', count=2)
     c = CZSC(bars, get_signals=get_default_signals)
     bars = get_kline(symbol, freq='D', end_date='2021-07-23', count=1)
 
@@ -80,7 +80,7 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    # symbols: List = get_index_stocks("000001.XSHG")
+    #symbols: List = get_index_stocks("399008.XSHE")
     symbols: List = ['600338.XSHG']
     for symbol in symbols:
         try:

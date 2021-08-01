@@ -4,6 +4,7 @@ import pandas as pd
 import datetime as dt
 from typing import List
 from czsc.objects import RawBar
+from czsc.data.jq import freq_map
 
 api = TdxHq_API()
 
@@ -21,7 +22,7 @@ def get_kline(symbol: str, end_date: [dt, str], freq: str,
 
 
 # 返回记录数量数
-return_number = 50
+return_number = 600
 
 
 class TdxStoreage():
@@ -61,8 +62,7 @@ class TdxStoreage():
                 data += self.api.get_index_bars(self._get_real_category(freq), market, code,
                                                 (scope - 1 - i) * request_per_item,
                                                 count)
-            data_frame = self.api.to_df(data)
-        return self.format_data(data_frame)
+        return self.format_data(data=data, code=code, freq=freq)
 
     def get_data(self, code, date_from='2021-01-01', date_to=dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                  market=Market.SZ,
@@ -85,26 +85,24 @@ class TdxStoreage():
                     count = last_item_size
                 data += self.api.get_security_bars(self._get_real_category(freq), market, code,
                                                    (scope - 1 - i) * request_per_item, count)
+        return self.format_data(data=data, code=code, freq=freq)
 
-            data_frame = self.api.to_df(data)
-        return self.format_data(original=data_frame)
+    def format_data(self, data, freq, code):
+        bars = []
+        i = 0
+        for row in data:
+            current_dt = pd.to_datetime(row['datetime'])
+            if freq == "D":
+                current_dt = current_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            bars.append(RawBar(symbol=code, dt=current_dt, id=i, freq=freq_map[freq],
+                               open=round(float(row['open']), 2),
+                               close=round(float(row['close']), 2),
+                               high=round(float(row['high']), 2),
+                               low=round(float(row['low']), 2),
+                               vol=int(row['vol'])))
+            i = i + 1
 
-    def format_data(self, original):
-        # 重命名列头
-        new_format_data = original.rename(
-            columns={'vol': 'volume'}).sort_index()
-        if new_format_data.size == 0:
-            return new_format_data
-        # # 字符串转日期
-        new_format_data['datetime'] = new_format_data['datetime'].apply(
-            lambda x: dt.datetime.strptime(x, '%Y-%m-%d %H:%M'))
-
-        new_format_data['date'] = new_format_data['datetime'].apply(
-            lambda x: x.date())
-        new_format_data['index_time'] = new_format_data['datetime']
-        new_format_data.set_index('index_time', inplace=True)
-
-        return new_format_data
+        return bars
 
     def _get_real_category(self, category):
         real_category = 9
@@ -130,4 +128,7 @@ class TdxStoreage():
 
 if __name__ == '__main__':
     t = TdxStoreage()
-    print(t.get_data("300397", market=Market.SZ))
+    return_number = 2
+    item = t.get_data("300397", market=Market.SZ)
+    print(item)
+    a = 5
