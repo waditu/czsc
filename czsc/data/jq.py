@@ -7,9 +7,9 @@ import warnings
 from collections import OrderedDict
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Callable
 
-from ..objects import RawBar
+from ..objects import RawBar, Event
 from ..enum import Freq
 from .base import freq_inv
 from ..utils.kline_generator import bar_end_time
@@ -472,7 +472,9 @@ def get_share_basic(symbol):
 
 
 class JqCzscTrader(CzscTrader):
-    def __init__(self, symbol, max_count=2000, end_date=None):
+    def __init__(self, symbol, max_count=2000, end_date=None,
+                 get_signals: Callable = get_default_signals,
+                 events: List[Event] = None):
         self.symbol = symbol
         if end_date:
             self.end_date = pd.to_datetime(end_date)
@@ -483,7 +485,7 @@ class JqCzscTrader(CzscTrader):
         for freq in kg.freqs:
             bars = get_kline(symbol, end_date=self.end_date, freq=freq_inv[freq], count=max_count)
             kg.init_kline(freq, bars)
-        super(JqCzscTrader, self).__init__(kg, get_signals=get_default_signals, events=[])
+        super(JqCzscTrader, self).__init__(kg, get_signals=get_signals, events=events)
 
     def update_factors(self):
         """更新K线数据到最新状态"""
