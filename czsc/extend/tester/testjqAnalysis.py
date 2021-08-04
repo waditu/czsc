@@ -58,3 +58,10 @@ def test_extend():
     trader = CZSCExtendTrader(symbol="300397.XSHE", max_count=1000, end_date='2021-07-06')
     print(factor_.is_match(trader.s))
     trader.open_in_browser()
+
+
+def test_analyzeData():
+    codes = []
+    for code in codes:
+        trader = CZSCExtendTrader(symbol=code, max_count=1000)
+        trader.open_in_browser()
