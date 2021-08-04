@@ -1,8 +1,10 @@
 # coding: utf-8
 import os
+import pandas as pd
 from tqdm import tqdm
 
-from czsc.utils.kline_generator import KlineGenerator
+from czsc.objects import RawBar, Freq
+from czsc.utils.kline_generator import KlineGenerator, KlineGeneratorD
 from .test_analyze import read_1min
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -39,4 +41,19 @@ def test_kline_generator():
     for _ in range(5):
         kg.update(bars[-1])
         assert len(kg.m1) == 2000
+
+
+def test_kgd():
+    df = pd.read_csv(os.path.join(cur_path, './data/000001.SH_D.csv'))
+    bars = []
+    for i, row in df.iterrows():
+        bars.append(RawBar(symbol=row.symbol, id=i, freq=Freq.D, dt=pd.to_datetime(row['dt']),
+                           open=row.open, close=row.close, high=row.high, low=row.low, vol=row.vol))
+    kgd = KlineGeneratorD()
+    for bar in bars:
+        kgd.update(bar)
+
+    assert kgd.end_dt == pd.to_datetime('2020-07-16 15:00:00')
+    assert len(kgd.bars['月线']) == 165
+    assert len(kgd.bars['年线']) == 15
 
