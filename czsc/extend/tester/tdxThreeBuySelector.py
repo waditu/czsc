@@ -39,7 +39,6 @@ def is_third_buy(symbol):
         ]
     )
     if factor_.is_match(c.signals):
-        c.open_in_browser()
         return True
     else:
         return False
@@ -66,7 +65,6 @@ def is_bc(symbol):
         ]
     )
     if factor_.is_match(c.signals):
-        c.open_in_browser()
         return True
     else:
         return False
@@ -76,6 +74,8 @@ def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
     symbols: List = get_index_stocks("399008.XSHE")
     # symbols: List = ['600338.XSHG']
+    only_three_buy: List = []
+    bc_buy: List = []
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
@@ -83,9 +83,15 @@ def run_jq_selector():
                 print("{} - 日线三买".format(symbol))
                 if is_bc(symbol):
                     print("{} - 日线三买,并背驰".format(symbol))
+                    bc_buy.append(symbol)
+                else:
+                    only_three_buy.append(symbol)
+
         except:
             print("{} - 执行失败".format(symbol))
             traceback.print_exc()
+    print(only_three_buy)
+    print(bc_buy)
     print("end")
 
 

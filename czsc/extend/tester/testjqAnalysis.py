@@ -61,7 +61,7 @@ def test_extend():
 
 
 def test_analyzeData():
-    codes = []
+    codes = ['002048.XSHE', '002080.XSHE', '002812.XSHE', '002850.XSHE']
     for code in codes:
         trader = CZSCExtendTrader(symbol=code, max_count=1000)
         trader.open_in_browser()
