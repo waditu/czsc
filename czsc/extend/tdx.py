@@ -16,11 +16,6 @@ class Market():
     SZ = 0
 
 
-def get_kline(symbol: str, end_date: [dt, str], freq: str,
-              start_date: [dt, str] = None, count=None, fq: bool = True) -> List[RawBar]:
-    pass
-
-
 # 返回记录数量数
 return_number = 600
 
@@ -34,6 +29,9 @@ class TdxStoreage():
 
     def __init__(self):
         self.api = TdxHq_API()
+
+    def set_count(self, count):
+        return_number = count
 
     def __get_cal_data(self):
         request_per_item = 800
@@ -124,6 +122,20 @@ class TdxStoreage():
 
     def close(self):
         pass
+
+
+t = TdxStoreage()
+
+
+def get_kline(symbol: str, end_date: [dt, str], freq: str,
+              start_date: [dt, str] = None, count=600, fq: bool = True) -> List[RawBar]:
+    t.set_count(count)
+    items = symbol.split('.')
+    assert len(items) == 2
+    market = Market.SH
+    if items[1] == "XSHE":
+        market = Market.SZ
+    return t.get_data(code=items[0], freq=freq, market=market)
 
 
 if __name__ == '__main__':
