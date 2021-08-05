@@ -222,11 +222,14 @@ class KlineGenerator:
 
 class KlineGeneratorD:
     """使用日线合成周线、月线、季线"""
-    def __init__(self):
+    def __init__(self, freqs: List[str] = None):
         self.symbol = None
         self.end_dt = None
-        self.freqs: List[Freq] = [Freq.D, Freq.W, Freq.M, Freq.S, Freq.Y]
-        self.bars = {v.value: [] for v in self.freqs}
+        if freqs:
+            self.freqs = freqs
+        else:
+            self.freqs: List[str] = [Freq.D.value, Freq.W.value, Freq.M.value, Freq.S.value, Freq.Y.value]
+        self.bars = {v: [] for v in self.freqs}
 
     def __repr__(self):
         return f"<KlineGeneratorD for {self.symbol} @ {self.end_dt}>"
