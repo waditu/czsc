@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from czsc.objects import RawBar, Freq
 from czsc.utils.kline_generator import KlineGenerator, KlineGeneratorD
-from .test_analyze import read_1min
+from test.test_analyze import read_1min
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 kline = read_1min()
@@ -19,9 +19,10 @@ def test_kline_generator():
     for row in tqdm(bars):
         kg.update(row)
 
-    assert not kg.m60 and not kg.m15
+    assert not kg.m60 and not kg.m15 and not kg.M
 
-    kg = KlineGenerator(max_count=2000, freqs=['周线', '日线', '60分钟', '30分钟', '15分钟', '5分钟', '1分钟'])
+    bars = kline[:20000]
+    kg = KlineGenerator(max_count=2000)
     for row in tqdm(bars):
         kg.update(row)
 
@@ -34,8 +35,12 @@ def test_kline_generator():
 
     # 数量验证
     assert len(kg.m1) == 2000
-    assert len(kg.m5) == 401
-    assert len(kg.m15) == 134
+    assert len(kg.m5) == 4001
+    assert len(kg.m15) == 1334
+    assert len(kg.m60) == 334
+    assert len(kg.D) == 84
+    assert len(kg.W) == 17
+    assert len(kg.M) == 5
 
     # 测试实盘连续输入
     for _ in range(5):

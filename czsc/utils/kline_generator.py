@@ -36,6 +36,7 @@ def bar_end_time(dt: datetime, m=1):
                 return edt
     return dt
 
+
 class KlineGenerator:
     """K线生成器，仿实盘"""
 
@@ -143,6 +144,7 @@ class KlineGenerator:
     def __update_d(self, k=None):
         if "日线" not in self.freqs:
             return
+
         next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
         k = RawBar(symbol=k.symbol, id=1, freq=Freq.D, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.D:
@@ -159,10 +161,13 @@ class KlineGenerator:
     def __update_w(self, k=None):
         if "周线" not in self.freqs:
             return
+
         next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        k = RawBar(symbol=k.symbol, id=1, freq=Freq.W, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
+        k = RawBar(symbol=k.symbol, id=1, freq=Freq.W, dt=next_end_dt, open=k.open,
+                   close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.W:
             self.W.append(k)
+
         last = self.W[-1]
         if next_end_dt.weekday() == 0 and k.dt.weekday() != last.dt.weekday():
             k.id = last.id + 1
@@ -171,6 +176,25 @@ class KlineGenerator:
             self.W[-1] = self.__update_from_1min(last, k, next_end_dt)
 
         self.W = self.W[-self.max_count:]
+
+    def __update_m(self, k=None):
+        if "月线" not in self.freqs:
+            return
+
+        next_end_dt: datetime = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        k = RawBar(symbol=k.symbol, id=1, freq=Freq.M, dt=next_end_dt, open=k.open,
+                   close=k.close, high=k.high, low=k.low, vol=k.vol)
+        if not self.M:
+            self.M.append(k)
+
+        last = self.M[-1]
+        if next_end_dt.month != last.dt.month:
+            k.id = last.id + 1
+            self.M.append(k)
+        else:
+            self.M[-1] = self.__update_from_1min(last, k, next_end_dt)
+
+        self.M = self.M[-self.max_count:]
 
     def update(self, k: RawBar):
         """输入1分钟、Tick最新数据，更新其他级别K线
@@ -183,7 +207,7 @@ class KlineGenerator:
         else:
             k.id = 0
         if self.end_dt and k.dt <= self.end_dt:
-            print("输入1分钟K时间小于最近一个更新时间，{} <= {}，不进行K线更新".format(k.dt, self.end_dt))
+            # print("输入1分钟K时间小于最近一个更新时间，{} <= {}，不进行K线更新".format(k.dt, self.end_dt))
             return
 
         self.end_dt = k.dt
@@ -191,10 +215,9 @@ class KlineGenerator:
 
         self.__update_1min(k)
         self.__update_minutes(k, minutes=(5, 15, 30, 60))
-        if "日线" in self.freqs:
-            self.__update_d(k)
-        if "周线" in self.freqs:
-            self.__update_w(k)
+        self.__update_d(k)
+        self.__update_w(k)
+        self.__update_m(k)
 
     def get_kline(self, freq: str, count: int = 1000) -> List[RawBar]:
         """获取单个级别的K线
@@ -219,6 +242,7 @@ class KlineGenerator:
         if counts is None:
             counts = {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
         return {k: self.get_kline(k, v) for k, v in counts.items()}
+
 
 class KlineGeneratorD:
     """使用日线合成周线、月线、季线"""
