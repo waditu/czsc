@@ -62,8 +62,12 @@ def is_bc(symbol):
             Signal("30分钟_倒1笔_类买卖点_类二买_任意_任意_0"),
         ],
         signals_all=[
+            Signal("30分钟_倒0笔_方向_向上_任意_任意_0"),
+            Signal("30分钟_倒0笔_长度_5根K线以下_任意_任意_0")
+
         ]
     )
+    # c.open_in_browser()
     if factor_.is_match(c.signals):
         return True
     else:
