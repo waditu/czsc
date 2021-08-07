@@ -27,6 +27,7 @@ date_fmt = "%Y%m%d"
 
 pro = ts.pro_api()
 
+
 def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     """Tushare K线数据转换
 
@@ -78,6 +79,7 @@ def get_kline(ts_code: str,
     if bars and bars[-1].dt < pd.to_datetime(end_date) and len(bars) == 8000:
         print(f"获取K线数量达到8000根，数据获取到 {bars[-1].dt}，目标 end_date 为 {end_date}")
     return bars[::-1]
+
 
 def get_ths_daily(ts_code='885760.TI',
                   start_date: [datetime, str] = '20100101',
@@ -152,6 +154,7 @@ def get_init_kg(ts_code: str,
         for row in data:
             kg.update(row)
     return kg
+
 
 class TsCzscTrader(CzscTrader):
     def __init__(self, ts_code, end_dt=None, max_count=2000, asset='E',

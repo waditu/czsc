@@ -28,6 +28,7 @@ freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
 freq_map = {'1min': Freq.F1, '5min': Freq.F5, '15min': Freq.F15, '30min': Freq.F30,
             '60min': Freq.F60, 'D': Freq.D, 'W': Freq.W, 'M': Freq.M}
 
+
 def set_token(jq_mob, jq_pwd):
     """
 
@@ -67,6 +68,7 @@ def text2df(text):
     df = pd.DataFrame(rows[1:], columns=rows[0])
     return df
 
+
 def get_query_count() -> int:
     """获取查询剩余条数
     https://dataapi.joinquant.com/docs#get_query_count---%E8%8E%B7%E5%8F%96%E6%9F%A5%E8%AF%A2%E5%89%A9%E4%BD%99%E6%9D%A1%E6%95%B0
@@ -79,6 +81,7 @@ def get_query_count() -> int:
     }
     r = requests.post(url, data=json.dumps(data))
     return int(r.text)
+
 
 def get_concepts():
     """获取概念列表
@@ -94,6 +97,7 @@ def get_concepts():
     r = requests.post(url, data=json.dumps(data))
     df = text2df(r.text)
     return df
+
 
 def get_concept_stocks(symbol, date=None):
     """获取概念成份股
@@ -126,6 +130,7 @@ def get_concept_stocks(symbol, date=None):
     r = requests.post(url, data=json.dumps(data))
     return r.text.split('\n')
 
+
 def get_index_stocks(symbol, date=None):
     """获取指数成份股
 
@@ -156,6 +161,7 @@ def get_index_stocks(symbol, date=None):
     }
     r = requests.post(url, data=json.dumps(data))
     return r.text.split('\n')
+
 
 def get_industry(symbol):
     """
@@ -216,6 +222,7 @@ def get_all_securities(code, date=None) -> pd.DataFrame:
     }
     r = requests.post(url, data=json.dumps(data))
     return text2df(r.text)
+
 
 def get_kline(symbol: str, end_date: [datetime, str], freq: str,
               start_date: [datetime, str] = None, count=None, fq: bool = True) -> List[RawBar]:
@@ -384,6 +391,7 @@ def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> di
         return df.iloc[0].to_dict()
     except:
         return {}
+
 
 def run_query(table: str, conditions: str, columns=None, count=1):
     """模拟JQDataSDK的run_query方法
