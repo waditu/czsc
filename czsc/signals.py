@@ -761,6 +761,83 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
 
     return s
 
+def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
+    """获取倒数第i根K线的MACD相关信号"""
+    freq: Freq = c.freq
+    s = OrderedDict()
+
+    k1 = str(freq.value)
+    default_signals = [
+        Signal(k1=k1, k2="DIF", k3="状态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2="DEA", k3="状态", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    if len(c.bars_raw) < 100:
+        return s
+
+    if di == 1:
+        close = np.array([x.close for x in c.bars_raw[-100:]])
+    else:
+        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
+    dif, dea, macd = MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+
+    # DIF 状态信号
+    dif_base = sum([abs(dif[-2] - dif[-1]), abs(dif[-3] - dif[-2]), abs(dif[-4] - dif[-3])]) / 3
+    if dif[-1] > dif_base:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头")
+        if dif[-1] > dif[-2]:
+            v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头", v2="向上")
+    elif dif[-1] < -dif_base:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头")
+        if dif[-1] < dif[-2]:
+            v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头", v2="向下")
+    else:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="模糊")
+    s[v.key] = v.value
+
+    # DEA 状态信号
+    dea_base = sum([abs(dea[-2] - dea[-1]), abs(dea[-3] - dea[-2]), abs(dea[-4] - dea[-3])]) / 3
+    if dea[-1] > dea_base:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头")
+        if dea[-1] > dea[-2]:
+            v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头", v2="向上")
+    elif dea[-1] < -dea_base:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头")
+        if dea[-1] < dea[-2]:
+            v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头", v2="向下")
+    else:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="模糊")
+    s[v.key] = v.value
+    return s
+
+
+def get_s_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
+    """获取倒数第i根K线的信号"""
+    if c.freq not in [Freq.D, Freq.W]:
+        return OrderedDict()
+
+    if len(c.bars_raw) < di:
+        return OrderedDict()
+
+    s = OrderedDict()
+    freq: Freq = c.freq
+    k1 = str(freq.value)
+    default_signals = [
+        Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    k = c.bars_raw[-di]
+    if k.close > k.open:
+        v = Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="上涨")
+    else:
+        v = Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="下跌")
+    s[v.key] = v.value
+    return s
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 # 以下是信号函数，可以作为 CZSC 对象的参数
