@@ -101,7 +101,7 @@ class Signal:
 
     def __post_init__(self):
         if not self.signal:
-            self.signal = self.__repr__()
+            self.signal = f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
         else:
             self.k1, self.k2, self.k3, self.v1, self.v2, self.v3, score = self.signal.split("_")
             self.score = int(score)
@@ -110,7 +110,7 @@ class Signal:
             raise ValueError("score 必须在0~100之间")
 
     def __repr__(self):
-        return f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
+        return f"Signal('{self.signal}')"
 
     @property
     def key(self) -> str:
@@ -168,6 +168,7 @@ class Factor:
                 return True
         return False
 
+
 @dataclass
 class Event:
     name: str
@@ -185,7 +186,3 @@ class Event:
                 return True, factor.name
 
         return False, None
-
-    def __repr__(self):
-        return f"{self.name}_{self.operate.value}"
-

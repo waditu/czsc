@@ -1,23 +1,23 @@
 # coding: utf-8
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 from collections import OrderedDict
-
 from czsc.objects import Signal, Factor, Event, Freq, Operate
 
 
 def test_signal():
     s = Signal(k1="1分钟", k3="倒1形态", v1="类一买", v2="七笔", v3="基础型", score=3)
-    name = str(s)
-    assert name == '1分钟_任意_倒1形态_类一买_七笔_基础型_3'
+    assert str(s) == "Signal('1分钟_任意_倒1形态_类一买_七笔_基础型_3')"
     assert s.key == "1分钟_倒1形态"
-    s1 = Signal(signal=name)
+    s1 = Signal(signal='1分钟_任意_倒1形态_类一买_七笔_基础型_3')
     assert s == s1
     assert s.is_match({"1分钟_倒1形态": "类一买_七笔_基础型_3"})
     assert not s.is_match({"1分钟_倒1形态": "类一买_七笔_特例一_3"})
     assert not s.is_match({"1分钟_倒1形态": "类一买_九笔_基础型_3"})
 
     s = Signal(k1="1分钟", k2="倒1形态", k3="类一买", score=3)
-    name = str(s)
-    assert name == '1分钟_倒1形态_类一买_任意_任意_任意_3'
+    assert str(s) == "Signal('1分钟_倒1形态_类一买_任意_任意_任意_3')"
     assert s.key == "1分钟_倒1形态_类一买"
 
     try:
