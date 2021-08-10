@@ -27,13 +27,12 @@ qywx_key = ""
 
 
 def monitor(use_cache=True):
-    push_text("自选股CZSC笔因子监控启动 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")))
     moni_path = os.path.join(ct_path, "monitor")
     print(moni_path)
     # 首先清空历史快照
-    if os.path.exists(moni_path):
-        shutil.rmtree(moni_path)
-    os.makedirs(moni_path, exist_ok=True)
+    if not os.path.exists(moni_path):
+        os.makedirs(moni_path, exist_ok=True)
+
     events_monitor = [
         # 开多
         Event(name="一买", operate=Operate.LO, factors=[
@@ -128,13 +127,12 @@ def monitor(use_cache=True):
             traceback.print_exc()
             print("{} 执行失败 - {}".format(s, e))
 
-    push_text("自选股CZSC笔因子监控结束 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")), qywx_key)
-
 
 def run_monitor():
     mdt = ["09:30", "09:41", "09:51", "10:00", "10:30", "11:00", "11:20", "13:00", "13:30", "14:00", "14:01", "14:06",
            "14:16", "14:26",
            "14:30", "14:50", "18:25", "18:28"]
+    push_text("自选股CZSC笔因子监控启动 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")))
     monitor()
     while 1:
         print(datetime.now().strftime("%H:%M"))
