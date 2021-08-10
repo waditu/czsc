@@ -18,7 +18,7 @@ from czsc.objects import Signal, Factor
 from czsc.extend.tdx import TdxStoreage, Market, get_kline
 from czsc.data.jq import get_index_stocks
 
-assert czsc.__version__ == '0.7.3'
+assert czsc.__version__ == '0.7.4'
 
 
 # ======================================================================================================================
@@ -62,9 +62,7 @@ def is_bc(symbol):
             Signal("30分钟_倒1笔_类买卖点_类二买_任意_任意_0"),
         ],
         signals_all=[
-            Signal("30分钟_倒0笔_方向_向上_任意_任意_0"),
-            Signal("30分钟_倒0笔_长度_5根K线以下_任意_任意_0")
-
+           # Signal("30分钟_倒0笔_潜在三买_构成中枢_任意_任意_0")
         ]
     )
     # c.open_in_browser()
@@ -76,8 +74,8 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    symbols: List = get_index_stocks("399008.XSHE")
-    # symbols: List = ['600338.XSHG']
+    #symbols: List = get_index_stocks("399008.XSHE")
+    symbols: List = ['002010.XSHE']
     only_three_buy: List = []
     bc_buy: List = []
     for symbol in symbols:
