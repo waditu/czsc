@@ -6,11 +6,11 @@ create_dt: 2021/6/25 18:52
 """
 
 import pandas as pd
-import traceback
 import tushare as ts
 from datetime import datetime, timedelta
 from typing import List
-from ..analyze import CzscTrader, RawBar, KlineGenerator, get_default_signals
+from ..analyze import CzscTrader, RawBar, KlineGenerator
+from ..signals import get_default_signals
 from ..enum import Freq
 
 
@@ -24,6 +24,8 @@ freq_cn_map = {"1分钟": Freq.F1, "5分钟": Freq.F5, "15分钟": Freq.F15, "30
 
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
+
+pro = ts.pro_api()
 
 
 def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
@@ -79,6 +81,32 @@ def get_kline(ts_code: str,
     return bars[::-1]
 
 
+def get_ths_daily(ts_code='885760.TI',
+                  start_date: [datetime, str] = '20100101',
+                  end_date: [datetime, str] = '20210727') -> List[RawBar]:
+    """获取同花顺概念板块日线行情
+
+    :param ts_code: 同花顺概念板块代码
+    :param start_date: 开始日期
+    :param end_date: 结束日期
+    :return:
+    """
+    start_date = pd.to_datetime(start_date).strftime(date_fmt)
+    end_date = pd.to_datetime(end_date).strftime(date_fmt)
+    kline = pro.ths_daily(ts_code=ts_code, start_date=start_date, end_date=end_date,
+                          fields='ts_code,trade_date,open,close,high,low,vol')
+    kline = kline.sort_values('trade_date')
+    rows = kline.to_dict('records')
+
+    bars = []
+    for i, row in enumerate(rows):
+        bar = RawBar(symbol=row['ts_code'], freq=Freq.D, id=i,
+                     dt=pd.to_datetime(row['trade_date']), open=row['open'],
+                     close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
+        bars.append(bar)
+    return bars
+
+
 def get_init_kg(ts_code: str,
                 end_dt: [str, datetime] = None,
                 max_count: int = 3000,
@@ -127,6 +155,7 @@ def get_init_kg(ts_code: str,
             kg.update(row)
     return kg
 
+
 class TsCzscTrader(CzscTrader):
     def __init__(self, ts_code, end_dt=None, max_count=2000, asset='E',
                  freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线')):
@@ -135,9 +164,3 @@ class TsCzscTrader(CzscTrader):
         kg = get_init_kg(ts_code, end_dt, asset=asset, max_count=max_count, freqs=freqs)
         super(TsCzscTrader, self).__init__(kg, get_signals=get_default_signals, events=[])
 
-
-if __name__ == '__main__':
-    # 这里可以换成自己的股票池
-    ts_codes = ['603259.SH', '603288.SH', '603501.SH', '603986.SH']
-    k1 = get_kline(ts_code='000001.SH', asset='I', start_date='20210601', end_date='20210630', freq=Freq.F1)
-    kd = get_kline(ts_code='000001.SH', asset='I', start_date='20210601', end_date='20210630', freq=Freq.D)

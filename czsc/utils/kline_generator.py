@@ -36,6 +36,7 @@ def bar_end_time(dt: datetime, m=1):
                 return edt
     return dt
 
+
 class KlineGenerator:
     """K线生成器，仿实盘"""
 
@@ -143,6 +144,7 @@ class KlineGenerator:
     def __update_d(self, k=None):
         if "日线" not in self.freqs:
             return
+
         next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
         k = RawBar(symbol=k.symbol, id=1, freq=Freq.D, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.D:
@@ -159,10 +161,13 @@ class KlineGenerator:
     def __update_w(self, k=None):
         if "周线" not in self.freqs:
             return
+
         next_end_dt = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
-        k = RawBar(symbol=k.symbol, id=1, freq=Freq.W, dt=next_end_dt, open=k.open, close=k.close, high=k.high, low=k.low, vol=k.vol)
+        k = RawBar(symbol=k.symbol, id=1, freq=Freq.W, dt=next_end_dt, open=k.open,
+                   close=k.close, high=k.high, low=k.low, vol=k.vol)
         if not self.W:
             self.W.append(k)
+
         last = self.W[-1]
         if next_end_dt.weekday() == 0 and k.dt.weekday() != last.dt.weekday():
             k.id = last.id + 1
@@ -171,6 +176,25 @@ class KlineGenerator:
             self.W[-1] = self.__update_from_1min(last, k, next_end_dt)
 
         self.W = self.W[-self.max_count:]
+
+    def __update_m(self, k=None):
+        if "月线" not in self.freqs:
+            return
+
+        next_end_dt: datetime = k.dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        k = RawBar(symbol=k.symbol, id=1, freq=Freq.M, dt=next_end_dt, open=k.open,
+                   close=k.close, high=k.high, low=k.low, vol=k.vol)
+        if not self.M:
+            self.M.append(k)
+
+        last = self.M[-1]
+        if next_end_dt.month != last.dt.month:
+            k.id = last.id + 1
+            self.M.append(k)
+        else:
+            self.M[-1] = self.__update_from_1min(last, k, next_end_dt)
+
+        self.M = self.M[-self.max_count:]
 
     def update(self, k: RawBar):
         """输入1分钟、Tick最新数据，更新其他级别K线
@@ -183,7 +207,7 @@ class KlineGenerator:
         else:
             k.id = 0
         if self.end_dt and k.dt <= self.end_dt:
-            print("输入1分钟K时间小于最近一个更新时间，{} <= {}，不进行K线更新".format(k.dt, self.end_dt))
+            # print("输入1分钟K时间小于最近一个更新时间，{} <= {}，不进行K线更新".format(k.dt, self.end_dt))
             return
 
         self.end_dt = k.dt
@@ -191,10 +215,9 @@ class KlineGenerator:
 
         self.__update_1min(k)
         self.__update_minutes(k, minutes=(5, 15, 30, 60))
-        if "日线" in self.freqs:
-            self.__update_d(k)
-        if "周线" in self.freqs:
-            self.__update_w(k)
+        self.__update_d(k)
+        self.__update_w(k)
+        self.__update_m(k)
 
     def get_kline(self, freq: str, count: int = 1000) -> List[RawBar]:
         """获取单个级别的K线
@@ -219,4 +242,114 @@ class KlineGenerator:
         if counts is None:
             counts = {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
         return {k: self.get_kline(k, v) for k, v in counts.items()}
+
+
+class KlineGeneratorD:
+    """使用日线合成周线、月线、季线"""
+    def __init__(self, freqs: List[str] = None):
+        self.symbol = None
+        self.end_dt = None
+        if freqs:
+            self.freqs = freqs
+        else:
+            self.freqs: List[str] = [Freq.D.value, Freq.W.value, Freq.M.value, Freq.S.value, Freq.Y.value]
+        self.bars = {v: [] for v in self.freqs}
+
+    def __repr__(self):
+        return f"<KlineGeneratorD for {self.symbol} @ {self.end_dt}>"
+
+    def _update_w(self, bar: RawBar):
+        """更新周线"""
+        if not self.bars[Freq.W.value]:
+            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=0, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.W.value].append(bar_w)
+            return
+
+        last = self.bars[Freq.W.value][-1]
+        if bar.dt.isoweekday() == 1:
+            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=last.id + 1, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.W.value].append(bar_w)
+        else:
+
+            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
+                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
+            self.bars[Freq.W.value][-1] = bar_w
+
+    def _update_m(self, bar: RawBar):
+        """更新月线"""
+        if not self.bars[Freq.M.value]:
+            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=0, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.M.value].append(bar_m)
+            return
+
+        last: RawBar = self.bars[Freq.M.value][-1]
+        if bar.dt.month != last.dt.month:
+            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=last.id + 1, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.M.value].append(bar_m)
+        else:
+            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
+                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
+            self.bars[Freq.M.value][-1] = bar_m
+
+    def _update_s(self, bar: RawBar):
+        """更新季线"""
+        if not self.bars[Freq.S.value]:
+            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=0, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.S.value].append(bar_s)
+            return
+
+        last: RawBar = self.bars[Freq.S.value][-1]
+        if bar.dt.month != last.dt.month and bar.dt.month in [1, 4, 7, 10]:
+            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=last.id + 1, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.S.value].append(bar_s)
+        else:
+            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
+                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
+            self.bars[Freq.S.value][-1] = bar_s
+
+    def _update_y(self, bar: RawBar):
+        """更新年线"""
+        if not self.bars[Freq.Y.value]:
+            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=0, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.Y.value].append(bar_y)
+            return
+
+        last: RawBar = self.bars[Freq.Y.value][-1]
+        if bar.dt.year != last.dt.year:
+            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=last.id + 1, open=bar.open,
+                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+            self.bars[Freq.Y.value].append(bar_y)
+        else:
+            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
+                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
+            self.bars[Freq.Y.value][-1] = bar_y
+
+    def update(self, bar: RawBar):
+        assert bar.freq == Freq.D
+        self.symbol = bar.symbol
+        self.end_dt = bar.dt
+
+        if self.bars[Freq.D.value] and self.bars[Freq.D.value][-1].dt.date() == bar.dt.date():
+            return
+
+        self.bars[Freq.D.value].append(bar)
+
+        if Freq.W.value in self.freqs:
+            self._update_w(bar)
+
+        if Freq.M.value in self.freqs:
+            self._update_m(bar)
+
+        if Freq.S.value in self.freqs:
+            self._update_s(bar)
+
+        if Freq.Y.value in self.freqs:
+            self._update_y(bar)
 

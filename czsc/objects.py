@@ -76,6 +76,10 @@ class BI:
     length: float = None
     fake_bis: List[FakeBI] = None
 
+    def __post_init__(self):
+        self.sdt = self.fx_a.dt
+        self.edt = self.fx_b.dt
+
 @dataclass
 class Signal:
     signal: str = None
@@ -97,7 +101,7 @@ class Signal:
 
     def __post_init__(self):
         if not self.signal:
-            self.signal = self.__repr__()
+            self.signal = f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
         else:
             self.k1, self.k2, self.k3, self.v1, self.v2, self.v3, score = self.signal.split("_")
             self.score = int(score)
@@ -106,7 +110,7 @@ class Signal:
             raise ValueError("score 必须在0~100之间")
 
     def __repr__(self):
-        return f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
+        return f"Signal('{self.signal}')"
 
     @property
     def key(self) -> str:
@@ -164,10 +168,12 @@ class Factor:
                 return True
         return False
 
+
 @dataclass
 class Event:
     name: str
     operate: Operate
+
     # 多个信号组成一个因子，多个因子组成一个事件。
     # 单个事件是一系列同类型因子的集合，事件中的任一因子满足，则事件为真。
     factors: List[Factor]
@@ -176,9 +182,7 @@ class Event:
         """判断 event 是否满足"""
         for factor in self.factors:
             if factor.is_match(s):
+                # 顺序遍历，找到第一个满足的因子就退出。建议因子列表按关注度从高到低排序
                 return True, factor.name
+
         return False, None
-
-    def __repr__(self):
-        return f"{self.name}_{self.operate.value}"
-
