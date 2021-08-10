@@ -340,8 +340,16 @@ class KlineGeneratorD:
             return
 
         self.bars[Freq.D.value].append(bar)
-        self._update_w(bar)
-        self._update_m(bar)
-        self._update_s(bar)
-        self._update_y(bar)
+
+        if Freq.W.value in self.freqs:
+            self._update_w(bar)
+
+        if Freq.M.value in self.freqs:
+            self._update_m(bar)
+
+        if Freq.S.value in self.freqs:
+            self._update_s(bar)
+
+        if Freq.Y.value in self.freqs:
+            self._update_y(bar)
 
