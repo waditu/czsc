@@ -592,7 +592,7 @@ def get_s_like_bs(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
-    """倒数第i笔的表里关系信号
+    """倒数第1笔的表里关系信号
 
     :param c: CZSC 对象
     :return: 信号字典
@@ -625,7 +625,7 @@ def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
     return s
 
 def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
-    """倒数第0笔的信号
+    """倒数第0笔信号
 
     :param c: CZSC 对象
     :return: 信号字典
@@ -668,7 +668,7 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     return s
 
 def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
-    """倒数第i笔的信号
+    """倒数第i笔的表里关系信号
 
     :param c: CZSC 对象
     :param di: 最近一笔为倒数第i笔
@@ -722,7 +722,7 @@ def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
-    """倒数第i笔的三K形态信号
+    """倒数第i根K线的三K形态信号
 
     :param c: CZSC 对象
     :param di: 最近一根K线为倒数第i根
@@ -759,6 +759,83 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     if v and "其他" not in v.value:
         s[v.key] = v.value
 
+    return s
+
+def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
+    """获取倒数第i根K线的MACD相关信号"""
+    freq: Freq = c.freq
+    s = OrderedDict()
+
+    k1 = str(freq.value)
+    default_signals = [
+        Signal(k1=k1, k2="DIF", k3="状态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2="DEA", k3="状态", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    if len(c.bars_raw) < 100:
+        return s
+
+    if di == 1:
+        close = np.array([x.close for x in c.bars_raw[-100:]])
+    else:
+        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
+    dif, dea, macd = MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+
+    # DIF 状态信号
+    dif_base = sum([abs(dif[-2] - dif[-1]), abs(dif[-3] - dif[-2]), abs(dif[-4] - dif[-3])]) / 3
+    if dif[-1] > dif_base:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头")
+        if dif[-1] > dif[-2]:
+            v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头", v2="向上")
+    elif dif[-1] < -dif_base:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头")
+        if dif[-1] < dif[-2]:
+            v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头", v2="向下")
+    else:
+        v = Signal(k1=k1, k2="DIF", k3="状态", v1="模糊")
+    s[v.key] = v.value
+
+    # DEA 状态信号
+    dea_base = sum([abs(dea[-2] - dea[-1]), abs(dea[-3] - dea[-2]), abs(dea[-4] - dea[-3])]) / 3
+    if dea[-1] > dea_base:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头")
+        if dea[-1] > dea[-2]:
+            v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头", v2="向上")
+    elif dea[-1] < -dea_base:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头")
+        if dea[-1] < dea[-2]:
+            v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头", v2="向下")
+    else:
+        v = Signal(k1=k1, k2="DEA", k3="状态", v1="模糊")
+    s[v.key] = v.value
+    return s
+
+
+def get_s_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
+    """获取倒数第i根K线的信号"""
+    if c.freq not in [Freq.D, Freq.W]:
+        return OrderedDict()
+
+    if len(c.bars_raw) < di:
+        return OrderedDict()
+
+    s = OrderedDict()
+    freq: Freq = c.freq
+    k1 = str(freq.value)
+    default_signals = [
+        Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    k = c.bars_raw[-di]
+    if k.close > k.open:
+        v = Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="上涨")
+    else:
+        v = Signal(k1=k1, k2=f"倒{di}K", k3="状态", v1="下跌")
+    s[v.key] = v.value
     return s
 
 
@@ -799,11 +876,18 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
     """
     freq: Freq = c.freq
     s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-    # 倒0，特指未确认完成笔
-    # 倒1，倒数第1笔的缩写，表示第N笔
-    # 倒2，倒数第2笔的缩写，表示第N-1笔
-    # 倒3，倒数第3笔的缩写，表示第N-2笔
-    # 以此类推
+
+    s.update(get_s_three_k(c, 1))
+    s.update(get_s_bi_status(c))
+
+    for di in range(1, 3):
+        s.update(get_s_three_bi(c, di))
+
+    for di in range(1, 3):
+        s.update(get_s_base_xt(c, di))
+
+    for di in range(1, 3):
+        s.update(get_s_like_bs(c, di))
 
     default_signals = [
         # 以下是技术指标相关信号
@@ -811,30 +895,7 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
         Signal(k1=str(freq.value), k2="MA5状态", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="KDJ状态", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="MACD状态", v1="其他", v2='其他', v3='其他'),
-
-        Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="倒0笔", k3="潜在三买", v1="其他", v2='其他', v3='其他'),
-
-        Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="其他", v2='其他', v3='其他'),
-
-        # 以下是在本级别利用 3笔 进行分析得到的一些基础形态信号
-        Signal(k1=str(freq.value), k2="倒1笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒2笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒3笔", k3="三笔形态", v1="其他", v2='其他', v3='其他'),
-
-        # 以下是在本级别利用 5笔、7笔 进行分析得到的一些基础形态信号
-        Signal(k1=str(freq.value), k2="倒1笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒2笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒3笔", k3="基础形态", v1="其他", v2='其他', v3='其他'),
-
-        # 以下是在本级别利用 9笔、11笔、13笔 进行分析得到的类买卖点
-        Signal(k1=str(freq.value), k2="倒1笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒2笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=str(freq.value), k2="倒3笔", k3="类买卖点", v1="其他", v2='其他', v3='其他'),
     ]
     for signal in default_signals:
         s[signal.key] = signal.value
@@ -856,28 +917,16 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
     if len(c.bars_raw) > 100:
         close = np.array([x.close for x in c.bars_raw[-100:]])
         ma5 = SMA(close, timeperiod=5)
-        if c.bars_raw[-1].close >= ma5[-1] > ma5[-2] > ma5[-3]:
-            v = Signal(k1=str(freq.value), k2="MA5状态", v1="向上趋势", v2='收盘价在MA5上方')
+        if c.bars_raw[-1].close >= ma5[-1]:
+            v = Signal(k1=str(freq.value), k2="MA5状态", v1="收盘价在MA5上方", v2='')
             s[v.key] = v.value
+            if ma5[-1] > ma5[-2] > ma5[-3]:
+                v = Signal(k1=str(freq.value), k2="MA5状态", v1='收盘价在MA5上方', v2="向上趋势")
+                s[v.key] = v.value
+
         diff, dea, macd = MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
         if diff[-3:-1].mean() > 0 and dea[-3:-1].mean() > 0 and macd[-3] < macd[-2] < macd[-1]:
             v = Signal(k1=str(freq.value), k2="MACD状态", v1="DIFF大于0", v2='DEA大于0', v3='柱子增大')
-            s[v.key] = v.value
-
-    # 倒0笔三K形态
-    if len(c.bars_ubi) > 3:
-        tri = c.bars_ubi[-3:]
-        v = None
-        if tri[0].high > tri[1].high < tri[2].high:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="底分型")
-        elif tri[0].high < tri[1].high < tri[2].high:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="向上走")
-        elif tri[0].high < tri[1].high > tri[2].high:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="顶分型")
-        elif tri[0].high > tri[1].high > tri[2].high:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="向下走")
-
-        if v and "其他" not in v.value:
             s[v.key] = v.value
 
     # 倒0笔潜在三买
@@ -902,109 +951,5 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
             if v and "其他" not in v.value:
                 s[v.key] = v.value
 
-    min_ubi = min([x.low for x in c.bars_ubi])
-    max_ubi = max([x.high for x in c.bars_ubi])
-
-    if c.bi_list:
-        last_bi = c.bi_list[-1]
-        v = None
-        if last_bi.direction == Direction.Down:
-            if min_ubi < last_bi.low:
-                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="向下延伸")
-            else:
-                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="底分完成")
-        if last_bi.direction == Direction.Up:
-            if max_ubi > last_bi.high:
-                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="向上延伸")
-            else:
-                v = Signal(k1=str(freq.value), k2="倒1笔", k3="表里关系", v1="顶分完成")
-
-        if v and "其他" not in v.value:
-            s[v.key] = v.value
-
-    if (c.bi_list[-1].direction == Direction.Down and min_ubi >= c.bi_list[-1].low) \
-            or (c.bi_list[-1].direction == Direction.Up and max_ubi <= c.bi_list[-1].high):
-        bis = c.bi_list
-    else:
-        bis = c.bi_list[:-1]
-
-    if bis:
-        # 倒0笔方向
-        last_bi = bis[-1]
-        v = []
-        if last_bi.direction == Direction.Down:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上")
-        if last_bi.direction == Direction.Up:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向下")
-
-        if v and "其他" not in v.value:
-            s[v.key] = v.value
-
-        # 倒0笔长度
-        if len(c.bars_ubi) >= 9:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="9根K线以上")
-        elif 9 > len(c.bars_ubi) > 5:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5到9根K线")
-        else:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5根K线以下")
-
-        if "其他" not in v.value:
-            s[v.key] = v.value
-
-        # 倒1笔长度
-        last_bi = bis[-1]
-        if len(last_bi.bars) >= 15:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="15根K线以上")
-        elif 15 > len(c.bars_ubi) > 9:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="9到15根K线")
-        else:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="长度", v1="9根K线以下")
-
-        if "其他" not in v.value:
-            s[v.key] = v.value
-
-        # 倒1笔拟合优度
-        if last_bi.rsq > 0.8:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="大于0.8")
-        elif last_bi.rsq < 0.2:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="小于0.2")
-        else:
-            v = Signal(k1=str(freq.value), k2="倒1笔", k3="拟合优度", v1="0.2到0.8之间")
-
-        if "其他" not in v.value:
-            s[v.key] = v.value
-
-    if not bis:
-        return s
-
-    signals = [
-        check_three_bi(bis[-3:], freq, 1),
-        check_three_bi(bis[-4:-1], freq, 2),
-        check_three_bi(bis[-5:-2], freq, 3),
-
-        check_five_bi(bis[-5:], freq, 1),
-        check_five_bi(bis[-6:-1], freq, 2),
-        check_five_bi(bis[-7:-2], freq, 3),
-
-        check_seven_bi(bis[-7:], freq, 1),
-        check_seven_bi(bis[-8:-1], freq, 2),
-        check_seven_bi(bis[-9:-2], freq, 3),
-
-        check_nine_bi(bis[-9:], freq, 1),
-        check_nine_bi(bis[-10:-1], freq, 2),
-        check_nine_bi(bis[-11:-2], freq, 3),
-
-        check_eleven_bi(bis[-11:], freq, 1),
-        check_eleven_bi(bis[-12:-1], freq, 2),
-        check_eleven_bi(bis[-13:-2], freq, 3),
-
-        check_thirteen_bi(bis[-13:], freq, 1),
-        check_thirteen_bi(bis[-14:-1], freq, 2),
-        check_thirteen_bi(bis[-15:-2], freq, 3),
-    ]
-
-    for signal in signals:
-        if "其他" not in signal.value:
-            s[signal.key] = signal.value
     return s
 
