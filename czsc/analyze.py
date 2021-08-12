@@ -508,7 +508,7 @@ class CzscTrader:
             if self.cache['last_op'] == Operate.LO.value:
                 assert self.cache['long_open_price']
                 assert self.cache['long_open_k1_id']
-                if self.latest_price < self.cache.get('long_open_price', 0) * (1 - stoploss):
+                if self.latest_price < self.cache.get('long_max_high', 0) * (1 - stoploss):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_pos_stoploss_{stoploss}"
 
@@ -520,7 +520,7 @@ class CzscTrader:
                 assert self.cache['short_open_price']
                 assert self.cache['short_open_k1_id']
                 self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
-                if self.latest_price > self.cache.get('long_open_price', 10000000000) * (1 + stoploss):
+                if self.latest_price > self.cache.get('short_min_low', 10000000000) * (1 + stoploss):
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_pos_stoploss_{stoploss}"
 
