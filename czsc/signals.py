@@ -291,11 +291,11 @@ def check_nine_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Sign
                 > max([x.low for x in [bi3, bi5, bi7]]) > bi1.low == min_low:
             return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔GG三买')
 
-        if min_low == bi5.low and max_high == bi1.high and bi4.high < bi2.low:      # 前五笔构成向下类趋势
+        if min_low == bi5.low and max_high == bi1.high and bi4.high < bi2.low:  # 前五笔构成向下类趋势
             zd = max([x.low for x in [bi5, bi7]])
             zg = min([x.high for x in [bi5, bi7]])
             gg = max([x.high for x in [bi5, bi7]])
-            if zg > zd and bi8.high > gg:     # 567构成中枢，且8的高点大于gg
+            if zg > zd and bi8.high > gg:  # 567构成中枢，且8的高点大于gg
                 if bi9.low > zg:
                     return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三买', v2='九笔ZG三买')
 
@@ -338,11 +338,11 @@ def check_nine_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Sign
                 and bi9.high < max([x.low for x in [bi3, bi5, bi7]]) < min([x.high for x in [bi3, bi5, bi7]]):
             return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三卖', v2='九笔')
 
-        if min_low == bi1.low and max_high == bi5.high and bi2.high < bi4.low:      # 前五笔构成向上类趋势
+        if min_low == bi1.low and max_high == bi5.high and bi2.high < bi4.low:  # 前五笔构成向上类趋势
             zd = max([x.low for x in [bi5, bi7]])
             zg = min([x.high for x in [bi5, bi7]])
             dd = min([x.low for x in [bi5, bi7]])
-            if zg > zd and bi8.low < dd:     # 567构成中枢，且8的低点小于dd
+            if zg > zd and bi8.low < dd:  # 567构成中枢，且8的低点小于dd
                 if bi9.high < zd:
                     return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类三卖', v2='九笔ZD三卖')
 
@@ -499,6 +499,7 @@ def check_thirteen_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> 
                 return Signal(k1=freq.value, k2=di_name, k3='类买卖点', v1='类一卖', v2="13笔A5B5C3式")
     return v
 
+
 # 以上是信号计算的辅助函数，主要是形态识别等。
 # ----------------------------------------------------------------------------------------------------------------------
 # 以下是信号计算函数（前缀固定为 get_s）
@@ -523,11 +524,12 @@ def get_s_three_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     if di == 1:
         three_bi = bis[-3:]
     else:
-        three_bi = bis[-3-di+1: -di+1]
+        three_bi = bis[-3 - di + 1: -di + 1]
 
     v = check_three_bi(three_bi, freq, 2)
     s[v.key] = v.value
     return s
+
 
 def get_s_base_xt(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的基础形态信号
@@ -551,13 +553,14 @@ def get_s_base_xt(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         five_bi = bis[-5:]
         seven_bi = bis[-7:]
     else:
-        five_bi = bis[-5-di+1: -di+1]
-        seven_bi = bis[-7-di+1: -di+1]
+        five_bi = bis[-5 - di + 1: -di + 1]
+        seven_bi = bis[-7 - di + 1: -di + 1]
 
     for v in [check_five_bi(five_bi, freq, di), check_seven_bi(seven_bi, freq, di)]:
         if "其他" not in v.value:
             s[v.key] = v.value
     return s
+
 
 def get_s_like_bs(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的类买卖点信号
@@ -581,15 +584,16 @@ def get_s_like_bs(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         eleven_bi = bis[-11:]
         thirteen_bi = bis[-13:]
     else:
-        nine_bi = bis[-9-di+1: -di+1]
-        eleven_bi = bis[-11-di+1: -di+1]
-        thirteen_bi = bis[-13-di+1: -di+1]
+        nine_bi = bis[-9 - di + 1: -di + 1]
+        eleven_bi = bis[-11 - di + 1: -di + 1]
+        thirteen_bi = bis[-13 - di + 1: -di + 1]
 
     for v in [check_nine_bi(nine_bi, freq, di), check_eleven_bi(eleven_bi, freq, di),
               check_thirteen_bi(thirteen_bi, freq, di)]:
         if "其他" not in v.value:
             s[v.key] = v.value
     return s
+
 
 def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
     """倒数第1笔的表里关系信号
@@ -624,6 +628,7 @@ def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
             s[v.key] = v.value
     return s
 
+
 def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     """倒数第0笔信号
 
@@ -656,9 +661,10 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
             s[v.key] = v.value
 
         # 倒0笔长度
-        if len(c.bars_ubi) >= 9:
+        bars_ubi = [x for x in c.bars_raw[-20:] if x.dt >= bis[-1].fx_b.elements[0].dt]
+        if len(bars_ubi) >= 9:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="9根K线以上")
-        elif 9 > len(c.bars_ubi) > 5:
+        elif 9 > len(bars_ubi) > 5:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5到9根K线")
         else:
             v = Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="5根K线以下")
@@ -666,6 +672,7 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
         if "其他" not in v.value:
             s[v.key] = v.value
     return s
+
 
 def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的表里关系信号
@@ -721,6 +728,7 @@ def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         s[v.key] = v.value
     return s
 
+
 def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i根K线的三K形态信号
 
@@ -743,7 +751,7 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     if di == 1:
         tri = c.bars_ubi[-3:]
     else:
-        tri = c.bars_ubi[-3-di+1:-di+1]
+        tri = c.bars_ubi[-3 - di + 1:-di + 1]
 
     if tri[0].high > tri[1].high < tri[2].high:
         v = Signal(k1=k1, k2=k2, k3="三K形态", v1="底分型")
@@ -760,6 +768,7 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         s[v.key] = v.value
 
     return s
+
 
 def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """获取倒数第i根K线的MACD相关信号"""
@@ -780,7 +789,7 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     if di == 1:
         close = np.array([x.close for x in c.bars_raw[-100:]])
     else:
-        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
+        close = np.array([x.close for x in c.bars_raw[-100 - di + 1:-di + 1]])
     dif, dea, macd = MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
     # DIF 状态信号
@@ -952,4 +961,3 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
                 s[v.key] = v.value
 
     return s
-

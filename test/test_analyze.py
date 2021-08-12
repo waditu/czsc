@@ -3,9 +3,11 @@ import zipfile
 from tqdm import tqdm
 from czsc.analyze import *
 from czsc.enum import Freq
+from czsc import signals
 from czsc.signals import get_default_signals, get_s_three_bi
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
+
 
 def read_1min():
     with zipfile.ZipFile(os.path.join(cur_path, 'data/000001.XSHG_1min.zip'), 'r') as z:
@@ -48,10 +50,11 @@ def test_find_bi():
                 bars1.append(k3)
 
     fxs = []
-    for i in range(1, len(bars1)-1):
-        fx = check_fx(bars1[i-1], bars1[i], bars1[i+1])
+    for i in range(1, len(bars1) - 1):
+        fx = check_fx(bars1[i - 1], bars1[i], bars1[i + 1])
         if isinstance(fx, FX):
             fxs.append(fx)
+
 
 def get_user_signals(c: CZSC) -> OrderedDict:
     """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
@@ -114,5 +117,21 @@ def test_czsc_trader():
     assert len(ct.s) == 177
 
 
+def test_get_signals():
 
+    def get_test_signals(c: CZSC) -> OrderedDict:
+        s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
+        s.update(signals.get_s_d0_bi(c))
+        return s
 
+    file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
+    kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
+    bars = [RawBar(symbol=row['symbol'], id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
+                   close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
+            for i, row in kline.iterrows()]
+
+    # 不计算任何信号
+    c = CZSC(bars, max_bi_count=50, get_signals=get_test_signals)
+    assert c.signals['日线_倒0笔_方向'] == '向下_任意_任意_0'
+    assert c.signals['日线_倒0笔_长度'] == '5到9根K线_任意_任意_0'
