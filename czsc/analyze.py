@@ -478,6 +478,8 @@ class CzscTrader:
 
         :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
         :param stoploss: 止损退出参数，0.1 表示10个点止损
+            多头止损：当前价 < 买入后的最高价 * （1 - stoploss）
+            空头止损：当前价 > 买入后的最低价 * （1 + stoploss）
         :param bar: 单根K线对象
         :return: 操作提示
         """
