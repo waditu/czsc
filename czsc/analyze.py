@@ -562,14 +562,16 @@ class CzscTrader:
         else:
             assert op['operate'] == Operate.HO.value
             if self.cache['last_op'] and self.cache['last_op'] == Operate.LO.value:
-                assert self.cache['long_open_price']
-                assert self.cache['long_open_k1_id']
+                assert self.cache['long_open_price'] > 0
+                assert self.cache['long_open_k1_id'] > 0
                 self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
+                assert self.cache['long_max_high'] > 0
 
             if self.cache['last_op'] and self.cache['last_op'] == Operate.SO.value:
-                assert self.cache['short_open_price']
-                assert self.cache['short_open_k1_id']
+                assert self.cache['short_open_price'] > 0
+                assert self.cache['short_open_k1_id'] > 0
                 self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
+                assert self.cache['short_min_low'] > 0
 
         self.op = op
         return op
