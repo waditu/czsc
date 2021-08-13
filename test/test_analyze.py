@@ -88,7 +88,7 @@ def test_czsc_update():
 
     # 计算信号
     c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals)
-    assert isinstance(c.signals, OrderedDict) and len(c.signals) == 31
+    assert isinstance(c.signals, OrderedDict) and len(c.signals) == 34
 
     # 测试自定义信号
     c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals)
@@ -110,11 +110,11 @@ def test_czsc_trader():
         kg.update(row)
 
     ct = CzscTrader(kg, get_signals=get_default_signals, events=[])
-    assert len(ct.s) == 177
+    assert len(ct.s) == 190
     for row in tqdm(bars[-100:]):
         op = ct.check_operate(row)
         print(op)
-    assert len(ct.s) == 177
+    assert len(ct.s) == 190
 
 
 def test_get_signals():
