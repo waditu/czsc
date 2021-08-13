@@ -546,6 +546,7 @@ class CzscTrader:
                 "long_open_k1_id": self.kg.m1[-1].id,
                 "last_op": Operate.LO.value
             })
+            self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
         elif op['operate'] == Operate.SE.value:
             self.cache.update({
                 "short_open_price": -1,
@@ -559,6 +560,7 @@ class CzscTrader:
                 "short_open_k1_id": self.kg.m1[-1].id,
                 "last_op": Operate.SO.value
             })
+            self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
         else:
             assert op['operate'] == Operate.HO.value
             if self.cache['last_op'] and self.cache['last_op'] == Operate.LO.value:
