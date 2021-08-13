@@ -864,6 +864,8 @@ def get_default_signals(c: analyze.CZSC) -> OrderedDict:
     s.update(get_s_d0_bi(c))
     s.update(get_s_three_k(c, 1))
     s.update(get_s_di_bi(c, 1))
+    s.update(get_s_macd(c, 1))
+    s.update(get_s_k(c, 1))
     s.update(get_s_bi_status(c))
 
     for di in range(1, 8):

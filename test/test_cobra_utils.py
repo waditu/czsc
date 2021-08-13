@@ -12,7 +12,7 @@ from czsc.cobra.utils import drop_duplicates_by_window
 from czsc.objects import RawBar
 from czsc.enum import Freq
 
-warnings.warn("czsc version is {}".format(czsc.__version__))
+warnings.warn(f"czsc version is {czsc.__version__}_{czsc.__date__}")
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 
