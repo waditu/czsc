@@ -413,12 +413,12 @@ class CzscTrader:
         # cache 中会缓存一些实盘交易中需要的信息
         self.cache = OrderedDict({
             "last_op": None,            # 最近一个操作类型
-            "long_open_price": None,    # 多仓开仓价格
-            "long_max_high": None,      # 多仓开仓后的最高价
-            "long_open_k1_id": None,    # 多仓开仓时的1分钟K线ID
-            "short_open_price": None,   # 空仓开仓价格
-            "short_min_low": None,      # 空仓开仓后的最低价
-            "short_open_k1_id": None,   # 空仓开仓后的1分钟K线ID
+            "long_open_price": -1,    # 多仓开仓价格
+            "long_max_high": -1,      # 多仓开仓后的最高价
+            "long_open_k1_id": -1,    # 多仓开仓时的1分钟K线ID
+            "short_open_price": -1,   # 空仓开仓价格
+            "short_min_low": -1,      # 空仓开仓后的最低价
+            "short_open_k1_id": -1,   # 空仓开仓后的1分钟K线ID
         })
 
     def __repr__(self):
@@ -478,6 +478,8 @@ class CzscTrader:
 
         :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
         :param stoploss: 止损退出参数，0.1 表示10个点止损
+            多头止损：当前价 < 买入后的最高价 * （1 - stoploss）
+            空头止损：当前价 > 买入后的最低价 * （1 + stoploss）
         :param bar: 单根K线对象
         :return: 操作提示
         """
@@ -506,9 +508,10 @@ class CzscTrader:
         # 判断是否达到异常退出条件
         if op['operate'] == Operate.HO.value and self.cache['last_op']:
             if self.cache['last_op'] == Operate.LO.value:
-                assert self.cache['long_open_price']
-                assert self.cache['long_open_k1_id']
-                if self.latest_price < self.cache.get('long_open_price', 0) * (1 - stoploss):
+                assert self.cache['long_open_price'] > 0
+                assert self.cache['long_max_high'] > 0
+                assert self.cache['long_open_k1_id'] > 0
+                if self.latest_price < self.cache.get('long_max_high', 0) * (1 - stoploss):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_pos_stoploss_{stoploss}"
 
@@ -517,10 +520,11 @@ class CzscTrader:
                     op['desc'] = f"long_pos_timeout_{timeout}"
 
             if self.cache['last_op'] == Operate.SO.value:
-                assert self.cache['short_open_price']
-                assert self.cache['short_open_k1_id']
+                assert self.cache['short_open_price'] > 0
+                assert self.cache['short_min_low'] > 0
+                assert self.cache['short_open_k1_id'] > 0
                 self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
-                if self.latest_price > self.cache.get('long_open_price', 10000000000) * (1 + stoploss):
+                if self.latest_price > self.cache.get('short_min_low', 10000000000) * (1 + stoploss):
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_pos_stoploss_{stoploss}"
 
@@ -531,43 +535,45 @@ class CzscTrader:
         # update cache
         if op['operate'] == Operate.LE.value:
             self.cache.update({
-                "long_open_price": None,
-                "long_open_k1_id": None,
-                "long_max_high": None,
+                "long_open_price": -1,
+                "long_open_k1_id": -1,
+                "long_max_high": -1,
                 "last_op": Operate.LE.value
             })
         elif op['operate'] == Operate.LO.value:
             self.cache.update({
                 "long_open_price": self.latest_price,
                 "long_open_k1_id": self.kg.m1[-1].id,
-                "long_max_high": self.latest_price,
                 "last_op": Operate.LO.value
             })
+            self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
         elif op['operate'] == Operate.SE.value:
             self.cache.update({
-                "short_open_price": None,
-                "short_open_k1_id": None,
-                "short_min_low": None,
+                "short_open_price": -1,
+                "short_open_k1_id": -1,
+                "short_min_low": -1,
                 "last_op": Operate.SE.value
             })
         elif op['operate'] == Operate.SO.value:
             self.cache.update({
                 "short_open_price": self.latest_price,
                 "short_open_k1_id": self.kg.m1[-1].id,
-                "short_min_low": self.latest_price,
                 "last_op": Operate.SO.value
             })
+            self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
         else:
             assert op['operate'] == Operate.HO.value
             if self.cache['last_op'] and self.cache['last_op'] == Operate.LO.value:
-                assert self.cache['long_open_price']
-                assert self.cache['long_open_k1_id']
+                assert self.cache['long_open_price'] > 0
+                assert self.cache['long_open_k1_id'] > 0
                 self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
+                assert self.cache['long_max_high'] > 0
 
             if self.cache['last_op'] and self.cache['last_op'] == Operate.SO.value:
-                assert self.cache['short_open_price']
-                assert self.cache['short_open_k1_id']
+                assert self.cache['short_open_price'] > 0
+                assert self.cache['short_open_k1_id'] > 0
                 self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
+                assert self.cache['short_min_low'] > 0
 
         self.op = op
         return op
