@@ -102,6 +102,7 @@ def monitor(use_cache=True):
     ]
     for s in symbols:
         print(s)
+        current_date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
@@ -115,7 +116,7 @@ def monitor(use_cache=True):
             file_html = os.path.join(moni_path, f"{ct.symbol}_{ct.end_dt.strftime('%Y%m%d%H%M')}.html")
             ct.take_snapshot(file_html, width="1400px", height="580px")
 
-            msg = f"标的代码：{s}\n同花顺F10：http://basic.10jqka.com.cn/{s.split('.')[0]}\n"
+            msg = f"标的代码：{s} {current_date_str} \n同花顺F10：http://basic.10jqka.com.cn/{s.split('.')[0]}\n"
             for event in events_monitor:
                 m, f = event.is_match(ct.s)
                 if m:
@@ -128,7 +129,7 @@ def monitor(use_cache=True):
             traceback.print_exc()
             print("{} 执行失败 - {}".format(s, e))
 
-    push_text("自选股CZSC笔因子监控结束 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")), qywx_key)
+    push_text("自选股CZSC笔因子监控结束 @ {}".format(current_date_str), qywx_key)
 
 
 def run_monitor():
