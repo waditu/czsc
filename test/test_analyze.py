@@ -124,9 +124,11 @@ def test_czsc_trader():
     ]
     ct = CzscTrader(kg, get_signals=get_default_signals, events=events)
     assert len(ct.s) == 190
-    for row in tqdm(bars[-10000:]):
-        op = ct.check_operate(row)
-        print(op, ct.cache)
+    for row in bars[-10000:]:
+        # op = ct.check_operate(row)
+        op = ct.check_operate_v1(row)
+        print(" : op    : ", op)
+        print(" : cache : ", dict(ct.cache), "\n")
     assert len(ct.s) == 190
 
 
