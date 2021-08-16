@@ -473,7 +473,7 @@ class CzscTrader:
         s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
         return s
 
-    def check_operate(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
+    def check_operate_old(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
         """更新信号，计算下一个操作动作
 
         :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
@@ -578,7 +578,7 @@ class CzscTrader:
         self.op = op
         return op
 
-    def check_operate_v1(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
+    def check_operate(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
         """更新信号，计算下一个操作动作
 
         :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
