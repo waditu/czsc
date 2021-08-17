@@ -294,7 +294,8 @@ class CZSC:
             bars_ubi_a = bars_ubi
 
         if len(bars_ubi_a) > 300:
-            print("{} - {} 未完成笔延伸超长，延伸数量: {}".format(self.symbol, self.freq, len(bars_ubi_a)))
+            print(f"{self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸超长，延伸数量: {len(bars_ubi_a)}")
+
         bi, bars_ubi_ = check_bi(bars_ubi_a)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
