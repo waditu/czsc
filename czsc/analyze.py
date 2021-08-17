@@ -628,6 +628,10 @@ class CzscTrader:
         elif last_op == Operate.HL.value:
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
+                self.cache.update({
+                    "long_open_price": self.latest_price,
+                    "long_open_k1_id": self.kg.m1[-1].id,
+                })
             else:
                 # 判断是否达到多头异常退出条件
                 assert self.cache['long_open_price'] > 0
@@ -644,6 +648,10 @@ class CzscTrader:
         elif last_op == Operate.HS.value:
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
+                self.cache.update({
+                    "short_open_price": self.latest_price,
+                    "short_open_k1_id": self.kg.m1[-1].id,
+                })
             else:
                 # 判断是否达到空头异常退出条件
                 assert self.cache['short_open_price'] > 0
