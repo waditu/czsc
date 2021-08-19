@@ -522,17 +522,16 @@ class CzscTrader:
             op['operate'] = Operate.HO.value
 
         elif last_op == Operate.HL.value:
+            assert self.cache['long_open_price'] > 0
+            assert self.cache['long_max_high'] > 0
+            assert self.cache['long_open_k1_id'] > 0
+
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
-                self.cache.update({
-                    "long_open_price": self.latest_price,
-                    "long_open_k1_id": self.kg.m1[-1].id,
-                })
+                self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
+                self.cache['long_open_k1_id'] = self.kg.m1[-1].id
             else:
                 # 判断是否达到多头异常退出条件
-                assert self.cache['long_open_price'] > 0
-                assert self.cache['long_max_high'] > 0
-                assert self.cache['long_open_k1_id'] > 0
                 if self.latest_price < self.cache.get('long_max_high', 0) * (1 - stoploss):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_stoploss_{stoploss}"
@@ -542,17 +541,16 @@ class CzscTrader:
                     op['desc'] = f"long_timeout_{timeout}"
 
         elif last_op == Operate.HS.value:
+            assert self.cache['short_open_price'] > 0
+            assert self.cache['short_min_low'] > 0
+            assert self.cache['short_open_k1_id'] > 0
+
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
-                self.cache.update({
-                    "short_open_price": self.latest_price,
-                    "short_open_k1_id": self.kg.m1[-1].id,
-                })
+                self.cache['short_open_price'] = max(self.cache['short_open_price'], self.latest_price)
+                self.cache['short_open_k1_id'] = self.kg.m1[-1].id
             else:
                 # 判断是否达到空头异常退出条件
-                assert self.cache['short_open_price'] > 0
-                assert self.cache['short_min_low'] > 0
-                assert self.cache['short_open_k1_id'] > 0
                 self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
                 if self.latest_price > self.cache.get('short_min_low', 10000000000) * (1 + stoploss):
                     op['operate'] = Operate.SE.value
