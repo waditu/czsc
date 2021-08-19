@@ -526,7 +526,7 @@ def get_s_three_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     else:
         three_bi = bis[-3 - di + 1: -di + 1]
 
-    v = check_three_bi(three_bi, freq, 2)
+    v = check_three_bi(three_bi, freq, di)
     s[v.key] = v.value
     return s
 
