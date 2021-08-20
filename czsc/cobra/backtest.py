@@ -135,6 +135,8 @@ def long_trade_simulator(signals: List[dict],
 
     pf = long_trade_estimator(pairs)
     pf['基准收益（%）'] = int((signals[-1]['close'] - signals[0]['open']) / signals[0]['open'] * 10000) / 100
+    pf['开始时间'] = signals[0]['dt'].strftime("%Y-%m-%d %H:%M")
+    pf['结束时间'] = signals[-1]['dt'].strftime("%Y-%m-%d %H:%M")
     return pairs, pf
 
 
@@ -185,4 +187,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
 
     pf = long_trade_estimator(pairs)
     pf['基准收益（%）'] = int((signals[-1]['close'] - signals[0]['open']) / signals[0]['open'] * 10000) / 100
+    pf['开始时间'] = signals[0]['dt'].strftime("%Y-%m-%d %H:%M")
+    pf['结束时间'] = signals[-1]['dt'].strftime("%Y-%m-%d %H:%M")
     return pairs, pf
+
