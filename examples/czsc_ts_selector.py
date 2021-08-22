@@ -12,9 +12,7 @@ from tqdm import tqdm
 from collections import OrderedDict
 from czsc.data import ts
 from czsc import signals, CZSC
-from czsc.utils.io import read_pkl, save_pkl
 from czsc.objects import Signal, Factor, Event, Freq, Operate
-from czsc.utils.kline_generator import KlineGeneratorD
 
 
 def stocks_dwm_selector(end_date: [str, datetime] = datetime.now(), data_path=None):
@@ -27,9 +25,6 @@ def stocks_dwm_selector(end_date: [str, datetime] = datetime.now(), data_path=No
         data_path = os.path.join(home_path, '.czsc_selector')
 
     print(f"selector results path: {data_path}")
-
-    kgd_path = os.path.join(data_path, 'kgd')
-    os.makedirs(kgd_path, exist_ok=True)
 
     df = ts.pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
     records = df.to_dict('records')
@@ -70,31 +65,13 @@ def stocks_dwm_selector(end_date: [str, datetime] = datetime.now(), data_path=No
     for row in tqdm(records, desc=f"{end_date.strftime('%Y%m%d')} selector"):
         symbol = row['ts_code']
         try:
-            file_kgd = os.path.join(kgd_path, f'{symbol}.kgd')
-            if os.path.exists(file_kgd):
-                kgd: KlineGeneratorD = read_pkl(file_kgd)
-                if kgd.end_dt.date() != datetime.now().date() and datetime.now().isoweekday() <= 5:
-                    k0 = ts.get_kline(symbol, asset='E', freq=Freq.D, start_date=kgd.end_dt, end_date=datetime.now())
-                    k0 = [x for x in k0 if x.dt > kgd.end_dt]
-                    if k0:
-                        print(k0)
-                        for bar in k0:
-                            kgd.update(bar)
-            else:
-                k0 = ts.get_kline(symbol, asset='E', freq=Freq.D, start_date="20100101", end_date=datetime.now())
-                kgd = KlineGeneratorD()
-                for bar in k0:
-                    kgd.update(bar)
-            save_pkl(kgd, file_kgd)
-            # assert kgd.end_dt.date() == datetime.now().date(), f"kgd.end_dt = {kgd.end_dt}"
-            print(kgd)
-            last_vols = [k_.open * k_.vol for k_ in kgd.bars[Freq.D.value][-10:]]
-            if sum(last_vols) < 15e8 or min(last_vols) < 1e8:
-                continue
+            k0 = ts.get_kline(symbol, asset='E', freq=Freq.D, start_date="20200101", end_date=end_date)
+            k1 = ts.get_kline(symbol, asset='E', freq=Freq.W, start_date="20100101", end_date=end_date)
+            k2 = ts.get_kline(symbol, asset='E', freq=Freq.M, start_date="20000101", end_date=end_date)
 
-            c0 = CZSC(kgd.bars[Freq.D.value][-1000:], get_signals=signals.get_selector_signals)
-            c1 = CZSC(kgd.bars[Freq.W.value][-1000:], get_signals=signals.get_selector_signals)
-            c2 = CZSC(kgd.bars[Freq.M.value][-1000:], get_signals=signals.get_selector_signals)
+            c0 = CZSC(k0, get_signals=signals.get_selector_signals)
+            c1 = CZSC(k1, get_signals=signals.get_selector_signals)
+            c2 = CZSC(k2, get_signals=signals.get_selector_signals)
 
             s = OrderedDict(row)
             s.update(c0.signals)
@@ -105,16 +82,11 @@ def stocks_dwm_selector(end_date: [str, datetime] = datetime.now(), data_path=No
             m, f = event.is_match(s)
             if m:
                 dt_fmt = "%Y%m%d"
-                msg = f"{s['sec_name']}: {f}\n"
-                msg += f"最新时间：{kgd.end_dt.strftime(dt_fmt)}\n"
-                msg += f"同花顺F10：http://basic.10jqka.com.cn/{symbol.split('.')[1]}\n"
-                msg += f"新浪行情：https://finance.sina.com.cn/realstock/company/{symbol[:2].lower()}{symbol[-6:]}/nc.shtml"
-
                 res = {
                     'symbol': symbol,
-                    'name': s['sec_name'],
+                    'name': s['name'],
                     'reason': f,
-                    'end_dt': kgd.end_dt.strftime(dt_fmt),
+                    'end_dt': k0[-1].dt.strftime(dt_fmt),
                     'F10': f"http://basic.10jqka.com.cn/{symbol.split('.')[1]}",
                     'Kline': f"https://finance.sina.com.cn/realstock/company/{symbol[:2].lower()}{symbol[-6:]}/nc.shtml"
                 }
