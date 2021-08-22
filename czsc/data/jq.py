@@ -8,6 +8,7 @@ from collections import OrderedDict
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Callable
+from urllib.parse import quote
 
 from ..objects import RawBar, Event
 from ..enum import Freq
@@ -52,8 +53,8 @@ def get_token():
 
     body = {
         "method": "get_current_token",
-        "mob": jq_mob,  # mob是申请JQData时所填写的手机号
-        "pwd": jq_pwd,  # Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+        "mob": jq_mob,          # mob是申请JQData时所填写的手机号
+        "pwd": quote(jq_pwd),   # Password为聚宽官网登录密码，新申请用户默认为手机号后6位
     }
     response = requests.post(url, data=json.dumps(body))
     token = response.text
