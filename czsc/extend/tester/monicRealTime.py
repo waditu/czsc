@@ -22,7 +22,7 @@ ct_path = os.path.join("d:\\data", "czsc_traders")
 os.makedirs(ct_path, exist_ok=True)
 
 # 定义需要监控的股票列表
-symbols = ["399006.XSHE", "603958.XSHG"]
+symbols = ["399006.XSHE", "603958.XSHG", "600031.XSHG", "002261.XSHG"]
 qywx_key = ""
 
 
