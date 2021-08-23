@@ -16,7 +16,7 @@ ct_path = os.path.join("d:\\data", "czsc_traders")
 os.makedirs(ct_path, exist_ok=True)
 symbol = '399006.XSHE'
 
-
+my_dic_container = {}
 def start():
     moni_path = os.path.join(ct_path, "monitor")
     if os.path.exists(moni_path):
@@ -89,8 +89,8 @@ def start():
         ]),
     ]
     try:
-        current_date: datetime = pd.to_datetime('2021-07-28')
-        end_date = pd.to_datetime("2021-08-08")
+        current_date: datetime = pd.to_datetime('2021-08-10')
+        end_date = pd.to_datetime("2021-08-20")
         ct = CzscTrader(symbol, max_count=1000, end_date=current_date)
         data = get_kline(symbol, end_date=end_date, start_date=current_date, freq="1min")
 
@@ -100,14 +100,18 @@ def start():
             msg = f"标的代码：{symbol}\n同花顺F10：http://basic.10jqka.com.cn/{symbol.split('.')[0]}\n"
             for event in events_monitor:
                 m, f = event.is_match(ct.s)
+                container_key = "{}{}{}".format(symbol, f, item.dt.strftime('%Y-%m-%d'))
                 if m:
-                    print("监控提醒：date{} {}@{}\n".format(item.dt.strftime('%Y-%m-%d  %H:%M'), event.name, f))
-                    key = item.dt.strftime('%Y-%m-%d') + f
-                    contains = hit_event.get(key)
-                    if contains is None:
-                        hit_event[key] = '1'
-                        msg += "监控提醒：date{} {}@{}\n".format(item.dt.strftime('%Y-%m-%d  %H:%M'), event.name, f)
-                        hit_event
+                    result = my_dic_container.get(container_key, None)
+                    if result is None:
+                        print("监控提醒：date{} {}@{}\n".format(item.dt.strftime('%Y-%m-%d  %H:%M'), event.name, f))
+                        key = item.dt.strftime('%Y-%m-%d') + f
+                        contains = hit_event.get(key)
+                        if contains is None:
+                            hit_event[key] = '1'
+                            my_dic_container[container_key] = 1
+                            msg += "监控提醒：date{} {}@{}\n".format(item.dt.strftime('%Y-%m-%d  %H:%M'), event.name, f)
+                            hit_event
             if "监控提醒" in msg:
                 push_text(msg.strip("\n"))
                 # 每次执行，会在moni_path下面保存一份快照
