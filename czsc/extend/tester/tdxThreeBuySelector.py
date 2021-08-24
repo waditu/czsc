@@ -11,6 +11,7 @@ import czsc
 
 import traceback
 from datetime import datetime
+import pandas as pd
 from typing import List
 from czsc.analyze import CZSC
 from czsc.signals import get_default_signals, get_selector_signals
@@ -62,7 +63,7 @@ def is_bc(symbol):
             Signal("30分钟_倒1笔_类买卖点_类二买_任意_任意_0"),
         ],
         signals_all=[
-           # Signal("30分钟_倒0笔_潜在三买_构成中枢_任意_任意_0")
+            # Signal("30分钟_倒0笔_潜在三买_构成中枢_任意_任意_0")
         ]
     )
     # c.open_in_browser()
@@ -74,8 +75,8 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    #symbols: List = get_index_stocks("399008.XSHE")
-    symbols: List = ['002010.XSHE']
+    # symbols: List = get_index_stocks("399008.XSHE")
+    symbols: List = read_csv_symbol()
     only_three_buy: List = []
     bc_buy: List = []
     for symbol in symbols:
@@ -95,6 +96,20 @@ def run_jq_selector():
     print(only_three_buy)
     print(bc_buy)
     print("end")
+
+
+def read_csv_symbol():
+    data = pd.read_csv("d:/data/Table.csv", encoding="GB2312")
+    list = []
+    for index, row in data.iterrows():
+        symbol = row.iloc[0]
+        market = symbol[0:2]
+        if market == 'SZ':
+            list.append('{}.XSHE'.format(symbol[2:]))
+        else:
+            list.append('{}.XSHG'.format(symbol[2:]))
+
+    return list
 
 
 if __name__ == '__main__':

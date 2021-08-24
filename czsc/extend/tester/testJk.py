@@ -24,3 +24,8 @@ def test_get_all_index():
 def test_get_stock_by_index():
     # 根据指数获取股票
     print(get_index_stocks("399808.XSHE"))
+
+
+def test_finantional():
+    orderedDictList = get_share_basic("600329.XSHG")
+
