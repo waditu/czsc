@@ -15,6 +15,8 @@ from czsc.data.jq import JqCzscTrader as CzscTrader
 from czsc.objects import Signal, Factor, Event, Operate
 from czsc.utils.io import read_pkl, save_pkl
 from czsc.extend.utils import push_text
+from czsc.extend.tdx import TdxStoreage, Market, get_kline
+
 
 # =======================================================================================================
 # 基础参数配置
@@ -37,12 +39,7 @@ my_dic_container = {}
 
 
 def monitor(use_cache=True):
-    push_text("自选股CZSC笔因子监控启动 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")))
     moni_path = os.path.join(ct_path, "monitor")
-    print(moni_path)
-    # 首先清空历史快照
-    if os.path.exists(moni_path):
-        shutil.rmtree(moni_path)
     os.makedirs(moni_path, exist_ok=True)
     events_monitor = [
         # 开多
@@ -143,8 +140,6 @@ def monitor(use_cache=True):
         except Exception as e:
             traceback.print_exc()
             print("{} 执行失败 - {}".format(s, e))
-
-    push_text("自选股CZSC笔因子监控结束 @ {}".format(current_date_str), qywx_key)
 
 
 def run_monitor():
