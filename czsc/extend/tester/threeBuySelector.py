@@ -16,7 +16,7 @@ from czsc.analyze import CZSC
 from czsc.signals import get_default_signals, get_selector_signals
 from czsc.objects import Signal, Factor
 
-assert czsc.__version__ == '0.7.3'
+assert czsc.__version__ == '0.7.4'
 
 # 首次使用需要设置聚宽账户，以下大部分案例依赖聚宽数据
 # set_token("phone number", 'password') # 第一个参数是JQData的手机号，第二个参数是登录密码
@@ -80,8 +80,9 @@ def is_bc(symbol):
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
-    #symbols: List = get_index_stocks("399008.XSHE")
-    symbols: List = ['600338.XSHG']
+    # symbols: List = get_index_stocks("399008.XSHE")
+    # symbols: List = ['600338.XSHG']
+    symbols = read_csv_symbol()
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
@@ -93,6 +94,20 @@ def run_jq_selector():
             print("{} - 执行失败".format(symbol))
             traceback.print_exc()
     print("end")
+
+
+def read_csv_symbol():
+    data = pd.read_csv("d:/data/Table.csv", encoding="GB2312")
+    list = []
+    for index, row in data.iterrows():
+        symbol = row.iloc[0]
+        market = symbol[0:2]
+        if market == 'SZ':
+            list.append('{}.XSHE'.format(symbol[2:]))
+        else:
+            list.append('{}.XSHG'.format(symbol[2:]))
+
+    return list
 
 
 if __name__ == '__main__':
