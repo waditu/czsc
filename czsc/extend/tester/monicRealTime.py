@@ -17,7 +17,6 @@ from czsc.utils.io import read_pkl, save_pkl
 from czsc.extend.utils import push_text
 from czsc.extend.tdx import TdxStoreage, Market, get_kline
 
-
 # =======================================================================================================
 # 基础参数配置
 ct_path = os.path.join("d:\\data", "czsc_traders")
@@ -31,7 +30,7 @@ os.makedirs(ct_path, exist_ok=True)
 #            "515000.XSHG", "512000.XSHG", "512710.XSHG", "512980.XSHG", "510230.XSHG", "512290.XSHG", "512010.XSHG",
 #            "159938.XSHE", "512880.XSHG", "159939.XSHE", "515050.XSHG" ]
 
-symbols = ["600763.XSHG", "399006.XSHE", "600031.XSHG", "603958.XSHG"]
+symbols = ["600763.XSHG", "399006.XSHE", "600031.XSHG", "603958.XSHG", "600963.XSHG"]
 
 qywx_key = ""
 
@@ -109,7 +108,7 @@ def monitor(use_cache=True):
     ]
     for s in symbols:
         current_date_str = datetime.now().strftime("%Y-%m-%d %H:%M")
-        print("{}.{}".format(s,current_date_str))
+        print("{}.{}".format(s, current_date_str))
         try:
             file_ct = os.path.join(ct_path, "{}.ct".format(s))
             if os.path.exists(file_ct) and use_cache:
