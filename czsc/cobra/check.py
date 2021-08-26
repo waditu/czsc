@@ -10,7 +10,7 @@ from tqdm import tqdm
 from typing import Dict, List, Callable
 from datetime import timedelta
 
-from ..objects import RawBar, Signal, Factor, Event, Freq
+from ..objects import RawBar, Signal, Freq
 from ..analyze import KlineGenerator, CzscTrader
 from ..signals import get_default_signals
 from ..utils.cache import home_path
@@ -38,7 +38,7 @@ def check_signals_acc(f1_raw_bars: List[RawBar],
     for row in f1_raw_bars[:30000]:
         kg.update(row)
 
-    ct = CzscTrader(kg, get_signals=get_signals, events=[])
+    ct = CzscTrader(Freq.F1, kg, get_signals=get_signals, events=[])
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
     for row in tqdm(f1_raw_bars[30000:], desc='generate_snapshots'):
