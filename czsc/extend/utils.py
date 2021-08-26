@@ -1,5 +1,6 @@
 import json
 import requests
+import pandas as pd
 
 
 def push_text(message, key=""):
@@ -20,3 +21,25 @@ def push_text(message, key=""):
     }
     String_textMsg = json.dumps(String_textMsg)
     res = requests.post(url, data=String_textMsg, headers=HEADERS)
+
+
+def read_csv_symbol(path):
+    """
+    读取通达信导出的文件
+    :param path:
+    :return:
+    """
+    data = pd.read_csv(path, encoding="GB2312")
+    list = []
+    dic = {}
+    for index, row in data.iterrows():
+        symbol = row.iloc[0]
+        name = row.iloc[1]
+        market = symbol[0:2]
+        dic[symbol] = name
+        if market == 'SZ':
+            list.append('{}.XSHE'.format(symbol[2:]))
+        else:
+            list.append('{}.XSHG'.format(symbol[2:]))
+
+    return list, dic

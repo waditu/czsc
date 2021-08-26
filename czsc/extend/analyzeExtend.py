@@ -3,7 +3,8 @@ from czsc.objects import *
 from czsc.enum import Freq
 import pandas as pd
 from czsc.analyze import KlineGenerator
-from czsc.data.jq import get_kline, JqCzscTrader
+from czsc.data.jq import  JqCzscTrader
+from czsc.extend.tdx import get_kline
 from czsc.data.base import freq_inv
 from czsc.signals import get_default_signals
 from typing import Union
