@@ -544,7 +544,7 @@ class CzscTrader:
                 self.cache['long_open_k1_id'] = self.kg.m1[-1].id
                 self.cache['last_op_desc'] = op['desc']
                 assert fbi[-1].direction == Direction.Down
-                self.cache['long_open_error_price'] = fbi[-1].low
+                self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
             else:
                 # 判断是否达到多头异常退出条件
                 if self.latest_price < self.cache.get('long_open_error_price', 0):
@@ -571,7 +571,7 @@ class CzscTrader:
                 self.cache['short_open_k1_id'] = self.kg.m1[-1].id
                 self.cache['last_op_desc'] = op['desc']
                 assert fbi[-1].direction == Direction.Up
-                self.cache['short_open_error_price'] = fbi[-1].high
+                self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
             else:
                 # 判断是否达到空头异常退出条件
                 if self.latest_price > self.cache['short_open_error_price'] > 0:
@@ -608,7 +608,7 @@ class CzscTrader:
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             self.cache['last_op_desc'] = op['desc']
             assert fbi[-1].direction == Direction.Down
-            self.cache['long_open_error_price'] = fbi[-1].low
+            self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
 
         elif op['operate'] == Operate.HL.value:
             assert self.cache['long_open_price'] > 0
@@ -634,7 +634,7 @@ class CzscTrader:
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             self.cache['last_op_desc'] = op['desc']
             assert fbi[-1].direction == Direction.Up
-            self.cache['short_open_error_price'] = fbi[-1].high
+            self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
 
         elif op['operate'] == Operate.HS.value:
             assert self.cache['short_open_price'] > 0
