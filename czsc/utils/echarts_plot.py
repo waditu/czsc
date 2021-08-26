@@ -157,8 +157,8 @@ def kline_pro(kline: List[dict],
     diff, dea, macd = MACD(close)
 
     ma5 = SMA(close, timeperiod=5)
-    ma34 = SMA(close, timeperiod=34)
-    ma233 = SMA(close, timeperiod=233)
+    ma20 = SMA(close, timeperiod=20)
+    ma60 = SMA(close, timeperiod=60)
 
     macd_bar = []
     for i, v in enumerate(macd.tolist()):
@@ -192,7 +192,7 @@ def kline_pro(kline: List[dict],
     chart_ma = Line()
     chart_ma.add_xaxis(xaxis_data=dts)
 
-    ma_keys = {"MA5": ma5, "MA34": ma34, "MA233": ma233}
+    ma_keys = {"MA5": ma5, "MA20": ma20, "MA60": ma60}
     ma_colors = ["#39afe6", "#da6ee8", "#00940b"]
     for i, (name, ma) in enumerate(ma_keys.items()):
         chart_ma.add_yaxis(series_name=name, y_axis=ma, is_smooth=True,
