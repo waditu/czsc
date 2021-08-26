@@ -122,7 +122,7 @@ def test_czsc_trader():
             Factor(name="5分钟三卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类三卖_任意_任意_0")])
         ]),
     ]
-    ct = CzscTrader(kg, get_signals=get_default_signals, events=events)
+    ct = CzscTrader(op_freq=Freq.F5, kg=kg, get_signals=get_default_signals, events=events)
     assert len(ct.s) == 214
     for row in bars[-10000:]:
         op = ct.check_operate(row)
