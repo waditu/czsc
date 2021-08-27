@@ -34,7 +34,7 @@ def generate_signals(f1_raw_bars: List[RawBar],
     for bar in f1_raw_bars[:init_count]:
         kg.update(bar)
 
-    ct = CzscTrader(Freq.F1, kg, get_signals, events=[])
+    ct = CzscTrader(op_freq=None, kg=kg, get_signals=get_signals, events=[])
     signals = []
     for bar in tqdm(f1_raw_bars[init_count:], desc=f"generate signals of {symbol}"):
         try:
