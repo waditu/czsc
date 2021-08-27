@@ -61,7 +61,7 @@ def test_extend():
 
 
 def test_analyzeData():
-    codes = ['002048.XSHE']
+    codes = ['002287.XSHE']
 
     #codes = ['002024.XSHE']
     for code in codes:
