@@ -16,7 +16,7 @@ from czsc.analyze import CZSC
 from czsc.signals import get_default_signals
 from czsc.objects import Signal, Factor
 
-assert czsc.__version__ == '0.7.3'
+assert czsc.__version__ == '0.7.5'
 
 # 首次使用需要设置聚宽账户，以下大部分案例依赖聚宽数据
 # set_token("phone number", 'password') # 第一个参数是JQData的手机号，第二个参数是登录密码
@@ -25,6 +25,7 @@ print("聚宽剩余调用次数：{}".format(get_query_count()))
 
 # ======================================================================================================================
 # 使用单个级别的信号进行选股
+
 
 def is_third_buy(symbol):
     """判断一个股票现在是否有日线三买"""
@@ -45,6 +46,7 @@ def is_third_buy(symbol):
         return True
     else:
         return False
+
 
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
