@@ -85,12 +85,16 @@ def long_trade_estimator(pairs: List[dict]):
 
 def long_trade_simulator(signals: List[dict],
                          long_open_event: Event,
-                         long_exit_event: Event) -> Tuple[List[dict], dict]:
+                         long_exit_event: Event,
+                         T0: bool = True,
+                         verbose: bool = False) -> Tuple[List[dict], dict]:
     """多头交易模拟
 
     :param signals: 信号列表，必须按时间升序
     :param long_open_event: 开多事件
     :param long_exit_event: 平多事件
+    :param T0: 是否支持T+0交易，默认为 True，表示支持
+    :param verbose: 是否显示更多信息，默认为 False，表示不显示
     :return: 交易对，绩效
     """
     assert len(signals) > 1000 and signals[1]['dt'] > signals[0]['dt']
@@ -102,14 +106,18 @@ def long_trade_simulator(signals: List[dict],
         if cache['last_op'] == Operate.LO:
             m, f = long_exit_event.is_match(signal)
             if m:
-                trades.append({
-                    "标的代码": signal['symbol'],
-                    '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
-                    '平仓价格': signal['close'],
-                    '平仓理由': f,
-                    'eid': signal['id'],
-                })
-                cache['last_op'] = Operate.LE
+                if not T0 and signal['dt'].strftime("%Y-%m-%d") == trades[-1]['开仓时间']:
+                    if verbose:
+                        print(f"{signal['dt']}：不支持T0交易，上次开仓为 {trades[-1]}")
+                else:
+                    trades.append({
+                        "标的代码": signal['symbol'],
+                        '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                        '平仓价格': signal['close'],
+                        '平仓理由': f,
+                        'eid': signal['id'],
+                    })
+                    cache['last_op'] = Operate.LE
         else:
             m, f = long_open_event.is_match(signal)
             if m:
@@ -124,6 +132,8 @@ def long_trade_simulator(signals: List[dict],
 
     if len(trades) % 2 != 0:
         trades = trades[:-1]
+        if verbose:
+            print(f"last trade drop: {trades[-1]}")
 
     pairs = []
     for i in range(0, len(trades), 2):
