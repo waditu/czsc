@@ -549,8 +549,8 @@ class CzscTrader:
                 self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
                 self.cache['long_open_k1_id'] = self.kg.m1[-1].id
                 self.cache['last_op_desc'] = op['desc']
-                assert fbi[-1].direction == Direction.Down
                 if fbi:
+                    assert fbi[-1].direction == Direction.Down
                     self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
             else:
                 # 判断是否达到多头异常退出条件
