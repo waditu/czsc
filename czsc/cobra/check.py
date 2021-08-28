@@ -38,7 +38,7 @@ def check_signals_acc(f1_raw_bars: List[RawBar],
     for row in f1_raw_bars[:30000]:
         kg.update(row)
 
-    ct = CzscTrader(Freq.F1, kg, get_signals=get_signals, events=[])
+    ct = CzscTrader(op_freq=Freq.F1, kg=kg, get_signals=get_signals, events=[])
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
     for row in tqdm(f1_raw_bars[30000:], desc='generate_snapshots'):
