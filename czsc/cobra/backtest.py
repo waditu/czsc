@@ -63,21 +63,32 @@ def long_trade_estimator(pairs: List[dict]):
          '累计盈亏比': 2.27,
          '单笔盈亏比': 2.54}
     """
-    df = pd.DataFrame(pairs)
+    if not pairs:
+        return {
+            '标的代码': pairs[0]['标的代码'],
+            '交易次数': len(pairs),
+            '累计收益（%）': 0,
+            '单笔收益（%）': 0,
+            '平均持仓分钟': 0,
+            '胜率（%）': 0,
+            '累计盈亏比': 0,
+            '单笔盈亏比': 0,
+        }
 
+    df = pd.DataFrame(pairs)
     x_round = lambda x: int(x * 100) / 100
 
     res = {
         '标的代码': pairs[0]['标的代码'],
         '交易次数': len(pairs),
+        '平均持仓分钟': int(df['持仓分钟'].mean()),
         '累计收益（%）': x_round(df['盈亏（%）'].sum()),
         '单笔收益（%）': x_round(df['盈亏（%）'].mean()),
-        '平均持仓分钟': int(df['持仓分钟'].mean()),
         '胜率（%）': int(len(df[df['盈亏（%）'] > 0]) / len(df) * 10000) / 100,
         '累计盈亏比': int(df[df['盈亏（%）'] > 0]['盈亏（%）'].sum() /
-                     abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].sum()) * 100) / 100,
+                     (abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].sum()) * 100) + 0.00001) / 100,
         '单笔盈亏比': int(df[df['盈亏（%）'] > 0]['盈亏（%）'].mean() /
-                     abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].mean()) * 100) / 100,
+                     (abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].mean()) * 100) + 0.00001) / 100,
     }
 
     return res
