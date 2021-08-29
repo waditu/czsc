@@ -11,7 +11,7 @@ from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 
 from .utils.kline_generator import KlineGenerator
-from .enum import Mark, Direction, Operate
+from .enum import Mark, Direction, Operate, Freq
 from .objects import BI, FakeBI, FX, RawBar, NewBar, Event
 from .utils.echarts_plot import kline_pro
 from .utils.ta import RSQ
@@ -391,18 +391,23 @@ class CZSC:
 class CzscTrader:
     """缠中说禅技术分析理论之多级别联立交易决策类"""
 
-    def __init__(self, kg: KlineGenerator, get_signals: Callable, events: List[Event] = None):
+    def __init__(self, kg: KlineGenerator, get_signals: Callable,
+                 events: List[Event] = None, op_freq: Freq = None):
         """
 
         :param kg: K线合成器
         :param get_signals: 自定义的单级别信号计算函数
         :param events: 自定义的交易事件组合，推荐平仓事件放到前面
+        :param op_freq: 指定的操作级别，建议只做操作级别的买点。
+            这是一个可选参数。
         """
         self.name = "CzscTrader"
         self.kg = kg
         self.freqs = kg.freqs
         self.events = events
+        self.op_freq = op_freq
         self.op = dict()
+        assert (self.op_freq and op_freq.value in kg.freqs) or (not self.op_freq), "kg 中没有操作级别的K线"
 
         klines = self.kg.get_klines({k: 3000 for k in self.freqs})
         self.kas = {k: CZSC(klines[k], max_bi_count=50, get_signals=get_signals) for k in klines.keys()}
@@ -415,12 +420,16 @@ class CzscTrader:
         self.cache = OrderedDict({
             "last_op": Operate.HO.value,            # 最近一个操作类型
             "last_op_desc": "",                     # 最近一个操作变化的描述
+
             "long_open_price": -1,                  # 多仓开仓价格
             "long_max_high": -1,                    # 多仓开仓后的最高价
             "long_open_k1_id": -1,                  # 多仓开仓时的1分钟K线ID
+            "long_open_error_price": -1,            # 多仓开仓点的证伪价格
+
             "short_open_price": -1,                 # 空仓开仓价格
             "short_min_low": -1,                    # 空仓开仓后的最低价
             "short_open_k1_id": -1,                 # 空仓开仓后的1分钟K线ID
+            "short_open_error_price": -1,           # 空仓开仓点的证伪价格
         })
 
     def __repr__(self):
@@ -491,6 +500,12 @@ class CzscTrader:
         for freq, klines_ in klines_one.items():
             self.kas[freq].update(klines_[-1])
 
+        if self.op_freq:
+            opc: CZSC = self.kas[self.op_freq.value]
+            fbi = opc.finished_bis
+        else:
+            fbi = None
+
         self.symbol = self.kas["1分钟"].symbol
         self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
         self.latest_price = self.kas["1分钟"].bars_raw[-1].close
@@ -507,7 +522,7 @@ class CzscTrader:
                     op['desc'] = f"{event.name}@{f}"
                     break
 
-        # 结合 last_op ，修改 op
+        # 结合 last_op，修改 op，维护 cache 中的变量
         last_op = self.cache['last_op']
 
         if last_op == Operate.LO.value:
@@ -526,14 +541,23 @@ class CzscTrader:
             assert self.cache['long_open_price'] > 0
             assert self.cache['long_max_high'] > 0
             assert self.cache['long_open_k1_id'] > 0
+            assert (self.op_freq and self.cache['long_open_error_price'] > 0) \
+                   or (not self.op_freq and self.cache['long_open_error_price'] == -1)
 
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
                 self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
                 self.cache['long_open_k1_id'] = self.kg.m1[-1].id
                 self.cache['last_op_desc'] = op['desc']
+                if fbi:
+                    assert fbi[-1].direction == Direction.Down
+                    self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
             else:
                 # 判断是否达到多头异常退出条件
+                if self.op_freq and self.latest_price < self.cache.get('long_open_error_price', 0):
+                    op['operate'] = Operate.LE.value
+                    op['desc'] = f"long_open_error"
+
                 if self.latest_price < self.cache.get('long_max_high', 0) * (1 - stoploss):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_stoploss_{stoploss}"
@@ -546,15 +570,23 @@ class CzscTrader:
             assert self.cache['short_open_price'] > 0
             assert self.cache['short_min_low'] > 0
             assert self.cache['short_open_k1_id'] > 0
+            assert (self.op_freq and self.cache['short_open_error_price'] > 0) \
+                   or (not self.op_freq and self.cache['short_open_error_price'] == -1)
 
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
                 self.cache['short_open_price'] = max(self.cache['short_open_price'], self.latest_price)
                 self.cache['short_open_k1_id'] = self.kg.m1[-1].id
                 self.cache['last_op_desc'] = op['desc']
+                if fbi:
+                    assert fbi[-1].direction == Direction.Up
+                    self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
             else:
                 # 判断是否达到空头异常退出条件
-                self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
+                if self.op_freq and self.latest_price > self.cache['short_open_error_price'] > 0:
+                    op['operate'] = Operate.SE.value
+                    op['desc'] = f"short_open_error"
+
                 if self.latest_price > self.cache.get('short_min_low', 10000000000) * (1 + stoploss):
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_stoploss_{stoploss}"
@@ -573,6 +605,7 @@ class CzscTrader:
                 "long_open_price": -1,
                 "long_open_k1_id": -1,
                 "long_max_high": -1,
+                "long_open_error_price": -1,
             })
             self.cache['last_op_desc'] = op['desc']
 
@@ -583,18 +616,24 @@ class CzscTrader:
             })
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             self.cache['last_op_desc'] = op['desc']
+            if fbi:
+                assert fbi[-1].direction == Direction.Down
+                self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
 
         elif op['operate'] == Operate.HL.value:
             assert self.cache['long_open_price'] > 0
             assert self.cache['long_open_k1_id'] > 0
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             assert self.cache['long_max_high'] > 0
+            assert (self.op_freq and self.cache['long_open_error_price'] > 0) \
+                   or (not self.op_freq and self.cache['long_open_error_price'] == -1)
 
         elif op['operate'] == Operate.SE.value:
             self.cache.update({
                 "short_open_price": -1,
                 "short_open_k1_id": -1,
                 "short_min_low": -1,
+                "short_open_error_price": -1,
             })
             self.cache['last_op_desc'] = op['desc']
 
@@ -605,21 +644,30 @@ class CzscTrader:
             })
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             self.cache['last_op_desc'] = op['desc']
+            if fbi:
+                assert fbi[-1].direction == Direction.Up
+                self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
 
         elif op['operate'] == Operate.HS.value:
             assert self.cache['short_open_price'] > 0
             assert self.cache['short_open_k1_id'] > 0
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             assert self.cache['short_min_low'] > 0
+            assert (self.op_freq and self.cache['short_open_error_price'] > 0) \
+                   or (not self.op_freq and self.cache['short_open_error_price'] == -1)
 
         else:
             assert op['operate'] == Operate.HO.value
+
             assert self.cache['long_open_price'] == -1
             assert self.cache['long_open_k1_id'] == -1
             assert self.cache['long_max_high'] == -1
+            assert self.cache['long_open_error_price'] == -1
+
             assert self.cache['short_open_price'] == -1
             assert self.cache['short_open_k1_id'] == -1
             assert self.cache['short_min_low'] == -1
+            assert self.cache['short_open_error_price'] == -1
 
         self.cache['last_op'] = op['operate']
         self.op = op

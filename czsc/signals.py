@@ -2,6 +2,7 @@
 import numpy as np
 from typing import List, Union
 from collections import OrderedDict
+from datetime import datetime
 
 from .objects import Direction, BI, FakeBI, Signal
 from .enum import Freq
@@ -776,9 +777,16 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     s = OrderedDict()
 
     k1 = str(freq.value)
+    k2 = f"倒{di}K"
     default_signals = [
-        Signal(k1=k1, k2="DIF", k3="状态", v1="其他", v2='其他', v3='其他'),
-        Signal(k1=k1, k2="DEA", k3="状态", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2=k2, k3="DIF多空", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2=k2, k3="DIF方向", v1="其他", v2='其他', v3='其他'),
+
+        Signal(k1=k1, k2=k2, k3="DEA多空", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2=k2, k3="DEA方向", v1="其他", v2='其他', v3='其他'),
+
+        Signal(k1=k1, k2=k2, k3="MACD多空", v1="其他", v2='其他', v3='其他'),
+        Signal(k1=k1, k2=k2, k3="MACD方向", v1="其他", v2='其他', v3='其他'),
     ]
     for signal in default_signals:
         s[signal.key] = signal.value
@@ -789,36 +797,151 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     if di == 1:
         close = np.array([x.close for x in c.bars_raw[-100:]])
     else:
-        close = np.array([x.close for x in c.bars_raw[-100 - di + 1:-di + 1]])
+        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
     dif, dea, macd = MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
 
-    # DIF 状态信号
+    # DIF 多空信号
     dif_base = sum([abs(dif[-2] - dif[-1]), abs(dif[-3] - dif[-2]), abs(dif[-4] - dif[-3])]) / 3
     if dif[-1] > dif_base:
-        v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头")
-        if dif[-1] > dif[-2]:
-            v = Signal(k1=k1, k2="DIF", k3="状态", v1="多头", v2="向上")
+        v = Signal(k1=k1, k2=k2, k3="DIF多空", v1="多头")
     elif dif[-1] < -dif_base:
-        v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头")
-        if dif[-1] < dif[-2]:
-            v = Signal(k1=k1, k2="DIF", k3="状态", v1="空头", v2="向下")
+        v = Signal(k1=k1, k2=k2, k3="DIF多空", v1="空头")
     else:
-        v = Signal(k1=k1, k2="DIF", k3="状态", v1="模糊")
+        v = Signal(k1=k1, k2=k2, k3="DIF多空", v1="模糊")
     s[v.key] = v.value
 
-    # DEA 状态信号
+    if dif[-1] > dif[-2] > dif[-3]:
+        v = Signal(k1=k1, k2=k2, k3="DIF方向", v1="向上")
+    elif dif[-1] < dif[-2] < dif[-3]:
+        v = Signal(k1=k1, k2=k2, k3="DIF方向", v1="向下")
+    else:
+        v = Signal(k1=k1, k2=k2, k3="DIF方向", v1="模糊")
+    s[v.key] = v.value
+
+    # DEA 多空信号
     dea_base = sum([abs(dea[-2] - dea[-1]), abs(dea[-3] - dea[-2]), abs(dea[-4] - dea[-3])]) / 3
     if dea[-1] > dea_base:
-        v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头")
-        if dea[-1] > dea[-2]:
-            v = Signal(k1=k1, k2="DEA", k3="状态", v1="多头", v2="向上")
+        v = Signal(k1=k1, k2=k2, k3="DEA多空", v1="多头")
     elif dea[-1] < -dea_base:
-        v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头")
-        if dea[-1] < dea[-2]:
-            v = Signal(k1=k1, k2="DEA", k3="状态", v1="空头", v2="向下")
+        v = Signal(k1=k1, k2=k2, k3="DEA多空", v1="空头")
     else:
-        v = Signal(k1=k1, k2="DEA", k3="状态", v1="模糊")
+        v = Signal(k1=k1, k2=k2, k3="DEA多空", v1="模糊")
     s[v.key] = v.value
+
+    # DEA 方向信号
+    if dea[-1] > dea[-2]:
+        v = Signal(k1=k1, k2=k2, k3="DEA方向", v1="向上")
+    elif dea[-1] < dea[-2]:
+        v = Signal(k1=k1, k2=k2, k3="DEA方向", v1="向下")
+    else:
+        v = Signal(k1=k1, k2=k2, k3="DEA方向", v1="模糊")
+    s[v.key] = v.value
+
+    # MACD 多空信号
+    if macd[-1] >= 0:
+        v = Signal(k1=k1, k2=k2, k3="MACD多空", v1="多头")
+    else:
+        v = Signal(k1=k1, k2=k2, k3="MACD多空", v1="空头")
+    s[v.key] = v.value
+
+    # MACD 方向信号
+    if macd[-1] > macd[-2] > macd[-3]:
+        v = Signal(k1=k1, k2=k2, k3="MACD方向", v1="向上")
+    elif macd[-1] < macd[-2] < macd[-3]:
+        v = Signal(k1=k1, k2=k2, k3="MACD方向", v1="向下")
+    else:
+        v = Signal(k1=k1, k2=k2, k3="MACD方向", v1="模糊")
+    s[v.key] = v.value
+    return s
+
+
+def get_s_sma(c: analyze.CZSC, di: int = 1, t_seq=(5, 10, 20, 60)) -> OrderedDict:
+    """获取倒数第i根K线的SMA相关信号"""
+    freq: Freq = c.freq
+    s = OrderedDict()
+
+    k1 = str(freq.value)
+    k2 = f"倒{di}K"
+    for t in t_seq:
+        x1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="其他", v2='其他', v3='其他')
+        x2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="其他", v2='其他', v3='其他')
+        s[x1.key] = x1.value
+        s[x2.key] = x2.value
+
+    if len(c.bars_raw) < 100:
+        return s
+
+    if di == 1:
+        close = np.array([x.close for x in c.bars_raw[-100:]])
+    else:
+        close = np.array([x.close for x in c.bars_raw[-100-di+1:-di+1]])
+
+    for t in t_seq:
+        sma = SMA(close, timeperiod=t)
+        if close[-1] >= sma[-1]:
+            v1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="多头")
+        else:
+            v1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="空头")
+        s[v1.key] = v1.value
+
+        if sma[-1] >= sma[-2]:
+            v2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="向上")
+        else:
+            v2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="向下")
+        s[v2.key] = v2.value
+    return s
+
+
+def get_s_bar_end(c: analyze.CZSC) -> OrderedDict:
+    """K线结束时间判断"""
+    freq: Freq = c.freq
+    if freq != Freq.F1:
+        return OrderedDict()
+
+    s = OrderedDict()
+    default_signals = [
+        Signal(k1="5分钟", k2="倒1K", k3="结束", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="15分钟", k2="倒1K", k3="结束", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="30分钟", k2="倒1K", k3="结束", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="60分钟", k2="倒1K", k3="结束", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="日线", k2="倒1K", k3="结束", v1="其他", v2='其他', v3='其他'),
+
+        Signal(k1="股票", k2="开仓", k3="时间范围A", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="股票", k2="开仓", k3="时间范围B", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="股票", k2="开仓", k3="时间范围C", v1="其他", v2='其他', v3='其他'),
+        Signal(k1="股票", k2="开仓", k3="时间范围D", v1="其他", v2='其他', v3='其他'),
+    ]
+    for signal in default_signals:
+        s[signal.key] = signal.value
+
+    dt: datetime = c.bars_raw[-1].dt
+    for i in [5, 15, 30, 60]:
+        if dt.minute % i == 0:
+            v = Signal(k1=f"{i}分钟", k2="倒1K", k3="结束", v1="是")
+        else:
+            v = Signal(k1=f"{i}分钟", k2="倒1K", k3="结束", v1="否")
+        s[v.key] = v.value
+
+    if dt.hour == 14 and 45 < dt.minute < 56:
+        v = Signal(k1="日线", k2="倒1K", k3="结束", v1="是")
+        s[v.key] = v.value
+
+    if "10:00" <= dt.strftime("%H:%M") <= "14:59":
+        v = Signal(k1="股票", k2="开仓", k3="时间范围A", v1="上午十点", v2='下午三点')
+        s[v.key] = v.value
+
+    if "11:00" <= dt.strftime("%H:%M") <= "14:59":
+        v = Signal(k1="股票", k2="开仓", k3="时间范围B", v1="上午十一点", v2='下午三点')
+        s[v.key] = v.value
+
+    if "13:30" <= dt.strftime("%H:%M") <= "14:59":
+        v = Signal(k1="股票", k2="开仓", k3="时间范围C", v1="下午一点半", v2='下午三点')
+        s[v.key] = v.value
+
+    if "14:30" <= dt.strftime("%H:%M") <= "14:59":
+        v = Signal(k1="股票", k2="开仓", k3="时间范围D", v1="下午两点半", v2='下午三点')
+        s[v.key] = v.value
+
     return s
 
 
