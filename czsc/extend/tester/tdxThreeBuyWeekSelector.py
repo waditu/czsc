@@ -17,8 +17,9 @@ from czsc.signals import get_default_signals, get_selector_signals
 from czsc.objects import Signal, Factor
 from czsc.extend.tdx import TdxStoreage, Market, get_kline
 from czsc.data.jq import get_index_stocks
+from czsc.extend.utils import read_csv_symbol
 
-assert czsc.__version__ == '0.7.3'
+assert czsc.__version__ == '0.7.4'
 
 
 # ======================================================================================================================
@@ -26,19 +27,20 @@ assert czsc.__version__ == '0.7.3'
 
 def is_third_buy(symbol):
     """判断一个股票现在是否有三买"""
-    bars = get_kline(symbol, freq="D", end_date='2021-07-22', count=200)
+    bars = get_kline(symbol, freq="W", end_date='2021-07-22', count=200)
     c = CZSC(bars, get_signals=get_default_signals)
 
     factor_ = Factor(
         name="类三买选股因子",
         signals_any=[
-            Signal("日线_倒1笔_基础形态_类三买_任意_任意_0"),
-            Signal("日线_倒1笔_类买卖点_类三买_任意_任意_0"),
+            Signal("周线_倒1笔_基础形态_类三买_任意_任意_0"),
+            Signal("周线_倒1笔_类买卖点_类三买_任意_任意_0"),
         ],
         signals_all=[
         ]
     )
     if factor_.is_match(c.signals):
+        c.open_in_browser()
         return True
     else:
         return False
@@ -51,7 +53,7 @@ def is_bc(symbol):
     :return:
     """
     bars = get_kline(symbol, freq="30min", end_date=datetime.now(), count=1000)
-    c = CZSC(bars, get_signals=get_selector_signals)
+    c = CZSC(bars, get_signals=get_default_signals)
 
     factor_ = Factor(
         name="背驰选股",
@@ -77,16 +79,16 @@ def is_bc(symbol):
 def run_jq_selector():
     # 获取上证50最新成分股列表，这里可以换成自己的股票池
     symbols: List = get_index_stocks("399008.XSHE")
-    # symbols: List = ['600338.XSHG']
+    symbols, dic = read_csv_symbol("d:/data/Table.csv")
     only_three_buy: List = []
     bc_buy: List = []
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
             if is_third_buy(symbol):
-                print("{} - 日线三买".format(symbol))
+                print("{} -三买".format(symbol))
                 if is_bc(symbol):
-                    print("{} - 日线三买,并背驰".format(symbol))
+                    print("{} - 背驰".format(symbol))
                     bc_buy.append(symbol)
                 else:
                     only_three_buy.append(symbol)

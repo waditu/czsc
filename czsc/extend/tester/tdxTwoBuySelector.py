@@ -131,7 +131,7 @@ def run_jq_selector():
         try:
             print("{} start".format(symbol))
             if is_third_buy_W(symbol):
-                print("{} - 日线二买".format(symbol))
+                print("{} - 二买".format(symbol))
                 only_three_buy.append(symbol)
             if is_day_bc(symbol):
                 print("{} - 30分钟背驰".format(symbol))
