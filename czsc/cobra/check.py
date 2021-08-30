@@ -53,7 +53,7 @@ def check_signals_acc(f1_raw_bars: List[RawBar],
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
             if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
-                file_html = os.path.join(html_path, f"{bar.symbol}_{signal.value}_{bar.dt.strftime(dt_fmt)}.html")
+                file_html = os.path.join(html_path, f"{bar.symbol}_{ct.s[signal.key]}_{bar.dt.strftime(dt_fmt)}.html")
                 print(file_html)
                 ct.take_snapshot(file_html)
                 last_dt[signal.key] = bar.dt
