@@ -546,9 +546,9 @@ class CzscTrader:
 
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
-                self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
-                self.cache['long_open_k1_id'] = self.kg.m1[-1].id
-                self.cache['last_op_desc'] = op['desc']
+                # self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
+                # self.cache['long_open_k1_id'] = self.kg.m1[-1].id
+                # self.cache['last_op_desc'] = op['desc']
                 if fbi:
                     assert fbi[-1].direction == Direction.Down
                     self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
@@ -575,9 +575,9 @@ class CzscTrader:
 
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
-                self.cache['short_open_price'] = max(self.cache['short_open_price'], self.latest_price)
-                self.cache['short_open_k1_id'] = self.kg.m1[-1].id
-                self.cache['last_op_desc'] = op['desc']
+                # self.cache['short_open_price'] = max(self.cache['short_open_price'], self.latest_price)
+                # self.cache['short_open_k1_id'] = self.kg.m1[-1].id
+                # self.cache['last_op_desc'] = op['desc']
                 if fbi:
                     assert fbi[-1].direction == Direction.Up
                     self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
