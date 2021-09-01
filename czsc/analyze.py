@@ -214,7 +214,7 @@ def get_sub_bis(bis: List[BI], bi: BI) -> List[BI]:
 
 
 class CZSC:
-    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None):
+    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None, verbose=False):
         """
 
         :param bars: K线数据
@@ -223,6 +223,7 @@ class CZSC:
             默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
+        self.verbose = verbose
         self.max_bi_count = max_bi_count
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
@@ -293,7 +294,7 @@ class CZSC:
         else:
             bars_ubi_a = bars_ubi
 
-        if len(bars_ubi_a) > 300:
+        if self.verbose and len(bars_ubi_a) > 300:
             print(f"{self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸超长，延伸数量: {len(bars_ubi_a)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi_a)
