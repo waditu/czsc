@@ -124,7 +124,7 @@ def long_trade_simulator(signals: List[dict],
                 else:
                     trades.append({
                         "标的代码": signal['symbol'],
-                        '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                        '平仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                         '平仓价格': signal['close'],
                         '平仓理由': f,
                         'eid': signal['id'],
@@ -135,7 +135,7 @@ def long_trade_simulator(signals: List[dict],
             if m:
                 trades.append({
                     "标的代码": signal['symbol'],
-                    '开仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                    '开仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                     '开仓价格': signal['close'],
                     '开仓理由': f,
                     'oid': signal['id'],
@@ -180,7 +180,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
         if cache['last_op'] != Operate.LO and m:
             trades.append({
                 "标的代码": signal['symbol'],
-                '开仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                '开仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                 '开仓价格': signal['close'],
                 '开仓理由': f,
                 'oid': signal['id'],
@@ -190,7 +190,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
         if cache['last_op'] == Operate.LO and not m:
             trades.append({
                 "标的代码": signal['symbol'],
-                '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                '平仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                 '平仓价格': signal['close'],
                 '平仓理由': "事件空白",
                 'eid': signal['id'],
