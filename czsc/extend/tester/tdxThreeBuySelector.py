@@ -19,7 +19,7 @@ from czsc.objects import Signal, Factor
 from czsc.extend.tdx import TdxStoreage, Market, get_kline
 from czsc.data.jq import get_index_stocks
 
-assert czsc.__version__ == '0.7.4'
+assert czsc.__version__ == '0.7.5'
 
 
 # ======================================================================================================================

@@ -19,7 +19,7 @@ from czsc.objects import Signal, Factor
 from czsc.extend.tdx import TdxStoreage, Market, get_kline
 from czsc.extend.utils import read_csv_symbol
 
-assert czsc.__version__ == '0.7.4'
+assert czsc.__version__ == '0.7.5'
 
 
 # ======================================================================================================================
@@ -40,14 +40,15 @@ def is_third_buy_W(symbol):
         ]
     )
     if factor_.is_match(c.signals):
+        c.open_in_browser()
         return True
     else:
         return False
 
 
-def is_third_buy(symbol):
+def two_buy_day(symbol):
     """判断一个股票现在是否有日线三买"""
-    bars = get_kline(symbol, end_date='', freq="W", count=200)
+    bars = get_kline(symbol, end_date='', freq="D", count=800)
     c = CZSC(bars, get_signals=get_default_signals)
 
     factor_ = Factor(
@@ -59,7 +60,9 @@ def is_third_buy(symbol):
         signals_all=[
         ]
     )
+
     if factor_.is_match(c.signals):
+        c.open_in_browser()
         return True
     else:
         return False
@@ -78,9 +81,7 @@ def is_day_bc(symbol):
         name="背驰选股",
         signals_any=[
             Signal("日线_倒1笔_三笔形态_向下盘背_任意_任意_0"),
-            Signal("日线_倒1笔_基础形态_底背驰_任意_任意_0"),
-            Signal("日线_倒1笔_类买卖点_类一买_任意_任意_0"),
-            Signal("日线_倒1笔_类买卖点_类二买_任意_任意_0"),
+            Signal("日线_倒1笔_基础形态_底背驰_任意_任意_0")
         ],
         signals_all=[
             # Signal("30分钟_倒0笔_潜在三买_构成中枢_任意_任意_0")
@@ -130,12 +131,9 @@ def run_jq_selector():
     for symbol in symbols:
         try:
             print("{} start".format(symbol))
-            if is_third_buy_W(symbol):
+            if two_buy_day(symbol):
                 print("{} - 二买".format(symbol))
                 only_three_buy.append(symbol)
-            if is_day_bc(symbol):
-                print("{} - 30分钟背驰".format(symbol))
-                bc_buy.append(symbol)
 
         except:
             print("{} - 执行失败".format(symbol))
