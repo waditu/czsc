@@ -1070,7 +1070,7 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
             zg = min(c.bi_list[-1].high, c.bi_list[-3].high)
             zd = max(c.bi_list[-1].low, c.bi_list[-3].low)
         else:
-            gg = min(c.bi_list[-2].high, c.bi_list[-4].high)
+            gg = max(c.bi_list[-2].high, c.bi_list[-4].high)
             zg = min(c.bi_list[-2].high, c.bi_list[-4].high)
             zd = max(c.bi_list[-2].low, c.bi_list[-4].low)
 
