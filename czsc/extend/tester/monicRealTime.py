@@ -30,7 +30,7 @@ os.makedirs(ct_path, exist_ok=True)
 #            "515000.XSHG", "512000.XSHG", "512710.XSHG", "512980.XSHG", "510230.XSHG", "512290.XSHG", "512010.XSHG",
 #            "159938.XSHE", "512880.XSHG", "159939.XSHE", "515050.XSHG" ]
 
-symbols = ["600763.XSHG", "399006.XSHE", "600031.XSHG", "603958.XSHG", "600963.XSHG"]
+symbols = ["600176.XSHG", "399006.XSHE", "600963.XSHG", "000651.XSHE"]
 
 qywx_key = ""
 
@@ -43,6 +43,7 @@ def monitor(use_cache=True):
     events_monitor = [
         # 开多
         Event(name="一买", operate=Operate.LO, factors=[
+
             Factor(name="5分钟类一买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一买_任意_任意_0")]),
             Factor(name="5分钟形一买", signals_all=[Signal("5分钟_倒1笔_基础形态_类一买_任意_任意_0")]),
 
@@ -51,6 +52,10 @@ def monitor(use_cache=True):
 
             Factor(name="30分钟类一买", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一买_任意_任意_0")]),
             Factor(name="30分钟形一买", signals_all=[Signal("30分钟_倒1笔_基础形态_类一买_任意_任意_0")]),
+            Factor(name="5分钟向下背驰",
+                   signals_all=[Signal("5分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"), Signal("5分钟_倒1笔_基础形态_底背驰_任意_任意_0")]),
+            Factor(name="30分钟向下背驰",
+                   signals_all=[Signal("30分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"), Signal("30分钟_倒1笔_基础形态_底背驰_任意_任意_0")]),
         ]),
 
         Event(name="二买", operate=Operate.LO, factors=[
@@ -84,6 +89,10 @@ def monitor(use_cache=True):
 
             Factor(name="30分钟类一卖", signals_all=[Signal("30分钟_倒1笔_类买卖点_类一卖_任意_任意_0")]),
             Factor(name="30分钟形一卖", signals_all=[Signal("30分钟_倒1笔_基础形态_类一卖_任意_任意_0")]),
+            Factor(name="5分钟向上背驰",
+                   signals_all=[Signal("5分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"), Signal("5分钟_倒1笔_基础形态_顶背驰_任意_任意_0")]),
+            Factor(name="30分钟向上背驰",
+                   signals_all=[Signal("30分钟_倒1笔_三笔形态_向下盘背_任意_任意_0"), Signal("30分钟_倒1笔_基础形态_顶背驰_任意_任意_0")]),
         ]),
         Event(name="二卖", operate=Operate.LE, factors=[
             Factor(name="5分钟类二卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类二卖_任意_任意_0")]),
