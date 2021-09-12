@@ -27,6 +27,7 @@ strategy_id=692dc7b5-d19f-11eb-af0a-38f3abf8ed06
 wx_key=2daec96b-****-4f83-****-2952fe2731c0
 stoploss=0.05
 timeout=600
+wait_time=30
 max_total_position=0.8
 max_share_position=0.5
 path_gm_logs=C:/gm_logs
@@ -52,6 +53,9 @@ os.environ['backtest_transaction_ratio'] = '1'
 os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 from src.utils.bt import *
 from src.tactics.share import TacticShareA as Tactic
 
@@ -79,3 +83,4 @@ if __name__ == '__main__':
         backtest_slippage_ratio=float(os.environ['backtest_slippage_ratio']),
         backtest_adjust=ADJUST_POST,
         backtest_check_cache=1)
+

@@ -237,3 +237,22 @@ class GmCzscTrader(CzscTrader):
             return
         for bar in bars:
             self.check_operate(bar)
+
+
+def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None, get_signals: Callable = get_default_signals):
+    """使用掘金的数据对任意标的、任意时刻的状态进行快照
+
+    :param gm_symbol:
+    :param end_dt:
+    :param file_html:
+    :param get_signals:
+    :return:
+    """
+    ct = GmCzscTrader(gm_symbol, end_dt=end_dt, max_count=2000, get_signals=get_signals)
+    if file_html:
+        ct.take_snapshot(file_html)
+        print(f'saved into {file_html}')
+    else:
+        ct.open_in_browser()
+    return ct
+

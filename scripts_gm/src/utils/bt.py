@@ -5,6 +5,8 @@ email: zeng_bin8888@163.com
 create_dt: 2021/8/3 17:10
 describe: 掘金量化回测utils
 """
+import os
+
 from .base import *
 
 
@@ -100,7 +102,11 @@ def on_backtest_finished(context, indicator):
         https://www.myquant.cn/docs/python/python_object_trade#bd7f5adf22081af5
     :return:
     """
+    wx_key = context.wx_key
+    symbols = context.symbols
+    data_path = context.data_path
     logger = context.logger
+
     logger.info(str(indicator))
     logger.info("回测结束 ... ")
     cash = context.account().cash
@@ -132,17 +138,20 @@ def on_backtest_finished(context, indicator):
     content = ""
     for k, v in row.items():
         content += "{}: {}\n".format(k, v)
+    push_text(content=content, key=wx_key)
 
-    push_text(content=content, key=context.wx_key)
-
-    for symbol in context.symbols:
-        # 查看买卖详情
-        file_bs = os.path.join(context.cache_path, "{}_bs.txt".format(symbol))
+    trades = []
+    for symbol in symbols:
+        file_bs = os.path.join(data_path, "cache/{}_bs.txt".format(symbol))
         if os.path.exists(file_bs):
             lines = [eval(x) for x in open(file_bs, 'r', encoding="utf-8").read().strip().split("\n")]
-            df = pd.DataFrame(lines)
-            print(symbol, "\n", df.desc.value_counts())
-            print(df)
+            trades.extend(lines)
+    df = pd.DataFrame(trades)
+    file_trades = os.path.join(data_path, 'trades.xlsx')
+    df.to_excel(file_trades, index=False)
+    push_file(file_trades, wx_key)
+    push_file(os.path.join(data_path, "backtest.log"), wx_key)
+    print(df)
 
 
 def adjust_future_position_bt(context, symbol: str, trader: CzscTrader, mp: float):
@@ -255,6 +264,11 @@ def adjust_share_position_bt(context, symbol: str, trader: CzscTrader, mp: float
             trader.op['desc'] = trader.cache['last_op_desc']
             context.logger.info("{} - 开多 - {} - {}".format(symbol, trader.op['desc'], trader.latest_price))
 
+            if trader.kg.m1[-1].id - trader.cache['long_open_k1_id'] < context.wait_time:
+                context.logger.info(f"{symbol}，开仓条件满足，等待开仓中，"
+                                    f"已等待 {trader.kg.m1[-1].id - trader.cache['long_open_k1_id']}")
+                return
+
             # 判断当前价格是否在开仓容差范围
             if abs(trader.latest_price - trader.cache['long_open_price']) > trader.cache['long_open_price'] * 0.03:
                 context.logger.info(f"{symbol}，当前价（{trader.latest_price}）不在"
@@ -298,15 +312,10 @@ def adjust_position_bt(context, symbol):
     bars_new = [x for x in bars if x.dt > trader.kg.end_dt]
     if bars_new:
         for k in bars_new:
-            trader.check_operate(k, context.stoploss, context.timeout)
+            trader.check_operate(k, context.stoploss, context.timeout, context.wait_time)
     context.symbols_map[symbol]['trader'] = trader
     context.logger.info(context.shares.get(symbol, "无名标的") + " : op    : " + str(trader.op))
     context.logger.info(context.shares.get(symbol, "无名标的") + " : cache : " + str(dict(trader.cache)))
-
-    # last_bar = bars[-1]
-    # if last_bar.dt.minute % 30 == 0:
-    #     print(context.shares.get(symbol, "无名标的"), " : op    : ", trader.op)
-    #     print(context.shares.get(symbol, "无名标的"), " : cache : ", dict(trader.cache), "\n")
 
     # 可转债支持 T+0 交易
     if symbol[:7] in ['SZSE.12', 'SHSE.11']:
@@ -362,7 +371,8 @@ def init_context_bt(context, name, symbols,
     context.file_orders = os.path.join(data_path, "orders.txt")
     context.shares = get_shares()
     context.stoploss = float(os.environ['stoploss'])  # 止损条件设定
-    context.timeout = int(os.environ['timeout'])  # 超时条件设定
+    context.timeout = int(os.environ['timeout'])      # 超时条件设定
+    context.wait_time = int(os.environ['wait_time'])  # 开仓等待时长，单位：分钟
 
     # 仓位控制[0, 1]，按资金百分比控制，1表示满仓，仅在开仓的时候控制
     context.max_total_position = float(os.environ['max_total_position'])
@@ -376,7 +386,7 @@ def init_context_bt(context, name, symbols,
     context.logger.info("backtest_end_time = " + str(context.backtest_end_time))
     context.logger.info(f"总仓位控制：{context.max_total_position}")
     context.logger.info(f"单仓位控制：{context.max_share_position}")
-    context.logger.info(f"异常退出条件：stoploss = {context.stoploss}; timeout = {context.timeout}")
+    context.logger.info(f"异常退出条件：stoploss = {context.stoploss}; timeout = {context.timeout}; wait_time = {context.wait_time}")
     context.logger.info(f"K线周期列表：{freqs}")
     context.logger.info("交易信号计算：\n" + inspect.getsource(get_signals))
     context.logger.info("交易事件定义：\n" + inspect.getsource(get_events))
@@ -385,11 +395,15 @@ def init_context_bt(context, name, symbols,
     context.logger.info(f"交易标的数量：{len(symbols)}")
     symbols_map = {symbol: dict() for symbol in symbols}
     for symbol in symbols:
-        symbols_map[symbol]['mp'] = context.max_share_position
-        kg = get_init_kg(symbol, context.now, max_count=2000, adjust=ADJUST_POST, freqs=freqs)
-        trader = CzscTrader(op_freq=op_freq, kg=kg, get_signals=get_signals, events=events)
-        symbols_map[symbol]['trader'] = trader
-        context.logger.info("{} 初始化完成，当前时间：{}".format(symbol, trader.end_dt))
+        try:
+            symbols_map[symbol]['mp'] = context.max_share_position
+            kg = get_init_kg(symbol, context.now, max_count=2000, adjust=ADJUST_POST, freqs=freqs)
+            trader = CzscTrader(op_freq=op_freq, kg=kg, get_signals=get_signals, events=events)
+            symbols_map[symbol]['trader'] = trader
+            context.logger.info("{} 初始化完成，当前时间：{}".format(symbol, trader.end_dt))
+        except:
+            del symbols_map[symbol]
+            print(f'init kg fail on {symbol}')
 
     subscribe(",".join(symbols_map.keys()), frequency='60s', count=300, wait_group=True)
     context.logger.info(f"交易标的配置：{symbols_map}")
