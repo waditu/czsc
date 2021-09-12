@@ -485,14 +485,20 @@ class CzscTrader:
         s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
         return s
 
-    def check_operate(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
+    def check_operate(self, bar: RawBar,
+                      stoploss: float = 0.1,
+                      timeout: int = 1000,
+                      wait_time: int = -1) -> dict:
         """更新信号，计算下一个操作动作
 
-        :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
+        :param bar: 单根K线对象
         :param stoploss: 止损退出参数，0.1 表示10个点止损
             多头止损：当前价 < 买入后的最高价 * （1 - stoploss）
             空头止损：当前价 > 买入后的最低价 * （1 + stoploss）
-        :param bar: 单根K线对象
+        :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
+        :param wait_time: 开仓等待参数，数值表示首次出现开仓信号后1分钟K线数量
+            这个参数主要作用是减少买在中继分型的概率。基本原理是，等待1~2根操作级别的K线，
+            如果发生当下笔破坏，则说明是中继分型的买点。
         :return: 操作提示
         """
         self.kg.update(bar)
@@ -551,9 +557,13 @@ class CzscTrader:
                     assert fbi[-1].direction == Direction.Down
                     max_low = max(fbi[-1].low, fbi[-3].low)
                     min_low = min(fbi[-1].low, fbi[-3].low)
-                    self.cache['long_open_error_price'] = max(min_low, max_low * 0.97)
+                    self.cache['long_open_error_price'] = max(min_low, max_low * 0.97, self.latest_price * 0.95)
             else:
                 # 判断是否达到多头异常退出条件
+                if self.kg.m1[-1].id - self.cache['long_open_k1_id'] <= wait_time:
+                    op['operate'] = Operate.LE.value
+                    op['desc'] = f"long_wait_out"
+
                 if self.op_freq and self.latest_price < self.cache.get('long_open_error_price', 0):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_open_error"
@@ -579,9 +589,13 @@ class CzscTrader:
                     assert fbi[-1].direction == Direction.Up
                     max_high = max(fbi[-1].high, fbi[-3].high)
                     min_high = min(fbi[-1].high, fbi[-3].high)
-                    self.cache['short_open_error_price'] = min(max_high, min_high * 1.03)
+                    self.cache['short_open_error_price'] = min(max_high, min_high * 1.03, self.latest_price * 1.05)
             else:
                 # 判断是否达到空头异常退出条件
+                if self.kg.m1[-1].id - self.cache['short_open_k1_id'] <= wait_time:
+                    op['operate'] = Operate.SE.value
+                    op['desc'] = f"short_wait_out"
+
                 if self.op_freq and self.latest_price > self.cache['short_open_error_price'] > 0:
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_open_error"
@@ -593,6 +607,7 @@ class CzscTrader:
                 if self.kg.m1[-1].id - self.cache.get('short_open_k1_id', 99999999999) > timeout:
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_timeout_{timeout}"
+
         else:
             assert last_op == Operate.HO.value
             if op['operate'] in [Operate.LE.value, Operate.SE.value]:
