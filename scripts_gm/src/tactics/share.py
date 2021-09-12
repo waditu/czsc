@@ -54,7 +54,6 @@ class TacticShareA:
                 Event(name="开多", operate=Operate.LO, factors=[
                     Factor(name="5分钟三买", signals_all=[
                         Signal("5分钟_倒1笔_类买卖点_类三买_任意_任意_0"),
-                        Signal("5分钟_倒1K_结束_是_任意_任意_0"),
                         Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
 
                         Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
@@ -62,14 +61,12 @@ class TacticShareA:
                     ]),
                     Factor(name="15分钟三买", signals_all=[
                         Signal("15分钟_倒1笔_类买卖点_类三买_任意_任意_0"),
-                        Signal("15分钟_倒1K_结束_是_任意_任意_0"),
 
                         Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
                         Signal("60分钟_倒1K_DIF方向_向上_任意_任意_0"),
                     ]),
                     Factor(name="30分钟三买", signals_all=[
                         Signal("30分钟_倒1笔_类买卖点_类三买_任意_任意_0"),
-                        Signal("30分钟_倒1K_结束_是_任意_任意_0"),
                         Signal("15分钟_倒0笔_方向_向上_任意_任意_0"),
 
                         Signal("60分钟_倒1K_DIF多空_多头_任意_任意_0"),
