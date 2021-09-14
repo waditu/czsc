@@ -26,6 +26,17 @@ def test_get_stock_by_index():
     print(get_index_stocks("399808.XSHE"))
 
 
+def test_all_all_industry():
+    # 获取行业信息
+    df = get_industries()
+    df.to_csv("d://data/all_industry.csv", encoding="utf-8-sig")
+
+
+def test_all_industry_stock():
+    # 获取行业成分股
+    df = get_industry_stocks("851411")
+    print(df)
+
+
 def test_finantional():
     orderedDictList = get_share_basic("600329.XSHG")
-

@@ -394,6 +394,37 @@ def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> di
         return {}
 
 
+def get_industries():
+    """
+    获取行业
+    :return:
+    """
+    data = {
+        "method": "get_industries",
+        "token": get_token(),
+        "code": "sw_l3"
+    }
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    return df
+
+
+def get_industry_stocks(code: str):
+    """
+    获取行业成分股
+    :return:
+    """
+    data = {
+        "method": "get_industry_stocks",
+        "token": get_token(),
+        "code": code,
+        "date": "2019-03-29"
+    }
+    r = requests.post(url, data=json.dumps(data))
+    df = text2df(r.text)
+    return df
+
+
 def run_query(table: str, conditions: str, columns=None, count=1):
     """模拟JQDataSDK的run_query方法
 
