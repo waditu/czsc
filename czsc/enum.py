@@ -10,9 +10,17 @@ class Operate(Enum):
 
     LO = "开多"  # Long Open
     LE = "平多"  # Long Exit
+    LA1 = "第一次加多仓"  # Long Add 1
+    LA2 = "第二次加多仓"  # Long Add 2
+    LR1 = "第一次减多仓"  # Long Reduce 1
+    LR2 = "第二次减多仓"  # Long Reduce 2
 
     SO = "开空"  # Short Open
     SE = "平空"  # Short Exit
+    SA1 = "第一次加空仓"  # Short Add 1
+    SA2 = "第二次加空仓"  # Short Add 2
+    SR1 = "第一次减空仓"  # Short Reduce 1
+    SR2 = "第二次减空仓"  # Short Reduce 2
 
 
 class Mark(Enum):
