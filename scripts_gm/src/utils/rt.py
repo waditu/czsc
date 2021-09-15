@@ -265,7 +265,7 @@ def adjust_position_rt(context, symbol):
     bars_new = [x for x in bars if x.dt > trader.kg.end_dt]
     if bars_new:
         for k in bars_new:
-            trader.check_operate(k, context.stoploss, context.timeout)
+            trader.check_operate(k, context.stoploss, context.timeout, context.wait_time, context.max_open_tolerance)
     context.symbols_map[symbol]['trader'] = trader
     context.logger.info(context.shares.get(symbol, "无名标的") + " : op    : " + str(trader.op))
     context.logger.info(context.shares.get(symbol, "无名标的") + " : cache : " + str(dict(trader.cache)))
@@ -468,6 +468,7 @@ def init_context_rt(context, name, symbols,
     context.stoploss = float(os.environ['stoploss'])  # 止损条件设定
     context.timeout = int(os.environ['timeout'])      # 超时条件设定
     context.wait_time = int(os.environ['wait_time'])  # 开仓等待时长，单位：分钟
+    context.max_open_tolerance = float(os.environ['max_open_tolerance'])    # 最大开仓容错百分比
 
     context.ipo_shares = []
     # 仓位控制[0, 1]，按资金百分比控制，1表示满仓，仅在开仓的时候控制

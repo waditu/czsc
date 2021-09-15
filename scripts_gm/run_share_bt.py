@@ -10,6 +10,8 @@ strategy_id                 掘金研究策略ID
 wx_key                      企业微信群聊机器人Key
 stoploss                    止损/止盈比例
 timeout                     超时退出，默认值600，表示最多持有600根1分钟K线的时间
+wait_time                   开仓等待时间，分钟
+max_open_tolerance          开仓最大容错百分比
 max_total_position          总仓位限制
 max_share_position          单仓位限制
 path_gm_logs                gm_logs的路径，默认值：C:/gm_logs
@@ -28,6 +30,7 @@ wx_key=2daec96b-****-4f83-****-2952fe2731c0
 stoploss=0.05
 timeout=600
 wait_time=30
+max_open_tolerance=0.03
 max_total_position=0.8
 max_share_position=0.5
 path_gm_logs=C:/gm_logs
@@ -43,6 +46,8 @@ os.environ['strategy_id'] = 'c7991760-f389-11eb-b66a-00163e0c87d1'
 os.environ['wx_key'] = '2daec96b-****-4f83-****-2952fe2731c0'
 os.environ['stoploss'] = '0.08'
 os.environ['timeout'] = '600'
+os.environ['wait_time'] = '30'
+os.environ['max_open_tolerance'] = '0.03'
 os.environ['max_total_position'] = '0.8'
 os.environ['max_share_position'] = '0.5'
 os.environ['path_gm_logs'] = 'D:\\research\\gm_logs'

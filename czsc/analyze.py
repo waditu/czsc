@@ -485,10 +485,47 @@ class CzscTrader:
         s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
         return s
 
+    def _cal_open_error_price(self, kind='long', max_open_tolerance=0.03) -> float:
+        """计算开仓错误的判断价格
+
+        :param kind:
+        :param max_open_tolerance:
+        :return:
+        """
+        if self.op_freq:
+            opc: CZSC = self.kas[self.op_freq.value]
+            fbi = opc.finished_bis
+        else:
+            fbi = None
+
+        if not fbi:
+            if kind == 'long':
+                return self.latest_price * (1 - max_open_tolerance)
+            elif kind == 'short':
+                return self.latest_price * (1 + max_open_tolerance)
+            else:
+                raise ValueError
+        else:
+            if kind == 'long':
+                if fbi[-1].direction == Direction.Down:
+                    min_low = min(fbi[-1].low, fbi[-3].low)
+                else:
+                    min_low = min(fbi[-2].low, fbi[-4].low)
+                return max(min_low, self.latest_price * (1 - max_open_tolerance))
+            elif kind == 'short':
+                if fbi[-1].direction == Direction.Up:
+                    max_high = max(fbi[-1].high, fbi[-3].high)
+                else:
+                    max_high = max(fbi[-2].high, fbi[-4].high)
+                return min(max_high, self.latest_price * (1 + max_open_tolerance))
+            else:
+                raise ValueError
+
     def check_operate(self, bar: RawBar,
                       stoploss: float = 0.1,
                       timeout: int = 1000,
-                      wait_time: int = -1) -> dict:
+                      wait_time: int = -1,
+                      max_open_tolerance: float = 0.03) -> dict:
         """更新信号，计算下一个操作动作
 
         :param bar: 单根K线对象
@@ -499,6 +536,7 @@ class CzscTrader:
         :param wait_time: 开仓等待参数，数值表示首次出现开仓信号后1分钟K线数量
             这个参数主要作用是减少买在中继分型的概率。基本原理是，等待1~2根操作级别的K线，
             如果发生当下笔破坏，则说明是中继分型的买点。
+        :param max_open_tolerance: 开仓最大容错比例
         :return: 操作提示
         """
         self.kg.update(bar)
@@ -553,11 +591,12 @@ class CzscTrader:
 
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
-                if fbi:
-                    assert fbi[-1].direction == Direction.Down
-                    max_low = max(fbi[-1].low, fbi[-3].low)
-                    min_low = min(fbi[-1].low, fbi[-3].low)
-                    self.cache['long_open_error_price'] = max(min_low, max_low * 0.97, self.latest_price * 0.95)
+                self.cache['long_open_error_price'] = self._cal_open_error_price('long', max_open_tolerance)
+                # if fbi:
+                #     assert fbi[-1].direction == Direction.Down
+                #     max_low = max(fbi[-1].low, fbi[-3].low)
+                #     min_low = min(fbi[-1].low, fbi[-3].low)
+                #     self.cache['long_open_error_price'] = max(min_low, max_low * 0.97, self.latest_price * 0.95)
             else:
                 # 判断是否达到多头异常退出条件
                 if self.kg.m1[-1].id - self.cache['long_open_k1_id'] <= wait_time:
@@ -585,11 +624,8 @@ class CzscTrader:
 
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
-                if fbi:
-                    assert fbi[-1].direction == Direction.Up
-                    max_high = max(fbi[-1].high, fbi[-3].high)
-                    min_high = min(fbi[-1].high, fbi[-3].high)
-                    self.cache['short_open_error_price'] = min(max_high, min_high * 1.03, self.latest_price * 1.05)
+                self.cache['short_open_error_price'] = self._cal_open_error_price('short', max_open_tolerance)
+
             else:
                 # 判断是否达到空头异常退出条件
                 if self.kg.m1[-1].id - self.cache['short_open_k1_id'] <= wait_time:
@@ -630,9 +666,7 @@ class CzscTrader:
             })
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             self.cache['last_op_desc'] = op['desc']
-            if fbi:
-                assert fbi[-1].direction == Direction.Down
-                self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
+            self.cache['long_open_error_price'] = self._cal_open_error_price('long', max_open_tolerance)
 
         elif op['operate'] == Operate.HL.value:
             assert self.cache['long_open_price'] > 0
@@ -658,9 +692,7 @@ class CzscTrader:
             })
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             self.cache['last_op_desc'] = op['desc']
-            if fbi:
-                assert fbi[-1].direction == Direction.Up
-                self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
+            self.cache['short_open_error_price'] = self._cal_open_error_price('short', max_open_tolerance)
 
         elif op['operate'] == Operate.HS.value:
             assert self.cache['short_open_price'] > 0
