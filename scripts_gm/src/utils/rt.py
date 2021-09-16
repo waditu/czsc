@@ -8,6 +8,7 @@ describe: 掘金量化实盘utils
 import dill
 import time
 from pprint import pprint
+from czsc.utils.cache import home_path
 
 from ..monitor import stocks_monitor_rt
 from ..selector import stocks_dwm_selector_rt
@@ -553,3 +554,16 @@ def init_context_rt(context, name, symbols,
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='09:05:00')
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='11:35:00')
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='15:05:00')
+
+
+def check_index_status(qywx_key=None):
+    """查看指数状态"""
+    for gm_symbol in indices.values():
+        try:
+            file_html = os.path.join(home_path, f"{gm_symbol}.html")
+            gm_take_snapshot(gm_symbol, end_dt=datetime.now(), file_html=file_html)
+            if qywx_key:
+                push_file(file_html, qywx_key)
+        except:
+            traceback.print_exc()
+
