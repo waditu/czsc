@@ -16,7 +16,7 @@ from czsc.analyze import CZSC
 from czsc.signals import get_default_signals
 from czsc.objects import Signal, Factor
 
-assert czsc.__version__ == '0.7.5'
+assert czsc.__version__ == '0.7.7'
 
 # 首次使用需要设置聚宽账户，以下大部分案例依赖聚宽数据
 # set_token("phone number", 'password') # 第一个参数是JQData的手机号，第二个参数是登录密码
