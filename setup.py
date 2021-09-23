@@ -1,6 +1,13 @@
 # coding: utf-8
-from setuptools import setup, find_packages
 import czsc
+from os import path
+from setuptools import setup, find_packages
+
+here = path.abspath(path.dirname(__file__))
+
+# Get the long description from the README file
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 setup(
     name="czsc",
@@ -9,7 +16,8 @@ setup(
     author_email=czsc.__email__,
     keywords=["缠论", "技术分析", "A股", "期货", "缠中说禅"],
     description="缠中说禅技术分析工具",
-    long_description="缠中说禅技术分析工具，源自 http://blog.sina.com.cn/chzhshch",
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     license="Apache Software License",
 
     url="https://github.com/zengbin93/czsc",
