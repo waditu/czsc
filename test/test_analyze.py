@@ -123,12 +123,12 @@ def test_czsc_trader():
         ]),
     ]
     ct = CzscTrader(op_freq=Freq.F5, kg=kg, get_signals=get_default_signals, events=events)
-    assert len(ct.s) == 214
+    assert len(ct.s) == 215
     for row in bars[-10000:]:
         op = ct.check_operate(row)
         print(" : op    : ", op)
         print(" : cache : ", dict(ct.cache), "\n")
-    assert len(ct.s) == 214
+    assert len(ct.s) == 215
 
 
 def test_get_signals():
