@@ -374,19 +374,27 @@ class CZSC:
         webbrowser.open(file_html)
 
     @property
+    def last_bi_extend(self):
+        """判断最后一笔是否在延伸中，True 表示延伸中"""
+        if self.bi_list[-1].direction == Direction.Up \
+                and max([x.high for x in self.bars_ubi]) > self.bi_list[-1].high:
+            return True
+
+        if self.bi_list[-1].direction == Direction.Down \
+                and min([x.low for x in self.bars_ubi]) < self.bi_list[-1].low:
+            return True
+
+        return False
+
+    @property
     def finished_bis(self) -> List[BI]:
         """返回当下基本确认完成的笔列表"""
         if not self.bi_list:
             return []
-
-        min_ubi = min([x.low for x in self.bars_ubi])
-        max_ubi = max([x.high for x in self.bars_ubi])
-        if (self.bi_list[-1].direction == Direction.Down and min_ubi >= self.bi_list[-1].low) \
-                or (self.bi_list[-1].direction == Direction.Up and max_ubi <= self.bi_list[-1].high):
-            bis = self.bi_list
         else:
-            bis = self.bi_list[:-1]
-        return bis
+            if self.last_bi_extend:
+                return self.bi_list[:-1]
+        return self.bi_list
 
 
 class CzscTrader:
