@@ -52,8 +52,10 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     :return: 转换好的K线数据
     """
     bars = []
-    records = kline.to_dict('records')
     dt_key = 'trade_time' if '分钟' in freq.value else 'trade_date'
+    kline = kline.sort_values(dt_key, ascending=True, ignore_index=True)
+    records = kline.to_dict('records')
+
     for i, record in enumerate(records):
         # 将每一根K线转换成 RawBar 对象
         bar = RawBar(symbol=record['ts_code'], dt=pd.to_datetime(record[dt_key]),
@@ -94,7 +96,7 @@ def get_kline(ts_code: str,
     bars = format_kline(df, freq)
     if bars and bars[-1].dt < pd.to_datetime(end_date) and len(bars) == 8000:
         print(f"获取K线数量达到8000根，数据获取到 {bars[-1].dt}，目标 end_date 为 {end_date}")
-    return bars[::-1]
+    return bars
 
 
 def get_ths_daily(ts_code='885760.TI',
