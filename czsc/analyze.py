@@ -159,12 +159,11 @@ def check_bi(bars: List[NewBar]):
         power_price = round(abs(fx_b.fx - fx_a.fx), 2)
         change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
-        fake_bis = create_fake_bis(fxs_)
+        # fake_bis = create_fake_bis(fxs_)
 
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, fake_bis=fake_bis,
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
                 direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
-                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
-                rsq=RSQ([x.close for x in bars_a[1:-1]]), change=change)
+                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a), change=change)
 
         return bi, bars_b
     else:
