@@ -17,6 +17,7 @@ def test_heat_map():
     hm = plot.heat_map(data, x_label=x_label, y_label=y_label)
     file_html = 'render.html'
     hm.render(file_html)
+    assert os.path.exists(file_html)
     os.remove(file_html)
 
 
@@ -27,15 +28,9 @@ def test_kline_pro():
                    close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
             for i, row in kline.iterrows()]
     ka = CZSC(bars)
-
-    # bs = []
-    # for x in ka.bi_list:
-    #     if x.fx_b.mark == Mark.D:
-    #         mark = "buy"
-    #     else:
-    #         mark = "sell"
-    #     bs.append({"dt": x.f, "mark": mark, mark: x.fx_b.fx})
-    #
-    # chart = plot.kline_pro(ka.bars_ubi, fx=ka.fx_list, bi=ka.bi_list, xd=ka.xd_list, bs=bs)
-    # chart.render()
-
+    # ka.open_in_browser()
+    file_html = 'czsc_render.html'
+    chart = ka.to_echarts()
+    chart.render(file_html)
+    assert os.path.exists(file_html)
+    os.remove(file_html)
