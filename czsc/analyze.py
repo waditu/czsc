@@ -14,7 +14,6 @@ from .utils.kline_generator import KlineGenerator
 from .enum import Mark, Direction, Operate, Freq
 from .objects import BI, FakeBI, FX, RawBar, NewBar, Event
 from .utils.echarts_plot import kline_pro
-from .utils.ta import RSQ
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -159,7 +158,6 @@ def check_bi(bars: List[NewBar]):
         power_price = round(abs(fx_b.fx - fx_a.fx), 2)
         change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
-        # fake_bis = create_fake_bis(fxs_)
 
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
                 direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
