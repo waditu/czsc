@@ -65,6 +65,7 @@ def kline_pro(kline: List[dict],
               xd: List[dict] = None,
               bs: List[dict] = None,
               title: str = "缠中说禅K线分析",
+              t_seq: List[int] = None,
               width: str = "1400px",
               height: str = '580px') -> Grid:
     """绘制缠中说禅K线分析结果
@@ -82,6 +83,7 @@ def kline_pro(kline: List[dict],
     :param xd: 线段识别结果
     :param bs: 买卖点
     :param title: 图表标题
+    :param t_seq: 均线系统
     :param width: 图表宽度
     :param height: 图表高度
     :return: 用Grid组合好的图表
@@ -155,11 +157,6 @@ def kline_pro(kline: List[dict],
 
     close = np.array([x['close'] for x in kline], dtype=np.double)
     diff, dea, macd = MACD(close)
-
-    ma5 = SMA(close, timeperiod=5)
-    ma20 = SMA(close, timeperiod=20)
-    ma60 = SMA(close, timeperiod=60)
-
     macd_bar = []
     for i, v in enumerate(macd.tolist()):
         item_style = red_item_style if v > 0 else green_item_style
@@ -191,13 +188,17 @@ def kline_pro(kline: List[dict],
     # ------------------------------------------------------------------------------------------------------------------
     chart_ma = Line()
     chart_ma.add_xaxis(xaxis_data=dts)
+    if not t_seq:
+        t_seq = [10, 20, 60, 120, 250]
 
-    ma_keys = {"MA5": ma5, "MA20": ma20, "MA60": ma60}
-    ma_colors = ["#39afe6", "#da6ee8", "#00940b"]
+    ma_keys = dict()
+    for t in t_seq:
+        ma_keys[f"MA{t}"] = SMA(close, timeperiod=t)
+
     for i, (name, ma) in enumerate(ma_keys.items()):
         chart_ma.add_yaxis(series_name=name, y_axis=ma, is_smooth=True,
-                           is_selected=False, symbol_size=0, label_opts=label_not_show_opts,
-                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color=ma_colors[i]))
+                           is_selected=True, symbol_size=0, label_opts=label_not_show_opts,
+                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1))
 
     chart_ma.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_ma)

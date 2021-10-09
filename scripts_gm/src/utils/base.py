@@ -40,12 +40,18 @@ freq_map = {"60s": "1分钟", "300s": "5分钟", "900s": "15分钟",
 
 indices = {
     "上证指数": 'SHSE.000001',
-    "创业板指数": 'SZSE.399006',
     "上证50": 'SHSE.000016',
-    "深证成指": "SZSE.399001",
     "沪深300": "SHSE.000300",
+    "中证1000": "SHSE.000852",
+
+    "深证成指": "SZSE.399001",
+    "创业板指数": 'SZSE.399006',
     "深次新股": "SZSE.399678",
     "中小板指": "SZSE.399005",
+    "中证500": "SZSE.399905",
+    "国证2000": "SZSE.399303",
+    "小盘成长": "SZSE.399376",
+    "小盘价值": "SZSE.399377",
 }
 
 
@@ -237,3 +243,22 @@ class GmCzscTrader(CzscTrader):
             return
         for bar in bars:
             self.check_operate(bar)
+
+
+def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None, get_signals: Callable = get_default_signals):
+    """使用掘金的数据对任意标的、任意时刻的状态进行快照
+
+    :param gm_symbol:
+    :param end_dt:
+    :param file_html:
+    :param get_signals:
+    :return:
+    """
+    ct = GmCzscTrader(gm_symbol, end_dt=end_dt, max_count=2000, get_signals=get_signals)
+    if file_html:
+        ct.take_snapshot(file_html)
+        print(f'saved into {file_html}')
+    else:
+        ct.open_in_browser()
+    return ct
+

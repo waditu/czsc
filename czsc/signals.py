@@ -6,7 +6,7 @@ from datetime import datetime
 
 from .objects import Direction, BI, FakeBI, Signal
 from .enum import Freq
-from .utils.ta import MACD, SMA, KDJ
+from .utils.ta import MACD, SMA, KDJ, RSQ
 from .cobra.utils import kdj_gold_cross
 from . import analyze
 
@@ -718,9 +718,10 @@ def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
         s[v.key] = v.value
 
     # 拟合优度
-    if last_bi.rsq > 0.8:
+    rsq = RSQ([x.close for x in last_bi.bars[1:-1]])
+    if rsq > 0.8:
         v = Signal(k1=k1, k2=k2, k3="拟合优度", v1="大于0.8")
-    elif last_bi.rsq < 0.2:
+    elif rsq < 0.2:
         v = Signal(k1=k1, k2=k2, k3="拟合优度", v1="小于0.2")
     else:
         v = Signal(k1=k1, k2=k2, k3="拟合优度", v1="0.2到0.8之间")
@@ -1070,7 +1071,7 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
             zg = min(c.bi_list[-1].high, c.bi_list[-3].high)
             zd = max(c.bi_list[-1].low, c.bi_list[-3].low)
         else:
-            gg = min(c.bi_list[-2].high, c.bi_list[-4].high)
+            gg = max(c.bi_list[-2].high, c.bi_list[-4].high)
             zg = min(c.bi_list[-2].high, c.bi_list[-4].high)
             zd = max(c.bi_list[-2].low, c.bi_list[-4].low)
 

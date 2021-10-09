@@ -41,19 +41,15 @@ def check_signals_acc(f1_raw_bars: List[RawBar],
     ct = CzscTrader(op_freq=Freq.F1, kg=kg, get_signals=get_signals, events=[])
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
-    for row in tqdm(f1_raw_bars[30000:], desc='generate_snapshots'):
-        if isinstance(row, Dict):
-            bar = RawBar(symbol=row['symbol'], open=round(row['open'], 2), dt=row['dt'], vol=row['vol'],
-                         close=round(row['close'], 2), high=round(row['high'], 2), low=round(row['low'], 2))
-        else:
-            bar = row
+    for bar in tqdm(f1_raw_bars[30000:], desc='generate_snapshots'):
         ct.check_operate(bar)
 
         for signal in signals:
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
             if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
-                file_html = os.path.join(html_path, f"{bar.symbol}_{signal.value}_{bar.dt.strftime(dt_fmt)}.html")
+                file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime(dt_fmt)}.html"
+                file_html = os.path.join(html_path, file_html)
                 print(file_html)
                 ct.take_snapshot(file_html)
                 last_dt[signal.key] = bar.dt

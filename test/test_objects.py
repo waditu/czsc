@@ -1,7 +1,4 @@
 # coding: utf-8
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
 from collections import OrderedDict
 from czsc.objects import Signal, Factor, Event, Freq, Operate
 

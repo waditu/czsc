@@ -1,20 +1,19 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2021/09/23 11:51
+"""
 
 
 def create_logger(log_file, name='logger', cmd=True, level="info"):
     """define a logger for your program
 
-    parameters
-    ------------
-    log_file     file name of log
-    name         name of logger
-
-    example
-    ------------
-    logger = create_logger('example.log',name='logger',)
-    logger.info('This is an example!')
-    logger.warning('This is a warn!')
-
+    :param log_file: file name of log
+    :param name: name of logger
+    :param cmd: output in cmd
+    :param level: level
+    :return: logger
     """
     import logging
 

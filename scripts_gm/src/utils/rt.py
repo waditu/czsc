@@ -8,6 +8,7 @@ describe: 掘金量化实盘utils
 import dill
 import time
 from pprint import pprint
+from czsc.utils.cache import home_path
 
 from ..monitor import stocks_monitor_rt
 from ..selector import stocks_dwm_selector_rt
@@ -213,6 +214,11 @@ def adjust_share_position_rt(context, symbol: str, trader: CzscTrader, mp: float
             trader.op['desc'] = trader.cache['last_op_desc']
             context.logger.info("{} - {} - 开多 - {} - {}".format(symbol, name, trader.op['desc'], trader.latest_price))
 
+            if trader.kg.m1[-1].id - trader.cache['long_open_k1_id'] < context.wait_time:
+                context.logger.info(f"{symbol}，开仓条件满足，等待开仓中，"
+                                    f"已等待 {trader.kg.m1[-1].id - trader.cache['long_open_k1_id']}")
+                return
+
             # 判断标的是否在允许开仓的股票列表中
             if symbol not in context.allow_open_shares:
                 context.logger.info(f"{symbol} - {name} 不在允许开仓的股票列表中")
@@ -260,10 +266,14 @@ def adjust_position_rt(context, symbol):
     bars_new = [x for x in bars if x.dt > trader.kg.end_dt]
     if bars_new:
         for k in bars_new:
-            trader.check_operate(k, context.stoploss, context.timeout)
+            trader.check_operate(k, context.stoploss, context.timeout, context.wait_time, context.max_open_tolerance)
     context.symbols_map[symbol]['trader'] = trader
     context.logger.info(context.shares.get(symbol, "无名标的") + " : op    : " + str(trader.op))
     context.logger.info(context.shares.get(symbol, "无名标的") + " : cache : " + str(dict(trader.cache)))
+
+    if symbol in context.forbidden:
+        context.logger.info(context.shares.get(symbol, "无名标的") + " 禁止交易")
+        return
 
     # 可转债支持 T+0 交易
     if symbol[:7] in ['SZSE.12', 'SHSE.11']:
@@ -428,9 +438,9 @@ def init_context_rt(context, name, symbols,
 
     :param context:
     :param name: tactic 的名称
-    :param symbols:
-    :param op_freq:
-    :param freqs:
+    :param symbols: 交易列表
+    :param op_freq: 交易周期
+    :param freqs: 多级别周期
     :param get_signals: 信号计算方法
     :param get_events: 交易事件定义
     :return:
@@ -439,18 +449,28 @@ def init_context_rt(context, name, symbols,
     path_gm_logs = os.environ.get('path_gm_logs', None)
     assert os.path.exists(path_gm_logs)
     data_path = os.path.join(path_gm_logs, f"realtime/{name}")
-    context.wx_key = os.environ['wx_key']
     cache_path = os.path.join(data_path, "cache")
     os.makedirs(cache_path, exist_ok=True)
-    context.logger = create_logger(os.path.join(data_path, "realtime.log"), cmd=True, name="gm")
     context.data_path = data_path
     context.cache_path = cache_path
+
+    context.logger = create_logger(os.path.join(data_path, "realtime.log"), cmd=True, name="gm")
     context.file_orders = os.path.join(data_path, "orders.txt")
     context.share_id = os.environ['share_id']
     context.future_id = None
     context.shares = get_shares()
+
+    context.op_freq = op_freq
+    context.freqs = freqs
+    context.get_signals = get_signals
+    context.get_events = get_events
+
+    context.wx_key = os.environ['wx_key']
     context.stoploss = float(os.environ['stoploss'])  # 止损条件设定
-    context.timeout = int(os.environ['timeout'])  # 超时条件设定
+    context.timeout = int(os.environ['timeout'])      # 超时条件设定
+    context.wait_time = int(os.environ['wait_time'])  # 开仓等待时长，单位：分钟
+    context.max_open_tolerance = float(os.environ['max_open_tolerance'])    # 最大开仓容错百分比
+
     context.ipo_shares = []
     # 仓位控制[0, 1]，按资金百分比控制，1表示满仓，仅在开仓的时候控制
     context.max_total_position = float(os.environ['max_total_position'])
@@ -464,9 +484,10 @@ def init_context_rt(context, name, symbols,
     context.logger.info(f"总仓位控制：{context.max_total_position}")
     context.logger.info(f"单仓位控制：{context.max_share_position}")
     context.logger.info(f"异常退出条件：stoploss = {context.stoploss}; timeout = {context.timeout}")
-    context.logger.info(f"K线周期列表：{freqs}")
-    context.logger.info("交易信号计算：\n" + inspect.getsource(get_signals))
-    context.logger.info("交易事件定义：\n" + inspect.getsource(get_events))
+    context.logger.info(f"K线交易周期：{context.op_freq}")
+    context.logger.info(f"K线周期列表：{context.freqs}")
+    context.logger.info("交易信号计算：\n" + inspect.getsource(context.get_signals))
+    context.logger.info("交易事件定义：\n" + inspect.getsource(context.get_events))
 
     # 仅允许在最近设置的股票池列表中的股票上开仓
     context.allow_open_shares = list(symbols)
@@ -479,35 +500,39 @@ def init_context_rt(context, name, symbols,
 
     symbols = sorted(list(set(symbols)))
     context.logger.info(f"交易标的数量：{len(symbols)}")
-    forbidden = ['SHSE.780728']
-    symbols_map = {symbol: dict() for symbol in symbols if symbol not in forbidden}
+    symbols_map = {symbol: dict() for symbol in symbols}
 
     for symbol in symbols_map.keys():
-        symbols_map[symbol]['mp'] = context.max_share_position
-        file_gt = os.path.join(data_path, "{}.gt".format(symbol))
-        if os.path.exists(file_gt) and time.time() - os.path.getmtime(file_gt) < 3600 * 72:
-            trader: CzscTrader = dill.load(open(file_gt, 'rb'))
-            context.logger.info("{} 加载成功，最新K线时间：{}".format(file_gt, trader.end_dt.strftime(dt_fmt)))
-        else:
-            kg = get_init_kg(symbol, context.now, max_count=2000, adjust=ADJUST_PREV, freqs=freqs)
-            trader = CzscTrader(kg=kg, get_signals=get_signals, events=get_events(), op_freq=op_freq)
+        try:
+            symbols_map[symbol]['mp'] = context.max_share_position
+            file_gt = os.path.join(data_path, "{}.gt".format(symbol))
+            if os.path.exists(file_gt) and time.time() - os.path.getmtime(file_gt) < 3600 * 72:
+                trader: CzscTrader = dill.load(open(file_gt, 'rb'))
+                context.logger.info("{} 加载成功，最新K线时间：{}".format(file_gt, trader.end_dt.strftime(dt_fmt)))
+            else:
+                kg = get_init_kg(symbol, context.now, max_count=2000, adjust=ADJUST_PREV, freqs=freqs)
+                trader = CzscTrader(kg=kg, get_signals=get_signals, events=get_events(), op_freq=op_freq)
 
-            # 更新多头持仓信息
-            p = context.account(account_id=context.share_id).positions(symbol=symbol, side=PositionSide_Long)
-            if p:
-                assert len(p) == 1
-                trader.cache['last_op'] = Operate.HL.value
-                trader.cache['last_op_desc'] = "启动时持多仓"
-                trader.cache['long_open_price'] = p[0].vwap
-                trader.cache['long_open_k1_id'] = trader.kg.m1[-1].id
-                trader.cache['long_max_high'] = max(trader.latest_price, p[0].vwap)
-                context.logger.info(f'{symbol} 多头持仓信息更新成功：{dict(trader.cache)}')
+                # 更新多头持仓信息
+                p = context.account(account_id=context.share_id).positions(symbol=symbol, side=PositionSide_Long)
+                if p:
+                    assert len(p) == 1
+                    trader.cache['last_op'] = Operate.HL.value
+                    trader.cache['last_op_desc'] = "启动时持多仓"
+                    trader.cache['long_open_price'] = p[0].vwap
+                    trader.cache['long_open_error_price'] = p[0].vwap * 0.97
+                    trader.cache['long_open_k1_id'] = trader.kg.m1[-1].id
+                    trader.cache['long_max_high'] = max(trader.latest_price, p[0].vwap)
+                    context.logger.info(f'{symbol} 多头持仓信息更新成功：{dict(trader.cache)}')
+
+                symbols_map[symbol]['trader'] = trader
+                context.logger.info("{} 初始化完成，最新K线时间：{}".format(symbol, trader.end_dt.strftime(dt_fmt)))
+                dill.dump(trader, open(file_gt, 'wb'))
 
             symbols_map[symbol]['trader'] = trader
-            context.logger.info("{} 初始化完成，最新K线时间：{}".format(symbol, trader.end_dt.strftime(dt_fmt)))
-            dill.dump(trader, open(file_gt, 'wb'))
-
-        symbols_map[symbol]['trader'] = trader
+        except:
+            del symbols_map[symbol]
+            print(f'init kg fail on {symbol}')
 
     subscribe(",".join(symbols_map.keys()), frequency='60s', count=300, wait_group=False)
     pprint(symbols_map)
@@ -529,3 +554,16 @@ def init_context_rt(context, name, symbols,
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='09:05:00')
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='11:35:00')
     # schedule(schedule_func=stocks_monitor_rt, date_rule='1d', time_rule='15:05:00')
+
+
+def check_index_status(qywx_key=None):
+    """查看指数状态"""
+    for gm_symbol in indices.values():
+        try:
+            file_html = os.path.join(home_path, f"{gm_symbol}.html")
+            gm_take_snapshot(gm_symbol, end_dt=datetime.now(), file_html=file_html)
+            if qywx_key:
+                push_file(file_html, qywx_key)
+        except:
+            traceback.print_exc()
+

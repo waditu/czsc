@@ -14,7 +14,6 @@ from .utils.kline_generator import KlineGenerator
 from .enum import Mark, Direction, Operate, Freq
 from .objects import BI, FakeBI, FX, RawBar, NewBar, Event
 from .utils.echarts_plot import kline_pro
-from .utils.ta import RSQ
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -159,12 +158,10 @@ def check_bi(bars: List[NewBar]):
         power_price = round(abs(fx_b.fx - fx_a.fx), 2)
         change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
-        fake_bis = create_fake_bis(fxs_)
 
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, fake_bis=fake_bis,
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
                 direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
-                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a),
-                rsq=RSQ([x.close for x in bars_a[1:-1]]), change=change)
+                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a), change=change)
 
         return bi, bars_b
     else:
@@ -214,7 +211,7 @@ def get_sub_bis(bis: List[BI], bi: BI) -> List[BI]:
 
 
 class CZSC:
-    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None):
+    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None, verbose=False):
         """
 
         :param bars: K线数据
@@ -223,6 +220,7 @@ class CZSC:
             默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
+        self.verbose = verbose
         self.max_bi_count = max_bi_count
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
@@ -293,7 +291,7 @@ class CZSC:
         else:
             bars_ubi_a = bars_ubi
 
-        if len(bars_ubi_a) > 300:
+        if self.verbose and len(bars_ubi_a) > 300:
             print(f"{self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸超长，延伸数量: {len(bars_ubi_a)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi_a)
@@ -373,19 +371,27 @@ class CZSC:
         webbrowser.open(file_html)
 
     @property
+    def last_bi_extend(self):
+        """判断最后一笔是否在延伸中，True 表示延伸中"""
+        if self.bi_list[-1].direction == Direction.Up \
+                and max([x.high for x in self.bars_ubi]) > self.bi_list[-1].high:
+            return True
+
+        if self.bi_list[-1].direction == Direction.Down \
+                and min([x.low for x in self.bars_ubi]) < self.bi_list[-1].low:
+            return True
+
+        return False
+
+    @property
     def finished_bis(self) -> List[BI]:
         """返回当下基本确认完成的笔列表"""
         if not self.bi_list:
             return []
-
-        min_ubi = min([x.low for x in self.bars_ubi])
-        max_ubi = max([x.high for x in self.bars_ubi])
-        if (self.bi_list[-1].direction == Direction.Down and min_ubi >= self.bi_list[-1].low) \
-                or (self.bi_list[-1].direction == Direction.Up and max_ubi <= self.bi_list[-1].high):
-            bis = self.bi_list
         else:
-            bis = self.bi_list[:-1]
-        return bis
+            if self.last_bi_extend:
+                return self.bi_list[:-1]
+        return self.bi_list
 
 
 class CzscTrader:
@@ -484,14 +490,58 @@ class CzscTrader:
         s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
         return s
 
-    def check_operate(self, bar: RawBar, stoploss: float = 0.1, timeout: int = 1000) -> dict:
+    def _cal_open_error_price(self, kind='long', max_open_tolerance=0.03) -> float:
+        """计算开仓错误的判断价格
+
+        :param kind:
+        :param max_open_tolerance:
+        :return:
+        """
+        if self.op_freq:
+            opc: CZSC = self.kas[self.op_freq.value]
+            fbi = opc.finished_bis
+        else:
+            fbi = None
+
+        if not fbi:
+            if kind == 'long':
+                return self.latest_price * (1 - max_open_tolerance)
+            elif kind == 'short':
+                return self.latest_price * (1 + max_open_tolerance)
+            else:
+                raise ValueError
+        else:
+            if kind == 'long':
+                if fbi[-1].direction == Direction.Down:
+                    min_low = min(fbi[-1].low, fbi[-3].low)
+                else:
+                    min_low = min(fbi[-2].low, fbi[-4].low)
+                return max(min_low, self.latest_price * (1 - max_open_tolerance))
+            elif kind == 'short':
+                if fbi[-1].direction == Direction.Up:
+                    max_high = max(fbi[-1].high, fbi[-3].high)
+                else:
+                    max_high = max(fbi[-2].high, fbi[-4].high)
+                return min(max_high, self.latest_price * (1 + max_open_tolerance))
+            else:
+                raise ValueError
+
+    def check_operate(self, bar: RawBar,
+                      stoploss: float = 0.1,
+                      timeout: int = 1000,
+                      wait_time: int = -1,
+                      max_open_tolerance: float = 0.03) -> dict:
         """更新信号，计算下一个操作动作
 
-        :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
+        :param bar: 单根K线对象
         :param stoploss: 止损退出参数，0.1 表示10个点止损
             多头止损：当前价 < 买入后的最高价 * （1 - stoploss）
             空头止损：当前价 > 买入后的最低价 * （1 + stoploss）
-        :param bar: 单根K线对象
+        :param timeout: 超时退出参数，数值表示持仓1分钟K线数量
+        :param wait_time: 开仓等待参数，数值表示首次出现开仓信号后1分钟K线数量
+            这个参数主要作用是减少买在中继分型的概率。基本原理是，等待1~2根操作级别的K线，
+            如果发生当下笔破坏，则说明是中继分型的买点。
+        :param max_open_tolerance: 开仓最大容错比例
         :return: 操作提示
         """
         self.kg.update(bar)
@@ -499,12 +549,6 @@ class CzscTrader:
 
         for freq, klines_ in klines_one.items():
             self.kas[freq].update(klines_[-1])
-
-        if self.op_freq:
-            opc: CZSC = self.kas[self.op_freq.value]
-            fbi = opc.finished_bis
-        else:
-            fbi = None
 
         self.symbol = self.kas["1分钟"].symbol
         self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
@@ -541,28 +585,29 @@ class CzscTrader:
             assert self.cache['long_open_price'] > 0
             assert self.cache['long_max_high'] > 0
             assert self.cache['long_open_k1_id'] > 0
-            assert (self.op_freq and self.cache['long_open_error_price'] > 0) \
-                   or (not self.op_freq and self.cache['long_open_error_price'] == -1)
+            assert self.cache['long_open_error_price'] > 0
 
             if op['operate'] == Operate.LO.value:
                 op['operate'] = Operate.HL.value
-                self.cache['long_open_price'] = min(self.cache['long_open_price'], self.latest_price)
-                self.cache['long_open_k1_id'] = self.kg.m1[-1].id
-                self.cache['last_op_desc'] = op['desc']
-                if fbi:
-                    assert fbi[-1].direction == Direction.Down
-                    self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
+                price_ = self._cal_open_error_price('long', max_open_tolerance)
+                if price_ > self.cache['long_open_error_price']:
+                    self.cache['long_open_error_price'] = price_
+
             else:
                 # 判断是否达到多头异常退出条件
-                if self.op_freq and self.latest_price < self.cache.get('long_open_error_price', 0):
+                if self.kg.m1[-1].id - self.cache['long_open_k1_id'] <= wait_time:
+                    op['operate'] = Operate.LE.value
+                    op['desc'] = f"long_wait_out"
+
+                if self.latest_price < self.cache['long_open_error_price']:
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_open_error"
 
-                if self.latest_price < self.cache.get('long_max_high', 0) * (1 - stoploss):
+                if self.latest_price < self.cache['long_max_high'] * (1 - stoploss):
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_stoploss_{stoploss}"
 
-                if self.kg.m1[-1].id - self.cache.get('long_open_k1_id', 99999999999) > timeout:
+                if self.kg.m1[-1].id - self.cache['long_open_k1_id'] > timeout:
                     op['operate'] = Operate.LE.value
                     op['desc'] = f"long_timeout_{timeout}"
 
@@ -570,32 +615,35 @@ class CzscTrader:
             assert self.cache['short_open_price'] > 0
             assert self.cache['short_min_low'] > 0
             assert self.cache['short_open_k1_id'] > 0
-            assert (self.op_freq and self.cache['short_open_error_price'] > 0) \
-                   or (not self.op_freq and self.cache['short_open_error_price'] == -1)
+            assert self.cache['short_open_error_price'] > 0
 
             if op['operate'] == Operate.SO.value:
                 op['operate'] = Operate.HS.value
-                self.cache['short_open_price'] = max(self.cache['short_open_price'], self.latest_price)
-                self.cache['short_open_k1_id'] = self.kg.m1[-1].id
-                self.cache['last_op_desc'] = op['desc']
-                if fbi:
-                    assert fbi[-1].direction == Direction.Up
-                    self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
+                price_ = self._cal_open_error_price('short', max_open_tolerance)
+                if price_ < self.cache['short_open_error_price']:
+                    self.cache['short_open_error_price'] = price_
+
             else:
                 # 判断是否达到空头异常退出条件
-                if self.op_freq and self.latest_price > self.cache['short_open_error_price'] > 0:
+                if self.kg.m1[-1].id - self.cache['short_open_k1_id'] <= wait_time:
+                    op['operate'] = Operate.SE.value
+                    op['desc'] = f"short_wait_out"
+
+                if self.latest_price > self.cache['short_open_error_price']:
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_open_error"
 
-                if self.latest_price > self.cache.get('short_min_low', 10000000000) * (1 + stoploss):
+                if self.latest_price > self.cache['short_min_low'] * (1 + stoploss):
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_stoploss_{stoploss}"
 
-                if self.kg.m1[-1].id - self.cache.get('short_open_k1_id', 99999999999) > timeout:
+                if self.kg.m1[-1].id - self.cache['short_open_k1_id'] > timeout:
                     op['operate'] = Operate.SE.value
                     op['desc'] = f"short_timeout_{timeout}"
+
         else:
             assert last_op == Operate.HO.value
+            # HO 状态下的 LE、SE 是无效的
             if op['operate'] in [Operate.LE.value, Operate.SE.value]:
                 op['operate'] = Operate.HO.value
 
@@ -616,17 +664,14 @@ class CzscTrader:
             })
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             self.cache['last_op_desc'] = op['desc']
-            if fbi:
-                assert fbi[-1].direction == Direction.Down
-                self.cache['long_open_error_price'] = min(fbi[-1].low, fbi[-3].low)
+            self.cache['long_open_error_price'] = self._cal_open_error_price('long', max_open_tolerance)
 
         elif op['operate'] == Operate.HL.value:
             assert self.cache['long_open_price'] > 0
             assert self.cache['long_open_k1_id'] > 0
             self.cache['long_max_high'] = max(self.latest_price, self.cache['long_max_high'])
             assert self.cache['long_max_high'] > 0
-            assert (self.op_freq and self.cache['long_open_error_price'] > 0) \
-                   or (not self.op_freq and self.cache['long_open_error_price'] == -1)
+            assert self.cache['long_open_error_price'] > 0
 
         elif op['operate'] == Operate.SE.value:
             self.cache.update({
@@ -644,17 +689,14 @@ class CzscTrader:
             })
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             self.cache['last_op_desc'] = op['desc']
-            if fbi:
-                assert fbi[-1].direction == Direction.Up
-                self.cache['short_open_error_price'] = max(fbi[-1].high, fbi[-3].high)
+            self.cache['short_open_error_price'] = self._cal_open_error_price('short', max_open_tolerance)
 
         elif op['operate'] == Operate.HS.value:
             assert self.cache['short_open_price'] > 0
             assert self.cache['short_open_k1_id'] > 0
             self.cache['short_min_low'] = min(self.latest_price, self.cache['short_min_low'])
             assert self.cache['short_min_low'] > 0
-            assert (self.op_freq and self.cache['short_open_error_price'] > 0) \
-                   or (not self.op_freq and self.cache['short_open_error_price'] == -1)
+            assert self.cache['short_open_error_price'] > 0
 
         else:
             assert op['operate'] == Operate.HO.value

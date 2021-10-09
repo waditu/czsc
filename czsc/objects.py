@@ -25,6 +25,7 @@ class RawBar:
     high: [float, int]
     low: [float, int]
     vol: [float, int]
+    amount: [float, int] = None
 
 
 @dataclass
@@ -39,7 +40,8 @@ class NewBar:
     high: [float, int]
     low: [float, int]
     vol: [float, int]
-    elements: List[RawBar]  # 存入具有包含关系的原始K线
+    amount: [float, int] = None
+    elements: List = None  # 存入具有包含关系的原始K线
 
 
 @dataclass
@@ -50,8 +52,8 @@ class FX:
     high: [float, int]
     low: [float, int]
     fx: [float, int]
-    power: str
-    elements: List[NewBar]
+    power: str = None
+    elements: List = None
 
 
 @dataclass
@@ -71,16 +73,16 @@ class BI:
     symbol: str
     fx_a: FX = None  # 笔开始的分型
     fx_b: FX = None  # 笔结束的分型
-    fxs: List[FX] = None  # 笔内部的分型列表
+    fxs: List = None  # 笔内部的分型列表
     direction: Direction = None
     high: float = None
     low: float = None
     power: float = None
-    bars: List[NewBar] = None
+    bars: List = None
     rsq: float = None
     change: float = None
     length: float = None
-    fake_bis: List[FakeBI] = None
+    fake_bis: List = None
 
     def __post_init__(self):
         self.sdt = self.fx_a.dt

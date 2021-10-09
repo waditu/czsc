@@ -1,6 +1,6 @@
 # czsc - 缠中说禅技术分析工具
->源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加群探讨，
->QQ群：`1125818657`，加群请备注自己对缠论的了解程度，谢谢。
+>源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加群探讨。
+>[点击扫码加入企业微信交流群](https://github.com/zengbin93/czsc/issues/64)，加群请备注自己对缠论的了解程度，谢谢。
 
 >**[官方文档（0.6.8）（未更新到0.7.3）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
 

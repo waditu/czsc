@@ -87,8 +87,8 @@ def stocks_dwm_selector(end_date: [str, datetime] = datetime.now(), data_path=No
                     'name': s['name'],
                     'reason': f,
                     'end_dt': k0[-1].dt.strftime(dt_fmt),
-                    'F10': f"http://basic.10jqka.com.cn/{symbol.split('.')[1]}",
-                    'Kline': f"https://finance.sina.com.cn/realstock/company/{symbol[:2].lower()}{symbol[-6:]}/nc.shtml"
+                    'F10': f"http://basic.10jqka.com.cn/{symbol.split('.')[0]}",
+                    'Kline': f"https://finance.sina.com.cn/realstock/company/{symbol[-2:].lower()}{symbol[:6]}/nc.shtml"
                 }
                 results.append(res)
                 print(res)

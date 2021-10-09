@@ -9,7 +9,7 @@ import pandas as pd
 from typing import List, Callable, Tuple
 from tqdm import tqdm
 
-from ..objects import RawBar, Freq, Signal, Factor, Event, Freq, Operate
+from ..objects import RawBar, Event, Freq, Operate
 from ..signals import get_default_signals
 from ..analyze import CzscTrader, KlineGenerator
 
@@ -86,11 +86,12 @@ def long_trade_estimator(pairs: List[dict]):
         '单笔收益（%）': x_round(df['盈亏（%）'].mean()),
         '胜率（%）': int(len(df[df['盈亏（%）'] > 0]) / len(df) * 10000) / 100,
         '累计盈亏比': int(df[df['盈亏（%）'] > 0]['盈亏（%）'].sum() /
-                     (abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].sum()) * 100) + 0.00001) / 100,
+                     abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].sum()) * 100) / 100,
         '单笔盈亏比': int(df[df['盈亏（%）'] > 0]['盈亏（%）'].mean() /
-                     (abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].mean()) * 100) + 0.00001) / 100,
+                     abs(df[df['盈亏（%）'] < 0]['盈亏（%）'].mean()) * 100) / 100,
     }
 
+    res['持仓每分钟BP'] = round(res['累计收益（%）'] * 100 / df['持仓分钟'].sum(), 4)
     return res
 
 
@@ -123,7 +124,7 @@ def long_trade_simulator(signals: List[dict],
                 else:
                     trades.append({
                         "标的代码": signal['symbol'],
-                        '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                        '平仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                         '平仓价格': signal['close'],
                         '平仓理由': f,
                         'eid': signal['id'],
@@ -134,7 +135,7 @@ def long_trade_simulator(signals: List[dict],
             if m:
                 trades.append({
                     "标的代码": signal['symbol'],
-                    '开仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                    '开仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                     '开仓价格': signal['close'],
                     '开仓理由': f,
                     'oid': signal['id'],
@@ -156,6 +157,7 @@ def long_trade_simulator(signals: List[dict],
 
     pf = long_trade_estimator(pairs)
     pf['基准收益（%）'] = int((signals[-1]['close'] - signals[0]['open']) / signals[0]['open'] * 10000) / 100
+    pf['基准每分钟BP'] = round((pf['基准收益（%）'] * 100) / (signals[-1]['id'] - signals[0]['id']), 4)
     pf['开始时间'] = signals[0]['dt'].strftime("%Y-%m-%d %H:%M")
     pf['结束时间'] = signals[-1]['dt'].strftime("%Y-%m-%d %H:%M")
     return pairs, pf
@@ -178,7 +180,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
         if cache['last_op'] != Operate.LO and m:
             trades.append({
                 "标的代码": signal['symbol'],
-                '开仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                '开仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                 '开仓价格': signal['close'],
                 '开仓理由': f,
                 'oid': signal['id'],
@@ -188,7 +190,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
         if cache['last_op'] == Operate.LO and not m:
             trades.append({
                 "标的代码": signal['symbol'],
-                '平仓时间': signal['dt'].strftime("%Y-%m-%d"),
+                '平仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
                 '平仓价格': signal['close'],
                 '平仓理由': "事件空白",
                 'eid': signal['id'],
@@ -208,6 +210,7 @@ def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], 
 
     pf = long_trade_estimator(pairs)
     pf['基准收益（%）'] = int((signals[-1]['close'] - signals[0]['open']) / signals[0]['open'] * 10000) / 100
+    pf['基准每分钟BP'] = round((pf['基准收益（%）'] * 100) / (signals[-1]['id'] - signals[0]['id']), 4)
     pf['开始时间'] = signals[0]['dt'].strftime("%Y-%m-%d %H:%M")
     pf['结束时间'] = signals[-1]['dt'].strftime("%Y-%m-%d %H:%M")
     return pairs, pf
