@@ -5,10 +5,13 @@ email: zeng_bin8888@163.com
 create_dt: 2021/6/25 18:52
 """
 import os
+import time
 import pandas as pd
 import tushare as ts
 from datetime import datetime, timedelta
 from typing import List
+from tqdm import tqdm
+
 from ..analyze import CzscTrader, RawBar, KlineGenerator
 from ..signals import get_default_signals
 from ..enum import Freq
@@ -124,6 +127,22 @@ def get_ths_daily(ts_code='885760.TI',
         bars.append(bar)
     return bars
 
+def get_ths_members(exchange="A"):
+    """获取同花顺概念板块成分股"""
+    concepts = pro.ths_index(exchange=exchange)
+    concepts = concepts.to_dict('records')
+
+    res = []
+    for concept in tqdm(concepts):
+        df = pro.ths_member(ts_code=concept['ts_code'],
+                               fields="ts_code,code,name,weight,in_date,out_date,is_new")
+        df['概念名称'] = concept['name']
+        df['概念代码'] = concept['ts_code']
+        res.append(df)
+        time.sleep(0.3)
+
+    res_df = pd.concat(res, ignore_index=True)
+    return res_df
 
 def get_init_kg(ts_code: str,
                 end_dt: [str, datetime] = None,
