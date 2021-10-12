@@ -23,7 +23,7 @@ setup(
     url="https://github.com/zengbin93/czsc",
     packages=find_packages(exclude=['test', 'images', 'docs', 'examples']),
     include_package_data=True,
-    install_requires=["pandas", "pyecharts", "tushare", "requests", "seaborn"],
+    install_requires=["pandas", "pyecharts", "tushare", "requests", "seaborn", "transitions"],
     package_data={'': ['data/*.csv']},
     classifiers=[
             'License :: OSI Approved :: Apache Software License',

@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
+from transitions import Machine
+
 from .enum import Mark, Direction, Freq, Operate
 
 
@@ -195,3 +197,49 @@ class Event:
                 return True, factor.name
 
         return False, None
+
+
+class Position:
+    def __init__(self, symbol: str,
+                 hold_long_a: float = 0.5,
+                 hold_long_b: float = 0.8,
+                 hold_long_c: float = 1.0,
+                 hold_short_a: float = -0.5,
+                 hold_short_b: float = -0.8,
+                 hold_short_c: float = -1.0,
+                 ):
+        """持仓对象
+
+        :param symbol: 标的代码
+        :param hold_long_a: 首次开多仓后的仓位
+        :param hold_long_b: 第一次加多后的仓位
+        :param hold_long_c: 第二次加多后的仓位
+        :param hold_short_a: 首次开空仓后的仓位
+        :param hold_short_b: 第一次加空后的仓位
+        :param hold_short_c: 第二次加空后的仓位
+        """
+        self.symbol = symbol
+        self.pos_map = {
+            "hold_long_a": hold_long_a, "hold_long_b": hold_long_b, "hold_long_c": hold_long_c, "hold_money": 0,
+            "hold_short_a": hold_short_a,  "hold_short_b": hold_short_b,  "hold_short_c": hold_short_c
+        }
+        self.states = list(self.pos_map.keys())
+        self.machine = Machine(model=self, states=self.states, initial='hold_money')
+        self.machine.add_transition('long_open', 'hold_money', 'hold_long_a')
+        self.machine.add_transition('long_add1', 'hold_long_a', 'hold_long_b')
+        self.machine.add_transition('long_add2', 'hold_long_b', 'hold_long_c')
+        self.machine.add_transition('long_reduce1', 'hold_long_c', 'hold_long_b')
+        self.machine.add_transition('long_reduce2', 'hold_long_b', 'hold_long_a')
+        self.machine.add_transition('long_exit', ['hold_long_a', 'hold_long_b', 'hold_long_c'], 'hold_money')
+
+        self.machine.add_transition('short_open', 'hold_money', 'hold_short_a')
+        self.machine.add_transition('short_add1', 'hold_short_a', 'hold_short_b')
+        self.machine.add_transition('short_add2', 'hold_short_b', 'hold_short_c')
+        self.machine.add_transition('short_reduce1', 'hold_short_c', 'hold_short_b')
+        self.machine.add_transition('short_reduce2', 'hold_short_b', 'hold_short_a')
+        self.machine.add_transition('short_exit', ['hold_short_a', 'hold_short_b', 'hold_short_c'], 'hold_money')
+
+    @property
+    def pos(self):
+        return self.pos_map[self.state]
+
