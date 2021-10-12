@@ -62,6 +62,11 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 使用聚宽数据的快速入门请查看 `examples\czsc_quick_start.py`
 
+## 资料分享
+
+* 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
+* 提取码：vhue
+
 ## 捐赠支持
 
 >如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！另外，**可以顺便提一个问题或需求。**
