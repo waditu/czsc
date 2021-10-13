@@ -229,17 +229,118 @@ class Position:
         self.machine.add_transition('long_add1', 'hold_long_a', 'hold_long_b')
         self.machine.add_transition('long_add2', 'hold_long_b', 'hold_long_c')
         self.machine.add_transition('long_reduce1', 'hold_long_c', 'hold_long_b')
-        self.machine.add_transition('long_reduce2', 'hold_long_b', 'hold_long_a')
+        self.machine.add_transition('long_reduce2', ['hold_long_b', 'hold_long_c'], 'hold_long_a')
         self.machine.add_transition('long_exit', ['hold_long_a', 'hold_long_b', 'hold_long_c'], 'hold_money')
 
         self.machine.add_transition('short_open', 'hold_money', 'hold_short_a')
         self.machine.add_transition('short_add1', 'hold_short_a', 'hold_short_b')
         self.machine.add_transition('short_add2', 'hold_short_b', 'hold_short_c')
         self.machine.add_transition('short_reduce1', 'hold_short_c', 'hold_short_b')
-        self.machine.add_transition('short_reduce2', 'hold_short_b', 'hold_short_a')
+        self.machine.add_transition('short_reduce2', ['hold_short_b', 'hold_short_c'], 'hold_short_a')
         self.machine.add_transition('short_exit', ['hold_short_a', 'hold_short_b', 'hold_short_c'], 'hold_money')
+
+        self.operates = []
+        self.long_high = -1         # 持多仓期间出现的最高价
+        self.long_cost = -1         # 最近一次加多仓的成本
+        self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
+
+        self.short_low = -1             # 持空仓期间出现的最低价
+        self.short_cost = -1            # 最近一次加空仓的成本
+        self.short_bid = -1             # 最近一次加空仓的1分钟Bar ID
 
     @property
     def pos(self):
+        """返回状态对应的仓位"""
         return self.pos_map[self.state]
+
+    def update_long(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
+        """更新多头持仓状态
+
+        :param dt: 最新时间
+        :param op: 操作动作
+        :param price: 最新价格
+        :param bid: 最新1分钟Bar ID
+        :return: bool
+        """
+        state = self.state
+        pos_changed = False
+
+        if state == 'hold_money' and op == Operate.LO:
+            self.long_open()
+            return True
+
+        if state == 'hold_long_a' and op == Operate.LA1:
+            self.long_add1()
+            return True
+
+        if state == 'hold_long_b' and op == Operate.LA2:
+            self.long_add2()
+            return True
+
+        if state == 'hold_long_c' and op == Operate.LR1:
+            self.long_reduce1()
+            return True
+
+        if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
+            self.long_reduce2()
+            return True
+
+        if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
+            self.long_exit()
+            return True
+
+        return pos_changed
+
+    def update_short(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
+        """更新空头持仓状态
+
+        :param dt: 最新时间
+        :param op: 操作动作
+        :param price: 最新价格
+        :param bid: 最新1分钟Bar ID
+        :return: bool
+        """
+        state = self.state
+        pos_changed = False
+
+        if state == 'hold_money' and op == Operate.SO:
+            self.short_open()
+            return True
+
+        if state == 'hold_short_a' and op == Operate.SA1:
+            self.short_add1()
+            return True
+
+        if state == 'hold_short_b' and op == Operate.SA2:
+            self.short_add2()
+            return True
+
+        if state == 'hold_short_c' and op == Operate.SR1:
+            self.short_reduce1()
+            return True
+
+        if state in ['hold_short_b', 'hold_short_c'] and op == Operate.SR2:
+            self.short_reduce2()
+            return True
+
+        if state in ['hold_short_a', 'hold_short_b', 'hold_short_c'] and op == Operate.SE:
+            self.short_exit()
+            return True
+
+        return pos_changed
+
+    def update(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
+        """更新多头持仓状态
+
+        :param dt: 最新时间
+        :param op: 操作动作
+        :param price: 最新价格
+        :param bid: 最新1分钟Bar ID
+        :return: bool
+        """
+        if self.update_long(dt, op, price, bid):
+            return True
+        else:
+            return self.update_short(dt, op, price, bid)
+
 
