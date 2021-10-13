@@ -218,6 +218,9 @@ class Position:
         :param hold_short_b: 第一次加空后的仓位
         :param hold_short_c: 第二次加空后的仓位
         """
+        assert 0 <= hold_long_a <= hold_long_b <= hold_long_c <= 1.0
+        assert 0 >= hold_short_a >= hold_short_b >= hold_short_c >= -1.0
+
         self.symbol = symbol
         self.pos_map = {
             "hold_long_a": hold_long_a, "hold_long_b": hold_long_b, "hold_long_c": hold_long_c, "hold_money": 0,
