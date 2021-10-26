@@ -198,6 +198,95 @@ class Event:
 
         return False, None
 
+class PositionLong:
+    def __init__(self, symbol: str,
+                 hold_long_a: float = 0.5,
+                 hold_long_b: float = 0.8,
+                 hold_long_c: float = 1.0,
+                 ):
+        """多头持仓对象
+
+        :param symbol: 标的代码
+        :param hold_long_a: 首次开多仓后的仓位
+        :param hold_long_b: 第一次加多后的仓位
+        :param hold_long_c: 第二次加多后的仓位
+        """
+        assert 0 <= hold_long_a <= hold_long_b <= hold_long_c <= 1.0
+
+        self.pos_changed = False
+        self.symbol = symbol
+        self.pos_map = {
+            "hold_long_a": hold_long_a, "hold_long_b": hold_long_b,
+            "hold_long_c": hold_long_c, "hold_money": 0
+        }
+        self.states = list(self.pos_map.keys())
+        self.machine = Machine(model=self, states=self.states, initial='hold_money')
+        self.machine.add_transition('long_open', 'hold_money', 'hold_long_a')
+        self.machine.add_transition('long_add1', 'hold_long_a', 'hold_long_b')
+        self.machine.add_transition('long_add2', 'hold_long_b', 'hold_long_c')
+        self.machine.add_transition('long_reduce1', 'hold_long_c', 'hold_long_b')
+        self.machine.add_transition('long_reduce2', ['hold_long_b', 'hold_long_c'], 'hold_long_a')
+        self.machine.add_transition('long_exit', ['hold_long_a', 'hold_long_b', 'hold_long_c'], 'hold_money')
+
+        self.operates = []
+        self.long_high = -1         # 持多仓期间出现的最高价
+        self.long_cost = -1         # 最近一次加多仓的成本
+        self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
+
+    @property
+    def pos(self):
+        """返回状态对应的仓位"""
+        return self.pos_map[self.state]
+
+    def evaluate_operates(self):
+        """评估操作表现"""
+        pass
+
+    def update(self, dt: datetime, op: Operate, price: float, bid: int):
+        """更新多头持仓状态
+
+        :param dt: 最新时间
+        :param op: 操作动作
+        :param price: 最新价格
+        :param bid: 最新1分钟Bar ID
+        :return: None
+        """
+        state = self.state
+        pos_changed = False
+
+        if state == 'hold_money' and op == Operate.LO:
+            self.long_open()
+            pos_changed = True
+
+        if state == 'hold_long_a' and op == Operate.LA1:
+            self.long_add1()
+            pos_changed = True
+
+        if state == 'hold_long_b' and op == Operate.LA2:
+            self.long_add2()
+            pos_changed = True
+
+        if state == 'hold_long_c' and op == Operate.LR1:
+            self.long_reduce1()
+            pos_changed = True
+
+        if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
+            self.long_reduce2()
+            pos_changed = True
+
+        if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
+            self.long_exit()
+            pos_changed = True
+
+        if pos_changed:
+            self.operates.append({
+                "symbol": self.symbol,
+                "dt": dt,
+                "price": price,
+                "bid": bid,
+                "op": op
+            })
+        self.pos_changed = pos_changed
 
 class Position:
     def __init__(self, symbol: str,

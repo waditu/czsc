@@ -1,6 +1,7 @@
 # coding: utf-8
 from collections import OrderedDict
-from czsc.objects import Signal, Factor, Event, Freq, Operate, Position
+import pandas as pd
+from czsc.objects import Signal, Factor, Event, Freq, Operate, Position, PositionLong
 
 
 def test_signal():
@@ -198,4 +199,42 @@ def test_position():
     position.short_exit()
     assert position.pos == 0
 
+
+def test_position_long():
+    pos_long = PositionLong(symbol="000001.XSHG")
+    pos_long.update(dt=pd.to_datetime('2021-01-01'), op=Operate.HO, price=100, bid=0)
+    assert not pos_long.pos_changed and pos_long.pos == 0
+
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LO, price=100, bid=1)
+    assert pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-03'), op=Operate.LO, price=100, bid=2)
+    assert not pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-04'), op=Operate.LA1, price=100, bid=3)
+    assert pos_long.pos_changed and pos_long.pos == 0.8
+
+    pos_long.update(dt=pd.to_datetime('2021-01-05'), op=Operate.LA1, price=100, bid=4)
+    assert not pos_long.pos_changed and pos_long.pos == 0.8
+
+    pos_long.update(dt=pd.to_datetime('2021-01-06'), op=Operate.LA2, price=100, bid=5)
+    assert pos_long.pos_changed and pos_long.pos == 1
+
+    pos_long.update(dt=pd.to_datetime('2021-01-07'), op=Operate.LR1, price=100, bid=6)
+    assert pos_long.pos_changed and pos_long.pos == 0.8
+
+    pos_long.update(dt=pd.to_datetime('2021-01-08'), op=Operate.LR2, price=100, bid=7)
+    assert pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-08'), op=Operate.LR2, price=100, bid=7)
+    assert not pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-09'), op=Operate.LA2, price=100, bid=8)
+    assert not pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-10'), op=Operate.LA1, price=100, bid=9)
+    assert pos_long.pos_changed and pos_long.pos == 0.8
+
+    pos_long.update(dt=pd.to_datetime('2021-01-11'), op=Operate.LE, price=100, bid=10)
+    assert pos_long.pos_changed and pos_long.pos == 0
 
