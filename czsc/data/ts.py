@@ -39,7 +39,10 @@ exchanges = {
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
 
-pro = ts.pro_api()
+try:
+    pro = ts.pro_api()
+except:
+    print("Tushare Pro 初始化失败")
 
 def get_trade_cal():
     file_cal = os.path.join(home_path, "trade_cal.csv")
