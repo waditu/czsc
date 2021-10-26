@@ -17,6 +17,16 @@ def test_ts_cache():
     df = dc.ths_index('A')
     assert not df.empty
 
+    bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                      start_date='20200101', end_date='20211024', raw_bar=True)
+    assert len(bars) == 436
+    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                    start_date='20200101', end_date='20211024', raw_bar=False)
+    assert len(df) == 436
+    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                    start_date='20210108', end_date='20210108', raw_bar=False)
+    assert len(df) == 1
+
     dc.clear()
     assert not os.path.exists(cache_path)
 
