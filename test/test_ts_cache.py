@@ -7,7 +7,7 @@ create_dt: 2021/10/24 16:20
 import os
 from czsc.data.ts_cache import TsDataCache
 
-def test_ts_cache():
+def offline_test_ts_cache():
     dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
