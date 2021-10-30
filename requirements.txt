@@ -6,3 +6,5 @@ zb>=0.0.14
 numpy>=1.16.5
 transitions
 tushare
+python-docx>=0.8.11
+transitions
