@@ -201,7 +201,7 @@ class TsDataCache:
             concepts = concepts.to_dict('records')
 
             res = []
-            for concept in concepts:
+            for concept in tqdm(concepts, desc='get_all_ths_members'):
                 _df = self.ths_member(ts_code=concept['ts_code'])
                 _df['概念名称'] = concept['name']
                 _df['概念代码'] = concept['ts_code']

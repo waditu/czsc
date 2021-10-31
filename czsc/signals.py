@@ -1076,12 +1076,14 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
             zd = max(c.bi_list[-2].low, c.bi_list[-4].low)
 
         if zg > zd:
-            v = Signal(k1=str(freq.value), k2="倒0笔", k3="潜在三买", v1="构成中枢")
+            k1 = str(freq.value)
+            k2 = "倒0笔"
+            k3 = "潜在三买"
+            v = Signal(k1=k1, k2=k2, k3=k3, v1="构成中枢")
             if gg * 1.1 > min([x.low for x in c.bars_raw[-3:]]) > zg > zd:
-                v = Signal(k1=str(freq.value), k2="倒0笔", k3="潜在三买", v1="构成中枢", v2="近3K在中枢上沿附近")
+                v = Signal(k1=k1, k2=k2, k3=k3,  v1="构成中枢", v2="近3K在中枢上沿附近")
                 if max([x.high for x in c.bars_raw[-7:-3]]) > gg:
-                    v = Signal(k1=str(freq.value), k2="倒0笔", k3="潜在三买",
-                               v1="构成中枢", v2="近3K在中枢上沿附近", v3='近7K突破中枢GG')
+                    v = Signal(k1=k1, k2=k2, k3=k3, v1="构成中枢", v2="近3K在中枢上沿附近", v3='近7K突破中枢GG')
 
             if v and "其他" not in v.value:
                 s[v.key] = v.value
