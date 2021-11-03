@@ -127,12 +127,15 @@ class TsDataCache:
             if self.verbose:
                 print(f"pro_bar: read cache {file_cache}")
         else:
+            start_date = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
             kline = ts.pro_bar(ts_code=ts_code, asset=asset, adj='qfq', freq=freq,
-                               start_date=self.sdt, end_date=self.edt)
+                               start_date=start_date, end_date=self.edt)
             kline = kline.sort_values('trade_date', ignore_index=True)
+
             for bar_number in (1, 2, 3, 5, 10, 20):
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
+                kline[n_col_name] = kline[n_col_name].round(4)
 
             io.save_pkl(kline, file_cache)
 
@@ -186,6 +189,16 @@ class TsDataCache:
         else:
             df = pro.stock_basic(exchange='', list_status='L',
                                  fields='ts_code,symbol,name,area,industry,list_date')
+            io.save_pkl(df, file_cache)
+        return df
+
+    def trade_cal(self):
+        """https://tushare.pro/document/2?doc_id=26"""
+        file_cache = os.path.join(self.cache_path, f"trade_cal.pkl")
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.trade_cal(exchange='', start_date='19900101', end_date=datetime.now().strftime("%Y%m%d"))
             io.save_pkl(df, file_cache)
         return df
 
