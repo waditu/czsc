@@ -6,6 +6,7 @@ create_dt: 2021/10/24 16:12
 describe: Tushare 数据缓存
 """
 import shutil
+import pandas as pd
 
 from .ts import *
 from ..utils import io
@@ -30,6 +31,7 @@ class TsDataCache:
         self.name = f"{self.prefix}_{self.sdt}_{self.edt}"
         self.cache_path = os.path.join(self.data_path, self.name)
         os.makedirs(self.cache_path, exist_ok=True)
+        self.pro = pro
 
         self.freq_map = {
             "D": Freq.D,
@@ -199,6 +201,36 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             df = pro.trade_cal(exchange='', start_date='19900101', end_date=datetime.now().strftime("%Y%m%d"))
+            io.save_pkl(df, file_cache)
+        return df
+
+    def hk_hold(self, trade_date='20190625'):
+        """沪深港股通持股明细
+
+        https://tushare.pro/document/2?doc_id=188
+        """
+        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+        file_cache = os.path.join(self.cache_path, f"hk_hold_{trade_date}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.hk_hold(trade_date=trade_date)
+            io.save_pkl(df, file_cache)
+        return df
+
+    def cctv_news(self, date='20190625'):
+        """新闻联播
+
+        https://tushare.pro/document/2?doc_id=154
+        """
+        date = pd.to_datetime(date).strftime("%Y%m%d")
+        file_cache = os.path.join(self.cache_path, f"cctv_news_{date}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.cctv_news(date=date)
             io.save_pkl(df, file_cache)
         return df
 
