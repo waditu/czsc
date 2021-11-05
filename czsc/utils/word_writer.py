@@ -9,6 +9,8 @@ describe: 实现一个用python-docx写word文档的辅助工具
 1. https://cloud.tencent.com/developer/article/1512325
 
 """
+import os.path
+
 import docx
 import pandas as pd
 from docx.oxml.ns import qn
@@ -21,7 +23,7 @@ class WordWriter:
 
     def __init__(self, file_docx=None):
         self.file_docx = file_docx
-        if file_docx:
+        if file_docx and os.path.exists(file_docx):
             self.document = docx.Document(file_docx)
         else:
             self.document = docx.Document()
