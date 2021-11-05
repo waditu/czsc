@@ -73,6 +73,7 @@ class TsDataCache:
         start_date = pd.to_datetime(start_date)
         end_date = pd.to_datetime(end_date)
         bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
+        bars.reset_index(drop=True, inplace=True)
         if raw_bar:
             bars = format_kline(bars, freq=Freq.D)
         return bars
@@ -145,6 +146,7 @@ class TsDataCache:
         start_date = pd.to_datetime(start_date)
         end_date = pd.to_datetime(end_date)
         bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
+        bars.reset_index(drop=True, inplace=True)
         if raw_bar:
             bars = format_kline(bars, freq=self.freq_map[freq])
         return bars
