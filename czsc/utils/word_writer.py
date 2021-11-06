@@ -7,7 +7,7 @@ describe: 实现一个用python-docx写word文档的辅助工具
 
 参考资料：
 1. https://cloud.tencent.com/developer/article/1512325
-
+2. https://blog.csdn.net/zhouz92/article/details/107066709
 """
 import os.path
 
@@ -101,9 +101,28 @@ class WordWriter:
             for i, c in enumerate(columns):
                 row_cells[i].text = str(row[c])
 
+    def add_picture(self, file, width=None, height=None) -> None:
+        """写入图片到文档中
+
+        :param file: 图片文件路径
+        :param width: 图片宽度，默认单位 cm
+        :param height: 图片高度，默认单位 cm
+        :return:
+        """
+        if isinstance(width, int):
+            width = Cm(width)
+
+        if isinstance(height, int):
+            height = Cm(height)
+
+        self.document.add_picture(file, width, height)
+
     def add_page_break(self):
         """添加分页符"""
         self.document.add_page_break()
 
-    def save(self, file_docx):
+    def save(self, file_docx=None):
+        """保存结果到文件"""
+        if not file_docx:
+            file_docx = self.file_docx
         self.document.save(file_docx)

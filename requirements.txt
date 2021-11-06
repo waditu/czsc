@@ -8,3 +8,5 @@ transitions
 tushare
 python-docx>=0.8.11
 transitions
+matplotlib
+seaborn
