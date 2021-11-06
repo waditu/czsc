@@ -203,18 +203,20 @@ class PositionLong:
                  hold_long_a: float = 0.5,
                  hold_long_b: float = 0.8,
                  hold_long_c: float = 1.0,
-                 ):
+                 T0: bool = False):
         """多头持仓对象
 
         :param symbol: 标的代码
         :param hold_long_a: 首次开多仓后的仓位
         :param hold_long_b: 第一次加多后的仓位
         :param hold_long_c: 第二次加多后的仓位
+        :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
         assert 0 <= hold_long_a <= hold_long_b <= hold_long_c <= 1.0
 
         self.pos_changed = False
         self.symbol = symbol
+        self.T0 = T0
         self.pos_map = {
             "hold_long_a": hold_long_a, "hold_long_b": hold_long_b,
             "hold_long_c": hold_long_c, "hold_money": 0
@@ -233,6 +235,9 @@ class PositionLong:
         self.long_cost = -1         # 最近一次加多仓的成本
         self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
 
+        self.today = None
+        self.today_pos = 0
+
     @property
     def pos(self):
         """返回状态对应的仓位"""
@@ -240,43 +245,85 @@ class PositionLong:
 
     def evaluate_operates(self):
         """评估操作表现"""
-        pass
+        operates = self.operates
+        pairs = []
+        latest_pair = []
+        for op in operates:
+            latest_pair.append(op)
+            if op['op'] == Operate.LE:
+                lo_ = [x for x in latest_pair if x['op'] in [Operate.LO, Operate.LA1, Operate.LA2]]
+                le_ = [x for x in latest_pair if x['op'] in [Operate.LE, Operate.LR1, Operate.LR2]]
+                pair = {
+                    '标的代码': op['symbol'],
+                    '开仓时间': lo_[0]['dt'],
+                    '累计开仓': sum([x['price'] * x['pos_change'] for x in lo_]),
+                    '平仓时间': op['dt'],
+                    '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
+                }
+                pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
+                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+                pairs.append(pair)
+                latest_pair = []
+        return pairs
 
-    def update(self, dt: datetime, op: Operate, price: float, bid: int):
+    def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
         """更新多头持仓状态
 
         :param dt: 最新时间
         :param op: 操作动作
         :param price: 最新价格
         :param bid: 最新1分钟Bar ID
+        :param op_desc: 触发操作动作的事件描述
         :return: None
         """
+        if dt.date() != self.today:
+            self.today_pos = 0
+
         state = self.state
         pos_changed = False
+        old_pos = self.pos
 
         if state == 'hold_money' and op == Operate.LO:
             self.long_open()
             pos_changed = True
+            self.today_pos = self.pos
 
         if state == 'hold_long_a' and op == Operate.LA1:
             self.long_add1()
             pos_changed = True
+            self.today_pos = self.pos
 
         if state == 'hold_long_b' and op == Operate.LA2:
             self.long_add2()
             pos_changed = True
+            self.today_pos = self.pos
 
-        if state == 'hold_long_c' and op == Operate.LR1:
-            self.long_reduce1()
-            pos_changed = True
+        if not self.T0:
+            # 不允许 T0 交易时，今仓为 0 才可以卖
+            if self.today_pos == 0:
+                if state == 'hold_long_c' and op == Operate.LR1:
+                    self.long_reduce1()
+                    pos_changed = True
 
-        if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
-            self.long_reduce2()
-            pos_changed = True
+                if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
+                    self.long_reduce2()
+                    pos_changed = True
 
-        if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
-            self.long_exit()
-            pos_changed = True
+                if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
+                    self.long_exit()
+                    pos_changed = True
+        else:
+            if state == 'hold_long_c' and op == Operate.LR1:
+                self.long_reduce1()
+                pos_changed = True
+
+            if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
+                self.long_reduce2()
+                pos_changed = True
+
+            if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
+                self.long_exit()
+                pos_changed = True
 
         if pos_changed:
             self.operates.append({
@@ -284,9 +331,12 @@ class PositionLong:
                 "dt": dt,
                 "price": price,
                 "bid": bid,
-                "op": op
+                "op": op,
+                "op_desc": op_desc,
+                "pos_change": abs(self.pos - old_pos)
             })
         self.pos_changed = pos_changed
+        self.today = dt.date()
 
 class Position:
     def __init__(self, symbol: str,

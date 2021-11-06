@@ -205,10 +205,10 @@ def test_position_long():
     pos_long.update(dt=pd.to_datetime('2021-01-01'), op=Operate.HO, price=100, bid=0)
     assert not pos_long.pos_changed and pos_long.pos == 0
 
-    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LO, price=100, bid=1)
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LO, price=100, bid=1, op_desc="首次开仓测试")
     assert pos_long.pos_changed and pos_long.pos == 0.5
 
-    pos_long.update(dt=pd.to_datetime('2021-01-03'), op=Operate.LO, price=100, bid=2)
+    pos_long.update(dt=pd.to_datetime('2021-01-03'), op=Operate.LO, price=100, bid=2, op_desc="首次开仓测试")
     assert not pos_long.pos_changed and pos_long.pos == 0.5
 
     pos_long.update(dt=pd.to_datetime('2021-01-04'), op=Operate.LA1, price=100, bid=3)
@@ -237,4 +237,31 @@ def test_position_long():
 
     pos_long.update(dt=pd.to_datetime('2021-01-11'), op=Operate.LE, price=100, bid=10)
     assert pos_long.pos_changed and pos_long.pos == 0
+
+    pos_long.evaluate_operates()
+
+
+def test_position_long_t0():
+    """测试T0逻辑"""
+    pos_long = PositionLong(symbol="000001.XSHG", T0=False)
+    pos_long.update(dt=pd.to_datetime('2021-01-01'), op=Operate.HO, price=100, bid=0)
+    assert not pos_long.pos_changed and pos_long.pos == 0
+
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LO, price=100, bid=1, op_desc="首次开仓测试")
+    assert pos_long.pos_changed and pos_long.pos == 0.5
+
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LA1, price=100, bid=3)
+    assert pos_long.pos_changed and pos_long.pos == 0.8
+
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LA2, price=100, bid=5)
+    assert pos_long.pos_changed and pos_long.pos == 1
+
+    # T0 平仓信号不生效
+    pos_long.update(dt=pd.to_datetime('2021-01-02'), op=Operate.LE, price=100, bid=8)
+    assert not pos_long.pos_changed and pos_long.pos == 1
+
+    pos_long.update(dt=pd.to_datetime('2021-01-03'), op=Operate.LE, price=100, bid=10)
+    assert pos_long.pos_changed and pos_long.pos == 0
+
+    pos_long.evaluate_operates()
 
