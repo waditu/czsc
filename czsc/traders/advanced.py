@@ -114,13 +114,17 @@ class CzscAdvancedTrader:
         # 遍历 long_events，更新 long_pos
         if self.long_events:
             assert isinstance(self.long_pos, PositionLong)
+
             op = Operate.HO
             op_desc = ""
+
             for event in self.long_events:
                 m, f = event.is_match(self.s)
                 if m:
                     op = event.operate
                     op_desc = f"{event.name}@{f}"
+                    break
+
             self.long_pos.update(dt, op, price, bid, op_desc)
 
 
