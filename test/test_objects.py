@@ -1,7 +1,7 @@
 # coding: utf-8
 from collections import OrderedDict
 import pandas as pd
-from czsc.objects import Signal, Factor, Event, Freq, Operate, Position, PositionLong
+from czsc.objects import Signal, Factor, Event, Freq, Operate, PositionLong
 
 
 def test_signal():
@@ -129,75 +129,6 @@ def test_event():
     ])
     m, f = event.is_match(s)
     assert not m and not f
-
-
-def test_position():
-    position = Position(symbol="000001.XSHG")
-
-    # 测试正常的完整多头流程
-    assert position.pos == 0
-    position.long_open()
-    assert position.pos == 0.5
-    position.long_add1()
-    assert position.pos == 0.8
-    position.long_add2()
-    assert position.pos == 1
-    position.long_reduce1()
-    assert position.pos == 0.8
-    position.long_reduce2()
-    assert position.pos == 0.5
-    position.long_exit()
-    assert position.pos == 0
-
-    # 测试正常的多头流程（直接 reduce2）
-    assert position.pos == 0
-    position.long_open()
-    assert position.pos == 0.5
-    position.long_add1()
-    assert position.pos == 0.8
-    position.long_add2()
-    assert position.pos == 1
-    position.long_reduce2()
-    assert position.pos == 0.5
-    position.long_exit()
-    assert position.pos == 0
-
-    # 测试多头只有一次开仓流程
-    assert position.pos == 0
-    position.long_open()
-    assert position.pos == 0.5
-    position.long_add1()
-    assert position.pos == 0.8
-    position.long_exit()
-    assert position.pos == 0
-
-    # 测试正常的完整空头流程
-    assert position.pos == 0
-    position.short_open()
-    assert position.pos == -0.5
-    position.short_add1()
-    assert position.pos == -0.8
-    position.short_add2()
-    assert position.pos == -1
-    position.short_reduce1()
-    assert position.pos == -0.8
-    position.short_reduce2()
-    assert position.pos == -0.5
-    position.short_exit()
-    assert position.pos == 0
-
-    # 测试正常的完整空头流程（直接 reduce2）
-    assert position.pos == 0
-    position.short_open()
-    assert position.pos == -0.5
-    position.short_add1()
-    assert position.pos == -0.8
-    position.short_add2()
-    assert position.pos == -1
-    position.short_reduce2()
-    assert position.pos == -0.5
-    position.short_exit()
-    assert position.pos == 0
 
 
 def test_position_long():
