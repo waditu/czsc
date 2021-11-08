@@ -198,6 +198,7 @@ class Event:
 
         return False, None
 
+
 class PositionLong:
     def __init__(self, symbol: str,
                  hold_long_a: float = 0.5,
@@ -255,6 +256,7 @@ class PositionLong:
                 le_ = [x for x in latest_pair if x['op'] in [Operate.LE, Operate.LR1, Operate.LR2]]
                 pair = {
                     '标的代码': op['symbol'],
+                    '交易方向': "多头",
                     '开仓时间': lo_[0]['dt'],
                     '累计开仓': sum([x['price'] * x['pos_change'] for x in lo_]),
                     '平仓时间': op['dt'],
@@ -326,6 +328,11 @@ class PositionLong:
                 pos_changed = True
 
         if pos_changed:
+            if op in [Operate.LO, Operate.LA1, Operate.LA2]:
+                # 如果仓位变动为开仓动作，记录开仓时间和价格
+                self.long_bid = bid
+                self.long_cost = price
+
             self.operates.append({
                 "symbol": self.symbol,
                 "dt": dt,
@@ -338,11 +345,17 @@ class PositionLong:
         self.pos_changed = pos_changed
         self.today = dt.date()
 
-class Position:
+        if self.pos > 0:
+            # 如果有多头仓位，更新持仓期间的最高价
+            self.long_high = max(self.long_high, price)
+        else:
+            self.long_high = -1.0
+            self.long_cost = -1.0
+            self.long_bid = -1.0
+
+
+class PositionShort:
     def __init__(self, symbol: str,
-                 hold_long_a: float = 0.5,
-                 hold_long_b: float = 0.8,
-                 hold_long_c: float = 1.0,
                  hold_short_a: float = -0.5,
                  hold_short_b: float = -0.8,
                  hold_short_c: float = -1.0,
@@ -350,29 +363,19 @@ class Position:
         """持仓对象
 
         :param symbol: 标的代码
-        :param hold_long_a: 首次开多仓后的仓位
-        :param hold_long_b: 第一次加多后的仓位
-        :param hold_long_c: 第二次加多后的仓位
         :param hold_short_a: 首次开空仓后的仓位
         :param hold_short_b: 第一次加空后的仓位
         :param hold_short_c: 第二次加空后的仓位
         """
-        assert 0 <= hold_long_a <= hold_long_b <= hold_long_c <= 1.0
         assert 0 >= hold_short_a >= hold_short_b >= hold_short_c >= -1.0
 
         self.symbol = symbol
         self.pos_map = {
-            "hold_long_a": hold_long_a, "hold_long_b": hold_long_b, "hold_long_c": hold_long_c, "hold_money": 0,
-            "hold_short_a": hold_short_a,  "hold_short_b": hold_short_b,  "hold_short_c": hold_short_c
+            "hold_money": 0, "hold_short_a": hold_short_a,
+            "hold_short_b": hold_short_b,  "hold_short_c": hold_short_c
         }
         self.states = list(self.pos_map.keys())
         self.machine = Machine(model=self, states=self.states, initial='hold_money')
-        self.machine.add_transition('long_open', 'hold_money', 'hold_long_a')
-        self.machine.add_transition('long_add1', 'hold_long_a', 'hold_long_b')
-        self.machine.add_transition('long_add2', 'hold_long_b', 'hold_long_c')
-        self.machine.add_transition('long_reduce1', 'hold_long_c', 'hold_long_b')
-        self.machine.add_transition('long_reduce2', ['hold_long_b', 'hold_long_c'], 'hold_long_a')
-        self.machine.add_transition('long_exit', ['hold_long_a', 'hold_long_b', 'hold_long_c'], 'hold_money')
 
         self.machine.add_transition('short_open', 'hold_money', 'hold_short_a')
         self.machine.add_transition('short_add1', 'hold_short_a', 'hold_short_b')
@@ -382,10 +385,6 @@ class Position:
         self.machine.add_transition('short_exit', ['hold_short_a', 'hold_short_b', 'hold_short_c'], 'hold_money')
 
         self.operates = []
-        self.long_high = -1         # 持多仓期间出现的最高价
-        self.long_cost = -1         # 最近一次加多仓的成本
-        self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
-
         self.short_low = -1             # 持空仓期间出现的最低价
         self.short_cost = -1            # 最近一次加空仓的成本
         self.short_bid = -1             # 最近一次加空仓的1分钟Bar ID
@@ -395,45 +394,7 @@ class Position:
         """返回状态对应的仓位"""
         return self.pos_map[self.state]
 
-    def update_long(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
-        """更新多头持仓状态
-
-        :param dt: 最新时间
-        :param op: 操作动作
-        :param price: 最新价格
-        :param bid: 最新1分钟Bar ID
-        :return: bool
-        """
-        state = self.state
-        pos_changed = False
-
-        if state == 'hold_money' and op == Operate.LO:
-            self.long_open()
-            return True
-
-        if state == 'hold_long_a' and op == Operate.LA1:
-            self.long_add1()
-            return True
-
-        if state == 'hold_long_b' and op == Operate.LA2:
-            self.long_add2()
-            return True
-
-        if state == 'hold_long_c' and op == Operate.LR1:
-            self.long_reduce1()
-            return True
-
-        if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
-            self.long_reduce2()
-            return True
-
-        if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
-            self.long_exit()
-            return True
-
-        return pos_changed
-
-    def update_short(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
+    def update(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
         """更新空头持仓状态
 
         :param dt: 最新时间
@@ -470,19 +431,3 @@ class Position:
             return True
 
         return pos_changed
-
-    def update(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
-        """更新多头持仓状态
-
-        :param dt: 最新时间
-        :param op: 操作动作
-        :param price: 最新价格
-        :param bid: 最新1分钟Bar ID
-        :return: bool
-        """
-        if self.update_long(dt, op, price, bid):
-            return True
-        else:
-            return self.update_short(dt, op, price, bid)
-
-
