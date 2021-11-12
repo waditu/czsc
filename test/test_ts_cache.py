@@ -42,6 +42,11 @@ def offline_test_ts_cache():
     news = dc.cctv_news('20211103')
     assert news.shape[0] == 14
 
+    df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
+    assert len(df_d) == 243
+    df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
+    assert len(df_d) == 243
+
     dc.clear()
     assert not os.path.exists(cache_path)
 

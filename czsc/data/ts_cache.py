@@ -236,6 +236,23 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    def daily_basic(self, ts_code: str, start_date: str, end_date: str):
+        """每日指标
+
+        https://tushare.pro/document/2?doc_id=32
+        """
+
+        file_cache = os.path.join(self.cache_path, f"daily_basic_{ts_code}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.daily_basic(ts_code=ts_code, start_date="20200101", end_date=self.edt)
+            io.save_pkl(df, file_cache)
+
+        df = df[(df.trade_date >= start_date) & (df.trade_date <= end_date)]
+        return df
+
     # ------------------------------------CZSC 加工接口----------------------------------------------
 
     def get_all_ths_members(self):
@@ -252,6 +269,7 @@ class TsDataCache:
                 _df = self.ths_member(ts_code=concept['ts_code'])
                 _df['概念名称'] = concept['name']
                 _df['概念代码'] = concept['ts_code']
+                _df['概念类别'] = concept['type']
                 res.append(_df)
                 time.sleep(0.3)
 
