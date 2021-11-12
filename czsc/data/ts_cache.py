@@ -130,10 +130,11 @@ class TsDataCache:
             if self.verbose:
                 print(f"pro_bar: read cache {file_cache}")
         else:
-            start_date = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
+            start_date_ = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
             kline = ts.pro_bar(ts_code=ts_code, asset=asset, adj='qfq', freq=freq,
-                               start_date=start_date, end_date=self.edt)
+                               start_date=start_date_, end_date=self.edt)
             kline = kline.sort_values('trade_date', ignore_index=True)
+            kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
 
             for bar_number in (1, 2, 3, 5, 10, 20):
                 n_col_name = 'n' + str(bar_number) + 'b'
@@ -142,10 +143,12 @@ class TsDataCache:
 
             io.save_pkl(kline, file_cache)
 
-        kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
         start_date = pd.to_datetime(start_date)
         end_date = pd.to_datetime(end_date)
-        bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
+        # bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
+        kline = kline[kline['trade_date'] >= start_date]
+        bars = kline[kline['trade_date'] <= end_date]
+
         bars.reset_index(drop=True, inplace=True)
         if raw_bar:
             bars = format_kline(bars, freq=self.freq_map[freq])
