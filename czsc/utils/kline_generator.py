@@ -36,6 +36,74 @@ def bar_end_time(dt: datetime, m=1):
                 return edt
     return dt
 
+def freq_end_time(dt: datetime, freq: Freq) -> datetime:
+    """获取 dt 对应的K线周期结束时间
+
+    :param dt: datetime
+    :param freq: Freq
+        周期，1 表示 1分钟，5 表示 5分钟 ...
+    :return: datetime
+    """
+    dt = dt.replace(second=0, microsecond=0)
+
+    if freq in [Freq.F1, Freq.F5, Freq.F15, Freq.F30, Freq.F60]:
+        m = int(freq.value.strip("分钟"))
+        if m < 60:
+            if (dt.hour == 15 and dt.minute == 0) or (dt.hour == 11 and dt.minute == 30):
+                return dt
+
+            delta_m = dt.minute % m
+            if delta_m != 0:
+                dt += timedelta(minutes=m - delta_m)
+            else:
+                dt += timedelta(minutes=m)
+            return dt
+
+        else:
+            dt_span = {
+                60: ["01:00", "2:00", "3:00", '10:30', "11:30", "14:00", "15:00", "22:00", "23:00", "23:59"],
+            }
+            for v in dt_span[m]:
+                hour, minute = v.split(":")
+                edt = dt.replace(hour=int(hour), minute=int(minute))
+                if dt <= edt:
+                    return edt
+
+    # 处理 日、周、月、季、年 的结束时间
+    dt = dt.replace(hour=0, minute=0)
+
+    if freq == Freq.D:
+        return dt
+
+    if freq == Freq.W:
+        sdt = dt + timedelta(days=5-dt.isoweekday())
+        return sdt
+
+    if freq == Freq.M:
+        if dt.month == 12:
+            sdt = datetime(year=dt.year+1, month=1, day=1) - timedelta(days=1)
+        else:
+            sdt = datetime(year=dt.year, month=dt.month+1, day=1) - timedelta(days=1)
+        return sdt
+
+    if freq == Freq.S:
+        dt_m = dt.month
+        if dt_m in [1, 2, 3]:
+            sdt = datetime(year=dt.year, month=4, day=1) - timedelta(days=1)
+        elif dt_m in [4, 5, 6]:
+            sdt = datetime(year=dt.year, month=7, day=1) - timedelta(days=1)
+        elif dt_m in [7, 8, 9]:
+            sdt = datetime(year=dt.year, month=10, day=1) - timedelta(days=1)
+        else:
+            sdt = datetime(year=dt.year+1, month=1, day=1) - timedelta(days=1)
+        return sdt
+
+    if freq == Freq.Y:
+        return datetime(year=dt.year, month=12, day=31)
+
+    print(f'freq_end_time error: {dt} - {freq}')
+    return dt
+
 
 class KlineGenerator:
     """K线生成器，仿实盘"""
@@ -258,80 +326,33 @@ class KlineGeneratorD:
     def __repr__(self):
         return f"<KlineGeneratorD for {self.symbol} @ {self.end_dt}>"
 
-    def _update_w(self, bar: RawBar):
+    def _update_freq(self, bar: RawBar, freq: Freq):
         """更新周线"""
-        if not self.bars[Freq.W.value]:
-            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=0, open=bar.open,
+        freq_edt = freq_end_time(bar.dt, freq)
+
+        if not self.bars[freq.value] or freq_edt != self.bars[freq.value][-1].dt:
+            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
                            close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.W.value].append(bar_w)
+            self.bars[freq.value].append(bar_)
             return
 
-        last = self.bars[Freq.W.value][-1]
-        if bar.dt.isoweekday() == 1:
-            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=last.id + 1, open=bar.open,
+        last = self.bars[freq.value][-1]
+        if freq_edt != self.bars[freq.value][-1].dt:
+            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id + 1, open=bar.open,
                            close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.W.value].append(bar_w)
+            self.bars[freq.value].append(bar_)
+
         else:
-
-            bar_w = RawBar(symbol=bar.symbol, freq=Freq.W, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
+            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id, open=last.open, close=bar.close,
                            high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
-            self.bars[Freq.W.value][-1] = bar_w
-
-    def _update_m(self, bar: RawBar):
-        """更新月线"""
-        if not self.bars[Freq.M.value]:
-            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=0, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.M.value].append(bar_m)
-            return
-
-        last: RawBar = self.bars[Freq.M.value][-1]
-        if bar.dt.month != last.dt.month:
-            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=last.id + 1, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.M.value].append(bar_m)
-        else:
-            bar_m = RawBar(symbol=bar.symbol, freq=Freq.M, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
-                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
-            self.bars[Freq.M.value][-1] = bar_m
-
-    def _update_s(self, bar: RawBar):
-        """更新季线"""
-        if not self.bars[Freq.S.value]:
-            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=0, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.S.value].append(bar_s)
-            return
-
-        last: RawBar = self.bars[Freq.S.value][-1]
-        if bar.dt.month != last.dt.month and bar.dt.month in [1, 4, 7, 10]:
-            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=last.id + 1, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.S.value].append(bar_s)
-        else:
-            bar_s = RawBar(symbol=bar.symbol, freq=Freq.S, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
-                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
-            self.bars[Freq.S.value][-1] = bar_s
-
-    def _update_y(self, bar: RawBar):
-        """更新年线"""
-        if not self.bars[Freq.Y.value]:
-            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=0, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.Y.value].append(bar_y)
-            return
-
-        last: RawBar = self.bars[Freq.Y.value][-1]
-        if bar.dt.year != last.dt.year:
-            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=last.id + 1, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
-            self.bars[Freq.Y.value].append(bar_y)
-        else:
-            bar_y = RawBar(symbol=bar.symbol, freq=Freq.Y, dt=bar.dt, id=last.id, open=last.open, close=bar.close,
-                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
-            self.bars[Freq.Y.value][-1] = bar_y
+            self.bars[freq.value][-1] = bar_
 
     def update(self, bar: RawBar):
+        """
+
+        :param bar: 必须是已经结束的日线 Bar
+        :return:
+        """
         assert bar.freq == Freq.D
         self.symbol = bar.symbol
         self.end_dt = bar.dt
@@ -342,14 +363,14 @@ class KlineGeneratorD:
         self.bars[Freq.D.value].append(bar)
 
         if Freq.W.value in self.freqs:
-            self._update_w(bar)
+            self._update_freq(bar, Freq.W)
 
         if Freq.M.value in self.freqs:
-            self._update_m(bar)
+            self._update_freq(bar, Freq.M)
 
         if Freq.S.value in self.freqs:
-            self._update_s(bar)
+            self._update_freq(bar, Freq.S)
 
         if Freq.Y.value in self.freqs:
-            self._update_y(bar)
+            self._update_freq(bar, Freq.Y)
 

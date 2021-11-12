@@ -4,11 +4,22 @@ import pandas as pd
 from tqdm import tqdm
 
 from czsc.objects import RawBar, Freq
-from czsc.utils.kline_generator import KlineGenerator, KlineGeneratorD
+from czsc.utils.kline_generator import KlineGenerator, KlineGeneratorD, freq_end_time
 from test.test_analyze import read_1min
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 kline = read_1min()
+
+def test_freq_end_time():
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43:03"), Freq.F1) == pd.to_datetime("2021-11-11 09:44")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F5) == pd.to_datetime("2021-11-11 09:45")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F15) == pd.to_datetime("2021-11-11 09:45")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F30) == pd.to_datetime("2021-11-11 10:00")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F60) == pd.to_datetime("2021-11-11 10:30")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.D) == pd.to_datetime("2021-11-11")
+    assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.W) == pd.to_datetime("2021-11-12")
+
+    assert freq_end_time(pd.to_datetime("2021-03-05"), Freq.M) == pd.to_datetime("2021-03-31")
 
 
 def test_kline_generator():
