@@ -145,10 +145,7 @@ class TsDataCache:
 
         start_date = pd.to_datetime(start_date)
         end_date = pd.to_datetime(end_date)
-        # bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
-        kline = kline[kline['trade_date'] >= start_date]
-        bars = kline[kline['trade_date'] <= end_date]
-
+        bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
         bars.reset_index(drop=True, inplace=True)
         if raw_bar:
             bars = format_kline(bars, freq=self.freq_map[freq])
@@ -205,7 +202,7 @@ class TsDataCache:
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            df = pro.trade_cal(exchange='', start_date='19900101', end_date=datetime.now().strftime("%Y%m%d"))
+            df = pro.trade_cal(exchange='', start_date='19900101', end_date="20300101")
             io.save_pkl(df, file_cache)
         return df
 
@@ -250,10 +247,12 @@ class TsDataCache:
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            df = pro.daily_basic(ts_code=ts_code, start_date="20200101", end_date=self.edt)
+            start_date_ = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
+            df = pro.daily_basic(ts_code=ts_code, start_date=start_date_, end_date="20230101")
+            df['trade_date'] = pd.to_datetime(df['trade_date'])
             io.save_pkl(df, file_cache)
 
-        df = df[(df.trade_date >= start_date) & (df.trade_date <= end_date)]
+        df = df[(df.trade_date >= pd.to_datetime(start_date)) & (df.trade_date <= pd.to_datetime(end_date))]
         return df
 
     # ------------------------------------CZSC 加工接口----------------------------------------------
