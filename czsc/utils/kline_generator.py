@@ -327,10 +327,10 @@ class KlineGeneratorD:
         return f"<KlineGeneratorD for {self.symbol} @ {self.end_dt}>"
 
     def _update_freq(self, bar: RawBar, freq: Freq):
-        """更新周线"""
+        """更新指定周期K线"""
         freq_edt = freq_end_time(bar.dt, freq)
 
-        if not self.bars[freq.value] or freq_edt != self.bars[freq.value][-1].dt:
+        if not self.bars[freq.value]:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
                            close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
             self.bars[freq.value].append(bar_)

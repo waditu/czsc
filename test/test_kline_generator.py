@@ -72,6 +72,7 @@ def test_kgd():
     assert kgd.end_dt == pd.to_datetime('2020-07-16 15:00:00')
     assert len(kgd.bars['月线']) == 165
     assert len(kgd.bars['年线']) == 15
+    assert kgd.bars['月线'][-2].id > kgd.bars['月线'][-3].id
 
     kgd = KlineGeneratorD(freqs=[Freq.D.value, Freq.W.value, Freq.M.value])
     for bar in bars:
