@@ -17,8 +17,8 @@ def offline_test_ts_cache():
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
 
-    df = dc.ths_index('A')
-    assert not df.empty and os.path.exists(os.path.join(cache_path, "ths_index_A.pkl"))
+    df = dc.ths_index('A', 'N')
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_N.pkl"))
     df = dc.ths_index('A')
     assert not df.empty
 

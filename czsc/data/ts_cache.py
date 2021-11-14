@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:12
 describe: Tushare 数据缓存
 """
+import os.path
 import shutil
 import pandas as pd
 
@@ -32,12 +33,25 @@ class TsDataCache:
         self.cache_path = os.path.join(self.data_path, self.name)
         os.makedirs(self.cache_path, exist_ok=True)
         self.pro = pro
+        self.__prepare_api_path()
 
         self.freq_map = {
             "D": Freq.D,
             "W": Freq.W,
             "M": Freq.M,
         }
+
+    def __prepare_api_path(self):
+        """给每个tushare数据接口创建一个缓存路径"""
+        cache_path = self.cache_path
+        self.api_names = [
+            'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
+            'hk_hold', 'cctv_news', 'daily_basic'
+        ]
+        self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
+
+        for k, path in self.api_path_map.items():
+            os.makedirs(path, exist_ok=True)
 
     def clear(self):
         """清空缓存"""
@@ -53,7 +67,8 @@ class TsDataCache:
     # ------------------------------------Tushare 原生接口----------------------------------------------
     def ths_daily(self, ts_code, start_date, end_date, raw_bar=True):
         """获取同花顺概念板块的日线行情"""
-        file_cache = os.path.join(self.cache_path, f"{ts_code}.pkl")
+        cache_path = self.api_path_map['ths_daily']
+        file_cache = os.path.join(cache_path, f"ths_daily_{ts_code}.pkl")
         if os.path.exists(file_cache):
             kline = io.read_pkl(file_cache)
             if self.verbose:
@@ -78,20 +93,19 @@ class TsDataCache:
             bars = format_kline(bars, freq=Freq.D)
         return bars
 
-    def ths_index(self, exchange="A"):
+    def ths_index(self, exchange="A", type_="N"):
         """获取同花顺概念
 
         https://tushare.pro/document/2?doc_id=259
-        :param exchange:
-        :return:
         """
-        file_cache = os.path.join(self.cache_path, f"ths_index_{exchange}.pkl")
+        cache_path = self.api_path_map['ths_index']
+        file_cache = os.path.join(cache_path, f"ths_index_{exchange}_{type_}.pkl")
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
             if self.verbose:
                 print(f"ths_index: read cache {file_cache}")
         else:
-            df = pro.ths_index(exchange=exchange)
+            df = pro.ths_index(exchange=exchange, type=type_)
             io.save_pkl(df, file_cache)
         return df
 
@@ -102,7 +116,8 @@ class TsDataCache:
         :param ts_code:
         :return:
         """
-        file_cache = os.path.join(self.cache_path, f"ths_members_{ts_code}.pkl")
+        cache_path = self.api_path_map['ths_member']
+        file_cache = os.path.join(cache_path, f"ths_member_{ts_code}.pkl")
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
@@ -124,7 +139,9 @@ class TsDataCache:
         :param raw_bar:
         :return:
         """
-        file_cache = os.path.join(self.cache_path, f"{ts_code}_{asset}_{freq}.pkl")
+        cache_path = self.api_path_map['pro_bar']
+        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{asset}_{freq}.pkl")
+
         if os.path.exists(file_cache):
             kline = io.read_pkl(file_cache)
             if self.verbose:
@@ -150,36 +167,6 @@ class TsDataCache:
         if raw_bar:
             bars = format_kline(bars, freq=self.freq_map[freq])
         return bars
-
-    def index_classify(self, level="L1"):
-        """
-        https://tushare.pro/document/2?doc_id=181
-
-        :param level:
-        :return:
-        """
-        file_cache = os.path.join(self.cache_path, f"sw_index_{level}.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.index_classify(level=level, src='SW')
-            io.save_pkl(df, file_cache)
-        return df
-
-    def index_member(self, index_code):
-        """
-        https://tushare.pro/document/2?doc_id=182
-
-        :param index_code:
-        :return:
-        """
-        file_cache = os.path.join(self.cache_path, f"sw_members_{index_code}.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.index_member(index_code=index_code)
-            io.save_pkl(df, file_cache)
-        return df
 
     def stock_basic(self):
         """
@@ -211,8 +198,9 @@ class TsDataCache:
 
         https://tushare.pro/document/2?doc_id=188
         """
+        cache_path = self.api_path_map['hk_hold']
         trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
-        file_cache = os.path.join(self.cache_path, f"hk_hold_{trade_date}.pkl")
+        file_cache = os.path.join(cache_path, f"hk_hold_{trade_date}.pkl")
 
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
@@ -226,8 +214,9 @@ class TsDataCache:
 
         https://tushare.pro/document/2?doc_id=154
         """
+        cache_path = self.api_path_map['cctv_news']
         date = pd.to_datetime(date).strftime("%Y%m%d")
-        file_cache = os.path.join(self.cache_path, f"cctv_news_{date}.pkl")
+        file_cache = os.path.join(cache_path, f"cctv_news_{date}.pkl")
 
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
@@ -241,8 +230,8 @@ class TsDataCache:
 
         https://tushare.pro/document/2?doc_id=32
         """
-
-        file_cache = os.path.join(self.cache_path, f"daily_basic_{ts_code}.pkl")
+        cache_path = self.api_path_map['daily_basic']
+        file_cache = os.path.join(cache_path, f"daily_basic_{ts_code}.pkl")
 
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
