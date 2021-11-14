@@ -55,8 +55,6 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
             delta_m = dt.minute % m
             if delta_m != 0:
                 dt += timedelta(minutes=m - delta_m)
-            else:
-                dt += timedelta(minutes=m)
             return dt
 
         else:
