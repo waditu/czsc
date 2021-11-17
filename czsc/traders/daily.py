@@ -15,13 +15,14 @@ from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC, Freq, Event, RawBar
 from ..utils.kline_generator import KlineGeneratorD
+from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
 
 
 class CzscDailyTrader:
     """缠中说禅技术分析理论之日线多级别联立交易决策类"""
 
-    def __init__(self, kg: KlineGeneratorD, get_signals: Callable, events: List[Event] = None):
+    def __init__(self, kg: [KlineGeneratorD, BarGenerator], get_signals: Callable, events: List[Event] = None):
         """
 
         :param kg: K线合成器
@@ -32,9 +33,7 @@ class CzscDailyTrader:
         self.kg = kg
         self.freqs = kg.freqs
         self.events = events
-
-        klines = {freq: self.kg.bars[freq][-1000:] for freq in self.freqs}
-        self.kas = {k: CZSC(klines[k], max_bi_count=50, get_signals=get_signals) for k in klines.keys()}
+        self.kas = {k: CZSC(b[-1000:], max_bi_count=50, get_signals=get_signals) for k, b in self.kg.bars.items()}
         self.s = self._cal_signals()
 
     def __repr__(self):
@@ -101,9 +100,7 @@ class CzscDailyTrader:
         """
         assert bar.freq == Freq.D
         self.kg.update(bar)
-        klines_one = {freq: self.kg.bars[freq][-1] for freq in self.freqs}
-
-        for freq, bar in klines_one.items():
-            self.kas[freq].update(bar)
+        for freq, bar in self.kg.bars.items():
+            self.kas[freq].update(bar[-1])
         self.s = self._cal_signals()
 

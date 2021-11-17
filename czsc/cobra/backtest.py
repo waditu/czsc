@@ -6,6 +6,7 @@ create_dt: 2021/6/26 23:18
 """
 import traceback
 import pandas as pd
+from deprecated import deprecated
 from typing import List, Callable, Tuple
 from tqdm import tqdm
 
@@ -14,6 +15,7 @@ from ..signals import get_default_signals
 from ..analyze import CzscTrader, KlineGenerator
 
 
+@deprecated(reason="generate_signals将被弃用，请使用 czsc.sensors.utils.generate_signals 进行替换", version='1.0.0')
 def generate_signals(f1_raw_bars: List[RawBar],
                      init_count: int = 50000,
                      get_signals: Callable = get_default_signals) -> List[dict]:
@@ -146,59 +148,6 @@ def long_trade_simulator(signals: List[dict],
         trades = trades[:-1]
         if verbose:
             print(f"last trade drop: {trades[-1]}")
-
-    pairs = []
-    for i in range(0, len(trades), 2):
-        o, e = dict(trades[i]), dict(trades[i + 1])
-        o.update(e)
-        o['持仓分钟'] = o['eid'] - o['oid']
-        o['盈亏（%）'] = int((o['平仓价格'] - o['开仓价格']) / o['开仓价格'] * 10000) / 100
-        pairs.append(o)
-
-    pf = long_trade_estimator(pairs)
-    pf['基准收益（%）'] = int((signals[-1]['close'] - signals[0]['open']) / signals[0]['open'] * 10000) / 100
-    pf['基准每分钟BP'] = round((pf['基准收益（%）'] * 100) / (signals[-1]['id'] - signals[0]['id']), 4)
-    pf['开始时间'] = signals[0]['dt'].strftime("%Y-%m-%d %H:%M")
-    pf['结束时间'] = signals[-1]['dt'].strftime("%Y-%m-%d %H:%M")
-    return pairs, pf
-
-
-def one_event_estimator(signals: List[dict], event: Event) -> Tuple[List[dict], dict]:
-    """评估单个事件的表现
-
-    :param signals: 信号列表，必须按时间升序
-    :param event: 事件
-    :return: 交易对，绩效
-    """
-    assert len(signals) > 1000 and signals[1]['dt'] > signals[0]['dt']
-
-    trades = []
-    cache = {'long_stop_price': -1, 'last_op': None}
-
-    for signal in signals:
-        m, f = event.is_match(signal)
-        if cache['last_op'] != Operate.LO and m:
-            trades.append({
-                "标的代码": signal['symbol'],
-                '开仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
-                '开仓价格': signal['close'],
-                '开仓理由': f,
-                'oid': signal['id'],
-            })
-            cache['last_op'] = Operate.LO
-
-        if cache['last_op'] == Operate.LO and not m:
-            trades.append({
-                "标的代码": signal['symbol'],
-                '平仓时间': signal['dt'].strftime("%Y-%m-%d %H:%M"),
-                '平仓价格': signal['close'],
-                '平仓理由': "事件空白",
-                'eid': signal['id'],
-            })
-            cache['last_op'] = Operate.LE
-
-    if len(trades) % 2 != 0:
-        trades = trades[:-1]
 
     pairs = []
     for i in range(0, len(trades), 2):

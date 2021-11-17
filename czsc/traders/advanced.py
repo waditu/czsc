@@ -15,31 +15,29 @@ from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC
 from ..objects import PositionLong, Operate, Event, RawBar
-from ..utils import KlineGenerator
+from ..utils import BarGenerator
 from ..utils.cache import home_path
 
 
 class CzscAdvancedTrader:
-    """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓）"""
+    """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
-    def __init__(self, kg: KlineGenerator, get_signals: Callable,
+    def __init__(self, bg: BarGenerator, get_signals: Callable,
                  long_events: List[Event] = None, long_pos: PositionLong = None):
         """
 
-        :param kg: K线合成器
+        :param bg: K线合成器
         :param get_signals: 自定义的单级别信号计算函数
         :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
         :param long_pos: 多头仓位对象
         """
         self.name = "CzscAdvancedTrader"
-        self.kg = kg
-        self.freqs = kg.freqs
+        self.bg = bg
+        self.base_freq = bg.base_freq
+        self.freqs = list(bg.bars.keys())
         self.long_events = long_events
         self.long_pos = long_pos
-
-        klines = self.kg.get_klines({k: 3000 for k in self.freqs})
-        self.kas = {k: CZSC(klines[k], max_bi_count=50, get_signals=get_signals) for k in klines.keys()}
-
+        self.kas = {freq: CZSC(b, max_bi_count=50, get_signals=get_signals) for freq, b in bg.bars.items()}
         self.s = self._cal_signals()
 
     def __repr__(self):
@@ -86,30 +84,28 @@ class CzscAdvancedTrader:
 
     def _cal_signals(self):
         """计算信号"""
-        self.symbol = self.kas["1分钟"].symbol
-        self.end_dt = self.kas["1分钟"].bars_raw[-1].dt
-        self.latest_price = self.kas["1分钟"].bars_raw[-1].close
+        base_freq = self.base_freq
+        self.symbol = self.kas[base_freq].symbol
+        self.end_dt = self.kas[base_freq].bars_raw[-1].dt
+        self.bid = self.kas[base_freq].bars_raw[-1].id
+        self.latest_price = self.kas[base_freq].bars_raw[-1].close
 
         s = OrderedDict()
         for freq, ks in self.kas.items():
             s.update(ks.signals)
 
-        s.update(self.kas['1分钟'].bars_raw[-1].__dict__)
+        s.update(self.kas[base_freq].bars_raw[-1].__dict__)
         return s
 
     def update(self, bar: RawBar):
         """输入1分钟K线，更新信号，更新仓位"""
-        self.kg.update(bar)
-        klines_one = self.kg.get_klines({freq: 1 for freq in self.freqs})
-
-        for freq, klines_ in klines_one.items():
-            self.kas[freq].update(klines_[-1])
-
+        self.bg.update(bar)
+        for freq, b in self.bg.bars.items():
+            self.kas[freq].update(b[-1])
         self.s = self._cal_signals()
-
         dt = self.end_dt
         price = self.latest_price
-        bid = self.kg.m1[-1].id
+        bid = self.bid
 
         # 遍历 long_events，更新 long_pos
         if self.long_events:
