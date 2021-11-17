@@ -8,9 +8,9 @@ import pandas as pd
 from tqdm import tqdm
 from czsc.traders.advanced import CzscAdvancedTrader
 from czsc.signals import *
-from czsc.utils import KlineGenerator
+from czsc.utils import BarGenerator
 from czsc.objects import Signal, Factor, Event, Operate, PositionLong
-from test.test_analyze import read_1min
+from test.test_analyze import read_1min, read_daily, get_user_signals
 
 def get_default_signals(c: analyze.CZSC) -> OrderedDict:
     """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
@@ -21,21 +21,29 @@ def get_default_signals(c: analyze.CZSC) -> OrderedDict:
     :return: 信号字典
     """
     s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-
-    # for di in range(1, 2):
-    #     s.update(get_s_three_bi(c, di))
-    #
-    # for di in range(1, 2):
-    #     s.update(get_s_base_xt(c, di))
-
     for di in range(1, 2):
         s.update(get_s_like_bs(c, di))
     return s
 
+def test_daily_trader():
+    bars = read_daily()
+    kg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
+    for bar in bars[:1000]:
+        kg.update(bar)
+
+    ct = CzscAdvancedTrader(kg, get_user_signals)
+
+    signals = []
+    for bar in bars[1000:]:
+        ct.update(bar)
+        signals.append(dict(ct.s))
+
+    assert len(signals) == 2332
+
 
 def test_advanced_trader_with_t0():
     bars = read_1min()
-    kg = KlineGenerator(max_count=3000, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
+    kg = BarGenerator(base_freq='1分钟', freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线'], max_count=3000)
     for row in tqdm(bars[:150000], desc='init kg'):
         kg.update(row)
 
@@ -61,7 +69,7 @@ def test_advanced_trader_with_t0():
         ]),
     ]
     long_pos = PositionLong(symbol='000001.SH', hold_long_a=0.5, hold_long_b=0.8, hold_long_c=1, T0=True)
-    ct = CzscAdvancedTrader(kg=kg, get_signals=get_default_signals, long_events=events, long_pos=long_pos)
+    ct = CzscAdvancedTrader(bg=kg, get_signals=get_default_signals, long_events=events, long_pos=long_pos)
     assert len(ct.s) == 16
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
@@ -78,7 +86,7 @@ def test_advanced_trader_with_t0():
 
 def test_advanced_trader_without_t0():
     bars = read_1min()
-    kg = KlineGenerator(max_count=3000, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
+    kg = BarGenerator(base_freq='1分钟', freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线'], max_count=3000)
     for row in tqdm(bars[:150000], desc='init kg'):
         kg.update(row)
 
@@ -104,7 +112,7 @@ def test_advanced_trader_without_t0():
         ]),
     ]
     long_pos = PositionLong(symbol='000001.SH', hold_long_a=0.5, hold_long_b=0.8, hold_long_c=1, T0=False)
-    ct = CzscAdvancedTrader(kg=kg, get_signals=get_default_signals, long_events=events, long_pos=long_pos)
+    ct = CzscAdvancedTrader(bg=kg, get_signals=get_default_signals, long_events=events, long_pos=long_pos)
     assert len(ct.s) == 16
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)

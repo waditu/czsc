@@ -1,10 +1,11 @@
 # coding: utf-8
 import os
 import webbrowser
-from typing import List, Callable
-from datetime import datetime
 import pandas as pd
 import traceback
+from typing import List, Callable
+from datetime import datetime
+from deprecated import deprecated
 from collections import OrderedDict
 from pyecharts.charts import Tab
 from pyecharts.components import Table
@@ -394,6 +395,7 @@ class CZSC:
         return self.bi_list
 
 
+@deprecated(reason="这个版本不支持分批买卖，实现逻辑也过于复杂，放弃维护", version='1.0.0')
 class CzscTrader:
     """缠中说禅技术分析理论之多级别联立交易决策类"""
 

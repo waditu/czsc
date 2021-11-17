@@ -100,24 +100,3 @@ def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) 
         return False
 
 
-def drop_duplicates_by_window(seq: List[Union[str, int, float]],
-                              default_value: [str, int, float] = None,
-                              window_size: int = 5) -> List[Union[str, int, float]]:
-    """从左到右按窗口进行去重，并使用 default_value 进行填充
-
-    :param seq: 输入序列
-    :param default_value: 重复位置的默认填充值
-    :param window_size: 窗口大小
-    :return: 去重后的序列
-    """
-    for i in range(len(seq)):
-        if i < window_size:
-            left = seq[: i]
-        else:
-            left = seq[i-window_size+1: i]
-
-        if seq[i] in left:
-            seq[i] = default_value
-    return seq
-
-

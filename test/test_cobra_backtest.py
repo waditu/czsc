@@ -30,11 +30,3 @@ def test_cobra_backtest():
     assert len(pairs) == 65
     assert pf['累计收益（%）'] > pf['基准收益（%）']
 
-    event = Event(name="多头过滤", operate=Operate.LO, factors=[
-        Factor(name="多头过滤", signals_all=[
-            Signal("30分钟_倒1K_DIF多空_多头_任意_任意_0"),
-        ]),
-    ])
-    pairs, pf = bt.one_event_estimator(signals, event)
-    assert len(pairs) == 8
-    assert pf['累计收益（%）'] > pf['基准收益（%）']

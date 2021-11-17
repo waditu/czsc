@@ -10,3 +10,4 @@ python-docx>=0.8.11
 transitions
 matplotlib
 seaborn
+Deprecated>=1.2.12

@@ -1,4 +1,5 @@
 # coding: utf-8
+from deprecated import deprecated
 from datetime import datetime, timedelta
 from typing import List, Union
 from ..enum import Freq
@@ -103,6 +104,7 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
     return dt
 
 
+@deprecated(reason="请使用 BarGenerator，性能更高，且支持从任意周期开始合成", version='1.0.0')
 class KlineGenerator:
     """K线生成器，仿实盘"""
 
@@ -309,7 +311,7 @@ class KlineGenerator:
             counts = {"1分钟": 1000, "5分钟": 1000, "30分钟": 1000, "日线": 100}
         return {k: self.get_kline(k, v) for k, v in counts.items()}
 
-
+@deprecated(reason="请使用 BarGenerator，性能更高，且支持从任意周期开始合成", version='1.0.0')
 class KlineGeneratorD:
     """使用日线合成周线、月线、季线"""
     def __init__(self, freqs: List[str] = None):
