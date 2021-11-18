@@ -113,7 +113,7 @@ class BarGenerator:
         return f"<BarGenerator for {self.symbol} @ {self.end_dt}>"
 
     def _update_freq(self, bar: RawBar, freq: Freq):
-        """更新周线"""
+        """更新指定周期"""
         freq_edt = freq_end_time(bar.dt, freq)
 
         if not self.bars[freq.value]:
@@ -148,8 +148,7 @@ class BarGenerator:
             print(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}")
             return
 
-        self.bars[base_freq].append(bar)
-        for freq in self.freqs:
+        for freq in self.bars.keys():
             self._update_freq(bar, self.freq_map[freq])
 
         # 限制存在内存中的K限制数量
