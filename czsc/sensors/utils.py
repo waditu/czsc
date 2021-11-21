@@ -76,6 +76,7 @@ def max_draw_down(n1b: List):
     :return: 最大回撤起止位置和最大回撤
     """
     curve = np.cumsum(n1b)
+    curve += 10000
     # 获取结束位置
     i = np.argmax((np.maximum.accumulate(curve) - curve) / np.maximum.accumulate(curve))
     if i == 0:
