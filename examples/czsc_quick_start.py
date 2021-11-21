@@ -1,22 +1,17 @@
 # coding: utf-8
 """
 目前 czsc 库处于开发阶段，不同版本之间的 API 兼容性较差。
-这个文件对应的 czsc 版本为 0.7.3，代码即文档，关于0.7.3的所有你想知道的都在代码里。
 
 注意：czsc 是针对程序化实盘进行设计的，用来做研究需要自己按需求改动代码，强烈建议研究、实盘使用统一的代码。
 """
 
-import czsc
-# 聚宽数据为目前支持的数据源，需要接入第三方数据源的请参考这个文件进行编写
 from czsc.data.jq import *
 import traceback
 from datetime import datetime
 from typing import List
 from czsc.analyze import CZSC
-from czsc.signals import get_default_signals
+from czsc.signals.signals import get_default_signals
 from czsc.objects import Signal, Factor
-
-assert czsc.__version__ == '0.7.7'
 
 # 首次使用需要设置聚宽账户，以下大部分案例依赖聚宽数据
 # set_token("phone number", 'password') # 第一个参数是JQData的手机号，第二个参数是登录密码

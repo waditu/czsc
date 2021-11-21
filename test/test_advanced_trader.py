@@ -7,10 +7,11 @@ create_dt: 2021/11/7 21:07
 import pandas as pd
 from tqdm import tqdm
 from czsc.traders.advanced import CzscAdvancedTrader
-from czsc.signals import *
+from czsc.signals.signals import *
 from czsc.utils import BarGenerator
 from czsc.objects import Signal, Factor, Event, Operate, PositionLong
 from test.test_analyze import read_1min, read_daily, get_user_signals
+
 
 def get_default_signals(c: analyze.CZSC) -> OrderedDict:
     """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
@@ -24,6 +25,7 @@ def get_default_signals(c: analyze.CZSC) -> OrderedDict:
     for di in range(1, 2):
         s.update(get_s_like_bs(c, di))
     return s
+
 
 def test_daily_trader():
     bars = read_daily()
@@ -125,5 +127,3 @@ def test_advanced_trader_without_t0():
             assert ct.long_pos.long_bid > 0
 
     print(pd.DataFrame(ct.long_pos.evaluate_operates())['盈亏比例'].sum())
-
-

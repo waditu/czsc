@@ -132,6 +132,7 @@ def monitor(use_cache=True):
 
     push_text("自选股CZSC笔因子监控结束 @ {}".format(datetime.now().strftime("%Y-%m-%d %H:%M")), qywx_key)
 
+
 def run_monitor():
     mdt = ["09:30", "10:00", "10:30", "11:00", "11:20", "13:00", "13:30", "14:00", "14:30", "14:50"]
     monitor()
@@ -144,4 +145,3 @@ def run_monitor():
 
 if __name__ == '__main__':
     run_monitor()
-

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 import czsc
-from czsc.cobra.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross
+from czsc.signals.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross
 from czsc.objects import RawBar
 from czsc.enum import Freq
 
