@@ -4,6 +4,7 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/10/30 20:21
 """
+import os
 import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
@@ -11,7 +12,7 @@ sys.path.insert(0, '..')
 from czsc.data.ts_cache import TsDataCache
 from czsc.sensors.stocks import StocksDaySensor
 from czsc.objects import Operate, Signal, Factor, Event
-from czsc.signals import *
+from czsc.signals.signals import *
 
 
 def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
@@ -109,6 +110,7 @@ if __name__ == '__main__':
     sds = StocksDaySensor(dc, get_selector_signals, get_event, params)
 
     results_path = fr"D:\research\ts_data\{sds.event.name}_{sds.sdt}_{sds.edt}"
+    os.makedirs(results_path, exist_ok=True)
     file_docx = sds.report_performance(results_path)
     print(f"选股性能评估结果：{file_docx}")
     df1, df2 = sds.get_latest_strong(fc_top_n=20, fc_min_n=2, min_total_mv=2e6)
