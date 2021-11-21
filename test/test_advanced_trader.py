@@ -83,7 +83,7 @@ def test_advanced_trader_with_t0():
             assert ct.long_pos.long_cost > 0
             assert ct.long_pos.long_bid > 0
 
-    print(pd.DataFrame(ct.long_pos.evaluate_operates())['盈亏比例'].sum())
+    print(pd.DataFrame(ct.long_pos.pairs)['盈亏比例'].sum())
 
 
 def test_advanced_trader_without_t0():
@@ -126,4 +126,4 @@ def test_advanced_trader_without_t0():
             assert ct.long_pos.long_cost > 0
             assert ct.long_pos.long_bid > 0
 
-    print(pd.DataFrame(ct.long_pos.evaluate_operates())['盈亏比例'].sum())
+    print(pd.DataFrame(ct.long_pos.pairs)['盈亏比例'].sum())
