@@ -47,6 +47,12 @@ def offline_test_ts_cache():
     df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
     assert len(df_d) == 243
 
+    # 测试指数成分和权重数据缓存
+    df = dc.index_weight('000905.SH', '20210923')
+    assert len(df) == 500
+    df = dc.index_weight('000905.SH', '20210901')
+    assert len(df) == 500
+
     dc.clear()
     assert not os.path.exists(cache_path)
 

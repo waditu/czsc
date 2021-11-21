@@ -46,7 +46,7 @@ class TsDataCache:
         cache_path = self.cache_path
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
-            'hk_hold', 'cctv_news', 'daily_basic'
+            'hk_hold', 'cctv_news', 'daily_basic', 'index_weight'
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -242,6 +242,25 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
 
         df = df[(df.trade_date >= pd.to_datetime(start_date)) & (df.trade_date <= pd.to_datetime(end_date))]
+        return df
+
+    def index_weight(self, index_code: str, trade_date: str):
+        """指数成分和权重
+
+        https://tushare.pro/document/2?doc_id=96
+        """
+        trade_date = pd.to_datetime(trade_date)
+        cache_path = self.api_path_map['index_weight']
+        file_cache = os.path.join(cache_path, f"index_weight_{index_code}_{trade_date.strftime('%Y%m')}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            start_date = trade_date.replace(day=1).strftime('%Y%m%d')
+            end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
+            df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
+            df = df.drop_duplicates('con_code', ignore_index=True)
+            io.save_pkl(df, file_cache)
         return df
 
     # ------------------------------------CZSC 加工接口----------------------------------------------
