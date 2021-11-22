@@ -256,7 +256,8 @@ class TsDataCache:
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            start_date = trade_date.replace(day=1).strftime('%Y%m%d')
+            start_date = (trade_date.replace(day=1) - timedelta(days=31)).strftime('%Y%m%d')
+            # start_date = (trade_date.replace(day=1)).strftime('%Y%m%d')
             end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
             df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
             df = df.drop_duplicates('con_code', ignore_index=True)

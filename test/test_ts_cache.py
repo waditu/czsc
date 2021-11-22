@@ -53,6 +53,9 @@ def offline_test_ts_cache():
     df = dc.index_weight('000905.SH', '20210901')
     assert len(df) == 500
 
+    df = dc.index_weight('000300.SH', '20200208')
+    assert len(df) == 300
+
     dc.clear()
     assert not os.path.exists(cache_path)
 
