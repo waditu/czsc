@@ -272,7 +272,7 @@ class PositionLong:
     def evaluate_operates(self):
         """评估操作表现"""
         pairs = self.pairs
-        p = {"交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+        p = {"交易标的": self.symbol, "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0}
 
