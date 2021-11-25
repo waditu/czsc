@@ -79,8 +79,15 @@ class TsDataCache:
             kline = kline.sort_values('trade_date', ignore_index=True)
 
             for bar_number in (1, 2, 3, 5, 10, 20):
+                # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
+                kline[n_col_name] = kline[n_col_name].round(4)
+
+                # 向前看
+                b_col_name = 'b' + str(bar_number) + 'b'
+                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+                kline[b_col_name] = kline[b_col_name].round(4)
 
             io.save_pkl(kline, file_cache)
 
@@ -154,9 +161,15 @@ class TsDataCache:
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
 
             for bar_number in (1, 2, 3, 5, 10, 20):
+                # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
                 kline[n_col_name] = kline[n_col_name].round(4)
+
+                # 向前看
+                b_col_name = 'b' + str(bar_number) + 'b'
+                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+                kline[b_col_name] = kline[b_col_name].round(4)
 
             io.save_pkl(kline, file_cache)
 
@@ -266,13 +279,13 @@ class TsDataCache:
 
     # ------------------------------------CZSC 加工接口----------------------------------------------
 
-    def get_all_ths_members(self):
+    def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
-        file_cache = os.path.join(self.cache_path, "all_ths_members.pkl")
+        file_cache = os.path.join(self.cache_path, f"{exchange}_{type_}_ths_members.pkl")
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            concepts = self.ths_index(exchange='A')
+            concepts = self.ths_index(exchange, type_)
             concepts = concepts.to_dict('records')
 
             res = []

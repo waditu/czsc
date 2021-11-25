@@ -22,6 +22,9 @@ def offline_test_ts_cache():
     df = dc.ths_index('A')
     assert not df.empty
 
+    bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
+    assert len(bars) == 436
+
     bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
                       start_date='20200101', end_date='20211024', raw_bar=True)
     assert len(bars) == 436
@@ -55,6 +58,9 @@ def offline_test_ts_cache():
 
     df = dc.index_weight('000300.SH', '20200208')
     assert len(df) == 300
+
+    df = dc.get_all_ths_members(exchange='A', type_='N')
+    assert not df.empty
 
     dc.clear()
     assert not os.path.exists(cache_path)
