@@ -3,8 +3,7 @@ import zipfile
 from tqdm import tqdm
 from czsc.analyze import *
 from czsc.enum import Freq, Operate
-from czsc import signals
-from czsc.signals import get_default_signals, get_s_three_bi
+from czsc.signals.signals import get_default_signals, get_s_three_bi, get_s_d0_bi
 from czsc.objects import Event, Factor, Signal
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -24,6 +23,7 @@ def read_1min():
         bar.freq = Freq.F1
         bars.append(bar)
     return bars
+
 
 def read_daily():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
@@ -132,7 +132,7 @@ def test_get_signals():
 
     def get_test_signals(c: CZSC) -> OrderedDict:
         s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-        s.update(signals.get_s_d0_bi(c))
+        s.update(get_s_d0_bi(c))
         return s
 
     bars = read_daily()

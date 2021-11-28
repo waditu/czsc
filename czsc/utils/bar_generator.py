@@ -47,14 +47,14 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
         return dt
 
     if freq == Freq.W:
-        sdt = dt + timedelta(days=5-dt.isoweekday())
+        sdt = dt + timedelta(days=5 - dt.isoweekday())
         return sdt
 
     if freq == Freq.M:
         if dt.month == 12:
-            sdt = datetime(year=dt.year+1, month=1, day=1) - timedelta(days=1)
+            sdt = datetime(year=dt.year + 1, month=1, day=1) - timedelta(days=1)
         else:
-            sdt = datetime(year=dt.year, month=dt.month+1, day=1) - timedelta(days=1)
+            sdt = datetime(year=dt.year, month=dt.month + 1, day=1) - timedelta(days=1)
         return sdt
 
     if freq == Freq.S:
@@ -66,7 +66,7 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
         elif dt_m in [7, 8, 9]:
             sdt = datetime(year=dt.year, month=10, day=1) - timedelta(days=1)
         else:
-            sdt = datetime(year=dt.year+1, month=1, day=1) - timedelta(days=1)
+            sdt = datetime(year=dt.year + 1, month=1, day=1) - timedelta(days=1)
         return sdt
 
     if freq == Freq.Y:
@@ -78,6 +78,7 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
 
 class BarGenerator:
     """使用日线合成周线、月线、季线"""
+
     def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000):
         self.symbol = None
         self.end_dt = None
@@ -118,19 +119,19 @@ class BarGenerator:
 
         if not self.bars[freq.value]:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+                          close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
             self.bars[freq.value].append(bar_)
             return
 
         last = self.bars[freq.value][-1]
         if freq_edt != self.bars[freq.value][-1].dt:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id + 1, open=bar.open,
-                           close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
+                          close=bar.close, high=bar.high, low=bar.low, vol=bar.vol)
             self.bars[freq.value].append(bar_)
 
         else:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id, open=last.open, close=bar.close,
-                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
+                          high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
             self.bars[freq.value][-1] = bar_
 
     def update(self, bar: RawBar):
@@ -154,4 +155,3 @@ class BarGenerator:
         # 限制存在内存中的K限制数量
         for f, b in self.bars.items():
             self.bars[f] = b[-self.max_count:]
-

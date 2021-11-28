@@ -10,6 +10,7 @@ from test.test_analyze import read_1min
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 kline = read_1min()
 
+
 def test_freq_end_time():
     assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F1) == pd.to_datetime("2021-11-11 09:43")
     assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F5) == pd.to_datetime("2021-11-11 09:45")
@@ -69,4 +70,3 @@ def test_bg_on_d():
     assert len(bg.bars['月线']) == 165
     assert len(bg.bars['年线']) == 15
     assert bg.bars['月线'][-2].id > bg.bars['月线'][-3].id
-

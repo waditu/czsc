@@ -244,8 +244,9 @@ class PositionLong:
         """返回状态对应的仓位"""
         return self.pos_map[self.state]
 
-    def evaluate_operates(self):
-        """评估操作表现"""
+    @property
+    def pairs(self):
+        """返回买卖交易对"""
         operates = self.operates
         pairs = []
         latest_pair = []
@@ -267,6 +268,33 @@ class PositionLong:
                 pairs.append(pair)
                 latest_pair = []
         return pairs
+
+    def evaluate_operates(self):
+        """评估操作表现"""
+        pairs = self.pairs
+        p = {"交易标的": self.symbol, "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
+             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0}
+
+        if len(pairs) == 0:
+            return p
+
+        p['累计收益'] = sum([x['盈亏比例'] for x in pairs])
+        p['单笔收益'] = p['累计收益'] / p['交易次数']
+
+        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
+        if len(win_) > 0:
+            p['盈利次数'] = len(win_)
+            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
+            p['单笔盈利'] = p['累计盈利'] / p['盈利次数']
+
+        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
+        if len(loss_) > 0:
+            p['亏损次数'] = len(loss_)
+            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
+            p['单笔亏损'] = p['累计亏损'] / p['亏损次数']
+
+        return p
 
     def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
         """更新多头持仓状态

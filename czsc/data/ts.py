@@ -13,7 +13,7 @@ from typing import List
 from tqdm import tqdm
 
 from ..analyze import CzscTrader, RawBar, KlineGenerator
-from ..signals import get_default_signals
+from ..signals.signals import get_default_signals
 from ..enum import Freq
 from ..utils.cache import home_path
 

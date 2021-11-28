@@ -46,7 +46,7 @@ class TsDataCache:
         cache_path = self.cache_path
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
-            'hk_hold', 'cctv_news', 'daily_basic'
+            'hk_hold', 'cctv_news', 'daily_basic', 'index_weight'
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -79,8 +79,15 @@ class TsDataCache:
             kline = kline.sort_values('trade_date', ignore_index=True)
 
             for bar_number in (1, 2, 3, 5, 10, 20):
+                # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
+                kline[n_col_name] = kline[n_col_name].round(4)
+
+                # 向前看
+                b_col_name = 'b' + str(bar_number) + 'b'
+                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+                kline[b_col_name] = kline[b_col_name].round(4)
 
             io.save_pkl(kline, file_cache)
 
@@ -154,9 +161,15 @@ class TsDataCache:
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
 
             for bar_number in (1, 2, 3, 5, 10, 20):
+                # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
                 kline[n_col_name] = kline[n_col_name].round(4)
+
+                # 向前看
+                b_col_name = 'b' + str(bar_number) + 'b'
+                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+                kline[b_col_name] = kline[b_col_name].round(4)
 
             io.save_pkl(kline, file_cache)
 
@@ -244,15 +257,35 @@ class TsDataCache:
         df = df[(df.trade_date >= pd.to_datetime(start_date)) & (df.trade_date <= pd.to_datetime(end_date))]
         return df
 
-    # ------------------------------------CZSC 加工接口----------------------------------------------
+    def index_weight(self, index_code: str, trade_date: str):
+        """指数成分和权重
 
-    def get_all_ths_members(self):
-        """获取同花顺A股全部概念列表"""
-        file_cache = os.path.join(self.cache_path, "all_ths_members.pkl")
+        https://tushare.pro/document/2?doc_id=96
+        """
+        trade_date = pd.to_datetime(trade_date)
+        cache_path = self.api_path_map['index_weight']
+        file_cache = os.path.join(cache_path, f"index_weight_{index_code}_{trade_date.strftime('%Y%m')}.pkl")
+
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            concepts = self.ths_index(exchange='A')
+            start_date = (trade_date.replace(day=1) - timedelta(days=31)).strftime('%Y%m%d')
+            # start_date = (trade_date.replace(day=1)).strftime('%Y%m%d')
+            end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
+            df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
+            df = df.drop_duplicates('con_code', ignore_index=True)
+            io.save_pkl(df, file_cache)
+        return df
+
+    # ------------------------------------CZSC 加工接口----------------------------------------------
+
+    def get_all_ths_members(self, exchange="A", type_="N"):
+        """获取同花顺A股全部概念列表"""
+        file_cache = os.path.join(self.cache_path, f"{exchange}_{type_}_ths_members.pkl")
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            concepts = self.ths_index(exchange, type_)
             concepts = concepts.to_dict('records')
 
             res = []

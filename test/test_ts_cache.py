@@ -22,6 +22,9 @@ def offline_test_ts_cache():
     df = dc.ths_index('A')
     assert not df.empty
 
+    bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
+    assert len(bars) == 436
+
     bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
                       start_date='20200101', end_date='20211024', raw_bar=True)
     assert len(bars) == 436
@@ -46,6 +49,18 @@ def offline_test_ts_cache():
     assert len(df_d) == 243
     df_d = dc.daily_basic(ts_code='300033.SZ', start_date='20200101', end_date='20210101')
     assert len(df_d) == 243
+
+    # 测试指数成分和权重数据缓存
+    df = dc.index_weight('000905.SH', '20210923')
+    assert len(df) == 500
+    df = dc.index_weight('000905.SH', '20210901')
+    assert len(df) == 500
+
+    df = dc.index_weight('000300.SH', '20200208')
+    assert len(df) == 300
+
+    df = dc.get_all_ths_members(exchange='A', type_='N')
+    assert not df.empty
 
     dc.clear()
     assert not os.path.exists(cache_path)

@@ -9,8 +9,8 @@ from collections import OrderedDict
 from czsc.data import jq
 from czsc import CZSC
 from czsc.objects import Signal, Freq
-from czsc.cobra.check import check_signals_acc
-from czsc.signals import get_s_like_bs
+from czsc.sensors.utils import check_signals_acc
+from czsc.signals.signals import get_s_like_bs
 
 
 symbol = '000001.XSHG'
@@ -34,7 +34,7 @@ def get_signals(c: CZSC) -> OrderedDict:
 
 
 if __name__ == '__main__':
-    check_signals_acc(f1_raw_bars, signals, get_signals)
+    check_signals_acc(f1_raw_bars, signals, freqs=['5分钟', '15分钟'], get_signals=get_signals)
 
 
 

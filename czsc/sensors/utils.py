@@ -4,13 +4,19 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/17 18:50
 """
+import os
 import warnings
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
+from datetime import datetime, timedelta
 from typing import Callable, List, AnyStr
-from czsc.traders.advanced import CzscAdvancedTrader, BarGenerator, RawBar
-from czsc.data.ts_cache import TsDataCache
+
+from ..traders.advanced import CzscAdvancedTrader, BarGenerator
+from ..data.ts_cache import TsDataCache
+from ..objects import RawBar, Signal
+from ..signals.signals import get_default_signals
+from ..utils.cache import home_path
 
 
 def get_index_beta(dc: TsDataCache, sdt: str, edt: str, indices=None):
@@ -66,6 +72,48 @@ def generate_signals(bars: List[RawBar], sdt: AnyStr, base_freq: AnyStr, freqs: 
     return signals
 
 
+def check_signals_acc(bars: List[RawBar],
+                      signals: List[Signal],
+                      freqs: List[AnyStr],
+                      get_signals: Callable = get_default_signals) -> None:
+    """人工验证形态信号识别的准确性的辅助工具：
+
+    输入基础周期K线和想要验证的信号，输出信号识别结果的快照
+
+    :param bars: 原始K线
+    :param signals: 需要验证的信号列表
+    :param freqs: 周期列表
+    :param get_signals: 信号计算函数
+    :return:
+    """
+    base_freq = bars[-1].freq.value
+    assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
+    if len(bars) < 600:
+        return
+
+    bars_left = bars[:500]
+    bars_right = bars[500:]
+    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
+    for bar in bars_left:
+        bg.update(bar)
+
+    ct = CzscAdvancedTrader(bg, get_signals)
+    last_dt = {signal.key: ct.end_dt for signal in signals}
+
+    for bar in tqdm(bars_right, desc=f'generate snapshots of {bg.symbol}'):
+        ct.update(bar)
+
+        for signal in signals:
+            html_path = os.path.join(home_path, signal.key)
+            os.makedirs(html_path, exist_ok=True)
+            if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
+                file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
+                file_html = os.path.join(html_path, file_html)
+                print(file_html)
+                ct.take_snapshot(file_html)
+                last_dt[signal.key] = bar.dt
+
+
 def max_draw_down(n1b: List):
     """最大回撤
 
@@ -76,6 +124,7 @@ def max_draw_down(n1b: List):
     :return: 最大回撤起止位置和最大回撤
     """
     curve = np.cumsum(n1b)
+    curve += 10000
     # 获取结束位置
     i = np.argmax((np.maximum.accumulate(curve) - curve) / np.maximum.accumulate(curve))
     if i == 0:

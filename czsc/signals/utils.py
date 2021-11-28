@@ -1,5 +1,10 @@
-# coding: utf-8
-
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2021/11/21 12:18
+describe: 信号计算的工具函数
+"""
 import numpy as np
 import pandas as pd
 import traceback
@@ -98,5 +103,3 @@ def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) 
     except:
         traceback.print_exc()
         return False
-
-

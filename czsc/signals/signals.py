@@ -1,18 +1,42 @@
-# -*- coding: utf-8 -*-
-"""
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2021/10/30 20:21
-"""
-import os
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
+# coding: utf-8
+import numpy as np
+from collections import OrderedDict
 
-from czsc.data.ts_cache import TsDataCache
-from czsc.sensors.stocks import StocksDaySensor
-from czsc.objects import Operate, Signal, Factor, Event
-from czsc.signals.signals import *
+from czsc import analyze
+from ..objects import Direction, Signal
+from ..enum import Freq
+from ..utils.ta import MACD, SMA
+from ..signals.utils import kdj_gold_cross
+from .bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
+from .ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd, get_s_bar_end
+
+
+def get_default_signals(c: analyze.CZSC) -> OrderedDict:
+    """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
+
+    实盘时可以按照自己的需要自定义计算哪些信号。
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
+
+    s.update(get_s_d0_bi(c))
+    s.update(get_s_three_k(c, 1))
+    s.update(get_s_di_bi(c, 1))
+    s.update(get_s_macd(c, 1))
+    s.update(get_s_single_k(c, 1))
+    s.update(get_s_bi_status(c))
+
+    for di in range(1, 8):
+        s.update(get_s_three_bi(c, di))
+
+    for di in range(1, 8):
+        s.update(get_s_base_xt(c, di))
+
+    for di in range(1, 8):
+        s.update(get_s_like_bs(c, di))
+    return s
 
 
 def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
@@ -24,8 +48,21 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
     freq: Freq = c.freq
     s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
 
+    s.update(get_s_three_k(c, 1))
+    s.update(get_s_bi_status(c))
+
+    for di in range(1, 3):
+        s.update(get_s_three_bi(c, di))
+
+    for di in range(1, 3):
+        s.update(get_s_base_xt(c, di))
+
+    for di in range(1, 3):
+        s.update(get_s_like_bs(c, di))
+
     default_signals = [
         # 以下是技术指标相关信号
+        Signal(k1=str(freq.value), k2="成交量", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="MA5状态", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="KDJ状态", v1="其他", v2='其他', v3='其他'),
         Signal(k1=str(freq.value), k2="MACD状态", v1="其他", v2='其他', v3='其他'),
@@ -37,12 +74,18 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
     if not c.bi_list:
         return s
 
+    if len(c.bars_raw) > 30 and c.freq == Freq.D:
+        last_vols = [k_.open * k_.vol for k_ in c.bars_raw[-10:]]
+        if sum(last_vols) > 15e8 and min(last_vols) > 1e7:
+            v = Signal(k1=str(freq.value), k2="成交量", v1="近10个交易日累计成交金额大于15亿", v2='近10个交易日最低成交额大于1亿')
+            s[v.key] = v.value
+
     if len(c.bars_raw) > 30 and c.freq in [Freq.W, Freq.M]:
         if kdj_gold_cross(c.bars_raw, just=False):
             v = Signal(k1=str(freq.value), k2="KDJ状态", v1="金叉")
             s[v.key] = v.value
 
-    if len(c.bars_raw) > 100 and c.freq == Freq.D:
+    if len(c.bars_raw) > 100:
         close = np.array([x.close for x in c.bars_raw[-100:]])
         ma5 = SMA(close, timeperiod=5)
         if c.bars_raw[-1].close >= ma5[-1]:
@@ -58,7 +101,7 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
             s[v.key] = v.value
 
     # 倒0笔潜在三买
-    if c.freq == Freq.D and len(c.bi_list) >= 5:
+    if len(c.bi_list) >= 5:
         if c.bi_list[-1].direction == Direction.Down:
             gg = max(c.bi_list[-1].high, c.bi_list[-3].high)
             zg = min(c.bi_list[-1].high, c.bi_list[-3].high)
@@ -82,35 +125,3 @@ def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
                 s[v.key] = v.value
 
     return s
-
-
-def get_event():
-    event = Event(name="选股测试", operate=Operate.LO, factors=[
-        Factor(name="月线KDJ金叉_日线MACD强势", signals_all=[
-            Signal("月线_KDJ状态_任意_金叉_任意_任意_0"),
-            Signal('日线_MACD状态_任意_DIFF大于0_DEA大于0_柱子增大_0'),
-            Signal('日线_MA5状态_任意_收盘价在MA5上方_任意_任意_0'),
-        ]),
-
-        Factor(name="月线KDJ金叉_日线潜在三买", signals_all=[
-            Signal("月线_KDJ状态_任意_金叉_任意_任意_0"),
-            Signal('日线_倒0笔_潜在三买_构成中枢_近3K在中枢上沿附近_近7K突破中枢GG_0'),
-            Signal('日线_MA5状态_任意_收盘价在MA5上方_任意_任意_0'),
-        ]),
-    ])
-    return event
-
-
-if __name__ == '__main__':
-    params = {
-        "validate_sdt": "20200101",
-        "validate_edt": "20211114",
-    }
-    dc = TsDataCache(data_path=r'D:\research\ts_data', sdt='2020-01-01', edt='2021-11-19')
-    sds = StocksDaySensor(dc, get_selector_signals, get_event, params)
-
-    results_path = fr"D:\research\ts_data\{sds.event.name}_{sds.sdt}_{sds.edt}"
-    os.makedirs(results_path, exist_ok=True)
-    file_docx = sds.report_performance(results_path)
-    print(f"选股性能评估结果：{file_docx}")
-    df1, df2 = sds.get_latest_strong(fc_top_n=20, fc_min_n=2, min_total_mv=2e6)

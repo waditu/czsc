@@ -15,7 +15,7 @@ from ..enum import Freq
 from .base import freq_inv
 from ..utils.kline_generator import bar_end_time
 from ..analyze import CzscTrader, KlineGenerator
-from ..signals import get_default_signals
+from ..signals.signals import get_default_signals
 
 
 url = "https://dataapi.joinquant.com/apis"
