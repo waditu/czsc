@@ -9,8 +9,7 @@ describe: 实现一个用python-docx写word文档的辅助工具
 1. https://cloud.tencent.com/developer/article/1512325
 2. https://blog.csdn.net/zhouz92/article/details/107066709
 """
-import os.path
-
+import os
 import docx
 import pandas as pd
 from docx.oxml.ns import qn
