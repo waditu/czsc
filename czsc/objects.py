@@ -160,13 +160,23 @@ class Signal:
 @dataclass
 class Factor:
     name: str
-    # signals_all 必须全部满足的信号
+
+    # signals_all 必须全部满足的信号，至少需要设定一个信号
     signals_all: List[Signal]
+
     # signals_any 满足其中任一信号，允许为空
     signals_any: List[Signal] = None
 
+    # signals_not 不能满足其中任一信号，允许为空
+    signals_not: List[Signal] = None
+
     def is_match(self, s: dict) -> bool:
         """判断 factor 是否满足"""
+        if self.signals_not:
+            for signal in self.signals_not:
+                if signal.is_match(s):
+                    return False
+
         for signal in self.signals_all:
             if not signal.is_match(s):
                 return False

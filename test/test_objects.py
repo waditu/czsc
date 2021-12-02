@@ -71,6 +71,21 @@ def test_factor():
     )
     assert not factor.is_match(s)
 
+    factor = Factor(
+        name="单测",
+        signals_all=[
+            Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上", v2='其他', v3='其他'),
+            Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="大于5", v2='其他', v3='其他')
+        ],
+        signals_any=[
+            Signal(k1=str(freq.value), k2="倒1笔", k3="RSQ状态", v1="小于0.2", v2='其他', v3='其他')
+        ],
+        signals_not=[
+            Signal(k1=str(freq.value), k2="倒0笔", k3="三K形态", v1="顶分型", v2='其他', v3='其他'),
+        ]
+    )
+    assert not factor.is_match(s)
+
 
 def test_event():
     freq = Freq.F15
