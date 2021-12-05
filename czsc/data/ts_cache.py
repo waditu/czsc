@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:12
-describe: Tushare 数据缓存
+describe: Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。单次缓存，多次使用，但是不做增量更新。
 """
 import os.path
 import shutil
@@ -46,7 +46,7 @@ class TsDataCache:
         cache_path = self.cache_path
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
-            'hk_hold', 'cctv_news', 'daily_basic', 'index_weight'
+            'hk_hold', 'cctv_news', 'daily_basic', 'index_weight', 'adj_factor'
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -270,10 +270,24 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             start_date = (trade_date.replace(day=1) - timedelta(days=31)).strftime('%Y%m%d')
-            # start_date = (trade_date.replace(day=1)).strftime('%Y%m%d')
             end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
             df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
             df = df.drop_duplicates('con_code', ignore_index=True)
+            io.save_pkl(df, file_cache)
+        return df
+
+    def adj_factor(self, ts_code: str):
+        """复权因子
+
+        https://waditu.com/document/2?doc_id=28
+        """
+        cache_path = self.api_path_map['adj_factor']
+        file_cache = os.path.join(cache_path, f"adj_factor_{ts_code}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.adj_factor(ts_code=ts_code)
             io.save_pkl(df, file_cache)
         return df
 
