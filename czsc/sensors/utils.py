@@ -134,3 +134,35 @@ def max_draw_down(n1b: List):
     j = np.argmax(curve[:i])
     mdd = int((curve[j] - curve[i]) / curve[j] * 10000) / 10000
     return j, i, mdd
+
+
+def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
+    """计算持仓明细对应的组合换手率
+
+    :param df_holds: 每个交易日的持仓明细
+    :return: 组合换手率
+    """
+    trade_dates = sorted(df_holds['成分日期'].unique().tolist())
+    daily_holds = {date: dfg for date, dfg in df_holds.groupby('成分日期')}
+
+    turns = []
+    for date_i, date in tqdm(enumerate(trade_dates), desc='turn_over_rate'):
+        if date_i == 0:
+            turns.append({'date': date, 'change': 1})
+            continue
+
+        dfg = daily_holds[date]
+        dfg_last = daily_holds[trade_dates[date_i-1]]
+        com_symbols = list(set(dfg['证券代码'].to_list()).intersection(dfg_last['证券代码'].to_list()))
+
+        dfg_pos = {row['证券代码']: row['持仓权重'] for _, row in dfg.iterrows()}
+        dfg_last_pos = {row['证券代码']: row['持仓权重'] for _, row in dfg_last.iterrows()}
+
+        change = 0
+        change += sum([abs(dfg_pos[symbol] - dfg_last_pos[symbol]) for symbol in com_symbols])
+        change += sum([v for symbol, v in dfg_pos.items() if symbol not in com_symbols])
+        change += sum([v for symbol, v in dfg_last_pos.items() if symbol not in com_symbols])
+        turns.append({'date': date, 'change': change})
+
+    df_turns = pd.DataFrame(turns)
+    return df_turns, round(df_turns.change.sum() / 2, 4)
