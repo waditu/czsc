@@ -100,21 +100,30 @@ class WordWriter:
             for i, c in enumerate(columns):
                 row_cells[i].text = str(row[c])
 
-    def add_picture(self, file, width=None, height=None) -> None:
+    def add_picture(self, file, width=None, height=None, alignment='center') -> None:
         """写入图片到文档中
 
         :param file: 图片文件路径
         :param width: 图片宽度，默认单位 cm
         :param height: 图片高度，默认单位 cm
+        :param alignment: 图片对齐，默认 center
         :return:
         """
+        alignment_map = {
+            'center': WD_PARAGRAPH_ALIGNMENT.CENTER,
+            'left': WD_PARAGRAPH_ALIGNMENT.LEFT,
+            'right': WD_PARAGRAPH_ALIGNMENT.RIGHT,
+        }
         if isinstance(width, int):
             width = Cm(width)
 
         if isinstance(height, int):
             height = Cm(height)
 
-        self.document.add_picture(file, width, height)
+        paragraph = self.document.add_paragraph()
+        paragraph.alignment = alignment_map[alignment]
+        run = paragraph.add_run("")
+        run.add_picture(file, width, height)
 
     def add_page_break(self):
         """添加分页符"""
