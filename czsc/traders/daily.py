@@ -7,6 +7,7 @@ describe: 日线交易员
 """
 import os
 import webbrowser
+from deprecated import deprecated
 from typing import Callable, List
 from collections import OrderedDict
 from pyecharts.charts import Tab
@@ -19,6 +20,7 @@ from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
 
 
+@deprecated(reason="可以用 CzscAdvancedTrader 对这里的功能实现替代", version='1.0.0')
 class CzscDailyTrader:
     """缠中说禅技术分析理论之日线多级别联立交易决策类"""
 
