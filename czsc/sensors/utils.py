@@ -19,23 +19,54 @@ from ..signals.signals import get_default_signals
 from ..utils.cache import home_path
 
 
-def get_index_beta(dc: TsDataCache, sdt: str, edt: str, indices=None):
+def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None, indices=None):
     """获取基准指数的Beta
 
-    :param dc: Tushare 数据缓存对象
+    :param dc: 数据缓存对象
     :param sdt: 开始日期
     :param edt: 结束日期
-    :param indices: 基准指数列表
-    :return: beta
+    :param freq: K线周期，D 日线，W 周线，M 月线
+    :param file_xlsx: 结果保存文件
+    :param indices: 定义指数列表
+    :return:
     """
     if not indices:
         indices = ['000001.SH', '000016.SH', '000905.SH', '000300.SH', '399001.SZ', '399006.SZ']
 
     beta = {}
+    p = []
     for ts_code in indices:
-        df = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq='D', asset="I", raw_bar=False)
+        df = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq=freq, asset="I", raw_bar=False)
         beta[ts_code] = df
-    return beta
+        df = df.fillna(0)
+        start_i, end_i, mdd = max_draw_down(df['n1b'].to_list())
+        start_dt = df.iloc[start_i]['trade_date']
+        end_dt = df.iloc[end_i]['trade_date']
+        row = {
+            '标的': ts_code,
+            "开始日期": sdt,
+            "结束日期": edt,
+            "最大回撤": mdd,
+            "回撤开始": start_dt,
+            "回撤结束": end_dt,
+            "交易次数": len(df),
+            "交易胜率": round(len(df[df.n1b > 0]) / len(df), 4),
+            "累计收益": round(df.n1b.sum(), 4),
+        }
+        cols = [x for x in df.columns if x[0] == 'n' and x[-1] == 'b']
+        row.update({x: round(df[x].mean(), 4) for x in cols})
+        p.append(row)
+
+    dfp = pd.DataFrame(p)
+    if file_xlsx:
+        f = pd.ExcelWriter(file_xlsx)
+        dfp.to_excel(f, index=False, sheet_name="指数表现")
+        for name, df_ in beta.items():
+            df_.to_excel(f, index=False, sheet_name=name)
+        f.close()
+    else:
+        beta['dfp'] = dfp
+        return beta
 
 
 def generate_signals(bars: List[RawBar], sdt: AnyStr, base_freq: AnyStr, freqs: List[AnyStr], get_signals: Callable):

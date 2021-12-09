@@ -7,7 +7,7 @@ create_dt: 2021/8/3 17:25
 from tqdm import tqdm
 from czsc.objects import Signal, Factor
 from czsc.analyze import CZSC
-from czsc import signals
+from czsc.signals import signals
 from czsc.utils.io import read_pkl, save_pkl
 from czsc.utils.kline_generator import KlineGeneratorD
 from scripts_gm.src.utils.base import *
