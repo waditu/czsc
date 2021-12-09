@@ -290,24 +290,24 @@ class PositionLong:
         if len(pairs) == 0:
             return p
 
-        p['累计收益'] = sum([x['盈亏比例'] for x in pairs])
-        p['单笔收益'] = p['累计收益'] / p['交易次数']
+        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
+        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
 
         win_ = [x for x in pairs if x['盈亏比例'] >= 0]
         if len(win_) > 0:
             p['盈利次数'] = len(win_)
             p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
-            p['单笔盈利'] = p['累计盈利'] / p['盈利次数']
+            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
             p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
 
         loss_ = [x for x in pairs if x['盈亏比例'] < 0]
         if len(loss_) > 0:
             p['亏损次数'] = len(loss_)
             p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
-            p['单笔亏损'] = p['累计亏损'] / p['亏损次数']
+            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
 
-            p['累计盈亏比'] = round(p['累计盈利']/p['累计亏损'], 4)
-            p['单笔盈亏比'] = round(p['单笔盈利']/p['单笔亏损'], 4)
+            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
+            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
 
         return p
 
