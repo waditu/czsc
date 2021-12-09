@@ -5,11 +5,11 @@ email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:20
 """
 import sys
+
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
-import os
-from czsc.data.ts_cache import TsDataCache
+from czsc.data.ts_cache import *
 
 
 def offline_test_ts_cache():
@@ -66,6 +66,16 @@ def offline_test_ts_cache():
     df = dc.get_all_ths_members(exchange='A', type_='N')
     assert not df.empty
 
+    # 测试复权分钟线获取
+    df1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
+
+    df2 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=False)
+
+    df3 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj=None, raw_bar=False)
+    assert len(df1) == len(df2) == len(df3) and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
+
     dc.clear()
     assert not os.path.exists(cache_path)
-
