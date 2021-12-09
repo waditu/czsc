@@ -14,7 +14,7 @@ from collections import OrderedDict
 import pandas as pd
 from typing import List, Callable
 from czsc.analyze import CzscTrader, KlineGenerator, RawBar
-from czsc.signals import get_default_signals
+from czsc.signals.signals import get_default_signals
 from czsc.enum import Freq, Operate
 from czsc.objects import Event
 from czsc.utils.qywx import push_file, push_text, push_markdown

@@ -7,7 +7,7 @@ describe: 使用掘金的数据，查看任意时刻的标的状态，精确到�
 """
 
 from src.utils.bt import GmCzscTrader
-from czsc.signals import get_default_signals
+from czsc.signals.signals import get_default_signals
 
 
 if __name__ == '__main__':
