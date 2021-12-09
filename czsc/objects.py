@@ -5,7 +5,7 @@ from typing import List
 from transitions import Machine
 
 from .enum import Mark, Direction, Freq, Operate
-
+from .utils.ta import RSQ
 
 @dataclass
 class Tick:
@@ -73,22 +73,48 @@ class FakeBI:
 @dataclass
 class BI:
     symbol: str
-    fx_a: FX = None  # 笔开始的分型
-    fx_b: FX = None  # 笔结束的分型
-    fxs: List = None  # 笔内部的分型列表
+    fx_a: FX = None     # 笔开始的分型
+    fx_b: FX = None     # 笔结束的分型
+    fxs: List = None    # 笔内部的分型列表
     direction: Direction = None
-    high: float = None
-    low: float = None
-    power: float = None
     bars: List = None
-    rsq: float = None
-    change: float = None
-    length: float = None
     fake_bis: List = None
 
     def __post_init__(self):
         self.sdt = self.fx_a.dt
         self.edt = self.fx_b.dt
+
+    # 定义一些附加属性，用的时候才会计算，提高效率
+    # ======================================================================
+    @property
+    def high(self):
+        return max(self.fx_a.high, self.fx_b.high)
+
+    @property
+    def low(self):
+        return min(self.fx_a.low, self.fx_b.low)
+
+    @property
+    def power(self):
+        return round(abs(self.fx_b.fx - self.fx_a.fx), 2)
+
+    @property
+    def change(self):
+        if self.fx_a.fx > 0:
+            c = round((self.fx_b.fx - self.fx_a.fx) / self.fx_a.fx, 4)
+        else:
+            # fx_a.fx = 0 是不对，大概率是输入的数据有问题，这里统一处理
+            c = 0
+        return c
+
+    @property
+    def length(self):
+        return len(self.bars)
+
+    @property
+    def rsq(self):
+        close = [x.close for x in self.bars[1:-1]]
+        return round(RSQ(close), 4)
 
 
 @dataclass

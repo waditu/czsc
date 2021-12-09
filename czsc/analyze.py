@@ -155,15 +155,8 @@ def check_bi(bars: List[NewBar]):
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
 
     if len(bars_a) >= 7 and not ab_include:
-        # 计算笔的相关属性
-        power_price = round(abs(fx_b.fx - fx_a.fx), 2)
-        change = round((fx_b.fx - fx_a.fx) / fx_a.fx, 4)
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
-
-        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_,
-                direction=direction, power=power_price, high=max(fx_a.high, fx_b.high),
-                low=min(fx_a.low, fx_b.low), bars=bars_a, length=len(bars_a), change=change)
-
+        bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
         return bi, bars_b
     else:
         return None, bars
