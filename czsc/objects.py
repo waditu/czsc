@@ -291,9 +291,17 @@ class PositionLong:
             if op['op'] == Operate.LE:
                 lo_ = [x for x in latest_pair if x['op'] in [Operate.LO, Operate.LA1, Operate.LA2]]
                 le_ = [x for x in latest_pair if x['op'] in [Operate.LE, Operate.LR1, Operate.LR2]]
+                max_pos_ = self.pos_map['hold_long_a']
+                lo_ops = [x['op'] for x in lo_]
+                if Operate.LA1 in lo_ops:
+                    max_pos_ = self.pos_map['hold_long_b']
+                if Operate.LA2 in lo_ops:
+                    max_pos_ = self.pos_map['hold_long_c']
+
                 pair = {
                     '标的代码': op['symbol'],
                     '交易方向': "多头",
+                    '最大仓位': max_pos_,
                     '开仓时间': lo_[0]['dt'],
                     '累计开仓': sum([x['price'] * x['pos_change'] for x in lo_]),
                     '平仓时间': op['dt'],
