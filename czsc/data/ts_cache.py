@@ -231,6 +231,8 @@ class TsDataCache:
             # 删除9:30的K线
             kline['keep'] = kline['trade_time'].apply(lambda x: 0 if x.hour == 9 and x.minute == 30 else 1)
             kline = kline[kline['keep'] == 1]
+            # 删除没有成交量的K线
+            kline = kline[kline['vol'] > 0]
             kline = kline.reset_index(drop=True)
             kline.drop(['keep'], axis=1, inplace=True)
 
