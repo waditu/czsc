@@ -411,3 +411,29 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    def get_next_trade_dates(self, date, n: int = 1, m: int = None):
+        """获取将来的交易日期
+
+        如果 m = None，返回基准日期后第 n 个交易日；否则返回基准日期后第 n ~ m 个交易日
+
+        :param date: 基准日期
+        :param n:
+        :param m:
+        :return:
+        """
+        date = pd.to_datetime(date).strftime("%Y%m%d")
+        trade_cal = self.trade_cal()
+        trade_cal = trade_cal[trade_cal.is_open == 1]
+        trade_dates = trade_cal.cal_date.to_list()
+        assert date in trade_dates, "基准日期 date 必须是开市交易日期"
+
+        i = trade_dates.index(date)
+        if not m:
+            ntd = trade_dates[i + n]
+            return ntd
+        else:
+            assert m > n, "m 必须大于 n"
+            ntd_list = trade_dates[i+n: i+m]
+            return ntd_list
+
+

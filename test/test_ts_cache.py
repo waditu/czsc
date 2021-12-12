@@ -77,5 +77,10 @@ def offline_test_ts_cache():
                              sdt="20200101", edt="20210804 11:24", adj=None, raw_bar=False)
     assert len(df1) == len(df2) == len(df3) and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
 
+    x1 = dc.get_next_trade_dates('2021-12-13', n=1, m=None)
+    assert x1 == '20211214'
+    x2 = dc.get_next_trade_dates('2021-12-13', n=1, m=6)
+    assert x2 == ['20211214', '20211215', '20211216', '20211217', '20211220']
+
     dc.clear()
     assert not os.path.exists(cache_path)
