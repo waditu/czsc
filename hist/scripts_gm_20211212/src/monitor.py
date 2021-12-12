@@ -8,8 +8,6 @@ import traceback
 from czsc.objects import Signal, Factor, Event
 from czsc.utils.io import read_pkl, save_pkl
 
-from scripts_gm.src.utils.base import *
-
 
 def get_monitor_signals(c):
     s = get_default_signals(c)

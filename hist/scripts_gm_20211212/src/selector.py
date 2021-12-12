@@ -10,7 +10,6 @@ from czsc.analyze import CZSC
 from czsc.signals import signals
 from czsc.utils.io import read_pkl, save_pkl
 from czsc.utils.kline_generator import KlineGeneratorD
-from scripts_gm.src.utils.base import *
 
 
 def stocks_dwm_selector(event: Event, get_signals: Callable,

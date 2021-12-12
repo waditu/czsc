@@ -59,8 +59,8 @@ os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
 import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
+sys.path.insert(0, '')
+sys.path.insert(0, '../..')
 from src.utils.bt import *
 from src.tactics.share import TacticShareA as Tactic
 
