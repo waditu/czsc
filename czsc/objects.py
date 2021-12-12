@@ -45,6 +45,10 @@ class NewBar:
     amount: [float, int] = None
     elements: List = None  # 存入具有包含关系的原始K线
 
+    @property
+    def raw_bars(self):
+        return self.elements
+
 
 @dataclass
 class FX:
@@ -56,6 +60,19 @@ class FX:
     fx: [float, int]
     power: str = None
     elements: List = None
+
+    @property
+    def new_bars(self):
+        """构成分型的无包含关系K线"""
+        return self.elements
+
+    @property
+    def raw_bars(self):
+        """构成分型的原始K线"""
+        res = []
+        for e in self.elements:
+            res.extend(e.raw_bars)
+        return res
 
 
 @dataclass
@@ -100,11 +117,7 @@ class BI:
 
     @property
     def change(self):
-        if self.fx_a.fx > 0:
-            c = round((self.fx_b.fx - self.fx_a.fx) / self.fx_a.fx, 4)
-        else:
-            # fx_a.fx = 0 是不对，大概率是输入的数据有问题，这里统一处理
-            c = 0
+        c = round((self.fx_b.fx - self.fx_a.fx) / self.fx_a.fx, 4)
         return c
 
     @property
@@ -308,6 +321,7 @@ class PositionLong:
                     '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
                 }
                 pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
+                # 注意：【盈亏比例】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
                 pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
                 pairs.append(pair)
                 latest_pair = []
