@@ -1,10 +1,8 @@
 # coding: utf-8
 import os
 import webbrowser
-import pandas as pd
 import traceback
 from typing import List, Callable
-from datetime import datetime
 from deprecated import deprecated
 from collections import OrderedDict
 from pyecharts.charts import Tab
