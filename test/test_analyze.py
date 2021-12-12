@@ -102,7 +102,7 @@ def test_czsc_update():
     os.remove(file_html)
 
 
-def test_czsc_trader():
+def drop_test_czsc_trader():
     bars = read_1min()
     kg = KlineGenerator(max_count=3000, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
     for row in tqdm(bars[:-10000], desc='init kg'):
