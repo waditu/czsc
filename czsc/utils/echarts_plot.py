@@ -208,7 +208,8 @@ def kline_pro(kline: List[dict],
     if fx:
         fx_dts = [x['dt'] for x in fx]
         fx_val = [x['fx'] for x in fx]
-        chart_fx = Scatter()
+        # chart_fx = Scatter()
+        chart_fx = Line()
         chart_fx.add_xaxis(fx_dts)
         chart_fx.add_yaxis(series_name="FX", y_axis=fx_val, is_selected=False,
                            symbol="circle", symbol_size=6, label_opts=label_not_show_opts,

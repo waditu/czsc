@@ -305,9 +305,14 @@ class CZSC:
         if len(self.bi_list) > 0:
             bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + \
                  [{'dt': self.bi_list[-1].fx_b.dt, "bi": self.bi_list[-1].fx_b.fx}]
+            fx = []
+            for bi_ in self.bi_list:
+                fx.extend([{'dt': x.dt, "fx": x.fx} for x in bi_.fxs[1:]])
         else:
             bi = None
-        chart = kline_pro(kline, bi=bi, width=width, height=height, title="{}-{}".format(self.symbol, self.freq.value))
+            fx = None
+        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height,
+                          title="{}-{}".format(self.symbol, self.freq.value))
         return chart
 
     def open_in_browser(self, width: str = "1400px", height: str = '580px'):
