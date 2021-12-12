@@ -11,7 +11,7 @@ cur_path = os.path.split(os.path.realpath(__file__))[0]
 kline = read_1min()
 
 
-def test_freq_end_time():
+def drop_test_freq_end_time():
     assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F1) == pd.to_datetime("2021-11-11 09:43")
     assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.F5) == pd.to_datetime("2021-11-11 09:45")
 
@@ -27,7 +27,7 @@ def test_freq_end_time():
     assert freq_end_time(pd.to_datetime("2021-03-05"), Freq.M) == pd.to_datetime("2021-03-31")
 
 
-def test_kline_generator():
+def drop_test_kline_generator():
     # 验证指定级别
     bars = kline[:2000]
 
@@ -64,7 +64,7 @@ def test_kline_generator():
         assert len(kg.m1) == 2000
 
 
-def test_kgd():
+def drop_test_kgd():
     df = pd.read_csv(os.path.join(cur_path, './data/000001.SH_D.csv'))
     bars = []
     for i, row in df.iterrows():
@@ -86,3 +86,9 @@ def test_kgd():
     assert kgd.end_dt == pd.to_datetime('2020-07-16 15:00:00')
     assert len(kgd.bars['月线']) == 165
     assert Freq.Y.value not in kgd.bars.keys()
+
+
+if __name__ == '__main__':
+    drop_test_freq_end_time()
+    drop_test_kline_generator()
+    drop_test_kgd()
