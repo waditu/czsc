@@ -22,14 +22,22 @@ from ..utils.cache import home_path
 class CzscAdvancedTrader:
     """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
-    def __init__(self, bg: BarGenerator, get_signals: Callable,
-                 long_events: List[Event] = None, long_pos: PositionLong = None):
+    def __init__(self,
+                 bg: BarGenerator,
+                 get_signals: Callable,
+                 long_events: List[Event] = None,
+                 long_pos: PositionLong = None,
+                 max_bi_count: int = 50,
+                 bi_min_len: int = 7,
+                 ):
         """
 
         :param bg: K线合成器
         :param get_signals: 自定义的单级别信号计算函数
         :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
         :param long_pos: 多头仓位对象
+        :param max_bi_count: 单个级别最大保存笔的数量
+        :param bi_min_len: 一笔最小无包含K线数量
         """
         self.name = "CzscAdvancedTrader"
         self.bg = bg
@@ -37,21 +45,21 @@ class CzscAdvancedTrader:
         self.freqs = list(bg.bars.keys())
         self.long_events = long_events
         self.long_pos = long_pos
-        self.kas = {freq: CZSC(b, max_bi_count=50, get_signals=get_signals) for freq, b in bg.bars.items()}
+        self.kas = {freq: CZSC(b, max_bi_count=max_bi_count,
+                               get_signals=get_signals,
+                               bi_min_len=bi_min_len)
+                    for freq, b in bg.bars.items()}
         self.s = self._cal_signals()
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
 
-    def take_snapshot(self, file_html=None, width="1400px", height="580px"):
+    def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
         """获取快照
 
-        :param file_html: str
-            交易快照保存的 html 文件名
-        :param width: str
-            图表宽度
-        :param height: str
-            图表高度
+        :param file_html: 交易快照保存的 html 文件名
+        :param width: 图表宽度
+        :param height: 图表高度
         :return:
         """
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))

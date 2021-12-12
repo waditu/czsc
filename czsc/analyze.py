@@ -116,8 +116,13 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     return fxs
 
 
-def check_bi(bars: List[NewBar]):
-    """输入一串无包含关系K线，查找其中的一笔"""
+def check_bi(bars: List[NewBar], bi_min_len: int = 7):
+    """输入一串无包含关系K线，查找其中的一笔
+
+    :param bars: 无包含关系K线列表
+    :param bi_min_len: 一笔的最少无包含关系K线数量，7是老笔的要求
+    :return:
+    """
     fxs = check_fxs(bars)
     if len(fxs) < 2:
         return None, bars
@@ -129,15 +134,18 @@ def check_bi(bars: List[NewBar]):
             fxs_b = [x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt and x.fx > fx_a.fx]
             if not fxs_b:
                 return None, bars
+
             fx_b = fxs_b[0]
             for fx in fxs_b:
                 if fx.high >= fx_b.high:
                     fx_b = fx
+
         elif fxs[0].mark == Mark.G:
             direction = Direction.Down
             fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt and x.fx < fx_a.fx]
             if not fxs_b:
                 return None, bars
+
             fx_b = fxs_b[0]
             for fx in fxs_b[1:]:
                 if fx.low <= fx_b.low:
@@ -152,9 +160,10 @@ def check_bi(bars: List[NewBar]):
     bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
 
     # 判断fx_a和fx_b价格区间是否存在包含关系
-    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
+    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
+                 or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
 
-    if len(bars_a) >= 7 and not ab_include:
+    if len(bars_a) >= bi_min_len and not ab_include:
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
         return bi, bars_b
@@ -162,50 +171,13 @@ def check_bi(bars: List[NewBar]):
         return None, bars
 
 
-def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, str], direction: Direction) -> List[BI]:
-    """获取子区间（这是进行多级别联立分析的关键步骤）
-
-    :param bis: 笔的列表
-    :param start_dt: 子区间开始时间
-    :param end_dt: 子区间结束时间
-    :param direction: 方向
-    :return: 子区间
-    """
-    start_dt = pd.to_datetime(start_dt)
-    end_dt = pd.to_datetime(end_dt)
-    sub = []
-    for bi in bis:
-        if bi.fx_b.dt > start_dt > bi.fx_a.dt:
-            sub.append(bi)
-        elif start_dt <= bi.fx_a.dt < bi.fx_b.dt <= end_dt:
-            sub.append(bi)
-        elif bi.fx_a.dt < end_dt < bi.fx_b.dt:
-            sub.append(bi)
-        else:
-            continue
-
-    if len(sub) > 0 and sub[0].direction != direction:
-        sub = sub[1:]
-    if len(sub) > 0 and sub[-1].direction != direction:
-        sub = sub[:-1]
-    return sub
-
-
-def get_sub_bis(bis: List[BI], bi: BI) -> List[BI]:
-    """获取大级别笔对象对应的小级别笔走势
-
-    :param bis: 小级别笔列表
-    :param bi: 大级别笔对象
-    :return:
-    """
-    sub_bis = get_sub_span(bis, start_dt=bi.fx_a.dt, end_dt=bi.fx_b.dt, direction=bi.direction)
-    if not sub_bis:
-        return []
-    return sub_bis
-
-
 class CZSC:
-    def __init__(self, bars: List[RawBar], max_bi_count=50, get_signals: Callable = None, verbose=False):
+    def __init__(self,
+                 bars: List[RawBar],
+                 max_bi_count: int = 50,
+                 bi_min_len: int = 7,
+                 get_signals: Callable = None,
+                 verbose=False):
         """
 
         :param bars: K线数据
@@ -216,6 +188,7 @@ class CZSC:
         """
         self.verbose = verbose
         self.max_bi_count = max_bi_count
+        self.bi_min_len = bi_min_len
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
@@ -276,7 +249,7 @@ class CZSC:
         if self.verbose and len(bars_ubi_a) > 300:
             print(f"{self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸超长，延伸数量: {len(bars_ubi_a)}")
 
-        bi, bars_ubi_ = check_bi(bars_ubi_a)
+        bi, bars_ubi_ = check_bi(bars_ubi_a, self.bi_min_len)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
             self.bi_list.append(bi)

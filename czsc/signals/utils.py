@@ -8,10 +8,53 @@ describe: 信号计算的工具函数
 import numpy as np
 import pandas as pd
 import traceback
+from datetime import datetime
 from typing import List, Union
 
 from ..utils.ta import KDJ
-from ..objects import RawBar
+from ..objects import RawBar, BI, Direction
+
+
+def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, str], direction: Direction) -> List[BI]:
+    """获取子区间（这是进行多级别联立分析的关键步骤）
+
+    :param bis: 笔的列表
+    :param start_dt: 子区间开始时间
+    :param end_dt: 子区间结束时间
+    :param direction: 方向
+    :return: 子区间
+    """
+    start_dt = pd.to_datetime(start_dt)
+    end_dt = pd.to_datetime(end_dt)
+    sub = []
+    for bi in bis:
+        if bi.fx_b.dt > start_dt > bi.fx_a.dt:
+            sub.append(bi)
+        elif start_dt <= bi.fx_a.dt < bi.fx_b.dt <= end_dt:
+            sub.append(bi)
+        elif bi.fx_a.dt < end_dt < bi.fx_b.dt:
+            sub.append(bi)
+        else:
+            continue
+
+    if len(sub) > 0 and sub[0].direction != direction:
+        sub = sub[1:]
+    if len(sub) > 0 and sub[-1].direction != direction:
+        sub = sub[:-1]
+    return sub
+
+
+def get_sub_bis(bi: BI, sub_bis: List[BI]) -> List[BI]:
+    """获取大级别笔对象对应的小级别笔走势
+
+    :param bi: 大级别笔对象
+    :param sub_bis: 小级别笔列表
+    :return:
+    """
+    sub_ = get_sub_span(sub_bis, start_dt=bi.fx_a.dt, end_dt=bi.fx_b.dt, direction=bi.direction)
+    if not sub_:
+        return []
+    return sub_
 
 
 def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]) -> int:
