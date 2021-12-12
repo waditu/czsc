@@ -432,7 +432,7 @@ class TsDataCache:
             ntd = trade_dates[i + n]
             return ntd
         else:
-            assert m > n, "m 必须大于 n"
+            assert abs(m) > abs(n), "abs(m) 必须大于 abs(n)"
             ntd_list = trade_dates[i+n: i+m]
             return ntd_list
 
