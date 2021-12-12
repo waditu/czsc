@@ -1,6 +1,7 @@
 # coding: utf-8
 import zipfile
 from tqdm import tqdm
+import pandas as pd
 from czsc.analyze import *
 from czsc.enum import Freq, Operate
 from czsc.signals.signals import get_default_signals, get_s_three_bi, get_s_d0_bi
@@ -85,7 +86,7 @@ def test_czsc_update():
     assert not c.signals
 
     # 计算信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals)
+    c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals, verbose=True)
     assert isinstance(c.signals, OrderedDict) and len(c.signals) == 38
 
     # 测试自定义信号
