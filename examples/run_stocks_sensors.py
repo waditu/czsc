@@ -15,7 +15,7 @@ from czsc.objects import Operate, Signal, Factor, Event
 from czsc.signals.signals import *
 
 
-def get_selector_signals(c: analyze.CZSC) -> OrderedDict:
+def get_signals(c: analyze.CZSC) -> OrderedDict:
     """在 CZSC 对象上计算选股信号
 
     :param c: CZSC 对象
@@ -102,15 +102,49 @@ def get_event():
 
 
 if __name__ == '__main__':
-    params = {
-        "validate_sdt": "20200101",
-        "validate_edt": "20211114",
+    data_path = r'D:\research\ts_data'
+    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211209')
+    sdt = "20190101"
+    edt = "20211114"
+    results_path = os.path.join(data_path, f"{get_event().name}_{sdt}_{edt}")
+    sss = StocksDaySensor(results_path, sdt, edt, dc, get_signals, get_event)
+    grid_params = {
+        "fc_top_n": list(range(10, 50, 10)),
+        "fc_min_n": list(range(1, 3, 1)),
+        "min_total_mv": [5e5, 10e5],
+        "max_count": [300],
     }
-    dc = TsDataCache(data_path=r'D:\research\ts_data', sdt='2020-01-01', edt='2021-11-19')
-    sds = StocksDaySensor(dc, get_selector_signals, get_event, params)
+    sss.grip_search(grid_params)
 
-    results_path = fr"D:\research\ts_data\{sds.event.name}_{sds.sdt}_{sds.edt}"
-    os.makedirs(results_path, exist_ok=True)
-    file_docx = sds.report_performance(results_path)
+    filter_params = [
+        # 不加任何过滤
+        {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
+
+        # 验证指数过滤
+        {"index_code": "000905.SH", "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
+        {"index_code": '000300.SH', "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
+
+        # 验证市值效应
+        {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 5e5},
+        {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 10e5},
+        {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 15e5},
+        {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 20e5},
+
+        # 验证板块效应
+        {"index_code": None, "fc_top_n": 30, 'fc_min_n': 3, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 30, 'fc_min_n': 2, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 30, 'fc_min_n': 1, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 20, 'fc_min_n': 3, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 20, 'fc_min_n': 2, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 20, 'fc_min_n': 1, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 10, 'fc_min_n': 2, "min_total_mv": 1e6},
+        {"index_code": None, "fc_top_n": 10, 'fc_min_n': 1, "min_total_mv": 1e6},
+    ]
+
+    file_docx = sss.report_performance(filter_params)
     print(f"选股性能评估结果：{file_docx}")
-    df1, df2 = sds.get_latest_strong(fc_top_n=20, fc_min_n=2, min_total_mv=2e6)
+
+    # 获取最近一个交易日的选股结果
+    df1, df2 = sss.get_latest_strong(fc_top_n=20, fc_min_n=2, min_total_mv=2e6)
+
+

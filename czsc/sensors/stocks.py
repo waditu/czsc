@@ -17,8 +17,9 @@ from collections import OrderedDict, Counter
 from tqdm import tqdm
 from typing import Callable
 from czsc.objects import Event
+from czsc.utils import io
 from czsc.data.ts_cache import TsDataCache, Freq
-from czsc.sensors.utils import get_index_beta, generate_signals, max_draw_down
+from czsc.sensors.utils import get_index_beta, generate_signals, max_draw_down, turn_over_rate
 from czsc.utils import WordWriter
 
 
@@ -35,36 +36,59 @@ class StocksDaySensor:
     """
 
     def __init__(self,
+                 results_path: str,
+                 sdt: str,
+                 edt: str,
                  dc: TsDataCache,
                  get_signals: Callable,
-                 get_event: Callable,
-                 params: dict = None):
+                 get_event: Callable):
+        """
 
+        :param results_path: 结果保存路径
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :param dc: 数据缓存对象
+        :param get_signals: 信号计算函数
+        :param get_event: 事件定义函数
+        """
         self.name = self.__class__.__name__
-        self.version = "V20211119"
-        self.data = OrderedDict()
+        self.version = "V20211213"
+        os.makedirs(results_path, exist_ok=True)
+        self.results_path = results_path
+        self.sdt = sdt
+        self.edt = edt
+
         self.get_signals = get_signals
         self.get_event = get_event
         self.event: Event = get_event()
         self.base_freq = Freq.D.value
         self.freqs = [Freq.W.value, Freq.M.value]
 
-        if params:
-            self.params = params
-        else:
-            self.params = {
-                "validate_sdt": "20210101",
-                "validate_edt": "20211112",
-            }
+        self.file_docx = os.path.join(results_path, f'{self.event.name}_{sdt}_{edt}.docx')
+        writer = WordWriter(self.file_docx)
+        if not os.path.exists(self.file_docx):
+            writer.add_title("股票选股强度验证")
+            writer.add_page_break()
+            writer.add_heading(f"{datetime.now().strftime('%Y-%m-%d %H:%M')} {self.event.name}", level=1)
+
+            writer.add_heading("参数配置", level=2)
+            writer.add_paragraph(f"测试方法描述：{self.event.name}")
+            writer.add_paragraph(f"测试起止日期：{sdt} ~ {edt}")
+            writer.add_paragraph(f"信号计算函数：\n{inspect.getsource(self.get_signals)}")
+            writer.add_paragraph(f"事件具体描述：\n{inspect.getsource(self.get_event)}")
+            writer.save()
+        self.writer = writer
 
         self.dc = dc
-        self.betas = ['000001.SH', '000016.SH', '000905.SH', '000300.SH', '399001.SZ', '399006.SZ']
+        self.betas = ['000905.SH', '000300.SH', '399006.SZ']
         self.all_cache = dict()
         self.res_cache = dict()
-
-        self.sdt = self.params['validate_sdt']
-        self.edt = self.params['validate_edt']
-        self.ssd = self.get_stocks_strong_days()      # ssd 是 stocks_strong_days 的缩写，表示全市场股票的强势日期
+        self.file_ssd = os.path.join(results_path, 'stocks_strong_days.pkl')
+        if os.path.exists(self.file_ssd):
+            self.ssd = io.read_pkl(self.file_ssd)
+        else:
+            self.ssd = self.get_stocks_strong_days()      # ssd 是 stocks_strong_days 的缩写，表示全市场股票的强势日期
+            io.save_pkl(self.ssd, self.file_ssd)
 
     def get_share_strong_days(self, ts_code: str, name: str):
         """获取单个标的全部强势信号日期"""
@@ -134,28 +158,56 @@ class StocksDaySensor:
         df = pd.concat(res, ignore_index=True)
         return df
 
-    def filter_by_concepts(self, dfg, top_n=20, min_n=3):
+    def filter_by_index(self, dfg, index_code=None):
+        """使用指数成分过滤
+
+        :param dfg: 单个交易日的强势股选股结果
+        :param index_code: 指数代码
+        :return: 过滤后的选股结果
+        """
+        if not index_code or dfg.empty:
+            return dfg
+
+        dc = self.dc
+        assert dfg['trade_date'].nunique() == 1
+        trade_date = dfg['trade_date'].max()
+
+        index_members = dc.index_weight(index_code, trade_date)
+        ts_codes = list(index_members['con_code'].unique())
+        return dfg[dfg.ts_code.isin(ts_codes)]
+
+    def filter_by_concepts(self, dfg, top_n=20, min_n=3, method='v1'):
         """使用板块效应过滤
 
         :param dfg: 单个交易日的强势股选股结果
         :param top_n: 选取前 n 个密集概念
         :param min_n: 单股票至少要有 n 个概念在 top_n 中
-        :return:
+        :param method: 打分计算方法
+            v1  直接取板块中的强势股数量作为分数
+            v2  板块内强势股数 / 板块内股数
+        :return: 过滤后的选股结果
         """
-        if dfg.empty:
+        if dfg.empty or not top_n or not min_n:
             return dfg, []
 
         dc = self.dc
-        ths_members = dc.get_all_ths_members()
-        ths_members = ths_members[ths_members['概念类别'] == 'N']
+        ths_members = dc.get_all_ths_members(exchange="A", type_="N")
         ths_members = ths_members[~ths_members['概念名称'].isin([
             'MSCI概念', '沪股通', '深股通', '融资融券', '上证180成份股', '央企国资改革',
             '标普道琼斯A股', '中证500成份股', '上证380成份股', '沪深300样本股',
         ])]
 
         ths_concepts = ths_members[ths_members.code.isin(dfg.ts_code)]
-        all_concepts = ths_concepts['概念名称'].to_list()
-        key_concepts = [k for k, v in Counter(all_concepts).most_common(top_n)]
+        if method == 'v1':
+            key_concepts = [k for k, v in Counter(ths_concepts['概念名称'].to_list()).most_common(top_n)]
+        elif method == 'v2':
+            all_count = Counter(ths_members['概念名称'].to_list())
+            sel_count = Counter(ths_concepts['概念名称'].to_list())
+            df_scores = pd.DataFrame([{"concept": k, 'score': sel_count[k] / all_count[k]}
+                                      for k in sel_count.keys()])
+            key_concepts = df_scores.sort_values('score', ascending=False).head(top_n)['concept'].to_list()
+        else:
+            raise ValueError(f"method value error")
 
         sel = ths_concepts[ths_concepts['概念名称'].isin(key_concepts)]
         ts_codes = [k for k, v in Counter(sel.code).most_common() if v >= min_n]
@@ -166,17 +218,35 @@ class StocksDaySensor:
         return dfg, key_concepts
 
     @staticmethod
-    def filter_by_market_value(dfg, min_total_mv):
+    def filter_by_market_value(dfg, min_total_mv=None):
         """使用总市值过滤
 
         :param dfg: 单个交易日的强势股选股结果
         :param min_total_mv: 最小总市值，单位为万元，1e6万元 = 100亿
-        :return:
+        :return: 过滤后的选股结果
         """
-        if dfg.empty:
+        if dfg.empty or not min_total_mv:
             return dfg
 
         return dfg[dfg['total_mv'] >= min_total_mv]
+
+    @staticmethod
+    def filter_by_b20b(dfg, max_count=-1):
+        """使用b20b过滤，b20b 表示前20个交易日的涨跌幅
+
+        :param dfg: 单个交易日的强势股选股结果
+        :param max_count: 最多保留结果数量
+        :return: 过滤后的选股结果
+        """
+        if dfg.empty or (not max_count) or len(dfg) < max_count:
+            return dfg
+
+        split = 0.8
+        dfg = dfg.sort_values("b20b", ascending=True)
+        head_i = int((len(dfg) - max_count) * split) + 1
+        tail_i = len(dfg) - int((len(dfg) - max_count) * (1 - split))
+
+        return dfg.iloc[head_i: tail_i]
 
     def create_next_positions(self, dfg):
         """构建某天选股结果对应的下一交易日持仓明细
@@ -210,8 +280,23 @@ class StocksDaySensor:
         holds = self.create_next_positions(dfg)
         return dfg, holds
 
-    def validate_performance(self, fc_top_n=20, fc_min_n=2, min_total_mv=1e6, file_output=None):
-        """验证传感器在一组过滤参数下的表现"""
+    def validate_performance(self,
+                             index_code=None,
+                             fc_top_n=None,
+                             fc_min_n=None,
+                             min_total_mv=None,
+                             max_count=None,
+                             file_output=None):
+        """验证传感器在一组过滤参数下的表现
+
+        :param index_code: 指数成分过滤
+        :param fc_top_n: 板块效应过滤参数1
+        :param fc_min_n: 板块效应过滤参数2
+        :param min_total_mv: 市值效应过滤参数
+        :param max_count: b20b过滤参数，控制最大选出数量
+        :param file_output: 输出结果文件
+        :return:
+        """
         dc = self.dc
         sdt = self.sdt
         edt = self.edt
@@ -228,6 +313,8 @@ class StocksDaySensor:
                     continue
                 dfg, key_concepts = self.filter_by_concepts(dfg, top_n=fc_top_n, min_n=fc_min_n)
                 dfg = self.filter_by_market_value(dfg, min_total_mv)
+                dfg = self.filter_by_index(dfg, index_code)
+                dfg = self.filter_by_b20b(dfg, max_count)
 
                 res = {'trade_date': trade_date, "key_concepts": key_concepts, 'number': len(dfg)}
                 res.update(dfg[['n1b', 'n2b', 'n3b', 'n5b', 'n10b', 'n20b']].mean().to_dict())
@@ -239,14 +326,16 @@ class StocksDaySensor:
 
         df_detail = pd.concat(detail)
         df_holds = pd.concat(holds, ignore_index=True)
+        df_turns, tor = turn_over_rate(df_holds)
         df_merged = pd.DataFrame(results)
         df_merged['trade_date'] = pd.to_datetime(df_merged['trade_date'])
 
-        beta = get_index_beta(dc, sdt, edt, self.betas)
+        beta = get_index_beta(dc, sdt, edt, freq='D', file_xlsx=None, indices=self.betas)
         df_n1b = pd.DataFrame()
         for name, df_ in beta.items():
-            df_n1b['trade_date'] = pd.to_datetime(df_.trade_date.to_list())
-            df_n1b[name] = df_.n1b.to_list()
+            if name in self.betas:
+                df_n1b['trade_date'] = pd.to_datetime(df_.trade_date.to_list())
+                df_n1b[name] = df_.n1b.to_list()
 
         df_ = df_merged[['trade_date', 'number', 'n1b']]
         df_.rename({'n1b': 'selector'}, axis=1, inplace=True)
@@ -281,94 +370,163 @@ class StocksDaySensor:
                 df_.to_excel(f, index=False, sheet_name=name)
 
             df_detail.to_excel(f, sheet_name="选股结果", index=False)
+            df_turns.to_excel(f, sheet_name="每日换手", index=False)
             df_holds.to_excel(f, sheet_name="持仓明细", index=False)
             df_merged.to_excel(f, sheet_name="每日统计", index=False)
             df_n1b.to_excel(f, sheet_name="资金曲线", index=False)
             df_mdd.to_excel(f, sheet_name="性能对比", index=False)
             f.close()
 
-        return df_detail, df_merged, df_holds, df_n1b, df_mdd
+        return df_detail, df_merged, df_holds, df_n1b, df_mdd, tor
 
-    def report_performance(self, results_path):
-        """撰写报告"""
-        sdt = self.sdt
-        edt = self.edt
-        file_docx = os.path.join(results_path, f'{self.event.name}_{sdt}_{edt}.docx')
-        writer = WordWriter(file_docx)
-        if not os.path.exists(file_docx):
-            writer.add_title("股票选股强度验证")
+    def grip_search(self, grid_params=None):
+        """网格搜索超参数
+
+        :param grid_params: 网格参数
+        :return:
+        """
+        if not grid_params:
+            grid_params = {
+                "fc_top_n": list(range(10, 160, 10)),
+                "fc_min_n": list(range(1, 7, 1)),
+                "min_total_mv": [5e5, 10e5, 20e5],
+                "max_count": list(range(100, 300, 100)),
+            }
+
+        filter_params = [{
+            'fc_top_n': None,
+            'fc_min_n': None,
+            'min_total_mv': None,
+            'max_count': None,
+        }]
+        for i in grid_params['fc_top_n']:
+            for j in grid_params['fc_min_n']:
+                for k in grid_params['min_total_mv']:
+                    for m in grid_params['max_count']:
+                        filter_params.append({
+                            'fc_top_n': i,
+                            'fc_min_n': j,
+                            'min_total_mv': k,
+                            'max_count': m,
+                        })
+
+        results = []
+        for conf in tqdm(filter_params):
+            index_code = None
+            fc_top_n = conf['fc_top_n']
+            fc_min_n = conf['fc_min_n']
+            min_total_mv = conf['min_total_mv']
+            max_count = conf['max_count']
+            file_output = None
+            try:
+                output = self.validate_performance(index_code, fc_top_n, fc_min_n,
+                                                   min_total_mv, max_count, file_output)
+                df_detail, df_merged, df_holds, df_n1b, df_mdd, tor = output
+                res = dict(conf)
+                for n in ['n1b', 'n2b', 'n3b', 'n5b', 'n10b', 'n20b']:
+                    res[n] = round(df_merged[n].mean(), 4)
+
+                # max_count	min_count	avg_count
+                res['max_count'] = df_merged['number'].max()
+                res['min_count'] = df_merged['number'].min()
+                res['avg_count'] = int(df_merged['number'].mean())
+                res['turn_over'] = tor
+
+                results.append(res)
+
+                df = pd.DataFrame(results)
+                file_grid_res = os.path.join(self.results_path, f'{self.event.name}_grid_search_results.xlsx')
+                df.to_excel(file_grid_res, index=False)
+                print(f"grid search results saved into {file_grid_res}")
+            except:
+                traceback.print_exc()
+
+    def write_validate_report(self, title, conf):
+        """编写试验报告到 Word 文件
+
+        :param title: 试验组别的标题
+        :param conf: 验证的参数
+        :return: None
+        """
+        results_path = self.results_path
+        writer = self.writer
+        index_code = conf.get('index_code', None)
+        fc_top_n = conf.get('fc_top_n', None)
+        fc_min_n = conf.get('fc_min_n', None)
+        min_total_mv = conf.get('min_total_mv', None)
+        max_count = conf.get('max_count', None)
+        file_output = os.path.join(results_path,
+                                   f"{self.event.name}_{index_code}_{fc_top_n}"
+                                   f"_{fc_min_n}_{min_total_mv}_{max_count}.xlsx")
+        output = self.validate_performance(index_code, fc_top_n, fc_min_n, min_total_mv, max_count, file_output)
+        df_detail, df_merged, df_holds, df_n1b, df_mdd, tor = output
 
         writer.add_page_break()
-        writer.add_heading(f"{datetime.now().strftime('%Y-%m-%d %H:%M')} {self.event.name}", level=1)
-
-        writer.add_heading("参数配置", level=2)
-        writer.add_paragraph(f"测试方法描述：{self.event.name}")
-        writer.add_paragraph(f"测试起止日期：{sdt} ~ {edt}")
-        writer.add_paragraph(f"信号计算函数：\n{inspect.getsource(self.get_signals)}")
-        writer.add_paragraph(f"事件具体描述：\n{inspect.getsource(self.get_event)}")
+        writer.add_heading(title, level=1)
+        writer.add_df_table(pd.DataFrame({"参数名称": list(conf.keys()), '参数值': list(conf.values())}))
+        writer.add_paragraph('结果对比：')
+        writer.add_df_table(df_mdd)
         writer.save()
 
-        # "min_total_mv": 1e6,    # 最小总市值，单位为万元，1e6万元 = 100亿
-        # "fc_top_n": 40,         # 板块效应 - 选择出现数量最多的 top_n 概念
-        # 'fc_min_n': 4           # 单股票至少有 min_n 概念在 top_n 中
-        filter_params = [
-            # 验证市值效应
-            {"fc_top_n": 300, 'fc_min_n': 1, "min_total_mv": 3e5},
-            {"fc_top_n": 300, 'fc_min_n': 1, "min_total_mv": 5e5},
-            {"fc_top_n": 300, 'fc_min_n': 1, "min_total_mv": 10e5},
-            {"fc_top_n": 300, 'fc_min_n': 1, "min_total_mv": 15e5},
-            {"fc_top_n": 300, 'fc_min_n': 1, "min_total_mv": 20e5},
+        # 绘制曲线对比图
+        x_col = 'trade_date'
+        y_col = 'selector_curve'
+        beta_cols = [x for x in df_n1b.columns if x.endswith('_curve') and not x.startswith('selector')]
 
-            # 验证板块效应
-            {"fc_top_n": 50, 'fc_min_n': 3, "min_total_mv": 1e6},
-            {"fc_top_n": 50, 'fc_min_n': 2, "min_total_mv": 1e6},
-            {"fc_top_n": 30, 'fc_min_n': 3, "min_total_mv": 1e6},
-            {"fc_top_n": 30, 'fc_min_n': 2, "min_total_mv": 1e6},
-            {"fc_top_n": 20, 'fc_min_n': 2, "min_total_mv": 1e6},
-            {"fc_top_n": 10, 'fc_min_n': 1, "min_total_mv": 1e6},
-        ]
-        for i, row in enumerate(filter_params, 1):
-            fc_top_n = row['fc_top_n']
-            fc_min_n = row['fc_min_n']
-            min_total_mv = row['min_total_mv']
+        for beta_col in beta_cols:
+            writer.add_heading(f"与{beta_col.replace('_curve', '')}进行对比", level=2)
+            plt.close()
+            fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(9, 5*3))
 
-            file_output = os.path.join(results_path, f"验证结果_{fc_top_n}_{fc_min_n}_{int(min_total_mv/10000)}.xlsx")
-            output = self.validate_performance(fc_top_n, fc_min_n, min_total_mv, file_output)
-            df_detail, df_merged, df_holds, df_n1b, df_mdd = output
+            df_ = df_n1b[[x_col, y_col, beta_col]].copy()
+            df_['alpha'] = df_[y_col] - df_[beta_col]
+            df_.rename({x_col: 'date', y_col: y_col.replace('_curve', ''),
+                        beta_col: beta_col.replace('_curve', '')}, inplace=True, axis=1)
+            for i, col in enumerate([y_col.replace('_curve', ''), 'alpha', beta_col.replace('_curve', '')], 0):
+                ax = axes[i]
+                sns.lineplot(x='date', y=col, data=df_, ax=ax)
+                ax.text(x=df_['date'].iloc[0], y=int(df_[col].mean()), s=f"{col}：{int(df_[col].iloc[-1])}", fontsize=12)
+                ax.set_title(f"{col}", loc='center')
+                ax.set_xlabel("")
 
-            writer.add_page_break()
-            writer.add_heading(f"第{i}组测试结果", level=1)
-            writer.add_df_table(pd.DataFrame({"参数名称": list(row.keys()), '参数值': list(row.values())}))
-            writer.add_paragraph('结果对比：')
-            writer.add_df_table(df_mdd)
+            file_png = os.path.join(results_path, f"{y_col}_{beta_col}.png")
+            plt.savefig(file_png, bbox_inches='tight', dpi=100)
+            plt.close()
+            writer.add_picture(file_png, width=15, height=21)
             writer.save()
+            os.remove(file_png)
 
-            # 绘制曲线对比图
-            x_col = 'trade_date'
-            y_col = 'selector_curve'
-            beta_cols = [x for x in df_n1b.columns if x.endswith('_curve') and not x.startswith('selector')]
+    def report_performance(self, filter_params=None):
+        """撰写报告"""
+        if not filter_params:
+            # "min_total_mv": 1e6,    # 最小总市值，单位为万元，1e6万元 = 100亿
+            # "fc_top_n": 40,         # 板块效应 - 选择出现数量最多的 top_n 概念
+            # 'fc_min_n': 4           # 单股票至少有 min_n 概念在 top_n 中
+            filter_params = [
+                # 不加任何过滤
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
 
-            for beta_col in beta_cols:
-                writer.add_heading(f"与{beta_col.replace('_curve', '')}进行对比", level=2)
-                plt.close()
-                fig, axes = plt.subplots(nrows=3, ncols=1, figsize=(9, 5*3))
+                # 验证指数过滤
+                {"index_code": "000905.SH", "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
+                {"index_code": '000300.SH', "fc_top_n": None, 'fc_min_n': None, "min_total_mv": None},
 
-                df_ = df_n1b[[x_col, y_col, beta_col]].copy()
-                df_['alpha'] = df_[y_col] - df_[beta_col]
-                df_.rename({x_col: 'date', y_col: y_col.replace('_curve', ''),
-                            beta_col: beta_col.replace('_curve', '')}, inplace=True, axis=1)
-                for i, col in enumerate([y_col.replace('_curve', ''), 'alpha', beta_col.replace('_curve', '')], 0):
-                    ax = axes[i]
-                    sns.lineplot(x='date', y=col, data=df_, ax=ax)
-                    ax.text(x=df_['date'].iloc[0], y=int(df_[col].mean()), s=f"{col}：{int(df_[col].iloc[-1])}", fontsize=12)
-                    ax.set_title(f"{col}", loc='center')
-                    ax.set_xlabel("")
+                # 验证市值效应
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 3e5},
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 5e5},
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 10e5},
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 15e5},
+                {"index_code": None, "fc_top_n": None, 'fc_min_n': None, "min_total_mv": 20e5},
 
-                file_png = os.path.join(results_path, f"{y_col}_{beta_col}.png")
-                plt.savefig(file_png, bbox_inches='tight', dpi=100)
-                plt.close()
-                writer.add_picture(file_png, width=15, height=21)
-                writer.save()
-                os.remove(file_png)
-        return file_docx
+                # 验证板块效应
+                {"index_code": None, "fc_top_n": 50, 'fc_min_n': 3, "min_total_mv": 1e6},
+                {"index_code": None, "fc_top_n": 50, 'fc_min_n': 2, "min_total_mv": 1e6},
+                {"index_code": None, "fc_top_n": 30, 'fc_min_n': 3, "min_total_mv": 1e6},
+                {"index_code": None, "fc_top_n": 30, 'fc_min_n': 2, "min_total_mv": 1e6},
+                {"index_code": None, "fc_top_n": 20, 'fc_min_n': 2, "min_total_mv": 1e6},
+                {"index_code": None, "fc_top_n": 10, 'fc_min_n': 1, "min_total_mv": 1e6},
+            ]
+
+        for i, row in enumerate(filter_params, 1):
+            self.write_validate_report(f"第{i}组测试结果", row)
+        return self.file_docx
 
