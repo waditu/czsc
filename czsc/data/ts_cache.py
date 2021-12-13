@@ -221,7 +221,7 @@ class TsDataCache:
                 dt1 = dt2
                 dt2 = dt1 + delta
                 if self.verbose:
-                    print(f"{ts_code} - {asset} - {freq} - {dt1} - {dt2}")
+                    print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2}")
 
             df_klines = pd.concat(klines, ignore_index=True)
             kline = df_klines.drop_duplicates('trade_time')\
@@ -236,8 +236,8 @@ class TsDataCache:
             kline = kline.reset_index(drop=True)
             kline.drop(['keep'], axis=1, inplace=True)
 
-            # 复权行情说明：https://tushare.pro/document/2?doc_id=146
-            if adj and adj == 'qfq':
+            # 只对股票有复权操作；复权行情说明：https://tushare.pro/document/2?doc_id=146
+            if asset == 'E' and adj and adj == 'qfq':
                 # 前复权	= 当日收盘价 × 当日复权因子 / 最新复权因子
                 factor = self.adj_factor(ts_code)
                 factor = factor.sort_values('trade_date', ignore_index=True)
@@ -247,7 +247,7 @@ class TsDataCache:
                 for col in ['open', 'close', 'high', 'low']:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
 
-            if adj and adj == 'hfq':
+            if asset == 'E' and adj and adj == 'hfq':
                 # 后复权	= 当日收盘价 × 当日复权因子
                 factor = self.adj_factor(ts_code)
                 factor = factor.sort_values('trade_date', ignore_index=True)
