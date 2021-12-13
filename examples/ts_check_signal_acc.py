@@ -2,19 +2,26 @@
 """
 author: zengbin93
 email: zeng_bin8888@163.com
-create_dt: 2021/8/26 17:48
+create_dt: 2021/12/13 17:48
 describe: 验证信号计算的准确性
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 from collections import OrderedDict
-from czsc.data import jq
+from czsc.data.ts_cache import TsDataCache
 from czsc import CZSC
 from czsc.objects import Signal, Freq
 from czsc.sensors.utils import check_signals_acc
 from czsc.signals.signals import get_s_like_bs
 
+data_path = r'D:\research\ts_data'
+dc = TsDataCache(data_path, sdt='2010-01-01', edt='20211209', verbose=True)
 
-symbol = '000001.XSHG'
-f1_raw_bars = jq.get_kline_period(symbol=symbol, freq='1min', start_date='20181101', end_date='20210101')
+symbol = '000001.SZ'
+bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='5min',
+                          sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
 signals = [
     Signal("5分钟_倒9笔_类买卖点_类一买_任意_任意_0"),
@@ -34,7 +41,7 @@ def get_signals(c: CZSC) -> OrderedDict:
 
 
 if __name__ == '__main__':
-    check_signals_acc(f1_raw_bars, signals, freqs=['5分钟', '15分钟'], get_signals=get_signals)
+    check_signals_acc(bars, signals, freqs=['15分钟', '30分钟'], get_signals=get_signals)
 
 
 
