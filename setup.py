@@ -23,7 +23,7 @@ setup(
     license="Apache Software License",
 
     url="https://github.com/zengbin93/czsc",
-    packages=find_packages(exclude=['test', 'images', 'docs', 'examples']),
+    packages=find_packages(exclude=['test', 'images', 'docs', 'examples', 'hist']),
     include_package_data=True,
     install_requires=install_requires,
     package_data={'': ['data/*.csv']},
