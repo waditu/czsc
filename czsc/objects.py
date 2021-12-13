@@ -322,7 +322,10 @@ class PositionLong:
                 }
                 pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
                 # 注意：【盈亏比例】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
-                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+                # pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+
+                # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
+                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
                 pairs.append(pair)
                 latest_pair = []
         return pairs
