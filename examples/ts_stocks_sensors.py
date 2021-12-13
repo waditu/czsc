@@ -103,7 +103,7 @@ def get_event():
 
 if __name__ == '__main__':
     data_path = r'D:\research\ts_data'
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211209')
+    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211')
     sdt = "20190101"
     edt = "20211114"
     results_path = os.path.join(data_path, f"{get_event().name}_{sdt}_{edt}")

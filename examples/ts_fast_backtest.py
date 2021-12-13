@@ -109,7 +109,7 @@ def strategy():
 
 
 if __name__ == '__main__':
-    data_path = r"C:\ts_data"
+    data_path = r"D:\research\ts_data"
     dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211', verbose=True)
 
     # 对若干只股票进行买卖点快照验证
