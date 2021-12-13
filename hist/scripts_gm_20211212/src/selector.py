@@ -4,12 +4,18 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/8/3 17:25
 """
+import os
 from tqdm import tqdm
-from czsc.objects import Signal, Factor
+import pandas as pd
+from datetime import datetime
+from typing import Callable
 from czsc.analyze import CZSC
 from czsc.signals import signals
 from czsc.utils.io import read_pkl, save_pkl
 from czsc.utils.kline_generator import KlineGeneratorD
+from czsc.objects import Signal, Factor, Event, Operate
+
+from .utils.base import *
 
 
 def stocks_dwm_selector(event: Event, get_signals: Callable,
