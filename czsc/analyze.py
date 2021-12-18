@@ -199,7 +199,7 @@ class CZSC:
             self.update(bar)
 
     def __repr__(self):
-        return "<CZSC~{}~{}>".format(self.symbol, self.freq.value)
+        return "<CZSC~{}~{}>".format(self.symbol, self.freq)
 
     def __update_bi(self):
         bars_ubi = self.bars_ubi
