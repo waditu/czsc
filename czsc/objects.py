@@ -320,6 +320,7 @@ class PositionLong:
                     '平仓时间': op['dt'],
                     '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
                 }
+                pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
                 pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
                 # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
                 pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000

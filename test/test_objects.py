@@ -209,5 +209,7 @@ def test_position_long_t0():
     pos_long.update(dt=pd.to_datetime('2021-01-03'), op=Operate.LE, price=100, bid=10)
     assert pos_long.pos_changed and pos_long.pos == 0
 
+    assert len(pos_long.pairs) == 1
+    assert pos_long.pairs[0]['持仓天数'] == 9
     pos_long.evaluate_operates()
 
