@@ -139,7 +139,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
-    def pro_bar(self, ts_code, start_date, end_date, freq='D', asset="E", raw_bar=True):
+    def pro_bar(self, ts_code, start_date, end_date, freq='D', asset="E", adj='qfq', raw_bar=True):
         """获取日线以上数据
 
         https://tushare.pro/document/2?doc_id=109
@@ -149,11 +149,12 @@ class TsDataCache:
         :param end_date:
         :param freq:
         :param asset: 资产类别：E股票 I沪深指数 C数字货币 FT期货 FD基金 O期权 CB可转债（v1.2.39），默认E
+        :param adj: 资产类别：E股票 I沪深指数 C数字货币 FT期货 FD基金 O期权 CB可转债（v1.2.39），默认E
         :param raw_bar:
         :return:
         """
         cache_path = self.api_path_map['pro_bar']
-        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{asset}_{freq}.pkl")
+        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{asset}_{freq}_{adj}.pkl")
 
         if os.path.exists(file_cache):
             kline = io.read_pkl(file_cache)
@@ -161,7 +162,7 @@ class TsDataCache:
                 print(f"pro_bar: read cache {file_cache}")
         else:
             start_date_ = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
-            kline = ts.pro_bar(ts_code=ts_code, asset=asset, adj='qfq', freq=freq,
+            kline = ts.pro_bar(ts_code=ts_code, asset=asset, adj=adj, freq=freq,
                                start_date=start_date_, end_date=self.edt)
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
@@ -375,7 +376,7 @@ class TsDataCache:
     def adj_factor(self, ts_code: str):
         """复权因子
 
-        https://waditu.com/document/2?doc_id=28
+        https://tushare.pro/document/2?doc_id=28
         """
         cache_path = self.api_path_map['adj_factor']
         file_cache = os.path.join(cache_path, f"adj_factor_{ts_code}.pkl")
@@ -383,7 +384,7 @@ class TsDataCache:
         if os.path.exists(file_cache):
             df = io.read_pkl(file_cache)
         else:
-            df = pro.adj_factor(ts_code=ts_code)
+            df = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
             io.save_pkl(df, file_cache)
         return df
 
