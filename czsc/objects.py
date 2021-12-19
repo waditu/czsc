@@ -352,6 +352,7 @@ class PositionLong:
 
         p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
         p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
+        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
 
         win_ = [x for x in pairs if x['盈亏比例'] >= 0]
         if len(win_) > 0:
