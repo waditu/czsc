@@ -253,6 +253,7 @@ class PositionLong:
                  hold_long_a: float = 0.5,
                  hold_long_b: float = 0.8,
                  hold_long_c: float = 1.0,
+                 cost: float = 0.003,
                  T0: bool = False):
         """多头持仓对象
 
@@ -260,12 +261,14 @@ class PositionLong:
         :param hold_long_a: 首次开多仓后的仓位
         :param hold_long_b: 第一次加多后的仓位
         :param hold_long_c: 第二次加多后的仓位
+        :param cost: 双边交易成本，默认为千分之三
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
         assert 0 <= hold_long_a <= hold_long_b <= hold_long_c <= 1.0
 
         self.pos_changed = False
         self.symbol = symbol
+        self.cost = cost
         self.T0 = T0
         self.pos_map = {
             "hold_long_a": hold_long_a, "hold_long_b": hold_long_b,
@@ -344,7 +347,7 @@ class PositionLong:
 
         p['复利收益'] = 1
         for pair in pairs:
-            p['复利收益'] *= (1 + pair['盈亏比例'])
+            p['复利收益'] *= (1 + pair['盈亏比例'] - self.cost)
         p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
 
         p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
