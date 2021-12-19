@@ -342,9 +342,10 @@ class PositionLong:
         if len(pairs) == 0:
             return p
 
-        p['复利收益'] = 10000
+        p['复利收益'] = 1
         for pair in pairs:
-            p['复利收益'] *= (1 + pair['盈亏比例'] / 10000)
+            p['复利收益'] *= (1 + pair['盈亏比例'])
+        p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
 
         p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
         p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
