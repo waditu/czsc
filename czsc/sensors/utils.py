@@ -197,3 +197,19 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
 
     df_turns = pd.DataFrame(turns)
     return df_turns, round(df_turns.change.sum() / 2, 4)
+
+
+def compound_returns(n1b: List):
+    """复利收益计算
+
+    :param n1b: 逐个结算周期的收益列表，单位：BP，换算关系是 10000BP = 100%
+        如，n1b = [100.1, -90.5, 212.6]，表示第一个结算周期收益为100.1BP，也就是1.001%，以此类推。
+    :return: 累计复利收益，逐个结算周期的复利收益
+    """
+    v = 10000
+    detail = []
+    for n in n1b:
+        v = v * (1 + n / 10000)
+        detail.append(v-10000)
+    return v-10000, detail
+
