@@ -11,34 +11,8 @@ from pyecharts.options import ComponentTitleOpts
 
 from .utils.kline_generator import KlineGenerator
 from .enum import Mark, Direction, Operate, Freq
-from .objects import BI, FakeBI, FX, RawBar, NewBar, Event
+from .objects import BI, FakeBI, FX, RawBar, NewBar, Event, create_fake_bis
 from .utils.echarts_plot import kline_pro
-
-
-def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
-    """创建 fake_bis 列表
-
-    :param fxs: 分型序列，必须顶底分型交替
-    :return: fake_bis
-    """
-    if len(fxs) % 2 != 0:
-        fxs = fxs[:-1]
-
-    fake_bis = []
-    for i in range(1, len(fxs)):
-        fx1 = fxs[i-1]
-        fx2 = fxs[i]
-        assert fx1.mark != fx2.mark
-        if fx1.mark == Mark.D:
-            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Up,
-                             high=fx2.high, low=fx1.low, power=round(fx2.high-fx1.low, 2))
-        elif fx1.mark == Mark.G:
-            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Down,
-                             high=fx1.high, low=fx2.low, power=round(fx1.high-fx2.low, 2))
-        else:
-            raise ValueError
-        fake_bis.append(fake_bi)
-    return fake_bis
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):

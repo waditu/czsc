@@ -87,8 +87,13 @@ def test_czsc_update():
 
     # 计算信号
     c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals, verbose=True)
+    assert len(c.bi_list) == 50 and not c.last_bi_extend
     assert isinstance(c.signals, OrderedDict) and len(c.signals) == 38
 
+    last_bi = c.bi_list[-1]
+    assert len(last_bi.raw_bars) == 32 and last_bi.power_price == last_bi.power
+    assert len(last_bi.fake_bis) == 11
+    assert last_bi.fake_bis[0].direction == last_bi.fake_bis[-1].direction == last_bi.direction
     # 测试自定义信号
     c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals)
     assert len(c.signals) == 10
