@@ -183,11 +183,55 @@ class BI:
             x.extend(bar.raw_bars)
         return x
 
+
 @dataclass
 class ZS:
     """中枢对象"""
     symbol: str
-    bis: List[BI] = None
+    bis: List[BI]
+
+    @property
+    def sdt(self):
+        """中枢开始时间"""
+        return self.bis[0].sdt
+
+    @property
+    def edt(self):
+        """中枢结束时间"""
+        return self.bis[-1].edt
+
+    @property
+    def sdir(self):
+        """中枢第一笔方向"""
+        return self.bis[0].direction
+
+    @property
+    def edir(self):
+        """中枢倒一笔方向"""
+        return self.bis[-1].direction
+
+    @property
+    def zz(self):
+        """中枢中轴"""
+        return self.zd + (self.zg - self.zd) / 2
+
+    @property
+    def gg(self):
+        """中枢最高点"""
+        return max([x.high for x in self.bis])
+
+    @property
+    def zg(self):
+        return min([x.high for x in self.bis[:3]])
+
+    @property
+    def dd(self):
+        """中枢最低点"""
+        return min([x.low for x in self.bis])
+
+    @property
+    def zd(self):
+        return max([x.low for x in self.bis[:3]])
 
 
 @dataclass
