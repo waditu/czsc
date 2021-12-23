@@ -21,6 +21,11 @@ def offline_test_ts_cache():
     assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_N.pkl"))
     df = dc.ths_index('A')
     assert not df.empty
+    df = dc.ths_index('A', None)
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_None.pkl"))
+
+    df = dc.get_all_ths_members('A', None)
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "A_None_ths_members.pkl"))
 
     bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
     assert len(bars) == 436

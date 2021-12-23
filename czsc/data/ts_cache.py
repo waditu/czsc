@@ -234,8 +234,12 @@ class TsDataCache:
             kline = kline[kline['keep'] == 1]
             # 删除没有成交量的K线
             kline = kline[kline['vol'] > 0]
-            kline = kline.reset_index(drop=True)
             kline.drop(['keep'], axis=1, inplace=True)
+
+            start_date = pd.to_datetime(self.sdt)
+            end_date = pd.to_datetime(self.edt)
+            kline = kline[(kline['trade_time'] >= start_date) & (kline['trade_time'] <= end_date)]
+            kline = kline.reset_index(drop=True)
 
             # 只对股票有复权操作；复权行情说明：https://tushare.pro/document/2?doc_id=146
             if asset == 'E' and adj and adj == 'qfq':
