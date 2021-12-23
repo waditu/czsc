@@ -5,13 +5,20 @@ import numpy as np
 import pandas as pd
 
 import czsc
-from czsc.signals.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross
+from czsc.signals.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross, return_to_label
 from czsc.objects import RawBar
 from czsc.enum import Freq
 
 warnings.warn(f"czsc version is {czsc.__version__}_{czsc.__date__}")
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
+
+
+def test_return_to_label():
+    assert return_to_label(100, th=99) == "超强"
+    assert return_to_label(100, th=101) == "强势"
+    assert return_to_label(-100, th=101) == "弱势"
+    assert return_to_label(-110, th=101) == "超弱"
 
 
 def test_kdj_cross():

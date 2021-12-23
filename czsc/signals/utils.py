@@ -15,6 +15,25 @@ from ..utils.ta import KDJ
 from ..objects import RawBar, BI, Direction
 
 
+def return_to_label(r, th=50):
+    """收益转标签
+
+    :param r: 收益值
+    :param th: 阈值
+    :return:
+    """
+    if r > 0:
+        if r > th:
+            return "超强"
+        else:
+            return "强势"
+    else:
+        if abs(r) > th:
+            return "超弱"
+        else:
+            return "弱势"
+
+
 def get_sub_span(bis: List[BI], start_dt: [datetime, str], end_dt: [datetime, str], direction: Direction) -> List[BI]:
     """获取子区间（这是进行多级别联立分析的关键步骤）
 
