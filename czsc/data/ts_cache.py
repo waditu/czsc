@@ -167,7 +167,7 @@ class TsDataCache:
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
 
-            for bar_number in (1, 2, 3, 5, 10, 20):
+            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
@@ -261,7 +261,7 @@ class TsDataCache:
                 for col in ['open', 'close', 'high', 'low']:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
-            for bar_number in (1, 2, 3, 5, 10, 20):
+            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
