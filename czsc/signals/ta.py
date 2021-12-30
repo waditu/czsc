@@ -57,7 +57,7 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     v = Signal(k1=k1, k2=k2, k3="三K形态", v1="其他", v2='其他', v3='其他')
     s[v.key] = v.value
 
-    if len(c.bars_ubi) < 3:
+    if len(c.bars_ubi) < 3 + di:
         return s
 
     if di == 1:
