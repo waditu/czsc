@@ -52,7 +52,7 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes'
+            'adj_factor', 'pro_bar_minutes', 'limit_list'
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -389,6 +389,23 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             df = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
+            io.save_pkl(df, file_cache)
+        return df
+
+    def limit_list(self, trade_date: str):
+        """https://tushare.pro/document/2?doc_id=198
+
+        :param trade_date: 交易日期
+        :return: 每日涨跌停统计
+        """
+        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+        cache_path = self.api_path_map['limit_list']
+        file_cache = os.path.join(cache_path, f"limit_list_{trade_date}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.limit_list(trade_date=trade_date)
             io.save_pkl(df, file_cache)
         return df
 

@@ -71,6 +71,9 @@ def offline_test_ts_cache():
     df = dc.get_all_ths_members(exchange='A', type_='N')
     assert not df.empty
 
+    df = dc.limit_list(trade_date='20210324')
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['limit_list'], "limit_list_20210324.pkl"))
+
     # 测试复权分钟线获取
     df1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
                              sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
