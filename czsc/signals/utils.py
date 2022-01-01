@@ -165,3 +165,33 @@ def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) 
     except:
         traceback.print_exc()
         return False
+
+
+def is_bis_down(bis: List[BI]):
+    """判断 bis 中的连续笔是否是向下的"""
+    if not bis or len(bis) < 3 or len(bis) % 2 == 0:
+        return False
+
+    assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
+
+    if bis[-1].direction == Direction.Down \
+            and bis[0].high == max([x.high for x in bis]) \
+            and bis[-1].low == min([x.low for x in bis]):
+        return True
+    else:
+        return False
+
+
+def is_bis_up(bis: List[BI]):
+    """判断 bis 中的连续笔是否是向上的"""
+    if not bis or len(bis) < 3 and len(bis) % 2 == 0:
+        return False
+
+    assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
+
+    if bis[-1].direction == Direction.Up \
+            and bis[-1].high == max([x.high for x in bis]) \
+            and bis[0].low == min([x.low for x in bis]):
+        return True
+    else:
+        return False

@@ -3,12 +3,13 @@ import warnings
 import os
 import numpy as np
 import pandas as pd
-
 import czsc
 from czsc.signals.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross, return_to_label
 from czsc.objects import RawBar
 from czsc.enum import Freq
-
+from czsc import CZSC
+from czsc.signals.utils import is_bis_down, is_bis_up
+from test.test_analyze import read_daily
 warnings.warn(f"czsc version is {czsc.__version__}_{czsc.__date__}")
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -42,3 +43,15 @@ def test_cross_count():
     assert down_cross_count(np.array(x1), np.array(x2)) == 2
     assert down_cross_count(x2, x1) == 2
     assert down_cross_count(np.array(x2), np.array(x1)) == 2
+
+
+def test_bis_direction():
+    bars = read_daily()
+    c = CZSC(bars)
+    assert is_bis_up(c.bi_list[-3:])
+    assert not is_bis_down(c.bi_list[-3:])
+    assert not is_bis_up(c.bi_list[-4:-1])
+    assert is_bis_down(c.bi_list[-10:-5])
+
+
+
