@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import List, Union
 
 from ..utils.ta import KDJ
-from ..objects import RawBar, BI, Direction
+from ..objects import RawBar, BI, Direction, ZS
 
 
 def return_to_label(r, th=50):
@@ -167,7 +167,7 @@ def kdj_dead_cross(kline: Union[List[RawBar], pd.DataFrame], just: bool = True) 
         return False
 
 
-def is_bis_down(bis: List[BI]):
+def is_bis_down(bis: List[BI]) -> bool:
     """判断 bis 中的连续笔是否是向下的"""
     if not bis or len(bis) < 3 or len(bis) % 2 == 0:
         return False
@@ -182,7 +182,7 @@ def is_bis_down(bis: List[BI]):
         return False
 
 
-def is_bis_up(bis: List[BI]):
+def is_bis_up(bis: List[BI]) -> bool:
     """判断 bis 中的连续笔是否是向上的"""
     if not bis or len(bis) < 3 and len(bis) % 2 == 0:
         return False
@@ -195,3 +195,36 @@ def is_bis_up(bis: List[BI]):
         return True
     else:
         return False
+
+
+def get_zs_seq(bis: List[BI]) -> List[ZS]:
+    """获取连续笔中的中枢序列
+
+    :param bis: 连续笔对象列表
+    :return: 中枢序列
+    """
+    zs_list = []
+    if not bis:
+        return []
+
+    for bi in bis:
+        if not zs_list:
+            zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+            continue
+
+        zs = zs_list[-1]
+        if not zs.bis:
+            zs.bis.append(bi)
+            zs_list[-1] = zs
+        else:
+            if (bi.direction == Direction.Up and bi.high < zs.zd) \
+                    or (bi.direction == Direction.Down and bi.low > zs.zg):
+                zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+            else:
+                zs.bis.append(bi)
+                zs_list[-1] = zs
+    return zs_list
+
+
+
+

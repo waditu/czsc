@@ -8,7 +8,7 @@ from czsc.signals.utils import down_cross_count, kdj_gold_cross, kdj_dead_cross,
 from czsc.objects import RawBar
 from czsc.enum import Freq
 from czsc import CZSC
-from czsc.signals.utils import is_bis_down, is_bis_up
+from czsc.signals.utils import is_bis_down, is_bis_up, get_zs_seq
 from test.test_analyze import read_daily
 warnings.warn(f"czsc version is {czsc.__version__}_{czsc.__date__}")
 
@@ -54,4 +54,10 @@ def test_bis_direction():
     assert is_bis_down(c.bi_list[-10:-5])
 
 
+def test_get_zs_seq():
+    bars = read_daily()
+    c = CZSC(bars)
+    zs_seq = get_zs_seq(c.bi_list)
+    assert len(zs_seq) == 7
+    assert len(zs_seq[-1].bis) == 20
 

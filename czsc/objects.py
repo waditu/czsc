@@ -233,6 +233,10 @@ class ZS:
     def zd(self):
         return max([x.low for x in self.bis[:3]])
 
+    def __repr__(self):
+        return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, sdir={self.edir}, " \
+               f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, " \
+               f"gg={self.gg}, dd={self.dd}, edir={self.edir})"
 
 @dataclass
 class Signal:
