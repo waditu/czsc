@@ -234,9 +234,9 @@ class ZS:
         return max([x.low for x in self.bis[:3]])
 
     def __repr__(self):
-        return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, sdir={self.edir}, " \
+        return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, " \
                f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, " \
-               f"gg={self.gg}, dd={self.dd}, edir={self.edir})"
+               f"gg={self.gg}, dd={self.dd}, zz={self.zz})"
 
 @dataclass
 class Signal:
