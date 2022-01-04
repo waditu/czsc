@@ -13,7 +13,11 @@ from ..objects import PositionLong, RawBar
 from .advanced import CzscAdvancedTrader
 
 
-def fast_back_test(bars: List[RawBar], init_n: int, strategy: Callable, html_path=None):
+def fast_back_test(bars: List[RawBar],
+                   init_n: int,
+                   strategy: Callable,
+                   html_path: str = None,
+                   ):
     """快速回测系统（暂时仅支持多头交易回测）
 
     :param bars: 原始K线序列

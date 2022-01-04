@@ -13,8 +13,7 @@ from urllib.parse import quote
 from ..objects import RawBar, Event
 from ..enum import Freq
 from .base import freq_inv
-from ..utils.kline_generator import bar_end_time
-from ..analyze import CzscTrader, KlineGenerator
+from ..utils.bar_generator import freq_end_time
 from ..signals.signals import get_default_signals
 
 
@@ -297,7 +296,7 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq:
-        bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
+        bars[-1].dt = freq_end_time(bars[-1].dt, freq=freq_map[freq])
     bars = [x for x in bars if x.dt <= end_date]
     return bars
 
@@ -352,7 +351,7 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq and bars:
-        bars[-1].dt = bar_end_time(bars[-1].dt, m=int(freq.replace("min", "")))
+        bars[-1].dt = freq_end_time(bars[-1].dt, freq=freq_map[freq])
     bars = [x for x in bars if x.dt <= end_date]
     return bars
 
@@ -478,44 +477,4 @@ def get_share_basic(symbol):
 
     f10['msg'] = msg
     return f10
-
-
-class JqCzscTrader(CzscTrader):
-    def __init__(self, symbol, op_freq: Freq = None, max_count=2000, end_date=None,
-                 get_signals: Callable = get_default_signals,
-                 events: List[Event] = None):
-        self.symbol = symbol
-        if end_date:
-            self.end_date = pd.to_datetime(end_date)
-        else:
-            self.end_date = datetime.now()
-        self.max_count = max_count
-        kg = KlineGenerator(max_count=max_count*2)
-        for freq in kg.freqs:
-            bars = get_kline(symbol, end_date=self.end_date, freq=freq_inv[freq], count=max_count)
-            kg.init_kline(freq, bars)
-        super(JqCzscTrader, self).__init__(op_freq=op_freq, kg=kg, get_signals=get_signals, events=events)
-
-    def update_factors(self):
-        """更新K线数据到最新状态"""
-        bars = get_kline_period(symbol=self.symbol, start_date=self.end_dt, end_date=datetime.now(), freq="1min")
-        if not bars or bars[-1].dt <= self.end_dt:
-            return
-        for bar in bars:
-            self.check_operate(bar)
-
-    def forward(self, n: int = 3):
-        """向前推进N天"""
-        ed = self.end_dt + timedelta(days=n)
-        if ed > datetime.now():
-            print(f"{ed} > {datetime.now()}，无法继续推进")
-            return
-
-        bars = get_kline_period(symbol=self.symbol, start_date=self.end_dt, end_date=ed, freq="1min")
-        if not bars:
-            print(f"{self.end_dt} ~ {ed} 没有交易数据")
-            return
-
-        for bar in bars:
-            self.check_operate(bar)
 

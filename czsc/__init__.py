@@ -1,8 +1,8 @@
 # coding: utf-8
 
-from .analyze import CZSC, CzscTrader
+from .analyze import CZSC
+from .traders.advanced import CzscAdvancedTrader
 from .utils.ta import SMA, EMA, MACD, KDJ
-from .data.jq import JqCzscTrader
 from . import aphorism
 
 __version__ = "0.8.12"

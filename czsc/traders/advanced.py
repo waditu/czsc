@@ -15,7 +15,7 @@ from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC
 from ..objects import PositionLong, Operate, Event, RawBar
-from ..utils import BarGenerator
+from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
 
 
@@ -29,6 +29,7 @@ class CzscAdvancedTrader:
                  long_pos: PositionLong = None,
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
+                 signals_n: int = 0,
                  verbose: bool = False,
                  ):
         """
@@ -39,6 +40,7 @@ class CzscAdvancedTrader:
         :param long_pos: 多头仓位对象
         :param max_bi_count: 单个级别最大保存笔的数量
         :param bi_min_len: 一笔最小无包含K线数量
+        :param signals_n: 见 `CZSC` 对象
         :param verbose: 是否显示更多信息，默认为False
         """
         self.name = "CzscAdvancedTrader"
@@ -49,7 +51,7 @@ class CzscAdvancedTrader:
         self.long_pos = long_pos
         self.verbose = verbose
         self.kas = {freq: CZSC(b, max_bi_count=max_bi_count,
-                               get_signals=get_signals,
+                               get_signals=get_signals, signals_n=signals_n,
                                bi_min_len=bi_min_len, verbose=verbose)
                     for freq, b in bg.bars.items()}
         self.s = self._cal_signals()

@@ -8,7 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from czsc.traders.advanced import CzscAdvancedTrader
 from czsc.signals.signals import *
-from czsc.utils import BarGenerator
+from czsc.utils.bar_generator import BarGenerator
 from czsc.objects import Signal, Factor, Event, Operate, PositionLong
 from test.test_analyze import read_1min, read_daily, get_user_signals
 

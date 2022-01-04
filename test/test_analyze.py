@@ -110,33 +110,6 @@ def test_czsc_update():
     os.remove(file_html)
 
 
-def drop_test_czsc_trader():
-    bars = read_1min()
-    kg = KlineGenerator(max_count=3000, freqs=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线'])
-    for row in tqdm(bars[:-10000], desc='init kg'):
-        kg.update(row)
-
-    events = [
-        Event(name="开多", operate=Operate.LO, factors=[
-            Factor(name="5分钟三买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类三买_任意_任意_0")]),
-        ]),
-
-        Event(name="平多", operate=Operate.LE, factors=[
-            Factor(name="1分钟一卖", signals_all=[Signal("1分钟_倒1笔_类买卖点_类一卖_任意_任意_0")]),
-            Factor(name="5分钟一卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一卖_任意_任意_0")]),
-            Factor(name="5分钟二卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类二卖_任意_任意_0")]),
-            Factor(name="5分钟三卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类三卖_任意_任意_0")])
-        ]),
-    ]
-    ct = CzscTrader(op_freq=Freq.F5, kg=kg, get_signals=get_default_signals, events=events)
-    assert len(ct.s) == 215
-    for row in bars[-10000:]:
-        op = ct.check_operate(row)
-        print(" : op    : ", op)
-        print(" : cache : ", dict(ct.cache), "\n")
-    assert len(ct.s) == 215
-
-
 def test_get_signals():
 
     def get_test_signals(c: CZSC) -> OrderedDict:
