@@ -74,8 +74,9 @@ def get_user_signals(c: CZSC) -> OrderedDict:
     # 倒2，倒数第2笔的缩写，表示第N-1笔
     # 倒3，倒数第3笔的缩写，表示第N-2笔
     # 以此类推
-    for i in range(1, 8):
+    for i in range(1, 3):
         s.update(get_s_three_bi(c, i))
+    s.update(get_s_d0_bi(c))
     return s
 
 
@@ -95,9 +96,9 @@ def test_czsc_update():
     assert len(last_bi.fake_bis) == 11
     assert last_bi.fake_bis[0].direction == last_bi.fake_bis[-1].direction == last_bi.direction
     # 测试自定义信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals)
-    assert len(c.signals) == 10
-    assert len(c.signals_list) == 100
+    c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals, signals_n=20)
+    assert len(c.signals) == 11
+    assert len(c.signals_list) == 20
     assert c.signals_list[-1] == c.signals
 
     kline = [x.__dict__ for x in c.bars_raw]

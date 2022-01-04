@@ -11,7 +11,7 @@ from pyecharts.options import ComponentTitleOpts
 
 from .utils.kline_generator import KlineGenerator
 from .enum import Mark, Direction, Operate, Freq
-from .objects import BI, FakeBI, FX, RawBar, NewBar, Event, create_fake_bis
+from .objects import BI, FakeBI, FX, RawBar, NewBar, Signal, Event, create_fake_bis
 from .utils.echarts_plot import kline_pro
 
 
@@ -149,14 +149,14 @@ class CZSC:
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
                  get_signals: Callable = None,
-                 signals_n: int = 100,
+                 signals_n: int = 0,
                  verbose=False):
         """
 
         :param bars: K线数据
         :param get_signals: 自定义的信号计算函数
-        :param bi_min_len: 笔的最小长度，包括左右分型
-        :param signals_n: 缓存n个历史时刻的信号
+        :param bi_min_len: 笔的最小长度，包括左右分型，默认值为 7，是缠论原文老笔定义的长度
+        :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         :param max_bi_count: 最大保存的笔数量
             默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
@@ -276,8 +276,10 @@ class CZSC:
 
         if self.get_signals:
             self.signals = self.get_signals(c=self)
-            self.signals_list.append(self.signals)
-            self.signals_list = self.signals_list[-self.signals_n:]
+            if self.signals_n > 0:
+                self.signals_list.append(self.signals)
+                self.signals_list = self.signals_list[-self.signals_n:]
+                self.signals.update(self.get_signal_counter())
         else:
             self.signals = OrderedDict()
 
@@ -308,6 +310,36 @@ class CZSC:
         chart = self.to_echarts(width, height)
         chart.render(file_html)
         webbrowser.open(file_html)
+
+    def get_signal_counter(self) -> OrderedDict:
+        """信号连续出现次数记录"""
+        if not self.signals or not self.signals_list:
+            return OrderedDict()
+
+        signals_list = self.signals_list
+        signals = [Signal(f"{k}_{v}") for k, v in self.signals.items()
+                   if len(k.split("_")) == 3 and "连续次数" not in k]
+
+        s = OrderedDict()
+        for signal in signals:
+            k1 = signal.k1
+            k2 = f"{signal.k2}#{signal.k3}"
+            k3 = "连续次数"
+            seq = [signal.is_match(x) for x in signals_list]
+            assert seq[-1], "最后一个信号匹配结果必须为 True"
+
+            n = 0
+            for x in seq:
+                if x:
+                    n += 1
+                else:
+                    n = 0
+            assert n >= 1, "连续次数小于1，不合逻辑"
+
+            signal_c = Signal(k1=k1, k2=k2, k3=k3, v1=f"{n}次")
+            s[signal_c.key] = signal_c.value
+
+        return s
 
     @property
     def last_bi_extend(self):
