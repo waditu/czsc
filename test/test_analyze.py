@@ -97,6 +97,8 @@ def test_czsc_update():
     # 测试自定义信号
     c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals)
     assert len(c.signals) == 10
+    assert len(c.signals_list) == 100
+    assert c.signals_list[-1] == c.signals
 
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \

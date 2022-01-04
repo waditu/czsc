@@ -149,11 +149,14 @@ class CZSC:
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
                  get_signals: Callable = None,
+                 signals_n: int = 100,
                  verbose=False):
         """
 
         :param bars: K线数据
         :param get_signals: 自定义的信号计算函数
+        :param bi_min_len: 笔的最小长度，包括左右分型
+        :param signals_n: 缓存n个历史时刻的信号
         :param max_bi_count: 最大保存的笔数量
             默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
@@ -161,6 +164,7 @@ class CZSC:
         self.verbose = verbose
         self.max_bi_count = max_bi_count
         self.bi_min_len = bi_min_len
+        self.signals_n = signals_n
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
@@ -168,6 +172,7 @@ class CZSC:
         self.freq = bars[0].freq
         self.get_signals = get_signals
         self.signals = None
+        self.signals_list = []
 
         for bar in bars:
             self.update(bar)
@@ -271,6 +276,8 @@ class CZSC:
 
         if self.get_signals:
             self.signals = self.get_signals(c=self)
+            self.signals_list.append(self.signals)
+            self.signals_list = self.signals_list[-self.signals_n:]
         else:
             self.signals = OrderedDict()
 
