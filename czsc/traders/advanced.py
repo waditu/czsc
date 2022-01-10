@@ -79,7 +79,7 @@ class CzscAdvancedTrader:
             tab.add(t1, "{}信号表".format(freq))
 
         t2 = Table()
-        ths_ = [["同花顺F10",  "http://basic.10jqka.com.cn/{}".format(self.symbol[:6])]]
+        ths_ = [["同花顺F10",  "http://basic.10jqka.com.cn/{}".format(self.symbol[-6:])]]
         t2.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if "_" not in k] + ths_)
         t2.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅因子表", subtitle=""))
         tab.add(t2, "因子表")
