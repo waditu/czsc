@@ -8,7 +8,7 @@ import os
 from tqdm import tqdm
 from typing import List, Callable
 
-from ..utils import BarGenerator
+from ..utils.bar_generator import BarGenerator
 from ..objects import PositionLong, RawBar
 from .advanced import CzscAdvancedTrader
 
