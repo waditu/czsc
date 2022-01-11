@@ -84,7 +84,7 @@ class TsDataCache:
                                   fields='ts_code,trade_date,open,close,high,low,vol')
             kline = kline.sort_values('trade_date', ignore_index=True)
 
-            for bar_number in (1, 2, 3, 5, 10, 20):
+            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
                 # 向后看
                 n_col_name = 'n' + str(bar_number) + 'b'
                 kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
