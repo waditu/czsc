@@ -445,7 +445,8 @@ class PositionLong:
     def evaluate_operates(self):
         """评估操作表现"""
         pairs = self.pairs
-        p = {"交易标的": self.symbol, "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+        p = {"交易标的": self.symbol, "交易方向": "多头",
+             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
              '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0}
@@ -490,6 +491,7 @@ class PositionLong:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
+        assert op in [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
         if dt.date() != self.today:
             self.today_pos = 0
 
@@ -512,21 +514,8 @@ class PositionLong:
             pos_changed = True
             self.today_pos = self.pos
 
-        if not self.T0:
-            # 不允许 T0 交易时，今仓为 0 才可以卖
-            if self.today_pos == 0:
-                if state == 'hold_long_c' and op == Operate.LR1:
-                    self.long_reduce1()
-                    pos_changed = True
-
-                if state in ['hold_long_b', 'hold_long_c'] and op == Operate.LR2:
-                    self.long_reduce2()
-                    pos_changed = True
-
-                if state in ['hold_long_a', 'hold_long_b', 'hold_long_c'] and op == Operate.LE:
-                    self.long_exit()
-                    pos_changed = True
-        else:
+        # 执行卖的两种情况：1）允许T0交易；2）不允许T0交易且今仓为0
+        if self.T0 or (not self.T0 and self.today_pos == 0):
             if state == 'hold_long_c' and op == Operate.LR1:
                 self.long_reduce1()
                 pos_changed = True
@@ -568,27 +557,32 @@ class PositionLong:
 
 class PositionShort:
     def __init__(self, symbol: str,
-                 hold_short_a: float = -0.5,
-                 hold_short_b: float = -0.8,
-                 hold_short_c: float = -1.0,
-                 ):
-        """持仓对象
+                 hold_short_a: float = 0.5,
+                 hold_short_b: float = 0.8,
+                 hold_short_c: float = 1.0,
+                 cost: float = 0.003,
+                 T0: bool = False):
+        """多头持仓对象
 
         :param symbol: 标的代码
-        :param hold_short_a: 首次开空仓后的仓位
-        :param hold_short_b: 第一次加空后的仓位
-        :param hold_short_c: 第二次加空后的仓位
+        :param hold_short_a: 首次开多仓后的仓位
+        :param hold_short_b: 第一次加多后的仓位
+        :param hold_short_c: 第二次加多后的仓位
+        :param cost: 双边交易成本，默认为千分之三
+        :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
-        assert 0 >= hold_short_a >= hold_short_b >= hold_short_c >= -1.0
+        assert 0 <= hold_short_a <= hold_short_b <= hold_short_c <= 1.0
 
+        self.pos_changed = False
         self.symbol = symbol
+        self.cost = cost
+        self.T0 = T0
         self.pos_map = {
-            "hold_money": 0, "hold_short_a": hold_short_a,
-            "hold_short_b": hold_short_b,  "hold_short_c": hold_short_c
+            "hold_short_a": hold_short_a, "hold_short_b": hold_short_b,
+            "hold_short_c": hold_short_c, "hold_money": 0
         }
         self.states = list(self.pos_map.keys())
         self.machine = Machine(model=self, states=self.states, initial='hold_money')
-
         self.machine.add_transition('short_open', 'hold_money', 'hold_short_a')
         self.machine.add_transition('short_add1', 'hold_short_a', 'hold_short_b')
         self.machine.add_transition('short_add2', 'hold_short_b', 'hold_short_c')
@@ -597,49 +591,167 @@ class PositionShort:
         self.machine.add_transition('short_exit', ['hold_short_a', 'hold_short_b', 'hold_short_c'], 'hold_money')
 
         self.operates = []
-        self.short_low = -1             # 持空仓期间出现的最低价
-        self.short_cost = -1            # 最近一次加空仓的成本
-        self.short_bid = -1             # 最近一次加空仓的1分钟Bar ID
+        self.short_low = -1          # 持多仓期间出现的最低价
+        self.short_cost = -1         # 最近一次加空仓的成本
+        self.short_bid = -1          # 最近一次加空仓的1分钟Bar ID
+
+        self.today = None
+        self.today_pos = 0
 
     @property
     def pos(self):
         """返回状态对应的仓位"""
         return self.pos_map[self.state]
 
-    def update(self, dt: datetime, op: Operate, price: float, bid: int) -> bool:
-        """更新空头持仓状态
+    @property
+    def pairs(self):
+        """返回买卖交易对"""
+        operates = self.operates
+        pairs = []
+        latest_pair = []
+        for op in operates:
+            latest_pair.append(op)
+            if op['op'] == Operate.SE:
+                o_ = [x for x in latest_pair if x['op'] in [Operate.SO, Operate.SA1, Operate.SA2]]
+                e_ = [x for x in latest_pair if x['op'] in [Operate.SE, Operate.SR1, Operate.SR2]]
+                max_pos_ = self.pos_map['hold_short_a']
+                o_ops = [x['op'] for x in o_]
+                if Operate.SA1 in o_ops:
+                    max_pos_ = self.pos_map['hold_short_b']
+                if Operate.SA2 in o_ops:
+                    max_pos_ = self.pos_map['hold_short_c']
+
+                pair = {
+                    '标的代码': op['symbol'],
+                    '交易方向': "空头",
+                    '最大仓位': max_pos_,
+                    '开仓时间': o_[0]['dt'],
+                    '累计开仓': sum([x['price'] * x['pos_change'] for x in o_]),
+                    '平仓时间': op['dt'],
+                    '累计平仓': sum([x['price'] * x['pos_change'] for x in e_]),
+                }
+                pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
+
+                # 空头计算盈亏，需要取反
+                pair['盈亏金额'] = -(pair['累计平仓'] - pair['累计开仓'])
+
+                # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
+                pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+
+                # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
+                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
+                pairs.append(pair)
+                latest_pair = []
+        return pairs
+
+    def evaluate_operates(self):
+        """评估操作表现"""
+        pairs = self.pairs
+        p = {"交易标的": self.symbol, "交易方向": "空头",
+             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
+             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
+             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0}
+
+        if len(pairs) == 0:
+            return p
+
+        p['复利收益'] = 1
+        for pair in pairs:
+            p['复利收益'] *= (1 + pair['盈亏比例'] - self.cost)
+        p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
+
+        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
+        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
+        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
+
+        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
+        if len(win_) > 0:
+            p['盈利次数'] = len(win_)
+            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
+            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
+            p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
+
+        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
+        if len(loss_) > 0:
+            p['亏损次数'] = len(loss_)
+            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
+            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
+
+            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
+            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
+
+        return p
+
+    def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
+        """更新多头持仓状态
 
         :param dt: 最新时间
         :param op: 操作动作
         :param price: 最新价格
         :param bid: 最新1分钟Bar ID
-        :return: bool
+        :param op_desc: 触发操作动作的事件描述
+        :return: None
         """
+        assert op in [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
+        if dt.date() != self.today:
+            self.today_pos = 0
+
         state = self.state
         pos_changed = False
+        old_pos = self.pos
 
         if state == 'hold_money' and op == Operate.SO:
             self.short_open()
-            return True
+            pos_changed = True
+            self.today_pos = self.pos
 
         if state == 'hold_short_a' and op == Operate.SA1:
             self.short_add1()
-            return True
+            pos_changed = True
+            self.today_pos = self.pos
 
         if state == 'hold_short_b' and op == Operate.SA2:
             self.short_add2()
-            return True
+            pos_changed = True
+            self.today_pos = self.pos
 
-        if state == 'hold_short_c' and op == Operate.SR1:
-            self.short_reduce1()
-            return True
+        # 执行卖的两种情况：1）允许T0交易；2）不允许T0交易且今仓为0
+        if self.T0 or (not self.T0 and self.today_pos == 0):
+            if state == 'hold_short_c' and op == Operate.SR1:
+                self.short_reduce1()
+                pos_changed = True
 
-        if state in ['hold_short_b', 'hold_short_c'] and op == Operate.SR2:
-            self.short_reduce2()
-            return True
+            if state in ['hold_short_b', 'hold_short_c'] and op == Operate.SR2:
+                self.short_reduce2()
+                pos_changed = True
 
-        if state in ['hold_short_a', 'hold_short_b', 'hold_short_c'] and op == Operate.SE:
-            self.short_exit()
-            return True
+            if state in ['hold_short_a', 'hold_short_b', 'hold_short_c'] and op == Operate.SE:
+                self.short_exit()
+                pos_changed = True
 
-        return pos_changed
+        if pos_changed:
+            if op in [Operate.SO, Operate.SA1, Operate.SA2]:
+                # 如果仓位变动为开仓动作，记录开仓时间和价格
+                self.short_bid = bid
+                self.short_cost = price
+
+            self.operates.append({
+                "symbol": self.symbol,
+                "dt": dt,
+                "price": price,
+                "bid": bid,
+                "op": op,
+                "op_desc": op_desc,
+                "pos_change": abs(self.pos - old_pos)
+            })
+        self.pos_changed = pos_changed
+        self.today = dt.date()
+
+        if self.pos > 0:
+            # 如果有空头仓位，更新持仓期间的最低价
+            self.short_low = min(self.short_low, price)
+        else:
+            self.short_low = -1.0
+            self.short_cost = -1.0
+            self.short_bid = -1.0
