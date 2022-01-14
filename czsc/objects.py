@@ -361,6 +361,7 @@ class PositionLong:
                  hold_long_a: float = 0.5,
                  hold_long_b: float = 0.8,
                  hold_long_c: float = 1.0,
+                 long_min_interval: int = None,
                  cost: float = 0.003,
                  T0: bool = False):
         """多头持仓对象
@@ -369,6 +370,7 @@ class PositionLong:
         :param hold_long_a: 首次开多仓后的仓位
         :param hold_long_b: 第一次加多后的仓位
         :param hold_long_c: 第二次加多后的仓位
+        :param long_min_interval: 两次开多仓之间的最小时间间隔，单位：秒
         :param cost: 双边交易成本，默认为千分之三
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
@@ -376,6 +378,7 @@ class PositionLong:
 
         self.pos_changed = False
         self.symbol = symbol
+        self.long_min_interval = long_min_interval
         self.cost = cost
         self.T0 = T0
         self.pos_map = {
@@ -500,6 +503,12 @@ class PositionLong:
         old_pos = self.pos
 
         if state == 'hold_money' and op == Operate.LO:
+            if self.long_min_interval and self.operates:
+                assert self.operates[-1]['op'] == Operate.LE
+                # 当前和上次平多仓时间的间隔（秒）小于 long_min_interval，不允许开仓
+                if (dt - self.operates[-1]['dt']).total_seconds() < self.long_min_interval:
+                    return
+
             self.long_open()
             pos_changed = True
             self.today_pos = self.pos
