@@ -494,7 +494,9 @@ class PositionLong:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        assert op in [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
+        allow_op_list = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
+        assert op in allow_op_list, f"{op} 不是支持的操作"
+
         if dt.date() != self.today:
             self.today_pos = 0
 
@@ -569,6 +571,7 @@ class PositionShort:
                  hold_short_a: float = 0.5,
                  hold_short_b: float = 0.8,
                  hold_short_c: float = 1.0,
+                 short_min_interval: int = None,
                  cost: float = 0.003,
                  T0: bool = False):
         """多头持仓对象
@@ -577,6 +580,7 @@ class PositionShort:
         :param hold_short_a: 首次开多仓后的仓位
         :param hold_short_b: 第一次加多后的仓位
         :param hold_short_c: 第二次加多后的仓位
+        :param short_min_interval: 两次开空仓之间的最小时间间隔，单位：秒
         :param cost: 双边交易成本，默认为千分之三
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
@@ -584,6 +588,7 @@ class PositionShort:
 
         self.pos_changed = False
         self.symbol = symbol
+        self.short_min_interval = short_min_interval
         self.cost = cost
         self.T0 = T0
         self.pos_map = {
@@ -693,7 +698,7 @@ class PositionShort:
         return p
 
     def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
-        """更新多头持仓状态
+        """更新空头持仓状态
 
         :param dt: 最新时间
         :param op: 操作动作
@@ -702,7 +707,8 @@ class PositionShort:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        assert op in [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
+        allow_op_list = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
+        assert op in allow_op_list, f"{op} 不是支持的操作"
         if dt.date() != self.today:
             self.today_pos = 0
 
@@ -711,6 +717,12 @@ class PositionShort:
         old_pos = self.pos
 
         if state == 'hold_money' and op == Operate.SO:
+            if self.short_min_interval and self.operates:
+                assert self.operates[-1]['op'] == Operate.SE
+                # 当前和上次平多仓时间的间隔（秒）小于 long_min_interval，不允许开仓
+                if (dt - self.operates[-1]['dt']).total_seconds() < self.short_min_interval:
+                    return
+
             self.short_open()
             pos_changed = True
             self.today_pos = self.pos
