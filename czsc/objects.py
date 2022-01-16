@@ -771,7 +771,7 @@ class PositionShort:
 
         if self.pos > 0:
             # 如果有空头仓位，更新持仓期间的最低价
-            self.short_low = min(self.short_low, price)
+            self.short_low = price if self.short_low <= 0 else min(self.short_low, price)
         else:
             self.short_low = -1.0
             self.short_cost = -1.0
