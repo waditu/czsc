@@ -14,7 +14,7 @@ from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC
-from ..objects import PositionLong, Operate, Event, RawBar
+from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
 from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
 
@@ -27,6 +27,8 @@ class CzscAdvancedTrader:
                  get_signals: Callable,
                  long_events: List[Event] = None,
                  long_pos: PositionLong = None,
+                 short_events: List[Event] = None,
+                 short_pos: PositionShort = None,
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
                  signals_n: int = 0,
@@ -38,6 +40,8 @@ class CzscAdvancedTrader:
         :param get_signals: 自定义的单级别信号计算函数
         :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
         :param long_pos: 多头仓位对象
+        :param short_events: 自定义的空头交易事件组合，推荐平仓事件放到前面
+        :param short_pos: 空头仓位对象
         :param max_bi_count: 单个级别最大保存笔的数量
         :param bi_min_len: 一笔最小无包含K线数量
         :param signals_n: 见 `CZSC` 对象
@@ -49,6 +53,8 @@ class CzscAdvancedTrader:
         self.freqs = list(bg.bars.keys())
         self.long_events = long_events
         self.long_pos = long_pos
+        self.short_events = short_events
+        self.short_pos = short_pos
         self.verbose = verbose
         self.kas = {freq: CZSC(b, max_bi_count=max_bi_count,
                                get_signals=get_signals, signals_n=signals_n,
@@ -122,7 +128,7 @@ class CzscAdvancedTrader:
 
         # 遍历 long_events，更新 long_pos
         if self.long_events:
-            assert isinstance(self.long_pos, PositionLong)
+            assert isinstance(self.long_pos, PositionLong), "long_events 必须配合 PositionLong 使用"
 
             op = Operate.HO
             op_desc = ""
@@ -135,5 +141,21 @@ class CzscAdvancedTrader:
                     break
 
             self.long_pos.update(dt, op, price, bid, op_desc)
+
+        # 遍历 short_events，更新 short_pos
+        if self.short_events:
+            assert isinstance(self.short_pos, PositionShort), "short_events 必须配合 PositionShort 使用"
+
+            op = Operate.HO
+            op_desc = ""
+
+            for event in self.short_events:
+                m, f = event.is_match(self.s)
+                if m:
+                    op = event.operate
+                    op_desc = f"{event.name}@{f}"
+                    break
+
+            self.short_pos.update(dt, op, price, bid, op_desc)
 
 
