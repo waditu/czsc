@@ -14,7 +14,7 @@ from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC
-from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
+from ..objects import PositionLong, PositionShort, Operate, Signal, Event, RawBar
 from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
 
@@ -101,6 +101,284 @@ class CzscAdvancedTrader:
         self.take_snapshot(file_html, width, height)
         webbrowser.open(file_html)
 
+    def get_s_long_pos(self):
+        """计算多头持仓信号
+
+        :return:
+        """
+        k1 = "多头"
+        s = OrderedDict()
+        default_signals = [
+            Signal(k1=k1, k2="最大", k3='盈利', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="最大", k3='回撤', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="最大", k3='回撤盈利比', v1="其他", v2="其他", v3="其他"),
+
+            Signal(k1=k1, k2="累计", k3='盈亏', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="持仓", k3='时间', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="持仓", k3='基础K线数量', v1="其他", v2="其他", v3="其他"),
+        ]
+        for signal_ in default_signals:
+            s[signal_.key] = signal_.value
+
+        long_pos: PositionLong = self.long_pos
+        if long_pos.pos == 0:
+            return s
+
+        base_freq = self.base_freq
+        last_lo = [x for x in long_pos.operates[-50:] if x['op'] == Operate.LO][-1]
+        last_lo_dt = last_lo['dt']
+        last_lo_bid = last_lo['bid']
+        last_lo_price = last_lo['price']
+        latest_price = self.latest_price
+        bid = self.bg.bars[base_freq][-1].id
+        end_dt = self.bg.bars[base_freq][-1].dt
+
+        yl = long_pos.long_high / last_lo_price - 1         # 最大盈利
+        hc = abs(latest_price / long_pos.long_high - 1)     # 最大回撤
+        hc_yl_rate = hc / (yl + 0.000001)                   # 最大回撤盈利比
+        yk = latest_price / last_lo_price - 1               # 累计盈亏
+        hold_time = (end_dt - last_lo_dt).total_seconds()   # 持仓时间，单位：秒
+        hold_nbar = bid - last_lo_bid                       # 持仓基础K线数量
+        assert yl >= 0 and hc >= 0 and hc_yl_rate >= 0
+
+        # ----------------------------------------------------------------------------------
+        if yl > 0.15:
+            v1 = "超过1500BP"
+        elif yl > 0.1:
+            v1 = "超过1000BP"
+        elif yl > 0.08:
+            v1 = "超过800BP"
+        elif yl > 0.05:
+            v1 = "超过500BP"
+        elif yl > 0.03:
+            v1 = "超过300BP"
+        else:
+            v1 = "低于300BP"
+        v = Signal(k1=k1, k2="最大", k3='盈利', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hc > 0.15:
+            v1 = "超过1500BP"
+        elif hc > 0.1:
+            v1 = "超过1000BP"
+        elif hc > 0.08:
+            v1 = "超过800BP"
+        elif hc > 0.05:
+            v1 = "超过500BP"
+        elif hc > 0.03:
+            v1 = "超过300BP"
+        else:
+            v1 = "低于300BP"
+        v = Signal(k1=k1, k2="最大", k3='回撤', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hc_yl_rate > 0.8:
+            v1 = "大于08"
+        elif hc_yl_rate > 0.6:
+            v1 = "大于06"
+        elif hc_yl_rate > 0.5:
+            v1 = "大于05"
+        elif hc_yl_rate > 0.3:
+            v1 = "大于03"
+        else:
+            v1 = "小于03"
+        v = Signal(k1=k1, k2="最大", k3='回撤盈利比', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if yk >= 0:
+            v1 = "盈利"
+        else:
+            v1 = "亏损"
+
+        if abs(yk) > 0.15:
+            v2 = "超过1500BP"
+        elif abs(yk) > 0.1:
+            v2 = "超过1000BP"
+        elif abs(yk) > 0.08:
+            v2 = "超过800BP"
+        elif abs(yk) > 0.05:
+            v2 = "超过500BP"
+        elif abs(yk) > 0.03:
+            v2 = "超过300BP"
+        else:
+            v2 = "低于300BP"
+        v = Signal(k1=k1, k2="累计", k3='盈亏', v1=v1, v2=v2)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hold_time > 3600 * 24 * 13:
+            v1 = "超过15天"
+        elif hold_time > 3600 * 24 * 8:
+            v1 = "超过8天"
+        elif hold_time > 3600 * 24 * 5:
+            v1 = "超过5天"
+        elif hold_time > 3600 * 24 * 3:
+            v1 = "超过3天"
+        else:
+            v1 = "低于3天"
+        v = Signal(k1=k1, k2="持仓", k3='时间', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hold_nbar > 300:
+            v1 = "超过300根"
+        elif hold_nbar > 200:
+            v1 = "超过200根"
+        elif hold_nbar > 150:
+            v1 = "超过150根"
+        elif hold_nbar > 100:
+            v1 = "超过100根"
+        elif hold_nbar > 50:
+            v1 = "超过50根"
+        else:
+            v1 = "低于50根"
+        v = Signal(k1=k1, k2="持仓", k3='基础K线数量', v1=v1)
+        s[v.key] = v.value
+
+        return s
+
+    def get_s_short_pos(self):
+        """计算空头持仓信号
+
+        :return:
+        """
+        s = OrderedDict()
+        k1 = "空头"
+        default_signals = [
+            Signal(k1=k1, k2="最大", k3='盈利', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="最大", k3='回撤', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="最大", k3='回撤盈利比', v1="其他", v2="其他", v3="其他"),
+
+            Signal(k1=k1, k2="累计", k3='盈亏', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="持仓", k3='时间', v1="其他", v2="其他", v3="其他"),
+            Signal(k1=k1, k2="持仓", k3='基础K线数量', v1="其他", v2="其他", v3="其他"),
+        ]
+        for signal_ in default_signals:
+            s[signal_.key] = signal_.value
+
+        short_pos: PositionShort = self.short_pos
+        if short_pos.pos == 0:
+            return s
+
+        base_freq = self.base_freq
+        last_o = [x for x in short_pos.operates[-50:] if x['op'] == Operate.SO][-1]
+        last_o_dt = last_o['dt']
+        last_o_bid = last_o['bid']
+        last_o_price = last_o['price']
+        latest_price = self.latest_price
+        bid = self.bg.bars[base_freq][-1].id
+        end_dt = self.bg.bars[base_freq][-1].dt
+
+        yl = last_o_price / short_pos.short_low - 1             # 最大盈利
+        hc = abs(short_pos.short_low / latest_price - 1)        # 最大回撤
+        hc_yl_rate = hc / (yl + 0.000001)                       # 最大回撤盈利比
+        yk = (last_o_price - latest_price) / last_o_price       # 累计盈亏
+        hold_time = (end_dt - last_o_dt).total_seconds()        # 持仓时间，单位：秒
+        hold_nbar = bid - last_o_bid                            # 持仓基础K线数量
+        assert yl >= 0 and hc >= 0 and hc_yl_rate >= 0
+
+        # ----------------------------------------------------------------------------------
+        if yl > 0.15:
+            v1 = "超过1500BP"
+        elif yl > 0.1:
+            v1 = "超过1000BP"
+        elif yl > 0.08:
+            v1 = "超过800BP"
+        elif yl > 0.05:
+            v1 = "超过500BP"
+        elif yl > 0.03:
+            v1 = "超过300BP"
+        else:
+            v1 = "低于300BP"
+        v = Signal(k1=k1, k2="最大", k3='盈利', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hc > 0.15:
+            v1 = "超过1500BP"
+        elif hc > 0.1:
+            v1 = "超过1000BP"
+        elif hc > 0.08:
+            v1 = "超过800BP"
+        elif hc > 0.05:
+            v1 = "超过500BP"
+        elif hc > 0.03:
+            v1 = "超过300BP"
+        else:
+            v1 = "低于300BP"
+        v = Signal(k1=k1, k2="最大", k3='回撤', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hc_yl_rate > 0.8:
+            v1 = "大于08"
+        elif hc_yl_rate > 0.6:
+            v1 = "大于06"
+        elif hc_yl_rate > 0.5:
+            v1 = "大于05"
+        elif hc_yl_rate > 0.3:
+            v1 = "大于03"
+        else:
+            v1 = "小于03"
+        v = Signal(k1=k1, k2="最大", k3='回撤盈利比', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if yk >= 0:
+            v1 = "盈利"
+        else:
+            v1 = "亏损"
+
+        if abs(yk) > 0.15:
+            v2 = "超过1500BP"
+        elif abs(yk) > 0.1:
+            v2 = "超过1000BP"
+        elif abs(yk) > 0.08:
+            v2 = "超过800BP"
+        elif abs(yk) > 0.05:
+            v2 = "超过500BP"
+        elif abs(yk) > 0.03:
+            v2 = "超过300BP"
+        else:
+            v2 = "低于300BP"
+        v = Signal(k1=k1, k2="累计", k3='盈亏', v1=v1, v2=v2)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hold_time > 3600 * 24 * 13:
+            v1 = "超过15天"
+        elif hold_time > 3600 * 24 * 8:
+            v1 = "超过8天"
+        elif hold_time > 3600 * 24 * 5:
+            v1 = "超过5天"
+        elif hold_time > 3600 * 24 * 3:
+            v1 = "超过3天"
+        else:
+            v1 = "低于3天"
+        v = Signal(k1=k1, k2="持仓", k3='时间', v1=v1)
+        s[v.key] = v.value
+
+        # ----------------------------------------------------------------------------------
+        if hold_nbar > 300:
+            v1 = "超过300根"
+        elif hold_nbar > 200:
+            v1 = "超过200根"
+        elif hold_nbar > 150:
+            v1 = "超过150根"
+        elif hold_nbar > 100:
+            v1 = "超过100根"
+        elif hold_nbar > 50:
+            v1 = "超过50根"
+        else:
+            v1 = "低于50根"
+        v = Signal(k1=k1, k2="持仓", k3='基础K线数量', v1=v1)
+        s[v.key] = v.value
+
+        return s
+
     def _cal_signals(self):
         """计算信号"""
         base_freq = self.base_freq
@@ -114,6 +392,8 @@ class CzscAdvancedTrader:
             s.update(ks.signals)
 
         s.update(self.kas[base_freq].bars_raw[-1].__dict__)
+        s.update(self.get_s_long_pos())
+        s.update(self.get_s_short_pos())
         return s
 
     def update(self, bar: RawBar):

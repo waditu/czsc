@@ -97,7 +97,7 @@ def run_advanced_trader(T0=True):
                             long_events=long_events, long_pos=long_pos,
                             short_events=short_events, short_pos=short_pos,
                             )
-    assert len(ct.s) == 16
+    assert len(ct.s) == 28
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
         # if long_pos.pos_changed:
