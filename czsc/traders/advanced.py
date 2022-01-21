@@ -392,8 +392,10 @@ class CzscAdvancedTrader:
             s.update(ks.signals)
 
         s.update(self.kas[base_freq].bars_raw[-1].__dict__)
-        s.update(self.get_s_long_pos())
-        s.update(self.get_s_short_pos())
+        if self.long_pos:
+            s.update(self.get_s_long_pos())
+        if self.short_pos:
+            s.update(self.get_s_short_pos())
         return s
 
     def update(self, bar: RawBar):
