@@ -25,7 +25,7 @@ def offline_test_ts_cache():
     assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_None.pkl"))
 
     df = dc.get_all_ths_members('A', None)
-    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "A_None_ths_members.pkl"))
+    assert not df.empty and os.path.exists(os.path.join(dc.cache_path, "A_None_ths_members.pkl"))
 
     bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
     assert len(bars) == 436
@@ -77,13 +77,15 @@ def offline_test_ts_cache():
     # 测试复权分钟线获取
     df1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
                              sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
-
+    bars1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                               sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=True)
     df2 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
                              sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=False)
 
     df3 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
                              sdt="20200101", edt="20210804 11:24", adj=None, raw_bar=False)
-    assert len(df1) == len(df2) == len(df3) and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
+    assert len(df1) == len(df2) == len(df3) == len(bars1) \
+           and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
 
     x1 = dc.get_next_trade_dates('2021-12-13', n=-1, m=None)
     assert x1 == '20211210'
