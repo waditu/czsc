@@ -119,6 +119,11 @@ def run_advanced_trader(T0=True):
     short_yk = pd.DataFrame(ct.short_pos.pairs)['盈亏比例'].sum()
     assert abs(long_yk) == abs(short_yk)
     print(f"\nT0={T0}: 多头累计盈亏比例：{long_yk}；空头累计盈亏比例：{short_yk}")
+    if not T0:
+        assert ct.s['多头_最大_盈利'] == '超过800BP_任意_任意_0'
+        assert ct.s['多头_累计_盈亏'] == '盈利_超过800BP_任意_0'
+        assert ct.s['空头_最大_回撤'] == '超过800BP_任意_任意_0'
+        assert ct.s['空头_累计_盈亏'] == '亏损_超过800BP_任意_0'
 
 
 def test_advanced_trader():
