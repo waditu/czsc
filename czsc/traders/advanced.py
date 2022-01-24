@@ -399,7 +399,7 @@ class CzscAdvancedTrader:
         return s
 
     def update(self, bar: RawBar):
-        """输入1分钟K线，更新信号，更新仓位"""
+        """输入基础周期已完成K线，更新信号，更新仓位"""
         self.bg.update(bar)
         for freq, b in self.bg.bars.items():
             self.kas[freq].update(b[-1])

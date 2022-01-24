@@ -574,12 +574,12 @@ class PositionShort:
                  short_min_interval: int = None,
                  cost: float = 0.003,
                  T0: bool = False):
-        """多头持仓对象
+        """空头持仓对象
 
         :param symbol: 标的代码
-        :param hold_short_a: 首次开多仓后的仓位
-        :param hold_short_b: 第一次加多后的仓位
-        :param hold_short_c: 第二次加多后的仓位
+        :param hold_short_a: 首次开空仓后的仓位
+        :param hold_short_b: 第一次加空后的仓位
+        :param hold_short_c: 第二次加空后的仓位
         :param short_min_interval: 两次开空仓之间的最小时间间隔，单位：秒
         :param cost: 双边交易成本，默认为千分之三
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易

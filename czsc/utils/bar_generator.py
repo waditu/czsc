@@ -113,8 +113,13 @@ class BarGenerator:
     def __repr__(self):
         return f"<BarGenerator for {self.symbol} @ {self.end_dt}>"
 
-    def _update_freq(self, bar: RawBar, freq: Freq):
-        """更新指定周期"""
+    def _update_freq(self, bar: RawBar, freq: Freq) -> None:
+        """更新指定周期K线
+
+        :param bar: 基础周期已完成K线
+        :param freq: 目标周期
+        :return:
+        """
         freq_edt = freq_end_time(bar.dt, freq)
 
         if not self.bars[freq.value]:
@@ -134,7 +139,7 @@ class BarGenerator:
                           high=max(last.high, bar.high), low=min(last.low, bar.low), vol=last.vol + bar.vol)
             self.bars[freq.value][-1] = bar_
 
-    def update(self, bar: RawBar):
+    def update(self, bar: RawBar) -> None:
         """更新各周期K线
 
         :param bar: 必须是已经结束的Bar
