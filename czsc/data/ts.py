@@ -65,7 +65,10 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
         # 将每一根K线转换成 RawBar 对象
         bar = RawBar(symbol=record['ts_code'], dt=pd.to_datetime(record[dt_key]),
                      id=i, freq=freq, open=record['open'], close=record['close'],
-                     high=record['high'], low=record['low'], vol=record['vol'])
+                     high=record['high'], low=record['low'],
+                     vol=int(record['vol']*100),           # 成交量，单位：股
+                     amount=int(record['amount']*1000),    # 成交额，单位：元
+                     )
         bars.append(bar)
     return bars
 
