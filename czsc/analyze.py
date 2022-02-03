@@ -208,11 +208,13 @@ class CZSC:
         max_high_ubi = max([x.high for x in bars_ubi[2:]])
 
         if last_bi.direction == Direction.Up and max_high_ubi > last_bi.high:
-            bars_ubi_a = last_bi.bars + [x for x in bars_ubi if x.dt > last_bi.bars[-1].dt]
+            # bars_ubi_a = last_bi.bars + [x for x in bars_ubi if x.dt > last_bi.bars[-1].dt]
+            bars_ubi_a = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
             self.bi_list.pop(-1)
 
         elif last_bi.direction == Direction.Down and min_low_ubi < last_bi.low:
-            bars_ubi_a = last_bi.bars + [x for x in bars_ubi if x.dt > last_bi.bars[-1].dt]
+            # bars_ubi_a = last_bi.bars + [x for x in bars_ubi if x.dt > last_bi.bars[-1].dt]
+            bars_ubi_a = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
             self.bi_list.pop(-1)
 
         else:
