@@ -8,7 +8,7 @@ from ..enum import Freq
 from ..utils.ta import MACD, SMA
 from ..signals.utils import kdj_gold_cross
 from .bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
-from .ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd, get_s_bar_end
+from .ta import get_s_single_k, get_s_three_k, get_s_sma, get_s_macd
 
 
 def get_default_signals(c: analyze.CZSC) -> OrderedDict:
