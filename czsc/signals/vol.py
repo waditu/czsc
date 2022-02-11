@@ -7,7 +7,7 @@ describe: 成交量相关信号
 """
 from czsc import CZSC
 from czsc.signals.ta import *
-from czsc.utils.ta1 import SMA
+from czsc.utils.ta import SMA
 
 
 def get_s_vol_single_sma(c: CZSC, di: int = 1, t_seq=(5, 10, 20, 60)) -> OrderedDict:
