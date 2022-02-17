@@ -5,30 +5,16 @@ email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:20
 """
 import sys
-
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 from czsc.data.ts_cache import *
 
 
-def offline_test_ts_cache():
+def test_ts_cache():
     dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
-
-    df = dc.ths_index('A', 'N')
-    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_N.pkl"))
-    df = dc.ths_index('A')
-    assert not df.empty
-    df = dc.ths_index('A', None)
-    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_None.pkl"))
-
-    df = dc.get_all_ths_members('A', None)
-    assert not df.empty and os.path.exists(os.path.join(dc.cache_path, "A_None_ths_members.pkl"))
-
-    bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
-    assert len(bars) == 436
 
     bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
                       start_date='20200101', end_date='20211024', raw_bar=True)
@@ -93,6 +79,19 @@ def offline_test_ts_cache():
     assert x1 == '20211214'
     x2 = dc.get_next_trade_dates('2021-12-13', n=1, m=6)
     assert x2 == ['20211214', '20211215', '20211216', '20211217', '20211220']
+
+    df = dc.ths_index('A', 'N')
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_N.pkl"))
+    df = dc.ths_index('A')
+    assert not df.empty
+    df = dc.ths_index('A', None)
+    assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['ths_index'], "ths_index_A_None.pkl"))
+
+    df = dc.get_all_ths_members('A', None)
+    assert not df.empty and os.path.exists(os.path.join(dc.cache_path, "A_None_ths_members.pkl"))
+
+    bars = dc.ths_daily(ts_code='885566.TI', start_date='20200101', end_date='20211024', raw_bar=False)
+    assert len(bars) == 436
 
     dc.clear()
     assert not os.path.exists(cache_path)
