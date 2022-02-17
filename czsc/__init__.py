@@ -3,6 +3,7 @@
 from .analyze import CZSC
 from .traders.advanced import CzscAdvancedTrader
 from .utils.ta import SMA, EMA, MACD, KDJ
+from .objects import Signal, Factor, Event, Freq, Operate
 from . import aphorism
 
 __version__ = "0.8.16"

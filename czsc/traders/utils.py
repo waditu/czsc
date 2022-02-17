@@ -7,6 +7,7 @@ create_dt: 2021/12/12 21:49
 import os
 from tqdm import tqdm
 from typing import List, Callable
+from deprecated import deprecated
 
 from ..utils.bar_generator import BarGenerator
 from ..objects import PositionLong, PositionShort, RawBar
@@ -119,6 +120,7 @@ def trader_fast_backtest(bars: List[RawBar],
     return res
 
 
+@deprecated(reason="请使用 czsc.traders.utils.trader_fast_backtest 代替", version="1.0.0")
 def fast_back_test(bars: List[RawBar],
                    init_n: int,
                    strategy: Callable,
