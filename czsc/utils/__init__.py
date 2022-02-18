@@ -17,6 +17,9 @@ def x_round(x: [float, int], digit=4):
     if isinstance(x, int):
         return x
 
-    digit_ = pow(10, digit)
-    x = int(x * digit_) / digit_
+    try:
+        digit_ = pow(10, digit)
+        x = int(x * digit_) / digit_
+    except:
+        print(f"x_round error: x = {x}")
     return x
