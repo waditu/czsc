@@ -9,6 +9,7 @@ from tqdm import tqdm
 from typing import List, Callable
 from deprecated import deprecated
 
+from ..utils import x_round
 from ..utils.bar_generator import BarGenerator
 from ..objects import PositionLong, PositionShort, RawBar
 from .advanced import CzscAdvancedTrader
@@ -90,13 +91,15 @@ def trader_fast_backtest(bars: List[RawBar],
         ct.update(bar)
         if ct.long_pos and ct.long_pos.pos_changed and html_path:
             op = ct.long_pos.operates[-1]
-            file_html = os.path.join(html_path, f"{op['op'].value}_{op['bid']}_{op['price']}_{op['op_desc']}.html")
+            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            file_html = os.path.join(html_path, file_name)
             ct.take_snapshot(file_html)
             print(f'snapshot saved into {file_html}')
 
         if ct.short_pos and ct.short_pos.pos_changed and html_path:
             op = ct.short_pos.operates[-1]
-            file_html = os.path.join(html_path, f"{op['op'].value}_{op['bid']}_{op['price']}_{op['op_desc']}.html")
+            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            file_html = os.path.join(html_path, file_name)
             ct.take_snapshot(file_html)
             print(f'snapshot saved into {file_html}')
 
