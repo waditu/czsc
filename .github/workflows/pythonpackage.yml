@@ -38,4 +38,4 @@ jobs:
       run: |
         pip install pytest
         cd ..
-        pytest
+        pytest ./test
