@@ -182,7 +182,13 @@ def max_draw_down(n1b: List):
 def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
     """计算持仓明细对应的组合换手率
 
-    :param df_holds: 每个交易日的持仓明细
+    :param df_holds: 每个交易日的持仓明细，数据样例如下
+                证券代码    成分日期    持仓权重
+            0  000576.SZ  2020-01-02  0.0099
+            1  000639.SZ  2020-01-02  0.0099
+            2  000803.SZ  2020-01-02  0.0099
+            3  000811.SZ  2020-01-02  0.0099
+            4  000829.SZ  2020-01-02  0.0099
     :return: 组合换手率
     """
     trade_dates = sorted(df_holds['成分日期'].unique().tolist())
