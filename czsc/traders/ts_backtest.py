@@ -98,6 +98,8 @@ class TraderPerformance:
             "累计盈亏比": gain_loss_rate,
             "交易得分": x_round(gain_loss_rate * win_pct, 4),
         }
+
+        info['每自然日收益'] = x_round(info['平均单笔收益'] / info['平均持仓天数'], 2)
         return info
 
     def agg_statistics(self, col: str):
@@ -121,6 +123,15 @@ class TraderPerformance:
         """写入基础信息"""
         df_pairs = self.df_pairs.copy()
         return self.get_pairs_statistics(df_pairs)
+
+    def agg_to_excel(self, file_xlsx):
+        """遍历聚合列，保存结果到 Excel 文件中"""
+        f = pd.ExcelWriter(file_xlsx)
+        for col in self.agg_columns:
+            df_ = self.agg_statistics(col)
+            df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
+        f.close()
+        print(f"聚合分析结果文件：{file_xlsx}")
 
 
 class TsStocksBacktest:
