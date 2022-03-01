@@ -76,6 +76,23 @@ class TraderPerformance:
         :param df_pairs:
         :return:
         """
+        if len(df_pairs) == 0:
+            info = {
+                "交易标的数量": 0,
+                "总体交易次数": 0,
+                "平均持仓天数": 0,
+
+                "平均单笔收益": 0,
+                "最大单笔收益": 0,
+                "最小单笔收益": 0,
+
+                "交易胜率": 0,
+                "累计盈亏比": 0,
+                "交易得分": 0,
+                "每自然日收益": 0,
+            }
+            return info
+
         win_pct = x_round(len(df_pairs[df_pairs['盈亏比例'] > 0]) / len(df_pairs), 4)
         df_gain = df_pairs[df_pairs['盈亏比例'] > 0]
         df_loss = df_pairs[df_pairs['盈亏比例'] <= 0]
