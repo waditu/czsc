@@ -460,8 +460,29 @@ class TsDataCache:
             ntd = trade_dates[i + n]
             return ntd
         else:
-            assert abs(m) > abs(n), "abs(m) 必须大于 abs(n)"
-            ntd_list = trade_dates[i+n: i+m]
+            assert m > n > 0 or m < n < 0, "abs(m) 必须大于 abs(n)"
+            if m > n > 0:
+                ntd_list = trade_dates[i+n: i+m]
+            else:
+                ntd_list = trade_dates[i+m: i+n]
             return ntd_list
+
+    def get_dates_span(self, sdt: str, edt: str, is_open: bool = True) -> List[str]:
+        """获取日期区间列表
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :param is_open: 是否是交易日
+        :return: 日期区间列表
+        """
+        sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
+        edt = pd.to_datetime(edt).strftime("%Y%m%d")
+
+        trade_cal = self.trade_cal()
+        if is_open:
+            trade_cal = trade_cal[trade_cal['is_open'] == 1]
+
+        trade_dates = [x for x in trade_cal['cal_date'] if edt >= x >= sdt]
+        return trade_dates
 
 

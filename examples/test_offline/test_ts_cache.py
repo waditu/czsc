@@ -16,6 +16,12 @@ def test_ts_cache():
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
 
+    assert dc.get_next_trade_dates('2022-03-02', 2, 5) == ['20220304', '20220307', '20220308']
+    assert dc.get_next_trade_dates('2022-03-02', -1, -4) == ['20220224', '20220225', '20220228']
+    assert dc.get_dates_span('20220224', '20220228') == ['20220224', '20220225', '20220228']
+    assert dc.get_dates_span('20220224', '20220228', is_open=False) \
+           == ['20220224', '20220225', '20220226', '20220227', '20220228']
+
     bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
                       start_date='20200101', end_date='20211024', raw_bar=True)
     assert len(bars) == 436
