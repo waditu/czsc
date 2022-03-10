@@ -10,6 +10,19 @@ sys.path.insert(0, '..')
 
 from czsc.data.ts_cache import *
 
+def test_ts_cache_bak_basic():
+    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)
+    cache_path = './TS_CACHE_20200101_20211024'
+    assert os.path.exists(cache_path)
+    df = dc.bak_basic(trade_date='2018-03-15')
+    assert df.shape[0] == 3505
+
+    df1 = dc.bak_basic(ts_code='600806.SH')
+    assert df1.shape[0] == 432
+
+    assert df1.shape[1] == df.shape[1]
+    dc.clear()
+
 
 def test_ts_cache():
     dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)

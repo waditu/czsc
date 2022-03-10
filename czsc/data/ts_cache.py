@@ -52,7 +52,7 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes', 'limit_list'
+            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic'
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -412,6 +412,28 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             df = pro.limit_list(trade_date=trade_date)
+            io.save_pkl(df, file_cache)
+        return df
+
+    def bak_basic(self, trade_date: str = None, ts_code: str = None):
+        """https://tushare.pro/document/2?doc_id=262
+
+        :param trade_date: 交易日期
+        :param ts_code: 标的代码
+        :return:
+        """
+        assert trade_date or ts_code, "请至少设定一个参数，trade_date 或 ts_code"
+
+        if trade_date:
+            trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+
+        cache_path = self.api_path_map['bak_basic']
+        file_cache = os.path.join(cache_path, f"bak_basic_{trade_date}_{ts_code}.pkl")
+
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+        else:
+            df = pro.bak_basic(trade_date=trade_date, ts_code=ts_code)
             io.save_pkl(df, file_cache)
         return df
 
