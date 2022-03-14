@@ -137,16 +137,25 @@ def ts_symbol_to_tdx(symbol):
     return symbol
 
 
-def save_ts_to_ebk(ts_codes, file_ebk):
-    """将 tushare 股票代码列表保存到 EBK 文件，用来导入标的到同花顺、通达信软件中
+def save_symbols_to_ebk(symbols, file_ebk, source='ts'):
+    """将股票代码列表保存到 EBK 文件，用来导入标的到同花顺、通达信软件中
 
-    :param ts_codes:
-    :param file_ebk:
+    :param symbols: 股票代码列表
+    :param file_ebk: EBK结果文件
+    :param source: 代码格式
     :return:
     """
-    tdx_symbols = [ts_symbol_to_tdx(ts_code) for ts_code in ts_codes]
+    source = source.lower()
+    if source == 'ts':
+        symbol_to_tdx = ts_symbol_to_tdx
+    elif source == 'jq':
+        symbol_to_tdx = jq_symbol_to_tdx
+    elif source == 'gm':
+        symbol_to_tdx = gm_symbol_to_tdx
+    else:
+        raise ValueError
+
+    tdx_symbols = [symbol_to_tdx(ts_code) for ts_code in symbols]
     with open(file_ebk, encoding='utf-8', mode='w') as f:
         f.write("\n".join(tdx_symbols))
-
-
 
