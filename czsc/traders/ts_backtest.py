@@ -16,7 +16,7 @@ from typing import Callable
 
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
-from ..utils import WordWriter, x_round
+from ..utils import WordWriter, x_round, io
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -254,7 +254,8 @@ class TsStocksBacktest:
 
             try:
                 file_res = os.path.join(res_path, f"raw_{step}/{ts_code}.xlsx")
-                if os.path.exists(file_res):
+                file_signals = os.path.join(res_path, f"raw_{step}/{ts_code}_signals.pkl")
+                if os.path.exists(file_res) and os.path.exists(file_signals):
                     print(f"exits: {file_res}")
                     continue
 
@@ -266,15 +267,25 @@ class TsStocksBacktest:
                                       asset=asset, adj='hfq', raw_bar=True)
                 res = trader_fast_backtest(bars, init_n, strategy, html_path, signals_n=signals_n)
 
+                # 保存信号结果
+                dfs = pd.DataFrame(res['signals'])
+                c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
+                dfs[c_cols] = dfs[c_cols].astype('category')
+                float_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('float')]
+                dfs[float_cols] = dfs[float_cols].astype('float32')
+                dfs.to_pickle(file_signals, protocol=4)
+
                 f = pd.ExcelWriter(file_res)
                 if res.get('long_performance', None):
                     print(f"{strategy.__name__} long_performance: {res['long_performance']}")
+                    pd.DataFrame(res['long_holds']).to_excel(f, sheet_name="long_holds", index=False)
                     pd.DataFrame(res['long_operates']).to_excel(f, sheet_name="long_operates", index=False)
                     pd.DataFrame(res['long_pairs']).to_excel(f, sheet_name="long_pairs", index=False)
                     pd.DataFrame([res['long_performance']]).to_excel(f, sheet_name="long_performance", index=False)
 
                 if res.get('short_performance', None):
                     print(f"{strategy.__name__} short_performance: {res['short_performance']}")
+                    pd.DataFrame(res['short_holds']).to_excel(f, sheet_name="short_holds", index=False)
                     pd.DataFrame(res['short_operates']).to_excel(f, sheet_name="short_operates", index=False)
                     pd.DataFrame(res['short_pairs']).to_excel(f, sheet_name="short_pairs", index=False)
                     pd.DataFrame([res['short_performance']]).to_excel(f, sheet_name="short_performance", index=False)
