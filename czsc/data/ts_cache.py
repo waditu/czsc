@@ -10,21 +10,21 @@ import shutil
 import pandas as pd
 
 from .ts import *
+from .. import envs
 from ..utils import io
 
 
 class TsDataCache:
     """Tushare 数据缓存"""
-    def __init__(self, data_path, sdt, edt, verbose=False):
+    def __init__(self, data_path, sdt, edt):
         """
 
         :param data_path: 数据路径
         :param sdt: 缓存开始时间
         :param edt: 缓存结束时间
-        :param verbose: 是否显示详细信息
         """
         self.date_fmt = "%Y%m%d"
-        self.verbose = verbose
+        self.verbose = envs.get_verbose()
         self.sdt = pd.to_datetime(sdt).strftime(self.date_fmt)
         self.edt = pd.to_datetime(edt).strftime(self.date_fmt)
         self.data_path = data_path
