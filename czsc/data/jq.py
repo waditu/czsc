@@ -12,7 +12,6 @@ from urllib.parse import quote
 
 from ..objects import RawBar, Event
 from ..enum import Freq
-from .base import freq_inv
 from ..utils.bar_generator import freq_end_time
 from ..signals.signals import get_default_signals
 

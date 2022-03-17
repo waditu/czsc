@@ -6,19 +6,12 @@ create_dt: 2022/2/24 16:17
 describe: 基础工具
 """
 
+freq_cn2ts = {"1分钟": "1min", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
+              '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
+freq_ts2cn = {v: k for k, v in freq_cn2ts.items()}
 
-freq_map = {
-    "1min": "1分钟",
-    "5min": "5分钟",
-    "15min": "15分钟",
-    "30min": "30分钟",
-    "60min": "60分钟",
-    "D": "日线",
-    "W": "周线",
-    "M": "月线",
-}
-
-freq_inv = {v: k for k, v in freq_map.items()}
+freq_cn2gm = {"1分钟": "1m", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
+              '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
 
 
 def jq_symbol_to_gm(symbol: str) -> str:

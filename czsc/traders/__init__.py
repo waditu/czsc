@@ -7,3 +7,7 @@ describe: 交易员（traders）的主要职能是依据感应系统（sensors�
 """
 
 from .advanced import CzscAdvancedTrader
+from .ts_backtest import TsStocksBacktest, TraderPerformance
+from .utils import trader_fast_backtest
+
+
