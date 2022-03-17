@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/17 18:50
 """
 import os
+import glob
 import warnings
 import pandas as pd
 import numpy as np
@@ -12,11 +13,49 @@ from tqdm import tqdm
 from datetime import datetime, timedelta
 from typing import Callable, List, AnyStr
 
+from .. import envs
 from ..traders.advanced import CzscAdvancedTrader, BarGenerator
 from ..data.ts_cache import TsDataCache
 from ..objects import RawBar, Signal
 from ..signals.signals import get_default_signals
 from ..utils.cache import home_path
+
+
+def get_dfs_base(dfs: pd.DataFrame):
+    """获取所有信号的基础信息"""
+    cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b'] \
+           + [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
+    info = {"name": "基准", "count": len(dfs), "cover": 1.0}
+    info.update(dfs[cols].mean().to_dict())
+    dtm = {f"dt_{k}": v for k, v in dfs.groupby('dt')[cols].mean().mean().to_dict().items()}
+    info.update(dtm)
+    return info
+
+
+def analyze_signal_keys(dfs: pd.DataFrame, keys: List[str]) -> pd.DataFrame:
+    """分析信号组合的分类能力
+
+    :param dfs: 信号表
+    :param keys: 信号组合
+    :return:
+    """
+    len_dfs = len(dfs)
+    cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b'] \
+           + [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
+    results = []
+    for values, dfg in dfs.groupby(keys):
+        if isinstance(values, str):
+            values = [values]
+        assert len(keys) == len(values)
+
+        name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
+        res = {"name": name, "count": len(dfg), "cover": round(len(dfg) / len_dfs, 4)}
+        res.update(dfg[cols].mean().to_dict())
+        dtm = {f"dt_{k}": v for k, v in dfg.groupby('dt')[cols].mean().mean().to_dict().items()}
+        res.update(dtm)
+        results.append(res)
+    dfr = pd.DataFrame(results)
+    return dfr
 
 
 def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None, indices=None):
@@ -230,4 +269,57 @@ def compound_returns(n1b: List):
         v = v * (1 + n / 10000)
         detail.append(v-10000)
     return v-10000, detail
+
+
+def read_cached_signals(file_output: str, path_pat=None, sdt=None, edt=None, keys=None) -> pd.DataFrame:
+    """读取缓存信号
+
+    :param file_output: 读取后保存结果
+    :param path_pat: 缓存信号文件路径模板，用于glob获取文件列表
+    :param keys: 需要读取的信号名称列表
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :return: 信号
+    """
+    verbose = envs.get_verbose()
+
+    if os.path.exists(file_output):
+        sf = pd.read_pickle(file_output)
+        if verbose:
+            print(f"read_cached_signals: read from {file_output}, 数据占用内存大小"
+                  f"：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
+        return sf
+
+    files = glob.glob(path_pat, recursive=False)
+    results = []
+    for file in tqdm(files, desc="read_cached_signals"):
+        df = pd.read_pickle(file)
+        if not df.empty:
+            if keys:
+                base_cols = [x for x in df.columns if len(x.split("_")) != 3]
+                df = df[base_cols + keys]
+            if sdt:
+                df = df[df['dt'] >= pd.to_datetime(sdt)]
+            if edt:
+                df = df[df['dt'] <= pd.to_datetime(edt)]
+            results.append(df)
+        else:
+            print(f"read_cached_signals: {file} is empty")
+
+    sf = pd.concat(results, ignore_index=True)
+    if verbose:
+        print(f"read_cached_signals: 原始数据占用内存大小：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
+
+    c_cols = [k for k, v in sf.dtypes.to_dict().items() if v.name.startswith('object')]
+    sf[c_cols] = sf[c_cols].astype('category')
+
+    float_cols = [k for k, v in sf.dtypes.to_dict().items() if v.name.startswith('float')]
+    sf[float_cols] = sf[float_cols].astype('float32')
+    if verbose:
+        print(f"read_cached_signals: 转类型后占用内存大小：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
+
+    sf.to_pickle(file_output, protocol=4)
+    return sf
+
+
 
