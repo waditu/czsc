@@ -9,9 +9,10 @@ describe: 环境变量统一管理入口
 import os
 
 
-def get_verbose():
+def get_verbose(verbose=None):
     """verbose - 是否输出执行过程的详细信息"""
     valid_true = ['1', 'True', 'true', 'Y', 'y', 'yes', 'Yes']
-    v = True if os.environ.get('verbose', None) in valid_true else False
+    verbose = verbose if verbose else os.environ.get('czsc_verbose', None)
+    v = True if verbose in valid_true else False
     return v
 

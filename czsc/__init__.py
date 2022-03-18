@@ -8,11 +8,12 @@ from . import ai
 from . import utils
 from . import traders
 from . import sensors
+from . import aphorism
+
 from .analyze import CZSC
 from .traders.advanced import CzscAdvancedTrader
 from .utils.ta import SMA, EMA, MACD, KDJ
 from .objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
-from . import aphorism
 
 __version__ = "0.8.18"
 __author__ = "zengbin93"

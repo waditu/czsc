@@ -15,7 +15,7 @@ from czsc.sensors.utils import read_cached_signals, get_dfs_base, analyze_signal
 from czsc.traders.ts_backtest import TsDataCache, TsStocksBacktest
 from examples import tactics
 
-os.environ['verbose'] = "1"     # 输出详细执行信息
+os.environ['czsc_verbose'] = "1"     # 输出详细执行信息
 
 pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
