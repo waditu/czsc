@@ -197,18 +197,20 @@ class TsStocksBacktest:
         res_path = self.res_path
         raw_path = os.path.join(res_path, f'raw_{step}')
         df_ops, df_pairs, df_p = read_raw_results(raw_path, trade_dir)
+        s_name = self.strategy.__name__
 
-        df_ops.to_csv(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_operates.csv"), index=False)
-        df_pairs.to_excel(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_pairs.xlsx"),
+        df_ops.to_csv(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_operates.csv"), index=False)
+        df_pairs.to_excel(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_pairs.xlsx"),
                           index=False)
 
-        f = pd.ExcelWriter(os.path.join(res_path, f"{self.strategy.__name__}_{step}_{trade_dir}_performance.xlsx"))
+        f = pd.ExcelWriter(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_performance.xlsx"))
         df_p.to_excel(f, sheet_name="评估", index=False)
         tp = TraderPerformance(df_pairs)
         for col in tp.agg_columns:
             df_ = tp.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
+        print(f"{s_name} - {step} - {trade_dir}: {tp.basic_info}")
 
     def batch_backtest(self, step):
         """批量回测
