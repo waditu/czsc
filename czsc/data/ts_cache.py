@@ -251,21 +251,23 @@ class TsDataCache:
             if asset == 'E' and adj and adj == 'qfq':
                 # 前复权	= 当日收盘价 × 当日复权因子 / 最新复权因子
                 factor = self.adj_factor(ts_code)
-                factor = factor.sort_values('trade_date', ignore_index=True)
-                latest_factor = factor.iloc[-1]['adj_factor']
-                kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                for col in ['open', 'close', 'high', 'low']:
-                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
+                if not factor.empty:
+                    factor = factor.sort_values('trade_date', ignore_index=True)
+                    latest_factor = factor.iloc[-1]['adj_factor']
+                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
+                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                    for col in ['open', 'close', 'high', 'low']:
+                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
 
             if asset == 'E' and adj and adj == 'hfq':
                 # 后复权	= 当日收盘价 × 当日复权因子
                 factor = self.adj_factor(ts_code)
-                factor = factor.sort_values('trade_date', ignore_index=True)
-                kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                for col in ['open', 'close', 'high', 'low']:
-                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
+                if not factor.empty:
+                    factor = factor.sort_values('trade_date', ignore_index=True)
+                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
+                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                    for col in ['open', 'close', 'high', 'low']:
+                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
             for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
                 # 向后看
