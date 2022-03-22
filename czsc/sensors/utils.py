@@ -155,8 +155,7 @@ def generate_signals(bars: List[RawBar],
 
 
 def check_signals_acc(bars: List[RawBar],
-                      signals: List[Signal],
-                      freqs: List[AnyStr],
+                      signals: List[Signal] = None,
                       get_signals: Callable = get_default_signals) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
@@ -164,14 +163,28 @@ def check_signals_acc(bars: List[RawBar],
 
     :param bars: 原始K线
     :param signals: 需要验证的信号列表
-    :param freqs: 周期列表
     :param get_signals: 信号计算函数
     :return:
     """
+    verbose = envs.get_verbose()
     base_freq = bars[-1].freq.value
     assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
     if len(bars) < 600:
         return
+
+    sorted_freqs = ['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+    freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
+
+    if not signals:
+        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), base_freq, freqs, get_signals)
+        df = pd.DataFrame(signals_)
+        s_cols = [x for x in df.columns if len(x.split("_")) == 3]
+        signals = []
+        for col in s_cols:
+            signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
+
+    if verbose:
+        print(f"signals: {signals}")
 
     bars_left = bars[:500]
     bars_right = bars[500:]
