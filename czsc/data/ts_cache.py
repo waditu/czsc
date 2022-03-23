@@ -439,7 +439,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
-    # ------------------------------------CZSC 加工接口----------------------------------------------
+    # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
 
     def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
@@ -508,5 +508,85 @@ class TsDataCache:
 
         trade_dates = [x for x in trade_cal['cal_date'] if edt >= x >= sdt]
         return trade_dates
+
+    def get_stocks_daily_bars(self, sdt="20190101", edt="20220218", adj='hfq'):
+        """读取A股全部历史日线
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :param adj: 复权类型
+        :return:
+        """
+        stocks = self.stock_basic()
+
+        def __is_one_line(row_):
+            """判断 row_ 是否是一字板"""
+            if row_['open'] == row_['close'] == \
+                    row_['high'] == row_['low'] and row_['b1b']:
+                if row_['b1b'] > 500:
+                    return 1
+                if row_['b1b'] < -500:
+                    return -1
+            return 0
+
+        results = []
+        for row in tqdm(stocks.to_dict('records'), desc="get_stocks_kline"):
+            ts_code = row['ts_code']
+            try:
+                n_bars: pd.DataFrame = self.pro_bar(ts_code, sdt, edt, freq='D', asset='E', adj=adj, raw_bar=False)
+                # 计算下期一字板
+                n_bars['当期一字板'] = n_bars.apply(__is_one_line, axis=1)
+                n_bars['下期一字板'] = n_bars['当期一字板'].shift(-1)
+                results.append(n_bars)
+            except:
+                continue
+        df = pd.concat(results, ignore_index=True)
+
+        # 涨跌停判断
+        def __is_zdt(row_):
+            if row_['close'] == row_['high']:
+                return 1
+            elif row_['close'] == row_['low']:
+                return -1
+            else:
+                return 0
+
+        df['zdt'] = df.apply(__is_zdt, axis=1)
+        return df
+
+    def get_stocks_daily_basic(self, sdt: str, edt: str):
+        """读取A股全部历史每日指标
+
+        :param sdt:
+        :param edt:
+        :return:
+        """
+        ts_codes = self.stock_basic().ts_code.to_list()
+        results = []
+        for ts_code in tqdm(ts_codes):
+            df1 = self.daily_basic(ts_code, sdt, edt)
+            results.append(df1)
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['dt'] = pd.to_datetime(dfb['trade_date'])
+        return dfb
+
+    def get_stocks_daily_bak(self, sdt: str, edt: str):
+        """读取A股全部历史 bak_basic
+
+        :param sdt:
+        :param edt:
+        :return:
+        """
+        dates = self.get_dates_span(sdt, edt, is_open=True)
+        results = []
+        for d in tqdm(dates):
+            df1 = self.bak_basic(d)
+            results.append(df1)
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
+        dfb = dfb[['trade_date', 'ts_code', 'name']]
+        dfb['is_st'] = dfb['name'].str.contains('ST')
+        return dfb
+
 
 
