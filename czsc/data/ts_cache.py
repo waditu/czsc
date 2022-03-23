@@ -3,7 +3,10 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/10/24 16:12
-describe: Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。单次缓存，多次使用，但是不做增量更新。
+describe:
+Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
+单次缓存，多次使用，但是不做增量更新，适用于研究场景。
+数据缓存是一种用空间换时间的方法，需要有较大磁盘空间，跑全市场至少需要50GB以上。
 """
 import os.path
 import shutil
@@ -52,7 +55,10 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic'
+            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic',
+
+            # CZSC加工缓存
+            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak"
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -509,7 +515,7 @@ class TsDataCache:
         trade_dates = [x for x in trade_cal['cal_date'] if edt >= x >= sdt]
         return trade_dates
 
-    def get_stocks_daily_bars(self, sdt="20190101", edt="20220218", adj='hfq'):
+    def stocks_daily_bars(self, sdt="20190101", edt="20220218", adj='hfq'):
         """读取A股全部历史日线
 
         :param sdt: 开始日期
@@ -517,6 +523,12 @@ class TsDataCache:
         :param adj: 复权类型
         :return:
         """
+        cache_path = self.api_path_map['stocks_daily_bars']
+        file_cache = os.path.join(cache_path, f"stocks_daily_bars_{sdt}_{edt}_{adj}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
         stocks = self.stock_basic()
 
         def __is_one_line(row_):
@@ -552,15 +564,25 @@ class TsDataCache:
                 return 0
 
         df['zdt'] = df.apply(__is_zdt, axis=1)
+        float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
+        df[float_cols] = df[float_cols].astype('float32')
+
+        df.to_pickle(file_cache)
         return df
 
-    def get_stocks_daily_basic(self, sdt: str, edt: str):
+    def stocks_daily_basic(self, sdt: str, edt: str):
         """读取A股全部历史每日指标
 
-        :param sdt:
-        :param edt:
+        :param sdt: 开始日期
+        :param edt: 结束日期
         :return:
         """
+        cache_path = self.api_path_map['stocks_daily_basic']
+        file_cache = os.path.join(cache_path, f"stocks_daily_basic_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
         ts_codes = self.stock_basic().ts_code.to_list()
         results = []
         for ts_code in tqdm(ts_codes):
@@ -568,15 +590,22 @@ class TsDataCache:
             results.append(df1)
         dfb = pd.concat(results, ignore_index=True)
         dfb['dt'] = pd.to_datetime(dfb['trade_date'])
+        dfb.to_pickle(file_cache)
         return dfb
 
-    def get_stocks_daily_bak(self, sdt: str, edt: str):
+    def stocks_daily_bak(self, sdt: str, edt: str):
         """读取A股全部历史 bak_basic
 
-        :param sdt:
-        :param edt:
+        :param sdt: 开始日期
+        :param edt: 结束日期
         :return:
         """
+        cache_path = self.api_path_map['stocks_daily_bak']
+        file_cache = os.path.join(cache_path, f"stocks_daily_bak_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
         dates = self.get_dates_span(sdt, edt, is_open=True)
         results = []
         for d in tqdm(dates):
