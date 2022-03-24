@@ -5,8 +5,9 @@ email: zeng_bin8888@163.com
 create_dt: 2021/8/25 17:43
 describe: 成交量相关信号
 """
-from czsc import CZSC
-from czsc.signals.ta import *
+import numpy as np
+from collections import OrderedDict
+from czsc import CZSC, Freq, Signal
 from czsc.utils.ta import SMA
 
 

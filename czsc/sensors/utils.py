@@ -7,6 +7,7 @@ create_dt: 2021/11/17 18:50
 import os
 import glob
 import warnings
+import traceback
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
@@ -15,6 +16,7 @@ from typing import Callable, List, AnyStr
 
 from .. import envs
 from ..traders.advanced import CzscAdvancedTrader, BarGenerator
+from ..traders.utils import freq_cn2ts
 from ..data.ts_cache import TsDataCache
 from ..objects import RawBar, Signal
 from ..signals.signals import get_default_signals
@@ -32,29 +34,44 @@ def get_dfs_base(dfs: pd.DataFrame):
     return info
 
 
-def analyze_signal_keys(dfs: pd.DataFrame, keys: List[str]) -> pd.DataFrame:
+def analyze_signal_keys(dfs: pd.DataFrame, keys: List[str], mode: int = 0) -> pd.DataFrame:
     """分析信号组合的分类能力
 
     :param dfs: 信号表
     :param keys: 信号组合
+    :param mode: 分析模式，0 同时分析时序和截面表现；1 时序表现；2 截面表现
     :return:
     """
     len_dfs = len(dfs)
     cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b'] \
            + [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
-    results = []
+
+    def __static(_df, _name):
+        _res = {"name": _name, "count": len(_df), "cover": round(len(_df) / len_dfs, 4)}
+        if mode in [0, 1]:
+            _r1 = _df[cols].mean().to_dict()
+        else:
+            _r1 = {}
+        if mode in [0, 2]:
+            _r2 = {f"dt_{k}": v for k, v in _df.groupby('dt')[cols].mean().mean().to_dict().items()}
+        else:
+            _r2 = {}
+        _res.update(_r1)
+        _res.update(_r2)
+        return _res
+
+    results = [__static(dfs, "基准")]
+
     for values, dfg in dfs.groupby(keys):
         if isinstance(values, str):
             values = [values]
         assert len(keys) == len(values)
 
         name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-        res = {"name": name, "count": len(dfg), "cover": round(len(dfg) / len_dfs, 4)}
-        res.update(dfg[cols].mean().to_dict())
-        dtm = {f"dt_{k}": v for k, v in dfg.groupby('dt')[cols].mean().mean().to_dict().items()}
-        res.update(dtm)
-        results.append(res)
+        results.append(__static(dfg, name))
     dfr = pd.DataFrame(results)
+    r_cols = [x for x in dfr.columns if x[-1] == 'b']
+    dfr[r_cols] = dfr[r_cols].round(2)
     return dfr
 
 
@@ -335,4 +352,100 @@ def read_cached_signals(file_output: str, path_pat=None, sdt=None, edt=None, key
     return sf
 
 
+def generate_symbol_signals(dc: TsDataCache,
+                            ts_code: str,
+                            asset: str,
+                            sdt: str,
+                            edt: str,
+                            base_freq: str,
+                            freqs: List[str],
+                            get_signals: Callable,
+                            adj: str = 'hfq',
+                            signals_n: int = 0,
+                            ):
+    """使用 Tushare 数据生产某个标的的信号
+
+    :param dc:
+    :param ts_code:
+    :param asset:
+    :param sdt:
+    :param edt:
+    :param base_freq:
+    :param freqs:
+    :param get_signals:
+    :param adj: 复权方式
+    :param signals_n:
+    :return:
+    """
+    sdt_ = pd.to_datetime(sdt) - timedelta(days=3000)
+    if "分钟" in base_freq:
+        bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
+                                  asset=asset, adj=adj, raw_bar=True)
+        n_bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
+                                    asset=asset, adj=adj, raw_bar=False)
+        n_bars['dt'] = pd.to_datetime(n_bars['trade_time'])
+
+    else:
+        bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
+                          asset=asset, adj=adj, raw_bar=True)
+        n_bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
+                            asset=asset, adj=adj, raw_bar=False)
+        n_bars['dt'] = pd.to_datetime(n_bars['trade_date'])
+
+    dt_fmt = "%Y-%m-%d %H:%M:%S"
+    nb_dicts = {row['dt'].strftime(dt_fmt): row for row in n_bars.to_dict("records")}
+    signals = generate_signals(bars, sdt, base_freq, freqs, get_signals, signals_n=signals_n)
+
+    for s in signals:
+        s.update(nb_dicts[s['dt'].strftime(dt_fmt)])
+
+    df = pd.DataFrame(signals)
+
+    c_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('object')]
+    df[c_cols] = df[c_cols].astype('category')
+
+    float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
+    df[float_cols] = df[float_cols].astype('float32')
+    return df
+
+
+def generate_stocks_signals(dc: TsDataCache,
+                            signals_path: str,
+                            sdt: str,
+                            edt: str,
+                            base_freq: str,
+                            freqs: List[str],
+                            get_signals: Callable,
+                            adj: str = 'hfq',
+                            signals_n: int = 0,
+                            ):
+    """使用 Tushare 数据获取股票市场全部股票的信号
+
+    :param dc:
+    :param signals_path:
+    :param sdt:
+    :param edt:
+    :param base_freq:
+    :param freqs:
+    :param adj:
+    :param get_signals:
+    :param signals_n:
+    :return:
+    """
+    os.makedirs(signals_path, exist_ok=True)
+    stocks = dc.stock_basic()
+
+    for row in tqdm(stocks.to_dict('records'), desc="generate_stocks_signals"):
+        ts_code = row['ts_code']
+        name = row['name']
+        try:
+            file_signals = os.path.join(signals_path, f"{ts_code}_signals.pkl")
+            if os.path.exists(file_signals):
+                print(f"file exists: {file_signals}")
+                continue
+            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, base_freq, freqs, get_signals, adj, signals_n)
+            df.to_pickle(file_signals)
+        except:
+            print(f"generate_stocks_signals error: {ts_code}, {name}")
+            traceback.print_exc()
 
