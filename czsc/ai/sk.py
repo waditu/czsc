@@ -12,10 +12,7 @@ from typing import List, AnyStr
 from czsc.ai.utils import get_datetime_spans
 
 
-def evaluate_estimator(estimator: Pipeline,
-                       df: pd.DataFrame,
-                       x_cols: List[AnyStr],
-                       y_col: AnyStr = None):
+def evaluate_estimator(estimator: Pipeline, df: pd.DataFrame, x_cols: List[AnyStr], y_col: AnyStr = None):
     """评估模型表现
 
     :param estimator: 使用 Pipeline 组合成模型
@@ -36,20 +33,15 @@ def evaluate_estimator(estimator: Pipeline,
     y_ture = df[y_col]
 
     if model_type.lower() == 'regressor':
-        print(f"{sdt} - {edt} 回归模型评估: r2_score = %.3f; MSE = %.3f; MAE = %.3f" %
+        print(f"{sdt} - {edt} 回归模型评估: \nr2_score = %.3f; MSE = %.3f; MAE = %.3f" %
               (metrics.r2_score(y_ture, y_pred),
                metrics.mean_squared_error(y_ture, y_pred),
                metrics.mean_absolute_error(y_ture, y_pred)))
     elif model_type.lower() == 'classifier':
-        print(f"{sdt} - {edt} 分类模型评估: accuracy = %.3f; f1 = %.3f; recall = %.3f; precision = %.3f" %
-              (metrics.accuracy_score(y_ture, y_pred),
-               metrics.f1_score(y_ture, y_pred),
-               metrics.recall_score(y_ture, y_pred),
-               metrics.precision_score(y_ture, y_pred)))
+        print(f"{sdt} - {edt} 分类模型评估: \n{metrics.classification_report(y_ture, y_pred)}")
     else:
         raise ValueError
     return df
-
 
 def train_estimator(estimator: Pipeline,
                     df: pd.DataFrame,
