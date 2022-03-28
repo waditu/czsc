@@ -542,7 +542,7 @@ class TsDataCache:
             return 0
 
         results = []
-        for row in tqdm(stocks.to_dict('records'), desc="get_stocks_kline"):
+        for row in tqdm(stocks.to_dict('records'), desc="stocks_daily_bars"):
             ts_code = row['ts_code']
             try:
                 n_bars: pd.DataFrame = self.pro_bar(ts_code, sdt, edt, freq='D', asset='E', adj=adj, raw_bar=False)
@@ -585,7 +585,7 @@ class TsDataCache:
 
         ts_codes = self.stock_basic().ts_code.to_list()
         results = []
-        for ts_code in tqdm(ts_codes):
+        for ts_code in tqdm(ts_codes, desc='stocks_daily_basic'):
             df1 = self.daily_basic(ts_code, sdt, edt)
             results.append(df1)
         dfb = pd.concat(results, ignore_index=True)
@@ -608,13 +608,14 @@ class TsDataCache:
 
         dates = self.get_dates_span(sdt, edt, is_open=True)
         results = []
-        for d in tqdm(dates):
+        for d in tqdm(dates, desc='stocks_daily_bak'):
             df1 = self.bak_basic(d)
             results.append(df1)
         dfb = pd.concat(results, ignore_index=True)
         dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
         dfb = dfb[['trade_date', 'ts_code', 'name']]
         dfb['is_st'] = dfb['name'].str.contains('ST')
+        dfb.to_pickle(file_cache)
         return dfb
 
 
