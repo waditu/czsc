@@ -9,7 +9,8 @@ import pandas as pd
 from sklearn import metrics
 from sklearn.pipeline import Pipeline
 from typing import List, AnyStr
-from czsc.ai.utils import get_datetime_spans
+
+from .utils import get_datetime_spans
 
 
 def evaluate_estimator(estimator: Pipeline, df: pd.DataFrame, x_cols: List[AnyStr], y_col: AnyStr = None):
@@ -79,10 +80,7 @@ def train_estimator(estimator: Pipeline,
         estimator.fit(train[x_cols], train[y_col])
         valid['y_pred'] = estimator.predict(valid[x_cols])
         predicts.append(valid)
-
-        print("训练集评估效果：")
         evaluate_estimator(estimator, train, x_cols, y_col)
-        print("测试集评估效果：")
         evaluate_estimator(estimator, valid, x_cols, y_col)
 
     dfr = pd.concat(predicts)
