@@ -6,6 +6,7 @@ from transitions import Machine
 
 from .enum import Mark, Direction, Freq, Operate
 from .utils.ta import RSQ
+from .utils import x_round
 
 
 @dataclass
@@ -356,6 +357,27 @@ class Event:
         return False, None
 
 
+def cal_break_even_point(seq: List[float]) -> float:
+    """计算单笔收益序列的盈亏平衡点
+
+    :param seq: 单笔收益序列
+    :return: 盈亏平衡点
+    """
+    if len(seq) <= 0 or sum(seq) < 0:
+        return 1.0
+
+    seq = sorted(seq)
+    sub_ = 0
+    sub_i = 0
+    for i, s_ in enumerate(seq):
+        sub_ += s_
+        sub_i = i + 1
+        if sub_ >= 0:
+            break
+
+    return sub_i / len(seq)
+
+
 class PositionLong:
     def __init__(self, symbol: str,
                  hold_long_a: float = 0.5,
@@ -452,10 +474,12 @@ class PositionLong:
              "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
-             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0}
+             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
 
         if len(pairs) == 0:
             return p
+
+        p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
 
         p['复利收益'] = 1
         for pair in pairs:
@@ -665,11 +689,12 @@ class PositionShort:
              "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
-             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0}
+             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
 
         if len(pairs) == 0:
             return p
 
+        p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
         p['复利收益'] = 1
         for pair in pairs:
             p['复利收益'] *= (1 + pair['盈亏比例'] - self.cost)

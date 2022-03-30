@@ -1,7 +1,22 @@
 # coding: utf-8
 from collections import OrderedDict
 import pandas as pd
+from czsc.utils import x_round
 from czsc.objects import Signal, Factor, Event, Freq, Operate, PositionLong, PositionShort
+from czsc.objects import cal_break_even_point
+
+
+def test_cal_break_even_point():
+    assert cal_break_even_point([]) == 1
+    assert cal_break_even_point([1]) == 1
+    assert cal_break_even_point([-1, -2, 4, 5, 5]) == 0.6
+    assert cal_break_even_point([-1, -2]) == 1
+    assert cal_break_even_point([1, 2]) == 0.5
+    assert cal_break_even_point([-1, 1, -2]) == 1
+    assert cal_break_even_point([0, 1, -1, 2, 3, -6, -7]) == 1
+    assert x_round(cal_break_even_point([0, 1, -1, 2, 3, -6, 7, 8])) == 0.875
+    assert x_round(cal_break_even_point([-6, -1, 0, 1, 2, 3, 7, 8])) == 0.875
+    assert x_round(cal_break_even_point([2, 3, 4, 2, 1, 4, 0, 1, -1, 2, 3, -6, 7, 8])) == 0.5714
 
 
 def test_signal():
