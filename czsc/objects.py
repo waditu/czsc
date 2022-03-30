@@ -6,7 +6,6 @@ from transitions import Machine
 
 from .enum import Mark, Direction, Freq, Operate
 from .utils.ta import RSQ
-from .utils import x_round
 
 
 @dataclass
