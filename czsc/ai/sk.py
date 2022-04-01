@@ -44,6 +44,7 @@ def evaluate_estimator(estimator: Pipeline, df: pd.DataFrame, x_cols: List[AnySt
         raise ValueError
     return df
 
+
 def train_estimator(estimator: Pipeline,
                     df: pd.DataFrame,
                     x_cols: List[AnyStr],
@@ -69,6 +70,7 @@ def train_estimator(estimator: Pipeline,
     predicts = []
     for train_sdt, train_edt, valid_sdt, valid_edt in spans:
         train = df[(df['dt'] >= train_sdt) & (df['dt'] <= train_edt)].copy()
+        # 注意：由于时间窗口滚动过程，train_edt == valid_sdt，所以，划分验证集时，必须要大于 valid_sdt
         valid = df[(df['dt'] > valid_sdt) & (df['dt'] <= valid_edt)].copy()
         if valid.empty:
             continue
