@@ -32,9 +32,12 @@ def read_raw_results(raw_path, trade_dir="long"):
         if len(file) != 14:
             continue
         file = os.path.join(raw_path, file)
-        ops.append(pd.read_excel(file, sheet_name=f'{trade_dir}_operates'))
-        pairs.append(pd.read_excel(file, sheet_name=f'{trade_dir}_pairs'))
-        p.append(pd.read_excel(file, sheet_name=f'{trade_dir}_performance'))
+        try:
+            ops.append(pd.read_excel(file, sheet_name=f'{trade_dir}_operates'))
+            pairs.append(pd.read_excel(file, sheet_name=f'{trade_dir}_pairs'))
+            p.append(pd.read_excel(file, sheet_name=f'{trade_dir}_performance'))
+        except:
+            print(f"read_raw_results: fail on {file}")
 
     df_pairs = pd.concat(pairs, ignore_index=True)
     df_ops = pd.concat(ops, ignore_index=True)
