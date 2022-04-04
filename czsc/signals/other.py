@@ -6,8 +6,7 @@ create_dt: 2022/2/7 19:05
 """
 from datetime import datetime
 from collections import OrderedDict
-from czsc import CZSC
-from czsc.objects import Signal
+from czsc import CZSC, Signal
 
 
 def get_s_raw_bar_end(c: CZSC, k1='60分钟') -> OrderedDict:

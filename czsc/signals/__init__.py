@@ -9,4 +9,5 @@ from . import bxt
 from . import ta
 from . import other
 from . import vol
+from . import cat
 

@@ -12,6 +12,7 @@ freq_ts2cn = {v: k for k, v in freq_cn2ts.items()}
 
 freq_cn2gm = {"1分钟": "1m", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
               '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
+freq_gm2cn = {v: k for k, v in freq_cn2gm.items()}
 
 
 def jq_symbol_to_gm(symbol: str) -> str:

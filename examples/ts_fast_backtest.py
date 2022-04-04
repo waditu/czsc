@@ -41,5 +41,4 @@ if __name__ == '__main__':
     run_backtest(step_seq=('index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train', 'valid'))
-    # analyze_tactic_signals(path=r"C:\ts_data\trader_stocks_v1_e_01", step='index')
 
