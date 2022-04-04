@@ -63,14 +63,12 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
     """查找分型"""
     fx = None
     if k1.high < k2.high > k3.high and k1.low < k2.low > k3.low:
-        power = "强" if k3.close < k1.low else "弱"
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=k2.low,
-                fx=k2.high, elements=[k1, k2, k3], power=power)
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high,
+                low=k2.low, fx=k2.high, elements=[k1, k2, k3])
 
     if k1.low > k2.low < k3.low and k1.high > k2.high < k3.high:
-        power = "强" if k3.close > k1.high else "弱"
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high, low=k2.low,
-                fx=k2.low, elements=[k1, k2, k3], power=power)
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high,
+                low=k2.low, fx=k2.low, elements=[k1, k2, k3])
 
     return fx
 

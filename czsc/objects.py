@@ -1,4 +1,10 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2021/3/10 12:21
+describe: 常用对象结构
+"""
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List
@@ -59,7 +65,6 @@ class FX:
     high: [float, int]
     low: [float, int]
     fx: [float, int]
-    power: str = None
     elements: List = None
 
     @property
@@ -74,6 +79,34 @@ class FX:
         for e in self.elements:
             res.extend(e.raw_bars)
         return res
+
+    @property
+    def power_str(self):
+        assert len(self.elements) == 3
+        k1, k2, k3 = self.elements
+
+        if self.mark == Mark.D:
+            if k3.close > k1.high:
+                x = "强"
+            elif k3.close > k2.high:
+                x = "中"
+            else:
+                x = "弱"
+        else:
+            assert self.mark == Mark.G
+            if k3.close < k1.low:
+                x = "强"
+            elif k3.close < k2.low:
+                x = "中"
+            else:
+                x = "弱"
+        return x
+
+    @property
+    def power_volume(self):
+        """成交量力度"""
+        assert len(self.elements) == 3
+        return sum([x.vol for x in self.elements])
 
 
 @dataclass
