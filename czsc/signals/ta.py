@@ -7,12 +7,14 @@ describe: 技术分析相关信号的计算
 """
 import numpy as np
 from collections import OrderedDict
-from datetime import datetime
 
-from czsc import analyze
+from .. import analyze
 from ..objects import Signal
 from ..enum import Freq
-from ..utils.ta import MACD, SMA
+try:
+    from ..utils.ta1 import MACD, SMA
+except:
+    from ..utils.ta import MACD, SMA
 
 
 def get_s_single_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
