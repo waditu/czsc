@@ -9,14 +9,13 @@ describe: 基于 Tushare 分钟数据的择时策略快速回测
 import os
 import inspect
 import traceback
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from typing import Callable
 
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
-from ..utils import WordWriter, x_round, io
+from ..utils import x_round
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -226,10 +225,7 @@ class TsStocksBacktest:
         assert step in self.stocks_map.keys(), f"step 参数输入错误，可选值：{list(self.stocks_map.keys())}"
 
         init_n = self.init_n
-        if step == 'check':
-            save_html = True
-        else:
-            save_html = False
+        save_html = True if step == 'check' else False
         ts_codes = self.stocks_map[step]
         dc = self.dc
         res_path = self.res_path
@@ -306,3 +302,48 @@ class TsStocksBacktest:
         if tactic.get('short_events', None):
             self.analyze_results(step, 'short')
         print(f"results saved into {self.res_path}")
+
+    def analyze_signals(self, step: str):
+        """分析策略中信号的基础表现
+
+        :param step:
+        :return:
+        """
+        dc = self.dc
+        raw_path = os.path.join(self.res_path, f"raw_{step}")
+        file_dfs = os.path.join(self.res_path, f"{step}_dfs.pkl")
+        signals_pat = fr"{raw_path}\*_signals.pkl"
+        freq = freq_cn2ts[self.strategy()['base_freq']]
+
+        # 由于python存在循环导入的问题，只能把两个导入放到这里
+        from ..sensors.utils import read_cached_signals, SignalsPerformance
+
+        if not os.path.exists(file_dfs):
+            dfs = read_cached_signals(file_dfs, signals_pat)
+            asset = "I" if step == 'index' else "E"
+            results = []
+            for symbol, dfg in tqdm(dfs.groupby('symbol'), desc='add nbar'):
+                dfk = dc.pro_bar_minutes(symbol, sdt=dfg['dt'].min(), edt=dfg['dt'].max(),
+                                         freq=freq, asset=asset, adj='hfq', raw_bar=False)
+                dfk_cols = ['dt'] + [x for x in dfk.columns if x not in dfs.columns]
+                dfk = dfk[dfk_cols]
+                dfs_ = dfg.merge(dfk, on='dt', how='left')
+                results.append(dfs_)
+
+            dfs = pd.concat(results, ignore_index=True)
+            c_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('object')]
+            dfs[c_cols] = dfs[c_cols].astype('category')
+            float_cols = [k for k, v in dfs.dtypes.to_dict().items() if v.name.startswith('float')]
+            dfs[float_cols] = dfs[float_cols].astype('float32')
+            dfs.to_pickle(file_dfs, protocol=4)
+        else:
+            dfs = pd.read_pickle(file_dfs)
+
+        results_path = os.path.join(raw_path, 'signals_performance')
+        os.makedirs(results_path, exist_ok=True)
+        signal_cols = [x for x in dfs.columns if len(x.split("_")) == 3]
+        for key in signal_cols:
+            file_xlsx = os.path.join(results_path, f"{key.replace(':', '')}.xlsx")
+            sp = SignalsPerformance(dfs, keys=[key], dc=dc)
+            sp.report(file_xlsx)
+            print(f"{key} performance saved into {file_xlsx}")
