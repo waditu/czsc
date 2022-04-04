@@ -1,4 +1,10 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2021/3/10 11:21
+describe: 缠论分型、笔的识别
+"""
 import os
 import webbrowser
 import traceback
