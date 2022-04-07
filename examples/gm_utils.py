@@ -734,7 +734,7 @@ class GmCzscTrader(CzscAdvancedTrader):
 
 
 def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
-                     get_signals: Callable = get_default_signals,
+                     get_signals: Callable = None,
                      adjust=ADJUST_PREV, max_count=1000):
     """使用掘金的数据对任意标的、任意时刻的状态进行快照
 

@@ -36,7 +36,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 from gm_utils import *
-from tactics import trader_strategy_a as strategy
+from tactics import trader_strategy_b as strategy
 
 
 def init(context):
