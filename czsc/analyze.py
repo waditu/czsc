@@ -143,6 +143,40 @@ def check_bi(bars: List[NewBar], bi_min_len: int = 7):
         return None, bars
 
 
+def signals_counter(signals_list) -> OrderedDict:
+    """信号连续出现次数记录
+
+    :param signals_list: 存储的信号列表
+    :return:
+    """
+    if not signals_list:
+        return OrderedDict()
+
+    signals = [Signal(f"{k}_{v}") for k, v in signals_list[-1].items()
+               if len(k.split("_")) == 3 and "连续次数" not in k]
+
+    s = OrderedDict()
+    for signal in signals:
+        k1 = signal.k1
+        k2 = f"{signal.k2}#{signal.k3}"
+        k3 = "连续次数"
+        seq = [signal.is_match(x) for x in signals_list]
+        assert seq[-1], "最后一个信号匹配结果必须为 True"
+
+        n = 0
+        for x in seq:
+            if x:
+                n += 1
+            else:
+                n = 0
+        assert n >= 1, "连续次数小于1，不合逻辑"
+
+        signal_c = Signal(k1=k1, k2=k2, k3=k3, v1=f"{n}次")
+        s[signal_c.key] = signal_c.value
+
+    return s
+
+
 class CZSC:
     def __init__(self,
                  bars: List[RawBar],
@@ -278,7 +312,7 @@ class CZSC:
             if self.signals_n > 0:
                 self.signals_list.append(self.signals)
                 self.signals_list = self.signals_list[-self.signals_n:]
-                self.signals.update(self.get_signal_counter())
+                self.signals.update(signals_counter(self.signals_list))
         else:
             self.signals = OrderedDict()
 
@@ -309,36 +343,6 @@ class CZSC:
         chart = self.to_echarts(width, height)
         chart.render(file_html)
         webbrowser.open(file_html)
-
-    def get_signal_counter(self) -> OrderedDict:
-        """信号连续出现次数记录"""
-        if not self.signals or not self.signals_list:
-            return OrderedDict()
-
-        signals_list = self.signals_list
-        signals = [Signal(f"{k}_{v}") for k, v in self.signals.items()
-                   if len(k.split("_")) == 3 and "连续次数" not in k]
-
-        s = OrderedDict()
-        for signal in signals:
-            k1 = signal.k1
-            k2 = f"{signal.k2}#{signal.k3}"
-            k3 = "连续次数"
-            seq = [signal.is_match(x) for x in signals_list]
-            assert seq[-1], "最后一个信号匹配结果必须为 True"
-
-            n = 0
-            for x in seq:
-                if x:
-                    n += 1
-                else:
-                    n = 0
-            assert n >= 1, "连续次数小于1，不合逻辑"
-
-            signal_c = Signal(k1=k1, k2=k2, k3=k3, v1=f"{n}次")
-            s[signal_c.key] = signal_c.value
-
-        return s
 
     @property
     def last_bi_extend(self):

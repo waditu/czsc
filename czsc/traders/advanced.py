@@ -12,7 +12,7 @@ from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 
-from ..analyze import CZSC
+from ..analyze import CZSC, signals_counter
 from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
 from ..utils.bar_generator import BarGenerator
 from ..utils.cache import home_path
@@ -55,8 +55,10 @@ class CzscAdvancedTrader:
         self.long_pos = long_pos
         self.short_events = short_events
         self.short_pos = short_pos
+        self.signals_n = signals_n
+        self.signals_list = []
         self.verbose = envs.get_verbose()
-        self.kas = {freq: CZSC(b, max_bi_count, bi_min_len, None, signals_n) for freq, b in bg.bars.items()}
+        self.kas = {freq: CZSC(b, max_bi_count, bi_min_len) for freq, b in bg.bars.items()}
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
@@ -106,6 +108,10 @@ class CzscAdvancedTrader:
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         dt, bid, price = self.end_dt, self.bid, self.latest_price
         self.s = self.get_signals(self)
+        if self.signals_n > 0:
+            self.signals_list.append(self.s)
+            self.signals_list = self.signals_list[-self.signals_n:]
+            self.s.update(signals_counter(self.signals_list))
 
         # 遍历 long_events，更新 long_pos
         if self.long_events:
