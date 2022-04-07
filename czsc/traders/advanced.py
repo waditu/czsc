@@ -101,6 +101,7 @@ class CzscAdvancedTrader:
         for freq, b in self.bg.bars.items():
             self.kas[freq].update(b[-1])
 
+        self.symbol = bar.symbol
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         dt, bid, price = self.end_dt, self.bid, self.latest_price
