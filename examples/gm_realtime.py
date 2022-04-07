@@ -20,6 +20,10 @@ os.environ['wx_key'] = '2daec96b-****-4f83-818b-2952fe2731c0'
 os.environ['max_sym_pos'] = '0.5'
 os.environ['path_gm_logs'] = 'C:/gm_logs'
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 from gm_utils import *
 from tactics import trader_strategy_a as strategy
 

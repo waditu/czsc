@@ -10,17 +10,17 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 import os
-from czsc import CZSC
+from collections import OrderedDict
+from czsc import signals, CzscAdvancedTrader
 from czsc.sensors.plates import ThsConceptsSensor, TsDataCache
 from czsc.objects import Freq, Signal, Factor, Event, Operate
-from czsc.signals.ta import get_s_macd, get_s_sma, OrderedDict
 
 
-def get_signals(c: CZSC):
-    s = OrderedDict()
-
-    if c.freq == Freq.D:
-        s.update(get_s_sma(c, di=1, t_seq=(5, 20, 120, 250)))
+def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+    for _, c in cat.kas.items():
+        if c.freq == Freq.D:
+            s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20)))
     return s
 
 
@@ -38,8 +38,8 @@ def get_event():
 
 
 if __name__ == '__main__':
-    data_path = r'D:\research\ts_data'
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='20211211')
+    data_path = r'C:\ts_data'
+    dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-03-23')
     sdt = "20180101"
     edt = "20211114"
     results_path = os.path.join(data_path, f"ths_concepts_{get_event().name}_{sdt}_{edt}")

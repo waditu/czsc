@@ -5,6 +5,10 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/17 22:26
 describe: 使用掘金数据验证买卖点
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 from examples import tactics
 from examples.gm_utils import *
 

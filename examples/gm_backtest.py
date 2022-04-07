@@ -31,6 +31,10 @@ os.environ['backtest_transaction_ratio'] = '1'
 os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+
 from gm_utils import *
 from tactics import trader_strategy_a as strategy
 

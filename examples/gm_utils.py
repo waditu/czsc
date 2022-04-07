@@ -17,6 +17,7 @@ from collections import OrderedDict
 from typing import List, Callable
 from czsc.traders import CzscAdvancedTrader
 from czsc.utils import qywx as wx
+from czsc.utils import x_round
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.log import create_logger
 from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionShort
@@ -40,22 +41,20 @@ else:
     gm_token = open(file_token, encoding="utf-8").read()
     set_token(gm_token)
 
-freq_gm2cn = {"60s": "1分钟", "300s": "5分钟", "900s": "15分钟",
-              "1800s": "30分钟", "3600s": "60分钟", "1d": "日线"}
+freq_gm2cn = {"60s": "1分钟", "300s": "5分钟", "900s": "15分钟", "1800s": "30分钟", "3600s": "60分钟", "1d": "日线"}
 freq_cn2gm = {v: k for k, v in freq_gm2cn.items()}
-
 
 indices = {
     "上证指数": 'SHSE.000001',
     "上证50": 'SHSE.000016',
     "沪深300": "SHSE.000300",
     "中证1000": "SHSE.000852",
+    "中证500": "SHSE.000905",
 
     "深证成指": "SZSE.399001",
     "创业板指数": 'SZSE.399006',
     "深次新股": "SZSE.399678",
     "中小板指": "SZSE.399005",
-    "中证500": "SZSE.399905",
     "国证2000": "SZSE.399303",
     "小盘成长": "SZSE.399376",
     "小盘价值": "SZSE.399377",
@@ -108,6 +107,7 @@ def get_index_shares(name, end_date=None):
 def format_kline(df, freq: Freq):
     bars = []
     for i, row in df.iterrows():
+        # amount 单位：元
         bar = RawBar(symbol=row['symbol'], id=i, freq=freq, dt=row['eob'], open=round(row['open'], 2),
                      close=round(row['close'], 2), high=round(row['high'], 2),
                      low=round(row['low'], 2), vol=row['volume'], amount=row['amount'])
@@ -155,7 +155,9 @@ def get_init_bg(symbol: str,
         end_dt = end_dt - timedelta(hours=8)
     else:
         assert end_dt.tzinfo._filename == 'PRC'
-    last_day = (end_dt - timedelta(days=10)).replace(hour=16, minute=0)
+
+    delta_days = 180
+    last_day = (end_dt - timedelta(days=delta_days)).replace(hour=16, minute=0)
 
     bg = BarGenerator(base_freq, freqs, max_count)
     if "周线" in freqs or "月线" in freqs:
@@ -175,7 +177,7 @@ def get_init_bg(symbol: str,
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
     bars2 = get_kline(symbol=symbol, end_time=end_dt, freq=freq_cn2gm[base_freq],
-                      count=int(240 / int(base_freq.strip('分钟'))*10))
+                      count=int(240 / int(base_freq.strip('分钟')) * delta_days))
     data = [x for x in bars2 if x.dt > last_day]
     assert len(data) > 0
     print(f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
@@ -424,10 +426,6 @@ def on_bar(context, bars):
 
         trader.sync_long_position(context)
 
-        if context.mode != MODE_BACKTEST and context.now.strftime("%H:%M") == '14:00':
-            file_trader = os.path.join(context.data_path, f'traders/{symbol}.cat')
-            dill.dump(trader, open(file_trader, 'wb'))
-
 
 def is_order_exist(context, symbol, side) -> bool:
     """判断同方向订单是否已经存在
@@ -511,6 +509,72 @@ def report_account_status(context):
         wx.push_text(msg.strip("\n *"), key=context.wx_key)
 
 
+def report_account_status_v1(context):
+    """报告账户持仓状态"""
+    if context.now.isoweekday() > 5:
+        return
+
+    logger = context.logger
+    latest_dt = context.now.strftime(dt_fmt)
+    account = context.account(account_id=context.account_id)
+    cash = account.cash
+    positions = account.positions()
+
+    logger.info("=" * 30 + f" 账户状态【{latest_dt}】 " + "=" * 30)
+    cash_report = f"净值：{int(cash.nav)}，可用资金：{int(cash.available)}，" \
+                  f"浮动盈亏：{int(cash.fpnl)}，标的数量：{len(positions)}"
+    logger.info(cash_report)
+
+    for p in positions:
+        p_report = f"标的：{p.symbol}，名称：{context.stocks.get(p.symbol, '无名')}，" \
+                   f"数量：{p.volume}，成本：{round(p.vwap, 2)}，方向：{p.side}，" \
+                   f"当前价：{round(p.price, 2)}，成本市值：{int(p.volume * p.vwap)}，" \
+                   f"建仓时间：{p.created_at.strftime(dt_fmt)}"
+        logger.info(p_report)
+
+    # 实盘或仿真，推送账户信息到企业微信
+    if context.mode != MODE_BACKTEST:
+
+        msg = f"股票账户状态报告\n{'*' * 31}\n"
+        msg += f"账户净值：{int(cash.nav)}\n" \
+               f"持仓市值：{int(cash.market_value)}\n" \
+               f"可用资金：{int(cash.available)}\n" \
+               f"浮动盈亏：{int(cash.fpnl)}\n" \
+               f"标的数量：{len(positions)}\n"
+        wx.push_text(msg.strip("\n *"), key=context.wx_key)
+
+        results = []
+        for symbol, info in context.symbols_info.items():
+            name = context.stocks.get(symbol, '无名')
+            trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+            p = account.position(symbol=symbol, side=PositionSide_Long)
+            row = {'symbol': symbol, 'name': name, 'dt': trader.end_dt.strftime(dt_fmt),
+                   'long_pos': trader.long_pos.pos, 'long_cost': trader.long_pos.long_cost,
+                   'price': trader.latest_price}
+            if p:
+                r1 = {
+                    "持仓数量": p.volume,
+                    "持仓成本": x_round(p.vwap, 2),
+                    "持仓市值": int(p.volume * p.vwap),
+                }
+            else:
+                r1 = {
+                    "持仓数量": 0,
+                    "持仓成本": 0,
+                    "持仓市值": 0,
+                }
+            row.update(r1)
+            results.append(row)
+
+        df = pd.DataFrame(results)
+        df['long_ret'] = (df['price'] / df['long_cost'] - 1).round(4)
+        df.sort_values(['持仓市值', 'long_ret'], ascending=False, inplace=True, ignore_index=True)
+        file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
+        df.to_excel(file_xlsx)
+        wx.push_file(file_xlsx, key=context.wx_key)
+        os.remove(file_xlsx)
+
+
 class GmCzscTrader(CzscAdvancedTrader):
     def __init__(self,
                  bg: BarGenerator,
@@ -522,7 +586,6 @@ class GmCzscTrader(CzscAdvancedTrader):
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
                  signals_n: int = 0,
-                 verbose: bool = False,
                  ):
         super().__init__(
             bg=bg,
@@ -534,7 +597,6 @@ class GmCzscTrader(CzscAdvancedTrader):
             max_bi_count=max_bi_count,
             bi_min_len=bi_min_len,
             signals_n=signals_n,
-            verbose=verbose,
         )
 
     def sync_long_position(self, context):
@@ -616,7 +678,7 @@ class GmCzscTrader(CzscAdvancedTrader):
             return
 
         percent = max_sym_pos * long_pos.pos
-        volume = int((cash.nav * percent / price // 100) * 100)
+        volume = int((cash.nav * percent / price // 100) * 100)     # 单位：股
         if algo_name:
             _ = algo_order(symbol=symbol, volume=volume, side=OrderSide_Buy,
                            order_type=OrderType_Limit, position_effect=PositionEffect_Open,
@@ -733,14 +795,58 @@ def process_out_of_symbols(context):
         print(f"process_out_of_symbols: {context.now} 不是交易时间")
         return
 
+    if context.mode == MODE_BACKTEST:
+        print(f"process_out_of_symbols: 回测模式下不需要执行")
+        return
+
     account = context.account(account_id=context.account_id)
     positions = account.positions(symbol="", side=PositionSide_Long)
 
+    oos = []
     for p in positions:
         symbol = p.symbol
         if p.volume > 0 and p.symbol not in context.symbols_info.keys():
-            order_target_percent(symbol=symbol, percent=0, position_side=PositionSide_Long,
-                                 order_type=OrderType_Market, account=account.id)
+            oos.append(symbol)
+            # order_target_volume(symbol=symbol, volume=0, position_side=PositionSide_Long,
+            #                     order_type=OrderType_Limit, price=p.price, account=account.id)
+    if oos:
+        wx.push_text(f"不在交易列表的持仓股：{', '.join(oos)}", context.wx_key)
+
+
+def save_traders(context):
+    """实盘：保存交易员快照"""
+    if context.now.isoweekday() > 5:
+        print(f"save_traders: {context.now} 不是交易时间")
+        return
+
+    for symbol in context.symbols_info.keys():
+        trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+        if context.mode != MODE_BACKTEST:
+            file_trader = os.path.join(context.data_path, f'traders/{symbol}.cat')
+            dill.dump(trader, open(file_trader, 'wb'))
+
+
+def collect_holds_info(traders: List[GmCzscTrader]):
+    """获取持仓信息"""
+    if len(traders) <= 0:
+        return pd.DataFrame()
+
+    results = []
+    for trader in traders:
+        row = {'symbol': trader.symbol, 'dt': trader.end_dt}
+        if trader.long_pos:
+            row.update({
+                "long_pos": trader.long_pos.pos,
+            })
+
+        if trader.short_pos:
+            row.update({
+                "short_pos": trader.short_pos.pos,
+            })
+
+        results.append(row)
+
+    return pd.DataFrame(results)
 
 
 def init_context_universal(context, name):
@@ -873,10 +979,10 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
 
         except:
             del symbols_info[symbol]
-            logger.info(f"{symbol} - {context.stocks[symbol]} 初始化失败，当前时间：{context.now}")
+            logger.info(f"{symbol} - {context.stocks.get(symbol, '无名')} 初始化失败，当前时间：{context.now}")
             traceback.print_exc()
 
-    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=True)
+    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
     logger.info(f"订阅成功交易标的数量：{len(symbols_info)}")
     logger.info(f"交易标的配置：{symbols_info}")
     context.symbols_info = symbols_info
@@ -887,19 +993,20 @@ def init_context_schedule(context):
 
     :param context:
     """
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='09:31:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='10:01:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='10:31:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='11:01:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='11:31:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='13:01:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='13:31:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='14:01:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='14:31:00')
-    schedule(schedule_func=report_account_status, date_rule='1d', time_rule='15:01:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='09:31:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='10:01:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='10:31:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='11:01:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='11:31:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='13:01:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='13:31:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='14:01:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='14:31:00')
+    schedule(schedule_func=report_account_status_v1, date_rule='1d', time_rule='15:01:00')
 
-    schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')
-
+    # 以下是 实盘/仿真 模式下的定时任务
     if context.mode != MODE_BACKTEST:
-        # 以下是 实盘/仿真 模式下的定时任务
-        schedule(schedule_func=realtime_check_index_status, date_rule='1d', time_rule='17:30:00')
+        schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')
+        schedule(schedule_func=save_traders, date_rule='1d', time_rule='11:40:00')
+        schedule(schedule_func=save_traders, date_rule='1d', time_rule='15:10:00')
+        # schedule(schedule_func=realtime_check_index_status, date_rule='1d', time_rule='17:30:00')
