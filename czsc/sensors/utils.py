@@ -14,6 +14,7 @@ from tqdm import tqdm
 from deprecated import deprecated
 from datetime import datetime, timedelta
 from typing import Callable, List, AnyStr
+from sklearn.preprocessing import KBinsDiscretizer
 
 from .. import envs
 from ..traders.advanced import CzscAdvancedTrader, BarGenerator
@@ -75,6 +76,29 @@ def analyze_signal_keys(dfs: pd.DataFrame, keys: List[str], mode: int = 0) -> pd
     r_cols = [x for x in dfr.columns if x[-1] == 'b']
     dfr[r_cols] = dfr[r_cols].round(2)
     return dfr
+
+
+def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strategy='quantile'):
+    """使用 KBinsDiscretizer 对连续变量在时间截面上进行离散化
+
+    :param df: 数据对象
+    :param col: 连续变量列名
+    :param n_bins: 参见 KBinsDiscretizer 文档
+    :param encode: 参见 KBinsDiscretizer 文档
+    :param strategy: 参见 KBinsDiscretizer 文档
+    :return:
+    """
+    assert col in df.columns, f'{col} not in {df.columns}'
+    assert 'dt' in df.columns
+
+    new_col = f'{col}_bins{n_bins}'
+    results = []
+    for dt, dfg in tqdm(df.groupby('dt')):
+        kb = KBinsDiscretizer(n_bins=n_bins, encode=encode, strategy=strategy)
+        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel()
+        results.append(dfg)
+    df = pd.concat(results, ignore_index=True)
+    return df
 
 
 def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None, indices=None):
