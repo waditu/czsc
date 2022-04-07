@@ -147,7 +147,16 @@ def signals_counter(signals_list) -> OrderedDict:
     """信号连续出现次数记录
 
     :param signals_list: 存储的信号列表
-    :return:
+        数据样例：
+            signals_list = [
+                {"dt": '2020-01-01', "日线_倒1K_SMA5多空": "空头_任意_任意_0"},
+                {"dt": '2020-01-02', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
+                {"dt": '2020-01-03', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
+                {"dt": '2020-01-04', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
+                {"dt": '2020-01-05', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
+                {"dt": '2020-01-06', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
+            ]
+    :return: 信号连续次数
     """
     if not signals_list:
         return OrderedDict()
@@ -257,7 +266,7 @@ class CZSC:
             bars_ubi_a = bars_ubi
 
         if self.verbose and len(bars_ubi_a) > 300:
-            print(f"{self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸超长，延伸数量: {len(bars_ubi_a)}")
+            print(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi_a, self.bi_min_len)
         self.bars_ubi = bars_ubi_
