@@ -14,6 +14,7 @@ from collections import OrderedDict
 from .enum import Mark, Direction
 from .objects import BI, FX, RawBar, NewBar, Signal
 from .utils.echarts_plot import kline_pro
+from . import envs
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -148,8 +149,7 @@ class CZSC:
                  max_bi_count: int = 50,
                  bi_min_len: int = 7,
                  get_signals: Callable = None,
-                 signals_n: int = 0,
-                 verbose=False):
+                 signals_n: int = 0):
         """
 
         :param bars: K线数据
@@ -160,7 +160,7 @@ class CZSC:
             默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
             如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
-        self.verbose = verbose
+        self.verbose = envs.get_verbose()
         self.max_bi_count = max_bi_count
         self.bi_min_len = bi_min_len
         self.signals_n = signals_n

@@ -7,20 +7,22 @@ create_dt: 2022/2/10 21:12
 from czsc import signals, CZSC
 from czsc.objects import Freq, Operate, Signal, Factor, Event
 from collections import OrderedDict
+from czsc.traders import CzscAdvancedTrader
 
 
 def trader_strategy_a():
     """A股市场择时策略A"""
-    def get_signals(c: CZSC) -> OrderedDict:
-        s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-        if c.freq in [Freq.F15]:
-            s.update(signals.bxt.get_s_d0_bi(c))
-            s.update(signals.other.get_s_zdt(c, di=1))
-            s.update(signals.other.get_s_op_time_span(c, op='开多', time_span=('13:00', '14:50')))
-            s.update(signals.other.get_s_op_time_span(c, op='平多', time_span=('09:35', '14:50')))
+    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        for _, c in cat.kas.items():
+            if c.freq in [Freq.F15]:
+                s.update(signals.bxt.get_s_d0_bi(c))
+                s.update(signals.other.get_s_zdt(c, di=1))
+                s.update(signals.other.get_s_op_time_span(c, op='开多', time_span=('13:00', '14:50')))
+                s.update(signals.other.get_s_op_time_span(c, op='平多', time_span=('09:35', '14:50')))
 
-        if c.freq in [Freq.F60, Freq.D, Freq.W]:
-            s.update(signals.ta.get_s_macd(c, di=1))
+            if c.freq in [Freq.F60, Freq.D, Freq.W]:
+                s.update(signals.ta.get_s_macd(c, di=1))
         return s
 
     long_states_pos = {

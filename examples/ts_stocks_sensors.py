@@ -11,25 +11,26 @@ sys.path.insert(0, '..')
 import os
 import pandas as pd
 from collections import OrderedDict
-from czsc import CZSC, Freq, signals, Operate, Signal, Factor, Event
+from czsc import CzscAdvancedTrader, Freq, signals, Operate, Signal, Factor, Event
 from czsc.sensors.stocks import StocksDaySensor, TsDataCache
 
 pd.set_option('mode.chained_assignment', None)
 
 
 def sds_czsc_v1_t1():
-    def get_signals(c: CZSC):
+    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         """sds_czsc_v1"""
-        s = OrderedDict()
-        if c.freq == Freq.D:
-            s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 250)))
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        for _, c in cat.kas.items():
+            if c.freq == Freq.D:
+                s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20)))
         return s
 
     def get_event():
         event = Event(name="SDS_CZSC_V1_T1", operate=Operate.LO, factors=[
             Factor(name="MACD日线长多", signals_all=[
-                Signal(k1='日线', k2='倒1K', k3='SMA250多空', v1='多头'),
-                Signal(k1='日线', k2='倒1K', k3='SMA250方向', v1='向上'),
+                Signal(k1='日线', k2='倒1K', k3='SMA20多空', v1='多头'),
+                Signal(k1='日线', k2='倒1K', k3='SMA20方向', v1='向上'),
             ]),
         ])
         return event

@@ -87,7 +87,7 @@ def test_czsc_update():
     assert not c.signals
 
     # 计算信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals, verbose=True)
+    c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals)
     assert len(c.bi_list) == 50 and not c.last_bi_extend
     assert isinstance(c.signals, OrderedDict) and len(c.signals) == 38
 

@@ -6,24 +6,22 @@ create_dt: 2021/11/7 21:07
 """
 import pandas as pd
 from tqdm import tqdm
-from czsc.traders.advanced import CzscAdvancedTrader
-from czsc.signals.signals import *
-from czsc.utils.bar_generator import BarGenerator
+from collections import OrderedDict
+from czsc import signals
+from czsc.traders.advanced import CzscAdvancedTrader, BarGenerator
 from czsc.objects import Signal, Factor, Event, Operate, PositionLong, PositionShort
-from test.test_analyze import read_1min, read_daily, get_user_signals
+from test.test_analyze import read_1min, read_daily
 
 
-def get_default_signals(c: analyze.CZSC) -> OrderedDict:
-    """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
+def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+    for _, c in cat.kas.items():
+        s.update(signals.bxt.get_s_like_bs(c, di=1))
 
-    实盘时可以按照自己的需要自定义计算哪些信号。
-
-    :param c: CZSC 对象
-    :return: 信号字典
-    """
-    s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
-    for di in range(1, 2):
-        s.update(get_s_like_bs(c, di))
+    if cat.long_pos:
+        s.update(signals.cat.get_s_position(cat, cat.long_pos))
+    if cat.short_pos:
+        s.update(signals.cat.get_s_position(cat, cat.short_pos))
     return s
 
 
@@ -33,14 +31,14 @@ def test_daily_trader():
     for bar in bars[:1000]:
         kg.update(bar)
 
-    ct = CzscAdvancedTrader(kg, get_user_signals)
+    ct = CzscAdvancedTrader(kg, get_signals)
 
-    signals = []
+    signals_ = []
     for bar in bars[1000:]:
         ct.update(bar)
-        signals.append(dict(ct.s))
+        signals_.append(dict(ct.s))
 
-    assert len(signals) == 2332
+    assert len(signals_) == 2332
 
 
 def run_advanced_trader(T0=True):
@@ -93,11 +91,9 @@ def run_advanced_trader(T0=True):
         ]),
     ]
     short_pos = PositionShort(symbol='000001.SH', hold_short_a=0.5, hold_short_b=0.8, hold_short_c=1, T0=T0)
-    ct = CzscAdvancedTrader(bg=kg, get_signals=get_default_signals,
-                            long_events=long_events, long_pos=long_pos,
-                            short_events=short_events, short_pos=short_pos,
-                            )
-    assert len(ct.s) == 28
+    ct = CzscAdvancedTrader(kg, get_signals, long_events=long_events, long_pos=long_pos,
+                            short_events=short_events, short_pos=short_pos)
+    assert len(ct.s) == 21
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
         # if long_pos.pos_changed:
