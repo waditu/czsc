@@ -10,6 +10,7 @@ import os.path
 import traceback
 import pandas as pd
 import matplotlib.pyplot as plt
+from deprecated import deprecated
 from datetime import timedelta, datetime
 from tqdm import tqdm
 from typing import Callable, List
@@ -25,6 +26,7 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 
+@deprecated(reason="使用 SignalsPerformance 替代信号分析", version='0.9.0')
 class FactorsSensor:
     """因子（Factor）感应器：分析各种信号和因子的表现"""
 
