@@ -20,7 +20,6 @@ from ..traders.advanced import CzscAdvancedTrader, BarGenerator
 from ..traders.utils import freq_cn2ts
 from ..data.ts_cache import TsDataCache
 from ..objects import RawBar, Signal
-from ..signals.signals import get_default_signals
 from ..utils.cache import home_path
 
 
@@ -176,7 +175,7 @@ def generate_signals(bars: List[RawBar],
 
 def check_signals_acc(bars: List[RawBar],
                       signals: List[Signal] = None,
-                      get_signals: Callable = get_default_signals) -> None:
+                      get_signals: Callable = None) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
     输入基础周期K线和想要验证的信号，输出信号识别结果的快照
