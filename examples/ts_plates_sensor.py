@@ -20,7 +20,7 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     for _, c in cat.kas.items():
         if c.freq == Freq.D:
-            s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20)))
+            s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20, 120)))
     return s
 
 
