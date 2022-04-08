@@ -21,12 +21,12 @@ from czsc.utils import x_round
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.log import create_logger
 from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionShort
-from czsc.signals.signals import get_default_signals
+
 
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
-assert czsc.__version__ >= "0.8.13"
+assert czsc.__version__ >= "0.8.22"
 
 
 def set_gm_token(token):
