@@ -17,8 +17,8 @@ from datetime import timedelta, datetime
 import pandas as pd
 from tqdm import tqdm
 from typing import Callable
-from czsc.utils import WordWriter
-from czsc.utils import io
+from czsc import envs
+from czsc.utils import WordWriter, io
 from czsc.data.ts_cache import TsDataCache, Freq
 from czsc.sensors.utils import get_index_beta, generate_signals, turn_over_rate, max_draw_down
 
@@ -35,8 +35,7 @@ class ThsConceptsSensor:
                  dc: TsDataCache,
                  get_signals: Callable,
                  get_event: Callable,
-                 ths_index_type='N',
-                 verbose: bool = False):
+                 ths_index_type='N'):
         """
 
         :param results_path: 结果保存路径
@@ -46,7 +45,6 @@ class ThsConceptsSensor:
         :param get_signals: 信号获取函数
         :param get_event: 事件定义函数
         :param ths_index_type: 同花顺指数类型 N-板块指数 I-行业指数 S-同花顺特色指数
-        :param verbose: 是否返回更详细的执行过程
         """
         self.name = self.__class__.__name__
         self.dc = dc
@@ -57,7 +55,7 @@ class ThsConceptsSensor:
         self.freqs = [Freq.W.value, Freq.M.value]
         self.dc = dc
         self.ths_index_type = ths_index_type
-        self.verbose = verbose
+        self.verbose = envs.get_verbose()
         self.cache = dict()
         self.results_path = results_path
         os.makedirs(self.results_path, exist_ok=True)
@@ -181,6 +179,7 @@ class ThsConceptsSensor:
         trade_cal = trade_cal[trade_cal.is_open == 1]
         trade_dates = trade_cal[(trade_cal['cal_date'] >= self.sdt)
                                 & (trade_cal['cal_date'] <= self.edt)].cal_date.to_list()
+        n_cols = [x for x in self.ssd.columns if x[0] == 'n' and x[-1] == 'b']
 
         holds = []
         dfg_map = {trade_date.strftime("%Y%m%d"): dfg for trade_date, dfg in self.ssd.groupby('trade_date')}
@@ -190,11 +189,11 @@ class ThsConceptsSensor:
                 if self.verbose:
                     print(f"{trade_date} 结果为空")
                 row = {'trade_date': trade_date, 'number': 0}
-                row.update({k: 0 for k in ['n1b', 'n2b', 'n3b', 'n5b', 'n10b', 'n20b']})
+                row.update({k: 0 for k in n_cols})
             else:
                 detail.append(dfg)
                 row = {'trade_date': trade_date, 'number': len(dfg)}
-                row.update(dfg[['n1b', 'n2b', 'n3b', 'n5b', 'n10b', 'n20b']].mean().to_dict())
+                row.update(dfg[n_cols].mean().to_dict())
             daily.append(row)
             holds.append(self.create_next_positions(dfg))
 
@@ -209,7 +208,7 @@ class ThsConceptsSensor:
              "组合换手": tor,
              "平均数量": df_daily['number'].mean(),
              }
-        p.update(df_daily[['n1b', 'n2b', 'n3b', 'n5b', 'n10b', 'n20b']].mean().to_dict())
+        p.update(df_daily[n_cols].mean().to_dict())
 
         f = pd.ExcelWriter(os.path.join(self.results_path, "selected.xlsx"))
         df_detail.to_excel(f, index=False, sheet_name="强势板块")

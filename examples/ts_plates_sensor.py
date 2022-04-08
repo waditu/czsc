@@ -25,13 +25,11 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
 
 
 def get_event():
-    event = Event(name="SMA_V1", operate=Operate.LO, factors=[
+    event = Event(name="SMA_V2", operate=Operate.LO, factors=[
         Factor(name="日超强", signals_all=[
-            Signal(k1='日线', k2='倒1K', k3='SMA120多空', v1='多头'),
-            Signal(k1='日线', k2='倒1K', k3='SMA120方向', v1='向上'),
-
             Signal(k1='日线', k2='倒1K', k3='SMA20多空', v1='多头'),
             Signal(k1='日线', k2='倒1K', k3='SMA20方向', v1='向上'),
+            Signal(k1='日线', k2='倒1K', k3='SMA120方向', v1='向上'),
         ]),
     ])
     return event
