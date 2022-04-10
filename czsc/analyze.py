@@ -134,11 +134,17 @@ def check_bi(bars: List[NewBar], bi_min_len: int = 7):
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
                  or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-
     if len(bars_a) >= bi_min_len and not ab_include:
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
-        return bi, bars_b
+
+        low_ubi = min([x.low for x in bars_b])
+        high_ubi = max([x.high for x in bars_b])
+        if (bi.direction == Direction.Up and high_ubi > bi.high) \
+                or (bi.direction == Direction.Down and low_ubi < bi.low):
+            return None, bars
+        else:
+            return bi, bars_b
     else:
         return None, bars
 
@@ -251,21 +257,14 @@ class CZSC:
         last_bi = self.bi_list[-1]
 
         # 如果上一笔被破坏，将上一笔的bars与bars_ubi进行合并
-        min_low_ubi = min([x.low for x in bars_ubi[2:]])
-        max_high_ubi = max([x.high for x in bars_ubi[2:]])
-
-        if last_bi.direction == Direction.Up and max_high_ubi > last_bi.high:
+        if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) \
+                or (last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low):
             bars_ubi_a = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
             self.bi_list.pop(-1)
-
-        elif last_bi.direction == Direction.Down and min_low_ubi < last_bi.low:
-            bars_ubi_a = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
-            self.bi_list.pop(-1)
-
         else:
             bars_ubi_a = bars_ubi
 
-        if self.verbose and len(bars_ubi_a) > 300:
+        if self.verbose and len(bars_ubi_a) > 100:
             print(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi_a, self.bi_min_len)
