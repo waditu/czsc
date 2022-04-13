@@ -17,6 +17,16 @@
 * 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
 * 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
 
+## 使用案例
+
+* `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
+* `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
+* `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
+* `examples/ts_stocks_sensors.py` 日线选股策略回测
+* `examples/gm_backtest.py` 使用掘金终端进行缠论策略回测
+* `examples/gm_realtime.py` 使用掘金终端进行策略实盘、仿真
+* `examples/gm_check_point.py` 使用掘金终端的数据进行买卖点验证
+
 ## 问题讨论
 
 >在 [discussions](https://github.com/zengbin93/czsc/discussions) 中提出了一些值得探讨的实战问题，欢迎积极参与讨论，我可以负责实现一些好的想法，代码开源。
