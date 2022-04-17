@@ -410,6 +410,54 @@ def cal_break_even_point(seq: List[float]) -> float:
     return sub_i / len(seq)
 
 
+def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> dict:
+    """评估交易表现
+
+    :param pairs:
+    :param symbol: 交易标的
+    :param trade_dir: 交易方向，可选值 ['多头', '空头']
+    :param cost: 双边交易成本
+    :return: 交易表现
+    """
+    p = {"交易标的": symbol, "交易方向": trade_dir,
+         "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+         '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
+         '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
+         '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
+
+    if len(pairs) == 0:
+        return p
+
+    p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
+
+    p['复利收益'] = 1
+    for pair in pairs:
+        p['复利收益'] *= (1 + pair['盈亏比例'] - cost)
+    p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
+
+    p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
+    p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
+    p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
+
+    win_ = [x for x in pairs if x['盈亏比例'] >= 0]
+    if len(win_) > 0:
+        p['盈利次数'] = len(win_)
+        p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
+        p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
+        p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
+
+    loss_ = [x for x in pairs if x['盈亏比例'] < 0]
+    if len(loss_) > 0:
+        p['亏损次数'] = len(loss_)
+        p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
+        p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
+
+        p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
+        p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
+
+    return p
+
+
 class PositionLong:
     def __init__(self, symbol: str,
                  hold_long_a: float = 0.5,
@@ -449,6 +497,8 @@ class PositionLong:
         self.machine.add_transition('long_exit', ['hold_long_a', 'hold_long_b', 'hold_long_c'], 'hold_money')
 
         self.operates = []
+        self.last_pair_operates = []
+        self.pairs = []
         self.long_high = -1         # 持多仓期间出现的最高价
         self.long_cost = -1         # 最近一次加多仓的成本
         self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
@@ -461,10 +511,9 @@ class PositionLong:
         """返回状态对应的仓位"""
         return self.pos_map[self.state]
 
-    @property
-    def pairs(self):
+    def operates_to_pair(self, operates):
         """返回买卖交易对"""
-        operates = self.operates
+        assert operates[-1]['op'] == Operate.LE and operates[0]['op'] == Operate.LO
         pairs = []
         latest_pair = []
         for op in operates:
@@ -497,48 +546,12 @@ class PositionLong:
                 pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
                 pairs.append(pair)
                 latest_pair = []
-        return pairs
+        assert len(pairs) == 1
+        return pairs[0]
 
     def evaluate_operates(self):
         """评估操作表现"""
-        pairs = self.pairs
-        p = {"交易标的": self.symbol, "交易方向": "多头",
-             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
-             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
-             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
-             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
-
-        if len(pairs) == 0:
-            return p
-
-        p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
-
-        p['复利收益'] = 1
-        for pair in pairs:
-            p['复利收益'] *= (1 + pair['盈亏比例'] - self.cost)
-        p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
-
-        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
-        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
-        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
-
-        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
-        if len(win_) > 0:
-            p['盈利次数'] = len(win_)
-            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
-            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
-            p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
-
-        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
-        if len(loss_) > 0:
-            p['亏损次数'] = len(loss_)
-            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
-            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
-
-            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
-            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
-
-        return p
+        return evaluate_pairs(self.pairs, self.symbol, '多头', self.cost)
 
     def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
         """更新多头持仓状态
@@ -596,12 +609,7 @@ class PositionLong:
                 pos_changed = True
 
         if pos_changed:
-            if op in [Operate.LO, Operate.LA1, Operate.LA2]:
-                # 如果仓位变动为开仓动作，记录开仓时间和价格
-                self.long_bid = bid
-                self.long_cost = price
-
-            self.operates.append({
+            operate = {
                 "symbol": self.symbol,
                 "dt": dt,
                 "price": price,
@@ -609,7 +617,19 @@ class PositionLong:
                 "op": op,
                 "op_desc": op_desc,
                 "pos_change": abs(self.pos - old_pos)
-            })
+            }
+            self.operates.append(operate)
+            self.last_pair_operates.append(operate)
+
+            if op in [Operate.LO, Operate.LA1, Operate.LA2]:
+                # 如果仓位变动为开仓动作，记录开仓时间和价格
+                self.long_bid = bid
+                self.long_cost = price
+
+            if op == Operate.LE:
+                self.pairs.append(self.operates_to_pair(self.last_pair_operates))
+                self.last_pair_operates = []
+
         self.pos_changed = pos_changed
         self.today = dt.date()
 
@@ -661,6 +681,8 @@ class PositionShort:
         self.machine.add_transition('short_exit', ['hold_short_a', 'hold_short_b', 'hold_short_c'], 'hold_money')
 
         self.operates = []
+        self.last_pair_operates = []
+        self.pairs = []
         self.short_low = -1          # 持多仓期间出现的最低价
         self.short_cost = -1         # 最近一次加空仓的成本
         self.short_bid = -1          # 最近一次加空仓的1分钟Bar ID
@@ -673,19 +695,21 @@ class PositionShort:
         """返回状态对应的仓位"""
         return self.pos_map[self.state]
 
-    @property
-    def pairs(self):
+    def operates_to_pair(self, operates):
         """返回买卖交易对"""
-        operates = self.operates
+        assert operates[-1]['op'] == Operate.SE and operates[0]['op'] == Operate.SO
+
         pairs = []
         latest_pair = []
         for op in operates:
             latest_pair.append(op)
+
             if op['op'] == Operate.SE:
                 o_ = [x for x in latest_pair if x['op'] in [Operate.SO, Operate.SA1, Operate.SA2]]
                 e_ = [x for x in latest_pair if x['op'] in [Operate.SE, Operate.SR1, Operate.SR2]]
                 max_pos_ = self.pos_map['hold_short_a']
                 o_ops = [x['op'] for x in o_]
+
                 if Operate.SA1 in o_ops:
                     max_pos_ = self.pos_map['hold_short_b']
                 if Operate.SA2 in o_ops:
@@ -712,47 +736,13 @@ class PositionShort:
                 pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
                 pairs.append(pair)
                 latest_pair = []
-        return pairs
+
+        assert len(pairs) == 1
+        return pairs[-1]
 
     def evaluate_operates(self):
         """评估操作表现"""
-        pairs = self.pairs
-        p = {"交易标的": self.symbol, "交易方向": "空头",
-             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
-             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
-             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
-             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
-
-        if len(pairs) == 0:
-            return p
-
-        p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
-        p['复利收益'] = 1
-        for pair in pairs:
-            p['复利收益'] *= (1 + pair['盈亏比例'] - self.cost)
-        p['复利收益'] = int((p['复利收益'] - 1) * 10000) / 10000
-
-        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
-        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
-        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
-
-        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
-        if len(win_) > 0:
-            p['盈利次数'] = len(win_)
-            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
-            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
-            p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
-
-        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
-        if len(loss_) > 0:
-            p['亏损次数'] = len(loss_)
-            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
-            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
-
-            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
-            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
-
-        return p
+        return evaluate_pairs(self.pairs, self.symbol, '空头', self.cost)
 
     def update(self, dt: datetime, op: Operate, price: float, bid: int, op_desc: str = ""):
         """更新空头持仓状态
@@ -809,12 +799,7 @@ class PositionShort:
                 pos_changed = True
 
         if pos_changed:
-            if op in [Operate.SO, Operate.SA1, Operate.SA2]:
-                # 如果仓位变动为开仓动作，记录开仓时间和价格
-                self.short_bid = bid
-                self.short_cost = price
-
-            self.operates.append({
+            operate = {
                 "symbol": self.symbol,
                 "dt": dt,
                 "price": price,
@@ -822,7 +807,19 @@ class PositionShort:
                 "op": op,
                 "op_desc": op_desc,
                 "pos_change": abs(self.pos - old_pos)
-            })
+            }
+            self.operates.append(operate)
+            self.last_pair_operates.append(operate)
+
+            if op in [Operate.SO, Operate.SA1, Operate.SA2]:
+                # 如果仓位变动为开仓动作，记录开仓时间和价格
+                self.short_bid = bid
+                self.short_cost = price
+
+            if op == Operate.SE:
+                self.pairs.append(self.operates_to_pair(self.last_pair_operates))
+                self.last_pair_operates = []
+
         self.pos_changed = pos_changed
         self.today = dt.date()
 
