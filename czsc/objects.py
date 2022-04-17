@@ -514,40 +514,35 @@ class PositionLong:
     def operates_to_pair(self, operates):
         """返回买卖交易对"""
         assert operates[-1]['op'] == Operate.LE and operates[0]['op'] == Operate.LO
-        pairs = []
-        latest_pair = []
-        for op in operates:
-            latest_pair.append(op)
-            if op['op'] == Operate.LE:
-                lo_ = [x for x in latest_pair if x['op'] in [Operate.LO, Operate.LA1, Operate.LA2]]
-                le_ = [x for x in latest_pair if x['op'] in [Operate.LE, Operate.LR1, Operate.LR2]]
-                max_pos_ = self.pos_map['hold_long_a']
-                lo_ops = [x['op'] for x in lo_]
-                if Operate.LA1 in lo_ops:
-                    max_pos_ = self.pos_map['hold_long_b']
-                if Operate.LA2 in lo_ops:
-                    max_pos_ = self.pos_map['hold_long_c']
+        lo_ = [x for x in operates if x['op'] in [Operate.LO, Operate.LA1, Operate.LA2]]
+        le_ = [x for x in operates if x['op'] in [Operate.LE, Operate.LR1, Operate.LR2]]
+        lo_ops = [x['op'] for x in lo_]
 
-                pair = {
-                    '标的代码': op['symbol'],
-                    '交易方向': "多头",
-                    '最大仓位': max_pos_,
-                    '开仓时间': lo_[0]['dt'],
-                    '累计开仓': sum([x['price'] * x['pos_change'] for x in lo_]),
-                    '平仓时间': op['dt'],
-                    '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
-                }
-                pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
-                pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
-                # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
-                pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+        if Operate.LA2 in lo_ops:
+            max_pos_ = self.pos_map['hold_long_c']
+        elif Operate.LA1 in lo_ops:
+            max_pos_ = self.pos_map['hold_long_b']
+        else:
+            max_pos_ = self.pos_map['hold_long_a']
 
-                # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
-                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
-                pairs.append(pair)
-                latest_pair = []
-        assert len(pairs) == 1
-        return pairs[0]
+        pair = {
+            '标的代码': operates[-1]['symbol'],
+            '交易方向': "多头",
+            '最大仓位': max_pos_,
+            '开仓时间': operates[0]['dt'],
+            '累计开仓': sum([x['price'] * x['pos_change'] for x in lo_]),
+            '平仓时间': operates[-1]['dt'],
+            '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
+            '累计换手': sum([x['pos_change'] for x in operates]),
+            '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
+        }
+        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
+        pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
+        # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
+        pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+        # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
+        pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
+        return pair
 
     def evaluate_operates(self):
         """评估操作表现"""
@@ -698,47 +693,36 @@ class PositionShort:
     def operates_to_pair(self, operates):
         """返回买卖交易对"""
         assert operates[-1]['op'] == Operate.SE and operates[0]['op'] == Operate.SO
+        o_ = [x for x in operates if x['op'] in [Operate.SO, Operate.SA1, Operate.SA2]]
+        e_ = [x for x in operates if x['op'] in [Operate.SE, Operate.SR1, Operate.SR2]]
+        o_ops = [x['op'] for x in o_]
 
-        pairs = []
-        latest_pair = []
-        for op in operates:
-            latest_pair.append(op)
+        if Operate.SA2 in o_ops:
+            max_pos_ = self.pos_map['hold_short_c']
+        elif Operate.SA1 in o_ops:
+            max_pos_ = self.pos_map['hold_short_b']
+        else:
+            max_pos_ = self.pos_map['hold_short_a']
 
-            if op['op'] == Operate.SE:
-                o_ = [x for x in latest_pair if x['op'] in [Operate.SO, Operate.SA1, Operate.SA2]]
-                e_ = [x for x in latest_pair if x['op'] in [Operate.SE, Operate.SR1, Operate.SR2]]
-                max_pos_ = self.pos_map['hold_short_a']
-                o_ops = [x['op'] for x in o_]
-
-                if Operate.SA1 in o_ops:
-                    max_pos_ = self.pos_map['hold_short_b']
-                if Operate.SA2 in o_ops:
-                    max_pos_ = self.pos_map['hold_short_c']
-
-                pair = {
-                    '标的代码': op['symbol'],
-                    '交易方向': "空头",
-                    '最大仓位': max_pos_,
-                    '开仓时间': o_[0]['dt'],
-                    '累计开仓': sum([x['price'] * x['pos_change'] for x in o_]),
-                    '平仓时间': op['dt'],
-                    '累计平仓': sum([x['price'] * x['pos_change'] for x in e_]),
-                }
-                pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
-
-                # 空头计算盈亏，需要取反
-                pair['盈亏金额'] = -(pair['累计平仓'] - pair['累计开仓'])
-
-                # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
-                pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
-
-                # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
-                pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
-                pairs.append(pair)
-                latest_pair = []
-
-        assert len(pairs) == 1
-        return pairs[-1]
+        pair = {
+            '标的代码': operates[-1]['symbol'],
+            '交易方向': "空头",
+            '最大仓位': max_pos_,
+            '开仓时间': operates[0]['dt'],
+            '累计开仓': sum([x['price'] * x['pos_change'] for x in o_]),
+            '平仓时间': operates[-1]['dt'],
+            '累计平仓': sum([x['price'] * x['pos_change'] for x in e_]),
+            '累计换手': sum([x['pos_change'] for x in operates]),
+            '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
+        }
+        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
+        # 空头计算盈亏，需要取反
+        pair['盈亏金额'] = -(pair['累计平仓'] - pair['累计开仓'])
+        # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
+        pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
+        # 注意：根据 max_pos_ 调整【盈亏比例】的计算，便于用来统计账户的收益
+        pair['盈亏比例'] = int((pair['盈亏金额'] / pair['累计开仓']) * max_pos_ * 10000) / 10000
+        return pair
 
     def evaluate_operates(self):
         """评估操作表现"""
