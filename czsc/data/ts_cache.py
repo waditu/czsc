@@ -10,7 +10,7 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
-import pandas as pd
+from deprecated import deprecated
 
 from .ts import *
 from .. import envs
@@ -58,7 +58,8 @@ class TsDataCache:
             'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic',
 
             # CZSC加工缓存
-            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak"
+            "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak",
+            "daily_basic_new", "stocks_daily_basic_new"
         ]
         self.api_path_map = {k: os.path.join(cache_path, k) for k in self.api_names}
 
@@ -353,6 +354,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def daily_basic(self, ts_code: str, start_date: str, end_date: str):
         """每日指标
 
@@ -423,6 +425,7 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def bak_basic(self, trade_date: str = None, ts_code: str = None):
         """https://tushare.pro/document/2?doc_id=262
 
@@ -446,6 +449,34 @@ class TsDataCache:
         return df
 
     # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
+
+    def daily_basic_new(self, trade_date: str):
+        """股票每日指标接口整合
+
+        每日指标：https://tushare.pro/document/2?doc_id=32
+        备用列表：https://tushare.pro/document/2?doc_id=262
+
+        :param trade_date: 交易日期
+        :return:
+        """
+        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+        cache_path = self.api_path_map['daily_basic_new']
+        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.pkl")
+        if os.path.exists(file_cache):
+            df = io.read_pkl(file_cache)
+            return df
+
+        df1 = pro.bak_basic(trade_date=trade_date)
+        df2 = pro.daily_basic(trade_date=trade_date)
+        df1 = df1[['trade_date', 'ts_code', 'name', 'industry', 'area',
+                   'total_assets', 'liquid_assets',
+                   'fixed_assets', 'reserved', 'reserved_pershare', 'eps', 'bvps',
+                   'list_date', 'undp', 'per_undp', 'rev_yoy', 'profit_yoy', 'gpr', 'npr',
+                   'holder_num']]
+        df = df2.merge(df1, on=['ts_code', 'trade_date'], how='left')
+        df['is_st'] = df['name'].str.contains('ST')
+        io.save_pkl(df, file_cache)
+        return df
 
     def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
@@ -570,6 +601,27 @@ class TsDataCache:
         df.to_pickle(file_cache)
         return df
 
+    def stocks_daily_basic_new(self, sdt: str, edt: str):
+        """读取A股 sdt ~ edt 时间区间的全部历史 daily_basic_new
+
+        :param sdt: 开始日期
+        :param edt: 结束日期
+        :return:
+        """
+        cache_path = self.api_path_map['stocks_daily_basic_new']
+        file_cache = os.path.join(cache_path, f"stocks_daily_basic_new_{sdt}_{edt}.pkl")
+        if os.path.exists(file_cache):
+            df = pd.read_pickle(file_cache)
+            return df
+
+        dates = self.get_dates_span(sdt, edt, is_open=True)
+        results = [self.daily_basic_new(d) for d in tqdm(dates, desc='stocks_daily_basic_new')]
+        dfb = pd.concat(results, ignore_index=True)
+        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
+        dfb.to_pickle(file_cache)
+        return dfb
+
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def stocks_daily_basic(self, sdt: str, edt: str):
         """读取A股全部历史每日指标
 
@@ -593,6 +645,7 @@ class TsDataCache:
         dfb.to_pickle(file_cache)
         return dfb
 
+    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
     def stocks_daily_bak(self, sdt: str, edt: str):
         """读取A股全部历史 bak_basic
 

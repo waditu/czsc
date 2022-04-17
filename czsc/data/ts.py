@@ -4,17 +4,16 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/6/25 18:52
 """
-import os
 import time
 import pandas as pd
 import tushare as ts
+from deprecated import deprecated
 from datetime import datetime, timedelta
 from typing import List
 from tqdm import tqdm
 
 from ..analyze import RawBar
 from ..enum import Freq
-from ..utils.cache import home_path
 
 
 # 数据频度 ：支持分钟(min)/日(D)/周(W)/月(M)K线，其中1min表示1分钟（类推1/5/15/30/60分钟）。
@@ -42,11 +41,6 @@ try:
     pro = ts.pro_api()
 except:
     print("Tushare Pro 初始化失败")
-
-def get_trade_cal():
-    file_cal = os.path.join(home_path, "trade_cal.csv")
-    for k, v in exchanges.items():
-        df = pro.trade_cal(exchange=k, start_date='19700101', end_date='20211231')
 
 
 def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
@@ -80,6 +74,7 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     return bars
 
 
+@deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
 def get_kline(ts_code: str,
               start_date: [datetime, str],
               end_date: [datetime, str],
@@ -114,6 +109,7 @@ def get_kline(ts_code: str,
     return bars
 
 
+@deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
 def get_ths_daily(ts_code='885760.TI',
                   start_date: [datetime, str] = '20100101',
                   end_date: [datetime, str] = '20210727') -> List[RawBar]:
@@ -139,6 +135,8 @@ def get_ths_daily(ts_code='885760.TI',
         bars.append(bar)
     return bars
 
+
+@deprecated(reason="统一到 TsDataCache 对象中", version='0.9.0')
 def get_ths_members(exchange="A"):
     """获取同花顺概念板块成分股"""
     concepts = pro.ths_index(exchange=exchange)

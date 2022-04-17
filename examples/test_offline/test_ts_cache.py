@@ -8,10 +8,14 @@ import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
+import os
 from czsc.data.ts_cache import *
 
+os.environ['czsc_verbose'] = '1'
+
+
 def test_ts_cache_bak_basic():
-    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)
+    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
     df = dc.bak_basic(trade_date='2018-03-15')
@@ -24,8 +28,20 @@ def test_ts_cache_bak_basic():
     dc.clear()
 
 
+def test_ts_cache_daily_basic_new():
+    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
+    cache_path = './TS_CACHE_20200101_20211024'
+    assert os.path.exists(cache_path)
+    df = dc.daily_basic_new(trade_date='2018-03-15')
+    assert df.shape[0] == 3237 and df.shape[1] == 37
+
+    dfb = dc.stocks_daily_basic_new(sdt='20211001', edt='20211020')
+    assert dfb.shape[1] == df.shape[1] and len(dfb) == 40407
+    dc.clear()
+
+
 def test_ts_cache():
-    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024', verbose=True)
+    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
     cache_path = './TS_CACHE_20200101_20211024'
     assert os.path.exists(cache_path)
 
