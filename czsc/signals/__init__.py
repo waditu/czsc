@@ -10,4 +10,5 @@ from . import ta
 from . import other
 from . import vol
 from . import cat
+from . import pos
 
