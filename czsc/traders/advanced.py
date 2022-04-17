@@ -80,11 +80,23 @@ class CzscAdvancedTrader:
             chart = self.kas[freq].to_echarts(width, height)
             tab.add(chart, freq)
 
+        signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
+            freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
+            for k in freq_signals.keys():
+                signals.pop(k)
+            if len(freq_signals) <= 0:
+                continue
             t1 = Table()
-            t1.add(["名称", "数据"], [[k, v] for k, v in self.s.items() if k.startswith("{}_".format(freq))])
+            t1.add(["名称", "数据"], [[k, v] for k, v in freq_signals.items()])
             t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
-            tab.add(t1, "{}信号表".format(freq))
+            tab.add(t1, f"{freq}信号")
+
+        if len(signals) > 0:
+            t1 = Table()
+            t1.add(["名称", "数据"], [[k, v] for k, v in signals.items()])
+            t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
+            tab.add(t1, "其他信号")
 
         if file_html:
             tab.render(file_html)

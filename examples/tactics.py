@@ -14,6 +14,9 @@ def trader_strategy_a():
     """A股市场择时策略A"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        s.update(signals.pos.get_s_long01(cat, th=100))
+        s.update(signals.pos.get_s_long02(cat, th=100))
+        s.update(signals.pos.get_s_long05(cat, span='月', th=500))
         for _, c in cat.kas.items():
             if c.freq in [Freq.F15]:
                 s.update(signals.bxt.get_s_d0_bi(c))
