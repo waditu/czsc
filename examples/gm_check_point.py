@@ -76,6 +76,6 @@ if __name__ == '__main__':
     #                       get_signals=tactics.trader_strategy_a()['get_signals'],
     #                       adjust=ADJUST_PREV, max_count=1000)
 
-    ct = trader_tactic_snapshot("SZSE.300669", end_dt="2022-03-20 10:45", tactic=tactics.trader_strategy_a())
+    ct = trader_tactic_snapshot("SZSE.300669", end_dt="2022-03-18 13:15", tactic=tactics.trader_strategy_a())
 
 
