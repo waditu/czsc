@@ -17,12 +17,12 @@ def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, ad
     """使用掘金的数据对任意标的、任意时刻的状态进行策略快照
 
     :param symbol: 交易标的
-    :param tactic:
-    :param end_dt:
-    :param file_html:
-    :param adjust:
-    :param max_count:
-    :return:
+    :param tactic: 择时交易策略
+    :param end_dt: 结束时间，精确到分钟
+    :param file_html: 结果文件
+    :param adjust: 复权类型
+    :param max_count: 最大K线数量
+    :return: trader
     """
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
@@ -58,12 +58,8 @@ def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, ad
         short_pos = None
 
     bg, data = get_init_bg(symbol, end_dt, base_freq=base_freq, freqs=freqs, max_count=max_count, adjust=adjust)
-    trader = GmCzscTrader(
-        bg=bg, get_signals=get_signals,
-        long_events=long_events, long_pos=long_pos,
-        short_events=short_events, short_pos=short_pos,
-        signals_n=tactic.get('signals_n', 0)
-    )
+    trader = GmCzscTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
+                          signals_n=tactic.get('signals_n', 0))
     for bar in data:
         trader.update(bar)
 
@@ -80,6 +76,6 @@ if __name__ == '__main__':
     #                       get_signals=tactics.trader_strategy_a()['get_signals'],
     #                       adjust=ADJUST_PREV, max_count=1000)
 
-    ct = trader_tactic_snapshot("SZSE.300669", end_dt="2022-03-20", tactic=tactics.trader_strategy_a())
+    ct = trader_tactic_snapshot("SZSE.300669", end_dt="2022-03-20 10:45", tactic=tactics.trader_strategy_a())
 
 
