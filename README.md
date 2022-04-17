@@ -21,6 +21,9 @@
 
 ## 使用案例
 
+>案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，说明是CZSC用户，1500元可以开通CZSC项目目前用到的全部数据权限。
+>掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
+
 * `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
 * `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
 * `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
