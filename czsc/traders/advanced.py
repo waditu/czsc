@@ -30,7 +30,6 @@ class CzscAdvancedTrader:
                  short_events: List[Event] = None,
                  short_pos: PositionShort = None,
                  max_bi_count: int = 50,
-                 bi_min_len: int = 7,
                  signals_n: int = 0,
                  ):
         """
@@ -42,7 +41,6 @@ class CzscAdvancedTrader:
         :param short_events: 自定义的空头交易事件组合，推荐平仓事件放到前面
         :param short_pos: 空头仓位对象
         :param max_bi_count: 单个级别最大保存笔的数量
-        :param bi_min_len: 一笔最小无包含K线数量
         :param signals_n: 见 `CZSC` 对象
         """
         self.name = "CzscAdvancedTrader"
@@ -58,7 +56,7 @@ class CzscAdvancedTrader:
         self.signals_n = signals_n
         self.signals_list = []
         self.verbose = envs.get_verbose()
-        self.kas = {freq: CZSC(b, max_bi_count, bi_min_len) for freq, b in bg.bars.items()}
+        self.kas = {freq: CZSC(b, max_bi_count) for freq, b in bg.bars.items()}
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close

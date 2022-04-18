@@ -529,7 +529,6 @@ class GmCzscTrader(CzscAdvancedTrader):
                  short_events: List[Event] = None,
                  short_pos: PositionShort = None,
                  max_bi_count: int = 50,
-                 bi_min_len: int = 7,
                  signals_n: int = 0,
                  ):
         super().__init__(
@@ -540,7 +539,6 @@ class GmCzscTrader(CzscAdvancedTrader):
             short_events=short_events,
             short_pos=short_pos,
             max_bi_count=max_bi_count,
-            bi_min_len=bi_min_len,
             signals_n=signals_n,
         )
 

@@ -16,3 +16,8 @@ def get_verbose(verbose=None):
     v = True if verbose in valid_true else False
     return v
 
+
+def get_min_bi_len(v: int = None):
+    """min_bi_len - 一笔的最小长度，也就是无包含K线的数量，7是老笔的要求"""
+    min_bi_len = v if v else os.environ.get('czsc_min_bi_len', 7)
+    return min_bi_len

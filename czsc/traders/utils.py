@@ -24,7 +24,6 @@ def trader_fast_backtest(bars: List[RawBar],
                          strategy: Callable,
                          html_path: str = None,
                          max_bi_count: int = 50,
-                         bi_min_len: int = 7,
                          signals_n: int = 0,
                          T0: bool = False,
                          ):
@@ -38,7 +37,6 @@ def trader_fast_backtest(bars: List[RawBar],
     :param max_bi_count: 最大保存的笔数量
         默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
         如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
-    :param bi_min_len: 笔的最小长度，包括左右分型，默认值为 7，是缠论原文老笔定义的长度
     :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
     :param T0: 是否允许T0交易
     :return: 操作列表，交易对，性能评估
@@ -85,7 +83,7 @@ def trader_fast_backtest(bars: List[RawBar],
     ct = CzscAdvancedTrader(bg, get_signals,
                             long_events=long_events, long_pos=long_pos,
                             short_events=short_events, short_pos=short_pos,
-                            signals_n=signals_n, max_bi_count=max_bi_count, bi_min_len=bi_min_len)
+                            signals_n=signals_n, max_bi_count=max_bi_count)
 
     signals = []
     long_holds = []
