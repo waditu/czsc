@@ -13,6 +13,7 @@ import pandas as pd
 from tqdm import tqdm
 from typing import Callable
 
+from .. import envs
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
 from ..utils import x_round
@@ -168,7 +169,7 @@ class TsStocksBacktest:
         self.strategy = strategy
         self.init_n = init_n
         self.data_path = dc.data_path
-        self.res_path = os.path.join(self.data_path, strategy.__name__)
+        self.res_path = os.path.join(self.data_path, f"{strategy.__name__}_mbl{envs.get_min_bi_len()}")
         os.makedirs(self.res_path, exist_ok=True)
 
         file_strategy = os.path.join(self.res_path, f'{strategy.__name__}_strategy.txt')
