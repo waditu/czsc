@@ -3,12 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*/gmcache
 .idea/
-*.csv
 *.xlsx
 *.html
 *.png
-
+*/.ipynb_checkpoints/
 # C extensions
 *.so
 

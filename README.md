@@ -1,10 +1,66 @@
 # czsc - 缠中说禅技术分析工具
->源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加微信探讨，我的微信号是 `zengbin93`
+>源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)
 
-* [在线体验](http://103.235.232.152:8005/?ts_code=000001.SH&asset=I&trade_date=20200228&freqs=5min,30min)
-* 参数说明：1）ts_code 是 tushare 的代码；2）asset 现在有两个值，E 表示股票，I 表示指数
+>**[官方文档（0.6.8）（暂未更新到最新版）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
+
+## 使用前必看
+
+* 目前的开发还在高频次的迭代中，对于已经在使用某个版本的用户，请谨慎更新，版本兼容性实在是太差，主要是因为当前还有太多考虑不完善的地方，我为此感到抱歉；
+* 这是个人开发的项目，虽然我已经尽可能避坑，但可以很直接的说，这里面一定还有坑，使用前请仔细校验分析结果，发现新坑请告诉我，我来填；
+* 目前开发完成度不高，**API会有比较大的变动，谨慎升级版本**，暂时不准备写文档，没有能力看懂源码的，不建议现在使用。
+* 免责声明：项目开源仅用于技术交流！
+* 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
+
+## 项目贡献
+
+* 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
+* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
+* 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
+* 缠论多级别联立决策分析交易，详见 `czsc/traders/advanced.py`
+* 基于 Tushare 数据的择时、选股策略回测研究流程
+
+## 使用案例
+
+>案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，说明是CZSC用户，1500元可以开通CZSC项目目前用到的全部数据权限。
+>掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
+
+* `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
+* `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
+* `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
+* `examples/ts_stocks_sensors.py` 日线选股策略回测
+* `examples/gm_backtest.py` 使用掘金终端进行缠论策略回测
+* `examples/gm_realtime.py` 使用掘金终端进行策略实盘、仿真
+* `examples/gm_check_point.py` 使用掘金终端的数据进行买卖点验证
+
+## 问题讨论
+
+>在 [discussions](https://github.com/zengbin93/czsc/discussions) 中提出了一些值得探讨的实战问题，欢迎积极参与讨论，我可以负责实现一些好的想法，代码开源。
+
+* [如何分析选股策略的历史表现？](https://github.com/zengbin93/czsc/discussions/34)
+* [常见问题（FAQ）](https://github.com/zengbin93/czsc/discussions/32)
+
+## 原文整理
+
+* [缠中说禅重新编排版《论语》（整理版）](https://blog.csdn.net/baidu_25764509/article/details/109517775)
+* [缠中说禅交易指南](https://blog.csdn.net/baidu_25764509/article/details/109598229)
+* [缠中说禅技术原理](https://blog.csdn.net/baidu_25764509/article/details/109597255)
+* [缠中说禅图解分析示范](https://blog.csdn.net/baidu_25764509/article/details/110195063)
+* [缠中说禅：缠非缠、禅非禅，枯木龙吟照大千（整理版）](https://blog.csdn.net/baidu_25764509/article/details/110775662)
+* [缠中说禅教你打坐（整理版）](https://blog.csdn.net/baidu_25764509/article/details/113735170)
+
+**注意：** 如果CSDN的连接打不开，可以直接在 `czsc/docs` 目录下查看 html 文件
+
+
+## 形态挖掘
+
+* [缠中说禅形态挖掘之五笔形态](https://blog.csdn.net/baidu_25764509/article/details/113639353)
+* [缠中说禅形态挖掘之七笔形态](https://blog.csdn.net/baidu_25764509/article/details/113649988)
+* [缠中说禅形态挖掘之九笔形态](https://blog.csdn.net/baidu_25764509/article/details/113688926)
+* [本级别笔对应的小级别形态](https://blog.csdn.net/baidu_25764509/article/details/113563530)
 
 ## 安装
+
+**注意:** python 版本必须大于等于 3.7 
 
 直接从github安装：
 ```
@@ -16,40 +72,16 @@ pip install git+git://github.com/zengbin93/czsc.git -U
 pip install czsc -U -i https://pypi.python.org/simple
 ```
 
-## K线数据样例
-
-`dt` 的格式统一为 `%Y-%m-%d %H:%M:%S`，如 `2020-02-27 00:00:00`
-
-```markdown
-         symbol                   dt   open  close   high    low     vol
-0     300803.SZ  2020-01-17 09:31:00  44.08  44.19  44.30  44.01  170160
-1     300803.SZ  2020-01-17 09:32:00  44.06  44.24  44.24  43.93   91100
-2     300803.SZ  2020-01-17 09:33:00  44.10  43.91  44.17  43.91   90251
-3     300803.SZ  2020-01-17 09:34:00  43.90  43.86  43.90  43.81   61100
-4     300803.SZ  2020-01-17 09:35:00  43.86  43.66  43.86  43.61   75900
-5     300803.SZ  2020-01-17 09:36:00  43.66  43.80  43.86  43.66   56600
-6     300803.SZ  2020-01-17 09:37:00  43.81  43.67  43.82  43.67   68600
-7     300803.SZ  2020-01-17 09:38:00  43.67  43.60  43.67  43.53   97554
-8     300803.SZ  2020-01-17 09:39:00  43.60  43.62  43.70  43.57  118861
-```
-
-* dt 表示 该周期的交易结束时间
-
-
 ## 使用方法
 
-目前已经实现了缠论的 笔、线段、中枢 的自动识别，核心代码在 `chan.analyze` 中；
+目前已经实现了缠论的 `分型、笔` 的自动识别，核心代码在 `czsc.analyze` 中；
 
-使用 Tushare Pro / 聚宽 / 掘金 / 天勤 的数据进行缠中说禅技术分析结果展示: https://github.com/zengbin93/czsc_web_ui
+## 资料分享
 
-## 结合 tushare.pro 的数据使用
+* 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
+* 提取码：vhue
 
-py 文件地址： examples/combine_with_tushare.py
+## 捐赠支持
 
-没有 token，到 https://tushare.pro/register?reg=7 注册下
-
-## 结合掘金的数据使用
-
-py 文件地址： examples/combine_with_goldminer.py
-
+>如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！
 
