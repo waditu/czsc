@@ -46,7 +46,11 @@ def get_s_op_time_span(c: CZSC, op: str = '开多', time_span=("14:00", "14:50")
 
 
 def get_s_zdt(c: CZSC, di=1) -> OrderedDict:
-    """计算倒数第di根K线的涨跌停信息"""
+    """计算倒数第di根K线的涨跌停信息
+
+    任何K线，只要收盘价是最高价，那就不能买，只要收盘价是最低价，就不能卖，
+    这是用来规避回测中的一些问题的辅助函数。
+    """
     s = OrderedDict()
     k1 = str(c.freq.value)
     k2 = f"倒{di}K"
