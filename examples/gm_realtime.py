@@ -24,7 +24,7 @@ import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
-from gm_utils import *
+from czsc.gm_utils import *
 from tactics import trader_strategy_a as strategy
 
 
