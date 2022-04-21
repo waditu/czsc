@@ -8,12 +8,20 @@ describe: 环境变量统一管理入口
 
 import os
 
+# True 的有效表达
+valid_true = ['1', 'True', 'true', 'Y', 'y', 'yes', 'Yes', True]
+
 
 def get_verbose(verbose=None):
     """verbose - 是否输出执行过程的详细信息"""
-    valid_true = ['1', 'True', 'true', 'Y', 'y', 'yes', 'Yes']
     verbose = verbose if verbose else os.environ.get('czsc_verbose', None)
     v = True if verbose in valid_true else False
+    return v
+
+
+def get_welcome():
+    """welcome - 是否输出版本标识和缠中说禅博客摘记"""
+    v = True if os.environ.get('czsc_welcome', '1') in valid_true else False
     return v
 
 

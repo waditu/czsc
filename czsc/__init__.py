@@ -23,8 +23,9 @@ __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20220418"
 
-print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
-aphorism.print_one()
+if envs.get_welcome():
+    print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
+    aphorism.print_one()
 
 home_path = os.path.join(os.path.expanduser("~"), '.czsc')
 os.makedirs(home_path, exist_ok=True)
