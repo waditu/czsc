@@ -13,3 +13,4 @@ Deprecated>=1.2.12
 scikit-learn>=0.24.1
 dill
 gm
+openpyxl
