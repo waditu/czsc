@@ -51,8 +51,10 @@ class CzscAdvancedTrader:
         self.get_signals = get_signals
         self.long_events = long_events
         self.long_pos = long_pos
+        self.long_holds = []                    # 记录基础周期结束时间对应的多头仓位信息
         self.short_events = short_events
         self.short_pos = short_pos
+        self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
         self.signals_n = signals_n
         self.signals_list = []
         self.verbose = envs.get_verbose()
@@ -113,7 +115,7 @@ class CzscAdvancedTrader:
         for freq, b in self.bg.bars.items():
             self.kas[freq].update(b[-1])
 
-        self.symbol = bar.symbol
+        self.symbol = symbol = bar.symbol
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         dt, bid, price = self.end_dt, self.bid, self.latest_price
@@ -123,6 +125,7 @@ class CzscAdvancedTrader:
             self.signals_list = self.signals_list[-self.signals_n:]
             self.s.update(signals_counter(self.signals_list))
 
+        last_n1b = last_bar.close / self.kas[self.base_freq].bars_raw[-2].close - 1
         # 遍历 long_events，更新 long_pos
         if self.long_events:
             assert isinstance(self.long_pos, PositionLong), "long_events 必须配合 PositionLong 使用"
@@ -138,6 +141,9 @@ class CzscAdvancedTrader:
                     break
 
             self.long_pos.update(dt, op, price, bid, op_desc)
+            if self.long_holds:
+                self.long_holds[-1]['n1b'] = last_n1b
+            self.long_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.long_pos.pos, 'n1b': 0})
 
         # 遍历 short_events，更新 short_pos
         if self.short_events:
@@ -154,5 +160,8 @@ class CzscAdvancedTrader:
                     break
 
             self.short_pos.update(dt, op, price, bid, op_desc)
+            if self.short_holds:
+                self.short_holds[-1]['n1b'] = -last_n1b
+            self.short_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.short_pos.pos, 'n1b': 0})
 
 

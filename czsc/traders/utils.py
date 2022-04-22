@@ -86,13 +86,10 @@ def trader_fast_backtest(bars: List[RawBar],
                             signals_n=signals_n, max_bi_count=max_bi_count)
 
     signals = []
-    long_holds = []
-    short_holds = []
     for bar in tqdm(bars[init_n:], desc=f"{ts_code} bt"):
         ct.update(bar)
         signals.append(ct.s)
         if ct.long_pos:
-            long_holds.append({'dt': ct.end_dt, 'symbol': ct.symbol, 'long_pos': ct.long_pos.pos})
             if ct.long_pos.pos_changed and html_path:
                 op = ct.long_pos.operates[-1]
                 file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
@@ -101,7 +98,6 @@ def trader_fast_backtest(bars: List[RawBar],
                 print(f'snapshot saved into {file_html}')
 
         if ct.short_pos:
-            short_holds.append({'dt': ct.end_dt, 'symbol': ct.symbol, 'short_pos': ct.short_pos.pos})
             if ct.short_pos.pos_changed and html_path:
                 op = ct.short_pos.operates[-1]
                 file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
@@ -115,7 +111,11 @@ def trader_fast_backtest(bars: List[RawBar],
 
     res = {"signals": signals}
     if ct.long_pos:
-        df_holds = pd.DataFrame(long_holds)
+        df_holds = pd.DataFrame(ct.long_holds)
+        df_holds['持仓收益'] = df_holds['long_pos'] * df_holds['n1b']
+        df_holds['累计基准'] = df_holds['n1b'].cumsum()
+        df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
         cover = df_holds['long_pos'].mean()
         res['long_holds'] = df_holds
         res['long_operates'] = ct.long_pos.operates
@@ -125,9 +125,13 @@ def trader_fast_backtest(bars: List[RawBar],
         res['long_performance'].update({"覆盖率": x_round(cover, 4)})
 
     if ct.short_pos:
-        df_holds = pd.DataFrame(short_holds)
+        df_holds = pd.DataFrame(ct.short_holds)
+        df_holds['持仓收益'] = df_holds['short_pos'] * df_holds['n1b']
+        df_holds['累计基准'] = df_holds['n1b'].cumsum()
+        df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
         cover = df_holds['short_pos'].mean()
-        res['short_holds'] = pd.DataFrame(short_holds)
+        res['short_holds'] = df_holds
         res['short_operates'] = ct.short_pos.operates
         res['short_pairs'] = ct.short_pos.pairs
         res['short_performance'] = ct.short_pos.evaluate_operates()
