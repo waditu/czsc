@@ -40,6 +40,43 @@ def test_ts_cache_daily_basic_new():
     dc.clear()
 
 
+def test_ts_cache_bars():
+    """测试获取K线"""
+    dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
+    cache_path = './TS_CACHE_20200101_20211024'
+    assert os.path.exists(cache_path)
+
+    # 测试日线以上数据获取
+    bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                      start_date='20200101', end_date='20211024', raw_bar=True)
+    assert len(bars) == 436
+    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                    start_date='20200101', end_date='20211024', raw_bar=False)
+    assert len(df) == 436
+    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
+                    start_date='20210108', end_date='20210108', raw_bar=False)
+    assert len(df) == 1
+
+    # 测试复权分钟线获取
+    df1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
+    bars1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                               sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=True)
+    df2 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=False)
+
+    df3 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj=None, raw_bar=False)
+    assert len(df1) == len(df2) == len(df3) == len(bars1) \
+           and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
+
+    # 测试获取指数分钟行情
+    df1 = dc.pro_bar_minutes(ts_code='000001.SZ', asset='I', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
+    assert len(df1) == 3083
+    dc.clear()
+
+
 def test_ts_cache():
     dc = TsDataCache(data_path='.', sdt='20200101', edt='20211024')
     cache_path = './TS_CACHE_20200101_20211024'
@@ -50,16 +87,6 @@ def test_ts_cache():
     assert dc.get_dates_span('20220224', '20220228') == ['20220224', '20220225', '20220228']
     assert dc.get_dates_span('20220224', '20220228', is_open=False) \
            == ['20220224', '20220225', '20220226', '20220227', '20220228']
-
-    bars = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
-                      start_date='20200101', end_date='20211024', raw_bar=True)
-    assert len(bars) == 436
-    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
-                    start_date='20200101', end_date='20211024', raw_bar=False)
-    assert len(df) == 436
-    df = dc.pro_bar(ts_code='000001.SZ', asset='E', freq='D',
-                    start_date='20210108', end_date='20210108', raw_bar=False)
-    assert len(df) == 1
 
     hk_holds = dc.hk_hold('20211103')
     assert hk_holds.shape[0] == 2965
@@ -94,19 +121,6 @@ def test_ts_cache():
 
     df = dc.limit_list(trade_date='20210324')
     assert not df.empty and os.path.exists(os.path.join(dc.api_path_map['limit_list'], "limit_list_20210324.pkl"))
-
-    # 测试复权分钟线获取
-    df1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
-                             sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
-    bars1 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
-                               sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=True)
-    df2 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
-                             sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=False)
-
-    df3 = dc.pro_bar_minutes(ts_code='000002.SZ', asset='E', freq='30min',
-                             sdt="20200101", edt="20210804 11:24", adj=None, raw_bar=False)
-    assert len(df1) == len(df2) == len(df3) == len(bars1) \
-           and df1.iloc[-1]['close'] > df3.iloc[-1]['close'] > df2.iloc[-1]['close']
 
     x1 = dc.get_next_trade_dates('2021-12-13', n=-1, m=None)
     assert x1 == '20211210'

@@ -233,13 +233,15 @@ class TsDataCache:
                 dt1 = dt2
                 dt2 = dt1 + delta
                 if self.verbose:
-                    print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2}")
+                    print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2} - {len(df)}")
 
             df_klines = pd.concat(klines, ignore_index=True)
             kline = df_klines.drop_duplicates('trade_time')\
                 .sort_values('trade_time', ascending=True, ignore_index=True)
             kline['trade_time'] = pd.to_datetime(kline['trade_time'], format=dt_fmt)
             kline['dt'] = kline['trade_time']
+            float_cols = ['open', 'close', 'high', 'low', 'vol', 'amount']
+            kline[float_cols] = kline[float_cols].astype('float32')
             kline['avg_price'] = kline['amount'] / kline['vol']
 
             # 删除9:30的K线
