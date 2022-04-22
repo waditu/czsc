@@ -231,18 +231,12 @@ class TsStocksBacktest:
         init_n = self.init_n
         save_html = True if step == 'check' else False
         ts_codes = self.stocks_map[step]
-        dc = self.dc
+        dc, sdt, edt = self.dc, self.sdt, self.edt
         res_path = self.res_path
-        sdt = self.sdt
-        edt = self.edt
         strategy = self.strategy
         raw_path = os.path.join(res_path, f"raw_{step}")
         os.makedirs(raw_path, exist_ok=True)
-
-        if step == 'index':
-            asset = "I"
-        else:
-            asset = 'E'
+        asset = "I" if step == 'index' else "E"
 
         tactic = strategy()
         base_freq = tactic['base_freq']
