@@ -17,6 +17,7 @@ from .. import envs
 from ..data.ts_cache import TsDataCache
 from ..traders.utils import trader_fast_backtest, freq_cn2ts
 from ..utils import x_round
+from ..objects import cal_break_even_point
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -62,8 +63,7 @@ class TraderPerformance:
 
         self.df_pairs = df_pairs
         # 指定哪些列可以用来进行聚合分析
-        self.agg_columns = ['标的代码', '交易方向', '开仓年', '平仓年', '开仓月', '平仓月',
-                            '开仓周', '平仓周', '开仓日', '平仓日']
+        self.agg_columns = ['标的代码', '交易方向', '平仓年', '平仓月', '平仓周', '平仓日']
 
     @staticmethod
     def get_pairs_statistics(df_pairs: pd.DataFrame):
@@ -86,6 +86,7 @@ class TraderPerformance:
                 "累计盈亏比": 0,
                 "交易得分": 0,
                 "每自然日收益": 0,
+                "盈亏平衡点": 0,
             }
             return info
 
@@ -110,6 +111,7 @@ class TraderPerformance:
             "交易胜率": win_pct,
             "累计盈亏比": gain_loss_rate,
             "交易得分": x_round(gain_loss_rate * win_pct, 4),
+            "盈亏平衡点": x_round(cal_break_even_point(df_pairs['盈亏比例'].to_list()), 4),
         }
 
         info['每自然日收益'] = x_round(info['平均单笔收益'] / info['平均持仓天数'], 2)
@@ -353,6 +355,9 @@ class TsStocksBacktest:
             dfs = pd.read_pickle(file_dfs)
 
         results_path = os.path.join(raw_path, 'signals_performance')
+        if os.path.exists(results_path):
+            return
+
         os.makedirs(results_path, exist_ok=True)
         signal_cols = [x for x in dfs.columns if len(x.split("_")) == 3]
         for key in signal_cols:
