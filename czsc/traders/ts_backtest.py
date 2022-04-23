@@ -177,10 +177,7 @@ class TsStocksBacktest:
             f.write(inspect.getsource(strategy))
         print(f"strategy saved into {file_strategy}")
 
-        self.dc = dc
-        self.sdt = sdt
-        self.edt = edt
-
+        self.dc, self.sdt, self.edt = dc, sdt, edt
         stocks = self.dc.stock_basic()
         stocks_ = stocks[stocks['list_date'] < '2010-01-01'].ts_code.to_list()
         self.stocks_map = {
@@ -194,6 +191,15 @@ class TsStocksBacktest:
                      '512660.SH', '512400.SH', '512010.SH', '512000.SH', '510900.SH',
                      '510300.SH', '510500.SH', '510050.SH', '159992.SZ', '159985.SZ',
                      '159981.SZ', '159949.SZ', '159915.SZ'],
+        }
+
+        self.asset_map = {
+            "index": "I",
+            "stock": "E",
+            "check": "E",
+            "train": "E",
+            "valid": "E",
+            "etfs": "FD"
         }
 
     def analyze_results(self, step, trade_dir="long"):
@@ -245,7 +251,7 @@ class TsStocksBacktest:
         strategy = self.strategy
         raw_path = os.path.join(res_path, f"raw_{step}")
         os.makedirs(raw_path, exist_ok=True)
-        asset = "I" if step == 'index' else "E"
+        asset = self.asset_map[step]
 
         tactic = strategy()
         base_freq = tactic['base_freq']
