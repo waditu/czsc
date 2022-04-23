@@ -20,7 +20,9 @@ data_path = r"C:\ts_data"
 dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-02-18')
 strategy = tactics.trader_strategy_a
 freq = freq_cn2ts[strategy()['base_freq']]
-
+sdt = '20140101'
+edt = "20211216"
+init_n = 1000*4
 
 def run_backtest(step_seq=('check', 'index', 'etfs', 'train', 'valid', 'stock')):
     """
@@ -28,13 +30,27 @@ def run_backtest(step_seq=('check', 'index', 'etfs', 'train', 'valid', 'stock'))
     :param step_seq: 回测执行顺序
     :return:
     """
-    tsb = TsStocksBacktest(dc, strategy, sdt='20140101', edt="20211216", init_n=1000*4)
+    tsb = TsStocksBacktest(dc, strategy, init_n, sdt, edt)
     for step in step_seq:
         tsb.batch_backtest(step.lower())
         tsb.analyze_signals(step.lower())
 
 
+def run_more_backtest(step, ts_codes):
+    """指定在某个阶段多回测一些标的，最常见的需求是在 check 阶段多检查几个标的
+
+    :param step: 阶段名称
+    :param ts_codes: 新增回测标的列表
+    :return:
+    """
+    tsb = TsStocksBacktest(dc, strategy, init_n, sdt, edt)
+    tsb.update_step(step, ts_codes)
+    tsb.batch_backtest(step.lower())
+    tsb.analyze_signals(step.lower())
+
+
 if __name__ == '__main__':
+    run_more_backtest(step='check', ts_codes=['000002.SZ'])
     run_backtest(step_seq=('index',))
     # run_backtest(step_seq=('index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train'))

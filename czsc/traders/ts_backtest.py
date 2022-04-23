@@ -215,6 +215,15 @@ class TsStocksBacktest:
         f.close()
         print(f"{s_name} - {step} - {trade_dir}: {tp.basic_info}")
 
+    def update_step(self, step: str, ts_codes: list):
+        """更新指定阶段的批量回测标的
+
+        :param step: 阶段名称
+        :param ts_codes: 标的列表
+        :return:
+        """
+        self.stocks_map[step] += ts_codes
+
     def batch_backtest(self, step):
         """批量回测
 
