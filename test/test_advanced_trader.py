@@ -121,6 +121,12 @@ def run_advanced_trader(T0=True):
         assert ct.s['空头_最大_回撤'] == '超过800BP_任意_任意_0'
         assert ct.s['空头_累计_盈亏'] == '亏损_超过800BP_任意_0'
 
+        holds_long = pd.DataFrame(ct.long_holds)
+        assert round(holds_long['long_pos'].mean(), 4) == 0.7351
+
+        holds_short = pd.DataFrame(ct.short_holds)
+        assert round(holds_short['short_pos'].mean(), 4) == 0.7351
+
 
 def test_advanced_trader():
     run_advanced_trader(T0=False)

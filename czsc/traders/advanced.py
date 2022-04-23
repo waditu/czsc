@@ -162,6 +162,6 @@ class CzscAdvancedTrader:
             self.short_pos.update(dt, op, price, bid, op_desc)
             if self.short_holds:
                 self.short_holds[-1]['n1b'] = -last_n1b
-            self.short_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.short_pos.pos, 'n1b': 0})
+            self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
 
 
