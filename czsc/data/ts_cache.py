@@ -10,6 +10,8 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
+
+import pandas as pd
 from deprecated import deprecated
 
 from .ts import *
@@ -55,7 +57,7 @@ class TsDataCache:
         self.api_names = [
             'ths_daily', 'ths_index', 'ths_member', 'pro_bar',
             'hk_hold', 'cctv_news', 'daily_basic', 'index_weight',
-            'adj_factor', 'pro_bar_minutes', 'limit_list', 'bak_basic',
+            'pro_bar_minutes', 'limit_list', 'bak_basic',
 
             # CZSC加工缓存
             "stocks_daily_bars", "stocks_daily_basic", "stocks_daily_bak",
@@ -255,28 +257,39 @@ class TsDataCache:
             end_date = pd.to_datetime(self.edt)
             kline = kline[(kline['trade_time'] >= start_date) & (kline['trade_time'] <= end_date)]
             kline = kline.reset_index(drop=True)
+            kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
 
-            # 只对股票有复权操作；复权行情说明：https://tushare.pro/document/2?doc_id=146
-            if asset == 'E' and adj and adj == 'qfq':
+            if asset == 'E':
+                # https://tushare.pro/document/2?doc_id=28
+                factor = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
+            elif asset == 'FD':
+                # https://tushare.pro/document/2?doc_id=199
+                factor = pro.fund_adj(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
+            else:
+                factor = pd.DataFrame()
+
+            if len(factor) > 0:
+                # 处理复权因子缺失的情况：前值填充
+                df1 = pd.DataFrame({'trade_date': kline['trade_date'].unique().tolist()})
+                factor = df1.merge(factor, on=['trade_date'], how='left').fillna(method='ffill')
+                factor = factor.sort_values('trade_date', ignore_index=True)
+
+            if self.verbose:
+                print(f"pro_bar_minutes: {ts_code} - {asset} - 复权因子长度 = {len(factor)}")
+
+            # 复权行情说明：https://tushare.pro/document/2?doc_id=146
+            if len(factor) > 0 and adj and adj == 'qfq':
                 # 前复权	= 当日收盘价 × 当日复权因子 / 最新复权因子
-                factor = self.adj_factor(ts_code)
-                if not factor.empty:
-                    factor = factor.sort_values('trade_date', ignore_index=True)
-                    latest_factor = factor.iloc[-1]['adj_factor']
-                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                    for col in ['open', 'close', 'high', 'low']:
-                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
+                latest_factor = factor.iloc[-1]['adj_factor']
+                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                for col in ['open', 'close', 'high', 'low']:
+                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']] / latest_factor, axis=1)
 
-            if asset == 'E' and adj and adj == 'hfq':
+            if len(factor) > 0 and adj and adj == 'hfq':
                 # 后复权	= 当日收盘价 × 当日复权因子
-                factor = self.adj_factor(ts_code)
-                if not factor.empty:
-                    factor = factor.sort_values('trade_date', ignore_index=True)
-                    kline['trade_date'] = kline.trade_time.apply(lambda x: x.strftime(date_fmt))
-                    adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
-                    for col in ['open', 'close', 'high', 'low']:
-                        kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
+                adj_map = {row['trade_date']: row['adj_factor'] for _, row in factor.iterrows()}
+                for col in ['open', 'close', 'high', 'low']:
+                    kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
             for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
                 # 向后看
@@ -392,21 +405,6 @@ class TsDataCache:
             end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
             df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
             df = df.drop_duplicates('con_code', ignore_index=True)
-            io.save_pkl(df, file_cache)
-        return df
-
-    def adj_factor(self, ts_code: str):
-        """复权因子
-
-        https://tushare.pro/document/2?doc_id=28
-        """
-        cache_path = self.api_path_map['adj_factor']
-        file_cache = os.path.join(cache_path, f"adj_factor_{ts_code}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.adj_factor(ts_code=ts_code, start_date=self.sdt, end_date=self.edt)
             io.save_pkl(df, file_cache)
         return df
 

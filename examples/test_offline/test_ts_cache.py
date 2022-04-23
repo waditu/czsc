@@ -72,7 +72,13 @@ def test_ts_cache_bars():
 
     # 测试获取指数分钟行情
     df1 = dc.pro_bar_minutes(ts_code='000001.SZ', asset='I', freq='30min',
-                             sdt="20200101", edt="20210804 11:24", adj='hfq', raw_bar=False)
+                             sdt="20200101", edt="20210804 11:24", raw_bar=False)
+    assert len(df1) == 3083
+
+    # 测试 ETF 复权行情
+    df1 = dc.pro_bar_minutes(ts_code='512880.SH', asset='FD', freq='30min',
+                             sdt="20200101", edt="20210804 11:24", adj='qfq', raw_bar=False)
+    assert round(df1.iloc[-1]['close'], 4) == 1.066
     assert len(df1) == 3083
     dc.clear()
 
