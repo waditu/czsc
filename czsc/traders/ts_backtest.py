@@ -29,7 +29,7 @@ def read_raw_results(raw_path, trade_dir="long"):
     """
     assert trade_dir in ['long', 'short']
 
-    pairs, p = [], [], []
+    pairs, p = [], []
     for file in tqdm(os.listdir(raw_path)):
         if len(file) != 14:
             continue
