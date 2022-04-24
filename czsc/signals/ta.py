@@ -4,6 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
 describe: 技术分析相关信号的计算
+
+ta-lib 安装包：https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
 """
 import numpy as np
 from collections import OrderedDict
