@@ -7,6 +7,7 @@ describe: 支持分批买入卖出的高级交易员
 """
 import os
 import webbrowser
+import pandas as pd
 from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
@@ -14,7 +15,7 @@ from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC, signals_counter
 from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
-from ..utils.bar_generator import BarGenerator
+from ..utils import BarGenerator, x_round
 from ..utils.cache import home_path
 from .. import envs
 
@@ -164,4 +165,47 @@ class CzscAdvancedTrader:
                 self.short_holds[-1]['n1b'] = -last_n1b
             self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
 
+    @property
+    def results(self):
+        """汇集回测相关结果"""
+        res = {}
+        ct = self
+        dt_fmt = "%Y-%m-%d %H:%M"
+        if ct.long_pos:
+            df_holds = pd.DataFrame(ct.long_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['long_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['long_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['long_holds'] = df_holds
+            res['long_operates'] = ct.long_pos.operates
+            res['long_pairs'] = ct.long_pos.pairs
+            res['long_performance'] = ct.long_pos.evaluate_operates()
+            res['long_performance'].update(dict(p))
+
+        if ct.short_pos:
+            df_holds = pd.DataFrame(ct.short_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['short_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['short_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['short_holds'] = df_holds
+            res['short_operates'] = ct.short_pos.operates
+            res['short_pairs'] = ct.short_pos.pairs
+            res['short_performance'] = ct.short_pos.evaluate_operates()
+            res['short_performance'].update(dict(p))
+
+        return res
 

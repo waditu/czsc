@@ -105,38 +105,7 @@ def trader_fast_backtest(bars: List[RawBar],
                 ct.take_snapshot(file_html)
                 print(f'snapshot saved into {file_html}')
 
-    p = {"开始时间": bars[init_n].dt.strftime("%Y-%m-%d %H:%M"),
-         "结束时间": bars[-1].dt.strftime("%Y-%m-%d %H:%M"),
-         "基准收益": round(bars[-1].close / bars[init_n].close - 1, 4)}
-
     res = {"signals": signals}
-    if ct.long_pos:
-        df_holds = pd.DataFrame(ct.long_holds)
-        df_holds['持仓收益'] = df_holds['long_pos'] * df_holds['n1b']
-        df_holds['累计基准'] = df_holds['n1b'].cumsum()
-        df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
-
-        cover = df_holds['long_pos'].mean()
-        res['long_holds'] = df_holds
-        res['long_operates'] = ct.long_pos.operates
-        res['long_pairs'] = ct.long_pos.pairs
-        res['long_performance'] = ct.long_pos.evaluate_operates()
-        res['long_performance'].update(dict(p))
-        res['long_performance'].update({"覆盖率": x_round(cover, 4)})
-
-    if ct.short_pos:
-        df_holds = pd.DataFrame(ct.short_holds)
-        df_holds['持仓收益'] = df_holds['short_pos'] * df_holds['n1b']
-        df_holds['累计基准'] = df_holds['n1b'].cumsum()
-        df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
-
-        cover = df_holds['short_pos'].mean()
-        res['short_holds'] = df_holds
-        res['short_operates'] = ct.short_pos.operates
-        res['short_pairs'] = ct.short_pos.pairs
-        res['short_performance'] = ct.short_pos.evaluate_operates()
-        res['short_performance'].update(dict(p))
-        res['short_performance'].update({"覆盖率": x_round(cover, 4)})
-
+    res.update(ct.results)
     return res
 
