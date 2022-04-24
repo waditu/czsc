@@ -74,6 +74,8 @@ class TraderPerformance:
         """
         if len(df_pairs) == 0:
             info = {
+                "开始时间": None,
+                "结束时间": None,
                 "交易标的数量": 0,
                 "总体交易次数": 0,
                 "平均持仓天数": 0,
@@ -100,6 +102,9 @@ class TraderPerformance:
         gain_loss_rate = min(x_round(gain / (loss + 0.000001), 2), 5)
 
         info = {
+            "开始时间": df_pairs['开仓时间'].min(),
+            "结束时间": df_pairs['平仓时间'].max(),
+
             "交易标的数量": df_pairs['标的代码'].nunique(),
             "总体交易次数": len(df_pairs),
             "平均持仓天数": x_round(df_pairs['持仓天数'].mean(), 2),
