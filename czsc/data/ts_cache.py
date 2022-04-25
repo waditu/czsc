@@ -618,6 +618,7 @@ class TsDataCache:
         results = [self.daily_basic_new(d) for d in tqdm(dates, desc='stocks_daily_basic_new')]
         dfb = pd.concat(results, ignore_index=True)
         dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
+        dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
         dfb.to_pickle(file_cache)
         return dfb
 

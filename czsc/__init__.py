@@ -4,9 +4,6 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
-import os
-import shutil
-
 from . import envs
 from . import ai
 from . import utils
@@ -19,10 +16,10 @@ from .utils.ta import SMA, EMA, MACD, KDJ
 from .objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
 from .utils.cache import home_path, get_dir_size, empty_cache_path
 
-__version__ = "0.8.24"
+__version__ = "0.8.25"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20220418"
+__date__ = "20220425"
 
 
 if envs.get_welcome():
