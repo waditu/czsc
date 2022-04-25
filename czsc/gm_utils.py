@@ -493,29 +493,29 @@ def report_account_status(context):
             name = context.stocks.get(symbol, '无名')
             trader: GmCzscTrader = context.symbols_info[symbol]['trader']
             p = account.position(symbol=symbol, side=PositionSide_Long)
-            row = {'symbol': symbol, 'name': name, 'dt': trader.end_dt.strftime(dt_fmt),
-                   'long_pos': trader.long_pos.pos, 'long_cost': trader.long_pos.long_cost,
-                   'price': trader.latest_price}
+
+            row = {'交易标的': symbol, '标的名称': name,
+                   '最新时间': trader.end_dt.strftime(dt_fmt),
+                   '最新价格': trader.latest_price,
+                   '多头持仓': 0, '多头成本': 0, '开仓时间': None,
+                   "实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0}
+
+            if trader.long_pos.pos > 0:
+                row.update({'多头持仓': trader.long_pos.pos,
+                            '多头成本': trader.long_pos.long_cost,
+                            '开仓时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+
             if p:
-                r1 = {
-                    "持仓数量": p.volume,
-                    "持仓成本": x_round(p.vwap, 2),
-                    "持仓市值": int(p.volume * p.vwap),
-                }
-            else:
-                r1 = {
-                    "持仓数量": 0,
-                    "持仓成本": 0,
-                    "持仓市值": 0,
-                }
-            row.update(r1)
+                row.update({"实盘持仓数量": p.volume,
+                            "实盘持仓成本": x_round(p.vwap, 2),
+                            "实盘持仓市值": int(p.volume * p.vwap)})
             results.append(row)
 
         df = pd.DataFrame(results)
-        df['long_ret'] = (df['price'] / df['long_cost'] - 1).round(4)
-        df.sort_values(['持仓市值', 'long_ret'], ascending=False, inplace=True, ignore_index=True)
+        df['多头收益'] = df.apply(lambda x: x_round(x['最新价格'] / x['多头成本'] - 1) if x['多头持仓'] > 0 else 0, axis=1)
+        df.sort_values(['实盘持仓市值', '多头收益'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
-        df.to_excel(file_xlsx)
+        df.to_excel(file_xlsx, index=False)
         wx.push_file(file_xlsx, key=context.wx_key)
         os.remove(file_xlsx)
 
