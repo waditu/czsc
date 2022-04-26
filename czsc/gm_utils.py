@@ -513,7 +513,7 @@ def report_account_status(context):
 
         df = pd.DataFrame(results)
         df['多头收益'] = df.apply(lambda x: x_round(x['最新价格'] / x['多头成本'] - 1) if x['多头持仓'] > 0 else 0, axis=1)
-        df.sort_values(['实盘持仓市值', '多头收益'], ascending=False, inplace=True, ignore_index=True)
+        df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
         wx.push_file(file_xlsx, key=context.wx_key)
