@@ -83,11 +83,11 @@ def get_user_signals(c: CZSC) -> OrderedDict:
 def test_czsc_update():
     bars = read_daily()
     # 不计算任何信号
-    c = CZSC(bars, max_bi_count=50)
+    c = CZSC(bars)
     assert not c.signals
 
     # 计算信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_default_signals)
+    c = CZSC(bars, get_signals=get_default_signals)
     assert len(c.bi_list) == 50 and not c.last_bi_extend
     assert isinstance(c.signals, OrderedDict) and len(c.signals) == 38
 
@@ -96,7 +96,7 @@ def test_czsc_update():
     assert len(last_bi.fake_bis) == 11
     assert last_bi.fake_bis[0].direction == last_bi.fake_bis[-1].direction == last_bi.direction
     # 测试自定义信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_user_signals, signals_n=20)
+    c = CZSC(bars, get_signals=get_user_signals, signals_n=20)
     assert len(c.signals) == 11
     assert len(c.signals_list) == 20
     assert c.signals_list[-1] == c.signals
@@ -119,6 +119,6 @@ def test_get_signals():
 
     bars = read_daily()
     # 不计算任何信号
-    c = CZSC(bars, max_bi_count=50, get_signals=get_test_signals)
+    c = CZSC(bars, get_signals=get_test_signals)
     assert c.signals['日线_倒0笔_方向'] == '向下_任意_任意_0'
     assert c.signals['日线_倒0笔_长度'] == '5到9根K线_任意_任意_0'
