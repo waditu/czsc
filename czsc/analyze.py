@@ -204,7 +204,7 @@ class CZSC:
         :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         """
         self.verbose = envs.get_verbose()
-        self.max_bi_count = envs.get_max_bi_num()
+        self.max_bi_num = envs.get_max_bi_num()
         self.signals_n = signals_n
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
@@ -298,7 +298,7 @@ class CZSC:
 
         # 更新笔
         self.__update_bi()
-        self.bi_list = self.bi_list[-self.max_bi_count:]
+        self.bi_list = self.bi_list[-self.max_bi_num:]
         if self.bi_list:
             sdt = self.bi_list[0].fx_a.elements[0].dt
             s_index = 0
