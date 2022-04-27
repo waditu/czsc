@@ -30,19 +30,17 @@ class CzscAdvancedTrader:
                  long_pos: PositionLong = None,
                  short_events: List[Event] = None,
                  short_pos: PositionShort = None,
-                 max_bi_count: int = 50,
                  signals_n: int = 0,
                  ):
         """
 
         :param bg: K线合成器
-        :param get_signals: 自定义的单级别信号计算函数
+        :param get_signals: 自定义信号计算函数
         :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
         :param long_pos: 多头仓位对象
         :param short_events: 自定义的空头交易事件组合，推荐平仓事件放到前面
         :param short_pos: 空头仓位对象
-        :param max_bi_count: 单个级别最大保存笔的数量
-        :param signals_n: 见 `CZSC` 对象
+        :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         """
         self.name = "CzscAdvancedTrader"
         self.bg = bg
@@ -59,7 +57,7 @@ class CzscAdvancedTrader:
         self.signals_n = signals_n
         self.signals_list = []
         self.verbose = envs.get_verbose()
-        self.kas = {freq: CZSC(b, max_bi_count) for freq, b in bg.bars.items()}
+        self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
