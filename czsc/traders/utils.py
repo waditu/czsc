@@ -23,7 +23,6 @@ def trader_fast_backtest(bars: List[RawBar],
                          init_n: int,
                          strategy: Callable,
                          html_path: str = None,
-                         max_bi_count: int = 50,
                          signals_n: int = 0,
                          T0: bool = False,
                          ):
@@ -34,9 +33,6 @@ def trader_fast_backtest(bars: List[RawBar],
     :param strategy: 策略定义函数
     :param html_path: 交易快照保存路径，默认为 None 的情况下，不保存快照
         注意，保存HTML交易快照非常耗时，建议只用于核对部分标的的交易买卖点时进行保存
-    :param max_bi_count: 最大保存的笔数量
-        默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
-        如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
     :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
     :param T0: 是否允许T0交易
     :return: 操作列表，交易对，性能评估
@@ -83,7 +79,7 @@ def trader_fast_backtest(bars: List[RawBar],
     ct = CzscAdvancedTrader(bg, get_signals,
                             long_events=long_events, long_pos=long_pos,
                             short_events=short_events, short_pos=short_pos,
-                            signals_n=signals_n, max_bi_count=max_bi_count)
+                            signals_n=signals_n)
 
     signals = []
     for bar in tqdm(bars[init_n:], desc=f"{ts_code} bt"):
