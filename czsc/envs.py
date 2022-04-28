@@ -26,8 +26,8 @@ def get_welcome():
 
 
 def get_min_bi_len(v: int = None) -> int:
-    """min_bi_len - 一笔的最小长度，也就是无包含K线的数量，7是老笔的要求"""
-    min_bi_len = v if v else os.environ.get('czsc_min_bi_len', 7)
+    """min_bi_len - 一笔的最小长度，也就是无包含K线的数量，7是老笔的要求，6是新笔的要求"""
+    min_bi_len = v if v else os.environ.get('czsc_min_bi_len', 6)
     return int(float(min_bi_len))
 
 
