@@ -7,18 +7,19 @@ import warnings
 from collections import OrderedDict
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List, Callable
+from typing import List
 from urllib.parse import quote
 
-from ..objects import RawBar, Event
-from ..enum import Freq
-from ..utils.bar_generator import freq_end_time
-from ..signals.signals import get_default_signals
-
+from ..objects import RawBar, Freq
+from ..utils.bar_generator import freq_end_time, BarGenerator
+from .base import freq_cn2jq
 
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
 file_token = os.path.join(home_path, "jq.token")
+
+dt_fmt = "%Y-%m-%d %H:%M:%S"
+date_fmt = "%Y-%m-%d"
 
 # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
 freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
@@ -353,6 +354,32 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
         bars[-1].dt = freq_end_time(bars[-1].dt, freq=freq_map[freq])
     bars = [x for x in bars if x.dt <= end_date]
     return bars
+
+
+def get_init_bg(symbol: str,
+                end_dt: [str, datetime],
+                base_freq: str,
+                freqs: List[str],
+                max_count=1000,
+                fq=True):
+    """获取 symbol 的初始化 bar generator"""
+    if isinstance(end_dt, str):
+        end_dt = pd.to_datetime(end_dt, utc=False)
+
+    delta_days = 180
+    last_day = (end_dt - timedelta(days=delta_days)).replace(hour=16, minute=0)
+
+    bg = BarGenerator(base_freq, freqs, max_count)
+    for freq in bg.bars.keys():
+        bars_ = get_kline(symbol=symbol, end_date=last_day, freq=freq_cn2jq[freq], count=max_count, fq=fq)
+        bg.bars[freq] = bars_
+        print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
+
+    bars2 = get_kline_period(symbol, last_day, end_dt, freq=freq_cn2jq[base_freq], fq=fq)
+    data = [x for x in bars2 if x.dt > last_day]
+    assert len(data) > 0
+    print(f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
+    return bg, data
 
 
 def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> dict:

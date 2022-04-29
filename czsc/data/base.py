@@ -10,6 +10,9 @@ freq_cn2ts = {"1分钟": "1min", "5分钟": "5min", "15分钟": "15min", "30分�
               '60分钟': "60min", "日线": "D", "周线": "W", "月线": "M"}
 freq_ts2cn = {v: k for k, v in freq_cn2ts.items()}
 
+freq_cn2jq = freq_cn2ts
+freq_jq2cn = freq_ts2cn
+
 freq_gm2cn = {"60s": "1分钟", "300s": "5分钟", "900s": "15分钟", "1800s": "30分钟",
               "3600s": "60分钟", "1d": "日线"}
 freq_cn2gm = {v: k for k, v in freq_gm2cn.items()}
