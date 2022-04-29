@@ -3,9 +3,8 @@ import zipfile
 from tqdm import tqdm
 import pandas as pd
 from czsc.analyze import *
-from czsc.enum import Freq, Operate
+from czsc.enum import Freq
 from czsc.signals.signals import get_default_signals, get_s_three_bi, get_s_d0_bi
-from czsc.objects import Event, Factor, Signal
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 
