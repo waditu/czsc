@@ -7,6 +7,7 @@ describe: 支持分批买入卖出的高级交易员
 """
 import os
 import webbrowser
+import pandas as pd
 from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
@@ -14,7 +15,7 @@ from pyecharts.options import ComponentTitleOpts
 
 from ..analyze import CZSC, signals_counter
 from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
-from ..utils.bar_generator import BarGenerator
+from ..utils import BarGenerator, x_round
 from ..utils.cache import home_path
 from .. import envs
 
@@ -29,19 +30,17 @@ class CzscAdvancedTrader:
                  long_pos: PositionLong = None,
                  short_events: List[Event] = None,
                  short_pos: PositionShort = None,
-                 max_bi_count: int = 50,
                  signals_n: int = 0,
                  ):
         """
 
         :param bg: K线合成器
-        :param get_signals: 自定义的单级别信号计算函数
+        :param get_signals: 自定义信号计算函数
         :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
         :param long_pos: 多头仓位对象
         :param short_events: 自定义的空头交易事件组合，推荐平仓事件放到前面
         :param short_pos: 空头仓位对象
-        :param max_bi_count: 单个级别最大保存笔的数量
-        :param signals_n: 见 `CZSC` 对象
+        :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         """
         self.name = "CzscAdvancedTrader"
         self.bg = bg
@@ -51,12 +50,14 @@ class CzscAdvancedTrader:
         self.get_signals = get_signals
         self.long_events = long_events
         self.long_pos = long_pos
+        self.long_holds = []                    # 记录基础周期结束时间对应的多头仓位信息
         self.short_events = short_events
         self.short_pos = short_pos
+        self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
         self.signals_n = signals_n
         self.signals_list = []
         self.verbose = envs.get_verbose()
-        self.kas = {freq: CZSC(b, max_bi_count) for freq, b in bg.bars.items()}
+        self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
@@ -113,7 +114,7 @@ class CzscAdvancedTrader:
         for freq, b in self.bg.bars.items():
             self.kas[freq].update(b[-1])
 
-        self.symbol = bar.symbol
+        self.symbol = symbol = bar.symbol
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         dt, bid, price = self.end_dt, self.bid, self.latest_price
@@ -123,6 +124,7 @@ class CzscAdvancedTrader:
             self.signals_list = self.signals_list[-self.signals_n:]
             self.s.update(signals_counter(self.signals_list))
 
+        last_n1b = last_bar.close / self.kas[self.base_freq].bars_raw[-2].close - 1
         # 遍历 long_events，更新 long_pos
         if self.long_events:
             assert isinstance(self.long_pos, PositionLong), "long_events 必须配合 PositionLong 使用"
@@ -138,6 +140,9 @@ class CzscAdvancedTrader:
                     break
 
             self.long_pos.update(dt, op, price, bid, op_desc)
+            if self.long_holds:
+                self.long_holds[-1]['n1b'] = last_n1b
+            self.long_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.long_pos.pos, 'n1b': 0})
 
         # 遍历 short_events，更新 short_pos
         if self.short_events:
@@ -154,5 +159,98 @@ class CzscAdvancedTrader:
                     break
 
             self.short_pos.update(dt, op, price, bid, op_desc)
+            if self.short_holds:
+                self.short_holds[-1]['n1b'] = -last_n1b
+            self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
+
+    @property
+    def results(self):
+        """汇集回测相关结果"""
+        res = {}
+        ct = self
+        dt_fmt = "%Y-%m-%d %H:%M"
+        if ct.long_pos:
+            df_holds = pd.DataFrame(ct.long_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['long_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['long_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['long_holds'] = df_holds
+            res['long_operates'] = ct.long_pos.operates
+            res['long_pairs'] = ct.long_pos.pairs
+            res['long_performance'] = ct.long_pos.evaluate_operates()
+            res['long_performance'].update(dict(p))
+
+        if ct.short_pos:
+            df_holds = pd.DataFrame(ct.short_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['short_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['short_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['short_holds'] = df_holds
+            res['short_operates'] = ct.short_pos.operates
+            res['short_pairs'] = ct.short_pos.pairs
+            res['short_performance'] = ct.short_pos.evaluate_operates()
+            res['short_performance'].update(dict(p))
+
+        return res
+
+
+def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
+    """为交易策略 tactic 创建对应的 trader
+
+    :param bg: K线生成器
+    :param raw_bars: 用来初始化 trader 的K线
+    :param tactic: 择时交易策略
+    :return: trader
+    """
+    symbol = raw_bars[0].symbol
+    get_signals = tactic['get_signals']
+
+    long_states_pos = tactic.get('long_states_pos', None)
+    long_events = tactic.get('long_events', None)
+    long_min_interval = tactic.get('long_min_interval', None)
+
+    short_states_pos = tactic.get('short_states_pos', None)
+    short_events = tactic.get('short_events', None)
+    short_min_interval = tactic.get('short_min_interval', None)
+
+    if long_states_pos:
+        long_pos = PositionLong(symbol, T0=False,
+                                long_min_interval=long_min_interval,
+                                hold_long_a=long_states_pos['hold_long_a'],
+                                hold_long_b=long_states_pos['hold_long_b'],
+                                hold_long_c=long_states_pos['hold_long_c'])
+    else:
+        long_pos = None
+
+    if short_states_pos:
+        short_pos = PositionShort(symbol, T0=False,
+                                  short_min_interval=short_min_interval,
+                                  hold_short_a=short_states_pos['hold_short_a'],
+                                  hold_short_b=short_states_pos['hold_short_b'],
+                                  hold_short_c=short_states_pos['hold_short_c'])
+    else:
+        short_pos = None
+
+    trader = CzscAdvancedTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
+                                signals_n=tactic.get('signals_n', 0))
+    for bar in raw_bars:
+        trader.update(bar)
+
+    return trader
+
 
 

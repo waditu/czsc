@@ -535,6 +535,7 @@ class PositionLong:
             '累计平仓': sum([x['price'] * x['pos_change'] for x in le_]),
             '累计换手': sum([x['pos_change'] for x in operates]),
             '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
+            '事件序列': " > ".join([x['op_desc'] for x in operates]),
         }
         pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
         pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
@@ -714,6 +715,7 @@ class PositionShort:
             '累计平仓': sum([x['price'] * x['pos_change'] for x in e_]),
             '累计换手': sum([x['pos_change'] for x in operates]),
             '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
+            '事件序列': " > ".join([x['op_desc'] for x in operates]),
         }
         pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
         # 空头计算盈亏，需要取反

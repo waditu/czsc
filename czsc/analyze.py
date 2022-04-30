@@ -195,7 +195,6 @@ def signals_counter(signals_list) -> OrderedDict:
 class CZSC:
     def __init__(self,
                  bars: List[RawBar],
-                 max_bi_count: int = 50,
                  get_signals: Callable = None,
                  signals_n: int = 0):
         """
@@ -203,12 +202,9 @@ class CZSC:
         :param bars: K线数据
         :param get_signals: 自定义的信号计算函数
         :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
-        :param max_bi_count: 最大保存的笔数量
-            默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
-            如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
         """
         self.verbose = envs.get_verbose()
-        self.max_bi_count = max_bi_count
+        self.max_bi_num = envs.get_max_bi_num()
         self.signals_n = signals_n
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列
@@ -302,7 +298,7 @@ class CZSC:
 
         # 更新笔
         self.__update_bi()
-        self.bi_list = self.bi_list[-self.max_bi_count:]
+        self.bi_list = self.bi_list[-self.max_bi_num:]
         if self.bi_list:
             sdt = self.bi_list[0].fx_a.elements[0].dt
             s_index = 0

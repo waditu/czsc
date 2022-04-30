@@ -5,12 +5,11 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/6 11:04
 """
 import os
-
 import pandas as pd
 import inspect
-from czsc.utils import WordWriter
 import matplotlib.pyplot as plt
 import seaborn as sns
+from czsc.utils import WordWriter
 
 
 def test_word_writer():

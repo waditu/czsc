@@ -31,11 +31,7 @@ os.environ['backtest_transaction_ratio'] = '1'
 os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
-
-from gm_utils import *
+from czsc.gm_utils import *
 from tactics import trader_strategy_b as strategy
 
 
@@ -70,6 +66,6 @@ if __name__ == '__main__':
         backtest_transaction_ratio=float(os.environ['backtest_transaction_ratio']),
         backtest_commission_ratio=float(os.environ['backtest_commission_ratio']),
         backtest_slippage_ratio=float(os.environ['backtest_slippage_ratio']),
-        backtest_adjust=ADJUST_POST,
+        backtest_adjust=ADJUST_PREV,
         backtest_check_cache=1)
 
