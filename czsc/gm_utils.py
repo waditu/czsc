@@ -15,7 +15,7 @@ from gm.api import *
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from typing import List, Callable
-from czsc import CzscAdvancedTrader
+from czsc import CzscAdvancedTrader, create_advanced_trader
 from czsc.data import freq_cn2gm
 from czsc.utils import qywx as wx
 from czsc.utils import x_round, BarGenerator, create_logger
@@ -25,7 +25,7 @@ from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionSho
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
-assert czsc.__version__ >= "0.8.22"
+assert czsc.__version__ >= "0.8.25"
 
 
 def set_gm_token(token):
@@ -244,7 +244,7 @@ def on_order_status(context, order):
               f"均价（元）：{round(order.filled_vwap, 2)}"
 
     else:
-        trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+        trader: CzscAdvancedTrader = context.symbols_info[symbol]['trader']
         if trader.long_pos.operates:
             last_op_desc = trader.long_pos.operates[-1]['op_desc']
         else:
@@ -351,7 +351,7 @@ def on_backtest_finished(context, indicator):
     operates = []
     performances = []
     for symbol in symbols:
-        trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+        trader: CzscAdvancedTrader = context.symbols_info[symbol]['trader']
         trades.extend(trader.long_pos.pairs)
         operates.extend(trader.long_pos.operates)
         performances.append(trader.long_pos.evaluate_operates())
@@ -408,7 +408,7 @@ def on_bar(context, bars):
 
     for bar in bars:
         symbol = bar['symbol']
-        trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+        trader: CzscAdvancedTrader = context.symbols_info[symbol]['trader']
 
         # 确保数据更新到最新时刻
         base_freq = trader.base_freq
@@ -420,7 +420,7 @@ def on_bar(context, bars):
             for bar_ in bars_new:
                 trader.update(bar_)
 
-        trader.sync_long_position(context)
+        sync_long_position(context, trader)
 
 
 def is_order_exist(context, symbol, side) -> bool:
@@ -491,7 +491,7 @@ def report_account_status(context):
         results = []
         for symbol, info in context.symbols_info.items():
             name = context.stocks.get(symbol, '无名')
-            trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+            trader: CzscAdvancedTrader = context.symbols_info[symbol]['trader']
             p = account.position(symbol=symbol, side=PositionSide_Long)
 
             row = {'交易标的': symbol, '标的名称': name,
@@ -520,158 +520,139 @@ def report_account_status(context):
         os.remove(file_xlsx)
 
 
-class GmCzscTrader(CzscAdvancedTrader):
-    def __init__(self,
-                 bg: BarGenerator,
-                 get_signals: Callable,
-                 long_events: List[Event] = None,
-                 long_pos: PositionLong = None,
-                 short_events: List[Event] = None,
-                 short_pos: PositionShort = None,
-                 signals_n: int = 0,
-                 ):
-        super().__init__(
-            bg=bg,
-            get_signals=get_signals,
-            long_events=long_events,
-            long_pos=long_pos,
-            short_events=short_events,
-            short_pos=short_pos,
-            signals_n=signals_n,
-        )
+def sync_long_position(context, trader: CzscAdvancedTrader):
+    """同步多头仓位到交易账户"""
+    if not trader.long_events:
+        return
 
-    def sync_long_position(self, context):
-        """同步多头仓位到交易账户"""
-        if not self.long_events:
-            return
+    symbol = trader.symbol
+    name = context.stocks.get(symbol, "无名标的")
+    long_pos = trader.long_pos
+    max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
+    logger = context.logger
+    if context.mode == MODE_BACKTEST:
+        account = context.account()
+    else:
+        account = context.account(account_id=context.account_id)
+    cash = account.cash
 
-        symbol = self.symbol
-        name = context.stocks.get(symbol, "无名标的")
-        long_pos = self.long_pos
-        max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
-        logger = context.logger
-        if context.mode == MODE_BACKTEST:
-            account = context.account()
+    price = trader.latest_price
+    print(f"{trader.end_dt}: {name}，多头：{long_pos.pos}，成本：{long_pos.long_cost}，"
+          f"现价：{price}，操作次数：{len(long_pos.operates)}")
+
+    algo_name = os.environ.get('algo_name', None)
+    if algo_name:
+        # 算法名称，TWAP、VWAP、ATS-SMART、ZC-POV
+        algo_name = algo_name.upper()
+        start_time = trader.end_dt.strftime("%H:%M:%S")
+        end_time = (trader.end_dt + timedelta(minutes=30)).strftime("%H:%M:%S")
+        end_time = min(end_time, '14:55:00')
+
+        if algo_name == 'TWAP' or algo_name == 'VWAP' or algo_name == 'ZC-POV':
+            algo_param = {
+                "start_time": start_time,
+                "end_time": end_time,
+                "part_rate": 0.5,
+                "min_amount": 5000,
+            }
+        elif algo_name == 'ATS-SMART':
+            algo_param = {
+                'start_time': start_time,
+                'end_time_referred': end_time,
+                'end_time': end_time,
+                'end_time_valid': 1,
+                'stop_sell_when_dl': 1,
+                'cancel_when_pl': 0,
+                'min_trade_amount': 5000
+            }
         else:
-            account = context.account(account_id=context.account_id)
-        cash = account.cash
+            raise ValueError("算法单名称输入错误")
+    else:
+        algo_param = {}
 
-        price = self.latest_price
-        print(f"{self.end_dt}: {name}，多头：{long_pos.pos}，成本：{long_pos.long_cost}，"
-              f"现价：{price}，操作次数：{len(long_pos.operates)}")
-
-        algo_name = os.environ.get('algo_name', None)
+    sym_position = account.position(symbol, PositionSide_Long)
+    if long_pos.pos == 0 and sym_position and sym_position.volume > 0:
+        volume = sym_position.volume
         if algo_name:
-            # 算法名称，TWAP、VWAP、ATS-SMART、ZC-POV
-            algo_name = algo_name.upper()
-            start_time = self.end_dt.strftime("%H:%M:%S")
-            end_time = (self.end_dt + timedelta(minutes=30)).strftime("%H:%M:%S")
-            end_time = min(end_time, '14:55:00')
-
-            if algo_name == 'TWAP' or algo_name == 'VWAP' or algo_name == 'ZC-POV':
-                algo_param = {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "part_rate": 0.5,
-                    "min_amount": 5000,
-                }
-            elif algo_name == 'ATS-SMART':
-                algo_param = {
-                    'start_time': start_time,
-                    'end_time_referred': end_time,
-                    'end_time': end_time,
-                    'end_time_valid': 1,
-                    'stop_sell_when_dl': 1,
-                    'cancel_when_pl': 0,
-                    'min_trade_amount': 5000
-                }
-            else:
-                raise ValueError("算法单名称输入错误")
-        else:
-            algo_param = {}
-
-        sym_position = account.position(symbol, PositionSide_Long)
-        if long_pos.pos == 0 and sym_position and sym_position.volume > 0:
-            volume = sym_position.volume
-            if algo_name:
-                assert len(algo_param) > 0, f"error: {algo_name}, {algo_param}"
-                _ = algo_order(symbol=symbol, volume=volume, side=OrderSide_Sell,
-                               order_type=OrderType_Limit, position_effect=PositionEffect_Close,
-                               price=price, algo_name=algo_name, algo_param=algo_param, account=account.id)
-            else:
-                order_target_volume(symbol=symbol, volume=0, position_side=PositionSide_Long,
-                                    order_type=OrderType_Limit, price=price, account=account.id)
-            return
-
-        if not long_pos.pos_changed:
-            return
-
-        cash_left = cash.available
-        if long_pos.operates[-1]['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
-            change_amount = max_sym_pos * long_pos.operates[-1]['pos_change'] * cash.nav
-            if cash_left < change_amount:
-                logger.info(f"{context.now} {symbol} {name} 可用资金不足，无法开多仓；"
-                            f"剩余资金{int(cash_left)}元，所需资金{int(change_amount)}元")
-                return
-
-        if is_order_exist(context, symbol, PositionSide_Long):
-            logger.info(f"{context.now} {symbol} {name} 同方向订单已存在")
-            return
-
-        percent = max_sym_pos * long_pos.pos
-        volume = int((cash.nav * percent / price // 100) * 100)     # 单位：股
-        if algo_name:
-            _ = algo_order(symbol=symbol, volume=volume, side=OrderSide_Buy,
-                           order_type=OrderType_Limit, position_effect=PositionEffect_Open,
+            assert len(algo_param) > 0, f"error: {algo_name}, {algo_param}"
+            _ = algo_order(symbol=symbol, volume=volume, side=OrderSide_Sell,
+                           order_type=OrderType_Limit, position_effect=PositionEffect_Close,
                            price=price, algo_name=algo_name, algo_param=algo_param, account=account.id)
         else:
-            order_target_volume(symbol=symbol, volume=volume, position_side=PositionSide_Long,
+            order_target_volume(symbol=symbol, volume=0, position_side=PositionSide_Long,
                                 order_type=OrderType_Limit, price=price, account=account.id)
+        return
 
-    def sync_short_position(self, context):
-        """同步空头仓位到交易账户"""
-        if not self.short_events:
+    if not long_pos.pos_changed:
+        return
+
+    cash_left = cash.available
+    if long_pos.operates[-1]['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+        change_amount = max_sym_pos * long_pos.operates[-1]['pos_change'] * cash.nav
+        if cash_left < change_amount:
+            logger.info(f"{context.now} {symbol} {name} 可用资金不足，无法开多仓；"
+                        f"剩余资金{int(cash_left)}元，所需资金{int(change_amount)}元")
             return
 
-        symbol = self.symbol
-        name = context.stocks.get(symbol, "无名标的")
-        short_pos: PositionShort = self.short_pos
-        max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
-        logger = context.logger
-        if context.mode == MODE_BACKTEST:
-            account = context.account()
-        else:
-            account = context.account(account_id=context.account_id)
-        cash = account.cash
+    if is_order_exist(context, symbol, PositionSide_Long):
+        logger.info(f"{context.now} {symbol} {name} 同方向订单已存在")
+        return
 
-        price = self.latest_price
-        print(f"{self.end_dt}: {name}，空头：{short_pos.pos}，成本：{short_pos.short_cost}，"
-              f"现价：{price}，操作次数：{len(short_pos.operates)}")
+    percent = max_sym_pos * long_pos.pos
+    volume = int((cash.nav * percent / price // 100) * 100)     # 单位：股
+    if algo_name:
+        _ = algo_order(symbol=symbol, volume=volume, side=OrderSide_Buy,
+                       order_type=OrderType_Limit, position_effect=PositionEffect_Open,
+                       price=price, algo_name=algo_name, algo_param=algo_param, account=account.id)
+    else:
+        order_target_volume(symbol=symbol, volume=volume, position_side=PositionSide_Long,
+                            order_type=OrderType_Limit, price=price, account=account.id)
 
-        sym_position = account.position(symbol, PositionSide_Short)
-        if short_pos.pos == 0 and sym_position and sym_position.volume > 0:
-            order_target_percent(symbol=symbol, percent=0, position_side=PositionSide_Short,
-                                 order_type=OrderType_Limit, price=price, account=account.id)
-            return
 
-        if not short_pos.pos_changed:
-            return
+def sync_short_position(trader: CzscAdvancedTrader, context):
+    """同步空头仓位到交易账户"""
+    if not trader.short_events:
+        return
 
-        cash_left = cash.available
-        if short_pos.operates[-1]['op'] in [Operate.SO, Operate.SA1, Operate.SA2]:
-            change_amount = max_sym_pos * short_pos.operates[-1]['pos_change'] * cash.nav
-            if cash_left < change_amount:
-                logger.info(f"{context.now} {symbol} {name} 可用资金不足，无法开空仓；"
-                            f"剩余资金{int(cash_left)}元，所需资金{int(change_amount)}元")
-                return
+    symbol = trader.symbol
+    name = context.stocks.get(symbol, "无名标的")
+    short_pos: PositionShort = trader.short_pos
+    max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
+    logger = context.logger
+    if context.mode == MODE_BACKTEST:
+        account = context.account()
+    else:
+        account = context.account(account_id=context.account_id)
+    cash = account.cash
 
-        if is_order_exist(context, symbol, PositionSide_Long):
-            logger.info(f"{context.now} {symbol} {name} 同方向订单已存在")
-            return
+    price = trader.latest_price
+    print(f"{trader.end_dt}: {name}，空头：{short_pos.pos}，成本：{short_pos.short_cost}，"
+          f"现价：{price}，操作次数：{len(short_pos.operates)}")
 
-        percent = max_sym_pos * short_pos.pos
-        order_target_percent(symbol=symbol, percent=percent, position_side=PositionSide_Short,
+    sym_position = account.position(symbol, PositionSide_Short)
+    if short_pos.pos == 0 and sym_position and sym_position.volume > 0:
+        order_target_percent(symbol=symbol, percent=0, position_side=PositionSide_Short,
                              order_type=OrderType_Limit, price=price, account=account.id)
+        return
+
+    if not short_pos.pos_changed:
+        return
+
+    cash_left = cash.available
+    if short_pos.operates[-1]['op'] in [Operate.SO, Operate.SA1, Operate.SA2]:
+        change_amount = max_sym_pos * short_pos.operates[-1]['pos_change'] * cash.nav
+        if cash_left < change_amount:
+            logger.info(f"{context.now} {symbol} {name} 可用资金不足，无法开空仓；"
+                        f"剩余资金{int(cash_left)}元，所需资金{int(change_amount)}元")
+            return
+
+    if is_order_exist(context, symbol, PositionSide_Long):
+        logger.info(f"{context.now} {symbol} {name} 同方向订单已存在")
+        return
+
+    percent = max_sym_pos * short_pos.pos
+    order_target_percent(symbol=symbol, percent=percent, position_side=PositionSide_Short,
+                         order_type=OrderType_Limit, price=price, account=account.id)
 
 
 def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
@@ -692,8 +673,8 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     if not end_dt:
         end_dt = datetime.now().strftime(dt_fmt)
 
-    bg, data = get_init_bg(gm_symbol, end_dt, base_freq=freqs[0], freqs=freqs[1:], max_count=max_count, adjust=adjust)
-    ct = GmCzscTrader(bg, get_signals=get_signals)
+    bg, data = get_init_bg(gm_symbol, end_dt, freqs[0], freqs[1:], max_count, adjust)
+    ct = CzscAdvancedTrader(bg, get_signals=get_signals)
     for bar in data:
         ct.update(bar)
 
@@ -718,43 +699,8 @@ def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, ad
     """
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
-    get_signals = tactic['get_signals']
-
-    long_states_pos = tactic.get('long_states_pos', None)
-    long_events = tactic.get('long_events', None)
-    long_min_interval = tactic.get('long_min_interval', None)
-
-    short_states_pos = tactic.get('short_states_pos', None)
-    short_events = tactic.get('short_events', None)
-    short_min_interval = tactic.get('short_min_interval', None)
-
-    if not end_dt:
-        end_dt = datetime.now().strftime(dt_fmt)
-
-    if long_states_pos:
-        long_pos = PositionLong(symbol, T0=False,
-                                long_min_interval=long_min_interval,
-                                hold_long_a=long_states_pos['hold_long_a'],
-                                hold_long_b=long_states_pos['hold_long_b'],
-                                hold_long_c=long_states_pos['hold_long_c'])
-    else:
-        long_pos = None
-
-    if short_states_pos:
-        short_pos = PositionShort(symbol, T0=False,
-                                  short_min_interval=short_min_interval,
-                                  hold_short_a=short_states_pos['hold_short_a'],
-                                  hold_short_b=short_states_pos['hold_short_b'],
-                                  hold_short_c=short_states_pos['hold_short_c'])
-    else:
-        short_pos = None
-
-    bg, data = get_init_bg(symbol, end_dt, base_freq=base_freq, freqs=freqs, max_count=max_count, adjust=adjust)
-    trader = GmCzscTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
-                          signals_n=tactic.get('signals_n', 0))
-    for bar in data:
-        trader.update(bar)
-
+    bg, data = get_init_bg(symbol, end_dt, base_freq, freqs, max_count, adjust)
+    trader = create_advanced_trader(bg, data, tactic)
     if file_html:
         trader.take_snapshot(file_html)
         print(f'saved into {file_html}')
@@ -819,7 +765,7 @@ def save_traders(context):
         return
 
     for symbol in context.symbols_info.keys():
-        trader: GmCzscTrader = context.symbols_info[symbol]['trader']
+        trader: CzscAdvancedTrader = context.symbols_info[symbol]['trader']
         if context.mode != MODE_BACKTEST:
             file_trader = os.path.join(context.data_path, f'traders/{symbol}.cat')
             dill.dump(trader, open(file_trader, 'wb'))
@@ -871,30 +817,19 @@ def init_context_env(context):
 
 
 def init_context_traders(context, symbols: List[str], strategy: Callable):
-    """通用 context 初始化：3、为每个标的创建 GmCzscTrader 对象
+    """通用 context 初始化：3、为每个标的创建 trader
 
     :param context:
-    :param symbols:
-    :param strategy:
+    :param symbols: 交易标的列表
+    :param strategy: 交易策略
     :return:
     """
     with open(os.path.join(context.data_path, f'{strategy.__name__}.txt'), mode='w') as f:
         f.write(inspect.getsource(strategy))
 
     tactic = strategy()
-
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
-    get_signals = tactic['get_signals']
-
-    long_states_pos = tactic.get('long_states_pos', None)
-    long_events = tactic.get('long_events', None)
-    long_min_interval = tactic.get('long_min_interval', None)
-
-    short_states_pos = tactic.get('short_states_pos', None)
-    short_events = tactic.get('short_events', None)
-    short_min_interval = tactic.get('short_min_interval', None)
-
     frequency = freq_cn2gm[base_freq]
     unsubscribe(symbols='*', frequency=frequency)
 
@@ -916,38 +851,12 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
             file_trader = os.path.join(data_path, f'traders/{symbol}.cat')
 
             if os.path.exists(file_trader) and context.mode != MODE_BACKTEST:
-                trader: GmCzscTrader = dill.load(open(file_trader, 'rb'))
+                trader: CzscAdvancedTrader = dill.load(open(file_trader, 'rb'))
                 logger.info(f"{symbol} Loaded Trader from {file_trader}")
 
             else:
-                if long_states_pos:
-                    long_pos = PositionLong(symbol, T0=False,
-                                            long_min_interval=long_min_interval,
-                                            hold_long_a=long_states_pos['hold_long_a'],
-                                            hold_long_b=long_states_pos['hold_long_b'],
-                                            hold_long_c=long_states_pos['hold_long_c'])
-                else:
-                    long_pos = None
-
-                if short_states_pos:
-                    short_pos = PositionShort(symbol, T0=False,
-                                              short_min_interval=short_min_interval,
-                                              hold_short_a=short_states_pos['hold_short_a'],
-                                              hold_short_b=short_states_pos['hold_short_b'],
-                                              hold_short_c=short_states_pos['hold_short_c'])
-                else:
-                    short_pos = None
-
-                bg, data = get_init_bg(symbol, context.now, base_freq=base_freq, freqs=freqs, max_count=1000,
-                                       adjust=adjust)
-                trader = GmCzscTrader(
-                    bg=bg, get_signals=get_signals,
-                    long_events=long_events, long_pos=long_pos,
-                    short_events=short_events, short_pos=short_pos,
-                    signals_n=tactic.get('signals_n', 0)
-                )
-                for bar in data:
-                    trader.update(bar)
+                bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, adjust)
+                trader = create_advanced_trader(bg, data, tactic)
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader
@@ -965,10 +874,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
 
 
 def init_context_schedule(context):
-    """通用 context 初始化：设置定时任务
-
-    :param context:
-    """
+    """通用 context 初始化：设置定时任务"""
     schedule(schedule_func=report_account_status, date_rule='1d', time_rule='09:31:00')
     schedule(schedule_func=report_account_status, date_rule='1d', time_rule='10:01:00')
     schedule(schedule_func=report_account_status, date_rule='1d', time_rule='10:31:00')
