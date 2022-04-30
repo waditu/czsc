@@ -3,11 +3,10 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/4/29 12:06
-describe: 请描述文件用途
+describe: 使用聚宽的数据对任意标的、任意时刻的状态进行策略快照
 """
-from czsc.data.jq import *
-from czsc import CzscAdvancedTrader
-from czsc.objects import PositionLong, PositionShort
+from czsc.data.jq import get_init_bg
+from czsc import create_advanced_trader
 from examples import tactics
 
 
@@ -24,43 +23,8 @@ def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, fq
     """
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
-    get_signals = tactic['get_signals']
-
-    long_states_pos = tactic.get('long_states_pos', None)
-    long_events = tactic.get('long_events', None)
-    long_min_interval = tactic.get('long_min_interval', None)
-
-    short_states_pos = tactic.get('short_states_pos', None)
-    short_events = tactic.get('short_events', None)
-    short_min_interval = tactic.get('short_min_interval', None)
-
-    if not end_dt:
-        end_dt = datetime.now().strftime(dt_fmt)
-
-    if long_states_pos:
-        long_pos = PositionLong(symbol, T0=False,
-                                long_min_interval=long_min_interval,
-                                hold_long_a=long_states_pos['hold_long_a'],
-                                hold_long_b=long_states_pos['hold_long_b'],
-                                hold_long_c=long_states_pos['hold_long_c'])
-    else:
-        long_pos = None
-
-    if short_states_pos:
-        short_pos = PositionShort(symbol, T0=False,
-                                  short_min_interval=short_min_interval,
-                                  hold_short_a=short_states_pos['hold_short_a'],
-                                  hold_short_b=short_states_pos['hold_short_b'],
-                                  hold_short_c=short_states_pos['hold_short_c'])
-    else:
-        short_pos = None
-
     bg, data = get_init_bg(symbol, end_dt, base_freq=base_freq, freqs=freqs, max_count=max_count, fq=fq)
-    trader = CzscAdvancedTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
-                                signals_n=tactic.get('signals_n', 0))
-    for bar in data:
-        trader.update(bar)
-
+    trader = create_advanced_trader(bg, data, tactic)
     if file_html:
         trader.take_snapshot(file_html)
         print(f'saved into {file_html}')
