@@ -93,9 +93,10 @@ def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strateg
 
     new_col = f'{col}_bins{n_bins}'
     results = []
-    for dt, dfg in tqdm(df.groupby('dt')):
+    for dt, dfg in tqdm(df.groupby('dt'), desc=f"{col}_bins{n_bins}"):
         kb = KBinsDiscretizer(n_bins=n_bins, encode=encode, strategy=strategy)
-        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel()
+        # 加1，使分组从1开始
+        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel() + 1
         results.append(dfg)
     df = pd.concat(results, ignore_index=True)
     return df
