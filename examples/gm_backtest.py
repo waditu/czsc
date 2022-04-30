@@ -66,6 +66,6 @@ if __name__ == '__main__':
         backtest_transaction_ratio=float(os.environ['backtest_transaction_ratio']),
         backtest_commission_ratio=float(os.environ['backtest_commission_ratio']),
         backtest_slippage_ratio=float(os.environ['backtest_slippage_ratio']),
-        backtest_adjust=ADJUST_POST,
+        backtest_adjust=ADJUST_PREV,
         backtest_check_cache=1)
 

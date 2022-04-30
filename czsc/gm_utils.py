@@ -157,7 +157,7 @@ def get_init_bg(symbol: str,
 
     bg = BarGenerator(base_freq, freqs, max_count)
     if "周线" in freqs or "月线" in freqs:
-        d_bars = get_kline(symbol=symbol, end_time=last_day, freq=freq_cn2gm["日线"], count=5000, adjust=adjust)
+        d_bars = get_kline(symbol, last_day, freq_cn2gm["日线"], count=5000, adjust=adjust)
         bgd = BarGenerator("日线", ['周线', '月线', '季线', '年线'])
         for b in d_bars:
             bgd.update(b)
@@ -168,11 +168,11 @@ def get_init_bg(symbol: str,
         if freq in ['周线', '月线', '季线', '年线']:
             bars_ = bgd.bars[freq]
         else:
-            bars_ = get_kline(symbol=symbol, end_time=last_day, freq=freq_cn2gm[freq], count=max_count, adjust=adjust)
+            bars_ = get_kline(symbol, last_day, freq_cn2gm[freq], max_count, adjust)
         bg.bars[freq] = bars_
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
-    bars2 = get_kline(symbol=symbol, end_time=end_dt, freq=freq_cn2gm[base_freq],
+    bars2 = get_kline(symbol, end_dt, freq_cn2gm[base_freq],
                       count=int(240 / int(base_freq.strip('分钟')) * delta_days))
     data = [x for x in bars2 if x.dt > last_day]
     assert len(data) > 0
@@ -828,8 +828,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
         f.write(inspect.getsource(strategy))
 
     tactic = strategy()
-    base_freq = tactic['base_freq']
-    freqs = tactic['freqs']
+    base_freq, freqs = tactic['base_freq'], tactic['freqs']
     frequency = freq_cn2gm[base_freq]
     unsubscribe(symbols='*', frequency=frequency)
 
@@ -838,12 +837,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     logger.info(f"输入交易标的数量：{len(symbols)}")
     logger.info(f"交易员的周期列表：base_freq = {base_freq}; freqs = {freqs}")
 
-    if context.mode == MODE_BACKTEST:
-        adjust = ADJUST_POST
-    else:
-        adjust = ADJUST_PREV
     os.makedirs(os.path.join(data_path, 'traders'), exist_ok=True)
-
     symbols_info = {symbol: dict() for symbol in symbols}
     for symbol in symbols:
         try:
@@ -855,7 +849,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
                 logger.info(f"{symbol} Loaded Trader from {file_trader}")
 
             else:
-                bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, adjust)
+                bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, ADJUST_PREV)
                 trader = create_advanced_trader(bg, data, tactic)
                 dill.dump(trader, open(file_trader, 'wb'))
 
