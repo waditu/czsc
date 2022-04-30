@@ -207,3 +207,50 @@ class CzscAdvancedTrader:
 
         return res
 
+
+def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
+    """为交易策略 tactic 创建对应的 trader
+
+    :param bg: K线生成器
+    :param raw_bars: 用来初始化 trader 的K线
+    :param tactic: 择时交易策略
+    :return: trader
+    """
+    symbol = raw_bars[0].symbol
+    get_signals = tactic['get_signals']
+
+    long_states_pos = tactic.get('long_states_pos', None)
+    long_events = tactic.get('long_events', None)
+    long_min_interval = tactic.get('long_min_interval', None)
+
+    short_states_pos = tactic.get('short_states_pos', None)
+    short_events = tactic.get('short_events', None)
+    short_min_interval = tactic.get('short_min_interval', None)
+
+    if long_states_pos:
+        long_pos = PositionLong(symbol, T0=False,
+                                long_min_interval=long_min_interval,
+                                hold_long_a=long_states_pos['hold_long_a'],
+                                hold_long_b=long_states_pos['hold_long_b'],
+                                hold_long_c=long_states_pos['hold_long_c'])
+    else:
+        long_pos = None
+
+    if short_states_pos:
+        short_pos = PositionShort(symbol, T0=False,
+                                  short_min_interval=short_min_interval,
+                                  hold_short_a=short_states_pos['hold_short_a'],
+                                  hold_short_b=short_states_pos['hold_short_b'],
+                                  hold_short_c=short_states_pos['hold_short_c'])
+    else:
+        short_pos = None
+
+    trader = CzscAdvancedTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
+                                signals_n=tactic.get('signals_n', 0))
+    for bar in raw_bars:
+        trader.update(bar)
+
+    return trader
+
+
+

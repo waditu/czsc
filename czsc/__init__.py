@@ -11,7 +11,7 @@ from . import traders
 from . import sensors
 from . import aphorism
 from .analyze import CZSC
-from .traders.advanced import CzscAdvancedTrader
+from .traders.advanced import CzscAdvancedTrader, create_advanced_trader
 from .utils.ta import SMA, EMA, MACD, KDJ
 from .objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
 from .utils.cache import home_path, get_dir_size, empty_cache_path
