@@ -70,5 +70,5 @@ def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, fq
 
 
 if __name__ == '__main__':
-    ct = trader_tactic_snapshot("000001.XSHG", end_dt="2008-03-18 13:15", tactic=tactics.trader_strategy_example())
+    ct = trader_tactic_snapshot("000001.XSHG", end_dt="20070427 15:15", tactic=tactics.trader_strategy_example())
 

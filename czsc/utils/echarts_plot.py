@@ -99,6 +99,7 @@ def kline_pro(kline: List[dict],
                                 title_textstyle_opts=opts.TextStyleOpts(color=up_color, font_size=20),
                                 subtitle_textstyle_opts=opts.TextStyleOpts(color=down_color, font_size=12))
 
+    label_show_opts = opts.LabelOpts(is_show=True)
     label_not_show_opts = opts.LabelOpts(is_show=False)
     legend_not_show_opts = opts.LegendOpts(is_show=False)
     red_item_style = opts.ItemStyleOpts(color=up_color)
@@ -189,15 +190,16 @@ def kline_pro(kline: List[dict],
     chart_ma = Line()
     chart_ma.add_xaxis(xaxis_data=dts)
     if not t_seq:
-        t_seq = [10, 20, 60, 120, 250]
+        t_seq = [5, 13, 21, 34, 55, 89, 144, 233]
 
     ma_keys = dict()
     for t in t_seq:
         ma_keys[f"MA{t}"] = SMA(close, timeperiod=t)
 
     for i, (name, ma) in enumerate(ma_keys.items()):
+        is_selected = True if i < 4 else False
         chart_ma.add_yaxis(series_name=name, y_axis=ma, is_smooth=True,
-                           is_selected=True, symbol_size=0, label_opts=label_not_show_opts,
+                           is_selected=is_selected, symbol_size=0, label_opts=label_not_show_opts,
                            linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1))
 
     chart_ma.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
@@ -224,7 +226,7 @@ def kline_pro(kline: List[dict],
         chart_bi = Line()
         chart_bi.add_xaxis(bi_dts)
         chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,
-                           symbol="diamond", symbol_size=10, label_opts=label_not_show_opts,
+                           symbol="diamond", symbol_size=10, label_opts=label_show_opts,
                            itemstyle_opts=opts.ItemStyleOpts(color="rgba(184, 117, 225, 1.0)", ),
                            linestyle_opts=opts.LineStyleOpts(width=1.5))
 
