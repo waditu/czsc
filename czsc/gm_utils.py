@@ -527,7 +527,7 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
 
     symbol = trader.symbol
     name = context.stocks.get(symbol, "无名标的")
-    long_pos = trader.long_pos
+    long_pos: PositionLong = trader.long_pos
     max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
     logger = context.logger
     if context.mode == MODE_BACKTEST:
