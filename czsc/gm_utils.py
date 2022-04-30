@@ -317,12 +317,12 @@ def on_backtest_finished(context, indicator):
             indicator[k] = round(v, 4)
 
     row = OrderedDict({
-        "研究标的": ", ".join(list(context.symbols_info.keys())),
-        "回测开始时间": context.backtest_start_time,
-        "回测结束时间": context.backtest_end_time,
-        "累计收益率": indicator['pnl_ratio'],
+        "标的数量": len(context.symbols_info.keys()),
+        "开始时间": context.backtest_start_time,
+        "结束时间": context.backtest_end_time,
+        "累计收益": indicator['pnl_ratio'],
         "最大回撤": indicator['max_drawdown'],
-        "年化收益率": indicator['pnl_ratio_annual'],
+        "年化收益": indicator['pnl_ratio_annual'],
         "夏普比率": indicator['sharp_ratio'],
         "盈利次数": indicator['win_count'],
         "亏损次数": indicator['lose_count'],
