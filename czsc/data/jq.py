@@ -292,7 +292,8 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq:
@@ -347,7 +348,8 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq and bars:
