@@ -108,6 +108,14 @@ class FX:
         assert len(self.elements) == 3
         return sum([x.vol for x in self.elements])
 
+    @property
+    def has_zs(self):
+        """构成分型的三根无包含K线是否有重叠中枢"""
+        assert len(self.elements) == 3
+        zd = max([x.low for x in self.elements])
+        zg = min([x.high for x in self.elements])
+        return zg >= zd
+
 
 @dataclass
 class FakeBI:
