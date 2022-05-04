@@ -414,29 +414,6 @@ class TsDataCache:
             io.save_pkl(df, file_cache)
         return df
 
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def bak_basic(self, trade_date: str = None, ts_code: str = None):
-        """https://tushare.pro/document/2?doc_id=262
-
-        :param trade_date: 交易日期
-        :param ts_code: 标的代码
-        :return:
-        """
-        assert trade_date or ts_code, "请至少设定一个参数，trade_date 或 ts_code"
-
-        if trade_date:
-            trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
-
-        cache_path = self.api_path_map['bak_basic']
-        file_cache = os.path.join(cache_path, f"bak_basic_{trade_date}_{ts_code}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.bak_basic(trade_date=trade_date, ts_code=ts_code)
-            io.save_pkl(df, file_cache)
-        return df
-
     # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
 
     def daily_basic_new(self, trade_date: str):
@@ -610,56 +587,4 @@ class TsDataCache:
         dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
         dfb.to_pickle(file_cache)
         return dfb
-
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def stocks_daily_basic(self, sdt: str, edt: str):
-        """读取A股全部历史每日指标
-
-        :param sdt: 开始日期
-        :param edt: 结束日期
-        :return:
-        """
-        cache_path = self.api_path_map['stocks_daily_basic']
-        file_cache = os.path.join(cache_path, f"stocks_daily_basic_{sdt}_{edt}.pkl")
-        if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
-            return df
-
-        ts_codes = self.stock_basic().ts_code.to_list()
-        results = []
-        for ts_code in tqdm(ts_codes, desc='stocks_daily_basic'):
-            df1 = self.daily_basic(ts_code, sdt, edt)
-            results.append(df1)
-        dfb = pd.concat(results, ignore_index=True)
-        dfb['dt'] = pd.to_datetime(dfb['trade_date'])
-        dfb.to_pickle(file_cache)
-        return dfb
-
-    @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
-    def stocks_daily_bak(self, sdt: str, edt: str):
-        """读取A股全部历史 bak_basic
-
-        :param sdt: 开始日期
-        :param edt: 结束日期
-        :return:
-        """
-        cache_path = self.api_path_map['stocks_daily_bak']
-        file_cache = os.path.join(cache_path, f"stocks_daily_bak_{sdt}_{edt}.pkl")
-        if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
-            return df
-
-        dates = self.get_dates_span(sdt, edt, is_open=True)
-        results = []
-        for d in tqdm(dates, desc='stocks_daily_bak'):
-            df1 = self.bak_basic(d)
-            results.append(df1)
-        dfb = pd.concat(results, ignore_index=True)
-        dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
-        dfb = dfb[['trade_date', 'ts_code', 'name']]
-        dfb['is_st'] = dfb['name'].str.contains('ST')
-        dfb.to_pickle(file_cache)
-        return dfb
-
-
 
