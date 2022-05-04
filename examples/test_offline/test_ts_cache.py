@@ -111,16 +111,11 @@ def test_ts_cache():
 
     # 测试指数成分和权重数据缓存
     df = dc.index_weight('000905.SH', '20210923')
-    assert len(df) == 500
+    assert len(df) == 502
     df = dc.index_weight('000905.SH', '20210901')
-    assert len(df) == 500
-
+    assert len(df) == 502
     df = dc.index_weight('000300.SH', '20200208')
     assert len(df) == 300
-
-    # 测试复权因子获取
-    df = dc.adj_factor(ts_code='000001.SZ')
-    assert not df.empty
 
     df = dc.get_all_ths_members(exchange='A', type_='N')
     assert not df.empty
