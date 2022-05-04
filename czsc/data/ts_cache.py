@@ -10,13 +10,34 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
-
 import pandas as pd
 from deprecated import deprecated
 
 from .ts import *
 from .. import envs
 from ..utils import io
+
+
+def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
+    """给K线加上未来收益和过去收益的计算
+
+    :param kline:
+    :param bar_numbers:
+    :return:
+    """
+    assert kline['dt'][0] < kline['dt'][1], "kline 必须是时间升序"
+    if not bar_numbers:
+        bar_numbers = (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)
+    for bar_number in bar_numbers:
+        # 向后看（今天的 n1b 等于后天的开盘价相对明天开盘价的收益，单位：BP）
+        n_col = 'n' + str(bar_number) + 'b'
+        kline[n_col] = (kline['open'].shift(-bar_number-1) / kline['open'].shift(-1) - 1) * 10000
+        kline[n_col] = kline[n_col].round(4)
+
+        # 向前看（今天的 b1b 等于今天的收盘价相对昨天收盘价的收益，单位：BP）
+        b_col = 'b' + str(bar_number) + 'b'
+        kline[b_col] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
+        kline[b_col] = kline[b_col].round(4)
 
 
 class TsDataCache:
@@ -94,18 +115,7 @@ class TsDataCache:
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
-
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
@@ -179,18 +189,7 @@ class TsDataCache:
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
             kline['avg_price'] = kline['amount'] / kline['vol']
-
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         start_date = pd.to_datetime(start_date)
@@ -291,17 +290,7 @@ class TsDataCache:
                 for col in ['open', 'close', 'high', 'low']:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
-            for bar_number in (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377):
-                # 向后看
-                n_col_name = 'n' + str(bar_number) + 'b'
-                kline[n_col_name] = (kline['close'].shift(-bar_number) / kline['close'] - 1) * 10000
-                kline[n_col_name] = kline[n_col_name].round(4)
-
-                # 向前看
-                b_col_name = 'b' + str(bar_number) + 'b'
-                kline[b_col_name] = (kline['close'] / kline['close'].shift(bar_number) - 1) * 10000
-                kline[b_col_name] = kline[b_col_name].round(4)
-
+            update_bars_return(kline)
             io.save_pkl(kline, file_cache)
 
         sdt = pd.to_datetime(sdt)
