@@ -25,6 +25,10 @@ def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
     :param bar_numbers:
     :return:
     """
+    # 统一处理数据精度
+    for col in ['open', 'close', 'high', 'low']:
+        kline[col] = kline[col].round(4)
+
     assert kline['dt'][0] < kline['dt'][1], "kline 必须是时间升序"
     if not bar_numbers:
         bar_numbers = (1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377)

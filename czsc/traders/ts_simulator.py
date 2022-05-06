@@ -21,60 +21,6 @@ from ..objects import PositionLong, PositionShort, RawBar
 from .advanced import CzscAdvancedTrader
 
 
-def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, res_path):
-    """交易策略交易过程回放"""
-    os.makedirs(res_path, exist_ok=True)
-    tactic = strategy()
-    symbol = raw_bars[0].symbol
-    get_signals = tactic['get_signals']
-
-    long_states_pos = tactic.get('long_states_pos', None)
-    long_events = tactic.get('long_events', None)
-    long_min_interval = tactic.get('long_min_interval', None)
-
-    short_states_pos = tactic.get('short_states_pos', None)
-    short_events = tactic.get('short_events', None)
-    short_min_interval = tactic.get('short_min_interval', None)
-
-    if long_states_pos:
-        long_pos = PositionLong(symbol, T0=False,
-                                long_min_interval=long_min_interval,
-                                hold_long_a=long_states_pos['hold_long_a'],
-                                hold_long_b=long_states_pos['hold_long_b'],
-                                hold_long_c=long_states_pos['hold_long_c'])
-    else:
-        long_pos = None
-
-    if short_states_pos:
-        short_pos = PositionShort(symbol, T0=False,
-                                  short_min_interval=short_min_interval,
-                                  hold_short_a=short_states_pos['hold_short_a'],
-                                  hold_short_b=short_states_pos['hold_short_b'],
-                                  hold_short_c=short_states_pos['hold_short_c'])
-    else:
-        short_pos = None
-
-    trader = CzscAdvancedTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
-                                signals_n=tactic.get('signals_n', 0))
-    for bar in raw_bars:
-        trader.update(bar)
-        if trader.long_pos and trader.long_pos.pos_changed:
-            op = trader.long_pos.operates[-1]
-            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
-            file_html = os.path.join(res_path, file_name)
-            trader.take_snapshot(file_html)
-            print(f'snapshot saved into {file_html}')
-
-        if trader.short_pos and trader.short_pos.pos_changed:
-            op = trader.short_pos.operates[-1]
-            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
-            file_html = os.path.join(res_path, file_name)
-            trader.take_snapshot(file_html)
-            print(f'snapshot saved into {file_html}')
-
-    # TODO: 将所有买卖点标记在交易级别基础K线上
-
-
 class TradeSimulator:
     """交易策略仿真跟踪"""
 

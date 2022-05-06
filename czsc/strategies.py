@@ -139,8 +139,6 @@ def trader_strategy_a(symbol):
         ]),
     ]
 
-    short_events = None
-
     tactic = {
         "base_freq": '15分钟',
         "freqs": ['60分钟', '日线'],
