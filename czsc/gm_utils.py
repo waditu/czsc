@@ -169,17 +169,15 @@ def get_init_bg(symbol: str,
             bars_ = bgd.bars[freq]
         else:
             bars_ = get_kline(symbol, last_day, freq_cn2gm[freq], max_count, adjust)
-        bg.bars[freq] = bars_
+        bg.init_freq_bars(freq, bars_)
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
     bars2 = get_kline(symbol, end_dt, freq_cn2gm[base_freq],
                       count=int(240 / int(base_freq.strip('分钟')) * delta_days))
     data = [x for x in bars2 if x.dt > last_day]
-    assert len(data) > 2
-    # 执行一次 update，让 bg 获得 symbol 属性
-    bg.update(data[0])
+    assert len(data) > 0
     print(f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
-    return bg, data[1:]
+    return bg, data
 
 
 order_side_map = {OrderSide_Unknown: '其他', OrderSide_Buy: '买入', OrderSide_Sell: '卖出'}
