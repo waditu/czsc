@@ -381,9 +381,11 @@ def get_init_bg(symbol: str,
 
     bars2 = get_kline_period(symbol, last_day, end_dt, freq=freq_cn2jq[base_freq], fq=fq)
     data = [x for x in bars2 if x.dt > last_day]
-    assert len(data) > 0
+    assert len(data) > 2
+    # 执行一次 update，让 bg 获得 symbol 属性
+    bg.update(data[0])
     print(f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
-    return bg, data
+    return bg, data[1:]
 
 
 def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> dict:
