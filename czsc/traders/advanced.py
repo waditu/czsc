@@ -221,6 +221,7 @@ class CzscAdvancedTrader:
         """
         self.name = "CzscAdvancedTrader"
         self.bg = bg
+        assert bg.symbol, "bg.symbol is None"
         self.symbol = bg.symbol
         self.strategy = strategy
         tactic = self.strategy(self.symbol)
