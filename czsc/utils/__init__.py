@@ -12,6 +12,7 @@ from .log import create_logger
 from .word_writer import WordWriter
 from .corr import nmi_matrix
 from .bar_generator import BarGenerator, freq_end_time
+from .io import dill_dump, dill_load, read_json, save_json
 
 
 def x_round(x: [float, int], digit=4):
