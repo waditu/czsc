@@ -110,6 +110,18 @@ class BarGenerator:
             assert freq in bfc, f"{freq} 不在允许生成的周期列表中"
         assert self.base_freq not in self.freqs, 'base_freq 不能在 freqs 列表中'
 
+    def init_freq_bars(self, freq: str, bars: List[RawBar]):
+        """初始化某个周期的K线序列
+
+        :param freq: 周期名称
+        :param bars: K线序列
+        :return:
+        """
+        assert freq in self.bars.keys()
+        assert not self.bars[freq], f"self.bars['{freq}'] 不为空，不允许执行初始化"
+        self.bars[freq] = bars
+        self.symbol = bars[-1].symbol
+
     def __repr__(self):
         return f"<BarGenerator for {self.symbol} @ {self.end_dt}>"
 
