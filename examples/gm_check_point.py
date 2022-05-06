@@ -10,7 +10,6 @@ from czsc.strategies import trader_example1 as strategy
 
 if __name__ == '__main__':
     _symbol = "SZSE.300669"
-    _tactic = strategy(_symbol)
-    ct = trader_tactic_snapshot(_symbol, end_dt="2022-03-18 13:15", tactic=_tactic)
+    ct = trader_tactic_snapshot(_symbol, end_dt="2022-03-18 13:15", strategy=strategy)
 
 

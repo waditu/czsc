@@ -14,8 +14,8 @@ from tqdm import tqdm
 from typing import Callable
 
 from .. import envs
-from ..data.ts_cache import TsDataCache
-from ..traders.utils import trader_fast_backtest, freq_cn2ts
+from ..data import TsDataCache, freq_cn2ts
+from ..traders.utils import trader_fast_backtest
 from ..utils import x_round
 from ..objects import cal_break_even_point
 

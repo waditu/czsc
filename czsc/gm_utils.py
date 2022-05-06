@@ -686,21 +686,22 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     return ct
 
 
-def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, adjust=ADJUST_PREV, max_count=1000):
+def trader_tactic_snapshot(symbol, strategy: Callable, end_dt=None, file_html=None, adjust=ADJUST_PREV, max_count=1000):
     """使用掘金的数据对任意标的、任意时刻的状态进行策略快照
 
     :param symbol: 交易标的
-    :param tactic: 择时交易策略
+    :param strategy: 择时交易策略
     :param end_dt: 结束时间，精确到分钟
     :param file_html: 结果文件
     :param adjust: 复权类型
     :param max_count: 最大K线数量
     :return: trader
     """
+    tactic = strategy(symbol)
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
     bg, data = get_init_bg(symbol, end_dt, base_freq, freqs, max_count, adjust)
-    trader = create_advanced_trader(bg, data, tactic)
+    trader = create_advanced_trader(bg, data, strategy)
     if file_html:
         trader.take_snapshot(file_html)
         print(f'saved into {file_html}')
@@ -841,7 +842,6 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     symbols_info = {symbol: dict() for symbol in symbols}
     for symbol in symbols:
         try:
-            tactic = strategy(symbol)
             symbols_info[symbol]['max_sym_pos'] = context.max_sym_pos
             file_trader = os.path.join(data_path, f'traders/{symbol}.cat')
 
@@ -851,7 +851,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
 
             else:
                 bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, ADJUST_PREV)
-                trader = create_advanced_trader(bg, data, tactic)
+                trader = create_advanced_trader(bg, data, strategy)
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader
@@ -863,7 +863,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
             traceback.print_exc()
 
     subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
-    logger.info(f"订阅成功交易标的数量：{len(symbols_info)}")
+    logger.info(f"订阅成功数量：{len(symbols_info)}")
     logger.info(f"交易标的配置：{symbols_info}")
     context.symbols_info = symbols_info
 
