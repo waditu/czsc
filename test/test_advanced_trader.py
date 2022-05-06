@@ -100,7 +100,23 @@ def test_daily_trader():
     for bar in bars[:1000]:
         kg.update(bar)
 
-    ct = CzscAdvancedTrader(kg, get_signals)
+    def __trader_strategy(symbol):
+        tactic = {
+            "base_freq": '1分钟',
+            "freqs": ['5分钟', '15分钟', '30分钟', '60分钟', '日线'],
+            "get_signals": get_signals,
+            "signals_n": 0,
+
+            "long_pos": None,
+            "long_events": None,
+
+            # 空头策略不进行定义，也就是不做空头交易
+            "short_pos": None,
+            "short_events": None,
+        }
+
+        return tactic
+    ct = CzscAdvancedTrader(kg, __trader_strategy)
 
     signals_ = []
     for bar in bars[1000:]:

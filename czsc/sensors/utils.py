@@ -18,8 +18,7 @@ from sklearn.preprocessing import KBinsDiscretizer
 
 from .. import envs
 from ..traders.advanced import CzscAdvancedTrader, BarGenerator
-from ..traders.utils import freq_cn2ts
-from ..data.ts_cache import TsDataCache
+from ..data import TsDataCache, freq_cn2ts
 from ..objects import RawBar, Signal
 from ..utils.cache import home_path
 
