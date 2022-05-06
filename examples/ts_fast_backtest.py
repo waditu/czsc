@@ -7,7 +7,8 @@ create_dt: 2021/12/12 22:00
 import os
 import pandas as pd
 from czsc.traders.ts_backtest import TsDataCache, TsStocksBacktest, freq_cn2ts
-from examples import tactics
+from czsc.strategies import trader_example1 as strategy
+# from examples import tactics
 
 os.environ['czsc_verbose'] = "1"        # 是否输出详细执行信息，0 不输出，1 输出
 os.environ['czsc_min_bi_len'] = "6"     # 通过环境变量设定最小笔长度，6 对应新笔定义，7 对应老笔定义
@@ -18,11 +19,11 @@ pd.set_option('display.max_columns', 20)
 
 data_path = r"C:\ts_data"
 dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-02-18')
-strategy = tactics.trader_strategy_a
-freq = freq_cn2ts[strategy()['base_freq']]
+freq = freq_cn2ts[strategy('000001.SH')['base_freq']]
 sdt = '20140101'
 edt = "20211216"
 init_n = 1000*4
+
 
 def run_backtest(step_seq=('check', 'index', 'etfs', 'train', 'valid', 'stock')):
     """

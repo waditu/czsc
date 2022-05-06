@@ -4,10 +4,6 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/10/30 20:21
 """
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
-
 import os
 import pandas as pd
 from collections import OrderedDict

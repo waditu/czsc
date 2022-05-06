@@ -5,10 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/4 17:39
 describe: A股强势板块传感器，板块是概念板块、行业板块、指数的统称
 """
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
-
 import os
 from collections import OrderedDict
 from czsc import signals, CzscAdvancedTrader

@@ -827,7 +827,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     with open(os.path.join(context.data_path, f'{strategy.__name__}.txt'), mode='w') as f:
         f.write(inspect.getsource(strategy))
 
-    tactic = strategy()
+    tactic = strategy("000001")
     base_freq, freqs = tactic['base_freq'], tactic['freqs']
     frequency = freq_cn2gm[base_freq]
     unsubscribe(symbols='*', frequency=frequency)
@@ -841,6 +841,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     symbols_info = {symbol: dict() for symbol in symbols}
     for symbol in symbols:
         try:
+            tactic = strategy(symbol)
             symbols_info[symbol]['max_sym_pos'] = context.max_sym_pos
             file_trader = os.path.join(data_path, f'traders/{symbol}.cat')
 

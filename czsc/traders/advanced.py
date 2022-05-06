@@ -208,7 +208,7 @@ class CzscAdvancedTrader:
         return res
 
 
-def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
+def create_advanced_trader_backup(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
     """为交易策略 tactic 创建对应的 trader
 
     :param bg: K线生成器
@@ -253,4 +253,17 @@ def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dic
     return trader
 
 
+def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
+    """为交易策略 tactic 创建对应的 trader
+
+    :param bg: K线生成器
+    :param raw_bars: 用来初始化 trader 的K线
+    :param tactic: 择时交易策略
+    :return: trader
+    """
+    trader = CzscAdvancedTrader(bg, tactic['get_signals'], tactic['long_events'], tactic['long_pos'],
+                                tactic['short_events'], tactic['short_pos'], signals_n=tactic['signals_n'])
+    for bar in raw_bars:
+        trader.update(bar)
+    return trader
 

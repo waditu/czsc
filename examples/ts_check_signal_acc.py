@@ -3,12 +3,9 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/12/13 17:48
-describe: 验证信号计算的准确性
+describe: 验证信号计算的准确性，仅适用于缠论笔相关的信号，
+          技术指标构建的信号，用这个工具检查不是那么方便
 """
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
-
 import os
 from collections import OrderedDict
 from czsc.data.ts_cache import TsDataCache
