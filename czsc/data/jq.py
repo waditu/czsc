@@ -117,6 +117,8 @@ def get_concept_stocks(symbol, date=None):
     """
     if not date:
         date = str(datetime.now().date())
+    else:
+        date = pd.to_datetime(date)
 
     if isinstance(date, datetime):
         date = str(date.date())
