@@ -196,15 +196,17 @@ class CZSC:
     def __init__(self,
                  bars: List[RawBar],
                  get_signals: Callable = None,
+                 max_bi_num=envs.get_max_bi_num(),
                  signals_n: int = 0):
         """
 
         :param bars: K线数据
+        :param max_bi_num: 最大允许保留的笔数量
         :param get_signals: 自定义的信号计算函数
         :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         """
         self.verbose = envs.get_verbose()
-        self.max_bi_num = envs.get_max_bi_num()
+        self.max_bi_num = max_bi_num
         self.signals_n = signals_n
         self.bars_raw = []  # 原始K线序列
         self.bars_ubi = []  # 未完成笔的无包含K线序列

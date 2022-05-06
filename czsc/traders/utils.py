@@ -5,14 +5,62 @@ email: zeng_bin8888@163.com
 create_dt: 2021/12/12 21:49
 """
 import os
-import pandas as pd
+import dill
 from tqdm import tqdm
 from typing import List, Callable
+from czsc.analyze import CZSC
+from czsc.utils import x_round, BarGenerator, kline_pro
+from czsc.objects import RawBar, Operate
+from czsc.traders.advanced import CzscAdvancedTrader
 
-from ..utils import x_round
-from ..utils.bar_generator import BarGenerator
-from ..objects import PositionLong, PositionShort, RawBar
-from .advanced import CzscAdvancedTrader
+
+def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, res_path):
+    """交易策略交易过程回放"""
+    os.makedirs(res_path, exist_ok=True)
+    trader = CzscAdvancedTrader(bg, strategy)
+    for bar in raw_bars:
+        trader.update(bar)
+        if trader.long_pos and trader.long_pos.pos_changed:
+            op = trader.long_pos.operates[-1]
+            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            file_html = os.path.join(res_path, file_name)
+            trader.take_snapshot(file_html)
+            print(f'snapshot saved into {file_html}')
+
+        if trader.short_pos and trader.short_pos.pos_changed:
+            op = trader.short_pos.operates[-1]
+            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            file_html = os.path.join(res_path, file_name)
+            trader.take_snapshot(file_html)
+            print(f'snapshot saved into {file_html}')
+
+    c = CZSC(raw_bars, max_bi_num=10000)
+    kline = [x.__dict__ for x in c.bars_raw]
+    bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
+         [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx}]
+    fx = []
+    for bi_ in c.bi_list:
+        fx.extend([{'dt': x.dt, "fx": x.fx} for x in bi_.fxs[1:]])
+
+    bs = [
+        {'dt': raw_bars[0].dt, 'mark': "buy", 'price': raw_bars[0].low},
+        {'dt': raw_bars[0].dt, 'mark': "sell", 'price': raw_bars[0].low},
+    ]
+    for op in trader.long_pos.operates:
+        if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+            bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
+        else:
+            bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
+
+    bs.extend([
+        {'dt': raw_bars[-1].dt, 'mark': "buy", 'price': raw_bars[-1].low},
+        {'dt': raw_bars[-1].dt, 'mark': "sell", 'price': raw_bars[-1].low},
+    ])
+
+    chart = kline_pro(kline, bi=bi, fx=fx, bs=bs, width="1400px", height='580px',
+                      title=f"{strategy.__name__} {bg.symbol} 交易回放")
+    chart.render(os.path.join(res_path, f"{strategy.__name__}@{bg.symbol}replay.html"))
+    dill.dump(trader, open(os.path.join(res_path, "trader.pkl"), 'wb'))
 
 
 def trader_fast_backtest(bars: List[RawBar],
