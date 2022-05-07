@@ -7,6 +7,7 @@ describe: 基于Tushare数据的仿真跟踪
 """
 import os
 import inspect
+import traceback
 from tqdm import tqdm
 from typing import Callable, List
 
@@ -85,21 +86,45 @@ class TradeSimulator:
         dill_dump(trader, file_trader)
         return trader
 
-    def update_trader(self, ts_code, asset="E"):
-        """更新单个标的"""
+    def get_trader(self, ts_code, asset="E"):
+        """获取单个标的交易员"""
         file_trader = self.get_file_trader(ts_code, asset)
         if os.path.exists(file_trader):
             trader: CzscAdvancedTrader = dill_load(file_trader)
         else:
             trader: CzscAdvancedTrader = self.create_trader(ts_code, asset)
-
-        bars = self.get_bars(ts_code, asset, trader.end_dt)
-        bars = [x for x in bars if x.dt > trader.bg.end_dt]
-
-        for bar in bars:
-            trader.update(bar)
-
-        dill_dump(trader, file_trader)
         return trader
 
+    def update_trader(self, ts_code, asset="E"):
+        """更新单个标的"""
+        if self.verbose:
+            print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} start updating")
 
+        try:
+            file_trader = self.get_file_trader(ts_code, asset)
+            if os.path.exists(file_trader):
+                trader: CzscAdvancedTrader = dill_load(file_trader)
+            else:
+                trader: CzscAdvancedTrader = self.create_trader(ts_code, asset)
+
+            bars = self.get_bars(ts_code, asset, trader.end_dt)
+            bars = [x for x in bars if x.dt > trader.bg.end_dt]
+            if self.verbose:
+                print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} 有{len(bars)}根K线需要更新")
+
+            for bar in bars:
+                trader.update(bar)
+            dill_dump(trader, file_trader)
+            return trader
+        except:
+            print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} Fail")
+
+    def update_traders(self, ts_codes, asset="E"):
+        """批量执行更新
+
+        :param ts_codes: 交易标的列表
+        :param asset: 资产类别
+        :return:
+        """
+        for ts_code in ts_codes:
+            _ = self.update_trader(ts_code, asset)

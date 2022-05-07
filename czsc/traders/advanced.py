@@ -230,10 +230,10 @@ class CzscAdvancedTrader:
         self.freqs = list(bg.bars.keys())
         self.get_signals = tactic['get_signals']
         self.long_events = tactic['long_events']
-        self.long_pos = tactic['long_pos']
+        self.long_pos: PositionLong = tactic['long_pos']
         self.long_holds = []                    # 记录基础周期结束时间对应的多头仓位信息
         self.short_events = tactic['short_events']
-        self.short_pos = tactic['short_pos']
+        self.short_pos: PositionShort = tactic['short_pos']
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
         self.signals_n = tactic['signals_n']
         self.signals_list = []

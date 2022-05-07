@@ -436,7 +436,7 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
     if len(pairs) == 0:
         return p
 
-    p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
+    p['盈亏平衡点'] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
 
     p['复利收益'] = 1
     for pair in pairs:
