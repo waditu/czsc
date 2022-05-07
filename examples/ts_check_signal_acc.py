@@ -32,9 +32,20 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     return s
 
 
+def trader_strategy_base(symbol):
+    tactic = {
+        "symbol": symbol,
+        "base_freq": '5分钟',
+        "freqs": ['15分钟', '30分钟', '60分钟', '日线'],
+        "get_signals": get_signals,
+        "signals_n": 0,
+    }
+    return tactic
+
+
 if __name__ == '__main__':
     # 直接查看全部信号的隔日快照
-    check_signals_acc(bars, get_signals=get_signals)
+    check_signals_acc(bars, strategy=trader_strategy_base)
 
     # 查看指定信号的隔日快照
     # signals = [
