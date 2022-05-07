@@ -138,7 +138,8 @@ def generate_signals(bars: List[RawBar],
 
 def check_signals_acc(bars: List[RawBar],
                       signals: List[Signal] = None,
-                      strategy: Callable = None) -> None:
+                      strategy: Callable = None,
+                      delta_days: int = 5) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
     输入基础周期K线和想要验证的信号，输出信号识别结果的快照
@@ -146,6 +147,7 @@ def check_signals_acc(bars: List[RawBar],
     :param bars: 原始K线
     :param signals: 需要验证的信号列表
     :param strategy: 含有信号函数的伪交易策略
+    :param delta_days: 两次相同信号之间的间隔天数
     :return:
     """
     verbose = envs.get_verbose()
@@ -183,7 +185,7 @@ def check_signals_acc(bars: List[RawBar],
         for signal in signals:
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
-            if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
+            if bar.dt - last_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(ct.s):
                 file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
                 file_html = os.path.join(html_path, file_html)
                 print(file_html)
