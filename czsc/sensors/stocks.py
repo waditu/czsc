@@ -261,9 +261,16 @@ class StocksDaySensor:
 
         self.name = self.__class__.__name__
         self.version = "V20220404"
+        self.strategy = strategy
+        self.tactic = strategy('000001')
+        self.signals_n = signals_n
+        self.get_signals, self.get_event = self.tactic['get_signals'], self.tactic['get_event']
+        self.event: Event = self.get_event()
+        self.base_freq = Freq.D.value
+        self.freqs = [Freq.W.value, Freq.M.value]
 
         self.experiment_path = experiment_path
-        self.results_path = os.path.join(experiment_path, f"{strategy()[1]().name}_{sdt}_{edt}")
+        self.results_path = os.path.join(experiment_path, f"{self.event.name}_{sdt}_{edt}")
         self.signals_path = os.path.join(experiment_path, 'signals')
         os.makedirs(self.experiment_path, exist_ok=True)
         os.makedirs(self.results_path, exist_ok=True)
@@ -272,13 +279,6 @@ class StocksDaySensor:
         self.sdt = sdt
         self.edt = edt
         self.verbose = os.environ.get('verbose', False)
-
-        self.strategy = strategy
-        self.signals_n = signals_n
-        self.get_signals, self.get_event = strategy()
-        self.event: Event = self.get_event()
-        self.base_freq = Freq.D.value
-        self.freqs = [Freq.W.value, Freq.M.value]
 
         self.file_docx = os.path.join(self.results_path, f'{self.event.name}_{sdt}_{edt}.docx')
         writer = WordWriter(self.file_docx)
@@ -329,8 +329,7 @@ class StocksDaySensor:
             start_date = pd.to_datetime(self.sdt) - timedelta(days=3000)
             bars = dc.pro_bar(ts_code=ts_code, start_date=start_date, end_date=edt, freq='D', asset="E", raw_bar=True)
             n_bars = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq='D', asset="E", raw_bar=False)
-            signals = generate_signals(bars, sdt, self.base_freq, self.freqs, self.get_signals,
-                                       signals_n=self.signals_n)
+            signals = generate_signals(bars, sdt, self.strategy)
             io.save_pkl([signals, n_bars], file_signals)
 
         nb_dicts = {row['trade_date'].strftime("%Y%m%d"): row for row in n_bars.to_dict("records")}

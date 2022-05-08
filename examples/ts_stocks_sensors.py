@@ -13,9 +13,9 @@ from czsc.sensors.stocks import StocksDaySensor, TsDataCache
 pd.set_option('mode.chained_assignment', None)
 
 
-def sds_czsc_v1_t1():
+def sds_czsc_v1_t1(symbol):
+    """sds_czsc_v1"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
-        """sds_czsc_v1"""
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         for _, c in cat.kas.items():
             if c.freq == Freq.D:
@@ -31,7 +31,14 @@ def sds_czsc_v1_t1():
         ])
         return event
 
-    return get_signals, get_event
+    tactic = {
+        "symbol": symbol,
+        "base_freq": "日线",
+        "freqs": ['周线', '月线'],
+        "get_signals": get_signals,
+        "get_event": get_event,
+    }
+    return tactic
 
 
 if __name__ == '__main__':
@@ -40,7 +47,7 @@ if __name__ == '__main__':
     dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-03-23')
     sdt = "20180101"
     edt = "20220320"
-    experiment_name = strategy()[0].__doc__
+    experiment_name = strategy.__doc__
     experiment_path = os.path.join(data_path, experiment_name.upper())
     sss = StocksDaySensor(experiment_path, sdt, edt, dc, strategy, signals_n=0)
 
