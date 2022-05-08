@@ -208,8 +208,8 @@ class CZSC:
         self.verbose = envs.get_verbose()
         self.max_bi_num = max_bi_num
         self.signals_n = signals_n
-        self.bars_raw = []  # 原始K线序列
-        self.bars_ubi = []  # 未完成笔的无包含K线序列
+        self.bars_raw: List[RawBar] = []  # 原始K线序列
+        self.bars_ubi: List[NewBar] = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
         self.symbol = bars[0].symbol
         self.freq = bars[0].freq

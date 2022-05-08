@@ -125,6 +125,10 @@ def test_daily_trader():
 
     assert len(signals_) == 2332
 
+    # 测试传入空策略
+    ct = CzscAdvancedTrader(kg)
+    assert len(ct.s) == 0 and len(ct.kas) == 3
+
 
 def run_advanced_trader(T0=True):
     bars = read_1min()
