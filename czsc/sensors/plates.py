@@ -103,7 +103,11 @@ class ThsConceptsSensor:
         n_bars = dc.ths_daily(ts_code=ts_code, start_date=start_date, end_date=edt, raw_bar=False)
         nb_dicts = {row['trade_date'].strftime("%Y%m%d"): row for row in n_bars.to_dict("records")}
 
-        signals = generate_signals(bars, sdt, base_freq='日线', freqs=['周线', '月线'], get_signals=self.get_signals)
+        def __strategy(symbol):
+            return {"symbol": symbol, "base_freq": '日线', "freqs": ['周线', '月线'],
+                    "get_signals": self.get_signals}
+
+        signals = generate_signals(bars, sdt, __strategy)
         results = []
         for s in signals:
             m, f = event.is_match(s)
