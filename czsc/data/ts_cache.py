@@ -46,21 +46,22 @@ def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
 
 class TsDataCache:
     """Tushare 数据缓存"""
-    def __init__(self, data_path, sdt, edt):
+    def __init__(self, data_path, refresh=False, sdt="20120101", edt=datetime.now()):
         """
 
         :param data_path: 数据路径
+        :param refresh: 是否刷新缓存
         :param sdt: 缓存开始时间
         :param edt: 缓存结束时间
         """
         self.date_fmt = "%Y%m%d"
         self.verbose = envs.get_verbose()
+        self.refresh = refresh
         self.sdt = pd.to_datetime(sdt).strftime(self.date_fmt)
         self.edt = pd.to_datetime(edt).strftime(self.date_fmt)
         self.data_path = data_path
         self.prefix = "TS_CACHE"
-        self.name = f"{self.prefix}_{self.sdt}_{self.edt}"
-        self.cache_path = os.path.join(self.data_path, self.name)
+        self.cache_path = os.path.join(self.data_path, self.prefix)
         os.makedirs(self.cache_path, exist_ok=True)
         self.pro = pro
         self.__prepare_api_path()
@@ -105,31 +106,36 @@ class TsDataCache:
                     print(f"Tushare 数据缓存清理失败，请手动删除缓存文件夹：{self.cache_path}")
 
     # ------------------------------------Tushare 原生接口----------------------------------------------
-    def ths_daily(self, ts_code, start_date, end_date, raw_bar=True):
+    def ths_daily(self, ts_code, start_date=None, end_date=None, raw_bar=True):
         """获取同花顺概念板块的日线行情"""
         cache_path = self.api_path_map['ths_daily']
-        file_cache = os.path.join(cache_path, f"ths_daily_{ts_code}.pkl")
-        if os.path.exists(file_cache):
-            kline = io.read_pkl(file_cache)
+        file_cache = os.path.join(cache_path, f"ths_daily_{ts_code}_sdt{self.sdt}.feather")
+
+        if not self.refresh and os.path.exists(file_cache):
+            kline = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"ths_daily: read cache {file_cache}")
         else:
+            if self.verbose:
+                print(f"ths_daily: refresh {file_cache}")
             kline = pro.ths_daily(ts_code=ts_code, start_date=self.sdt, end_date=self.edt,
                                   fields='ts_code,trade_date,open,close,high,low,vol')
             kline = kline.sort_values('trade_date', ignore_index=True)
             kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
             kline['dt'] = kline['trade_date']
             update_bars_return(kline)
-            io.save_pkl(kline, file_cache)
+            kline.to_feather(file_cache)
 
         kline['trade_date'] = pd.to_datetime(kline['trade_date'], format=self.date_fmt)
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
-        bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
-        bars.reset_index(drop=True, inplace=True)
+        if start_date:
+            kline = kline[kline['trade_date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            kline = kline[kline['trade_date'] <= pd.to_datetime(end_date)]
+
+        kline.reset_index(drop=True, inplace=True)
         if raw_bar:
-            bars = format_kline(bars, freq=Freq.D)
-        return bars
+            kline = format_kline(kline, freq=Freq.D)
+        return kline
 
     def ths_index(self, exchange="A", type_="N"):
         """获取同花顺概念
