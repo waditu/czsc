@@ -309,9 +309,9 @@ class TsStocksBacktest:
             except:
                 traceback.print_exc()
 
-        self.analyze_results(step, 'long')
-        self.analyze_results(step, 'short')
-        print(f"results saved into {self.res_path}")
+        # self.analyze_results(step, 'long')
+        # self.analyze_results(step, 'short')
+        # print(f"results saved into {self.res_path}")
 
     def analyze_signals(self, step: str):
         """分析策略中信号的基础表现

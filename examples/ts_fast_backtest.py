@@ -34,8 +34,10 @@ def run_backtest(step_seq=('check', 'index', 'etfs', 'train', 'valid', 'stock'))
     tsb = TsStocksBacktest(dc, strategy, init_n, sdt, edt)
     for step in step_seq:
         tsb.batch_backtest(step.lower())
-        tsb.analyze_signals(step.lower())
-
+        # tsb.analyze_signals(step.lower())
+        tsb.analyze_results(step, 'long')
+        # tsb.analyze_results(step, 'short')
+        print(f"results saved into {tsb.res_path}")
 
 def run_more_backtest(step, ts_codes):
     """指定在某个阶段多回测一些标的，最常见的需求是在 check 阶段多检查几个标的
@@ -47,7 +49,10 @@ def run_more_backtest(step, ts_codes):
     tsb = TsStocksBacktest(dc, strategy, init_n, sdt, edt)
     tsb.update_step(step, ts_codes)
     tsb.batch_backtest(step.lower())
-    tsb.analyze_signals(step.lower())
+    # tsb.analyze_signals(step.lower())
+    tsb.analyze_results(step, 'long')
+    # tsb.analyze_results(step, 'short')
+    print(f"results saved into {tsb.res_path}")
 
 
 if __name__ == '__main__':

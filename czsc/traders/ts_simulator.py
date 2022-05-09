@@ -127,4 +127,5 @@ class TradeSimulator:
         :return:
         """
         for ts_code in ts_codes:
-            _ = self.update_trader(ts_code, asset)
+            trader = self.update_trader(ts_code, asset)
+            print(f"{ts_code}: {self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
