@@ -128,4 +128,4 @@ class TradeSimulator:
         """
         for ts_code in ts_codes:
             trader = self.update_trader(ts_code, asset)
-            print(f"{ts_code}: {self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
+            print(f"\n{self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
