@@ -17,7 +17,7 @@ pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 20)
 
-data_path = r"C:\ts_data"
+data_path = r"C:\ts_data_czsc"
 dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-02-18')
 freq = freq_cn2ts[strategy('000001.SH')['base_freq']]
 sdt = '20140101'
