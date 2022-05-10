@@ -59,7 +59,16 @@ def test_word_writer():
     # 测试表格写入
     df = pd.DataFrame([{'x': 1, 'y': 2, 'z': 3}, {'x': 1, 'y': 2, 'z': 3}, {'x': 1, 'y': 2, 'z': 3}])
     reporter.add_df_table(df)
-
+    reporter.add_paragraph('\n\n')
+    reporter.add_df_table(df, 'Light Grid Accent 2')
+    reporter.add_paragraph('\n\n')
+    reporter.add_df_table(df, 'Colorful Grid Accent 2')
+    reporter.add_paragraph('\n\n')
+    reporter.add_df_table(df, 'Colorful Shading Accent 2')
+    reporter.add_paragraph('\n\n')
+    reporter.add_df_table(df, 'Dark List Accent 2')
+    reporter.add_paragraph('\n\n')
+    reporter.add_df_table(df, 'Medium List 1 Accent 2')
     reporter.save("reporter_test.docx")
 
     # 测试续写文档
