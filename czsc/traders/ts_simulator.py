@@ -8,14 +8,15 @@ describe: 基于Tushare数据的仿真跟踪
 import os
 import inspect
 import traceback
+import pandas as pd
 from tqdm import tqdm
 from typing import Callable, List
-
-from .. import envs
-from ..data import TsDataCache, freq_cn2ts
-from ..utils import BarGenerator, dill_load, dill_dump
-from ..objects import RawBar
-from .advanced import CzscAdvancedTrader
+from czsc import envs
+from czsc.data import TsDataCache, freq_cn2ts
+from czsc.utils import BarGenerator, dill_load, dill_dump
+from czsc.objects import RawBar
+from czsc.traders.advanced import CzscAdvancedTrader
+from czsc.traders.performance import PairsPerformance
 
 
 class TradeSimulator:
@@ -100,24 +101,21 @@ class TradeSimulator:
         if self.verbose:
             print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} start updating")
 
-        try:
-            file_trader = self.get_file_trader(ts_code, asset)
-            if os.path.exists(file_trader):
-                trader: CzscAdvancedTrader = dill_load(file_trader)
-            else:
-                trader: CzscAdvancedTrader = self.create_trader(ts_code, asset)
+        file_trader = self.get_file_trader(ts_code, asset)
+        if os.path.exists(file_trader):
+            trader: CzscAdvancedTrader = dill_load(file_trader)
+        else:
+            trader: CzscAdvancedTrader = self.create_trader(ts_code, asset)
 
-            bars = self.get_bars(ts_code, asset, trader.end_dt)
-            bars = [x for x in bars if x.dt > trader.bg.end_dt]
-            if self.verbose:
-                print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} 有{len(bars)}根K线需要更新")
+        bars = self.get_bars(ts_code, asset, trader.end_dt)
+        bars = [x for x in bars if x.dt > trader.bg.end_dt]
+        if self.verbose:
+            print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} 有{len(bars)}根K线需要更新")
 
-            for bar in bars:
-                trader.update(bar)
-            dill_dump(trader, file_trader)
-            return trader
-        except:
-            print(f"{os.getpid()} TradeSimulator::update_trader: {ts_code}#{asset} Fail")
+        for bar in bars:
+            trader.update(bar)
+        dill_dump(trader, file_trader)
+        return trader
 
     def update_traders(self, ts_codes, asset="E"):
         """批量执行更新
@@ -126,6 +124,20 @@ class TradeSimulator:
         :param asset: 资产类别
         :return:
         """
-        for ts_code in ts_codes:
-            trader = self.update_trader(ts_code, asset)
-            print(f"\n{self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
+        long_pairs = []
+        for ts_code in tqdm(ts_codes, desc=f"update_traders | {asset}"):
+            try:
+                trader = self.update_trader(ts_code, asset)
+                print(f"\n{self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
+                if trader.long_pos:
+                    long_pairs.extend(trader.long_pos.pairs)
+            except:
+                print(f"update_traders: fail on {ts_code}#{asset}")
+                traceback.print_exc()
+
+        if long_pairs:
+            # lpp = Long Pairs Performance
+            lpp = PairsPerformance(pd.DataFrame(long_pairs))
+            lpp.agg_to_excel(os.path.join(self.res_path, f'long_pairs_{asset}_report.xlsx'))
+            lpp.df_pairs.to_feather(os.path.join(self.res_path, f'long_pairs_{asset}.feather'))
+            print(lpp.basic_info, '\n\n', lpp.agg_statistics('平仓年'))
