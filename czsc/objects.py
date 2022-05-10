@@ -387,11 +387,44 @@ class Event:
     # 单个事件是一系列同类型因子的集合，事件中的任一因子满足，则事件为真。
     factors: List[Factor]
 
+    # signals_all 必须全部满足的信号，允许为空
+    signals_all: List[Signal] = None
+
+    # signals_any 满足其中任一信号，允许为空
+    signals_any: List[Signal] = None
+
+    # signals_not 不能满足其中任一信号，允许为空
+    signals_not: List[Signal] = None
+
     def is_match(self, s: dict):
         """判断 event 是否满足"""
+        # 首先判断 event 层面的信号是否得到满足
+        if self.signals_not:
+            # 满足任意一个，直接返回 False
+            for signal in self.signals_not:
+                if signal.is_match(s):
+                    return False, None
+
+        if self.signals_all:
+            # 任意一个不满足，直接返回 False
+            for signal in self.signals_all:
+                if not signal.is_match(s):
+                    return False, None
+
+        if self.signals_any:
+            one_match = False
+            for signal in self.signals_any:
+                if signal.is_match(s):
+                    one_match = True
+                    break
+            # 一个都不满足，直接返回 False
+            if not one_match:
+                return False, None
+
+        # 判断因子是否满足，顺序遍历，找到第一个满足的因子就退出
+        # 因子放入事件中时，建议因子列表按关注度从高到低排序
         for factor in self.factors:
             if factor.is_match(s):
-                # 顺序遍历，找到第一个满足的因子就退出。建议因子列表按关注度从高到低排序
                 return True, factor.name
 
         return False, None
