@@ -12,12 +12,13 @@ import traceback
 import pandas as pd
 from tqdm import tqdm
 from typing import Callable
-
-from .. import envs
-from ..data import TsDataCache, freq_cn2ts
-from ..traders.utils import trader_fast_backtest
-from ..utils import x_round
-from ..objects import cal_break_even_point
+from deprecated import deprecated
+from czsc import envs
+from czsc.data import TsDataCache, freq_cn2ts
+from czsc.traders.utils import trader_fast_backtest
+from czsc.traders.performance import PairsPerformance
+from czsc.utils import x_round
+from czsc.objects import cal_break_even_point
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -45,6 +46,7 @@ def read_raw_results(raw_path, trade_dir="long"):
     return df_pairs, df_p
 
 
+@deprecated(reason="use czsc.traders.performance.PairsPerformance instead", version='0.9.0')
 class TraderPerformance:
     """择时交易效果评估"""
 
@@ -219,7 +221,7 @@ class TsStocksBacktest:
         df_pairs.to_excel(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_pairs.xlsx"), index=False)
         f = pd.ExcelWriter(os.path.join(res_path, f"{s_name}_{step}_{trade_dir}_performance.xlsx"))
         df_p.to_excel(f, sheet_name="评估", index=False)
-        tp = TraderPerformance(df_pairs)
+        tp = PairsPerformance(df_pairs)
         for col in tp.agg_columns:
             df_ = tp.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)

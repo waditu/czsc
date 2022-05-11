@@ -228,12 +228,11 @@ def kline_pro(kline: List[dict],
     # ------------------------------------------------------------------------------------------------------------------
     if fx:
         fx_dts = [x['dt'] for x in fx]
-        fx_val = [x['fx'] for x in fx]
-        # chart_fx = Scatter()
+        fx_val = [round(x['fx'], 2) for x in fx]
         chart_fx = Line()
         chart_fx.add_xaxis(fx_dts)
         chart_fx.add_yaxis(series_name="FX", y_axis=fx_val, is_selected=False,
-                           symbol="circle", symbol_size=6, label_opts=label_not_show_opts,
+                           symbol="circle", symbol_size=6, label_opts=label_show_opts,
                            itemstyle_opts=opts.ItemStyleOpts(color="rgba(152, 147, 193, 1.0)", ))
 
         chart_fx.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
@@ -241,7 +240,7 @@ def kline_pro(kline: List[dict],
 
     if bi:
         bi_dts = [x['dt'] for x in bi]
-        bi_val = [x['bi'] for x in bi]
+        bi_val = [round(x['bi'], 2) for x in bi]
         chart_bi = Line()
         chart_bi.add_xaxis(bi_dts)
         chart_bi.add_yaxis(series_name="BI", y_axis=bi_val, is_selected=True,

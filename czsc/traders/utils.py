@@ -22,14 +22,16 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
         trader.update(bar)
         if trader.long_pos and trader.long_pos.pos_changed:
             op = trader.long_pos.operates[-1]
-            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            _dt = op['dt'].strftime('%Y%m%d#%H%M')
+            file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
             file_html = os.path.join(res_path, file_name)
             trader.take_snapshot(file_html)
             print(f'snapshot saved into {file_html}')
 
         if trader.short_pos and trader.short_pos.pos_changed:
             op = trader.short_pos.operates[-1]
-            file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+            _dt = op['dt'].strftime('%Y%m%d#%H%M')
+            file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
             file_html = os.path.join(res_path, file_name)
             trader.take_snapshot(file_html)
             print(f'snapshot saved into {file_html}')
@@ -42,20 +44,13 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
     for bi_ in c.bi_list:
         fx.extend([{'dt': x.dt, "fx": x.fx} for x in bi_.fxs[1:]])
 
-    bs = [
-        {'dt': raw_bars[0].dt, 'mark': "buy", 'price': raw_bars[0].low},
-        {'dt': raw_bars[0].dt, 'mark': "sell", 'price': raw_bars[0].low},
-    ]
+    # 构建 BS 序列
+    bs = []
     for op in trader.long_pos.operates:
         if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
             bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
         else:
             bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
-
-    bs.extend([
-        {'dt': raw_bars[-1].dt, 'mark': "buy", 'price': raw_bars[-1].low},
-        {'dt': raw_bars[-1].dt, 'mark': "sell", 'price': raw_bars[-1].low},
-    ])
 
     chart = kline_pro(kline, bi=bi, fx=fx, bs=bs, width="1400px", height='580px',
                       title=f"{strategy.__name__} {bg.symbol} 交易回放")
