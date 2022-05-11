@@ -19,6 +19,10 @@ from czsc.traders.advanced import CzscAdvancedTrader
 from czsc.traders.performance import PairsPerformance
 
 
+pd.set_option('display.max_rows', 600)
+pd.set_option('display.max_columns', 30)
+
+
 class TradeSimulator:
     """交易策略仿真跟踪"""
 
@@ -128,7 +132,7 @@ class TradeSimulator:
         for ts_code in tqdm(ts_codes, desc=f"update_traders | {asset}"):
             try:
                 trader = self.update_trader(ts_code, asset)
-                print(f"\n{self.strategy.__name__} : {trader.long_pos.evaluate_operates()}")
+                print(f"\n{self.strategy.__name__} : {trader.results['long_performance']}")
                 if trader.long_pos:
                     long_pairs.extend(trader.long_pos.pairs)
             except:
