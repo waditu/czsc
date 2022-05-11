@@ -571,7 +571,12 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
         algo_param = {}
 
     sym_position = account.position(symbol, PositionSide_Long)
+    if long_pos.pos == 0 and not sym_position:
+        # 如果多头仓位为0且掘金账户没有对应持仓，直接退出
+        return
+
     if long_pos.pos == 0 and sym_position and sym_position.volume > 0:
+        # 如果多头仓位为0且掘金账户依然还有持仓，清掉仓位
         volume = sym_position.volume
         if algo_name:
             assert len(algo_param) > 0, f"error: {algo_name}, {algo_param}"
@@ -586,6 +591,7 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
     if not long_pos.pos_changed:
         return
 
+    assert long_pos.pos > 0
     cash_left = cash.available
     if long_pos.operates[-1]['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
         change_amount = max_sym_pos * long_pos.operates[-1]['pos_change'] * cash.nav
