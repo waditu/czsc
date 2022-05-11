@@ -56,6 +56,7 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
                       title=f"{strategy.__name__} {bg.symbol} 交易回放")
     chart.render(os.path.join(res_path, f"{strategy.__name__}@{bg.symbol}replay.html"))
     dill.dump(trader, open(os.path.join(res_path, "trader.pkl"), 'wb'))
+    print(trader.strategy.__name__, trader.results['long_performance'])
 
 
 def trader_fast_backtest(bars: List[RawBar],
