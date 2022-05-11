@@ -13,12 +13,11 @@ from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
-
-from ..analyze import CZSC, signals_counter
-from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
-from ..utils import BarGenerator, x_round
-from ..utils.cache import home_path
-from .. import envs
+from czsc.analyze import CZSC, signals_counter
+from czsc.objects import PositionLong, PositionShort, Operate, Event, RawBar
+from czsc.utils import BarGenerator, x_round
+from czsc.utils.cache import home_path
+from czsc import envs
 
 
 class CzscAdvancedTrader:
@@ -247,15 +246,15 @@ class CzscDummyTrader:
 
     缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
-    def __init__(self, symbol, strategy: Callable):
+    def __init__(self, dfs, strategy: Callable):
         """
 
-        :param symbol: 标的代码
+        :param dfs: 信号数据
         :param strategy: 择时策略描述函数
             注意，strategy 函数必须是仅接受一个 symbol 参数的函数
         """
         self.name = "CzscDummyTrader"
-        self.symbol = symbol
+        self.symbol = dfs.iloc[0]['symbol']
         self.strategy = strategy
         tactic = self.strategy(self.symbol)
         self.tactic = tactic
@@ -267,6 +266,9 @@ class CzscDummyTrader:
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
         self.verbose = envs.get_verbose()
         self.end_dt, self.bid, self.latest_price = None, None, None
+        rows = dfs.to_dict('records')
+        for row in rows:
+            self.update(row)
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
@@ -274,6 +276,7 @@ class CzscDummyTrader:
     def update(self, s: dict):
         """输入基础周期已完成K线，更新信号，更新仓位"""
         symbol = s['symbol']
+        n1b = s['close'] / self.latest_price - 1 if self.latest_price else 0
         self.end_dt, self.bid, self.latest_price = s['dt'], s['dt'], s['close']
         dt, bid, price = self.end_dt, self.bid, self.latest_price
 
@@ -288,8 +291,8 @@ class CzscDummyTrader:
                     break
 
             self.long_pos.update(dt, op, price, bid, op_desc)
-            # if self.long_holds:
-            #     self.long_holds[-1]['n1b'] = last_n1b
+            if self.long_holds:
+                self.long_holds[-1]['n1b'] = n1b
             self.long_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.long_pos.pos, 'n1b': 0})
 
         # 遍历 short_events，更新 short_pos
@@ -304,8 +307,8 @@ class CzscDummyTrader:
                     break
 
             self.short_pos.update(dt, op, price, bid, op_desc)
-            # if self.short_holds:
-            #     self.short_holds[-1]['n1b'] = -last_n1b
+            if self.short_holds:
+                self.short_holds[-1]['n1b'] = -n1b
             self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
 
     @property
