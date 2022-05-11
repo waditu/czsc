@@ -1,4 +1,10 @@
 # czsc - 缠中说禅技术分析工具
+
+[![Downloads](https://pepy.tech/badge/czsc)](https://pepy.tech/project/czsc)
+[![Downloads](https://pepy.tech/badge/czsc/week)](https://pepy.tech/project/czsc)
+[![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
+[![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
+
 >源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)
 
 >**[官方文档（0.6.8）（暂未更新到最新版）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
