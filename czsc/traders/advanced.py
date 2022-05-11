@@ -56,6 +56,7 @@ class CzscAdvancedTrader:
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         if self.get_signals:
             self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
         else:
             self.s = OrderedDict()
 
@@ -136,6 +137,7 @@ class CzscAdvancedTrader:
 
         if self.get_signals:
             self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
 
         if self.signals_n > 0:
             self.signals_list.append(self.s)
