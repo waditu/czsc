@@ -324,11 +324,8 @@ def generate_symbol_signals(dc: TsDataCache,
                             asset: str,
                             sdt: str,
                             edt: str,
-                            base_freq: str,
-                            freqs: List[str],
-                            get_signals: Callable,
+                            strategy: Callable,
                             adj: str = 'hfq',
-                            signals_n: int = 0,
                             ):
     """使用 Tushare 数据生产某个标的的信号
 
@@ -337,13 +334,13 @@ def generate_symbol_signals(dc: TsDataCache,
     :param asset:
     :param sdt:
     :param edt:
-    :param base_freq:
-    :param freqs:
-    :param get_signals:
+    :param strategy:
     :param adj: 复权方式
-    :param signals_n:
     :return:
     """
+    tactic = strategy(ts_code)
+    base_freq = tactic['base_freq']
+
     sdt_ = pd.to_datetime(sdt) - timedelta(days=3000)
     if "分钟" in base_freq:
         bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
@@ -361,7 +358,7 @@ def generate_symbol_signals(dc: TsDataCache,
 
     dt_fmt = "%Y-%m-%d %H:%M:%S"
     nb_dicts = {row['dt'].strftime(dt_fmt): row for row in n_bars.to_dict("records")}
-    signals = generate_signals(bars, sdt, base_freq, freqs, get_signals, signals_n=signals_n)
+    signals = generate_signals(bars, sdt, strategy)
 
     for s in signals:
         s.update(nb_dicts[s['dt'].strftime(dt_fmt)])
@@ -380,11 +377,8 @@ def generate_stocks_signals(dc: TsDataCache,
                             signals_path: str,
                             sdt: str,
                             edt: str,
-                            base_freq: str,
-                            freqs: List[str],
-                            get_signals: Callable,
+                            strategy: Callable,
                             adj: str = 'hfq',
-                            signals_n: int = 0,
                             ):
     """使用 Tushare 数据获取股票市场全部股票的信号
 
@@ -392,11 +386,8 @@ def generate_stocks_signals(dc: TsDataCache,
     :param signals_path:
     :param sdt:
     :param edt:
-    :param base_freq:
-    :param freqs:
+    :param strategy:
     :param adj:
-    :param get_signals:
-    :param signals_n:
     :return:
     """
     os.makedirs(signals_path, exist_ok=True)
@@ -410,7 +401,7 @@ def generate_stocks_signals(dc: TsDataCache,
             if os.path.exists(file_signals):
                 print(f"file exists: {file_signals}")
                 continue
-            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, base_freq, freqs, get_signals, adj, signals_n)
+            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, strategy, adj)
             df.to_pickle(file_signals)
         except:
             print(f"generate_stocks_signals error: {ts_code}, {name}")
