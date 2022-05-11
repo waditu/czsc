@@ -75,11 +75,26 @@ class CzscAdvancedTrader:
         """
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
         for freq in self.freqs:
-            chart = self.kas[freq].to_echarts(width, height)
+            ka: CZSC = self.kas[freq]
+            bs = None
+            if freq == self.base_freq and self.long_pos:
+                # 在基础周期K线上加入最近的一些多头操作记录
+                bs = []
+                for op in self.long_pos.operates[-10:]:
+                    if op['dt'] < ka.bars_raw[0].dt:
+                        continue
+
+                    if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+                        bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
+                    else:
+                        bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
+
+            chart = ka.to_echarts(width, height, bs)
             tab.add(chart, freq)
 
         signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
+            # 按各周期K线分别加入信号表
             freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
             for k in freq_signals.keys():
                 signals.pop(k)
@@ -91,6 +106,7 @@ class CzscAdvancedTrader:
             tab.add(t1, f"{freq}信号")
 
         if len(signals) > 0:
+            # 加入时间、持仓状态之类的其他信号
             t1 = Table()
             t1.add(["名称", "数据"], [[k, v] for k, v in signals.items()])
             t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))

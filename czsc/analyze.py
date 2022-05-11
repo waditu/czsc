@@ -319,7 +319,14 @@ class CZSC:
         else:
             self.signals = OrderedDict()
 
-    def to_echarts(self, width: str = "1400px", height: str = '580px'):
+    def to_echarts(self, width: str = "1400px", height: str = '580px', bs=None):
+        """绘制K线分析图
+
+        :param width: 宽
+        :param height: 高
+        :param bs: 交易标记，默认为空
+        :return:
+        """
         kline = [x.__dict__ for x in self.bars_raw]
         if len(self.bi_list) > 0:
             bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + \
@@ -330,7 +337,7 @@ class CZSC:
         else:
             bi = None
             fx = None
-        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height,
+        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height, bs=bs,
                           title="{}-{}".format(self.symbol, self.freq.value))
         return chart
 
