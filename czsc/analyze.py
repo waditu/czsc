@@ -8,6 +8,7 @@ describe: 缠论分型、笔的识别
 import os
 import webbrowser
 import traceback
+import numpy as np
 from typing import List, Callable
 from collections import OrderedDict
 
@@ -88,10 +89,11 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     return fxs
 
 
-def check_bi(bars: List[NewBar]):
+def check_bi(bars: List[NewBar], benchmark: float = None):
     """输入一串无包含关系K线，查找其中的一笔
 
     :param bars: 无包含关系K线列表
+    :param benchmark: 当下笔能量的比较基准
     :return:
     """
     min_bi_len = envs.get_min_bi_len()
@@ -134,7 +136,15 @@ def check_bi(bars: List[NewBar]):
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
                  or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    if len(bars_a) >= min_bi_len and not ab_include:
+
+    # 判断当前笔的涨跌幅是否超过benchmark的一定比例
+    if benchmark and abs(fx_a.fx - fx_b.fx) > benchmark * envs.get_bi_change_th():
+        power_enough = True
+    else:
+        power_enough = False
+
+    # 成笔的条件：1）顶底分型之间没有包含关系；2）笔长度大于等于min_bi_len 或 当前笔的涨跌幅已经够大
+    if (not ab_include) and (len(bars_a) >= min_bi_len or power_enough):
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
 
@@ -262,7 +272,12 @@ class CZSC:
         if self.verbose and len(bars_ubi_a) > 100:
             print(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
 
-        bi, bars_ubi_ = check_bi(bars_ubi_a)
+        if envs.get_bi_change_th() > 0.5 and len(self.bi_list) >= 5:
+            benchmark = min(last_bi.power_price, np.mean([x.power_price for x in self.bi_list[-5:]]))
+        else:
+            benchmark = None
+
+        bi, bars_ubi_ = check_bi(bars_ubi_a, benchmark)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
             self.bi_list.append(bi)

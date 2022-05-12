@@ -41,3 +41,14 @@ def get_max_bi_num(v: int = None) -> int:
     return int(float(max_bi_num))
 
 
+def get_bi_change_th(v: float = None) -> float:
+    """bi_change_th - 成笔需要超过benchmark的比例阈值
+
+    benchmark 是上一笔涨跌幅与最近五笔平均涨跌幅均值的最小值
+
+    设置成 -1，可以关闭根据当前笔涨跌幅达到benchmark的比例来确定笔
+    """
+    bi_change_th = v if v else os.environ.get('czsc_bi_change_th', '1')
+    bi_change_th = float(bi_change_th)
+    assert 2 > bi_change_th > 0.5 or bi_change_th == -1, f"czsc_bi_change_th not in (0.5, 2)"
+    return bi_change_th
