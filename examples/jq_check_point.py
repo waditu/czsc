@@ -5,6 +5,11 @@ email: zeng_bin8888@163.com
 create_dt: 2022/4/29 12:06
 describe: 使用聚宽的数据对任意标的、任意时刻的状态进行策略快照
 """
+import os
+os.environ['czsc_min_bi_len'] = '6'
+# os.environ['czsc_bi_change_th'] = '-1'
+os.environ['czsc_bi_change_th'] = '1'
+
 from czsc.data.jq import get_init_bg
 from czsc import create_advanced_trader
 from czsc.strategies import trader_example1
@@ -35,5 +40,6 @@ def trader_tactic_snapshot(symbol, strategy, end_dt=None, file_html=None, fq=Tru
 
 
 if __name__ == '__main__':
-    ct = trader_tactic_snapshot("000001.XSHG", end_dt="20070427 15:15", strategy=trader_example1)
+    ct = trader_tactic_snapshot("000016.XSHG", end_dt="20200401 15:15", strategy=trader_example1)
+    # ct = trader_tactic_snapshot("000852.XSHE", end_dt="20200512 15:15", strategy=trader_example1)
 
