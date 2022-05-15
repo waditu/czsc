@@ -16,11 +16,15 @@ from .utils.ta import SMA, EMA, MACD, KDJ
 from .objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
 from .utils.cache import home_path, get_dir_size, empty_cache_path
 
-__version__ = "0.8.26"
+__version__ = "0.8.27"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20220508"
+__date__ = "20220515"
 
+print(f"CZSC环境变量："
+      f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
+      f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
+      f"czsc_bi_change_th = {envs.get_bi_change_th()}")
 
 if envs.get_welcome():
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
