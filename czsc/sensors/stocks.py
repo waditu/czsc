@@ -487,11 +487,11 @@ class StocksDaySensor:
         df_turns, tor = turn_over_rate(df_holds)
 
         beta = get_index_beta(dc, sdt, edt, freq='D', file_xlsx=None, indices=self.betas)
-        df_n1b = pd.DataFrame()
+        df_n1b = pd.DataFrame({"trade_date": pd.to_datetime(dc.get_dates_span(sdt, edt))})
         for name, df_ in beta.items():
             if name in self.betas:
-                df_n1b['trade_date'] = pd.to_datetime(df_.trade_date.to_list())
-                df_n1b[name] = df_.n1b.to_list()
+                n1b_map = {row['trade_date']: row['n1b'] for _, row in df_.iterrows()}
+                df_n1b[name] = df_n1b.apply(lambda x: n1b_map.get(x['trade_date'], 0), axis=1)
 
         df_ = df_p[['trade_date', 'number', 'n1b']]
         df_.rename({'n1b': 'selector'}, axis=1, inplace=True)
