@@ -43,7 +43,7 @@ def sds_czsc_v1_t1(symbol):
 
 if __name__ == '__main__':
     strategy = sds_czsc_v1_t1
-    data_path = r"C:\ts_data"
+    data_path = r"C:\ts_data_czsc"
     dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-03-23')
     sdt = "20180101"
     edt = "20220320"

@@ -12,10 +12,9 @@ import os.path
 import shutil
 import pandas as pd
 from deprecated import deprecated
-
-from .ts import *
-from .. import envs
-from ..utils import io
+from czsc.data.ts import *
+from czsc import envs
+from czsc.utils import io
 
 
 def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
@@ -143,14 +142,14 @@ class TsDataCache:
         https://tushare.pro/document/2?doc_id=259
         """
         cache_path = self.api_path_map['ths_index']
-        file_cache = os.path.join(cache_path, f"ths_index_{exchange}_{type_}.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+        file_cache = os.path.join(cache_path, f"ths_index_{exchange}_{type_}.feather")
+        if not self.refresh and os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"ths_index: read cache {file_cache}")
         else:
             df = pro.ths_index(exchange=exchange, type=type_)
-            io.save_pkl(df, file_cache)
+            df.to_feather(file_cache)
         return df
 
     def ths_member(self, ts_code):
@@ -161,13 +160,14 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['ths_member']
-        file_cache = os.path.join(cache_path, f"ths_member_{ts_code}.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+        file_cache = os.path.join(cache_path, f"ths_member_{ts_code}.feather")
+        if not self.refresh and os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
+            if self.verbose:
+                print(f"ths_index: read cache {file_cache}")
         else:
-            df = pro.ths_member(ts_code=ts_code,
-                                fields="ts_code,code,name,weight,in_date,out_date,is_new")
-            io.save_pkl(df, file_cache)
+            df = pro.ths_member(ts_code=ts_code, fields="ts_code,code,name,weight,in_date,out_date,is_new")
+            df.to_feather(file_cache)
         return df
 
     def pro_bar(self, ts_code, start_date, end_date, freq='D', asset="E", adj='qfq', raw_bar=True):
@@ -185,10 +185,11 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['pro_bar']
-        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{asset}_{freq}_{adj}.pkl")
+        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{pd.to_datetime(start_date).strftime('%Y%m%d')}"
+                                              f"_{asset}_{freq}_{adj}.feather")
 
         if os.path.exists(file_cache):
-            kline = io.read_pkl(file_cache)
+            kline = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"pro_bar: read cache {file_cache}")
         else:
@@ -200,7 +201,7 @@ class TsDataCache:
             kline['dt'] = kline['trade_date']
             kline['avg_price'] = kline['amount'] / kline['vol']
             update_bars_return(kline)
-            io.save_pkl(kline, file_cache)
+            kline.to_feather(file_cache)
 
         start_date = pd.to_datetime(start_date)
         end_date = pd.to_datetime(end_date)
@@ -210,7 +211,7 @@ class TsDataCache:
             bars = format_kline(bars, freq=self.freq_map[freq])
         return bars
 
-    def pro_bar_minutes(self, ts_code, sdt, edt, freq='60min', asset="E", adj=None, raw_bar=True):
+    def pro_bar_minutes(self, ts_code, sdt, edt=None, freq='60min', asset="E", adj=None, raw_bar=True):
         """获取分钟线
 
         https://tushare.pro/document/2?doc_id=109
@@ -225,16 +226,17 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['pro_bar_minutes']
-        file_cache = os.path.join(cache_path, f"pro_bar_minutes_{ts_code}_{asset}_{freq}_{adj}.pkl")
+        file_cache = os.path.join(cache_path, f"pro_bar_minutes_{ts_code}_{sdt}_{asset}_{freq}_{adj}.feather")
+        edt = self.edt if not edt else edt
 
         if os.path.exists(file_cache):
-            kline = io.read_pkl(file_cache)
+            kline = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"pro_bar_minutes: read cache {file_cache}")
         else:
             klines = []
             end_dt = pd.to_datetime(self.edt)
-            dt1 = pd.to_datetime(self.sdt)
+            dt1 = pd.to_datetime(sdt)
             delta = timedelta(days=20*int(freq.replace("min", "")))
             dt2 = dt1 + delta
             while dt1 < end_dt:
@@ -301,7 +303,7 @@ class TsDataCache:
                     kline[col] = kline.apply(lambda x: x[col] * adj_map[x['trade_date']], axis=1)
 
             update_bars_return(kline)
-            io.save_pkl(kline, file_cache)
+            kline.to_feather(file_cache)
 
         sdt = pd.to_datetime(sdt)
         edt = pd.to_datetime(edt)
@@ -317,23 +319,22 @@ class TsDataCache:
 
         :return:
         """
-        file_cache = os.path.join(self.cache_path, f"stock_basic.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+        file_cache = os.path.join(self.cache_path, f"stock_basic.feather")
+        if not self.refresh and os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
         else:
-            df = pro.stock_basic(exchange='', list_status='L',
-                                 fields='ts_code,symbol,name,area,industry,list_date')
-            io.save_pkl(df, file_cache)
+            df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
+            df.to_feather(file_cache)
         return df
 
     def trade_cal(self):
         """https://tushare.pro/document/2?doc_id=26"""
-        file_cache = os.path.join(self.cache_path, f"trade_cal.pkl")
+        file_cache = os.path.join(self.cache_path, f"trade_cal.feather")
         if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+            df = pd.read_feather(file_cache)
         else:
             df = pro.trade_cal(exchange='', start_date='19900101', end_date="20300101")
-            io.save_pkl(df, file_cache)
+            df.to_feather(file_cache)
         return df
 
     def hk_hold(self, trade_date='20190625'):
@@ -343,13 +344,12 @@ class TsDataCache:
         """
         cache_path = self.api_path_map['hk_hold']
         trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
-        file_cache = os.path.join(cache_path, f"hk_hold_{trade_date}.pkl")
-
+        file_cache = os.path.join(cache_path, f"hk_hold_{trade_date}.feather")
         if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+            df = pd.read_feather(file_cache)
         else:
             df = pro.hk_hold(trade_date=trade_date)
-            io.save_pkl(df, file_cache)
+            df.to_feather(file_cache)
         return df
 
     def cctv_news(self, date='20190625'):
@@ -359,13 +359,48 @@ class TsDataCache:
         """
         cache_path = self.api_path_map['cctv_news']
         date = pd.to_datetime(date).strftime("%Y%m%d")
-        file_cache = os.path.join(cache_path, f"cctv_news_{date}.pkl")
-
+        file_cache = os.path.join(cache_path, f"cctv_news_{date}.feather")
         if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+            df = pd.read_feather(file_cache)
         else:
             df = pro.cctv_news(date=date)
-            io.save_pkl(df, file_cache)
+            df.to_feather(file_cache)
+        return df
+
+    def index_weight(self, index_code: str, trade_date: str):
+        """指数成分和权重
+
+        https://tushare.pro/document/2?doc_id=96
+        """
+        trade_date = pd.to_datetime(trade_date)
+        cache_path = self.api_path_map['index_weight']
+        file_cache = os.path.join(cache_path, f"index_weight_{index_code}_{trade_date.strftime('%Y%m')}.feather")
+
+        if os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
+        else:
+            start_date = (trade_date.replace(day=1) - timedelta(days=31)).strftime('%Y%m%d')
+            end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
+            df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
+            df = df.drop_duplicates('con_code', ignore_index=True)
+            df.to_feather(file_cache)
+        return df
+
+    def limit_list(self, trade_date: str):
+        """https://tushare.pro/document/2?doc_id=198
+
+        :param trade_date: 交易日期
+        :return: 每日涨跌停统计
+        """
+        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
+        cache_path = self.api_path_map['limit_list']
+        file_cache = os.path.join(cache_path, f"limit_list_{trade_date}.feather")
+
+        if os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
+        else:
+            df = pro.limit_list(trade_date=trade_date)
+            df.to_feather(file_cache)
         return df
 
     @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
@@ -381,47 +416,11 @@ class TsDataCache:
             df = io.read_pkl(file_cache)
         else:
             start_date_ = (pd.to_datetime(self.sdt) - timedelta(days=1000)).strftime('%Y%m%d')
-            df = pro.daily_basic(ts_code=ts_code, start_date=start_date_, end_date="20230101")
+            df = pro.daily_basic(ts_code=ts_code, start_date=start_date_, end_date="20300101")
             df['trade_date'] = pd.to_datetime(df['trade_date'])
             io.save_pkl(df, file_cache)
 
         df = df[(df.trade_date >= pd.to_datetime(start_date)) & (df.trade_date <= pd.to_datetime(end_date))]
-        return df
-
-    def index_weight(self, index_code: str, trade_date: str):
-        """指数成分和权重
-
-        https://tushare.pro/document/2?doc_id=96
-        """
-        trade_date = pd.to_datetime(trade_date)
-        cache_path = self.api_path_map['index_weight']
-        file_cache = os.path.join(cache_path, f"index_weight_{index_code}_{trade_date.strftime('%Y%m')}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            start_date = (trade_date.replace(day=1) - timedelta(days=31)).strftime('%Y%m%d')
-            end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
-            df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
-            df = df.drop_duplicates('con_code', ignore_index=True)
-            io.save_pkl(df, file_cache)
-        return df
-
-    def limit_list(self, trade_date: str):
-        """https://tushare.pro/document/2?doc_id=198
-
-        :param trade_date: 交易日期
-        :return: 每日涨跌停统计
-        """
-        trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
-        cache_path = self.api_path_map['limit_list']
-        file_cache = os.path.join(cache_path, f"limit_list_{trade_date}.pkl")
-
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
-        else:
-            df = pro.limit_list(trade_date=trade_date)
-            io.save_pkl(df, file_cache)
         return df
 
     # ------------------------------------以下是 CZSC 加工接口----------------------------------------------
@@ -437,9 +436,9 @@ class TsDataCache:
         """
         trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
         cache_path = self.api_path_map['daily_basic_new']
-        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.pkl")
+        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.feather")
         if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+            df = pd.read_feather(file_cache)
             return df
 
         df1 = pro.bak_basic(trade_date=trade_date)
@@ -451,14 +450,14 @@ class TsDataCache:
                    'holder_num']]
         df = df2.merge(df1, on=['ts_code', 'trade_date'], how='left')
         df['is_st'] = df['name'].str.contains('ST')
-        io.save_pkl(df, file_cache)
+        df.to_feather(df, file_cache)
         return df
 
     def get_all_ths_members(self, exchange="A", type_="N"):
         """获取同花顺A股全部概念列表"""
-        file_cache = os.path.join(self.cache_path, f"{exchange}_{type_}_ths_members.pkl")
-        if os.path.exists(file_cache):
-            df = io.read_pkl(file_cache)
+        file_cache = os.path.join(self.cache_path, f"{exchange}_{type_}_ths_members.feather")
+        if not self.refresh and os.path.exists(file_cache):
+            df = pd.read_feather(file_cache)
         else:
             concepts = self.ths_index(exchange, type_)
             concepts = concepts.to_dict('records')
@@ -473,7 +472,7 @@ class TsDataCache:
                 time.sleep(0.3)
 
             df = pd.concat(res, ignore_index=True)
-            io.save_pkl(df, file_cache)
+            df.to_feather(file_cache)
         return df
 
     def get_next_trade_dates(self, date, n: int = 1, m: int = None):
@@ -531,9 +530,9 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['stocks_daily_bars']
-        file_cache = os.path.join(cache_path, f"stocks_daily_bars_{sdt}_{edt}_{adj}.pkl")
+        file_cache = os.path.join(cache_path, f"stocks_daily_bars_{sdt}_{edt}_{adj}.feather")
         if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
+            df = pd.read_feather(file_cache)
             return df
 
         stocks = self.stock_basic()
@@ -574,7 +573,7 @@ class TsDataCache:
         float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
         df[float_cols] = df[float_cols].astype('float32')
 
-        df.to_pickle(file_cache)
+        df.to_feather(file_cache)
         return df
 
     def stocks_daily_basic_new(self, sdt: str, edt: str):
@@ -585,9 +584,9 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['stocks_daily_basic_new']
-        file_cache = os.path.join(cache_path, f"stocks_daily_basic_new_{sdt}_{edt}.pkl")
+        file_cache = os.path.join(cache_path, f"stocks_daily_basic_new_{sdt}_{edt}.feather")
         if os.path.exists(file_cache):
-            df = pd.read_pickle(file_cache)
+            df = pd.read_feather(file_cache)
             return df
 
         dates = self.get_dates_span(sdt, edt, is_open=True)
@@ -595,6 +594,8 @@ class TsDataCache:
         dfb = pd.concat(results, ignore_index=True)
         dfb['trade_date'] = pd.to_datetime(dfb['trade_date'])
         dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
-        dfb.to_pickle(file_cache)
+        dfb.to_feather(file_cache)
         return dfb
+
+
 
