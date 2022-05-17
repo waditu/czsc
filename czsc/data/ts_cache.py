@@ -170,7 +170,7 @@ class TsDataCache:
             df.to_feather(file_cache)
         return df
 
-    def pro_bar(self, ts_code, start_date, end_date, freq='D', asset="E", adj='qfq', raw_bar=True):
+    def pro_bar(self, ts_code, start_date=None, end_date=None, freq='D', asset="E", adj='qfq', raw_bar=True):
         """获取日线以上数据
 
         https://tushare.pro/document/2?doc_id=109
@@ -185,10 +185,9 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['pro_bar']
-        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}_{pd.to_datetime(start_date).strftime('%Y%m%d')}"
-                                              f"_{asset}_{freq}_{adj}.feather")
+        file_cache = os.path.join(cache_path, f"pro_bar_{ts_code}#{asset}_{self.sdt}_{freq}_{adj}.feather")
 
-        if os.path.exists(file_cache):
+        if not self.refresh and os.path.exists(file_cache):
             kline = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"pro_bar: read cache {file_cache}")
@@ -203,15 +202,17 @@ class TsDataCache:
             update_bars_return(kline)
             kline.to_feather(file_cache)
 
-        start_date = pd.to_datetime(start_date)
-        end_date = pd.to_datetime(end_date)
-        bars = kline[(kline['trade_date'] >= start_date) & (kline['trade_date'] <= end_date)]
-        bars.reset_index(drop=True, inplace=True)
-        if raw_bar:
-            bars = format_kline(bars, freq=self.freq_map[freq])
-        return bars
+        if start_date:
+            kline = kline[kline['trade_date'] >= pd.to_datetime(start_date)]
+        if end_date:
+            kline = kline[kline['trade_date'] <= pd.to_datetime(end_date)]
 
-    def pro_bar_minutes(self, ts_code, sdt, edt=None, freq='60min', asset="E", adj=None, raw_bar=True):
+        kline.reset_index(drop=True, inplace=True)
+        if raw_bar:
+            kline = format_kline(kline, freq=self.freq_map[freq])
+        return kline
+
+    def pro_bar_minutes(self, ts_code, sdt=None, edt=None, freq='60min', asset="E", adj=None, raw_bar=True):
         """获取分钟线
 
         https://tushare.pro/document/2?doc_id=109
@@ -226,17 +227,17 @@ class TsDataCache:
         :return:
         """
         cache_path = self.api_path_map['pro_bar_minutes']
-        file_cache = os.path.join(cache_path, f"pro_bar_minutes_{ts_code}_{sdt}_{asset}_{freq}_{adj}.feather")
+        file_cache = os.path.join(cache_path, f"pro_bar_minutes_{ts_code}#{asset}_{self.sdt}_{freq}_{adj}.feather")
         edt = self.edt if not edt else edt
 
-        if os.path.exists(file_cache):
+        if not self.refresh and os.path.exists(file_cache):
             kline = pd.read_feather(file_cache)
             if self.verbose:
                 print(f"pro_bar_minutes: read cache {file_cache}")
         else:
             klines = []
             end_dt = pd.to_datetime(self.edt)
-            dt1 = pd.to_datetime(sdt)
+            dt1 = pd.to_datetime(self.sdt)
             delta = timedelta(days=20*int(freq.replace("min", "")))
             dt2 = dt1 + delta
             while dt1 < end_dt:
@@ -305,16 +306,19 @@ class TsDataCache:
             update_bars_return(kline)
             kline.to_feather(file_cache)
 
-        sdt = pd.to_datetime(sdt)
-        edt = pd.to_datetime(edt)
-        bars = kline[(kline['trade_time'] >= sdt) & (kline['trade_time'] <= edt)]
-        bars.reset_index(drop=True, inplace=True)
+        if sdt:
+            kline = kline[kline['trade_time'] >= pd.to_datetime(sdt)]
+        if edt:
+            kline = kline[kline['trade_time'] <= pd.to_datetime(edt)]
+
+        bars = kline.reset_index(drop=True)
         if raw_bar:
             bars = format_kline(bars, freq=self.freq_map[freq])
         return bars
 
     def stock_basic(self):
-        """
+        """获取基础信息数据，包括股票代码、名称、上市日期、退市日期等
+
         https://tushare.pro/document/2?doc_id=25
 
         :return:
@@ -450,7 +454,7 @@ class TsDataCache:
                    'holder_num']]
         df = df2.merge(df1, on=['ts_code', 'trade_date'], how='left')
         df['is_st'] = df['name'].str.contains('ST')
-        df.to_feather(df, file_cache)
+        df.to_feather(file_cache)
         return df
 
     def get_all_ths_members(self, exchange="A", type_="N"):
