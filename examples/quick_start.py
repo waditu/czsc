@@ -56,6 +56,10 @@ def get_simple_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     return s
 
 
-cat = CzscAdvancedTrader(bg, get_simple_signals)
+def simple_strategy(symbol):
+    return {"symbol": symbol, "get_signals": get_simple_signals}
+
+
+cat = CzscAdvancedTrader(bg, simple_strategy)
 cat.open_in_browser()
 
