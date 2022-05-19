@@ -51,6 +51,9 @@ class CzscAdvancedTrader:
         self.verbose = envs.get_verbose()
         self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
+        # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
+        self.cache = OrderedDict()
+
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         if self.get_signals:
@@ -58,9 +61,6 @@ class CzscAdvancedTrader:
             self.s.update(last_bar.__dict__)
         else:
             self.s = OrderedDict()
-
-        # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
-        self.cache = OrderedDict()
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
