@@ -15,11 +15,13 @@ tactic = strategy("000001.SH")
 base_freq = tactic['base_freq']
 bars = dc.pro_bar_minutes('000001.SZ', "20150101", "20220101", freq=freq_cn2ts[base_freq],
                           asset="I", adj="hfq", raw_bar=True)
-res_path = r"C:\ts_data\trade_replay_test4"
+res_path = r"C:\ts_data_czsc\trade_replay_test4"
 
-bg = BarGenerator(base_freq, freqs=tactic['freqs'])
-bars1 = bars[:24000]
-bars2 = bars[24000:]
-for bar in bars1:
-    bg.update(bar)
-trade_replay(bg, bars2, strategy, res_path)
+
+if __name__ == '__main__':
+    bg = BarGenerator(base_freq, freqs=tactic['freqs'])
+    bars1 = bars[:24000]
+    bars2 = bars[24000:]
+    for bar in bars1:
+        bg.update(bar)
+    trade_replay(bg, bars2, strategy, res_path)

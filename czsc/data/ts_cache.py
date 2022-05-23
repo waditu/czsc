@@ -398,13 +398,13 @@ class TsDataCache:
         """
         trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
         cache_path = self.api_path_map['limit_list']
-        file_cache = os.path.join(cache_path, f"limit_list_{trade_date}.feather")
+        file_cache = os.path.join(cache_path, f"limit_list_{trade_date}.pkl")
 
         if os.path.exists(file_cache):
-            df = pd.read_feather(file_cache)
+            df = pd.read_pickle(file_cache)
         else:
             df = pro.limit_list(trade_date=trade_date)
-            df.to_feather(file_cache)
+            df.to_pickle(file_cache)
         return df
 
     @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
