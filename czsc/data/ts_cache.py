@@ -440,9 +440,9 @@ class TsDataCache:
         """
         trade_date = pd.to_datetime(trade_date).strftime("%Y%m%d")
         cache_path = self.api_path_map['daily_basic_new']
-        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.feather")
+        file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.pkl")
         if os.path.exists(file_cache):
-            df = pd.read_feather(file_cache)
+            df = pd.read_pickle(file_cache)
             return df
 
         df1 = pro.bak_basic(trade_date=trade_date)
@@ -454,7 +454,7 @@ class TsDataCache:
                    'holder_num']]
         df = df2.merge(df1, on=['ts_code', 'trade_date'], how='left')
         df['is_st'] = df['name'].str.contains('ST')
-        df.to_feather(file_cache)
+        df.to_pickle(file_cache)
         return df
 
     def get_all_ths_members(self, exchange="A", type_="N"):
