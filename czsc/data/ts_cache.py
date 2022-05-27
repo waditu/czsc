@@ -353,6 +353,8 @@ class TsDataCache:
             df = pd.read_feather(file_cache)
         else:
             df = pro.hk_hold(trade_date=trade_date)
+            if df.empty:
+                return df
             df.to_feather(file_cache)
         return df
 
@@ -368,6 +370,8 @@ class TsDataCache:
             df = pd.read_feather(file_cache)
         else:
             df = pro.cctv_news(date=date)
+            if df.empty:
+                return df
             df.to_feather(file_cache)
         return df
 
@@ -387,6 +391,9 @@ class TsDataCache:
             end_date = (trade_date.replace(day=1) + timedelta(days=31)).strftime('%Y%m%d')
             df = pro.index_weight(index_code=index_code, start_date=start_date, end_date=end_date)
             df = df.drop_duplicates('con_code', ignore_index=True)
+            if df.empty:
+                return df
+
             df.to_feather(file_cache)
         return df
 
@@ -402,9 +409,11 @@ class TsDataCache:
 
         if os.path.exists(file_cache):
             df = pd.read_pickle(file_cache)
-        else:
-            df = pro.limit_list(trade_date=trade_date)
-            df.to_pickle(file_cache)
+            if not df.empty:
+                return df
+
+        df = pro.limit_list(trade_date=trade_date)
+        df.to_pickle(file_cache)
         return df
 
     @deprecated(reason='推荐使用 daily_basic_new 替代', version='0.9.0')
@@ -443,7 +452,8 @@ class TsDataCache:
         file_cache = os.path.join(cache_path, f"bak_basic_new_{trade_date}.pkl")
         if os.path.exists(file_cache):
             df = pd.read_pickle(file_cache)
-            return df
+            if not df.empty:
+                return df
 
         df1 = pro.bak_basic(trade_date=trade_date)
         df2 = pro.daily_basic(trade_date=trade_date)
