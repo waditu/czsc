@@ -546,6 +546,7 @@ class TsDataCache:
         cache_path = self.api_path_map['stocks_daily_bars']
         file_cache = os.path.join(cache_path, f"stocks_daily_bars_{sdt}_{edt}_{adj}.feather")
         if os.path.exists(file_cache):
+            print(f"stocks_daily_bars :: read cache from {file_cache}")
             df = pd.read_feather(file_cache)
             return df
 
@@ -576,7 +577,8 @@ class TsDataCache:
 
         # 涨跌停判断
         def __is_zdt(row_):
-            if row_['close'] == row_['high']:
+            # 涨停描述：收盘价等于最高价，且当日收益 b1b 大于700BP
+            if row_['close'] == row_['high'] and row_['b1b'] > 700:
                 return 1
             elif row_['close'] == row_['low']:
                 return -1
@@ -600,6 +602,7 @@ class TsDataCache:
         cache_path = self.api_path_map['stocks_daily_basic_new']
         file_cache = os.path.join(cache_path, f"stocks_daily_basic_new_{sdt}_{edt}.feather")
         if os.path.exists(file_cache):
+            print(f"stocks_daily_basic_new :: read cache from {file_cache}")
             df = pd.read_feather(file_cache)
             return df
 
