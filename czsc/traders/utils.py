@@ -10,7 +10,7 @@ from tqdm import tqdm
 from typing import List, Callable
 from czsc.analyze import CZSC
 from czsc.utils import x_round, BarGenerator, kline_pro
-from czsc.objects import RawBar, Operate
+from czsc.objects import RawBar
 from czsc.traders.advanced import CzscAdvancedTrader
 
 
@@ -46,11 +46,10 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
 
     # 构建 BS 序列
     bs = []
-    for op in trader.long_pos.operates:
-        if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
-            bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
-        else:
-            bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
+    if trader.long_pos:
+        bs.extend(trader.long_pos.operates)
+    if trader.short_pos:
+        bs.extend(trader.short_pos.operates)
 
     chart = kline_pro(kline, bi=bi, fx=fx, bs=bs, width="1400px", height='580px',
                       title=f"{strategy.__name__} {bg.symbol} 交易回放")

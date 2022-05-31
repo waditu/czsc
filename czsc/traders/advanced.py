@@ -77,17 +77,18 @@ class CzscAdvancedTrader:
         for freq in self.freqs:
             ka: CZSC = self.kas[freq]
             bs = None
-            if freq == self.base_freq and self.long_pos:
-                # 在基础周期K线上加入最近的一些多头操作记录
+            if freq == self.base_freq:
+                # 在基础周期K线上加入最近的操作记录
                 bs = []
-                for op in self.long_pos.operates[-10:]:
-                    if op['dt'] < ka.bars_raw[0].dt:
-                        continue
+                if self.long_pos:
+                    for op in self.long_pos.operates[-10:]:
+                        if op['dt'] >= ka.bars_raw[0].dt:
+                            bs.append(op)
 
-                    if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
-                        bs.append({'dt': op['dt'], 'mark': "buy", 'price': op['price']})
-                    else:
-                        bs.append({'dt': op['dt'], 'mark': "sell", 'price': op['price']})
+                if self.short_pos:
+                    for op in self.short_pos.operates[-10:]:
+                        if op['dt'] >= ka.bars_raw[0].dt:
+                            bs.append(op)
 
             chart = ka.to_echarts(width, height, bs)
             tab.add(chart, freq)

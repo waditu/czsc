@@ -9,6 +9,7 @@ from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid, Boxplot
 from pyecharts.commons.utils import JsCode
 from typing import List
 import numpy as np
+from czsc.objects import Operate
 from .ta import SMA, MACD
 
 
@@ -168,30 +169,11 @@ def kline_pro(kline: List[dict],
     diff = diff.round(4)
     dea = dea.round(4)
 
-    # 构建BS的MarkPoints
-    if bs:
-        items = []
-        for x in bs:
-            if x['mark'] == 'buy':
-                item = opts.MarkPointItem(
-                    name=x['mark'], value=round(x['price'], 2), coord=[x['dt'], x['price']],
-                    symbol="arrow", itemstyle_opts=opts.ItemStyleOpts(color="#c1793f", )
-                )
-            else:
-                item = opts.MarkPointItem(
-                    name=x['mark'], value=round(x['price'], 2), coord=[x['dt'], x['price']],
-                    symbol="pin", itemstyle_opts=opts.ItemStyleOpts(color="#eb8146"),
-                )
-            items.append(item)
-        mpo = opts.MarkPointOpts(data=items, label_opts=opts.LabelOpts(position="inside", color="#fff"))
-    else:
-        mpo = None
-
     # K 线主图
     # ------------------------------------------------------------------------------------------------------------------
     chart_k = Kline()
     chart_k.add_xaxis(xaxis_data=dts)
-    chart_k.add_yaxis(series_name="Kline", y_axis=k_data, itemstyle_opts=k_style_opts, markpoint_opts=mpo)
+    chart_k.add_yaxis(series_name="Kline", y_axis=k_data, itemstyle_opts=k_style_opts)
 
     chart_k.set_global_opts(
         legend_opts=legend_opts,
@@ -203,6 +185,96 @@ def kline_pro(kline: List[dict],
         title_opts=title_opts,
         xaxis_opts=grid0_xaxis_opts
     )
+
+    # 加入买卖点 - 多头操作 - 空头操作
+    if bs:
+        long_opens = {'i': [], 'val': []}
+        long_exits = {'i': [], 'val': []}
+        short_opens = {'i': [], 'val': []}
+        short_exits = {'i': [], 'val': []}
+
+        for op in bs:
+            _dt = op['dt']
+            _price = op['price']
+            _info = f"{op['op_desc']} - 价格{_price}"
+
+            if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+                long_opens['i'].append(_dt)
+                long_opens['val'].append([_price, _info])
+
+            if op['op'] in [Operate.LE, Operate.LR1, Operate.LR2]:
+                long_exits['i'].append(_dt)
+                long_exits['val'].append([_price, _info])
+
+            if op['op'] in [Operate.SO, Operate.SA1, Operate.SA2]:
+                short_opens['i'].append(_dt)
+                short_opens['val'].append([_price, _info])
+
+            if op['op'] in [Operate.SE, Operate.SR1, Operate.SR2]:
+                short_exits['i'].append(_dt)
+                short_exits['val'].append([_price, _info])
+
+        chart_lo = (
+            Scatter().add_xaxis(xaxis_data=long_opens['i']).add_yaxis(
+                series_name="多头操作",
+                y_axis=long_opens['val'],
+                symbol_size=25,
+                symbol='diamond',
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='#ff461f'),
+                tooltip_opts=opts.TooltipOpts(
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                    formatter=JsCode("function (params) {return params.value[2];}")
+                ),
+            )
+        )
+        chart_le = (
+            Scatter().add_xaxis(xaxis_data=long_exits['i']).add_yaxis(
+                series_name="多头操作",
+                y_axis=long_exits['val'],
+                symbol_size=25,
+                symbol='diamond',
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='#afdd22'),
+                tooltip_opts=opts.TooltipOpts(
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                    formatter=JsCode("function (params) {return params.value[2];}")
+                ),
+            )
+        )
+        chart_so = (
+            Scatter().add_xaxis(xaxis_data=short_opens['i']).add_yaxis(
+                series_name="空头订单",
+                y_axis=short_opens['val'],
+                symbol_size=25,
+                symbol='triangle',
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='#ff461f'),
+                tooltip_opts=opts.TooltipOpts(
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                    formatter=JsCode("function (params) {return params.value[2];}")
+                ),
+            )
+        )
+        chart_se = (
+            Scatter().add_xaxis(xaxis_data=short_exits['i']).add_yaxis(
+                series_name="空头订单",
+                y_axis=short_exits['val'],
+                symbol_size=25,
+                symbol='triangle',
+                label_opts=opts.LabelOpts(is_show=False),
+                itemstyle_opts=opts.ItemStyleOpts(color='#afdd22'),
+                tooltip_opts=opts.TooltipOpts(
+                    textstyle_opts=opts.TextStyleOpts(font_size=12),
+                    formatter=JsCode("function (params) {return params.value[2];}")
+                ),
+            )
+        )
+
+        chart_k = chart_k.overlap(chart_lo)
+        chart_k = chart_k.overlap(chart_le)
+        chart_k = chart_k.overlap(chart_so)
+        chart_k = chart_k.overlap(chart_se)
 
     # 均线图
     # ------------------------------------------------------------------------------------------------------------------

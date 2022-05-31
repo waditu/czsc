@@ -12,7 +12,7 @@ os.environ['czsc_bi_change_th'] = '1'
 
 from czsc.data.jq import get_init_bg
 from czsc import create_advanced_trader
-from czsc.strategies import trader_example1
+from czsc.strategies import trader_example1, trader_strategy_a
 
 
 def trader_tactic_snapshot(symbol, strategy, end_dt=None, file_html=None, fq=True, max_count=1000):
@@ -40,6 +40,7 @@ def trader_tactic_snapshot(symbol, strategy, end_dt=None, file_html=None, fq=Tru
 
 
 if __name__ == '__main__':
-    ct = trader_tactic_snapshot("000016.XSHG", end_dt="20200401 15:15", strategy=trader_example1)
+    # ct = trader_tactic_snapshot("000016.XSHG", end_dt="20200401 15:15", strategy=trader_example1)
+    ct = trader_tactic_snapshot("000016.XSHG", end_dt="20200401 15:15", strategy=trader_strategy_a)
     # ct = trader_tactic_snapshot("000852.XSHE", end_dt="20200512 15:15", strategy=trader_example1)
 
