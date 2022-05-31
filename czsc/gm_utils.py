@@ -785,12 +785,12 @@ def init_context_universal(context, name):
     :param name: 交易策略名称，建议使用英文
     """
     path_gm_logs = os.environ.get('path_gm_logs', None)
-    assert os.path.exists(path_gm_logs)
     if context.mode == MODE_BACKTEST:
         data_path = os.path.join(path_gm_logs, f"backtest/{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
     else:
         data_path = os.path.join(path_gm_logs, f"realtime/{name}")
     os.makedirs(data_path, exist_ok=True)
+
     context.name = name
     context.data_path = data_path
     context.stocks = get_stocks()
