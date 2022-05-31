@@ -4,19 +4,22 @@ from enum import Enum
 
 
 class Operate(Enum):
+    # 持有状态
     HL = "持多"  # Hold Long
     HS = "持空"  # Hold Short
     HO = "持币"  # Hold Other
 
-    LO = "开多"  # Long Open
-    LE = "平多"  # Long Exit
+    # 多头操作
+    LO = "开多"          # Long Open
+    LE = "平多"          # Long Exit
     LA1 = "第一次加多仓"  # Long Add 1
     LA2 = "第二次加多仓"  # Long Add 2
     LR1 = "第一次减多仓"  # Long Reduce 1
     LR2 = "第二次减多仓"  # Long Reduce 2
 
-    SO = "开空"  # Short Open
-    SE = "平空"  # Short Exit
+    # 空头操作
+    SO = "开空"          # Short Open
+    SE = "平空"          # Short Exit
     SA1 = "第一次加空仓"  # Short Add 1
     SA2 = "第二次加空仓"  # Short Add 2
     SR1 = "第一次减空仓"  # Short Reduce 1

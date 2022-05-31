@@ -1,8 +1,12 @@
-# coding: utf-8
+# -*- coding: utf-8 -*-
 """
-常用技术分析指标：MA, MACD
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2022/1/24 15:01
+describe: 常用技术分析指标
 """
 import numpy as np
+
 
 def SMA(close: np.array, timeperiod=5):
     """简单移动平均
@@ -24,6 +28,7 @@ def SMA(close: np.array, timeperiod=5):
         res.append(seq.mean())
     return np.array(res, dtype=np.double).round(4)
 
+
 def EMA(close: np.array, timeperiod=5):
     """
     https://baike.baidu.com/item/EMA/12646151
@@ -42,6 +47,7 @@ def EMA(close: np.array, timeperiod=5):
             ema = (2 * close[i] + res[i-1] * (timeperiod-1)) / (timeperiod+1)
             res.append(ema)
     return np.array(res, dtype=np.double).round(4)
+
 
 def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     """MACD 异同移动平均线
@@ -64,6 +70,7 @@ def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     dea = EMA(diff, timeperiod=signalperiod)
     macd = (diff - dea) * 2
     return diff.round(4), dea.round(4), macd.round(4)
+
 
 def KDJ(close: np.array, high: np.array, low: np.array):
     """
@@ -110,8 +117,9 @@ def KDJ(close: np.array, high: np.array, low: np.array):
     j = np.array(j, dtype=np.double)
     return k.round(4), d.round(4), j.round(4)
 
+
 def RSQ(close: [np.array, list]) -> float:
-    """拟合优度 R SQuare
+    """拟合优度 R Square
 
     :param close: 收盘价序列
     :return:

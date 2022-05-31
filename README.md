@@ -1,20 +1,51 @@
 # czsc - 缠中说禅技术分析工具
->源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，欢迎加群探讨。
->[点击扫码加入企业微信交流群](https://github.com/zengbin93/czsc/issues/64)，加群请备注自己对缠论的了解程度，谢谢。
 
->**[官方文档（0.6.8）（未更新到0.7.3）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
+[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=total&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Total)](https://pepy.tech/project/czsc)
+[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=month&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Month)](https://pepy.tech/project/czsc)
+[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=week&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Week)](https://pepy.tech/project/czsc)
+[![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
+[![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
+
+>源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)
+
+>**[官方文档（0.6.8）（暂未更新到最新版）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
+
+
+```
+主题: CZSC0.8.26 版本介绍 
+日期: 2022-05-22 19:53:55
+录制文件：https://meeting.tencent.com/v2/cloud-record/share?id=a361ce70-45e7-4499-b577-681e1dc01401&from=3
+访问密码：xy4a
+```
 
 ## 使用前必看
 
-* 这是个人开发的项目，虽然我已经尽可能的避坑，但可以很直接的说，这里面一定还有坑，使用前请仔细校验分析结果，发现新坑请告诉我，我来填；
-* 目前开发完成度不高，API可能会有比较大的变动，暂时不准备写文档，没有能力看懂源码的，不建议现在使用。
+* 目前的开发还在高频次的迭代中，对于已经在使用某个版本的用户，请谨慎更新，版本兼容性实在是太差，主要是因为当前还有太多考虑不完善的地方，我为此感到抱歉；
+* 这是个人开发的项目，虽然我已经尽可能避坑，但可以很直接的说，这里面一定还有坑，使用前请仔细校验分析结果，发现新坑请告诉我，我来填；
+* 目前开发完成度不高，**API会有比较大的变动，谨慎升级版本**，暂时不准备写文档，没有能力看懂源码的，不建议现在使用。
 * 免责声明：项目开源仅用于技术交流！
+* 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
 
 ## 项目贡献
 
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
-* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，详见 `czsc/objects.py`
+* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
 * 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
+* 缠论多级别联立决策分析交易，详见 `czsc/traders/advanced.py`
+* 基于 Tushare 数据的择时、选股策略回测研究流程
+
+## 使用案例
+
+>案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，说明是CZSC用户，1500元可以开通CZSC项目目前用到的全部数据权限。
+>掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
+
+* `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
+* `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
+* `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
+* `examples/ts_stocks_sensors.py` 日线选股策略回测
+* `examples/gm_backtest.py` 使用掘金终端进行缠论策略回测
+* `examples/gm_realtime.py` 使用掘金终端进行策略实盘、仿真
+* `examples/gm_check_point.py` 使用掘金终端的数据进行买卖点验证
 
 ## 问题讨论
 
@@ -60,11 +91,12 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 目前已经实现了缠论的 `分型、笔` 的自动识别，核心代码在 `czsc.analyze` 中；
 
-使用聚宽数据的快速入门请查看 `examples\czsc_quick_start.py`
+## 资料分享
+
+* 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
+* 提取码：vhue
 
 ## 捐赠支持
 
->如果这个项目对你的交易有些许帮助，可以扫码捐赠，让我知道一下，感谢！另外，**可以顺便提一个问题或需求。**
-
-<img src="https://github.com/zengbin93/czsc/blob/master/docs/donate.png" height="220" width="400">
+>如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！
 
