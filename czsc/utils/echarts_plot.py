@@ -195,7 +195,7 @@ def kline_pro(kline: List[dict],
 
         for op in bs:
             _dt = op['dt']
-            _price = op['price']
+            _price = round(op['price'], 4)
             _info = f"{op['op_desc']} - 价格{_price}"
 
             if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:

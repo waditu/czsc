@@ -53,7 +53,7 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
 
     chart = kline_pro(kline, bi=bi, fx=fx, bs=bs, width="1400px", height='580px',
                       title=f"{strategy.__name__} {bg.symbol} 交易回放")
-    chart.render(os.path.join(res_path, f"{strategy.__name__}@{bg.symbol}replay.html"))
+    chart.render(os.path.join(res_path, f"replay_{strategy.__name__}@{bg.symbol}.html"))
     dill.dump(trader, open(os.path.join(res_path, "trader.pkl"), 'wb'))
     print(trader.strategy.__name__, trader.results['long_performance'])
 
