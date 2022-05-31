@@ -5,9 +5,11 @@ from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
+
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
+    install_requires = f.read().strip().split('\n')
 
 setup(
     name="czsc",
@@ -21,14 +23,13 @@ setup(
     license="Apache Software License",
 
     url="https://github.com/zengbin93/czsc",
-    packages=find_packages(exclude=['test', 'images', 'docs', 'examples']),
+    packages=find_packages(exclude=['test', 'images', 'docs', 'examples', 'hist']),
     include_package_data=True,
-    install_requires=["pandas", "pyecharts", "tushare", "requests", "seaborn"],
+    install_requires=install_requires,
     package_data={'': ['data/*.csv']},
     classifiers=[
             'License :: OSI Approved :: Apache Software License',
             'Programming Language :: Python :: 3.7',
             'Programming Language :: Python :: 3.8',
-            'Programming Language :: Python :: 3.9',
         ]
 )
