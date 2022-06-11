@@ -6,10 +6,11 @@
 [![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 [![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
 
->源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)
+>源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)
 
 >**[官方文档（0.6.8）（暂未更新到最新版）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
 
+>**假如没有了分型、笔、线段，缠论还是缠论吗？** 如果你的答案是“是”，这个项目是为你准备的。
 
 ```
 主题: CZSC0.8.26 版本介绍 
