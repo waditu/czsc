@@ -19,7 +19,7 @@ pd.set_option('mode.chained_assignment', None)
 pd.set_option('display.max_rows', 1000)
 pd.set_option('display.max_columns', 20)
 
-
+# 需要先设置 Tushare Token，否则报错，无法执行
 # TsDataCache 是统一的 tushare 数据缓存入口，适用于需要重复调用接口的场景
 dc = TsDataCache(data_path=r"C:\ts_data", sdt='2000-01-01', edt='2022-02-18')
 
