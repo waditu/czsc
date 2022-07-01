@@ -496,23 +496,31 @@ def report_account_status(context):
 
             row = {'交易标的': symbol, '标的名称': name,
                    '最新时间': trader.end_dt.strftime(dt_fmt),
-                   '最新价格': trader.latest_price,
-                   '多头持仓': 0, '多头成本': 0, '开仓时间': None,
-                   "实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0}
+                   '最新价格': trader.latest_price}
+
+            if "日线" in trader.kas.keys():
+                bar1, bar2 = trader.kas['日线'].bars_raw[-2:]
+                row.update({'昨日收盘': round(bar1.close, 2),
+                            '今日涨幅': round(bar2.close / bar1.close - 1, 4)})
 
             if trader.long_pos.pos > 0:
                 row.update({'多头持仓': trader.long_pos.pos,
                             '多头成本': trader.long_pos.long_cost,
-                            '开仓时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+                            '多头收益': round(trader.long_pos.long_cost / trader.latest_price - 1, 4),
+                            '开多时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+            else:
+                row.update({'多头持仓': 0, '多头成本': 0, '多头收益': 0, '开多时间': None})
 
             if p:
                 row.update({"实盘持仓数量": p.volume,
                             "实盘持仓成本": x_round(p.vwap, 2),
                             "实盘持仓市值": int(p.volume * p.vwap)})
+            else:
+                row.update({"实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0})
+
             results.append(row)
 
         df = pd.DataFrame(results)
-        df['多头收益'] = df.apply(lambda x: x_round(x['最新价格'] / x['多头成本'] - 1) if x['多头持仓'] > 0 else 0, axis=1)
         df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
