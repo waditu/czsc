@@ -10,9 +10,114 @@ import pandas as pd
 import traceback
 from datetime import datetime
 from typing import List, Union
+from collections import Counter
 
 from ..utils.ta import KDJ
 from ..objects import RawBar, BI, Direction, ZS
+
+
+def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None):
+    """检查 bars 中的支撑、压力信息
+
+    1. 通过 round 函数对 K 线价格序列进行近似，统计价格出现次数，取出现次数超过5次的价位
+    2. 在出现次数最多的价格序列上计算分位数序列作为关键价格序列
+
+    :param bars: K线序列，按时间升序
+    :param q_seq: 分位数序列
+    :return:
+    """
+
+    assert len(bars) >= 500, "分析至少需要500根K线"
+    min_low = min(x.low for x in bars)
+    price_seq = [y for x in bars for y in (x.open, x.close, x.high, x.low)]
+    price_seq = [round(x, 0) if min_low > 100 else round(x, 1) for x in price_seq]
+
+    lines = sorted([x for x, v in Counter(price_seq).most_common() if v >= 5])
+    q_seq = q_seq if q_seq else [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    key_price = [np.quantile(lines, i, method='nearest') for i in q_seq]
+    kp_low = [x for x in key_price if x <= bars[-1].close]
+    kp_high = [x for x in key_price if x >= bars[-1].close]
+
+    info = {
+        "关键位": key_price,
+        "支撑位": kp_low,
+        "压力位": kp_high,
+        "第一支撑": kp_low[-1] if len(kp_low) >= 1 else -1,
+        "第二支撑": kp_low[-2] if len(kp_low) >= 2 else -1,
+        "第一压力": kp_high[0] if len(kp_high) >= 1 else -1,
+        "第二压力": kp_high[1] if len(kp_high) >= 2 else -1,
+    }
+    return info
+
+
+def check_gap_info(bars: List[RawBar]):
+    """检查 bars 中的缺口信息
+
+    :param bars: K线序列，按时间升序
+    :return:
+    """
+    gap_info = []
+    if len(bars) < 2:
+        return gap_info
+
+    for i in range(1, len(bars)):
+        bar1, bar2 = bars[i-1], bars[i]
+        right = bars[i:]
+
+        gap = None
+        if bar1.high < bar2.low:
+            delta = round(bar2.low / bar1.high - 1, 4)
+            cover = "已补" if min(x.low for x in right) < bar1.high else "未补"
+            gap = {"kind": "向上缺口", 'cover': cover, 'sdt': bar1.dt, 'edt': bar2.dt,
+                   'high': bar2.low, 'low': bar1.high, 'delta': delta}
+
+        if bar1.low > bar2.high:
+            delta = round(bar1.low / bar2.high - 1, 4)
+            cover = "已补" if max(x.high for x in right) > bar1.low else "未补"
+            gap = {"kind": "向下缺口", 'cover': cover, 'sdt': bar1.dt, 'edt': bar2.dt,
+                   'high': bar1.low, 'low': bar2.high, 'delta': delta}
+
+        if gap:
+            gap_info.append(gap)
+
+    return gap_info
+
+
+def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
+    """计算 fast 和 slow 的交叉信息
+
+    :param fast: 快线
+    :param slow: 慢线
+    :return:
+    """
+    assert len(fast) == len(slow), "快线和慢线的长度不一样"
+
+    if isinstance(fast, list):
+        fast = np.array(fast)
+    if isinstance(slow, list):
+        slow = np.array(slow)
+
+    length = len(fast)
+    delta = fast - slow
+    cross_info = []
+    last_i = -1
+    last_v = 0
+    for i, v in enumerate(delta):
+        last_i += 1
+        last_v += abs(v)
+
+        if i >= 2 and delta[i-1] <= 0 < delta[i]:
+            kind = "金叉"
+        elif i >= 2 and delta[i-1] >= 0 > delta[i]:
+            kind = "死叉"
+        else:
+            continue
+
+        cross_info.append({'位置': i, "类型": kind, "快线": fast[i], "慢线": slow[i],
+                           "距离": last_i, "面积": last_v, '价差': v, '距今': length - i})
+        last_i = 0
+        last_v = 0
+    return cross_info
 
 
 def return_to_label(r, th=50):
