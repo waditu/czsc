@@ -6,7 +6,7 @@ create_dt: 2021/11/17 22:26
 describe: 使用掘金数据验证买卖点
 """
 from czsc.gm_utils import trader_tactic_snapshot
-from czsc.strategies import trader_example1 as strategy
+from czsc.strategies import trader_strategy_a as strategy
 
 if __name__ == '__main__':
     _symbol = "SZSE.300669"
