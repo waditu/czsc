@@ -102,9 +102,13 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
     cross_info = []
     last_i = -1
     last_v = 0
+    temp_fast = []
+    temp_slow = []
     for i, v in enumerate(delta):
         last_i += 1
         last_v += abs(v)
+        temp_fast.append(fast[i])
+        temp_slow.append(slow[i])
 
         if i >= 2 and delta[i-1] <= 0 < delta[i]:
             kind = "金叉"
@@ -114,9 +118,16 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
             continue
 
         cross_info.append({'位置': i, "类型": kind, "快线": fast[i], "慢线": slow[i],
-                           "距离": last_i, "面积": last_v, '价差': v, '距今': length - i})
+                           "距离": last_i, '距今': length - i,
+                           "面积": round(last_v, 4), '价差': round(v, 4),
+                           "快线高点": max(temp_fast), "快线低点": min(temp_fast),
+                           "慢线高点": max(temp_slow), "慢线低点": min(temp_slow),
+                           })
         last_i = 0
         last_v = 0
+        temp_fast = []
+        temp_slow = []
+
     return cross_info
 
 

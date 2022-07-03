@@ -21,22 +21,27 @@ data_path = r'C:\ts_data'
 dc = TsDataCache(data_path, sdt='2010-01-01', edt='20211209')
 
 symbol = '000001.SZ'
-bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='5min',
+bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
                           sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-    for _, c in cat.kas.items():
-        if c.freq == Freq.F5:
-            s.update(signals.bxt.get_s_like_bs(c, di=1))
+
+    # 使用缓存来更新信号的方法
+    signals.example.update_macd_cache(cat, '日线')
+    s.update(signals.example.macd_base(cat, '日线'))
+
+    # for _, c in cat.kas.items():
+    #     if c.freq == Freq.F5:
+    #         s.update(signals.bxt.get_s_like_bs(c, di=1))
     return s
 
 
 def trader_strategy_base(symbol):
     tactic = {
         "symbol": symbol,
-        "base_freq": '5分钟',
-        "freqs": ['15分钟', '30分钟', '60分钟', '日线'],
+        "base_freq": '15分钟',
+        "freqs": ['30分钟', '60分钟', '日线'],
         "get_signals": get_signals,
         "signals_n": 0,
     }

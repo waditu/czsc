@@ -11,4 +11,6 @@ from . import other
 from . import vol
 from . import cat
 from . import pos
+from . import example
+
 
