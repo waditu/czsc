@@ -7,7 +7,10 @@ describe: 信号计算案例汇总
 """
 
 import numpy as np
-import talib as ta
+try:
+    import talib as ta
+except:
+    from czsc.utils import ta
 from collections import OrderedDict
 from typing import List, Union, Tuple, Dict
 from czsc.objects import Freq, Signal, RawBar, NewBar
