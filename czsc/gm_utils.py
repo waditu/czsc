@@ -506,7 +506,7 @@ def report_account_status(context):
             if trader.long_pos.pos > 0:
                 row.update({'多头持仓': trader.long_pos.pos,
                             '多头成本': trader.long_pos.long_cost,
-                            '多头收益': round(trader.long_pos.long_cost / trader.latest_price - 1, 4),
+                            '多头收益': round(trader.latest_price / trader.long_pos.long_cost - 1, 4),
                             '开多时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
             else:
                 row.update({'多头持仓': 0, '多头成本': 0, '多头收益': 0, '开多时间': None})
