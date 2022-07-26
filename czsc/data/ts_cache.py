@@ -167,6 +167,7 @@ class TsDataCache:
                 print(f"ths_index: read cache {file_cache}")
         else:
             df = pro.ths_member(ts_code=ts_code, fields="ts_code,code,name,weight,in_date,out_date,is_new")
+            df = df.reset_index(drop=True, inplace=False)
             df.to_feather(file_cache)
         return df
 
