@@ -10,7 +10,7 @@ from czsc.traders.ts_backtest import TsDataCache, TsStocksBacktest, freq_cn2ts
 from czsc.strategies import trader_example1 as strategy
 # from examples import tactics
 
-os.environ['czsc_verbose'] = "1"        # 是否输出详细执行信息，0 不输出，1 输出
+os.environ['czsc_verbose'] = "0"        # 是否输出详细执行信息，包括一些用于debug的信息，0 不输出，1 输出
 os.environ['czsc_min_bi_len'] = "6"     # 通过环境变量设定最小笔长度，6 对应新笔定义，7 对应老笔定义
 
 pd.set_option('mode.chained_assignment', None)

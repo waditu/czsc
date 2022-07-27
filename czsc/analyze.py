@@ -85,6 +85,10 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
             # 临时处理方案，强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
                 fxs.pop()
+                if envs.get_verbose():
+                    print("\n\n", "check_fxs: 输入数据错误", "=" * 100)
+                    for bar in bars:
+                        print(bar, "\n")
             fxs.append(fx)
     return fxs
 
@@ -292,10 +296,16 @@ class CZSC:
             self.bars_raw.append(bar)
             last_bars = [bar]
         else:
+            # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
-            last_bars = self.bars_ubi[-1].elements
-            last_bars[-1] = bar
-            self.bars_ubi.pop(-1)
+            if len(self.bars_ubi) >= 3:
+                edt = self.bars_ubi[1].dt
+                self.bars_ubi = [x for x in self.bars_ubi if x.dt <= edt]
+                last_bars = [x for x in self.bars_raw[-50:] if x.dt > edt]
+            else:
+                last_bars = self.bars_ubi[-1].elements
+                last_bars[-1] = bar
+                self.bars_ubi.pop(-1)
 
         # 去除包含关系
         bars_ubi = self.bars_ubi
