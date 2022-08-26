@@ -6,11 +6,11 @@
 [![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 [![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
 
->源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)
-
->**[官方文档（0.6.8）（暂未更新到最新版）](https://blog.csdn.net/baidu_25764509/article/details/110389764)**
+>源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)，[缠中说禅博客原文研读](https://t.zsxq.com/04B2jmUN7)
 
 >**假如没有了分型、笔、线段，缠论还是缠论吗？如果你的答案是“是”，这个项目是为你准备的。本项目旨在提供一个符合缠中说禅思维方式的程序化交易工具。**
+
+>如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！请备注 **【CZSC捐赠】**
 
 ```
 主题: CZSC0.8.26 版本介绍 
@@ -25,6 +25,14 @@
 录制文件：https://meeting.tencent.com/v2/cloud-record/share?id=dbfa7717-d63c-47dd-a5b6-b7b07afd58f5&from=3
 访问密码：mHZA
 ```
+
+## 信号开源计划
+
+>学了本ID的理论，去再看其他的理论，就可以更清楚地看到其缺陷与毛病，因此，广泛地去看不同的理论，不仅不影响本ID理论的学习，更能明白本ID理论之所以与其他理论不同的根本之处。
+
+>为什么要去了解其他理论，就是这些理论操作者的行为模式，将构成以后我们猎杀的对象，他们操作模式的缺陷，就是以后猎杀他们的最好武器，这就如同学独孤九剑，必须学会发现所有派别招数的缺陷，这也是本ID理论学习中一个极为关键的步骤。
+
+信号开源计划旨在为缠论学习者提供一批其他理论对应的信号计算函数，供各位以量化的方式研究其他理论的缺陷和价值。这个计划的工作量极大，需要各位的参与。有意愿加入的朋友，请加微信 `zengbin93`，备注 **【CZSC信号】** 。
 
 
 ## 使用前必看
@@ -45,7 +53,7 @@
 
 ## 使用案例
 
->案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，说明是CZSC用户，1500元可以开通CZSC项目目前用到的全部数据权限。
+>案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，备注：**CZSC用户**，1500元可以开通CZSC项目目前用到的全部数据权限。
 >掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
 
 * `examples/ts_fast_backtest.py` 股票市场择时策略快速回测
@@ -104,8 +112,4 @@ pip install czsc -U -i https://pypi.python.org/simple
 
 * 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
 * 提取码：vhue
-
-## 捐赠支持
-
->如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！
 
