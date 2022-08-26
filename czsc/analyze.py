@@ -84,12 +84,17 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
             # 这里可能隐含Bug，默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样，这是不对的。
             # 临时处理方案，强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
-                fxs.pop()
                 if envs.get_verbose():
                     print("\n\n", "check_fxs: 输入数据错误", "=" * 100)
-                    for bar in bars:
+                    print(fx.mark, fxs[-1].mark)
+                    for bar in fx.raw_bars:
                         print(bar, "\n")
-            fxs.append(fx)
+
+                    print(f'last fx raw bars: \n')
+                    for bar in fxs[-1].raw_bars:
+                        print(bar, "\n")
+            else:
+                fxs.append(fx)
     return fxs
 
 
