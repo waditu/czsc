@@ -95,10 +95,8 @@ def test_czsc_update():
     assert len(last_bi.fake_bis) == 11
     assert last_bi.fake_bis[0].direction == last_bi.fake_bis[-1].direction == last_bi.direction
     # 测试自定义信号
-    c = CZSC(bars, get_signals=get_user_signals, signals_n=20)
-    assert len(c.signals) == 11
-    assert len(c.signals_list) == 20
-    assert c.signals_list[-1] == c.signals
+    c = CZSC(bars, get_signals=get_user_signals)
+    assert len(c.signals) == 7
 
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
