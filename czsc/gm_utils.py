@@ -12,6 +12,7 @@ import czsc
 import traceback
 import pandas as pd
 from gm.api import *
+from loguru import logger
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from typing import List, Callable
@@ -21,6 +22,7 @@ from czsc.utils import qywx as wx
 from czsc.utils import x_round, BarGenerator, create_logger
 from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionShort
 
+logger.warning("gm_utils.py 即将废弃，请使用 czsc.gms 模块")
 
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"

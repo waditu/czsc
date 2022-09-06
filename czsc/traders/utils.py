@@ -7,6 +7,7 @@ create_dt: 2021/12/12 21:49
 import os
 import dill
 from tqdm import tqdm
+from loguru import logger
 from typing import List, Callable
 from czsc.analyze import CZSC
 from czsc.utils import x_round, BarGenerator, kline_pro
@@ -26,7 +27,7 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
             file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
             file_html = os.path.join(res_path, file_name)
             trader.take_snapshot(file_html)
-            print(f'snapshot saved into {file_html}')
+            logger.info(f'snapshot saved into {file_html}')
 
         if trader.short_pos and trader.short_pos.pos_changed:
             op = trader.short_pos.operates[-1]
@@ -34,7 +35,7 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
             file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
             file_html = os.path.join(res_path, file_name)
             trader.take_snapshot(file_html)
-            print(f'snapshot saved into {file_html}')
+            logger.info(f'snapshot saved into {file_html}')
 
     c = CZSC(raw_bars, max_bi_num=10000)
     kline = [x.__dict__ for x in c.bars_raw]
@@ -55,7 +56,7 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
                       title=f"{strategy.__name__} {bg.symbol} 交易回放")
     chart.render(os.path.join(res_path, f"replay_{strategy.__name__}@{bg.symbol}.html"))
     dill.dump(trader, open(os.path.join(res_path, "trader.pkl"), 'wb'))
-    print(trader.strategy.__name__, trader.results['long_performance'])
+    logger.info(f"{trader.strategy.__name__} {trader.results['long_performance']}")
 
 
 def trader_fast_backtest(bars: List[RawBar],
@@ -93,7 +94,7 @@ def trader_fast_backtest(bars: List[RawBar],
                 file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
                 file_html = os.path.join(html_path, file_name)
                 ct.take_snapshot(file_html)
-                print(f'snapshot saved into {file_html}')
+                logger.info(f'snapshot saved into {file_html}')
 
         if ct.short_pos:
             if ct.short_pos.pos_changed and html_path:
@@ -101,7 +102,7 @@ def trader_fast_backtest(bars: List[RawBar],
                 file_name = f"{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
                 file_html = os.path.join(html_path, file_name)
                 ct.take_snapshot(file_html)
-                print(f'snapshot saved into {file_html}')
+                logger.info(f'snapshot saved into {file_html}')
 
     res = {"signals": signals}
     res.update(ct.results)
