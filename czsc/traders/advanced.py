@@ -13,11 +13,10 @@ from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
-from czsc.analyze import CZSC, signals_counter
+from czsc.analyze import CZSC
 from czsc.objects import PositionLong, PositionShort, Operate, Event, RawBar
 from czsc.utils import BarGenerator, x_round
 from czsc.utils.cache import home_path
-from czsc import envs
 
 
 class CzscAdvancedTrader:
@@ -46,9 +45,6 @@ class CzscAdvancedTrader:
         self.short_events: List[Event] = tactic.get('short_events', None)
         self.short_pos: PositionShort = tactic.get('short_pos', None)
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
-        self.signals_n = tactic.get('signals_n', 0)
-        self.signals_list = []
-        self.verbose = envs.get_verbose()
         self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
         # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
@@ -138,11 +134,6 @@ class CzscAdvancedTrader:
         if self.get_signals:
             self.s = self.get_signals(self)
             self.s.update(last_bar.__dict__)
-
-        if self.signals_n > 0:
-            self.signals_list.append(self.s)
-            self.signals_list = self.signals_list[-self.signals_n:]
-            self.s.update(signals_counter(self.signals_list))
 
         last_n1b = last_bar.close / self.kas[self.base_freq].bars_raw[-2].close - 1
         # 遍历 long_events，更新 long_pos
@@ -265,7 +256,6 @@ class CzscDummyTrader:
         self.short_events = tactic.get('short_events', None)
         self.short_pos: PositionShort = tactic.get('short_pos', None)
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
-        self.verbose = envs.get_verbose()
         self.end_dt, self.bid, self.latest_price = None, None, None
         rows = dfs.to_dict('records')
         for row in rows:
