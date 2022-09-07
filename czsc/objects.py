@@ -13,6 +13,9 @@ from transitions import Machine
 from .enum import Mark, Direction, Freq, Operate
 from .utils.ta import RSQ
 
+long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
+shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
+
 
 @dataclass
 class Tick:
@@ -600,8 +603,7 @@ class PositionLong:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        allow_op_list = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
-        assert op in allow_op_list, f"{op} 不是支持的操作"
+        assert op in long_operates, f"{op} 不是支持的操作"
 
         if dt.date() != self.today:
             self.today_pos = 0
@@ -781,8 +783,7 @@ class PositionShort:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        allow_op_list = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
-        assert op in allow_op_list, f"{op} 不是支持的操作"
+        assert op in shor_operates, f"{op} 不是支持的操作"
         if dt.date() != self.today:
             self.today_pos = 0
 
@@ -879,8 +880,6 @@ class Position:
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
         assert 0 <= hold_a <= hold_b <= hold_c <= 1.0
-        long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
-        shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
         if events[0].operate in long_operates:
             for event in events:
                 assert event.operate in long_operates
