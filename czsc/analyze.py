@@ -11,11 +11,10 @@ import numpy as np
 from loguru import logger
 from typing import List, Callable
 from collections import OrderedDict
-
-from .enum import Mark, Direction
-from .objects import BI, FX, RawBar, NewBar
-from .utils.echarts_plot import kline_pro
-from . import envs
+from czsc.enum import Mark, Direction
+from czsc.objects import BI, FX, RawBar, NewBar
+from czsc.utils.echarts_plot import kline_pro
+from czsc import envs
 
 logger.disable('czsc.analyze')
 
@@ -121,7 +120,7 @@ def check_bi(bars: List[NewBar], benchmark: float = None):
                 return None, bars
 
             fx_b = fxs_b[0]
-            for fx in fxs_b:
+            for fx in fxs_b[1:]:
                 if fx.high >= fx_b.high:
                     fx_b = fx
 
@@ -191,7 +190,6 @@ class CZSC:
         self.freq = bars[0].freq
         self.get_signals = get_signals
         self.signals = None
-        self.signals_list = []
 
         for bar in bars:
             self.update(bar)
