@@ -83,7 +83,6 @@ def trader_example1(symbol, T0=False, min_interval=3600*4):
         "base_freq": '1分钟',
         "freqs": ['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'],
         "get_signals": get_signals,
-        "signals_n": 0,
 
         "long_pos": long_pos,
         "long_events": long_events,
@@ -143,7 +142,6 @@ def trader_strategy_a(symbol):
         "base_freq": '15分钟',
         "freqs": ['60分钟', '日线'],
         "get_signals": get_signals,
-        "signals_n": 0,
 
         "long_pos": long_pos,
         "long_events": long_events,

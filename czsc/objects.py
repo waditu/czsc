@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List
 from transitions import Machine
+from czsc.enum import Mark, Direction, Freq, Operate
+from czsc.utils.ta import RSQ
 
-from .enum import Mark, Direction, Freq, Operate
-from .utils.ta import RSQ
 
 long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
 shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
