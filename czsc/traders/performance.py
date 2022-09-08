@@ -78,6 +78,7 @@ class PairsPerformance:
                 "交易得分": 0,
                 "赢面": 0,
                 "每自然日收益": 0,
+                "每根K线收益": 0,
                 "盈亏平衡点": 0,
             }
             return info
@@ -97,6 +98,7 @@ class PairsPerformance:
             "交易标的数量": df_pairs['标的代码'].nunique(),
             "总体交易次数": len(df_pairs),
             "平均持仓天数": round(df_pairs['持仓天数'].mean(), 2),
+            "平均持仓K线数": round(df_pairs['持仓K线数'].mean(), 2),
 
             "平均单笔收益": round(df_pairs['盈亏比例'].mean() * 10000, 2),
             "单笔收益标准差": round(df_pairs['盈亏比例'].std() * 10000, 2),
@@ -112,6 +114,7 @@ class PairsPerformance:
         }
 
         info['每自然日收益'] = round(info['平均单笔收益'] / info['平均持仓天数'], 2)
+        info['每根K线收益'] = round(info['平均单笔收益'] / info['平均持仓K线数'], 2)
         return info
 
     def agg_statistics(self, col: str):

@@ -481,7 +481,8 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
 
     p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
     p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
-    p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
+    p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 2)
+    p['平均持仓K线数'] = round(sum([x['持仓K线数'] for x in pairs]) / len(pairs), 2)
 
     win_ = [x for x in pairs if x['盈亏比例'] >= 0]
     if len(win_) > 0:
