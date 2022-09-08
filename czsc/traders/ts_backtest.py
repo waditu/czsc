@@ -8,9 +8,9 @@ describe: 基于 Tushare 分钟数据的择时策略快速回测
 
 import os
 import inspect
-import traceback
 import pandas as pd
 from tqdm import tqdm
+from loguru import logger
 from typing import Callable
 from czsc import envs
 from czsc.data import TsDataCache, freq_cn2ts
@@ -36,7 +36,7 @@ def read_raw_results(raw_path, trade_dir="long"):
             pairs.append(pd.read_excel(file, sheet_name=f'{trade_dir}_pairs'))
             p.append(pd.read_excel(file, sheet_name=f'{trade_dir}_performance'))
         except:
-            print(f"read_raw_results: fail on {file}")
+            logger.exception(f"fail on {file}")
 
     df_pairs = pd.concat(pairs, ignore_index=True)
     df_p = pd.concat(p, ignore_index=True)
@@ -71,7 +71,7 @@ class TsStocksBacktest:
         file_strategy = os.path.join(self.res_path, f'{strategy.__name__}_strategy.txt')
         with open(file_strategy, 'w', encoding='utf-8') as f:
             f.write(inspect.getsource(strategy))
-        print(f"strategy saved into {file_strategy}")
+        logger.info(f"strategy saved into {file_strategy}")
 
         self.dc, self.sdt, self.edt = dc, sdt, edt
         stocks = self.dc.stock_basic()
@@ -115,7 +115,7 @@ class TsStocksBacktest:
             df_ = tp.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
-        print(f"{s_name} - {step} - {trade_dir}: {tp.basic_info}")
+        logger.info(f"{s_name} - {step} - {trade_dir}: \n{tp.basic_info}")
 
     def update_step(self, step: str, ts_codes: list):
         """更新指定阶段的批量回测标的
@@ -162,7 +162,7 @@ class TsStocksBacktest:
                 file_res = os.path.join(res_path, f"raw_{step}/{ts_code}.xlsx")
                 file_signals = os.path.join(res_path, f"raw_{step}/{ts_code}_signals.pkl")
                 if os.path.exists(file_res) and os.path.exists(file_signals):
-                    print(f"exits: {file_res}")
+                    logger.info(f"exits: {file_res}")
                     continue
 
                 if "分钟" in base_freq:
@@ -183,14 +183,14 @@ class TsStocksBacktest:
 
                 f = pd.ExcelWriter(file_res)
                 if res.get('long_performance', None):
-                    print(f"{strategy.__name__} long_performance: {res['long_performance']}")
+                    logger.info(f"{strategy.__name__} long_performance: \n{res['long_performance']}")
                     pd.DataFrame(res['long_holds']).to_excel(f, sheet_name="long_holds", index=False)
                     pd.DataFrame(res['long_operates']).to_excel(f, sheet_name="long_operates", index=False)
                     pd.DataFrame(res['long_pairs']).to_excel(f, sheet_name="long_pairs", index=False)
                     pd.DataFrame([res['long_performance']]).to_excel(f, sheet_name="long_performance", index=False)
 
                 if res.get('short_performance', None):
-                    print(f"{strategy.__name__} short_performance: {res['short_performance']}")
+                    logger.info(f"{strategy.__name__} short_performance: \n{res['short_performance']}")
                     pd.DataFrame(res['short_holds']).to_excel(f, sheet_name="short_holds", index=False)
                     pd.DataFrame(res['short_operates']).to_excel(f, sheet_name="short_operates", index=False)
                     pd.DataFrame(res['short_pairs']).to_excel(f, sheet_name="short_pairs", index=False)
@@ -198,7 +198,7 @@ class TsStocksBacktest:
 
                 f.close()
             except:
-                traceback.print_exc()
+                logger.exception(f"fail on {ts_code}")
 
         # self.analyze_results(step, 'long')
         # self.analyze_results(step, 'short')
@@ -250,4 +250,5 @@ class TsStocksBacktest:
             file_xlsx = os.path.join(results_path, f"{key.replace(':', '')}.xlsx")
             sp = SignalsPerformance(dfs, keys=[key], dc=dc)
             sp.report(file_xlsx)
-            print(f"{key} performance saved into {file_xlsx}")
+            logger.info(f"{key} performance saved into {file_xlsx}")
+

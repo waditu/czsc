@@ -7,7 +7,8 @@ create_dt: 2021/12/12 22:00
 import os
 import pandas as pd
 from czsc.traders.ts_backtest import TsDataCache, TsStocksBacktest, freq_cn2ts
-from czsc.strategies import trader_example1 as strategy
+# from czsc.strategies import trader_example1 as strategy
+from czsc.strategies import trader_strategy_a as strategy
 # from examples import tactics
 
 os.environ['czsc_verbose'] = "0"        # 是否输出详细执行信息，包括一些用于debug的信息，0 不输出，1 输出
@@ -57,8 +58,8 @@ def run_more_backtest(step, ts_codes):
 
 if __name__ == '__main__':
     # run_more_backtest(step='check', ts_codes=['000002.SZ'])
-    # run_backtest(step_seq=('index',))
-    run_backtest(step_seq=('etfs',))
+    run_backtest(step_seq=('index',))
+    # run_backtest(step_seq=('etfs',))
     # run_backtest(step_seq=('index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train', 'valid'))
