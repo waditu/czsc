@@ -12,13 +12,10 @@ import traceback
 import pandas as pd
 from tqdm import tqdm
 from typing import Callable
-from deprecated import deprecated
 from czsc import envs
 from czsc.data import TsDataCache, freq_cn2ts
 from czsc.traders.utils import trader_fast_backtest
 from czsc.traders.performance import PairsPerformance
-from czsc.utils import x_round
-from czsc.objects import cal_break_even_point
 
 
 def read_raw_results(raw_path, trade_dir="long"):
@@ -44,114 +41,6 @@ def read_raw_results(raw_path, trade_dir="long"):
     df_pairs = pd.concat(pairs, ignore_index=True)
     df_p = pd.concat(p, ignore_index=True)
     return df_pairs, df_p
-
-
-@deprecated(reason="use czsc.traders.performance.PairsPerformance instead", version='0.9.0')
-class TraderPerformance:
-    """择时交易效果评估"""
-
-    def __init__(self, df_pairs: pd.DataFrame, ):
-        """
-
-        :param df_pairs: 全部交易对
-        """
-        time_convert = lambda x: (x.strftime("%Y年"), x.strftime("%Y年%m月"), x.strftime("%Y-%m-%d"),
-                                  f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周",
-                                  )
-        df_pairs[['开仓年', '开仓月', '开仓日', '开仓周']] = list(df_pairs['开仓时间'].apply(time_convert))
-        df_pairs[['平仓年', '平仓月', '平仓日', '平仓周']] = list(df_pairs['平仓时间'].apply(time_convert))
-
-        self.df_pairs = df_pairs
-        # 指定哪些列可以用来进行聚合分析
-        self.agg_columns = ['标的代码', '交易方向', '平仓年', '平仓月', '平仓周', '平仓日']
-
-    @staticmethod
-    def get_pairs_statistics(df_pairs: pd.DataFrame):
-        """统计一组交易的基本信息
-
-        :param df_pairs:
-        :return:
-        """
-        if len(df_pairs) == 0:
-            info = {
-                "开始时间": None,
-                "结束时间": None,
-                "交易标的数量": 0,
-                "总体交易次数": 0,
-                "平均持仓天数": 0,
-
-                "平均单笔收益": 0,
-                "最大单笔收益": 0,
-                "最小单笔收益": 0,
-
-                "交易胜率": 0,
-                "累计盈亏比": 0,
-                "交易得分": 0,
-                "每自然日收益": 0,
-                "盈亏平衡点": 0,
-            }
-            return info
-
-        win_pct = x_round(len(df_pairs[df_pairs['盈亏比例'] > 0]) / len(df_pairs), 4)
-        df_gain = df_pairs[df_pairs['盈亏比例'] > 0]
-        df_loss = df_pairs[df_pairs['盈亏比例'] <= 0]
-        gain = df_gain['盈亏比例'].sum()
-        loss = abs(df_loss['盈亏比例'].sum())
-
-        # 限制累计盈亏比最大有效值
-        gain_loss_rate = min(x_round(gain / (loss + 0.000001), 2), 5)
-
-        info = {
-            "开始时间": df_pairs['开仓时间'].min(),
-            "结束时间": df_pairs['平仓时间'].max(),
-
-            "交易标的数量": df_pairs['标的代码'].nunique(),
-            "总体交易次数": len(df_pairs),
-            "平均持仓天数": x_round(df_pairs['持仓天数'].mean(), 2),
-
-            "平均单笔收益": x_round(df_pairs['盈亏比例'].mean() * 10000, 2),
-            "最大单笔收益": x_round(df_pairs['盈亏比例'].max() * 10000, 2),
-            "最小单笔收益": x_round(df_pairs['盈亏比例'].min() * 10000, 2),
-
-            "交易胜率": win_pct,
-            "累计盈亏比": gain_loss_rate,
-            "交易得分": x_round(gain_loss_rate * win_pct, 4),
-            "盈亏平衡点": x_round(cal_break_even_point(df_pairs['盈亏比例'].to_list()), 4),
-        }
-
-        info['每自然日收益'] = x_round(info['平均单笔收益'] / info['平均持仓天数'], 2)
-        return info
-
-    def agg_statistics(self, col: str):
-        """按列聚合进行交易对评价"""
-        df_pairs = self.df_pairs.copy()
-        assert col in self.agg_columns, f"{col} 不是支持聚合的列，参考：{self.agg_columns}"
-
-        results = []
-        for name, dfg in df_pairs.groupby(col):
-            if dfg.empty:
-                continue
-
-            res = {col: name}
-            res.update(self.get_pairs_statistics(dfg))
-            results.append(res)
-        df = pd.DataFrame(results)
-        return df
-
-    @property
-    def basic_info(self):
-        """写入基础信息"""
-        df_pairs = self.df_pairs.copy()
-        return self.get_pairs_statistics(df_pairs)
-
-    def agg_to_excel(self, file_xlsx):
-        """遍历聚合列，保存结果到 Excel 文件中"""
-        f = pd.ExcelWriter(file_xlsx)
-        for col in self.agg_columns:
-            df_ = self.agg_statistics(col)
-            df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
-        f.close()
-        print(f"聚合分析结果文件：{file_xlsx}")
 
 
 class TsStocksBacktest:
