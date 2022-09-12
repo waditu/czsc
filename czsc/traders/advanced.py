@@ -268,7 +268,7 @@ class CzscDummyTrader:
         """输入基础周期已完成K线，更新信号，更新仓位"""
         symbol = s['symbol']
         n1b = s['close'] / self.latest_price - 1 if self.latest_price else 0
-        self.end_dt, self.bid, self.latest_price = s['dt'], s['dt'], s['close']
+        self.end_dt, self.bid, self.latest_price = s['dt'], s['id'], s['close']
         dt, bid, price = self.end_dt, self.bid, self.latest_price
 
         if self.long_events:
