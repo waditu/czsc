@@ -146,7 +146,7 @@ class PairsPerformance:
             df_ = self.agg_statistics(col)
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
-        logger.info(f"交易次数：{self.df_pairs}; 聚合分析结果文件：{file_xlsx}")
+        logger.info(f"交易次数：{len(self.df_pairs)}; 聚合分析结果文件：{file_xlsx}")
 
 
 class TradersPerformance:
