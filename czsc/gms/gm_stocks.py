@@ -124,7 +124,7 @@ def report_account_status(context):
 
             if p:
                 row.update({"实盘持仓数量": p.volume,
-                            "实盘持仓成本": x_round(p.vwap, 2),
+                            "实盘持仓成本": round(p.vwap, 2),
                             "实盘持仓市值": int(p.volume * p.vwap)})
             else:
                 row.update({"实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0})
