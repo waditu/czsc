@@ -18,64 +18,9 @@ from sklearn.preprocessing import KBinsDiscretizer
 
 from .. import envs
 from ..traders.advanced import CzscAdvancedTrader, BarGenerator
-from ..traders.utils import freq_cn2ts
-from ..data.ts_cache import TsDataCache
+from ..data import TsDataCache, freq_cn2ts
 from ..objects import RawBar, Signal
 from ..utils.cache import home_path
-
-
-@deprecated(reason='请使用 SignalsPerformance 来分析信号表现', version="0.9.0")
-def get_dfs_base(dfs: pd.DataFrame):
-    """获取所有信号的基础信息"""
-    cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b'] \
-           + [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
-    info = {"name": "基准", "count": len(dfs), "cover": 1.0}
-    info.update(dfs[cols].mean().to_dict())
-    dtm = {f"dt_{k}": v for k, v in dfs.groupby('dt')[cols].mean().mean().to_dict().items()}
-    info.update(dtm)
-    return info
-
-
-@deprecated(reason='请使用 SignalsPerformance 来分析信号表现', version="0.9.0")
-def analyze_signal_keys(dfs: pd.DataFrame, keys: List[str], mode: int = 0) -> pd.DataFrame:
-    """分析信号组合的分类能力
-
-    :param dfs: 信号表
-    :param keys: 信号组合
-    :param mode: 分析模式，0 同时分析时序和截面表现；1 时序表现；2 截面表现
-    :return:
-    """
-    len_dfs = len(dfs)
-    cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b'] \
-           + [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
-
-    def __static(_df, _name):
-        _res = {"name": _name, "count": len(_df), "cover": round(len(_df) / len_dfs, 4)}
-        if mode in [0, 1]:
-            _r1 = _df[cols].mean().to_dict()
-        else:
-            _r1 = {}
-        if mode in [0, 2]:
-            _r2 = {f"dt_{k}": v for k, v in _df.groupby('dt')[cols].mean().mean().to_dict().items()}
-        else:
-            _r2 = {}
-        _res.update(_r1)
-        _res.update(_r2)
-        return _res
-
-    results = [__static(dfs, "基准")]
-
-    for values, dfg in dfs.groupby(keys):
-        if isinstance(values, str):
-            values = [values]
-        assert len(keys) == len(values)
-
-        name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-        results.append(__static(dfg, name))
-    dfr = pd.DataFrame(results)
-    r_cols = [x for x in dfr.columns if x[-1] == 'b']
-    dfr[r_cols] = dfr[r_cols].round(2)
-    return dfr
 
 
 def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strategy='quantile'):
@@ -84,6 +29,7 @@ def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strateg
     :param df: 数据对象
     :param col: 连续变量列名
     :param n_bins: 参见 KBinsDiscretizer 文档
+        https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.KBinsDiscretizer.html
     :param encode: 参见 KBinsDiscretizer 文档
     :param strategy: 参见 KBinsDiscretizer 文档
     :return:
@@ -93,9 +39,10 @@ def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strateg
 
     new_col = f'{col}_bins{n_bins}'
     results = []
-    for dt, dfg in tqdm(df.groupby('dt')):
+    for dt, dfg in tqdm(df.groupby('dt'), desc=f"{col}_bins{n_bins}"):
         kb = KBinsDiscretizer(n_bins=n_bins, encode=encode, strategy=strategy)
-        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel()
+        # 加1，使分组从1开始
+        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel() + 1
         results.append(dfg)
     df = pd.concat(results, ignore_index=True)
     return df
@@ -153,21 +100,13 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
 
 def generate_signals(bars: List[RawBar],
                      sdt: AnyStr,
-                     base_freq: AnyStr,
-                     freqs: List[AnyStr],
-                     get_signals: Callable,
-                     max_bi_count: int = 50,
-                     signals_n: int = 0,
+                     strategy: Callable,
                      ):
     """获取历史信号
 
     :param bars: 日线
     :param sdt: 信号计算开始时间
-    :param base_freq: 合成K线的基础周期
-    :param freqs: K线周期列表
-    :param get_signals: 单级别信号计算函数
-    :param max_bi_count: 单个级别最大保存笔的数量
-    :param signals_n: 见 `CZSC` 对象
+    :param strategy: 单级别信号计算函数
     :return: signals
     """
     sdt = pd.to_datetime(sdt)
@@ -182,12 +121,15 @@ def generate_signals(bars: List[RawBar],
         warnings.warn("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
         return []
 
+    tactic = strategy(bars[0].symbol)
+    base_freq = tactic['base_freq']
+    freqs = tactic['freqs']
     bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
     for bar in bars_left:
         bg.update(bar)
 
     signals = []
-    ct = CzscAdvancedTrader(bg, get_signals, max_bi_count=max_bi_count, signals_n=signals_n)
+    ct = CzscAdvancedTrader(bg, strategy)
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         ct.update(bar)
         signals.append(dict(ct.s))
@@ -196,14 +138,16 @@ def generate_signals(bars: List[RawBar],
 
 def check_signals_acc(bars: List[RawBar],
                       signals: List[Signal] = None,
-                      get_signals: Callable = None) -> None:
+                      strategy: Callable = None,
+                      delta_days: int = 5) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
     输入基础周期K线和想要验证的信号，输出信号识别结果的快照
 
     :param bars: 原始K线
     :param signals: 需要验证的信号列表
-    :param get_signals: 信号计算函数
+    :param strategy: 含有信号函数的伪交易策略
+    :param delta_days: 两次相同信号之间的间隔天数
     :return:
     """
     verbose = envs.get_verbose()
@@ -216,7 +160,7 @@ def check_signals_acc(bars: List[RawBar],
     freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
     if not signals:
-        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), base_freq, freqs, get_signals)
+        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), strategy)
         df = pd.DataFrame(signals_)
         s_cols = [x for x in df.columns if len(x.split("_")) == 3]
         signals = []
@@ -224,7 +168,9 @@ def check_signals_acc(bars: List[RawBar],
             signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
 
     if verbose:
-        print(f"signals: {signals}")
+        print(f"signals: {'+' * 100}")
+        for row in signals:
+            print(row)
 
     bars_left = bars[:500]
     bars_right = bars[500:]
@@ -232,7 +178,7 @@ def check_signals_acc(bars: List[RawBar],
     for bar in bars_left:
         bg.update(bar)
 
-    ct = CzscAdvancedTrader(bg, get_signals)
+    ct = CzscAdvancedTrader(bg, strategy)
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
     for bar in tqdm(bars_right, desc=f'generate snapshots of {bg.symbol}'):
@@ -241,7 +187,7 @@ def check_signals_acc(bars: List[RawBar],
         for signal in signals:
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
-            if bar.dt - last_dt[signal.key] > timedelta(days=5) and signal.is_match(ct.s):
+            if bar.dt - last_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(ct.s):
                 file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
                 file_html = os.path.join(html_path, file_html)
                 print(file_html)
@@ -380,11 +326,8 @@ def generate_symbol_signals(dc: TsDataCache,
                             asset: str,
                             sdt: str,
                             edt: str,
-                            base_freq: str,
-                            freqs: List[str],
-                            get_signals: Callable,
+                            strategy: Callable,
                             adj: str = 'hfq',
-                            signals_n: int = 0,
                             ):
     """使用 Tushare 数据生产某个标的的信号
 
@@ -393,13 +336,13 @@ def generate_symbol_signals(dc: TsDataCache,
     :param asset:
     :param sdt:
     :param edt:
-    :param base_freq:
-    :param freqs:
-    :param get_signals:
+    :param strategy:
     :param adj: 复权方式
-    :param signals_n:
     :return:
     """
+    tactic = strategy(ts_code)
+    base_freq = tactic['base_freq']
+
     sdt_ = pd.to_datetime(sdt) - timedelta(days=3000)
     if "分钟" in base_freq:
         bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
@@ -417,7 +360,7 @@ def generate_symbol_signals(dc: TsDataCache,
 
     dt_fmt = "%Y-%m-%d %H:%M:%S"
     nb_dicts = {row['dt'].strftime(dt_fmt): row for row in n_bars.to_dict("records")}
-    signals = generate_signals(bars, sdt, base_freq, freqs, get_signals, signals_n=signals_n)
+    signals = generate_signals(bars, sdt, strategy)
 
     for s in signals:
         s.update(nb_dicts[s['dt'].strftime(dt_fmt)])
@@ -436,11 +379,8 @@ def generate_stocks_signals(dc: TsDataCache,
                             signals_path: str,
                             sdt: str,
                             edt: str,
-                            base_freq: str,
-                            freqs: List[str],
-                            get_signals: Callable,
+                            strategy: Callable,
                             adj: str = 'hfq',
-                            signals_n: int = 0,
                             ):
     """使用 Tushare 数据获取股票市场全部股票的信号
 
@@ -448,11 +388,8 @@ def generate_stocks_signals(dc: TsDataCache,
     :param signals_path:
     :param sdt:
     :param edt:
-    :param base_freq:
-    :param freqs:
+    :param strategy:
     :param adj:
-    :param get_signals:
-    :param signals_n:
     :return:
     """
     os.makedirs(signals_path, exist_ok=True)
@@ -466,7 +403,7 @@ def generate_stocks_signals(dc: TsDataCache,
             if os.path.exists(file_signals):
                 print(f"file exists: {file_signals}")
                 continue
-            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, base_freq, freqs, get_signals, adj, signals_n)
+            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, strategy, adj)
             df.to_pickle(file_signals)
         except:
             print(f"generate_stocks_signals error: {ts_code}, {name}")

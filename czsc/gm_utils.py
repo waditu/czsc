@@ -12,6 +12,7 @@ import czsc
 import traceback
 import pandas as pd
 from gm.api import *
+from loguru import logger
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from typing import List, Callable
@@ -21,11 +22,12 @@ from czsc.utils import qywx as wx
 from czsc.utils import x_round, BarGenerator, create_logger
 from czsc.objects import RawBar, Event, Freq, Operate, PositionLong, PositionShort
 
+logger.warning("gm_utils.py 即将废弃，请使用 czsc.gms 模块")
 
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
-assert czsc.__version__ >= "0.8.25"
+assert czsc.__version__ >= "0.8.27"
 
 
 def set_gm_token(token):
@@ -169,7 +171,7 @@ def get_init_bg(symbol: str,
             bars_ = bgd.bars[freq]
         else:
             bars_ = get_kline(symbol, last_day, freq_cn2gm[freq], max_count, adjust)
-        bg.bars[freq] = bars_
+        bg.init_freq_bars(freq, bars_)
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
     bars2 = get_kline(symbol, end_dt, freq_cn2gm[base_freq],
@@ -496,28 +498,39 @@ def report_account_status(context):
 
             row = {'交易标的': symbol, '标的名称': name,
                    '最新时间': trader.end_dt.strftime(dt_fmt),
-                   '最新价格': trader.latest_price,
-                   '多头持仓': 0, '多头成本': 0, '开仓时间': None,
-                   "实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0}
+                   '最新价格': trader.latest_price}
+
+            if "日线" in trader.kas.keys():
+                bar1, bar2 = trader.kas['日线'].bars_raw[-2:]
+                row.update({'昨日收盘': round(bar1.close, 2),
+                            '今日涨幅': round(bar2.close / bar1.close - 1, 4)})
 
             if trader.long_pos.pos > 0:
                 row.update({'多头持仓': trader.long_pos.pos,
                             '多头成本': trader.long_pos.long_cost,
-                            '开仓时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+                            '多头收益': round(trader.latest_price / trader.long_pos.long_cost - 1, 4),
+                            '开多时间': trader.long_pos.operates[-1]['dt'].strftime(dt_fmt)})
+            else:
+                row.update({'多头持仓': 0, '多头成本': 0, '多头收益': 0, '开多时间': None})
 
             if p:
                 row.update({"实盘持仓数量": p.volume,
                             "实盘持仓成本": x_round(p.vwap, 2),
                             "实盘持仓市值": int(p.volume * p.vwap)})
+            else:
+                row.update({"实盘持仓数量": 0,  "实盘持仓成本": 0, "实盘持仓市值": 0})
+
             results.append(row)
 
         df = pd.DataFrame(results)
-        df['多头收益'] = df.apply(lambda x: x_round(x['最新价格'] / x['多头成本'] - 1) if x['多头持仓'] > 0 else 0, axis=1)
         df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
         wx.push_file(file_xlsx, key=context.wx_key)
         os.remove(file_xlsx)
+
+        # 提示非策略交易标的持仓
+        process_out_of_symbols(context)
 
 
 def sync_long_position(context, trader: CzscAdvancedTrader):
@@ -571,7 +584,12 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
         algo_param = {}
 
     sym_position = account.position(symbol, PositionSide_Long)
+    if long_pos.pos == 0 and not sym_position:
+        # 如果多头仓位为0且掘金账户没有对应持仓，直接退出
+        return
+
     if long_pos.pos == 0 and sym_position and sym_position.volume > 0:
+        # 如果多头仓位为0且掘金账户依然还有持仓，清掉仓位
         volume = sym_position.volume
         if algo_name:
             assert len(algo_param) > 0, f"error: {algo_name}, {algo_param}"
@@ -586,6 +604,7 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
     if not long_pos.pos_changed:
         return
 
+    assert long_pos.pos > 0
     cash_left = cash.available
     if long_pos.operates[-1]['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
         change_amount = max_sym_pos * long_pos.operates[-1]['pos_change'] * cash.nav
@@ -656,7 +675,6 @@ def sync_short_position(trader: CzscAdvancedTrader, context):
 
 
 def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
-                     get_signals: Callable = None,
                      freqs=('1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'),
                      adjust=ADJUST_PREV, max_count=1000):
     """使用掘金的数据对任意标的、任意时刻的状态进行快照
@@ -664,7 +682,6 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     :param gm_symbol:
     :param end_dt:
     :param file_html:
-    :param get_signals:
     :param freqs:
     :param adjust:
     :param max_count:
@@ -674,7 +691,7 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
         end_dt = datetime.now().strftime(dt_fmt)
 
     bg, data = get_init_bg(gm_symbol, end_dt, freqs[0], freqs[1:], max_count, adjust)
-    ct = CzscAdvancedTrader(bg, get_signals=get_signals)
+    ct = CzscAdvancedTrader(bg)
     for bar in data:
         ct.update(bar)
 
@@ -686,21 +703,22 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     return ct
 
 
-def trader_tactic_snapshot(symbol, tactic: dict, end_dt=None, file_html=None, adjust=ADJUST_PREV, max_count=1000):
+def trader_tactic_snapshot(symbol, strategy: Callable, end_dt=None, file_html=None, adjust=ADJUST_PREV, max_count=1000):
     """使用掘金的数据对任意标的、任意时刻的状态进行策略快照
 
     :param symbol: 交易标的
-    :param tactic: 择时交易策略
+    :param strategy: 择时交易策略
     :param end_dt: 结束时间，精确到分钟
     :param file_html: 结果文件
     :param adjust: 复权类型
     :param max_count: 最大K线数量
     :return: trader
     """
+    tactic = strategy(symbol)
     base_freq = tactic['base_freq']
     freqs = tactic['freqs']
     bg, data = get_init_bg(symbol, end_dt, base_freq, freqs, max_count, adjust)
-    trader = create_advanced_trader(bg, data, tactic)
+    trader = create_advanced_trader(bg, data, strategy)
     if file_html:
         trader.take_snapshot(file_html)
         print(f'saved into {file_html}')
@@ -778,12 +796,12 @@ def init_context_universal(context, name):
     :param name: 交易策略名称，建议使用英文
     """
     path_gm_logs = os.environ.get('path_gm_logs', None)
-    assert os.path.exists(path_gm_logs)
     if context.mode == MODE_BACKTEST:
         data_path = os.path.join(path_gm_logs, f"backtest/{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
     else:
         data_path = os.path.join(path_gm_logs, f"realtime/{name}")
     os.makedirs(data_path, exist_ok=True)
+
     context.name = name
     context.data_path = data_path
     context.stocks = get_stocks()
@@ -827,7 +845,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     with open(os.path.join(context.data_path, f'{strategy.__name__}.txt'), mode='w') as f:
         f.write(inspect.getsource(strategy))
 
-    tactic = strategy()
+    tactic = strategy("000001")
     base_freq, freqs = tactic['base_freq'], tactic['freqs']
     frequency = freq_cn2gm[base_freq]
     unsubscribe(symbols='*', frequency=frequency)
@@ -850,7 +868,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
 
             else:
                 bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, ADJUST_PREV)
-                trader = create_advanced_trader(bg, data, tactic)
+                trader = create_advanced_trader(bg, data, strategy)
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader
@@ -862,7 +880,7 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
             traceback.print_exc()
 
     subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
-    logger.info(f"订阅成功交易标的数量：{len(symbols_info)}")
+    logger.info(f"订阅成功数量：{len(symbols_info)}")
     logger.info(f"交易标的配置：{symbols_info}")
     context.symbols_info = symbols_info
 
@@ -882,7 +900,7 @@ def init_context_schedule(context):
 
     # 以下是 实盘/仿真 模式下的定时任务
     if context.mode != MODE_BACKTEST:
-        schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')
         schedule(schedule_func=save_traders, date_rule='1d', time_rule='11:40:00')
         schedule(schedule_func=save_traders, date_rule='1d', time_rule='15:10:00')
         # schedule(schedule_func=realtime_check_index_status, date_rule='1d', time_rule='17:30:00')
+        # schedule(schedule_func=process_out_of_symbols, date_rule='1d', time_rule='09:40:00')

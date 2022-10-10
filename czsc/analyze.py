@@ -7,14 +7,16 @@ describe: 缠论分型、笔的识别
 """
 import os
 import webbrowser
-import traceback
+import numpy as np
+from loguru import logger
 from typing import List, Callable
 from collections import OrderedDict
+from czsc.enum import Mark, Direction
+from czsc.objects import BI, FX, RawBar, NewBar
+from czsc.utils.echarts_plot import kline_pro
+from czsc import envs
 
-from .enum import Mark, Direction
-from .objects import BI, FX, RawBar, NewBar, Signal
-from .utils.echarts_plot import kline_pro
-from . import envs
+logger.disable('czsc.analyze')
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -83,15 +85,25 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
             # 这里可能隐含Bug，默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样，这是不对的。
             # 临时处理方案，强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
-                fxs.pop()
-            fxs.append(fx)
+                if envs.get_verbose():
+                    logger.info(f"\n\ncheck_fxs: 输入数据错误{'+' * 100}")
+                    logger.info(f"当前：{fx.mark}, 上个：{fxs[-1].mark}")
+                    for bar in fx.raw_bars:
+                        logger.info(f"{bar}\n")
+
+                    logger.info(f'last fx raw bars: \n')
+                    for bar in fxs[-1].raw_bars:
+                        logger.info(f"{bar}\n")
+            else:
+                fxs.append(fx)
     return fxs
 
 
-def check_bi(bars: List[NewBar]):
+def check_bi(bars: List[NewBar], benchmark: float = None):
     """输入一串无包含关系K线，查找其中的一笔
 
     :param bars: 无包含关系K线列表
+    :param benchmark: 当下笔能量的比较基准
     :return:
     """
     min_bi_len = envs.get_min_bi_len()
@@ -108,7 +120,7 @@ def check_bi(bars: List[NewBar]):
                 return None, bars
 
             fx_b = fxs_b[0]
-            for fx in fxs_b:
+            for fx in fxs_b[1:]:
                 if fx.high >= fx_b.high:
                     fx_b = fx
 
@@ -125,7 +137,7 @@ def check_bi(bars: List[NewBar]):
         else:
             raise ValueError
     except:
-        traceback.print_exc()
+        logger.exception("笔识别错误")
         return None, bars
 
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
@@ -134,7 +146,15 @@ def check_bi(bars: List[NewBar]):
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
                  or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
-    if len(bars_a) >= min_bi_len and not ab_include:
+
+    # 判断当前笔的涨跌幅是否超过benchmark的一定比例
+    if benchmark and abs(fx_a.fx - fx_b.fx) > benchmark * envs.get_bi_change_th():
+        power_enough = True
+    else:
+        power_enough = False
+
+    # 成笔的条件：1）顶底分型之间没有包含关系；2）笔长度大于等于min_bi_len 或 当前笔的涨跌幅已经够大
+    if (not ab_include) and (len(bars_a) >= min_bi_len or power_enough):
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
 
@@ -149,71 +169,27 @@ def check_bi(bars: List[NewBar]):
         return None, bars
 
 
-def signals_counter(signals_list) -> OrderedDict:
-    """信号连续出现次数记录
-
-    :param signals_list: 存储的信号列表
-        数据样例：
-            signals_list = [
-                {"dt": '2020-01-01', "日线_倒1K_SMA5多空": "空头_任意_任意_0"},
-                {"dt": '2020-01-02', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
-                {"dt": '2020-01-03', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
-                {"dt": '2020-01-04', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
-                {"dt": '2020-01-05', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
-                {"dt": '2020-01-06', "日线_倒1K_SMA5多空": "多头_任意_任意_0"},
-            ]
-    :return: 信号连续次数
-    """
-    if not signals_list:
-        return OrderedDict()
-
-    signals = [Signal(f"{k}_{v}") for k, v in signals_list[-1].items()
-               if len(k.split("_")) == 3 and "连续次数" not in k]
-
-    s = OrderedDict()
-    for signal in signals:
-        k1 = signal.k1
-        k2 = f"{signal.k2}#{signal.k3}"
-        k3 = "连续次数"
-        seq = [signal.is_match(x) for x in signals_list]
-        assert seq[-1], "最后一个信号匹配结果必须为 True"
-
-        n = 0
-        for x in seq:
-            if x:
-                n += 1
-            else:
-                n = 0
-        assert n >= 1, "连续次数小于1，不合逻辑"
-
-        signal_c = Signal(k1=k1, k2=k2, k3=k3, v1=f"{n}次")
-        s[signal_c.key] = signal_c.value
-
-    return s
-
-
 class CZSC:
     def __init__(self,
                  bars: List[RawBar],
                  get_signals: Callable = None,
-                 signals_n: int = 0):
+                 max_bi_num=envs.get_max_bi_num(),
+                 ):
         """
 
         :param bars: K线数据
+        :param max_bi_num: 最大允许保留的笔数量
         :param get_signals: 自定义的信号计算函数
-        :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
         """
         self.verbose = envs.get_verbose()
-        self.max_bi_num = envs.get_max_bi_num()
-        self.signals_n = signals_n
-        self.bars_raw = []  # 原始K线序列
-        self.bars_ubi = []  # 未完成笔的无包含K线序列
+        self.max_bi_num = max_bi_num
+        self.bars_raw: List[RawBar] = []  # 原始K线序列
+        self.bars_ubi: List[NewBar] = []  # 未完成笔的无包含K线序列
         self.bi_list: List[BI] = []
         self.symbol = bars[0].symbol
         self.freq = bars[0].freq
         self.get_signals = get_signals
         self.signals = None
-        self.signals_list = []
 
         for bar in bars:
             self.update(bar)
@@ -258,9 +234,14 @@ class CZSC:
             bars_ubi_a = bars_ubi
 
         if self.verbose and len(bars_ubi_a) > 100:
-            print(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
+            logger.info(f"czsc_update_bi: {self.symbol} - {self.freq} - {bars_ubi_a[-1].dt} 未完成笔延伸数量: {len(bars_ubi_a)}")
 
-        bi, bars_ubi_ = check_bi(bars_ubi_a)
+        if envs.get_bi_change_th() > 0.5 and len(self.bi_list) >= 5:
+            benchmark = min(last_bi.power_price, np.mean([x.power_price for x in self.bi_list[-5:]]))
+        else:
+            benchmark = None
+
+        bi, bars_ubi_ = check_bi(bars_ubi_a, benchmark)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
             self.bi_list.append(bi)
@@ -275,10 +256,16 @@ class CZSC:
             self.bars_raw.append(bar)
             last_bars = [bar]
         else:
+            # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
-            last_bars = self.bars_ubi[-1].elements
-            last_bars[-1] = bar
-            self.bars_ubi.pop(-1)
+            if len(self.bars_ubi) >= 3:
+                edt = self.bars_ubi[1].dt
+                self.bars_ubi = [x for x in self.bars_ubi if x.dt <= edt]
+                last_bars = [x for x in self.bars_raw[-50:] if x.dt > edt]
+            else:
+                last_bars = self.bars_ubi[-1].elements
+                last_bars[-1] = bar
+                self.bars_ubi.pop(-1)
 
         # 去除包含关系
         bars_ubi = self.bars_ubi
@@ -310,25 +297,26 @@ class CZSC:
 
         if self.get_signals:
             self.signals = self.get_signals(c=self)
-            if self.signals_n > 0:
-                self.signals_list.append(self.signals)
-                self.signals_list = self.signals_list[-self.signals_n:]
-                self.signals.update(signals_counter(self.signals_list))
         else:
             self.signals = OrderedDict()
 
-    def to_echarts(self, width: str = "1400px", height: str = '580px'):
+    def to_echarts(self, width: str = "1400px", height: str = '580px', bs=None):
+        """绘制K线分析图
+
+        :param width: 宽
+        :param height: 高
+        :param bs: 交易标记，默认为空
+        :return:
+        """
         kline = [x.__dict__ for x in self.bars_raw]
         if len(self.bi_list) > 0:
             bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + \
                  [{'dt': self.bi_list[-1].fx_b.dt, "bi": self.bi_list[-1].fx_b.fx}]
-            fx = []
-            for bi_ in self.bi_list:
-                fx.extend([{'dt': x.dt, "fx": x.fx} for x in bi_.fxs[1:]])
+            fx = [{'dt': x.dt, "fx": x.fx} for x in self.fx_list]
         else:
             bi = None
             fx = None
-        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height,
+        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height, bs=bs,
                           title="{}-{}".format(self.symbol, self.freq.value))
         return chart
 
@@ -368,4 +356,22 @@ class CZSC:
                 return self.bi_list[:-1]
         return self.bi_list
 
+    @property
+    def ubi_fxs(self) -> List[FX]:
+        """返回当下基本确认完成的笔列表"""
+        if not self.bars_ubi:
+            return []
+        else:
+            return check_fxs(self.bars_ubi)
 
+    @property
+    def fx_list(self) -> List[FX]:
+        """返回当下基本确认完成的笔列表"""
+        fxs = []
+        for bi_ in self.bi_list:
+            fxs.extend(bi_.fxs[1:])
+        ubi = self.ubi_fxs
+        for x in ubi:
+            if x.dt > fxs[-1].dt:
+                fxs.append(x)
+        return fxs

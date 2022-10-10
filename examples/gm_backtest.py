@@ -31,8 +31,8 @@ os.environ['backtest_transaction_ratio'] = '1'
 os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
-from czsc.gm_utils import *
-from tactics import trader_strategy_b as strategy
+from czsc.gms.gm_stocks import *
+from czsc.strategies import trader_strategy_a as strategy
 
 
 def init(context):

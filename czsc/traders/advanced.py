@@ -8,60 +8,55 @@ describe: 支持分批买入卖出的高级交易员
 import os
 import webbrowser
 import pandas as pd
+from collections import OrderedDict
 from typing import Callable, List
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
-
-from ..analyze import CZSC, signals_counter
-from ..objects import PositionLong, PositionShort, Operate, Event, RawBar
-from ..utils import BarGenerator, x_round
-from ..utils.cache import home_path
-from .. import envs
+from czsc.analyze import CZSC
+from czsc.objects import PositionLong, PositionShort, Operate, Event, RawBar
+from czsc.utils import BarGenerator, x_round
+from czsc.utils.cache import home_path
 
 
 class CzscAdvancedTrader:
     """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
-    def __init__(self,
-                 bg: BarGenerator,
-                 get_signals: Callable,
-                 long_events: List[Event] = None,
-                 long_pos: PositionLong = None,
-                 short_events: List[Event] = None,
-                 short_pos: PositionShort = None,
-                 signals_n: int = 0,
-                 ):
+    def __init__(self, bg: BarGenerator, strategy: Callable = None):
         """
 
         :param bg: K线合成器
-        :param get_signals: 自定义信号计算函数
-        :param long_events: 自定义的多头交易事件组合，推荐平仓事件放到前面
-        :param long_pos: 多头仓位对象
-        :param short_events: 自定义的空头交易事件组合，推荐平仓事件放到前面
-        :param short_pos: 空头仓位对象
-        :param signals_n: 缓存n个历史时刻的信号，0 表示不缓存；缓存的数据，主要用于计算信号连续次数
+        :param strategy: 择时策略描述函数
+            注意，strategy 函数必须是仅接受一个 symbol 参数的函数
         """
         self.name = "CzscAdvancedTrader"
         self.bg = bg
+        assert bg.symbol, "bg.symbol is None"
         self.symbol = bg.symbol
+        self.strategy = strategy
+        tactic = self.strategy(self.symbol) if strategy else {}
+        self.tactic = tactic
         self.base_freq = bg.base_freq
         self.freqs = list(bg.bars.keys())
-        self.get_signals = get_signals
-        self.long_events = long_events
-        self.long_pos = long_pos
+        self.get_signals: Callable = tactic.get('get_signals')
+        self.long_events: List[Event] = tactic.get('long_events', None)
+        self.long_pos: PositionLong = tactic.get('long_pos', None)
         self.long_holds = []                    # 记录基础周期结束时间对应的多头仓位信息
-        self.short_events = short_events
-        self.short_pos = short_pos
+        self.short_events: List[Event] = tactic.get('short_events', None)
+        self.short_pos: PositionShort = tactic.get('short_pos', None)
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
-        self.signals_n = signals_n
-        self.signals_list = []
-        self.verbose = envs.get_verbose()
         self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
+
+        # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
+        self.cache = OrderedDict()
 
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-        self.s = self.get_signals(self)
+        if self.get_signals:
+            self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
+        else:
+            self.s = OrderedDict()
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
@@ -76,11 +71,27 @@ class CzscAdvancedTrader:
         """
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
         for freq in self.freqs:
-            chart = self.kas[freq].to_echarts(width, height)
+            ka: CZSC = self.kas[freq]
+            bs = None
+            if freq == self.base_freq:
+                # 在基础周期K线上加入最近的操作记录
+                bs = []
+                if self.long_pos:
+                    for op in self.long_pos.operates[-10:]:
+                        if op['dt'] >= ka.bars_raw[0].dt:
+                            bs.append(op)
+
+                if self.short_pos:
+                    for op in self.short_pos.operates[-10:]:
+                        if op['dt'] >= ka.bars_raw[0].dt:
+                            bs.append(op)
+
+            chart = ka.to_echarts(width, height, bs)
             tab.add(chart, freq)
 
         signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
+            # 按各周期K线分别加入信号表
             freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
             for k in freq_signals.keys():
                 signals.pop(k)
@@ -92,6 +103,7 @@ class CzscAdvancedTrader:
             tab.add(t1, f"{freq}信号")
 
         if len(signals) > 0:
+            # 加入时间、持仓状态之类的其他信号
             t1 = Table()
             t1.add(["名称", "数据"], [[k, v] for k, v in signals.items()])
             t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
@@ -118,11 +130,10 @@ class CzscAdvancedTrader:
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
         dt, bid, price = self.end_dt, self.bid, self.latest_price
-        self.s = self.get_signals(self)
-        if self.signals_n > 0:
-            self.signals_list.append(self.s)
-            self.signals_list = self.signals_list[-self.signals_n:]
-            self.s.update(signals_counter(self.signals_list))
+
+        if self.get_signals:
+            self.s = self.get_signals(self)
+            self.s.update(last_bar.__dict__)
 
         last_n1b = last_bar.close / self.kas[self.base_freq].bars_raw[-2].close - 1
         # 遍历 long_events，更新 long_pos
@@ -208,49 +219,129 @@ class CzscAdvancedTrader:
         return res
 
 
-def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], tactic: dict) -> CzscAdvancedTrader:
+def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable) -> CzscAdvancedTrader:
     """为交易策略 tactic 创建对应的 trader
 
     :param bg: K线生成器
     :param raw_bars: 用来初始化 trader 的K线
-    :param tactic: 择时交易策略
+    :param strategy: 择时交易策略
     :return: trader
     """
-    symbol = raw_bars[0].symbol
-    get_signals = tactic['get_signals']
-
-    long_states_pos = tactic.get('long_states_pos', None)
-    long_events = tactic.get('long_events', None)
-    long_min_interval = tactic.get('long_min_interval', None)
-
-    short_states_pos = tactic.get('short_states_pos', None)
-    short_events = tactic.get('short_events', None)
-    short_min_interval = tactic.get('short_min_interval', None)
-
-    if long_states_pos:
-        long_pos = PositionLong(symbol, T0=False,
-                                long_min_interval=long_min_interval,
-                                hold_long_a=long_states_pos['hold_long_a'],
-                                hold_long_b=long_states_pos['hold_long_b'],
-                                hold_long_c=long_states_pos['hold_long_c'])
-    else:
-        long_pos = None
-
-    if short_states_pos:
-        short_pos = PositionShort(symbol, T0=False,
-                                  short_min_interval=short_min_interval,
-                                  hold_short_a=short_states_pos['hold_short_a'],
-                                  hold_short_b=short_states_pos['hold_short_b'],
-                                  hold_short_c=short_states_pos['hold_short_c'])
-    else:
-        short_pos = None
-
-    trader = CzscAdvancedTrader(bg, get_signals, long_events, long_pos, short_events, short_pos,
-                                signals_n=tactic.get('signals_n', 0))
+    trader = CzscAdvancedTrader(bg, strategy)
     for bar in raw_bars:
         trader.update(bar)
-
     return trader
 
 
+class CzscDummyTrader:
+    """虚拟交易员，直接输入信号驱动，不需要输入K线
 
+    缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
+
+    def __init__(self, dfs, strategy: Callable):
+        """
+
+        :param dfs: 信号数据
+        :param strategy: 择时策略描述函数
+            注意，strategy 函数必须是仅接受一个 symbol 参数的函数
+        """
+        self.name = "CzscDummyTrader"
+        self.symbol = dfs.iloc[0]['symbol']
+        self.strategy = strategy
+        tactic = self.strategy(self.symbol)
+        self.tactic = tactic
+        self.long_events = tactic.get('long_events', None)
+        self.long_pos: PositionLong = tactic.get('long_pos', None)
+        self.long_holds = []                    # 记录基础周期结束时间对应的多头仓位信息
+        self.short_events = tactic.get('short_events', None)
+        self.short_pos: PositionShort = tactic.get('short_pos', None)
+        self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
+        self.end_dt, self.bid, self.latest_price = None, None, None
+        rows = dfs.to_dict('records')
+        for row in rows:
+            self.update(row)
+
+    def __repr__(self):
+        return "<{} for {}>".format(self.name, self.symbol)
+
+    def update(self, s: dict):
+        """输入基础周期已完成K线，更新信号，更新仓位"""
+        symbol = s['symbol']
+        n1b = s['close'] / self.latest_price - 1 if self.latest_price else 0
+        self.end_dt, self.bid, self.latest_price = s['dt'], s['id'], s['close']
+        dt, bid, price = self.end_dt, self.bid, self.latest_price
+
+        if self.long_events:
+            assert isinstance(self.long_pos, PositionLong), "long_events 必须配合 PositionLong 使用"
+            op, op_desc = Operate.HO, ""
+            for event in self.long_events:
+                m, f = event.is_match(s)
+                if m:
+                    op = event.operate
+                    op_desc = f"{event.name}@{f}"
+                    break
+
+            self.long_pos.update(dt, op, price, bid, op_desc)
+            if self.long_holds:
+                self.long_holds[-1]['n1b'] = n1b
+            self.long_holds.append({'dt': dt, 'symbol': symbol, 'long_pos': self.long_pos.pos, 'n1b': 0})
+
+        # 遍历 short_events，更新 short_pos
+        if self.short_events:
+            assert isinstance(self.short_pos, PositionShort), "short_events 必须配合 PositionShort 使用"
+            op, op_desc = Operate.HO, ""
+            for event in self.short_events:
+                m, f = event.is_match(s)
+                if m:
+                    op = event.operate
+                    op_desc = f"{event.name}@{f}"
+                    break
+
+            self.short_pos.update(dt, op, price, bid, op_desc)
+            if self.short_holds:
+                self.short_holds[-1]['n1b'] = -n1b
+            self.short_holds.append({'dt': dt, 'symbol': symbol, 'short_pos': self.short_pos.pos, 'n1b': 0})
+
+    @property
+    def results(self):
+        """汇集回测相关结果"""
+        res = {}
+        ct = self
+        dt_fmt = "%Y-%m-%d %H:%M"
+        if ct.long_pos:
+            df_holds = pd.DataFrame(ct.long_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['long_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['long_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['long_holds'] = df_holds
+            res['long_operates'] = ct.long_pos.operates
+            res['long_pairs'] = ct.long_pos.pairs
+            res['long_performance'] = ct.long_pos.evaluate_operates()
+            res['long_performance'].update(dict(p))
+
+        if ct.short_pos:
+            df_holds = pd.DataFrame(ct.short_holds)
+
+            p = {"开始时间": df_holds['dt'].min().strftime(dt_fmt),
+                 "结束时间": df_holds['dt'].max().strftime(dt_fmt),
+                 "基准收益": x_round(df_holds['n1b'].sum(), 4),
+                 "覆盖率": x_round(df_holds['short_pos'].mean(), 4)}
+
+            df_holds['持仓收益'] = df_holds['short_pos'] * df_holds['n1b']
+            df_holds['累计基准'] = df_holds['n1b'].cumsum()
+            df_holds['累计收益'] = df_holds['持仓收益'].cumsum()
+
+            res['short_holds'] = df_holds
+            res['short_operates'] = ct.short_pos.operates
+            res['short_pairs'] = ct.short_pos.pairs
+            res['short_performance'] = ct.short_pos.evaluate_operates()
+            res['short_performance'].update(dict(p))
+
+        return res

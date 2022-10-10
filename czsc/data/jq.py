@@ -117,6 +117,8 @@ def get_concept_stocks(symbol, date=None):
     """
     if not date:
         date = str(datetime.now().date())
+    else:
+        date = pd.to_datetime(date)
 
     if isinstance(date, datetime):
         date = str(date.date())
@@ -292,7 +294,8 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq:
@@ -347,7 +350,8 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
                                close=round(float(row[2]), 2),
                                high=round(float(row[3]), 2),
                                low=round(float(row[4]), 2),
-                               vol=int(row[5])))
+                               vol=int(row[5]), amount=int(float(row[6]))))
+            # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
     if "min" in freq and bars:
@@ -372,7 +376,7 @@ def get_init_bg(symbol: str,
     bg = BarGenerator(base_freq, freqs, max_count)
     for freq in bg.bars.keys():
         bars_ = get_kline(symbol=symbol, end_date=last_day, freq=freq_cn2jq[freq], count=max_count, fq=fq)
-        bg.bars[freq] = bars_
+        bg.init_freq_bars(freq, bars_)
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
 
     bars2 = get_kline_period(symbol, last_day, end_dt, freq=freq_cn2jq[base_freq], fq=fq)

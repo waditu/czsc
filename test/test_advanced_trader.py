@@ -25,28 +25,13 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     return s
 
 
-def test_daily_trader():
-    bars = read_daily()
-    kg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
-    for bar in bars[:1000]:
-        kg.update(bar)
+def trader_strategy_test(symbol, T0=False):
+    """A股市场择时策略样例，支持按交易标的独立设置参数
 
-    ct = CzscAdvancedTrader(kg, get_signals)
-
-    signals_ = []
-    for bar in bars[1000:]:
-        ct.update(bar)
-        signals_.append(dict(ct.s))
-
-    assert len(signals_) == 2332
-
-
-def run_advanced_trader(T0=True):
-    bars = read_1min()
-    kg = BarGenerator(base_freq='1分钟', freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线'], max_count=3000)
-    for row in tqdm(bars[:150000], desc='init kg'):
-        kg.update(row)
-
+    :param symbol:
+    :param T0: 是否允许T0交易
+    :return:
+    """
     long_events = [
         Event(name="开多", operate=Operate.LO, factors=[
             Factor(name="5分钟一买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一买_任意_任意_0")]),
@@ -68,7 +53,7 @@ def run_advanced_trader(T0=True):
             Factor(name="5分钟三卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类三卖_任意_任意_0")])
         ]),
     ]
-    long_pos = PositionLong(symbol='000001.SH', hold_long_a=0.5, hold_long_b=0.8, hold_long_c=1, T0=T0)
+    long_pos = PositionLong(symbol=symbol, hold_long_a=0.5, hold_long_b=0.8, hold_long_c=1, T0=T0)
     short_events = [
         Event(name="开空", operate=Operate.SO, factors=[
             Factor(name="5分钟一买", signals_all=[Signal("5分钟_倒1笔_类买卖点_类一买_任意_任意_0")]),
@@ -90,10 +75,72 @@ def run_advanced_trader(T0=True):
             Factor(name="5分钟三卖", signals_all=[Signal("5分钟_倒1笔_类买卖点_类三卖_任意_任意_0")])
         ]),
     ]
-    short_pos = PositionShort(symbol='000001.SH', hold_short_a=0.5, hold_short_b=0.8, hold_short_c=1, T0=T0)
-    ct = CzscAdvancedTrader(kg, get_signals, long_events=long_events, long_pos=long_pos,
-                            short_events=short_events, short_pos=short_pos)
-    assert len(ct.s) == 21
+    short_pos = PositionShort(symbol=symbol, hold_short_a=0.5, hold_short_b=0.8, hold_short_c=1, T0=T0)
+
+    tactic = {
+        "base_freq": '1分钟',
+        "freqs": ['5分钟', '15分钟', '30分钟', '60分钟', '日线'],
+        "get_signals": get_signals,
+        "signals_n": 0,
+
+        "long_pos": long_pos,
+        "long_events": long_events,
+
+        # 空头策略不进行定义，也就是不做空头交易
+        "short_pos": short_pos,
+        "short_events": short_events,
+    }
+
+    return tactic
+
+
+def test_daily_trader():
+    bars = read_daily()
+    kg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
+    for bar in bars[:1000]:
+        kg.update(bar)
+
+    def __trader_strategy(symbol):
+        tactic = {
+            "base_freq": '1分钟',
+            "freqs": ['5分钟', '15分钟', '30分钟', '60分钟', '日线'],
+            "get_signals": get_signals,
+            "signals_n": 0,
+
+            "long_pos": None,
+            "long_events": None,
+
+            # 空头策略不进行定义，也就是不做空头交易
+            "short_pos": None,
+            "short_events": None,
+        }
+
+        return tactic
+    ct = CzscAdvancedTrader(kg, __trader_strategy)
+
+    signals_ = []
+    for bar in bars[1000:]:
+        ct.update(bar)
+        signals_.append(dict(ct.s))
+
+    assert len(signals_) == 2332
+
+    # 测试传入空策略
+    ct = CzscAdvancedTrader(kg)
+    assert len(ct.s) == 0 and len(ct.kas) == 3
+
+
+def run_advanced_trader(T0=True):
+    bars = read_1min()
+    kg = BarGenerator(base_freq='1分钟', freqs=['5分钟', '15分钟', '30分钟', '60分钟', '日线'], max_count=3000)
+    for row in tqdm(bars[:150000], desc='init kg'):
+        kg.update(row)
+
+    def _strategy(symbol):
+        return trader_strategy_test(symbol, T0=T0)
+    ct = CzscAdvancedTrader(kg, _strategy)
+
+    assert len(ct.s) == 28
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
         # if long_pos.pos_changed:
@@ -122,10 +169,10 @@ def run_advanced_trader(T0=True):
         assert ct.s['空头_累计_盈亏'] == '亏损_超过800BP_任意_0'
 
         holds_long = pd.DataFrame(ct.long_holds)
-        assert round(holds_long['long_pos'].mean(), 4) == 0.7351
+        assert round(holds_long['long_pos'].mean(), 4) == 0.7376
 
         holds_short = pd.DataFrame(ct.short_holds)
-        assert round(holds_short['short_pos'].mean(), 4) == 0.7351
+        assert round(holds_short['short_pos'].mean(), 4) == 0.7376
 
 
 def test_advanced_trader():

@@ -117,6 +117,39 @@ def test_event():
         s[signal.key] = signal.value
 
     event = Event(name="单测", operate=Operate.LO, factors=[
+        Factor(name="测试", signals_all=[
+            Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="大于5", v2='其他', v3='其他')])
+    ], signals_all=[
+        Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上", v2='其他', v3='其他'),
+    ])
+    m, f = event.is_match(s)
+    assert m and f
+
+    event = Event(name="单测", operate=Operate.LO,
+                  factors=[
+                      Factor(name="测试", signals_all=[
+                          Signal('15分钟_倒0笔_长度_大于5_其他_其他_0')
+                      ]),
+                  ],
+                  signals_any=[
+                      Signal('15分钟_倒0笔_方向_向上_其他_其他_0'),
+                      Signal('15分钟_倒0笔_长度_大于100_其他_其他_0')
+                  ])
+    m, f = event.is_match(s)
+    assert m and f
+
+    event = Event(name="单测", operate=Operate.LO,
+                  factors=[
+                      Factor(name="测试", signals_all=[
+                          Signal(k1=str(freq.value), k2="倒0笔", k3="长度", v1="大于5", v2='其他', v3='其他')])
+                  ],
+                  signals_not=[
+                      Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上", v2='其他', v3='其他'),
+                  ])
+    m, f = event.is_match(s)
+    assert not m and not f
+
+    event = Event(name="单测", operate=Operate.LO, factors=[
         Factor(
             name="测试",
             signals_all=[
@@ -236,7 +269,7 @@ def test_position_long_t0():
 
 def test_position_long_min_interval():
     """测试T0逻辑"""
-    pos_long = PositionLong(symbol="000001.XSHG", T0=False, long_min_interval=3600*72)
+    pos_long = PositionLong(symbol="000001.XSHG", T0=False, long_min_interval=3600 * 72)
 
     pos_long.update(dt=pd.to_datetime('2021-01-01'), op=Operate.HO, price=100, bid=0)
     assert not pos_long.pos_changed and pos_long.pos == 0
@@ -358,7 +391,7 @@ def test_position_short_t0():
 
 def test_position_short_min_interval():
     """测试T0逻辑"""
-    pos_short = PositionShort(symbol="000001.XSHG", T0=False, short_min_interval=3600*72)
+    pos_short = PositionShort(symbol="000001.XSHG", T0=False, short_min_interval=3600 * 72)
 
     pos_short.update(dt=pd.to_datetime('2021-01-01'), op=Operate.HO, price=100, bid=0)
     assert not pos_short.pos_changed and pos_short.pos == 0

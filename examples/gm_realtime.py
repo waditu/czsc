@@ -21,7 +21,7 @@ os.environ['max_sym_pos'] = '0.5'
 os.environ['path_gm_logs'] = 'C:/gm_logs'
 """
 from czsc.gm_utils import *
-from tactics import trader_strategy_a as strategy
+from czsc.strategies import trader_strategy_a as strategy
 
 
 def init(context):

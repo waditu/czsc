@@ -9,9 +9,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List
 from transitions import Machine
+from czsc.enum import Mark, Direction, Freq, Operate
+from czsc.utils.ta import RSQ
 
-from .enum import Mark, Direction, Freq, Operate
-from .utils.ta import RSQ
+
+long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
+shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
 
 
 @dataclass
@@ -107,6 +110,14 @@ class FX:
         """成交量力度"""
         assert len(self.elements) == 3
         return sum([x.vol for x in self.elements])
+
+    @property
+    def has_zs(self):
+        """构成分型的三根无包含K线是否有重叠中枢"""
+        assert len(self.elements) == 3
+        zd = max([x.low for x in self.elements])
+        zg = min([x.high for x in self.elements])
+        return zg >= zd
 
 
 @dataclass
@@ -379,11 +390,44 @@ class Event:
     # 单个事件是一系列同类型因子的集合，事件中的任一因子满足，则事件为真。
     factors: List[Factor]
 
+    # signals_all 必须全部满足的信号，允许为空
+    signals_all: List[Signal] = None
+
+    # signals_any 满足其中任一信号，允许为空
+    signals_any: List[Signal] = None
+
+    # signals_not 不能满足其中任一信号，允许为空
+    signals_not: List[Signal] = None
+
     def is_match(self, s: dict):
         """判断 event 是否满足"""
+        # 首先判断 event 层面的信号是否得到满足
+        if self.signals_not:
+            # 满足任意一个，直接返回 False
+            for signal in self.signals_not:
+                if signal.is_match(s):
+                    return False, None
+
+        if self.signals_all:
+            # 任意一个不满足，直接返回 False
+            for signal in self.signals_all:
+                if not signal.is_match(s):
+                    return False, None
+
+        if self.signals_any:
+            one_match = False
+            for signal in self.signals_any:
+                if signal.is_match(s):
+                    one_match = True
+                    break
+            # 一个都不满足，直接返回 False
+            if not one_match:
+                return False, None
+
+        # 判断因子是否满足，顺序遍历，找到第一个满足的因子就退出
+        # 因子放入事件中时，建议因子列表按关注度从高到低排序
         for factor in self.factors:
             if factor.is_match(s):
-                # 顺序遍历，找到第一个满足的因子就退出。建议因子列表按关注度从高到低排序
                 return True, factor.name
 
         return False, None
@@ -428,7 +472,7 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
     if len(pairs) == 0:
         return p
 
-    p['盈亏平衡点'] = cal_break_even_point([x['盈亏比例'] for x in pairs])
+    p['盈亏平衡点'] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
 
     p['复利收益'] = 1
     for pair in pairs:
@@ -437,7 +481,8 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
 
     p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 4)
     p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 4)
-    p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 4)
+    p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 2)
+    p['平均持仓K线数'] = round(sum([x['持仓K线数'] for x in pairs]) / len(pairs), 2)
 
     win_ = [x for x in pairs if x['盈亏比例'] >= 0]
     if len(win_) > 0:
@@ -559,8 +604,7 @@ class PositionLong:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        allow_op_list = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
-        assert op in allow_op_list, f"{op} 不是支持的操作"
+        assert op in long_operates, f"{op} 不是支持的操作"
 
         if dt.date() != self.today:
             self.today_pos = 0
@@ -740,8 +784,7 @@ class PositionShort:
         :param op_desc: 触发操作动作的事件描述
         :return: None
         """
-        allow_op_list = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
-        assert op in allow_op_list, f"{op} 不是支持的操作"
+        assert op in shor_operates, f"{op} 不是支持的操作"
         if dt.date() != self.today:
             self.today_pos = 0
 
@@ -816,3 +859,57 @@ class PositionShort:
             self.short_low = -1.0
             self.short_cost = -1.0
             self.short_bid = -1.0
+
+
+class Position:
+    def __init__(self, symbol: str,
+                 events: List[Event],
+                 hold_a: float = 0.5,
+                 hold_b: float = 0.8,
+                 hold_c: float = 1.0,
+                 min_interval: int = None,
+                 cost: float = 0.003,
+                 T0: bool = False):
+        """空头持仓对象
+
+        :param symbol: 标的代码
+        :param hold_a: 首次开仓后的仓位
+        :param hold_b: 第一次加仓后的仓位
+        :param hold_c: 第二次加仓的仓位
+        :param min_interval: 两次开空仓之间的最小时间间隔，单位：秒
+        :param cost: 双边交易成本，默认为千分之三
+        :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
+        """
+        assert 0 <= hold_a <= hold_b <= hold_c <= 1.0
+        if events[0].operate in long_operates:
+            for event in events:
+                assert event.operate in long_operates
+            self._position = PositionLong(symbol, hold_a, hold_b, hold_c, min_interval, cost, T0)
+        else:
+            for event in events:
+                assert event.operate in shor_operates
+            self._position = PositionShort(symbol, hold_a, hold_b, hold_c, min_interval, cost, T0)
+        self.events = events
+
+    @property
+    def pos(self):
+        """返回状态对应的仓位"""
+        return self._position.pos
+
+    def update(self, s: dict):
+        """更新持仓状态
+
+        :param s: 最新信号字典
+        :return:
+        """
+        op = Operate.HO
+        op_desc = ""
+
+        for event in self.events:
+            m, f = event.is_match(s)
+            if m:
+                op = event.operate
+                op_desc = f"{event.name}@{f}"
+                break
+        dt, price, bid = s['dt'], s['close'], s['bid']
+        self._position.update(dt, op, price, bid, op_desc)
