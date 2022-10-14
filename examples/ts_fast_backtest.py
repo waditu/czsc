@@ -58,7 +58,8 @@ def run_more_backtest(step, ts_codes):
 
 if __name__ == '__main__':
     # run_more_backtest(step='check', ts_codes=['000002.SZ'])
-    run_backtest(step_seq=('index',))
+    # run_backtest(step_seq=('index',))
+    run_backtest(step_seq=('train',))
     # run_backtest(step_seq=('etfs',))
     # run_backtest(step_seq=('index', 'train'))
     # run_backtest(step_seq=('check', 'index', 'train'))
