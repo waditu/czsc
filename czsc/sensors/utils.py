@@ -168,7 +168,9 @@ def check_signals_acc(bars: List[RawBar],
             signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
 
     if verbose:
-        print(f"signals: {signals}")
+        print(f"signals: {'+' * 100}")
+        for row in signals:
+            print(row)
 
     bars_left = bars[:500]
     bars_right = bars[500:]
