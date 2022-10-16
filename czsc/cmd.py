@@ -9,17 +9,19 @@ https://click.palletsprojects.com/en/8.0.x/quickstart/
 """
 import click
 import pandas as pd
-from czsc.aphorism import print_one
 
 
 @click.group()
 def czsc():
+    """CZSC 命令行工具"""
     pass
 
 
 @czsc.command()
 def aphorism():
     """随机输出一条缠中说禅良言警句"""
+    from czsc.aphorism import print_one
+
     print_one()
 
 
