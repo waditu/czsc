@@ -38,6 +38,7 @@ class RawBar:
     low: [float, int]
     vol: [float, int]
     amount: [float, int] = None
+    cache: dict = None    # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
 
 
 @dataclass
@@ -53,7 +54,8 @@ class NewBar:
     low: [float, int]
     vol: [float, int]
     amount: [float, int] = None
-    elements: List = None  # 存入具有包含关系的原始K线
+    elements: List = None   # 存入具有包含关系的原始K线
+    cache: dict = None      # cache 用户缓存
 
     @property
     def raw_bars(self):
@@ -69,6 +71,7 @@ class FX:
     low: [float, int]
     fx: [float, int]
     elements: List = None
+    cache: dict = None      # cache 用户缓存
 
     @property
     def new_bars(self):
@@ -130,6 +133,7 @@ class FakeBI:
     high: [float, int]
     low: [float, int]
     power: [float, int]
+    cache: dict = None      # cache 用户缓存
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -166,6 +170,7 @@ class BI:
     fxs: List = None    # 笔内部的分型列表
     direction: Direction = None
     bars: List[NewBar] = None
+    cache: dict = None  # cache 用户缓存
 
     def __post_init__(self):
         self.sdt = self.fx_a.dt
@@ -230,9 +235,10 @@ class BI:
 
 @dataclass
 class ZS:
-    """中枢对象"""
+    """中枢对象，主要用于辅助信号函数计算"""
     symbol: str
     bis: List[BI]
+    cache: dict = None      # cache 用户缓存
 
     @property
     def sdt(self):
