@@ -34,7 +34,7 @@ def x_round(x: [float, int], digit=4):
     return x
 
 
-def get_namespace(file_py: str, keys: list = None) -> dict:
+def get_py_namespace(file_py: str, keys: list = None) -> dict:
     """获取 python 脚本文件中的 namespace
 
     :param file_py: python 脚本文件名

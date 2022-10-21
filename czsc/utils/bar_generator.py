@@ -7,7 +7,7 @@ describe: 从任意周期K线开始合成更高周期K线的工具类
 """
 from datetime import datetime, timedelta
 from typing import List
-from ..objects import RawBar, Freq
+from czsc.objects import RawBar, Freq
 
 
 def freq_end_time(dt: datetime, freq: Freq) -> datetime:
