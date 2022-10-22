@@ -10,9 +10,8 @@ Tushare 数据缓存，这是用pickle缓存数据，是临时性的缓存。
 """
 import os.path
 import shutil
-import pandas as pd
-from deprecated import deprecated
 from czsc.data.ts import *
+from datetime import timedelta
 from czsc import envs
 from czsc.utils import io
 
