@@ -1,53 +1,39 @@
 czsc.traders package
 ====================
 
-Submodules
-----------
-
-czsc.traders.advanced module
-----------------------------
-
-.. automodule:: czsc.traders.advanced
+.. automodapi:: czsc.traders.advanced
    :members:
    :undoc-members:
-   
+   :no-main-docstr:
 
-czsc.traders.performance module
--------------------------------
 
-.. automodule:: czsc.traders.performance
+.. automodapi:: czsc.traders.performance
    :members:
    :undoc-members:
-   
+   :no-main-docstr:
 
-czsc.traders.ts\_backtest module
---------------------------------
 
-.. automodule:: czsc.traders.ts_backtest
+.. automodapi:: czsc.traders.ts_backtest
    :members:
    :undoc-members:
-   
+   :no-main-docstr:
 
-czsc.traders.ts\_simulator module
----------------------------------
 
-.. automodule:: czsc.traders.ts_simulator
+.. automodapi:: czsc.traders.ts_simulator
    :members:
    :undoc-members:
-   
 
-czsc.traders.utils module
--------------------------
-
-.. automodule:: czsc.traders.utils
+.. automodapi:: czsc.traders.utils
    :members:
    :undoc-members:
+   :no-main-docstr:
    
 
 Module contents
 ---------------
 
-.. automodule:: czsc.traders
+.. automodapi:: czsc.traders
    :members:
    :undoc-members:
+   :no-main-docstr:
    

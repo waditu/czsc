@@ -1,7 +1,7 @@
 czsc.ai package
 ===============
 
-.. automodule:: czsc.ai
+.. automodapi:: czsc.ai
    :members:
    :undoc-members:
    :no-main-docstr:

@@ -1,85 +1,65 @@
 czsc.signals package
 ====================
 
-Submodules
-----------
-
-czsc.signals.bxt module
------------------------
-
-.. automodule:: czsc.signals.bxt
+.. automodapi:: czsc.signals.bxt
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.cat module
------------------------
-
-.. automodule:: czsc.signals.cat
+.. automodapi:: czsc.signals.cat
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.example module
----------------------------
-
-.. automodule:: czsc.signals.example
+.. automodapi:: czsc.signals.example
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.other module
--------------------------
-
-.. automodule:: czsc.signals.other
+.. automodapi:: czsc.signals.other
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.pos module
------------------------
-
-.. automodule:: czsc.signals.pos
+.. automodapi:: czsc.signals.pos
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.signals module
----------------------------
-
-.. automodule:: czsc.signals.signals
+.. automodapi:: czsc.signals.signals
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.ta module
-----------------------
 
-.. automodule:: czsc.signals.ta
+.. automodapi:: czsc.signals.ta
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
-czsc.signals.utils module
--------------------------
-
-.. automodule:: czsc.signals.utils
+.. automodapi:: czsc.signals.utils
    :members:
    :undoc-members:
+   :no-main-docstr:
 
-
-czsc.signals.vol module
------------------------
-
-.. automodule:: czsc.signals.vol
+.. automodapi:: czsc.signals.vol
    :members:
    :undoc-members:
+   :no-main-docstr:
 
 
 Module contents
 ---------------
 
-.. automodule:: czsc.signals
+.. automodapi:: czsc.signals
    :members:
    :undoc-members:
+   :no-main-docstr:
 
