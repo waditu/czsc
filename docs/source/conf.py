@@ -53,8 +53,8 @@ source_suffix = {
 }
 
 # 设置 graphviz_dot 路径
-# graphviz_dot = 'dot'
-graphviz_dot = r"C:\Program Files\Graphviz\bin\dot.exe"
+graphviz_dot = 'dot'
+# graphviz_dot = r"C:\Program Files\Graphviz\bin\dot.exe"
 # 设置 graphviz_dot_args 的参数，这里默认了默认字体
 graphviz_dot_args = ['-Gfontname=Georgia',
                      '-Nfontname=Georgia',
