@@ -19,9 +19,11 @@ build:
     # golang: "1.17"
   jobs:
     pre_create_environment:
-      - apt install update
+      - apt-get update
+      - apt-get upgrade
       - apt install libclang
       - apt install cmake
+      - apt install graphviz
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
