@@ -7,23 +7,17 @@ version: 2
 
 # Set the version of Python and other tools you might need
 build:
-  os: ubuntu-20.04
-#  apt_packages:
-#    - libclang
-#    - cmake
+  os: ubuntu-18.04
+  apt_packages:
+    - libclang
+    - cmake
+    - graphviz
   tools:
     python: "3.8"
     # You can also specify other tool versions:
     # nodejs: "16"
     # rust: "1.55"
     # golang: "1.17"
-  jobs:
-    pre_create_environment:
-      - sudo apt-get update
-      - sudo apt-get upgrade
-      - sudo apt-get install libclang
-      - sudo apt-get install cmake
-      - sudo apt-get install graphviz
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
