@@ -21,9 +21,9 @@ build:
     pre_create_environment:
       - apt-get update
       - apt-get upgrade
-      - apt install libclang
-      - apt install cmake
-      - apt install graphviz
+      - apt-get install libclang
+      - apt-get install cmake
+      - apt-get install graphviz
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
