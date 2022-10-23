@@ -3,10 +3,14 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import os
 import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
+sys.path.insert(0, '../..')
+sys.path.insert(0, '../../..')
+
 import sphinx_rtd_theme
-sys.path.insert(0, os.path.abspath('../../../czsc'))
+
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
