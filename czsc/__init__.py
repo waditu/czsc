@@ -4,22 +4,23 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
-from . import envs
-from . import ai
-from . import utils
-from . import traders
-from . import sensors
-from . import aphorism
-from .analyze import CZSC
-from .traders.advanced import CzscAdvancedTrader, create_advanced_trader
-from .utils.ta import SMA, EMA, MACD, KDJ
-from .objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
-from .utils.cache import home_path, get_dir_size, empty_cache_path
+from czsc import envs
+from czsc import ai
+from czsc import utils
+from czsc import traders
+from czsc import sensors
+from czsc import aphorism
+from czsc.analyze import CZSC
+from czsc.traders.advanced import CzscAdvancedTrader, create_advanced_trader
+from czsc.utils.ta import SMA, EMA, MACD, KDJ
+from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
+from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
+
 
 __version__ = "0.8.30"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20220912"
+__date__ = "20221023"
 
 
 if envs.get_welcome():
