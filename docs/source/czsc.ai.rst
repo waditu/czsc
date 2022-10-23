@@ -5,4 +5,5 @@ czsc.ai package
    :members:
    :undoc-members:
    :no-main-docstr:
+   :no-inheritance-diagram:
    
