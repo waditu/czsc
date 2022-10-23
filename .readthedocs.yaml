@@ -8,10 +8,6 @@ version: 2
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04
-  apt_packages:
-    - libclang
-    - cmake
-    - graphviz
   tools:
     python: "3.8"
     # You can also specify other tool versions:

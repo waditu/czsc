@@ -1,5 +1,5 @@
-czsc
-====
+czsc api
+==========
 
 .. toctree::
    :maxdepth: 4
