@@ -67,6 +67,7 @@ def kline_pro(kline: List[dict],
               bs: List[dict] = None,
               title: str = "缠中说禅K线分析",
               t_seq: List[int] = None,
+              yaxis_type: str = "value",
               width: str = "1400px",
               height: str = '580px') -> Grid:
     """绘制缠中说禅K线分析结果
@@ -85,7 +86,8 @@ def kline_pro(kline: List[dict],
     :param bs: 买卖点
     :param title: 图表标题
     :param t_seq: 均线系统
-    :param width: 图表宽度
+    :param t_seq: 均线系统
+    :param yaxis_type: 图表Y轴类型,'value' 数值轴、'category' 类目轴、'time' 时间轴、'log' 对数轴
     :param height: 图表高度
     :return: 用Grid组合好的图表
     """
@@ -120,7 +122,7 @@ def kline_pro(kline: List[dict],
     dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%",
                                   pos_bottom="0%", range_start=80, range_end=100)
 
-    yaxis_opts = opts.AxisOpts(is_scale=True,
+    yaxis_opts = opts.AxisOpts(type_=yaxis_type,is_scale=True,
                                axislabel_opts=opts.LabelOpts(color="#c7c7c7", font_size=8, position="inside"))
 
     grid0_xaxis_opts = opts.AxisOpts(type_="category", grid_index=0, axislabel_opts=label_not_show_opts,
