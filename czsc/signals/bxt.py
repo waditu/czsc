@@ -9,9 +9,9 @@ from typing import List, Union
 from collections import OrderedDict
 
 from czsc import analyze
-from ..objects import Direction, BI, FakeBI, Signal
-from ..enum import Freq
-from ..utils.ta import RSQ
+from czsc.objects import Direction, BI, FakeBI, Signal
+from czsc.enum import Freq
+from czsc.utils.ta import RSQ
 
 
 def check_three_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Signal:
@@ -551,6 +551,20 @@ def get_s_three_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
 
 def get_s_base_xt(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的基础形态信号
+
+    完全分类：
+        Signal('日线_倒1笔_基础形态_底背驰_五笔aAb式_任意_0'),
+        Signal('日线_倒1笔_基础形态_下颈线突破_五笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_类三买_五笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_向上中枢完成_七笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_顶背驰_五笔aAb式_任意_0'),
+        Signal('日线_倒1笔_基础形态_顶背驰_七笔aAbcd式_任意_0'),
+        Signal('日线_倒1笔_基础形态_上颈线突破_五笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_顶背驰_七笔aAb式_任意_0'),
+        Signal('日线_倒1笔_基础形态_类三买_七笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_类三卖_五笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_类三卖_七笔_任意_0'),
+        Signal('日线_倒1笔_基础形态_顶背驰_七笔abcAd式_任意_0')
 
     :param c: CZSC 对象
     :param di: 最近一笔为倒数第i笔

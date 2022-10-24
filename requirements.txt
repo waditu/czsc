@@ -16,3 +16,4 @@ gm
 openpyxl
 pyarrow
 loguru>=0.6.0
+click

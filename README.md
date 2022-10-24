@@ -5,6 +5,9 @@
 [![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=week&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Week)](https://pepy.tech/project/czsc)
 [![Python 3.7](https://img.shields.io/badge/python-3.7-blue.svg)](https://www.python.org/downloads/release/python-370/)
 [![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
+[![Documentation Status](https://readthedocs.org/projects/czsc/badge/?version=latest)](https://czsc.readthedocs.io/en/latest/?badge=latest)
+
+**[API文档](https://czsc.readthedocs.io/en/latest/modules.html)**
 
 >源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)，[缠中说禅博客原文研读](https://t.zsxq.com/04B2jmUN7)
 

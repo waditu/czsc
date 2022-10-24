@@ -5,12 +5,15 @@ email: zeng_bin8888@163.com
 create_dt: 2021/6/25 18:52
 """
 import time
+import json
+import requests
 import pandas as pd
 import tushare as ts
 from deprecated import deprecated
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
-from tqdm import tqdm
+from functools import partial
+from loguru import logger
 
 from ..analyze import RawBar
 from ..enum import Freq
@@ -37,8 +40,53 @@ exchanges = {
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
 
+
+class TushareProApi:
+    __token = ''
+    __http_url = 'http://api.waditu.com'
+
+    def __init__(self, token, timeout=30):
+        """
+        Parameters
+        ----------
+        token: str
+            API接口TOKEN，用于用户认证
+        """
+        self.__token = token
+        self.__timeout = timeout
+
+    def query(self, api_name, fields='', **kwargs):
+        if api_name in ['__getstate__']:
+            return pd.DataFrame()
+
+        req_params = {
+            'api_name': api_name,
+            'token': self.__token,
+            'params': kwargs,
+            'fields': fields
+        }
+
+        res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
+        if res:
+            result = json.loads(res.text)
+            if result['code'] != 0:
+                logger.warning(f"{req_params}: {result}")
+                raise Exception(result['msg'])
+
+            data = result['data']
+            columns = data['fields']
+            items = data['items']
+            return pd.DataFrame(items, columns=columns)
+        else:
+            return pd.DataFrame()
+
+    def __getattr__(self, name):
+        return partial(self.query, name)
+
+
 try:
-    pro = ts.pro_api()
+    from tushare.util import upass
+    pro = TushareProApi(upass.get_token(), timeout=60)
 except:
     print("Tushare Pro 初始化失败")
 

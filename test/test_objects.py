@@ -1,9 +1,32 @@
 # coding: utf-8
-from collections import OrderedDict
 import pandas as pd
+import numpy as np
+from collections import OrderedDict
 from czsc.utils import x_round
 from czsc.objects import Signal, Factor, Event, Freq, Operate, PositionLong, PositionShort
-from czsc.objects import cal_break_even_point
+from czsc.objects import cal_break_even_point, RawBar
+
+
+def test_raw_bar():
+    from test.test_analyze import read_daily
+    from czsc.utils.ta import SMA
+    bars = read_daily()
+    ma = SMA(np.array([x.close for x in bars]), 5)
+    key = "SMA5"
+
+    # 技术指标的全部更新
+    for i in range(1, len(bars)+1):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c.update({key: ma[-i]})
+        bars[-i].cache = c
+    assert np.array([x.cache[key] for x in bars]).sum() == ma.sum()
+
+    # 技术指标的部分更新
+    for i in range(1, 101):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c.update({key: ma[-i] + 2})
+        bars[-i].cache = c
+    assert np.array([x.cache[key] for x in bars]).sum() == ma.sum() + 200
 
 
 def test_cal_break_even_point():

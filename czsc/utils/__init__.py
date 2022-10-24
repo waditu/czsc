@@ -1,4 +1,5 @@
 # coding: utf-8
+import os
 
 from . import qywx
 from . import ta
@@ -31,3 +32,20 @@ def x_round(x: [float, int], digit=4):
     except:
         print(f"x_round error: x = {x}")
     return x
+
+
+def get_py_namespace(file_py: str, keys: list = None) -> dict:
+    """获取 python 脚本文件中的 namespace
+
+    :param file_py: python 脚本文件名
+    :param keys: 指定需要的对象名称
+    :return: namespace
+    """
+    text = open(file_py, 'r', encoding='utf-8').read()
+    code = compile(text, file_py, 'exec')
+    namespace = {"file_py": file_py, 'file_name': os.path.basename(file_py).split('.')[0]}
+    exec(code, namespace)
+    if keys:
+        namespace = {k: v for k, v in namespace.items() if k in keys}
+    return namespace
+

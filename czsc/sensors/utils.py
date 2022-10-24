@@ -148,7 +148,7 @@ def check_signals_acc(bars: List[RawBar],
     :param signals: 需要验证的信号列表
     :param strategy: 含有信号函数的伪交易策略
     :param delta_days: 两次相同信号之间的间隔天数
-    :return:
+    :return: None
     """
     verbose = envs.get_verbose()
     base_freq = bars[-1].freq.value

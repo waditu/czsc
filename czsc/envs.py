@@ -21,7 +21,7 @@ def get_verbose(verbose=None):
 
 def get_welcome():
     """welcome - 是否输出版本标识和缠中说禅博客摘记"""
-    v = True if os.environ.get('czsc_welcome', '1') in valid_true else False
+    v = True if os.environ.get('czsc_welcome', '0') in valid_true else False
     return v
 
 
