@@ -109,6 +109,7 @@ def replay(file_strategy):
     sdt = replay_params.get('sdt', '20150101')
     edt = replay_params.get('edt', '20220101')
     bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq_cn2ts[base_freq], asset, adj="hfq")
+    logger.info(f"交易回放参数 | {symbol} - sdt:{sdt} - edt: {edt}")
 
     # 设置回放快照文件保存目录
     res_path = os.path.join(py['results_path'], f"replay_{symbol}")
