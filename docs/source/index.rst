@@ -10,6 +10,7 @@ Welcome to czsc's documentation!
    :maxdepth: 2
    :caption: 目录
 
+   ../学习资料
    ../modules
 
 

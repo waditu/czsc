@@ -36,14 +36,6 @@ czsc.signals package
    :no-inheritance-diagram:
 
 
-.. automodapi:: czsc.signals.signals
-   :members:
-   :undoc-members:
-   :no-main-docstr:
-   :no-inheritance-diagram:
-
-
-
 .. automodapi:: czsc.signals.ta
    :members:
    :undoc-members:
