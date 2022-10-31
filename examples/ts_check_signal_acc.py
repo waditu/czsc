@@ -6,6 +6,8 @@ create_dt: 2021/12/13 17:48
 describe: 验证信号计算的准确性，仅适用于缠论笔相关的信号，
           技术指标构建的信号，用这个工具检查不是那么方便
 """
+import sys
+sys.path.insert(0, '..')
 import os
 from collections import OrderedDict
 from czsc.data.ts_cache import TsDataCache
@@ -13,8 +15,8 @@ from czsc import CzscAdvancedTrader
 from czsc.objects import Signal, Freq
 from czsc.sensors.utils import check_signals_acc
 from czsc import signals
+from czsc.signals.jcc import jcc_bai_san_bing_V221030
 
-# from src import signals
 
 os.environ['czsc_verbose'] = '1'
 
@@ -27,7 +29,7 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-    s.update(signals.bxt.get_s_base_xt(cat.kas['日线']))
+    s.update(jcc_bai_san_bing_V221030(cat.kas['15分钟']))
 
     # 使用缓存来更新信号的方法
     # signals.example.update_macd_cache(cat, '日线')

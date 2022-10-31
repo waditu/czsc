@@ -13,4 +13,15 @@ from . import cat
 from . import pos
 from . import example
 
+from czsc.signals.jcc import (
+    jcc_san_xing_xian_V221023,
+    jcc_ten_mo_V221028,
+    jcc_bai_san_bing_V221030
+)
+
+from czsc.signals.tas import (
+    update_macd_cache,
+    tas_macd_power_V221028,
+)
+
 
