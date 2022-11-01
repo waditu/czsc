@@ -7,8 +7,6 @@ Subpackages
 
    czsc.data
    czsc.gms
-   czsc.sensors
-   czsc.signals
 
 
 .. automodapi:: czsc
@@ -24,7 +22,14 @@ Subpackages
    :no-inheritance-diagram:
 
 
-.. automodapi:: czsc.utils
+.. automodapi:: czsc.signals
+   :members:
+   :undoc-members:
+   :no-main-docstr:
+   :no-inheritance-diagram:
+
+
+.. automodapi:: czsc.sensors
    :members:
    :undoc-members:
    :no-main-docstr:
@@ -32,6 +37,13 @@ Subpackages
 
 
 .. automodapi:: czsc.traders
+   :members:
+   :undoc-members:
+   :no-main-docstr:
+   :no-inheritance-diagram:
+
+
+.. automodapi:: czsc.utils
    :members:
    :undoc-members:
    :no-main-docstr:
@@ -50,17 +62,20 @@ Subpackages
    :no-main-docstr:
    :no-inheritance-diagram:
 
+
 .. automodapi:: czsc.envs
    :members:
    :undoc-members:
    :no-main-docstr:
    :no-inheritance-diagram:
 
+
 .. automodapi:: czsc.objects
    :members:
    :undoc-members:
    :no-main-docstr:
    :no-inheritance-diagram:
+
 
 .. automodapi:: czsc.strategies
    :members:

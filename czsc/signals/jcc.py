@@ -15,7 +15,8 @@ from czsc.utils import get_sub_elements
 def jcc_san_xing_xian_V221023(c: CZSC, di=1, th=2) -> OrderedDict:
     """伞形线
 
-    有效信号列表：
+    **有效信号列表：**
+
     * Signal('15分钟_D5TH200_伞形线_满足_上吊_任意_0')
     * Signal('15分钟_D5TH200_伞形线_满足_锤子_任意_0')
 
@@ -55,12 +56,14 @@ def jcc_san_xing_xian_V221023(c: CZSC, di=1, th=2) -> OrderedDict:
 def jcc_ten_mo_V221028(c: CZSC, di=1) -> OrderedDict:
     """吞没形态
 
-    吞没形态，有三条判别标准：
+    **吞没形态，有三条判别标准：**
+
     1. 在吞没形态之前，市场必须处在明确的上升趋势（看跌吞没形态）或下降趋势（看涨吞没形态）中，哪怕这个趋势只是短期的。
     2. 吞没形态由两条蜡烛线组成。其中第二根蜡烛线的实体必须覆盖第一根蜡烛线的实体（但是不一定需要吞没前者的上下影线）。
     3. 吞没形态的第二个实体应与第一个实体的颜色相反。
 
-    有效信号列表：
+    **有效信号列表：**
+
     * Signal('15分钟_D1_吞没形态_满足_看跌吞没_任意_0')
     * Signal('15分钟_D1_吞没形态_满足_看涨吞没_任意_0')
 
@@ -98,7 +101,8 @@ def jcc_ten_mo_V221028(c: CZSC, di=1) -> OrderedDict:
 def jcc_bai_san_bing_V221030(c: CZSC, di=1, th=0.5) -> OrderedDict:
     """白三兵
 
-    有效信号列表：
+    **有效信号列表：**
+
     * Signal('15分钟_D3TH50_白三兵_满足_挺进_任意_0')
     * Signal('15分钟_D3TH50_白三兵_满足_受阻_任意_0')
     * Signal('15分钟_D3TH50_白三兵_满足_停顿_任意_0')

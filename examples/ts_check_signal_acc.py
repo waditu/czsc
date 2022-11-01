@@ -15,7 +15,6 @@ from czsc import CzscAdvancedTrader
 from czsc.objects import Signal, Freq
 from czsc.sensors.utils import check_signals_acc
 from czsc import signals
-from czsc.signals.jcc import jcc_bai_san_bing_V221030
 
 
 os.environ['czsc_verbose'] = '1'
@@ -29,15 +28,14 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-    s.update(jcc_bai_san_bing_V221030(cat.kas['15分钟']))
+    # signals.update_ma_cache(cat.kas['15分钟'], ma_type='SMA', timeperiod=5)
+    # signals.update_ma_cache(cat.kas['15分钟'], ma_type='SMA', timeperiod=10)
+    # s.update(signals.tas_ma_base_V221101(cat.kas['15分钟'], key='SMA5'), di=2)
+    # s.update(signals.tas_ma_base_V221101(cat.kas['15分钟'], key='SMA10'), di=2)
 
     # 使用缓存来更新信号的方法
-    # signals.example.update_macd_cache(cat, '日线')
-    # s.update(signals.example.macd_base(cat, '日线'))
-
-    # for _, c in cat.kas.items():
-    #     if c.freq == Freq.F5:
-    #         s.update(signals.bxt.get_s_like_bs(c, di=1))
+    signals.update_macd_cache(cat.kas['15分钟'])
+    s.update(signals.tas_macd_base_V221028(cat.kas['15分钟']))
     return s
 
 

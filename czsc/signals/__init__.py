@@ -21,7 +21,10 @@ from czsc.signals.jcc import (
 
 from czsc.signals.tas import (
     update_macd_cache,
-    tas_macd_power_V221028,
+    tas_macd_base_V221028,
+
+    update_ma_cache,
+    tas_ma_base_V221101,
 )
 
 
