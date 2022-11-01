@@ -138,7 +138,7 @@ def tas_ma_base_V221101(c: CZSC, di: int = 1, key="SMA5") -> OrderedDict:
 
     :param c: CZSC对象
     :param di: 倒数第i根K线
-    :param key: 指定使用哪个Key来计算，可选值 [macd, dif, dea]
+    :param key: 指定使用哪个Key来计算，必须是 `update_ma_cache` 中已经缓存的 key
     :return:
     """
     k1, k2, k3 = f"{c.freq.value}_D{di}K_{key.upper()}".split('_')
