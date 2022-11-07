@@ -4,7 +4,38 @@ from tqdm import tqdm
 import pandas as pd
 from czsc.analyze import *
 from czsc.enum import Freq
-from czsc.signals.signals import get_default_signals, get_s_three_bi, get_s_d0_bi
+from collections import OrderedDict
+from czsc.signals.bxt import get_s_like_bs, get_s_d0_bi, get_s_bi_status, get_s_di_bi, get_s_base_xt, get_s_three_bi
+from czsc.signals.ta import get_s_single_k, get_s_three_k, get_s_macd
+
+
+def get_default_signals(c: CZSC) -> OrderedDict:
+    """在 CZSC 对象上计算信号，这个是标准函数，主要用于研究。
+
+    实盘时可以按照自己的需要自定义计算哪些信号。
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    s = OrderedDict({"symbol": c.symbol, "dt": c.bars_raw[-1].dt, "close": c.bars_raw[-1].close})
+
+    s.update(get_s_d0_bi(c))
+    s.update(get_s_three_k(c, 1))
+    s.update(get_s_di_bi(c, 1))
+    s.update(get_s_macd(c, 1))
+    s.update(get_s_single_k(c, 1))
+    s.update(get_s_bi_status(c))
+
+    for di in range(1, 8):
+        s.update(get_s_three_bi(c, di))
+
+    for di in range(1, 8):
+        s.update(get_s_base_xt(c, di))
+
+    for di in range(1, 8):
+        s.update(get_s_like_bs(c, di))
+    return s
+
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 

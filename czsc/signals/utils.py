@@ -8,6 +8,7 @@ describe: 信号计算的工具函数
 import numpy as np
 import pandas as pd
 import traceback
+from deprecated import deprecated
 from datetime import datetime
 from typing import List, Union
 from collections import Counter
@@ -16,6 +17,7 @@ from ..utils.ta import KDJ
 from ..objects import RawBar, BI, Direction, ZS
 
 
+@deprecated
 def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None):
     """检查 bars 中的支撑、压力信息
 
@@ -50,6 +52,7 @@ def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None):
     return info
 
 
+@deprecated
 def check_gap_info(bars: List[RawBar]):
     """检查 bars 中的缺口信息
 

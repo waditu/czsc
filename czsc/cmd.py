@@ -109,6 +109,7 @@ def replay(file_strategy):
     sdt = replay_params.get('sdt', '20150101')
     edt = replay_params.get('edt', '20220101')
     bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq_cn2ts[base_freq], asset, adj="hfq")
+    logger.info(f"交易回放参数 | {symbol} - sdt:{sdt} - edt: {edt}")
 
     # 设置回放快照文件保存目录
     res_path = os.path.join(py['results_path'], f"replay_{symbol}")
@@ -125,3 +126,30 @@ def replay(file_strategy):
     trade_replay(bg, bars2, strategy, res_path)
 
 
+@czsc.command()
+@click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
+@click.option('-d', '--delta_days', type=int, required=False, default=5, help="两次相同信号之间的间隔天数")
+def check(file_strategy, delta_days):
+    """执行择时策略中使用的信号在某个品种上的校验"""
+    from czsc.data import freq_cn2ts
+    from czsc.sensors.utils import check_signals_acc
+
+    py = get_py_namespace(file_strategy)
+    strategy = py['trader_strategy']
+    dc = py['dc']
+    check_params = py.get('check_params', None)
+
+    if not check_params:
+        logger.warning(f"{file_strategy} 中没有设置策略回放参数，将使用默认参数执行")
+
+    # 获取单个品种的基础周期K线
+    tactic = strategy("000001.SZ")
+    base_freq = tactic['base_freq']
+    symbol = check_params.get('symbol', "000001.SZ#E")
+    ts_code, asset = symbol.split("#")
+    sdt = check_params.get('sdt', '20200101')
+    edt = check_params.get('edt', '20220101')
+    bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq_cn2ts[base_freq], asset, adj="hfq")
+    logger.info(f"信号检查参数 | {symbol} - sdt:{sdt} - edt: {edt}")
+
+    check_signals_acc(bars, strategy=strategy, delta_days=delta_days)

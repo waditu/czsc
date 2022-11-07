@@ -8,17 +8,16 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 sys.path.insert(0, '../..')
 sys.path.insert(0, '../../..')
-
+import czsc
 import sphinx_rtd_theme
-
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'czsc'
 copyright = '2022, zengbin93'
-author = 'zengbin93'
-release = '0.8.30'
+author = czsc.__author__
+release = czsc.__version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

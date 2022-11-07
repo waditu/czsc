@@ -140,7 +140,7 @@ def run_advanced_trader(T0=True):
         return trader_strategy_test(symbol, T0=T0)
     ct = CzscAdvancedTrader(kg, _strategy)
 
-    assert len(ct.s) == 28
+    assert len(ct.s) == 29
     for row in tqdm(bars[150000:], desc="trade"):
         ct.update(row)
         # if long_pos.pos_changed:

@@ -13,6 +13,9 @@ from czsc.traders import CzscAdvancedTrader
 from czsc.objects import PositionLong, PositionShort, RawBar
 
 
+# 定义择时交易策略，策略函数名称必须是 trader_strategy
+# ----------------------------------------------------------------------------------------------------------------------
+
 def trader_strategy(symbol):
     """择时策略"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
@@ -72,18 +75,24 @@ def trader_strategy(symbol):
     return tactic
 
 
-mode = "backtest"
+# 定义命令行接口的特定参数
+# ----------------------------------------------------------------------------------------------------------------------
 
+# 初始化 Tushare 数据缓存
+dc = TsDataCache(r"C:\ts_data_czsc")
+
+# 定义回测使用的标的列表
+symbols = get_symbols(dc, 'train')[:3]
+
+# 执行结果路径
 results_path = r"C:\ts_data_czsc\cat_sma"
 
+# 策略回放参数设置【可选】
 replay_params = {
-    "symbol": "000001.SZ#E",
-    "sdt": "20150101",
-    "mdt": "20180101",
-    "edt": "20220101",
+    "symbol": "000001.SZ#E",    # 回放交易品种
+    "sdt": "20150101",          # K线数据开始时间
+    "mdt": "20180101",          # 策略回放开始时间
+    "edt": "20220101",          # 策略回放结束时间
 }
 
-if mode == 'backtest':
-    data_path = r"C:\ts_data_czsc"
-    dc = TsDataCache(data_path, sdt='2016-01-01', edt='2022-05-06')
-    symbols = get_symbols(dc, 'train')[:3]
+

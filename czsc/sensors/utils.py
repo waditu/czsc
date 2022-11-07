@@ -11,8 +11,7 @@ import traceback
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from deprecated import deprecated
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Callable, List, AnyStr
 from sklearn.preprocessing import KBinsDiscretizer
 
@@ -150,8 +149,7 @@ def check_signals_acc(bars: List[RawBar],
     :param delta_days: 两次相同信号之间的间隔天数
     :return: None
     """
-    verbose = envs.get_verbose()
-    base_freq = bars[-1].freq.value
+    base_freq = str(bars[-1].freq.value)
     assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
     if len(bars) < 600:
         return
@@ -167,10 +165,9 @@ def check_signals_acc(bars: List[RawBar],
         for col in s_cols:
             signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
 
-    if verbose:
-        print(f"signals: {'+' * 100}")
-        for row in signals:
-            print(row)
+    print(f"signals: {'+' * 100}")
+    for row in signals:
+        print(f"- {row}")
 
     bars_left = bars[:500]
     bars_right = bars[500:]
