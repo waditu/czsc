@@ -26,6 +26,7 @@ symbol = '000001.SZ'
 bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
                           sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
+
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # signals.update_ma_cache(cat.kas['15分钟'], ma_type='SMA', timeperiod=5)
@@ -35,7 +36,7 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
 
     # 使用缓存来更新信号的方法
     signals.update_macd_cache(cat.kas['15分钟'])
-    s.update(signals.tas_macd_base_V221028(cat.kas['15分钟']))
+    s.update(signals.cxt_fx_power_V221107(cat.kas['15分钟']))
     return s
 
 

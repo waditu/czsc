@@ -9,6 +9,7 @@ ta-lib 安装包：https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib
 """
 import numpy as np
 from collections import OrderedDict
+from deprecated import deprecated
 
 from .. import analyze
 from ..objects import Signal
@@ -86,6 +87,7 @@ def get_s_three_k(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+@deprecated(reason="使用 czsc.signals.tas 中对应的信号替换")
 def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """获取倒数第i根K线的MACD相关信号"""
     freq: Freq = c.freq
@@ -170,6 +172,7 @@ def get_s_macd(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+@deprecated(reason="使用 czsc.signals.tas 中对应的信号替换")
 def get_s_sma(c: analyze.CZSC, di: int = 1, t_seq=(5, 10, 20, 60)) -> OrderedDict:
     """获取倒数第i根K线的SMA相关信号"""
     freq: Freq = c.freq

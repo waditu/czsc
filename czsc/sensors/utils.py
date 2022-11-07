@@ -149,7 +149,7 @@ def check_signals_acc(bars: List[RawBar],
     :param delta_days: 两次相同信号之间的间隔天数
     :return: None
     """
-    base_freq = bars[-1].freq.value
+    base_freq = str(bars[-1].freq.value)
     assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
     if len(bars) < 600:
         return
