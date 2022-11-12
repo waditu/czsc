@@ -8,29 +8,15 @@ describe: 使用 ta-lib 构建的信号函数
 tas = ta-lib signals 的缩写
 """
 from loguru import logger
-
 try:
     import talib as ta
 except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
-from collections import OrderedDict
-from typing import List, Union, Tuple, Dict
 from czsc import CZSC, Signal
 from czsc.utils import get_sub_elements, fast_slow_cross
-
-ma_type_map = {
-    'SMA': ta.MA_Type.SMA,
-    'EMA': ta.MA_Type.EMA,
-    'WMA': ta.MA_Type.WMA,
-    'KAMA': ta.MA_Type.KAMA,
-    'TEMA': ta.MA_Type.TEMA,
-    'DEMA': ta.MA_Type.DEMA,
-    'MAMA': ta.MA_Type.MAMA,
-    'T3': ta.MA_Type.T3,
-    'TRIMA': ta.MA_Type.TRIMA,
-}
+from collections import OrderedDict
 
 
 def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs) -> None:
@@ -41,6 +27,18 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs) -> None:
     :param timeperiod: 计算周期
     :return:
     """
+    ma_type_map = {
+        'SMA': ta.MA_Type.SMA,
+        'EMA': ta.MA_Type.EMA,
+        'WMA': ta.MA_Type.WMA,
+        'KAMA': ta.MA_Type.KAMA,
+        'TEMA': ta.MA_Type.TEMA,
+        'DEMA': ta.MA_Type.DEMA,
+        'MAMA': ta.MA_Type.MAMA,
+        'T3': ta.MA_Type.T3,
+        'TRIMA': ta.MA_Type.TRIMA,
+    }
+
     min_count = timeperiod
     cache_key = f"{ma_type.upper()}{timeperiod}"
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
