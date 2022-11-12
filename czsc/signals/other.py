@@ -7,8 +7,10 @@ create_dt: 2022/2/7 19:05
 from datetime import datetime
 from collections import OrderedDict
 from czsc import CZSC, Signal
+from deprecated import deprecated
 
 
+@deprecated(reason="请使用 czsc.signals.bar.bar_end_V221111 替代", version='1.0.0')
 def get_s_raw_bar_end(c: CZSC, k1='60分钟') -> OrderedDict:
     """原始分钟K线结束，c 必须是基础周期的 CZSC 对象"""
     s = OrderedDict()
@@ -27,6 +29,7 @@ def get_s_raw_bar_end(c: CZSC, k1='60分钟') -> OrderedDict:
     return s
 
 
+@deprecated(reason="请使用 czsc.signals.bar.bar_operate_span_V221111 替代", version='1.0.0')
 def get_s_op_time_span(c: CZSC, op: str = '开多', time_span=("14:00", "14:50")) -> OrderedDict:
     """日内操作时间区间，c 必须是基础周期的 CZSC 对象"""
     s = OrderedDict()
@@ -45,6 +48,7 @@ def get_s_op_time_span(c: CZSC, op: str = '开多', time_span=("14:00", "14:50")
     return s
 
 
+@deprecated(reason="请使用 czsc.signals.bar.bar_operate_span_V221111 替代", version='1.0.0')
 def get_s_zdt(c: CZSC, di=1) -> OrderedDict:
     """计算倒数第di根K线的涨跌停信息
 

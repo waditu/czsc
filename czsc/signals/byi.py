@@ -18,11 +18,13 @@ from czsc.utils.sig import is_symmetry_zs
 def byi_symmetry_zs_V2211007(c: CZSC, di=1):
     """对称中枢信号
 
-    信号逻辑：
+    **信号逻辑：**
+
     从di笔往前数7/5/3笔，如果构成中枢，且所有笔的力度序列标
     准差小于均值的一定比例，则认为是对称中枢
 
-    信号列表：
+    **信号列表：**
+    
     - Signal('15分钟_D1B_对称中枢_否_向下_任意_0')
     - Signal('15分钟_D1B_对称中枢_是_向上_7笔_0')
     - Signal('15分钟_D1B_对称中枢_否_向上_任意_0')
@@ -34,7 +36,7 @@ def byi_symmetry_zs_V2211007(c: CZSC, di=1):
 
     :param c: CZSC对象
     :param di: 倒数第 di 笔
-    :return:
+    :return: s
     """
     bis: List[BI] = get_sub_elements(c.bi_list, di=di, n=10)
     k1, k2, k3 = f"{c.freq.value}_D{di}B_对称中枢".split("_")
