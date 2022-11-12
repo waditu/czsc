@@ -137,6 +137,73 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
     return s
 
 
+def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
+    """倒数第 i 根 K 线的成交量相比于前 N 根 K 线放量
+
+    **信号逻辑: ** 放量的定义为，倒数第i根K线的量能 / 过去N根的平均量能，在2-4倍之间。
+
+    **信号列表：**
+
+    - Signal('15分钟_D2K5B_放量_否_任意_任意_0')
+    - Signal('15分钟_D2K5B_放量_是_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止的倒数第 i 根
+    :param n: 向前看 n 根
+    :return: s
+    """
+    k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B", "放量"
+
+    if len(c.bars_raw) < di + n + 10:
+        v1 = "其他"
+    else:
+        bars = get_sub_elements(c.bars_raw, di=di, n=n+1)
+        assert len(bars) == n + 1
+
+        mean_vol = sum([x.vol for x in bars[:-1]]) / n
+        v1 = "是" if mean_vol * 4 >= bars[-1].vol >= mean_vol * 2 else "否"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2: int = 4) -> OrderedDict:
+    """截取一段时间内的平均成交金额分类信号
+
+    **信号逻辑: ** 倒数第i根K线向前n根K线的成交金额均值在 th1 和 th2 之间
+
+    **信号列表：**
+
+    - Signal('15分钟_D2K20B均额_1至4千万_否_任意_任意_0')
+    - Signal('15分钟_D2K20B均额_1至4千万_是_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止的倒数第 i 根
+    :param n: 向前看 n 根
+    :param th1: 成交金额下限，单位：千万
+    :param th2: 成交金额上限，单位：千万
+    :return: s
+    """
+    k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B均额", f"{th1}至{th2}千万"
+
+    if len(c.bars_raw) < di + n + 5:
+        v1 = "其他"
+
+    else:
+        bars = get_sub_elements(c.bars_raw, di=di, n=n)
+        assert len(bars) == n
+
+        m = sum([x.amount for x in bars]) / n
+        v1 = "是" if th2 >= m / 10000000 >= th1 else "否"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
 def bar_cross_ps_V221112(c: CZSC, di=1, num=3):
     """倒数第 di 根 K 线穿越支撑、压力位的数量【慎用，非常耗时】
 
