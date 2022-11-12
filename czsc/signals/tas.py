@@ -20,6 +20,7 @@ from typing import List, Union, Tuple, Dict
 from czsc import CZSC, Signal
 from czsc.utils import get_sub_elements, fast_slow_cross
 
+
 ma_type_map = {
     'SMA': ta.MA_Type.SMA,
     'EMA': ta.MA_Type.EMA,
@@ -73,6 +74,7 @@ def update_macd_cache(c: CZSC, **kwargs) -> None:
     min_count = fastperiod + slowperiod
     cache_key = f"MACD"
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+
     if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 30:
         close = np.array([x.close for x in c.bars_raw])
         min_count = 0
@@ -340,7 +342,5 @@ def tas_boll_power_V221112(c: CZSC, di: int = 1):
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
-
-
 
 

@@ -30,7 +30,6 @@ from czsc.signals.byi import (
     byi_symmetry_zs_V2211007,
 )
 
-
 from czsc.signals.coo import (
     coo_td_V221110,
 )
@@ -45,7 +44,6 @@ from czsc.signals.bar import (
     bar_vol_grow_V221112,
     bar_mean_amount_V221112,
 )
-
 
 from czsc.signals.jcc import (
     jcc_san_xing_xian_V221023,
