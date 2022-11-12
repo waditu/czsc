@@ -8,7 +8,7 @@ describe: 配合 CzscAdvancedTrader 进行使用的掘金工具
 import inspect
 import traceback
 from czsc.gms.gm_base import *
-from czsc.utils import create_logger
+# from czsc.utils import create_logger
 from czsc.objects import PositionLong, Operate
 
 
@@ -70,7 +70,6 @@ def report_account_status(context):
     if context.now.isoweekday() > 5:
         return
 
-    logger = context.logger
     latest_dt = context.now.strftime(dt_fmt)
     account = context.account(account_id=context.account_id)
     cash = account.cash
@@ -151,7 +150,6 @@ def sync_long_position(context, trader: CzscAdvancedTrader):
     name = context.stocks.get(symbol, "无名标的")
     long_pos: PositionLong = trader.long_pos
     max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
-    logger = context.logger
     if context.mode == MODE_BACKTEST:
         account = context.account()
     else:
@@ -302,14 +300,15 @@ def init_context_universal(context, name):
     context.name = name
     context.data_path = data_path
     context.stocks = get_symbol_names()
-    context.logger = create_logger(os.path.join(data_path, "gm_trader.log"), cmd=True, name="gm")
 
-    context.logger.info("运行配置：")
-    context.logger.info(f"data_path = {data_path}")
+    logger.add(os.path.join(data_path, "gm_trader.log"), rotation="500MB",
+               encoding="utf-8", enqueue=True, retention="1 days")
+    logger.info("运行配置：")
+    logger.info(f"data_path = {data_path}")
 
     if context.mode == MODE_BACKTEST:
-        context.logger.info("backtest_start_time = " + str(context.backtest_start_time))
-        context.logger.info("backtest_end_time = " + str(context.backtest_end_time))
+        logger.info("backtest_start_time = " + str(context.backtest_start_time))
+        logger.info("backtest_end_time = " + str(context.backtest_end_time))
 
 
 def init_context_env(context):
@@ -326,7 +325,6 @@ def init_context_env(context):
     context.max_sym_pos = float(os.environ['max_sym_pos'])
     assert 0 <= context.max_sym_pos <= 1
 
-    logger = context.logger
     logger.info(f"环境变量读取结果如下：")
     logger.info(f"单标的控制：context.max_sym_pos = {context.max_sym_pos}")
 
@@ -348,7 +346,6 @@ def init_context_traders(context, symbols: List[str], strategy: Callable):
     unsubscribe(symbols='*', frequency=frequency)
 
     data_path = context.data_path
-    logger = context.logger
     logger.info(f"输入交易标的数量：{len(symbols)}")
     logger.info(f"交易员的周期列表：base_freq = {base_freq}; freqs = {freqs}")
 

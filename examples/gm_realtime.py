@@ -20,7 +20,7 @@ os.environ['wx_key'] = '2daec96b-****-4f83-818b-2952fe2731c0'
 os.environ['max_sym_pos'] = '0.5'
 os.environ['path_gm_logs'] = 'C:/gm_logs'
 """
-from czsc.gm_utils import *
+from czsc.gms.gm_stocks import *
 from czsc.strategies import trader_strategy_a as strategy
 
 

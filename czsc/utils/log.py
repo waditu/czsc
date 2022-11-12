@@ -4,8 +4,10 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/09/23 11:51
 """
+from deprecated import deprecated
 
 
+@deprecated(reason="loguru.logger 是一个非常好用的 logger 模块")
 def create_logger(log_file, name='logger', cmd=True, level="info"):
     """define a logger for your program
 

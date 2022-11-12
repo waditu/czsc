@@ -9,7 +9,11 @@ import os
 import dill
 import czsc
 import pandas as pd
-from gm.api import *
+from loguru import logger
+try:
+    from gm.api import *
+except:
+    logger.warning(f"gm 模块没有安装")
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from typing import List, Callable
@@ -197,7 +201,6 @@ def on_order_status(context, order):
 
     symbol = order.symbol
     latest_dt = context.now.strftime("%Y-%m-%d %H:%M:%S")
-    logger = context.logger
 
     if symbol not in context.symbols_info.keys():
         msg = f"订单状态更新通知：\n{'*' * 31}\n" \
@@ -248,7 +251,6 @@ def on_execution_report(context, execrpt):
         return
 
     latest_dt = context.now.strftime(dt_fmt)
-    logger = context.logger
     msg = f"委托订单被执行通知：\n{'*' * 31}\n" \
           f"时间：{latest_dt}\n" \
           f"标的：{execrpt.symbol}\n" \
@@ -274,7 +276,6 @@ def on_backtest_finished(context, indicator):
     wx_key = context.wx_key
     symbols = context.symbols
     data_path = context.data_path
-    logger = context.logger
 
     logger.info(str(indicator))
     logger.info("回测结束 ... ")
@@ -344,9 +345,8 @@ def on_error(context, code, info):
     if not is_trade_time(context.now):
         return
 
-    logger = context.logger
     msg = "{} - {}".format(code, info)
-    logger.warn(msg)
+    logger.warning(msg)
     if context.mode != MODE_BACKTEST:
         wx.push_text(content=msg, key=context.wx_key)
 
@@ -362,9 +362,8 @@ def on_account_status(context, account):
     if not is_trade_time(context.now):
         return
 
-    logger = context.logger
     msg = f"{str(account)}"
-    logger.warn(msg)
+    logger.warning(msg)
     if context.mode != MODE_BACKTEST:
         wx.push_text(content=msg, key=context.wx_key)
 
