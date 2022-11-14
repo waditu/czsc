@@ -13,13 +13,17 @@ from czsc.traders import CzscAdvancedTrader
 from czsc import signals
 
 
-# 定义择时交易策略，策略函数名称必须是 trader_strategy
+# 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
+
+# 定义择时交易策略，策略函数名称必须是 trader_strategy
+# ----------------------------------------------------------------------------------------------------------------------
 def trader_strategy(symbol):
     """择时策略"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        signals.update_macd_cache(cat.kas['15分钟'])
         s.update(signals.tas_macd_change_V221105(cat.kas['15分钟'], di=2))
         return s
 

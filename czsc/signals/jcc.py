@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/10/31 22:17
-describe: jcc 是 Japanese Candlestick Charting 的缩写
+describe: jcc 是 Japanese Candlestick Charting 的缩写，日本蜡烛图技术
 """
 from typing import List, Any
 from collections import OrderedDict

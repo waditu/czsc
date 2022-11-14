@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/11/7 19:29
-describe: 
+describe:  cxt 代表 CZSC 形态信号
 """
 from czsc import CZSC, Signal
 from czsc.objects import FX
