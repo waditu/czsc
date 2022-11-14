@@ -363,6 +363,8 @@ def generate_symbol_signals(dc: TsDataCache,
         s.update(nb_dicts[s['dt'].strftime(dt_fmt)])
 
     df = pd.DataFrame(signals)
+    if 'cache' in df.columns:
+        del df['cache']
 
     c_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('object')]
     df[c_cols] = df[c_cols].astype('category')
