@@ -49,6 +49,11 @@ from czsc.signals.jcc import (
     jcc_san_xing_xian_V221023,
     jcc_ten_mo_V221028,
     jcc_bai_san_bing_V221030,
+    jcc_san_fa_20221115,
+    jcc_san_fa_20221118,
+    jcc_wu_yun_gai_ding_V221101,
+    jcc_ci_tou_V221101,
+    jcc_xing_xian_v221118,
 )
 
 

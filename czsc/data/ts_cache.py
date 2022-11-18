@@ -12,7 +12,6 @@ import time
 import os.path
 import shutil
 import pandas as pd
-# from czsc.data.ts import *
 from tqdm import tqdm
 from typing import List
 from deprecated import deprecated
@@ -20,7 +19,7 @@ from datetime import timedelta, datetime
 from czsc import envs
 from czsc.enum import Freq
 from czsc.utils import io
-from czsc.data.ts import ts, pro, format_kline
+from czsc.data.ts import ts, pro, format_kline, dt_fmt, date_fmt
 
 
 def update_bars_return(kline: pd.DataFrame, bar_numbers=None):
