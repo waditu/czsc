@@ -54,6 +54,7 @@ from czsc.signals.jcc import (
     jcc_wu_yun_gai_ding_V221101,
     jcc_ci_tou_V221101,
     jcc_xing_xian_v221118,
+    jcc_fen_shou_xian_V20221113,
 )
 
 

@@ -17,76 +17,49 @@ from czsc.traders import CzscAdvancedTrader
 
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def jcc_xing_xian_v221118(c: CZSC, di=2, th=2) -> OrderedDict:
-    """星形态
+def jcc_fen_shou_xian_V20221113(c: CZSC, di=1, zdf=300) -> OrderedDict:
+    """分手线：分手形态是一个中继形态；贡献者：琅盎
 
-    **星形态，判断标准：**
+    **分手线形态，有三条判断标准 **
 
-    1.启明星：
+    1.分手线是由二根开盘价相等、运动方向相反的K线组成，因此也称分离线。
+    2.上升分手线出现在上升途中，由一阴一阳两根开盘价相等的K线组成，属于上涨持续形态；如果下跌趋势发展了较长时间之后出现上涨分手线，后市可能上涨应极积关注。
+    3.下跌分手线出现在下跌途中，由一阳一阴两根开盘价相等的K线组成，属于下跌持续形态；如果上涨趋势发展了较长时间之后出现下跌分手线，后市可能下跌应及时出场。
 
-        蜡烛线1。一根长长的黑色实体，形象地表明空头占据主宰地位
-        蜡烛线2。一根小小的实体，并且它与前一根实体之间不相接触（这两条蜡烛线组成了基本的星线形态）。小实体意味着卖方丧失了驱动市场走低的能力
-        蜡烛线3。一根白色实体，它明显地向上推进到了第一个时段的黑色实体之内，标志着启明星形态的完成。这表明多头已经夺回了主导权
+    **有效信号列表： **
 
-        在理想的启明星形态中，第二根蜡烛线（即星线）的实体，与第三根蜡烛线的实体之间有价格跳空。根据我的经验，即使没有这个价格跳空，
-        似乎也不会削减启明星形态的技术效力。其决定性因素是，第二根蜡烛线应为纺锤线，同时第三根蜡烛线应显著深入到第一根黑色蜡烛线内部
-
-    2.黄昏星：
-
-        a. 如果第一根与第二根蜡烛线，第二根与第三根蜡烛线的实体之间不存在重叠。
-        b. 如果第三根蜡烛线的收市价向下深深扎入第一根蜡烛线的实体内部。
-        c. 如果第一根蜡烛线的交易量较小，而第三根蜡烛线的交易量较大。这表明之前趋势的驱动力正在减弱，新趋势方向的驱动力正在加强
-
-    3.十字黄昏星
-
-        在常规的黄昏星形态中，第二根蜡烛线具有较小的实体，如果不是较小的实体，而是一个十字线，则称为十字黄昏星形态
-    4.十字启明星
-
-        在启明星形态中，如果其星线（即三根蜡烛线中的第二根蜡烛线）是一个十字线，则成为十字启明星形态
-
-    **信号列表：**
-
-    - Signal('60分钟_D1TH2_星形线_黄昏星_任意_任意_0')
-    - Signal('60分钟_D1TH2_星形线_启明星_任意_任意_0')
-    - Signal('60分钟_D1TH2_星形线_启明星_中间十字_任意_0')
-    - Signal('60分钟_D1TH2_星形线_黄昏星_中间十字_任意_0')
+    - Signal('60分钟_D1K_分手线_满足_上升分手_任意_0')
+    - Signal('60分钟_D1K_分手线_满足_下跌分手_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :param th: 左侧实体是当前实体的多少倍
-    :return: 星形线识别结果
+    :param di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
+    :param zdf: 可调阈值，涨跌幅，单位 BP
+    :return: 分离形态识别结果
     """
-    assert di >= 1
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_分手线".split('_')
+    bar1 = c.bars_raw[-di]
+    bar2 = c.bars_raw[-di - 1]
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_星形线".split('_')
+    # 条件
+    v1 = '满足' if bar1.open == bar2.open and bar1.close < bar2.low or bar1.close > bar2.high else "其他"
 
-    bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
-    x3 = abs(bar3.close - bar3.open)
-    x2 = abs(bar2.close - bar2.open)
-    x1 = abs(bar1.close - bar1.open)
+    # 判断K线趋势【这是一个可以优化的方向】
+    v2 = "其他"
+    if len(c.bars_raw) > 20 + di:
+        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_max = max([x.high for x in left_bars])
+        left_min = min([x.low for x in left_bars])
+        gap = left_max - left_min
 
-    v1 = "其他"
-    if bar3.high > bar2.high < bar1.high and bar3.low > bar2.low < bar1.low:
-        """
-        方向向下，启明星
-            - 蜡烛线3。一根长长的黑色实体，形象地表明空头占据主宰地位。
-            - 蜡烛线2。一根小小的实体，并且它与前一根实体之间不相接触（这两条蜡烛线组成了基本的星线形态）。小实体意味着卖方丧失了驱动市场走低的能力。
-            - 蜡烛线1。一根白色实体，它明显地向上推进到了第一个时段的黑色实体之内，标志着启明星形态的完成。这表明多头已经夺回了主导权
-        """
-        if bar3.close < bar3.open and x2 * th < x3 < x2 + x1 and bar1.close > bar1.open > max(bar2.close, bar2.open):
-            v1 = "启明星"
+        if bar1.low <= left_min + 0.25 * gap and bar1.open == bar2.open and bar1.close < bar2.low \
+                and bar2.close > bar2.open and (bar2.close - bar1.close) / bar2.close * 10000 > zdf:
 
-    elif bar3.high < bar2.high > bar1.high and bar3.low < bar2.low > bar1.low:
-        """
-        方向向上，黄昏星。
-            1. 如果第一根与第二根蜡烛线，第二根与第三根蜡烛线的实体之间不存在重叠。
-            2. 如果第三根蜡烛线的收市价向下深深扎入第一根蜡烛线的实体内部。
-            3. 如果第一根蜡烛线的交易量较小，而第三根蜡烛线的交易量较大。这表明之前趋势的驱动力正在减弱，新趋势方向的驱动力正在加强
-        """
-        if bar3.close > bar3.open and x2 * th < x3 < x2 + x1 and bar1.close < bar1.open < min(bar2.close, bar2.open):
-            v1 = "黄昏星"
+            v2 = "下跌分手"
 
-    v2 = "中间十字" if bar2.close == bar2.open else "任意"
+        elif bar1.high >= left_max - 0.25 * gap and bar1.open == bar2.open and bar1.close > bar2.high \
+                and bar2.close < bar2.open and (bar1.close - bar2.close) / bar2.close * 10000 > zdf:
+            v2 = "上升分手"
+
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
@@ -99,7 +72,7 @@ def trader_strategy(symbol):
     """择时策略"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(jcc_xing_xian_v221118(cat.kas['60分钟'], di=1))
+        s.update(jcc_fen_shou_xian_V20221113(cat.kas['60分钟'], di=1))
         return s
 
     tactic = {
