@@ -20,66 +20,43 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
-    """十字线
+def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') -> OrderedDict:
+    """辨别加速走势
 
     **信号逻辑：**
 
-    1， 十字线定义，(h -l) / (c - o) 的绝对值大于 th，或 c == o
-    2. 长腿十字线，上下影线都很长；墓碑十字线，上影线很长；蜻蜓十字线，下影线很长；
+    上涨加速指窗口内K线收盘价全部大于 ma1，且 close 与 ma1 的距离不断正向放大；反之为下跌加速。
 
     **信号列表：**
 
-    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_北方_任意_0')
-    - Signal('60分钟_D1TH10_十字线_十字线_任意_任意_0')
-    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_任意_任意_0')
-    - Signal('60分钟_D1TH10_十字线_墓碑十字线_任意_任意_0')
-    - Signal('60分钟_D1TH10_十字线_长腿十字线_任意_任意_0')
-    - Signal('60分钟_D1TH10_十字线_十字线_北方_任意_0')
-    - Signal('60分钟_D1TH10_十字线_墓碑十字线_北方_任意_0')
-    - Signal('60分钟_D1TH10_十字线_长腿十字线_北方_任意_0')
+    - Signal('60分钟_D1W13_SMA10加速_上涨_任意_任意_0')
+    - Signal('60分钟_D1W13_SMA10加速_下跌_任意_任意_0')
 
-    :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
-    :return: 十字线识别结果
+    **注意事项：**
+
+    此信号函数必须与 `czsc.signals.update_ma_cache` 结合使用，需要该函数更新MA缓存
+
+    :param c: CZSC对象
+    :param di: 取近n根K线为截止
+    :param ma1: 快线
+    :param window: 识别加速走势的窗口大小
+    :return: 信号识别结果
     """
-
-    def __check_szx(bar: RawBar, th: int) -> bool:
-        if bar.close == bar.open and bar.high != bar.low:
-            return True
-
-        if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
-            return True
-        else:
-            return False
-
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
-    if len(c.bars_raw) < di + 10:
-        v1 = "其他"
-        v2 = "其他"
-    else:
-        bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
-        if __check_szx(bar1, th):
-            upper = bar1.upper
-            solid = bar1.solid
-            lower = bar1.lower
-
-            if lower > upper * 2:
-                v1 = "蜻蜓十字线"
-            elif lower == 0 or lower < solid:
-                v1 = "墓碑十字线"
-            elif lower > bar2.solid and upper > bar2.solid:
-                v1 = "长腿十字线"
-            else:
-                v1 = "十字线"
-        else:
-            v1 = "其他"
-
-        v2 = "北方" if bar2.close > bar2.open and bar2.solid > (bar2.upper + bar2.lower) * 3 else "任意"
-
+    assert window > 3, "辨别加速，至少需要3根以上K线"
     s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    k1, k2, k3 = c.freq.value, f"D{di}W{window}", f"{ma1}加速"
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=window)
+    delta = [x.close - x.cache[ma1] for x in bars]
+
+    if all(x > 0 for x in delta) and delta[-1] > delta[-2] > delta[-3]:
+        v1 = "上涨"
+    elif all(x < 0 for x in delta) and delta[-1] < delta[-2] < delta[-3]:
+        v1 = "下跌"
+    else:
+        v1 = "其他"
+
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
 
@@ -91,7 +68,8 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(jcc_szx_V221111(cat.kas['60分钟'], di=1))
+        signals.update_ma_cache(cat.kas['60分钟'], ma_type='SMA', timeperiod=10)
+        s.update(bar_accelerate_V221118(cat.kas['60分钟'], di=1, window=13, ma1='SMA10'))
         return s
 
     tactic = {
