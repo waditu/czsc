@@ -114,7 +114,7 @@ def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5) -> OrderedDict:
     * Signal('15分钟_D3TH50_白三兵_满足_停顿_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di根K线 取倒数三根k线
+    :param di: 倒数第di根K线
     :param th: 可调阈值，上影线超过实体的倍数，保留两位小数
     :return: 白三兵识别结果
     """
@@ -568,7 +568,7 @@ def jcc_ping_tou_v221113(c: CZSC, di=2, th=100) -> OrderedDict:
     * Signal('15分钟_D2TH20_平头形态_满足_平头底部_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线
+    :param di: 倒数第di根K线
     :param th: 百分比，右侧K线的高/低点与当前K线的高/低点之间的差距比例，单位 BP
     :return: 平头形态识别结果
     """

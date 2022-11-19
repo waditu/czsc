@@ -20,42 +20,46 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') -> OrderedDict:
-    """辨别加速走势
+def tas_boll_bc_V221118(c: CZSC, di=1, n=3, m=10, line=3):
+    """BOLL背驰辅助
 
     **信号逻辑：**
 
-    上涨加速指窗口内K线收盘价全部大于 ma1，且 close 与 ma1 的距离不断正向放大；反之为下跌加速。
+    近n个最低价创近m个周期新低，近m个周期跌破下轨，近n个周期不破下轨，这是BOLL一买（底部背驰）信号，顶部背驰反之。
 
     **信号列表：**
 
-    - Signal('60分钟_D1W13_SMA10加速_上涨_任意_任意_0')
-    - Signal('60分钟_D1W13_SMA10加速_下跌_任意_任意_0')
-
-    **注意事项：**
-
-    此信号函数必须与 `czsc.signals.update_ma_cache` 结合使用，需要该函数更新MA缓存
+    - Signal('60分钟_D1N3M10L2_BOLL背驰_一卖_任意_任意_0')
+    - Signal('60分钟_D1N3M10L2_BOLL背驰_一买_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 取近n根K线为截止
-    :param ma1: 快线
-    :param window: 识别加速走势的窗口大小
-    :return: 信号识别结果
+    :param di: 倒数第di根K线
+    :param n: 近n个周期
+    :param m: 近m个周期
+    :param line: 选第几个上下轨
+    :return:
     """
-    assert window > 3, "辨别加速，至少需要3根以上K线"
-    s = OrderedDict()
-    k1, k2, k3 = c.freq.value, f"D{di}W{window}", f"{ma1}加速"
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}L{line}_BOLL背驰".split('_')
 
-    bars = get_sub_elements(c.bars_raw, di=di, n=window)
-    delta = [x.close - x.cache[ma1] for x in bars]
+    bn = get_sub_elements(c.bars_raw, di=di, n=n)
+    bm = get_sub_elements(c.bars_raw, di=di, n=m)
 
-    if all(x > 0 for x in delta) and delta[-1] > delta[-2] > delta[-3]:
-        v1 = "上涨"
-    elif all(x < 0 for x in delta) and delta[-1] < delta[-2] < delta[-3]:
-        v1 = "下跌"
+    d_c1 = min([x.low for x in bn]) <= min([x.low for x in bm])
+    d_c2 = sum([x.close < x.cache['boll'][f'下轨{line}'] for x in bm]) > 1
+    d_c3 = sum([x.close < x.cache['boll'][f'下轨{line}'] for x in bn]) == 0
+
+    g_c1 = max([x.high for x in bn]) == max([x.high for x in bm])
+    g_c2 = sum([x.close > x.cache['boll'][f'上轨{line}'] for x in bm]) > 1
+    g_c3 = sum([x.close > x.cache['boll'][f'上轨{line}'] for x in bn]) == 0
+
+    if d_c1 and d_c2 and d_c3:
+        v1 = "一买"
+    elif g_c1 and g_c2 and g_c3:
+        v1 = "一卖"
     else:
         v1 = "其他"
 
+    s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
@@ -68,8 +72,8 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_ma_cache(cat.kas['60分钟'], ma_type='SMA', timeperiod=10)
-        s.update(bar_accelerate_V221118(cat.kas['60分钟'], di=1, window=13, ma1='SMA10'))
+        signals.update_boll_cache(cat.kas['60分钟'])
+        s.update(tas_boll_bc_V221118(cat.kas['60分钟'], di=1, n=3, m=10, line=2))
         return s
 
     tactic = {
