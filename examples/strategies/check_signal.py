@@ -19,68 +19,47 @@ from czsc.traders import CzscAdvancedTrader
 
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def jcc_yun_xian_trend(c: CZSC, di=1) -> OrderedDict:
-    """孕线形态
-    二日K线模式，分多头孕线与空头孕线，两者相反，以多头孕线为例，
-    在下跌趋势中，第一日K线长阴，第二日开盘和收盘价都在第一日价格
-    振幅之内，为阳线，预示趋势反转，股价上升
+def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20) -> OrderedDict:
+    """捉腰带线
 
-    有效信号列表：
-    * Signal('15分钟_D1_孕线_满足_多头_任意_0')
-    * Signal('15分钟_D1_孕线_满足_空头_任意_0')
+    **捉腰带线判别标准：**
 
-    :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :return: 孕线识别结果
-    """
-
-    k1, k2, k3 = f"{c.freq.value}_D{di}_孕线".split('_')
-
-    bars = c.bars_raw[0:-di]
-    bars = pd.DataFrame([[x.open, x.high, x.low, x.close] for x in bars], columns=['open', 'high', 'low', 'close'])
-    # 判断：1、val为100，多头孕线；2、val为100，空头孕线；3、val为0，不满足趋势孕线形态；
-    val = ta.CDLHARAMI(bars.open, bars.high, bars.low, bars.close)
-    v1, v2 = "其他", "其他"
-    if val.iloc[-1] == 100:
-        v1, v2 = "满足", "多头"
-    elif val.iloc[-1] == -100:
-        v1, v2 = "满足", "空头"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
-
-
-def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
-    """孕线形态
-
-    二日K线模式，分多头孕线与空头孕线，两者相反，以多头孕线为例，
-    在下跌趋势中，第一日K线长阴，第二日开盘和收盘价都在第一日价格
-    振幅之内，为阳线，预示趋势反转，股价上升
+    捉腰带形态是由单独一根蜡烛线构成的。看涨捉腰带形态是一 根坚挺的白色蜡烛线，其开市价位于时段的最低点
+    （或者，这根蜡烛线只有极短的下影线），然后市场一路上扬，收市价位于或接近本时段的最高
 
     **有效信号列表：**
 
-    - Signal('60分钟_D1_孕线_看空_任意_任意_0')
-    - Signal('60分钟_D1_孕线_看多_任意_任意_0')
+    - Signal('60分钟_D1L20_捉腰带线_看跌_光头阴线_任意_0')
+    - Signal('60分钟_D1L20_捉腰带线_看多_光脚阳线_任意_0')
 
     :param c: CZSC 对象
     :param di: 倒数第di跟K线
-    :return: 孕线识别结果
+    :param left: 从di向左数left根K线
+    :return: 捉腰带线识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}_孕线".split('_')
-    bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
+    k1, k2, k3 = f"{c.freq.value}_D{di}L{left}_捉腰带线".split('_')
+    v1, v2 = "其他", "其他"
 
-    v1 = "其他"
-    if bar2.solid > max(bar2.upper, bar2.lower) and bar1.solid < max(bar1.upper, bar1.lower):
-        if bar2.close > bar1.close > bar2.open and bar2.close > bar1.open > bar2.open:
-            v1 = "看空"
+    bar: RawBar = c.bars_raw[-di]
+    # x1 - 上影线大小；x2 - 实体大小；x3 - 下影线大小
+    x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
 
-        if bar2.close < bar1.close < bar2.open and bar2.close < bar1.open < bar2.open:
-            v1 = "看多"
+    if len(c.bars_raw) > left + di:
+        left_bars: List[RawBar] = c.bars_raw[-left - di:-di]
+        left_max = max([x.high for x in left_bars])
+        left_min = min([x.low for x in left_bars])
+
+        if bar.low < left_min:
+            if bar.close > bar.open and x3 == 0:
+                v1 = "看多"
+                v2 = "光脚阳线"
+        elif bar.high > left_max:
+            if bar.close < bar.open and x1 == 0:
+                v1 = "看跌"
+                v2 = "光头阴线"
 
     s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
 
@@ -92,7 +71,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(jcc_yun_xian_V221118(cat.kas['60分钟'], di=1))
+        s.update(jcc_zhuo_yao_dai_xian_v221113(cat.kas['60分钟'], di=1))
         return s
 
     tactic = {

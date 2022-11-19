@@ -556,3 +556,82 @@ def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
     s[signal.key] = signal.value
     return s
 
+
+def jcc_ping_tou_v221113(c: CZSC, di=2, th=100) -> OrderedDict:
+    """平头形态，贡献者：平凡
+
+    **平头形态，判断标准：**
+
+    1. 平头形态是由几乎具有相同水平的最高点的两根蜡烛线组成的， 或者是由几乎具有相同的最低点的两根蜡烛线组成的。
+    2. 在理想情 况下，平头形态应当由前一根长实体蜡烛线与后一根小实体蜡烛线组合而成
+
+    **有效信号列表：**
+
+    * Signal('15分钟_D2TH20_平头形态_满足_平头顶部_任意_0')
+    * Signal('15分钟_D2TH20_平头形态_满足_平头底部_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param th: 百分比，右侧K线的高/低点与当前K线的高/低点之间的差距比例，单位 BP
+    :return: 平头形态识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_平头形态".split('_')
+    bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
+    if abs(bar2.low - bar1.low) * 10000 / max(bar2.low, bar1.low) < th:
+        v1 = "底部"
+    elif abs(bar2.high - bar1.high) * 10000 / max(bar2.high, bar1.high) < th:
+        v1 = '顶部'
+    else:
+        v1 = "其他"
+
+    v2 = '实体标准' if bar2.solid > max(bar1.solid, bar1.upper) else "任意"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20) -> OrderedDict:
+    """捉腰带线，贡献者：平凡
+
+    **捉腰带线判别标准：**
+
+    捉腰带形态是由单独一根蜡烛线构成的。看涨捉腰带形态是一 根坚挺的白色蜡烛线，其开市价位于时段的最低点
+    （或者，这根蜡烛线只有极短的下影线），然后市场一路上扬，收市价位于或接近本时段的最高
+
+    **有效信号列表：**
+
+    - Signal('60分钟_D1L20_捉腰带线_看跌_光头阴线_任意_0')
+    - Signal('60分钟_D1L20_捉腰带线_看多_光脚阳线_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param left: 从di向左数left根K线
+    :return: 捉腰带线识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}L{left}_捉腰带线".split('_')
+    v1, v2 = "其他", "其他"
+
+    bar: RawBar = c.bars_raw[-di]
+    # x1 - 上影线大小；x2 - 实体大小；x3 - 下影线大小
+    x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
+
+    if len(c.bars_raw) > left + di:
+        left_bars: List[RawBar] = c.bars_raw[-left - di:-di]
+        left_max = max([x.high for x in left_bars])
+        left_min = min([x.low for x in left_bars])
+
+        if bar.low < left_min:
+            if bar.close > bar.open and x3 == 0:
+                v1 = "看多"
+                v2 = "光脚阳线"
+        elif bar.high > left_max:
+            if bar.close < bar.open and x1 == 0:
+                v1 = "看跌"
+                v2 = "光头阴线"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
