@@ -62,6 +62,7 @@ from czsc.signals.jcc import (
     jcc_two_crow_V221108,
     jcc_three_crow_V221108,
     jcc_three_soldiers_V221030,
+    jcc_szx_V221111,
 )
 
 

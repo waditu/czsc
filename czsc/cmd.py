@@ -150,6 +150,6 @@ def check(file_strategy, delta_days):
     sdt = check_params.get('sdt', '20200101')
     edt = check_params.get('edt', '20220101')
     bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq_cn2ts[base_freq], asset, adj="hfq")
-    logger.info(f"信号检查参数 | {symbol} - sdt:{sdt} - edt: {edt}")
+    logger.info(f"信号检查参数 | {symbol} - sdt: {sdt} - edt: {edt}")
 
     check_signals_acc(bars, strategy=strategy, delta_days=delta_days)

@@ -13,7 +13,8 @@ from collections import OrderedDict
 def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     """倒数第di个分型的强弱
 
-    信号列表：
+    **信号列表：**
+
     - Signal('15分钟_D1F_分型强弱_中顶_有中枢_任意_0')
     - Signal('15分钟_D1F_分型强弱_弱底_有中枢_任意_0')
     - Signal('15分钟_D1F_分型强弱_强顶_有中枢_任意_0')

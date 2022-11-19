@@ -19,54 +19,64 @@ from czsc.traders import CzscAdvancedTrader
 
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
-    """白三兵，贡献者：鲁克林
+
+def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+    """十字线
 
     **信号逻辑：**
 
-    1. 三根K线均收盘价 > 开盘价；且开盘价越来越高； 且收盘价越来越高；
-    2. 三根K线的开盘价都在前一根K线的实体范围之间
-    3. 倒1K上影线与倒1K实体的比值th_cal小于th
-    4. 倒1K涨幅与倒2K涨幅的比值ri_cal大于ri
+    1， 十字线定义，(h -l) / (c - o) 的绝对值大于 th，或 c == o
+    2. 长腿十字线，上下影线都很长；墓碑十字线，上影线很长；蜻蜓十字线，下影线很长；
 
     **信号列表：**
 
-    - Signal('60分钟_D1T100R20_白三兵_满足_挺进_任意_0')
-    - Signal('60分钟_D1T100R20_白三兵_满足_受阻_任意_0')
-    - Signal('60分钟_D1T100R20_白三兵_满足_停顿_任意_0')
+    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_墓碑十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_长腿十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_墓碑十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_长腿十字线_北方_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线 取倒数三根k线
-    :param th: 可调阈值，倒1K上影线与倒1K实体的比值，保留两位小数
-    :param ri: 可调阈值，倒1K涨幅与倒2K涨幅的比值，保留两位小数
-    :return: 白三兵识别结果
+    :param di: 倒数第di跟K线
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return: 十字线识别结果
     """
-    # th = 倒1K上涨阻力； ri = 倒1K相对涨幅；
-    th = int(th * 100)
-    ri = int(ri * 100)
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}R{ri}_白三兵".split('_')
+    def __check_szx(bar: RawBar, th: int) -> bool:
+        if bar.close == bar.open and bar.high != bar.low:
+            return True
 
-    # 先后顺序 bar3 <-- bar2 <-- bar1
-    bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
-
-    if bar3.open < bar3.close and bar2.open < bar2.close \
-            and bar1.close > bar1.open > bar2.open > bar3.open \
-            and bar1.close > bar2.close > bar3.close:
-        v1 = "满足"
-        th_cal = (bar1.high - bar1.close) / (bar1.close - bar1.open) * 100
-        ri_cal = (bar1.close - bar2.close) / (bar2.close - bar3.close) * 100
-
-        if ri_cal > ri:
-            if th_cal < th:
-                v2 = "挺进"
-            else:
-                v2 = "受阻"
+        if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
+            return True
         else:
-            v2 = "停顿"
-    else:
+            return False
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
+    if len(c.bars_raw) < di + 10:
         v1 = "其他"
         v2 = "其他"
+    else:
+        bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
+        if __check_szx(bar1, th):
+            upper = bar1.upper
+            solid = bar1.solid
+            lower = bar1.lower
+
+            if lower > upper * 2:
+                v1 = "蜻蜓十字线"
+            elif lower == 0 or lower < solid:
+                v1 = "墓碑十字线"
+            elif lower > bar2.solid and upper > bar2.solid:
+                v1 = "长腿十字线"
+            else:
+                v1 = "十字线"
+        else:
+            v1 = "其他"
+
+        v2 = "北方" if bar2.close > bar2.open and bar2.solid > (bar2.upper + bar2.lower) * 3 else "任意"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -81,7 +91,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(jcc_three_soldiers_V221030(cat.kas['60分钟'], di=1))
+        s.update(jcc_szx_V221111(cat.kas['60分钟'], di=1))
         return s
 
     tactic = {

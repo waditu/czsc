@@ -804,3 +804,67 @@ def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
+
+
+def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+    """十字线
+
+    **信号逻辑：**
+
+    1， 十字线定义，(h -l) / (c - o) 的绝对值大于 th，或 c == o
+    2. 长腿十字线，上下影线都很长；墓碑十字线，上影线很长；蜻蜓十字线，下影线很长；
+
+    **信号列表：**
+
+    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_蜻蜓十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_墓碑十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_长腿十字线_任意_任意_0')
+    - Signal('60分钟_D1TH10_十字线_十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_墓碑十字线_北方_任意_0')
+    - Signal('60分钟_D1TH10_十字线_长腿十字线_北方_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return: 十字线识别结果
+    """
+
+    def __check_szx(bar: RawBar, th: int) -> bool:
+        if bar.close == bar.open and bar.high != bar.low:
+            return True
+
+        if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
+            return True
+        else:
+            return False
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
+    if len(c.bars_raw) < di + 10:
+        v1 = "其他"
+        v2 = "其他"
+    else:
+        bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
+        if __check_szx(bar1, th):
+            upper = bar1.upper
+            solid = bar1.solid
+            lower = bar1.lower
+
+            if lower > upper * 2:
+                v1 = "蜻蜓十字线"
+            elif lower == 0 or lower < solid:
+                v1 = "墓碑十字线"
+            elif lower > bar2.solid and upper > bar2.solid:
+                v1 = "长腿十字线"
+            else:
+                v1 = "十字线"
+        else:
+            v1 = "其他"
+
+        v2 = "北方" if bar2.close > bar2.open and bar2.solid > (bar2.upper + bar2.lower) * 3 else "任意"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
