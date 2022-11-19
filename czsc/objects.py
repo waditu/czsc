@@ -41,6 +41,21 @@ class RawBar:
     amount: [float, int] = None
     cache: dict = None    # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
 
+    @property
+    def upper(self):
+        """上影"""
+        return self.high - max(self.open, self.close)
+
+    @property
+    def lower(self):
+        """下影"""
+        return min(self.open, self.close) - self.low
+
+    @property
+    def solid(self):
+        """实体"""
+        return abs(self.open - self.close)
+
 
 @dataclass
 class NewBar:

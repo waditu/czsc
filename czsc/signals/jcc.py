@@ -482,3 +482,77 @@ def jcc_fen_shou_xian_V20221113(c: CZSC, di=1, zdf=300) -> OrderedDict:
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
+
+
+def jcc_zhu_huo_xian_V221027(c: CZSC, di=1, th=2, zf=500) -> OrderedDict:
+    """烛火线，贡献者：琅盎
+
+    **有效信号列表： **
+
+    - Signal('60分钟_D1T200F500_烛火线_满足_风中烛_任意_0')
+    - Signal('60分钟_D1T200F500_烛火线_满足_箭在弦_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param th: 可调阈值，下影线超过实体的倍数，保留两位小数
+    :param zf: 可调阈值，震荡幅度大小，单位 BP
+    :return: 烛火线识别结果
+    """
+    th = int(th * 100)
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}F{zf}_烛火线".split('_')
+    bar: RawBar = c.bars_raw[-di]
+    x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
+    zf_min = (bar.high - bar.low) / bar.low * 10000 >= zf
+
+    # 下影线大于实体的2倍，上影线小于实体的0.2倍，上影线小于下影线0.5倍，振幅大于等于5%
+    v1 = "满足" if x1 > x2 * th / 100 and x3 < 0.2 * x2 and x3 < 0.5 * x1 and zf_min else "其他"
+    v2 = "其他"
+    if len(c.bars_raw) > 20 + di:
+        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_max = max([x.high for x in left_bars])
+        left_min = min([x.low for x in left_bars])
+        gap = left_max - left_min
+
+        if bar.low <= left_min + 0.25 * gap:
+            v2 = "箭在弦"
+        elif bar.high >= left_max - 0.25 * gap:
+            v2 = "风中烛"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
+    """孕线形态
+
+    二日K线模式，分多头孕线与空头孕线，两者相反，以多头孕线为例，
+    在下跌趋势中，第一日K线长阴，第二日开盘和收盘价都在第一日价格
+    振幅之内，为阳线，预示趋势反转，股价上升
+
+    **有效信号列表：**
+
+    - Signal('60分钟_D1_孕线_看空_任意_任意_0')
+    - Signal('60分钟_D1_孕线_看多_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :return: 孕线识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}_孕线".split('_')
+    bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
+
+    v1 = "其他"
+    if bar2.solid > max(bar2.upper, bar2.lower) and bar1.solid < max(bar1.upper, bar1.lower):
+        if bar2.close > bar1.close > bar2.open and bar2.close > bar1.open > bar2.open:
+            v1 = "看空"
+
+        if bar2.close < bar1.close < bar2.open and bar2.close < bar1.open < bar2.open:
+            v1 = "看多"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
