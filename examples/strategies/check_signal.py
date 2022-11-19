@@ -19,44 +19,54 @@ from czsc.traders import CzscAdvancedTrader
 
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20) -> OrderedDict:
-    """捉腰带线
+def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
+    """白三兵，贡献者：鲁克林
 
-    **捉腰带线判别标准：**
+    **信号逻辑：**
 
-    捉腰带形态是由单独一根蜡烛线构成的。看涨捉腰带形态是一 根坚挺的白色蜡烛线，其开市价位于时段的最低点
-    （或者，这根蜡烛线只有极短的下影线），然后市场一路上扬，收市价位于或接近本时段的最高
+    1. 三根K线均收盘价 > 开盘价；且开盘价越来越高； 且收盘价越来越高；
+    2. 三根K线的开盘价都在前一根K线的实体范围之间
+    3. 倒1K上影线与倒1K实体的比值th_cal小于th
+    4. 倒1K涨幅与倒2K涨幅的比值ri_cal大于ri
 
-    **有效信号列表：**
+    **信号列表：**
 
-    - Signal('60分钟_D1L20_捉腰带线_看跌_光头阴线_任意_0')
-    - Signal('60分钟_D1L20_捉腰带线_看多_光脚阳线_任意_0')
+    - Signal('60分钟_D1T100R20_白三兵_满足_挺进_任意_0')
+    - Signal('60分钟_D1T100R20_白三兵_满足_受阻_任意_0')
+    - Signal('60分钟_D1T100R20_白三兵_满足_停顿_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :param left: 从di向左数left根K线
-    :return: 捉腰带线识别结果
+    :param di: 倒数第di跟K线 取倒数三根k线
+    :param th: 可调阈值，倒1K上影线与倒1K实体的比值，保留两位小数
+    :param ri: 可调阈值，倒1K涨幅与倒2K涨幅的比值，保留两位小数
+    :return: 白三兵识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}L{left}_捉腰带线".split('_')
-    v1, v2 = "其他", "其他"
+    # th = 倒1K上涨阻力； ri = 倒1K相对涨幅；
+    th = int(th * 100)
+    ri = int(ri * 100)
 
-    bar: RawBar = c.bars_raw[-di]
-    # x1 - 上影线大小；x2 - 实体大小；x3 - 下影线大小
-    x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}R{ri}_白三兵".split('_')
 
-    if len(c.bars_raw) > left + di:
-        left_bars: List[RawBar] = c.bars_raw[-left - di:-di]
-        left_max = max([x.high for x in left_bars])
-        left_min = min([x.low for x in left_bars])
+    # 先后顺序 bar3 <-- bar2 <-- bar1
+    bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
 
-        if bar.low < left_min:
-            if bar.close > bar.open and x3 == 0:
-                v1 = "看多"
-                v2 = "光脚阳线"
-        elif bar.high > left_max:
-            if bar.close < bar.open and x1 == 0:
-                v1 = "看跌"
-                v2 = "光头阴线"
+    if bar3.open < bar3.close and bar2.open < bar2.close \
+            and bar1.close > bar1.open > bar2.open > bar3.open \
+            and bar1.close > bar2.close > bar3.close:
+        v1 = "满足"
+        th_cal = (bar1.high - bar1.close) / (bar1.close - bar1.open) * 100
+        ri_cal = (bar1.close - bar2.close) / (bar2.close - bar3.close) * 100
+
+        if ri_cal > ri:
+            if th_cal < th:
+                v2 = "挺进"
+            else:
+                v2 = "受阻"
+        else:
+            v2 = "停顿"
+    else:
+        v1 = "其他"
+        v2 = "其他"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -71,7 +81,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(jcc_zhuo_yao_dai_xian_v221113(cat.kas['60分钟'], di=1))
+        s.update(jcc_three_soldiers_V221030(cat.kas['60分钟'], di=1))
         return s
 
     tactic = {
