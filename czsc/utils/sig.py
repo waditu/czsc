@@ -173,12 +173,12 @@ def same_dir_counts(seq: [List, np.array]):
 
 
 def get_sub_elements(elements: List[Any], di: int = 1, n: int = 10) -> List[Any]:
-    """获取部分元素
+    """获取截止到倒数第 di 个元素的前 n 个元素
 
     :param elements: 全部元素列表
     :param di: 指定结束元素为倒数第 di 个
     :param n: 指定需要的元素个数
-    :return:
+    :return: 部分元素列表
 
     >>>x = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     >>>y1 = get_sub_elements(x, di=1, n=3)

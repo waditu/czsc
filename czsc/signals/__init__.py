@@ -48,7 +48,21 @@ from czsc.signals.bar import (
 from czsc.signals.jcc import (
     jcc_san_xing_xian_V221023,
     jcc_ten_mo_V221028,
-    jcc_bai_san_bing_V221030,
+    jcc_bai_san_bin_V221030,
+    jcc_san_fa_20221115,
+    jcc_san_fa_20221118,
+    jcc_wu_yun_gai_ding_V221101,
+    jcc_ci_tou_V221101,
+    jcc_xing_xian_v221118,
+    jcc_fen_shou_xian_V20221113,
+    jcc_yun_xian_V221118,
+    jcc_zhu_huo_xian_V221027,
+    jcc_ping_tou_v221113,
+    jcc_zhuo_yao_dai_xian_v221113,
+    jcc_two_crow_V221108,
+    jcc_three_crow_V221108,
+    jcc_three_soldiers_V221030,
+    jcc_szx_V221111,
 )
 
 

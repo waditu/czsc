@@ -9,9 +9,9 @@ https://click.palletsprojects.com/en/8.0.x/quickstart/
 """
 import os
 import click
+import glob
 import pandas as pd
 from loguru import logger
-from czsc.utils import get_py_namespace
 
 
 @click.group()
@@ -34,6 +34,7 @@ def backtest(file_strategy):
     """使用 TradeSimulator 进行择时策略回测/仿真研究"""
     from collections import Counter
     from czsc.traders.ts_simulator import TradeSimulator
+    from czsc.utils import get_py_namespace
 
     py = get_py_namespace(file_strategy)
     results_path = os.path.join(py['results_path'], "backtest")
@@ -54,20 +55,25 @@ def backtest(file_strategy):
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def dummy(file_strategy):
     """使用 CzscDummyTrader 进行快速的择时策略研究"""
-
+    import shutil
+    from datetime import datetime
     from czsc.traders.advanced import CzscDummyTrader
     from czsc.sensors.utils import generate_symbol_signals
+    from czsc.utils import get_py_namespace, dill_dump, dill_load
 
     py = get_py_namespace(file_strategy)
-    results_path = os.path.join(py['results_path'], "dummy")
+    signals_path = os.path.join(py['results_path'], "signals")
+    results_path = os.path.join(py['results_path'], f"DEXP{datetime.now().strftime('%Y%m%d%H%M')}")
+    os.makedirs(signals_path, exist_ok=True)
     os.makedirs(results_path, exist_ok=True)
+    shutil.copy(file_strategy, os.path.join(results_path, 'strategy.py'))
 
     strategy = py['trader_strategy']
     dc = py['dc']
     symbols = py['symbols']
 
     for symbol in symbols:
-        file_dfs = os.path.join(results_path, f"{symbol}_signals.pkl")
+        file_dfs = os.path.join(signals_path, f"{symbol}_signals.pkl")
 
         try:
             # 可以直接生成信号，也可以直接读取信号
@@ -79,10 +85,27 @@ def dummy(file_strategy):
                 dfs.to_pickle(file_dfs)
 
             cdt = CzscDummyTrader(dfs, strategy)
-            logger.info(f"{cdt.results['long_performance']}")
+            dill_dump(cdt, os.path.join(results_path, f"{symbol}.cdt"))
 
+            res = cdt.results
+            if "long_performance" in res.keys():
+                logger.info(f"{res['long_performance']}")
+
+            if "short_performance" in res.keys():
+                logger.info(f"{res['short_performance']}")
         except:
             logger.exception(f"fail on {symbol}")
+
+    # 汇总结果
+    tactic = strategy('symbol')
+    files = glob.glob(f"{results_path}/*.cdt")
+    if tactic.get("long_pos", None):
+        lpf = pd.DataFrame([dill_load(file).results['long_performance'] for file in files])
+        lpf.to_excel(os.path.join(results_path, f'{strategy.__doc__}多头回测结果.xlsx'), index=False)
+
+    if tactic.get("short_pos", None):
+        spf = pd.DataFrame([dill_load(file).results['short_performance'] for file in files])
+        spf.to_excel(os.path.join(results_path, f'{strategy.__doc__}空头回测结果.xlsx'), index=False)
 
 
 @czsc.command()
@@ -92,6 +115,7 @@ def replay(file_strategy):
     from czsc.data import freq_cn2ts
     from czsc.utils import BarGenerator
     from czsc.traders.utils import trade_replay
+    from czsc.utils import get_py_namespace
 
     py = get_py_namespace(file_strategy)
     strategy = py['trader_strategy']
@@ -133,6 +157,7 @@ def check(file_strategy, delta_days):
     """执行择时策略中使用的信号在某个品种上的校验"""
     from czsc.data import freq_cn2ts
     from czsc.sensors.utils import check_signals_acc
+    from czsc.utils import get_py_namespace
 
     py = get_py_namespace(file_strategy)
     strategy = py['trader_strategy']
@@ -150,6 +175,6 @@ def check(file_strategy, delta_days):
     sdt = check_params.get('sdt', '20200101')
     edt = check_params.get('edt', '20220101')
     bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq_cn2ts[base_freq], asset, adj="hfq")
-    logger.info(f"信号检查参数 | {symbol} - sdt:{sdt} - edt: {edt}")
+    logger.info(f"信号检查参数 | {symbol} - sdt: {sdt} - edt: {edt}")
 
     check_signals_acc(bars, strategy=strategy, delta_days=delta_days)

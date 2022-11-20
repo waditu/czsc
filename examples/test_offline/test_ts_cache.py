@@ -19,19 +19,19 @@ data_path = r"C:\ts_data_czsc"
 def test_ts_cache_ths_daily():
     dc = TsDataCache(data_path=data_path, sdt='20200101')
     df = dc.ths_daily('885573.TI', start_date="20200101", end_date="20220517", raw_bar=False)
-    assert df.shape[0] == 571 and df.shape[1] == 34
+    assert df.shape[0] == 572 and df.shape[1] == 34
     df = dc.ths_daily('885573.TI', start_date="20200101", end_date="20220420", raw_bar=False)
     assert df.shape[0] == 556 and df.shape[1] == 34
 
     # 测试被动刷新数据
     dc = TsDataCache(data_path=data_path, sdt='20210101')
     df = dc.ths_daily('885573.TI', start_date="20210101", end_date="20220517", raw_bar=False)
-    assert df.shape[0] == 328 and df.shape[1] == 34
+    assert df.shape[0] == 329 and df.shape[1] == 34
 
     # 测试主动刷新数据
     dc = TsDataCache(data_path=data_path, refresh=True, sdt='20210101')
     df = dc.ths_daily('885573.TI', start_date="20210101", end_date="20220517", raw_bar=False)
-    assert df.shape[0] == 328 and df.shape[1] == 34
+    assert df.shape[0] == 329 and df.shape[1] == 34
 
 
 def test_ts_cache_daily_basic_new():

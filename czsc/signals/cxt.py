@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/11/7 19:29
-describe: 
+describe:  cxt 代表 CZSC 形态信号
 """
 from czsc import CZSC, Signal
 from czsc.objects import FX
@@ -13,7 +13,8 @@ from collections import OrderedDict
 def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     """倒数第di个分型的强弱
 
-    信号列表：
+    **信号列表：**
+
     - Signal('15分钟_D1F_分型强弱_中顶_有中枢_任意_0')
     - Signal('15分钟_D1F_分型强弱_弱底_有中枢_任意_0')
     - Signal('15分钟_D1F_分型强弱_强顶_有中枢_任意_0')

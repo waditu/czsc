@@ -11,7 +11,7 @@ from . import fei_shu
 from .echarts_plot import kline_pro, heat_map
 from .log import create_logger
 from .word_writer import WordWriter
-from .corr import nmi_matrix
+from .corr import nmi_matrix, single_linear
 from .bar_generator import BarGenerator, freq_end_time
 from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements

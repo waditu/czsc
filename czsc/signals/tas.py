@@ -187,6 +187,49 @@ def tas_macd_direct_V221106(c: CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
+    """MACD强弱
+
+    **信号逻辑：**
+
+    1. 指标超强满足条件：DIF＞DEA＞0；释义：指标超强表示市场价格处于中长期多头趋势中，可能形成凌厉的逼空行情
+    2. 指标强势满足条件：DIF-DEA＞0（MACD柱线＞0）释义：指标强势表示市场价格处于中短期多头趋势中，价格涨多跌少，通常是反弹行情
+    3. 指标弱势满足条件：DIF-DEA＜0（MACD柱线＜0）释义：指标弱势表示市场价格处于中短期空头趋势中，价格跌多涨少，通常是回调行情
+    4. 指标超弱满足条件：DIF＜DEA＜0释义：指标超弱表示市场价格处于中长期空头趋势中，可能形成杀多行情
+
+    **信号列表：**
+
+    - Signal('60分钟_D1K_MACD强弱_超强_任意_任意_0')
+    - Signal('60分钟_D1K_MACD强弱_弱势_任意_任意_0')
+    - Signal('60分钟_D1K_MACD强弱_超弱_任意_任意_0')
+    - Signal('60分钟_D1K_MACD强弱_强势_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号产生在倒数第di根K线
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD强弱".split("_")
+
+    v1 = "其他"
+    if len(c.bars_raw) > di + 10:
+        bar = c.bars_raw[-di]
+        dif, dea = bar.cache['MACD']['dif'], bar.cache['MACD']['dea']
+
+        if dif >= dea >= 0:
+            v1 = "超强"
+        elif dif - dea > 0:
+            v1 = "强势"
+        elif dif <= dea <= 0:
+            v1 = "超弱"
+        elif dif - dea < 0:
+            v1 = "弱势"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
 def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55) -> OrderedDict:
     """MACD颜色变化；贡献者：马鸣
 
@@ -340,5 +383,47 @@ def tas_boll_power_V221112(c: CZSC, di: int = 1):
     return s
 
 
+def tas_boll_bc_V221118(c: CZSC, di=1, n=3, m=10, line=3):
+    """BOLL背驰辅助
 
+    **信号逻辑：**
+
+    近n个最低价创近m个周期新低，近m个周期跌破下轨，近n个周期不破下轨，这是BOLL一买（底部背驰）信号，顶部背驰反之。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1N3M10L2_BOLL背驰_一卖_任意_任意_0')
+    - Signal('60分钟_D1N3M10L2_BOLL背驰_一买_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第di根K线
+    :param n: 近n个周期
+    :param m: 近m个周期
+    :param line: 选第几个上下轨
+    :return:
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}L{line}_BOLL背驰".split('_')
+
+    bn = get_sub_elements(c.bars_raw, di=di, n=n)
+    bm = get_sub_elements(c.bars_raw, di=di, n=m)
+
+    d_c1 = min([x.low for x in bn]) <= min([x.low for x in bm])
+    d_c2 = sum([x.close < x.cache['boll'][f'下轨{line}'] for x in bm]) > 1
+    d_c3 = sum([x.close < x.cache['boll'][f'下轨{line}'] for x in bn]) == 0
+
+    g_c1 = max([x.high for x in bn]) == max([x.high for x in bm])
+    g_c2 = sum([x.close > x.cache['boll'][f'上轨{line}'] for x in bm]) > 1
+    g_c3 = sum([x.close > x.cache['boll'][f'上轨{line}'] for x in bn]) == 0
+
+    if d_c1 and d_c2 and d_c3:
+        v1 = "一买"
+    elif g_c1 and g_c2 and g_c3:
+        v1 = "一卖"
+    else:
+        v1 = "其他"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
 

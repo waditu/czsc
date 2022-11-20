@@ -6,8 +6,10 @@ create_dt: 2022/11/11 20:18
 describe: bar 作为前缀，代表信号属于基础 K 线信号
 """
 from datetime import datetime
+from typing import List
 from collections import OrderedDict
 from czsc import CZSC, Signal, CzscAdvancedTrader
+from czsc.objects import RawBar
 from czsc.utils import check_pressure_support, get_sub_elements
 
 
@@ -293,3 +295,90 @@ def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 10
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
     s[signal.key] = signal.value
     return s
+
+
+def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDict:
+    """辨别加速走势
+
+    **信号逻辑：**
+
+    - 上涨加速：窗口内最后一根K线的收盘在窗口区间的80%以上；且窗口内阳线数量占比超过80%
+    - 下跌加速：窗口内最后一根K线的收盘在窗口区间的20%以下；且窗口内阴线数量占比超过80%
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W13_加速_上涨_任意_任意_0')
+    - Signal('60分钟_D1W13_加速_下跌_任意_任意_0')
+
+    :param c:
+    :param di: 取近n根K线为截止
+    :param window: 识别加速走势的窗口大小
+    :return:
+    """
+    k1, k2, k3 = str(c.freq.value), f"D{di}W{window}", "加速"
+
+    v1 = "其他"
+    if len(c.bars_raw) > di + window + 10:
+        bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=window)
+        hhv = max([x.high for x in bars])
+        llv = min([x.low for x in bars])
+
+        c1 = bars[-1].close > llv + (hhv - llv) * 0.8
+        c2 = bars[-1].close < llv + (hhv - llv) * 0.2
+
+        red_pct = sum([1 if x.close > x.open else 0 for x in bars]) / len(bars) >= 0.8
+        green_pct = sum([1 if x.close < x.open else 0 for x in bars]) / len(bars) >= 0.8
+
+        if c1 and red_pct:
+            v1 = "上涨"
+
+        if c2 and green_pct:
+            v1 = "下跌"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') -> OrderedDict:
+    """辨别加速走势
+
+    **信号逻辑：**
+
+    上涨加速指窗口内K线收盘价全部大于 ma1，且 close 与 ma1 的距离不断正向放大；反之为下跌加速。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W13_SMA10加速_上涨_任意_任意_0')
+    - Signal('60分钟_D1W13_SMA10加速_下跌_任意_任意_0')
+
+    **注意事项：**
+
+    此信号函数必须与 `czsc.signals.update_ma_cache` 结合使用，需要该函数更新MA缓存
+
+    :param c: CZSC对象
+    :param di: 取近n根K线为截止
+    :param ma1: 快线
+    :param window: 识别加速走势的窗口大小
+    :return: 信号识别结果
+    """
+    assert window > 3, "辨别加速，至少需要3根以上K线"
+    s = OrderedDict()
+    k1, k2, k3 = c.freq.value, f"D{di}W{window}", f"{ma1}加速"
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=window)
+    delta = [x.close - x.cache[ma1] for x in bars]
+
+    if all(x > 0 for x in delta) and delta[-1] > delta[-2] > delta[-3]:
+        v1 = "上涨"
+    elif all(x < 0 for x in delta) and delta[-1] < delta[-2] < delta[-3]:
+        v1 = "下跌"
+    else:
+        v1 = "其他"
+
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
