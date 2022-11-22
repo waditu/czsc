@@ -20,46 +20,54 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
-    """MACD强弱
+def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedDict:
+    """更精确地倒数第1根K线的涨跌停计算
 
-    **信号逻辑：**
-
-    1. 指标超强满足条件：DIF＞DEA＞0；释义：指标超强表示市场价格处于中长期多头趋势中，可能形成凌厉的逼空行情
-    2. 指标强势满足条件：DIF-DEA＞0（MACD柱线＞0）释义：指标强势表示市场价格处于中短期多头趋势中，价格涨多跌少，通常是反弹行情
-    3. 指标弱势满足条件：DIF-DEA＜0（MACD柱线＜0）释义：指标弱势表示市场价格处于中短期空头趋势中，价格跌多涨少，通常是回调行情
-    4. 指标超弱满足条件：DIF＜DEA＜0释义：指标超弱表示市场价格处于中长期空头趋势中，可能形成杀多行情
+    **信号逻辑：** close等于high，且相比昨天收盘价涨幅大于9%，就是涨停；反之，跌停。
 
     **信号列表：**
 
-    - Signal('60分钟_D1K_MACD强弱_超强_任意_任意_0')
-    - Signal('60分钟_D1K_MACD强弱_弱势_任意_任意_0')
-    - Signal('60分钟_D1K_MACD强弱_超弱_任意_任意_0')
-    - Signal('60分钟_D1K_MACD强弱_强势_任意_任意_0')
+    - Signal('15分钟_D2K_涨跌停_跌停_任意_任意_0')
+    - Signal('15分钟_D2K_涨跌停_涨停_任意_任意_0')
 
-    :param c: CZSC对象
-    :param di: 信号产生在倒数第di根K线
-    :return: 信号识别结果
+    :param cat: CzscAdvancedTrader
+    :param freq: K线周期
+    :param di: 计算截止倒数第 di 根 K 线
+    :return: s
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD强弱".split("_")
+    cache_key = f"{freq}_D{di}K_ZDT"
+    zdt_cache = cat.cache.get(cache_key, {})
+    bars = get_sub_elements(cat.kas[freq].bars_raw, di=di, n=300)
+    last_bar = bars[-1]
+    today = last_bar.dt.date()
 
-    v1 = "其他"
-    if len(c.bars_raw) > di + 10:
-        bar = c.bars_raw[-di]
-        dif, dea = bar.cache['MACD']['dif'], bar.cache['MACD']['dea']
+    if not zdt_cache:
+        yesterday_last = [x for x in bars if x.dt.date() != today][-1]
+        zdt_cache['昨日'] = yesterday_last.dt.date()
+        zdt_cache['昨收'] = yesterday_last.close
 
-        if dif >= dea >= 0:
-            v1 = "超强"
-        elif dif - dea > 0:
-            v1 = "强势"
-        elif dif <= dea <= 0:
-            v1 = "超弱"
-        elif dif - dea < 0:
-            v1 = "弱势"
+    else:
+        if today != zdt_cache['今日']:
+            # 新的一天，全部刷新
+            zdt_cache['昨日'] = zdt_cache['今日']
+            zdt_cache['昨收'] = zdt_cache['今收']
+
+    zdt_cache['今日'] = last_bar.dt.date()
+    zdt_cache['今收'] = last_bar.close
+    zdt_cache['update_dt'] = last_bar.dt
+    cat.cache[cache_key] = zdt_cache
+
+    k1, k2, k3 = freq, f"D{di}K", "涨跌停"
+    if last_bar.close == last_bar.high > zdt_cache['昨收'] * 1.09:
+        v1 = "涨停"
+    elif last_bar.close == last_bar.low < zdt_cache['昨收'] * 0.91:
+        v1 = "跌停"
+    else:
+        v1 = "其他"
 
     s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
+    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[v.key] = v.value
     return s
 
 
@@ -71,7 +79,10 @@ def trader_strategy(symbol):
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         signals.update_macd_cache(cat.kas['60分钟'])
-        s.update(tas_macd_power_V221108(cat.kas['60分钟'], di=1))
+        # logger.info('\n\n')
+        s.update(bar_zdt_V221111(cat, '日线', di=1))
+        s.update(bar_zdt_V221111(cat, '日线', di=2))
+        s.update(bar_zdt_V221111(cat, '日线', di=3))
         return s
 
     tactic = {

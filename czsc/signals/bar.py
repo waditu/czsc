@@ -104,7 +104,8 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
     :param di: 计算截止倒数第 di 根 K 线
     :return: s
     """
-    zdt_cache = cat.cache.get('zdt_cache', {})
+    cache_key = f"{freq}_D{di}K_ZDT"
+    zdt_cache = cat.cache.get(cache_key, {})
     bars = get_sub_elements(cat.kas[freq].bars_raw, di=di, n=300)
     last_bar = bars[-1]
     today = last_bar.dt.date()
@@ -123,7 +124,7 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
     zdt_cache['今日'] = last_bar.dt.date()
     zdt_cache['今收'] = last_bar.close
     zdt_cache['update_dt'] = last_bar.dt
-    cat.cache['zdt_cache'] = zdt_cache
+    cat.cache[cache_key] = zdt_cache
 
     k1, k2, k3 = freq, f"D{di}K", "涨跌停"
     if last_bar.close == last_bar.high > zdt_cache['昨收'] * 1.09:
