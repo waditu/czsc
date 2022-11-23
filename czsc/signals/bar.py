@@ -92,7 +92,9 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
 def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedDict:
     """更精确地倒数第1根K线的涨跌停计算
 
-    **信号逻辑：** close等于high，且相比昨天收盘价涨幅大于9%，就是涨停；反之，跌停。
+    **信号逻辑：**
+
+    close等于high，且相比昨天收盘价涨幅大于9%，就是涨停；反之，跌停。
 
     **信号列表：**
 
