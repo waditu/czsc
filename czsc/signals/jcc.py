@@ -1053,3 +1053,65 @@ def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
+def jcc_ta_xing_221124(c: CZSC, di: int = 1) -> OrderedDict:
+    """塔形顶底
+
+    **信号逻辑：**
+
+    1. 首尾两根K线的实体最大
+    2. 首k上涨，尾K下跌，且中间高点相近，且低点大于首尾低点的较大者，塔形顶部；反之，底部。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1K_塔形_顶部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_9K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_9K_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :return: 识别结果
+    """
+    def __check_ta_xing(bars: List[RawBar]):
+        if len(bars) < 5:
+            return "其他"
+
+        rb, lb = bars[0], bars[-1]
+        sorted_solid = sorted([x.solid for x in bars])
+        if min(rb.solid, lb.solid) >= sorted_solid[-2]:
+
+            g_c1 = rb.close > rb.open and lb.close < lb.open
+            g_c2 = np.var([x.high for x in bars[1: -1]]) < 0.5
+            g_c3 = all(x.low > max(rb.open, lb.close) for x in bars[1: -1])
+            if g_c1 and g_c2 and g_c3:
+                return "顶部"
+
+            d_c1 = rb.close < rb.open and lb.close > lb.open
+            d_c2 = np.var([x.low for x in bars[1: -1]]) < 0.5
+            d_c3 = all(x.high < min(rb.open, lb.close) for x in bars[1: -1])
+            if d_c1 and d_c2 and d_c3:
+                return "底部"
+
+        return "其他"
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_塔形".split("_")
+
+    for n in (5, 6, 7, 8, 9):
+        _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+        v1 = __check_ta_xing(_bars)
+        if v1 != "其他":
+            v2 = f"{n}K"
+            break
+        else:
+            v2 = "其他"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s

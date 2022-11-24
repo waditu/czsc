@@ -21,47 +21,66 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def check_szx(bar: RawBar, th: int = 10) -> bool:
-    """判断十字线
-
-    :param bar:
-    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
-    :return:
-    """
-    if bar.close == bar.open and bar.high != bar.low:
-        return True
-
-    if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
-        return True
-    else:
-        return False
-
-
-def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
-    """三星形态
+def jcc_ta_xing_221124(c: CZSC, di: int = 1) -> OrderedDict:
+    """塔形顶底
 
     **信号逻辑：**
 
-    1. 最近五根K线中出现三个十字星
+    1. 首尾两根K线的实体最大
+    2. 首k上涨，尾K下跌，且中间高点相近，且低点大于首尾低点的较大者，塔形顶部；反之，底部。
 
     **信号列表：**
 
-    - Signal('15分钟_D1T10_三星_满足_任意_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_9K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_9K_任意_0')
 
     :param c: CZSC 对象
     :param di: 倒数第di跟K线
-    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
     :return: 识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_三星".split("_")
-    v1 = "其他"
-    if len(c.bars_raw) > 6 + di:
-        bars = get_sub_elements(c.bars_raw, di, n=5)
-        if sum([check_szx(bar, th) for bar in bars]) >= 3:
-            v1 = "满足"
+    def __check_ta_xing(bars: List[RawBar]):
+        if len(bars) < 5:
+            return "其他"
+
+        rb, lb = bars[0], bars[-1]
+        sorted_solid = sorted([x.solid for x in bars])
+        if min(rb.solid, lb.solid) >= sorted_solid[-2]:
+
+            g_c1 = rb.close > rb.open and lb.close < lb.open
+            g_c2 = np.var([x.high for x in bars[1: -1]]) < 0.5
+            g_c3 = all(x.low > max(rb.open, lb.close) for x in bars[1: -1])
+            if g_c1 and g_c2 and g_c3:
+                return "顶部"
+
+            d_c1 = rb.close < rb.open and lb.close > lb.open
+            d_c2 = np.var([x.low for x in bars[1: -1]]) < 0.5
+            d_c3 = all(x.high < min(rb.open, lb.close) for x in bars[1: -1])
+            if d_c1 and d_c2 and d_c3:
+                return "底部"
+
+        return "其他"
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_塔形".split("_")
+
+    for n in (5, 6, 7, 8, 9):
+        _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+        v1 = __check_ta_xing(_bars)
+        if v1 != "其他":
+            v2 = f"{n}K"
+            break
+        else:
+            v2 = "其他"
 
     s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
 
@@ -75,7 +94,7 @@ def trader_strategy(symbol):
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         # signals.update_macd_cache(cat.kas['60分钟'])
         # logger.info('\n\n')
-        s.update(jcc_san_szx_V221122(cat.kas['15分钟'], di=1))
+        s.update(jcc_ta_xing_221124(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {
