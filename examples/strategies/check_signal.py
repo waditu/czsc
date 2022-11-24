@@ -6,13 +6,14 @@ create_dt: 2022/10/31 22:27
 describe: 专用于信号检查的策略
 """
 import talib as ta
+import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from typing import List
 from loguru import logger
-from czsc import CZSC, signals, RawBar
+from czsc import CZSC, signals, RawBar, Direction
 from czsc.data import TsDataCache, get_symbols
-from czsc.utils import get_sub_elements
+from czsc.utils import get_sub_elements, single_linear
 from czsc.objects import Freq, Operate, Signal, Factor, Event
 from czsc.traders import CzscAdvancedTrader
 
@@ -20,54 +21,47 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedDict:
-    """更精确地倒数第1根K线的涨跌停计算
+def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
+    """跳空与并列阴阳形态 贡献者：平凡
 
-    **信号逻辑：** close等于high，且相比昨天收盘价涨幅大于9%，就是涨停；反之，跌停。
+    **向上跳空并列阴阳（向下反之）：**
 
-    **信号列表：**
+    1. 其中一根白色蜡烛线和一根黑色蜡烛线共同形成了一个向上的窗口。
+    2. 这根黑色蜡烛线的开市价位于前一个白色实体之内，收市价位于前一个白色实体之下。
+    3. 在这样的情况下，这根黑色蜡烛线的收市价，需要在窗口之上。
+    4. 黑白两根K线的实体相差不大
 
-    - Signal('15分钟_D2K_涨跌停_跌停_任意_任意_0')
-    - Signal('15分钟_D2K_涨跌停_涨停_任意_任意_0')
+    **有效信号列表：**
 
-    :param cat: CzscAdvancedTrader
-    :param freq: K线周期
-    :param di: 计算截止倒数第 di 根 K 线
-    :return: s
+    - Signal('15分钟_D1K_并列阴阳_向上跳空_任意_任意_0')
+    - Signal('15分钟_D1K_并列阴阳_向下跳空_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :return: 捉腰带线识别结果
     """
-    cache_key = f"{freq}_D{di}K_ZDT"
-    zdt_cache = cat.cache.get(cache_key, {})
-    bars = get_sub_elements(cat.kas[freq].bars_raw, di=di, n=300)
-    last_bar = bars[-1]
-    today = last_bar.dt.date()
 
-    if not zdt_cache:
-        yesterday_last = [x for x in bars if x.dt.date() != today][-1]
-        zdt_cache['昨日'] = yesterday_last.dt.date()
-        zdt_cache['昨收'] = yesterday_last.close
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_并列阴阳".split('_')
 
-    else:
-        if today != zdt_cache['今日']:
-            # 新的一天，全部刷新
-            zdt_cache['昨日'] = zdt_cache['今日']
-            zdt_cache['昨收'] = zdt_cache['今收']
+    v1 = "其他"
+    if len(c.bars_raw) > di + 5:
+        bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
 
-    zdt_cache['今日'] = last_bar.dt.date()
-    zdt_cache['今收'] = last_bar.close
-    zdt_cache['update_dt'] = last_bar.dt
-    cat.cache[cache_key] = zdt_cache
+        if min(bar1.low, bar2.low) > bar3.high \
+                and bar2.close > bar2.open \
+                and bar1.close < bar1.open \
+                and np.var((bar1.solid, bar2.solid)) < 0.2:
+            v1 = "向上跳空"
 
-    k1, k2, k3 = freq, f"D{di}K", "涨跌停"
-    if last_bar.close == last_bar.high > zdt_cache['昨收'] * 1.09:
-        v1 = "涨停"
-    elif last_bar.close == last_bar.low < zdt_cache['昨收'] * 0.91:
-        v1 = "跌停"
-    else:
-        v1 = "其他"
+        elif max(bar1.high, bar2.high) < bar3.low \
+                and bar2.close < bar2.open \
+                and bar1.close > bar1.open \
+                and np.var((bar1.solid, bar2.solid)) < 0.2:
+            v1 = "向下跳空"
 
     s = OrderedDict()
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
     return s
 
 
@@ -78,11 +72,9 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_macd_cache(cat.kas['60分钟'])
+        # signals.update_macd_cache(cat.kas['60分钟'])
         # logger.info('\n\n')
-        s.update(bar_zdt_V221111(cat, '日线', di=1))
-        s.update(bar_zdt_V221111(cat, '日线', di=2))
-        s.update(bar_zdt_V221111(cat, '日线', di=3))
+        s.update(jcc_gap_yin_yang_V221121(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {
