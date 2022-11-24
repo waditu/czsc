@@ -21,43 +21,44 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
-def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
-    """跳空与并列阴阳形态 贡献者：平凡
+def check_szx(bar: RawBar, th: int = 10) -> bool:
+    """判断十字线
 
-    **向上跳空并列阴阳（向下反之）：**
+    :param bar:
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return:
+    """
+    if bar.close == bar.open and bar.high != bar.low:
+        return True
 
-    1. 其中一根白色蜡烛线和一根黑色蜡烛线共同形成了一个向上的窗口。
-    2. 这根黑色蜡烛线的开市价位于前一个白色实体之内，收市价位于前一个白色实体之下。
-    3. 在这样的情况下，这根黑色蜡烛线的收市价，需要在窗口之上。
-    4. 黑白两根K线的实体相差不大
+    if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
+        return True
+    else:
+        return False
 
-    **有效信号列表：**
 
-    - Signal('15分钟_D1K_并列阴阳_向上跳空_任意_任意_0')
-    - Signal('15分钟_D1K_并列阴阳_向下跳空_任意_任意_0')
+def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+    """三星形态
+
+    **信号逻辑：**
+
+    1. 最近五根K线中出现三个十字星
+
+    **信号列表：**
+
+    - Signal('15分钟_D1T10_三星_满足_任意_任意_0')
 
     :param c: CZSC 对象
     :param di: 倒数第di跟K线
-    :return: 捉腰带线识别结果
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return: 识别结果
     """
-
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_并列阴阳".split('_')
-
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_三星".split("_")
     v1 = "其他"
-    if len(c.bars_raw) > di + 5:
-        bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
-
-        if min(bar1.low, bar2.low) > bar3.high \
-                and bar2.close > bar2.open \
-                and bar1.close < bar1.open \
-                and np.var((bar1.solid, bar2.solid)) < 0.2:
-            v1 = "向上跳空"
-
-        elif max(bar1.high, bar2.high) < bar3.low \
-                and bar2.close < bar2.open \
-                and bar1.close > bar1.open \
-                and np.var((bar1.solid, bar2.solid)) < 0.2:
-            v1 = "向下跳空"
+    if len(c.bars_raw) > 6 + di:
+        bars = get_sub_elements(c.bars_raw, di, n=5)
+        if sum([check_szx(bar, th) for bar in bars]) >= 3:
+            v1 = "满足"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -74,7 +75,7 @@ def trader_strategy(symbol):
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         # signals.update_macd_cache(cat.kas['60分钟'])
         # logger.info('\n\n')
-        s.update(jcc_gap_yin_yang_V221121(cat.kas['15分钟'], di=1))
+        s.update(jcc_san_szx_V221122(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {

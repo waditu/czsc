@@ -807,6 +807,22 @@ def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
     return s
 
 
+def check_szx(bar: RawBar, th: int = 10) -> bool:
+    """判断十字线
+
+    :param bar:
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return:
+    """
+    if bar.close == bar.open and bar.high != bar.low:
+        return True
+
+    if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
+        return True
+    else:
+        return False
+
+
 def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     """十字线
 
@@ -831,23 +847,13 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
     :return: 十字线识别结果
     """
-
-    def __check_szx(bar: RawBar, th: int) -> bool:
-        if bar.close == bar.open and bar.high != bar.low:
-            return True
-
-        if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
-            return True
-        else:
-            return False
-
     k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
     if len(c.bars_raw) < di + 10:
         v1 = "其他"
         v2 = "其他"
     else:
         bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
-        if __check_szx(bar1, th):
+        if check_szx(bar1, th):
             upper = bar1.upper
             solid = bar1.solid
             lower = bar1.lower
@@ -867,6 +873,35 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+    """三星形态
+
+    **信号逻辑：**
+
+    1. 最近五根K线中出现三个十字星
+
+    **信号列表：**
+
+    - Signal('15分钟_D1T10_三星_满足_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return: 识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_三星".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) > 6 + di:
+        bars = get_sub_elements(c.bars_raw, di, n=5)
+        if sum([check_szx(bar, th) for bar in bars]) >= 3:
+            v1 = "满足"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
 
