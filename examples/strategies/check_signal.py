@@ -22,46 +22,52 @@ from czsc.traders import CzscAdvancedTrader
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
-    """单级别一买信号
+def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
+    """一卖信号
 
     **信号列表：**
 
-    - Signal('15分钟_D1B_BUY1_一买_5笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_11笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_7笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_21笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_17笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_19笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_9笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_15笔_任意_0')
-    - Signal('15分钟_D1B_BUY1_一买_13笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_17笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_15笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_5笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_7笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_9笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_19笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_21笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_13笔_任意_0')
+    - Signal('15分钟_D1B_SELL1_一卖_11笔_任意_0')
 
     :param c: CZSC 对象
     :param di: CZSC 对象
     :return: 信号字典
     """
 
-    def __check_first_buy(bis: List[BI]):
-        """检查 bis 是否是一买的结束
+    def __check_first_sell(bis: List[BI]):
+        """检查 bis 是否是一卖的结束
 
         :param bis: 笔序列，按时间升序
         """
-        res = {"match": False, "v1": "一买", "v2": f"{len(bis)}笔", 'v3': "任意"}
-        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
+        res = {"match": False, "v1": "一卖", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Down:
             return res
 
-        if max([x.high for x in bis]) != bis[0].high or min([x.low for x in bis]) != bis[-1].low:
+        if bis[0].direction != bis[-1].direction:
             return res
 
-        # 检查背驰：获取向下突破的笔列表
+        max_high = max([x.high for x in bis])
+        min_low = min([x.low for x in bis])
+
+        if max_high != bis[-1].high or min_low != bis[0].low:
+            return res
+
+        # 检查背驰：获取向上突破的笔列表
         key_bis = []
         for i in range(0, len(bis) - 2, 2):
             if i == 0:
                 key_bis.append(bis[i])
             else:
                 b1, _, b3 = bis[i - 2:i + 1]
-                if b3.low < b1.low:
+                if b3.high > b1.high:
                     key_bis.append(b3)
 
         # 检查背驰：最后一笔的 power_price，power_volume，length 同时满足背驰条件才算背驰
@@ -73,16 +79,16 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
             res['match'] = True
         return res
 
-    k1, k2, k3 = c.freq.value, f"D{di}B", "BUY1"
+    k1, k2, k3 = c.freq.value, f"D{di}B", "SELL1"
     v1, v2, v3 = "其他", '任意', '任意'
 
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
-            logger.warning('笔的数量不对')
+            logger.warning('笔的数量不对，跳过')
             continue
 
-        _res = __check_first_buy(_bis)
+        _res = __check_first_sell(_bis)
         if _res['match']:
             v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
             break
@@ -102,7 +108,7 @@ def trader_strategy(symbol):
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         # signals.update_macd_cache(cat.kas['60分钟'])
         # logger.info('\n\n')
-        s.update(cxt_first_buy_V221126(cat.kas['15分钟'], di=1))
+        s.update(cxt_first_sell_V221126(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {
