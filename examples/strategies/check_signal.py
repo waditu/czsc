@@ -22,45 +22,26 @@ from czsc.traders import CzscAdvancedTrader
 # ----------------------------------------------------------------------------------------------------------------------
 
 
-def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
-    """一卖信号
+def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
+    """向上笔突破回调不破信号
 
     **信号列表：**
 
-    - Signal('15分钟_D1B_SELL1_一卖_17笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_15笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_5笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_7笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_9笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_19笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_21笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_13笔_任意_0')
-    - Signal('15分钟_D1B_SELL1_一卖_11笔_任意_0')
+    - Signal('15分钟_D1B_向上_突破_5笔_任意_0')
+    - Signal('15分钟_D1B_向上_突破_7笔_任意_0')
+    - Signal('15分钟_D1B_向上_突破_9笔_任意_0')
 
     :param c: CZSC 对象
     :param di: CZSC 对象
     :return: 信号字典
     """
 
-    def __check_first_sell(bis: List[BI]):
-        """检查 bis 是否是一卖的结束
-
-        :param bis: 笔序列，按时间升序
-        """
-        res = {"match": False, "v1": "一卖", "v2": f"{len(bis)}笔", 'v3': "任意"}
-        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Down:
+    def __check(bis: List[BI]):
+        res = {"match": False, "v1": "突破", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
             return res
 
-        if bis[0].direction != bis[-1].direction:
-            return res
-
-        max_high = max([x.high for x in bis])
-        min_low = min([x.low for x in bis])
-
-        if max_high != bis[-1].high or min_low != bis[0].low:
-            return res
-
-        # 检查背驰：获取向上突破的笔列表
+        # 获取向上突破的笔列表
         key_bis = []
         for i in range(0, len(bis) - 2, 2):
             if i == 0:
@@ -70,25 +51,25 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
                 if b3.high > b1.high:
                     key_bis.append(b3)
 
-        # 检查背驰：最后一笔的 power_price，power_volume，length 同时满足背驰条件才算背驰
-        bc_price = bis[-1].power_price < max(bis[-3].power_price, np.mean([x.power_price for x in key_bis]))
-        bc_volume = bis[-1].power_volume < max(bis[-3].power_volume, np.mean([x.power_volume for x in key_bis]))
-        bc_length = bis[-1].length < max(bis[-3].length, np.mean([x.length for x in key_bis]))
-
-        if bc_price and (bc_volume or bc_length):
+        # 检查：
+        # 1. 当下笔的最低点在任一向上突破笔的高点上
+        # 2. 当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
+        tb_break = bis[-1].low > min([x.high for x in key_bis])
+        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
+        if tb_break and tb_price:
             res['match'] = True
         return res
 
-    k1, k2, k3 = c.freq.value, f"D{di}B", "SELL1"
+    k1, k2, k3 = c.freq.value, f"D{di}B", "向上"
     v1, v2, v3 = "其他", '任意', '任意'
 
-    for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
+    for n in (9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
             logger.warning('笔的数量不对，跳过')
             continue
 
-        _res = __check_first_sell(_bis)
+        _res = __check(_bis)
         if _res['match']:
             v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
             break
@@ -106,9 +87,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        # signals.update_macd_cache(cat.kas['60分钟'])
-        # logger.info('\n\n')
-        s.update(cxt_first_sell_V221126(cat.kas['15分钟'], di=1))
+        s.update(cxt_bi_break_V221126(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {

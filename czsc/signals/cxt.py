@@ -195,4 +195,60 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
+def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
+    """向上笔突破回调不破信号
+
+    **信号列表：**
+
+    - Signal('15分钟_D1B_向上_突破_5笔_任意_0')
+    - Signal('15分钟_D1B_向上_突破_7笔_任意_0')
+    - Signal('15分钟_D1B_向上_突破_9笔_任意_0')
+
+    :param c: CZSC 对象
+    :param di: CZSC 对象
+    :return: 信号字典
+    """
+
+    def __check(bis: List[BI]):
+        res = {"match": False, "v1": "突破", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
+            return res
+
+        # 获取向上突破的笔列表
+        key_bis = []
+        for i in range(0, len(bis) - 2, 2):
+            if i == 0:
+                key_bis.append(bis[i])
+            else:
+                b1, _, b3 = bis[i - 2:i + 1]
+                if b3.high > b1.high:
+                    key_bis.append(b3)
+
+        # 检查：
+        # 1. 当下笔的最低点在任一向上突破笔的高点上
+        # 2. 当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
+        tb_break = bis[-1].low > min([x.high for x in key_bis])
+        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
+        if tb_break and tb_price:
+            res['match'] = True
+        return res
+
+    k1, k2, k3 = c.freq.value, f"D{di}B", "向上"
+    v1, v2, v3 = "其他", '任意', '任意'
+
+    for n in (9, 7, 5):
+        _bis = get_sub_elements(c.bi_list, di=di, n=n)
+        if len(_bis) != n:
+            logger.warning('笔的数量不对，跳过')
+            continue
+
+        _res = __check(_bis)
+        if _res['match']:
+            v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
+            break
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
+    s[signal.key] = signal.value
+    return s
 
