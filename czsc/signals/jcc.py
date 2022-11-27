@@ -5,10 +5,11 @@ email: zeng_bin8888@163.com
 create_dt: 2022/10/31 22:17
 describe: jcc 是 Japanese Candlestick Charting 的缩写，日本蜡烛图技术
 """
+import numpy as np
 from typing import List, Any
 from collections import OrderedDict
 from czsc import CZSC
-from czsc.objects import Signal, RawBar
+from czsc.objects import Signal, RawBar, Direction
 from czsc.utils import get_sub_elements
 
 
@@ -806,6 +807,22 @@ def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
     return s
 
 
+def check_szx(bar: RawBar, th: int = 10) -> bool:
+    """判断十字线
+
+    :param bar:
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return:
+    """
+    if bar.close == bar.open and bar.high != bar.low:
+        return True
+
+    if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
+        return True
+    else:
+        return False
+
+
 def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     """十字线
 
@@ -830,23 +847,13 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
     :return: 十字线识别结果
     """
-
-    def __check_szx(bar: RawBar, th: int) -> bool:
-        if bar.close == bar.open and bar.high != bar.low:
-            return True
-
-        if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
-            return True
-        else:
-            return False
-
     k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
     if len(c.bars_raw) < di + 10:
         v1 = "其他"
         v2 = "其他"
     else:
         bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
-        if __check_szx(bar1, th):
+        if check_szx(bar1, th):
             upper = bar1.upper
             solid = bar1.solid
             lower = bar1.lower
@@ -863,6 +870,246 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
             v1 = "其他"
 
         v2 = "北方" if bar2.close > bar2.open and bar2.solid > (bar2.upper + bar2.lower) * 3 else "任意"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+    """三星形态
+
+    **信号逻辑：**
+
+    1. 最近五根K线中出现三个十字星
+
+    **信号列表：**
+
+    - Signal('15分钟_D1T10_三星_满足_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :return: 识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_三星".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) > 6 + di:
+        bars = get_sub_elements(c.bars_raw, di, n=5)
+        if sum([check_szx(bar, th) for bar in bars]) >= 3:
+            v1 = "满足"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_fan_ji_xian_V221121(c: CZSC, di=1) -> OrderedDict:
+    """反击线；贡献者：lynxluu
+
+    **信号逻辑：**
+
+    1. 反击线分两种，看涨反击线和看跌反击线，共同特点是两根K线收盘价接近;
+    2. 看涨反击线，下降趋势，先阴线，后大幅低开收阳线;
+    3. 看跌反击线，上升趋势，先阳线，后大幅高开收阴线;
+
+    **信号列表：**
+
+    * Signal('15分钟_D1_反击线_满足_看涨反击线_任意_0')
+    * Signal('15分钟_D1_反击线_满足_看跌反击线_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di根K线 取倒数三根k线
+    :return: 反击线识别结果
+    """
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}_反击线".split('_')
+
+    if len(c.bars_raw) < 20 + di:
+        v1 = "其他"
+        v2 = "任意"
+    else:
+        # 取前20根K线，计算区间高度gap
+        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_max = max([x.high for x in left_bars])
+        left_min = min([x.low for x in left_bars])
+        gap = left_max - left_min
+
+        # 取三根K线 判断是否满足基础形态
+        bar1, bar2, bar3 = left_bars[-3:]
+        v1 = "其他"
+
+        if bar2.close != bar2.open:
+            # 大幅高/低开 高/低开幅度除以bar2实体大于1； x1 >= 1
+            # 收盘价接近 bar2和bar3的收盘价差值 除以bar2实体小于0.1； x2 <= 0.1
+            # bar2实体除以前20根K线的区间的比值，此值影响比较大；x3 >= 0.02
+            bar2h = abs(bar2.close - bar2.open)
+            x1 = abs(bar3.open - bar2.close) / bar2h
+            x2 = abs(bar3.close - bar2.close) / bar2h
+            x3 = bar2h / gap
+
+            if x1 >= 1 and x2 <= 0.1 and x3 >= 0.02:
+                v1 = "满足"
+
+        # 看涨：下降趋势； bar2阴线； bar3低开；
+        # 看跌：上升趋势； bar2阳线； bar3高开；
+        v2 = "任意"
+        if v1 == '满足':
+            if bar1.low <= left_min + 0.25 * gap and bar1.close > bar2.close \
+                    and bar2.open > bar2.close > bar3.open:
+                v2 = "看涨反击线"
+
+            elif bar1.high >= left_max - 0.25 * gap and bar2.close > bar1.close \
+                    and bar3.open > bar2.close > bar2.open:
+                v2 = "看跌反击线"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_shan_chun_V221121(c: CZSC, di=1) -> OrderedDict:
+    """山川形态，表示三山形态和三川形态
+
+    **信号逻辑：**
+
+    1. 三山顶部形态一般认为，本形态构成了一种主要顶部反转过程。如果市场先后三次均从某一个高价位上回落下来，或者市场对某一个高价
+    位向上进行了三次尝试，但都失败了，那么三山顶部形态就形成了。
+    2. 三川底部形态恰巧是三山顶部形态的反面。在市场先后三度向下试探某个底部水平后，就形成了这类形态。市场必须向上突破这个底部形
+    态的最高水平，才能证实底部过程已经完成。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1B_山川形态_三山_任意_任意_0')
+    - Signal('15分钟_D1B_山川形态_三川_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 截止倒数第di笔
+    :return: 识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}B_山川形态".split('_')
+
+    v1 = "其他"
+    if len(c.bi_list) < 6 + di:
+        pass
+    else:
+        b5, b4, b3, b2, b1 = get_sub_elements(c.bi_list, di, n=5)
+        if b1.direction == Direction.Up and np.var((b5.high, b3.high, b1.high)) < 0.2:
+            v1 = "三山"
+
+        if b1.direction == Direction.Down and np.var((b5.low, b3.low, b1.low)) < 0.2:
+            v1 = "三川"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
+    """跳空与并列阴阳形态 贡献者：平凡
+
+    **向上跳空并列阴阳（向下反之）：**
+
+    1. 其中一根白色蜡烛线和一根黑色蜡烛线共同形成了一个向上的窗口。
+    2. 这根黑色蜡烛线的开市价位于前一个白色实体之内，收市价位于前一个白色实体之下。
+    3. 在这样的情况下，这根黑色蜡烛线的收市价，需要在窗口之上。
+    4. 黑白两根K线的实体相差不大
+
+    **有效信号列表：**
+
+    - Signal('15分钟_D1K_并列阴阳_向上跳空_任意_任意_0')
+    - Signal('15分钟_D1K_并列阴阳_向下跳空_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :return: 识别结果
+    """
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_并列阴阳".split('_')
+
+    v1 = "其他"
+    if len(c.bars_raw) > di + 5:
+        bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
+
+        if min(bar1.low, bar2.low) > bar3.high \
+                and bar2.close > bar2.open \
+                and bar1.close < bar1.open \
+                and np.var((bar1.solid, bar2.solid)) < 0.2:
+            v1 = "向上跳空"
+
+        elif max(bar1.high, bar2.high) < bar3.low \
+                and bar2.close < bar2.open \
+                and bar1.close > bar1.open \
+                and np.var((bar1.solid, bar2.solid)) < 0.2:
+            v1 = "向下跳空"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def jcc_ta_xing_221124(c: CZSC, di: int = 1) -> OrderedDict:
+    """塔形顶底
+
+    **信号逻辑：**
+
+    1. 首尾两根K线的实体最大
+    2. 首k上涨，尾K下跌，且中间高点相近，且低点大于首尾低点的较大者，塔形顶部；反之，底部。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1K_塔形_顶部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_9K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_5K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_6K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_7K_任意_0')
+    - Signal('15分钟_D1K_塔形_顶部_8K_任意_0')
+    - Signal('15分钟_D1K_塔形_底部_9K_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di跟K线
+    :return: 识别结果
+    """
+    def __check_ta_xing(bars: List[RawBar]):
+        if len(bars) < 5:
+            return "其他"
+
+        rb, lb = bars[0], bars[-1]
+        sorted_solid = sorted([x.solid for x in bars])
+        if min(rb.solid, lb.solid) >= sorted_solid[-2]:
+
+            g_c1 = rb.close > rb.open and lb.close < lb.open
+            g_c2 = np.var([x.high for x in bars[1: -1]]) < 0.5
+            g_c3 = all(x.low > max(rb.open, lb.close) for x in bars[1: -1])
+            if g_c1 and g_c2 and g_c3:
+                return "顶部"
+
+            d_c1 = rb.close < rb.open and lb.close > lb.open
+            d_c2 = np.var([x.low for x in bars[1: -1]]) < 0.5
+            d_c3 = all(x.high < min(rb.open, lb.close) for x in bars[1: -1])
+            if d_c1 and d_c2 and d_c3:
+                return "底部"
+
+        return "其他"
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_塔形".split("_")
+
+    for n in (5, 6, 7, 8, 9):
+        _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+        v1 = __check_ta_xing(_bars)
+        if v1 != "其他":
+            v2 = f"{n}K"
+            break
+        else:
+            v2 = "其他"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

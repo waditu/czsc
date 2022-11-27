@@ -17,10 +17,10 @@ from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 
 
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20221118"
+__date__ = "20221122"
 
 
 if envs.get_welcome():
