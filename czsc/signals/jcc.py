@@ -225,7 +225,7 @@ def jcc_ci_tou_V221101(c: CZSC, di=1, z=100, th=50) -> OrderedDict:
     return s
 
 
-def jcc_san_fa_20221118(c: CZSC, di=1) -> OrderedDict:
+def jcc_san_fa_V20221118(c: CZSC, di=1) -> OrderedDict:
     """上升&下降三法
 
     **上升三法形态由以下几个方面组成：**
@@ -302,7 +302,7 @@ def jcc_san_fa_20221118(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_san_fa_20221115(c: CZSC, di=1, zdf=500) -> OrderedDict:
+def jcc_san_fa_V20221115(c: CZSC, di=1, zdf=500) -> OrderedDict:
     """上升&下降三法；贡献者：琅盎
 
     **上升三法形态由以下几个方面组成：**
@@ -357,7 +357,7 @@ def jcc_san_fa_20221115(c: CZSC, di=1, zdf=500) -> OrderedDict:
     return s
 
 
-def jcc_xing_xian_v221118(c: CZSC, di=2, th=2) -> OrderedDict:
+def jcc_xing_xian_V221118(c: CZSC, di=2, th=2) -> OrderedDict:
     """星形态
 
     **星形态，判断标准：**
@@ -555,7 +555,7 @@ def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_ping_tou_v221113(c: CZSC, di=2, th=100) -> OrderedDict:
+def jcc_ping_tou_V221113(c: CZSC, di=2, th=100) -> OrderedDict:
     """平头形态，贡献者：平凡
 
     **平头形态，判断标准：**
@@ -1053,7 +1053,7 @@ def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_ta_xing_221124(c: CZSC, di: int = 1) -> OrderedDict:
+def jcc_ta_xing_V221124(c: CZSC, di: int = 1) -> OrderedDict:
     """塔形顶底
 
     **信号逻辑：**

@@ -14,7 +14,8 @@ except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
-from czsc import CZSC, Signal
+from czsc.analyze import CZSC
+from czsc.objects import Signal, Direction
 from czsc.utils import get_sub_elements, fast_slow_cross
 from collections import OrderedDict
 
@@ -361,6 +362,43 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, key="SMA5", th=100) -> OrderedDict
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_ma_round_V221206(c: CZSC, di: int = 1, key: str = "SMA60", th: int = 10) -> OrderedDict:
+    """笔端点在均线附近
+
+    **信号逻辑：**
+
+    倒数第i笔的端点到均线的绝对价差 / 笔的价差 < th / 100 表示笔端点在均线附近
+
+    **信号列表：**
+
+    - Signal('15分钟_D3TH10_碰SMA233_上碰_任意_任意_0')
+    - Signal('15分钟_D3TH10_碰SMA233_下碰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 指定倒数第几笔
+    :param key: 指定均线名称
+    :param th: 笔的端点到均线的绝对价差 / 笔的价差 < th / 100 表示笔端点在均线附近
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f'{c.freq.value}_D{di}TH{th}_碰{key}'.split('_')
+
+    v1 = "其他"
+    if len(c.bi_list) > di + 3:
+        last_bi = c.bi_list[-di]
+        last_ma = np.mean([x.cache[key] for x in last_bi.fx_b.new_bars[1].raw_bars])
+        bi_change = last_bi.power_price
+
+        if last_bi.direction == Direction.Up and abs(last_bi.high - last_ma) / bi_change < th / 100:
+            v1 = "上碰"
+        elif last_bi.direction == Direction.Down and abs(last_bi.low - last_ma) / bi_change < th / 100:
+            v1 = "下碰"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
 
