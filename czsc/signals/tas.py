@@ -231,6 +231,101 @@ def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+def tas_macd_xt_V221208(c: CZSC, di: int = 1):
+    """MACD形态信号
+
+    **信号逻辑：**
+
+    1. MACD柱子的形态分类，具体见代码定义
+
+    **信号列表：**
+
+    - Signal('15分钟_D3K_MACD形态_多翻空_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_绿抽脚_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_空翻多_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_杀多棒_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_红缩头_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_逼空棒_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return:
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD形态".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=5)
+    macd = [x.cache['MACD']['macd'] for x in bars]
+
+    v1 = "其他"
+    if len(macd) == 5:
+        if min(macd) > 0 and macd[-1] > macd[-2] < macd[-4]:
+            v1 = "逼空棒"
+        elif max(macd) < 0 and macd[-1] < macd[-2] > macd[-4]:
+            v1 = "杀多棒"
+        elif max(macd) < 0 and macd[-1] > macd[-2] < macd[-4]:
+            v1 = "绿抽脚"
+        elif min(macd) > 0 and macd[-1] < macd[-2] > macd[-4]:
+            v1 = "红缩头"
+        elif macd[-1] > 0 > macd[-3]:
+            v1 = "空翻多"
+        elif macd[-3] > 0 > macd[-1]:
+            v1 = "多翻空"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50):
+    """MACD背驰辅助
+
+    **信号逻辑：**
+
+    1. 近n个最低价创近m个周期新低（以收盘价为准），macd柱子不创新低，这是底部背驰信号
+    2. 若底背驰信号出现时 macd 为红柱，相当于进一步确认
+    3. 顶部背驰反之
+
+    **信号列表：**
+
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_红柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_红柱_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :param n: 近期窗口大小
+    :param m: 远期窗口大小
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_MACD背驰".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=n+m)
+    assert n >= 3, "近期窗口大小至少要大于3"
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) == n + m:
+        n_bars = bars[-n:]
+        m_bars = bars[:m]
+        assert len(n_bars) == n and len(m_bars) == m
+        n_close = [x.close for x in n_bars]
+        n_macd = [x.cache['MACD']['macd'] for x in n_bars]
+        m_close = [x.close for x in m_bars]
+        m_macd = [x.cache['MACD']['macd'] for x in m_bars]
+
+        if n_macd[-1] > n_macd[-2] and min(n_close) < min(m_close) and min(n_macd) > min(m_macd):
+            v1 = '底部'
+        elif n_macd[-1] < n_macd[-2] and max(n_close) > max(m_close) and max(n_macd) < max(m_macd):
+            v1 = '顶部'
+
+        v2 = "红柱" if n_macd[-1] > 0 else "绿柱"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
 def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55) -> OrderedDict:
     """MACD颜色变化；贡献者：马鸣
 

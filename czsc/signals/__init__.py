@@ -83,6 +83,8 @@ from czsc.signals.tas import (
     tas_macd_change_V221105,
     tas_macd_direct_V221106,
     tas_macd_power_V221108,
+    tas_macd_xt_V221208,
+    tas_macd_bc_V221201,
 
     update_ma_cache,
     tas_ma_base_V221101,

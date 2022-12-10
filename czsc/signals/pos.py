@@ -102,3 +102,34 @@ def get_s_long05(cat: CzscAdvancedTrader, span="月", th=500):
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
+
+
+def get_s_long06(cat: CzscAdvancedTrader, th=500):
+    """多头持仓信号：最大盈亏
+
+    在多头持仓期间的最低价与成本价之间的盈亏计算；主要用于买入后盈亏到一定程度，启动保护措施
+    """
+    pos = cat.long_pos
+    k1, k2, k3 = '多头', '最大盈亏', f'超{th}BP'
+    s = OrderedDict()
+    v1 = v2 = '其他'
+
+    if pos.pos > 0:
+        lo = [x for x in pos.operates[-50:] if x['op'] == Operate.LO][-1]
+        buy_price = lo['price']
+        hold_bars = [x for x in cat.kas[cat.base_freq].bars_raw[-100:] if x.id >= lo['bid']]
+        min_price = min([x.low for x in hold_bars])
+        max_price = max([x.high for x in hold_bars])
+        cur_price = hold_bars[-1].close
+
+        if cur_price > buy_price * 1.01:
+            v1 = "是" if (max_price / buy_price - 1) * 10000 > th else "否"
+            v2 = "盈利"
+        else:
+            v1 = '是' if (min_price / buy_price - 1) * 10000 < -th else "否"
+            v2 = "亏损"
+
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
