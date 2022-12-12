@@ -21,61 +21,52 @@ from czsc.traders import CzscAdvancedTrader
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
 
+def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50):
+    """MACD背驰辅助
 
-def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
-    """向上笔突破回调不破信号
+    **信号逻辑：**
+
+    1. 近n个最低价创近m个周期新低（以收盘价为准），macd柱子不创新低，这是底部背驰信号
+    2. 若底背驰信号出现时 macd 为红柱，相当于进一步确认
+    3. 顶部背驰反之
 
     **信号列表：**
 
-    - Signal('15分钟_D1B_向上_突破_5笔_任意_0')
-    - Signal('15分钟_D1B_向上_突破_7笔_任意_0')
-    - Signal('15分钟_D1B_向上_突破_9笔_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_红柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_红柱_任意_0')
 
-    :param c: CZSC 对象
-    :param di: CZSC 对象
-    :return: 信号字典
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :param n: 近期窗口大小
+    :param m: 远期窗口大小
+    :return: 信号识别结果
     """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_MACD背驰".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=n+m)
+    assert n >= 3, "近期窗口大小至少要大于3"
 
-    def __check(bis: List[BI]):
-        res = {"match": False, "v1": "突破", "v2": f"{len(bis)}笔", 'v3': "任意"}
-        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
-            return res
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) == n + m:
+        n_bars = bars[-n:]
+        m_bars = bars[:m]
+        assert len(n_bars) == n and len(m_bars) == m
+        n_close = [x.close for x in n_bars]
+        n_macd = [x.cache['MACD']['macd'] for x in n_bars]
+        m_close = [x.close for x in m_bars]
+        m_macd = [x.cache['MACD']['macd'] for x in m_bars]
 
-        # 获取向上突破的笔列表
-        key_bis = []
-        for i in range(0, len(bis) - 2, 2):
-            if i == 0:
-                key_bis.append(bis[i])
-            else:
-                b1, _, b3 = bis[i - 2:i + 1]
-                if b3.high > b1.high:
-                    key_bis.append(b3)
+        if n_macd[-1] > n_macd[-2] and min(n_close) < min(m_close) and min(n_macd) > min(m_macd):
+            v1 = '底部'
+        elif n_macd[-1] < n_macd[-2] and max(n_close) > max(m_close) and max(n_macd) < max(m_macd):
+            v1 = '顶部'
 
-        # 检查：
-        # 1. 当下笔的最低点在任一向上突破笔的高点上
-        # 2. 当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
-        tb_break = bis[-1].low > min([x.high for x in key_bis])
-        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
-        if tb_break and tb_price:
-            res['match'] = True
-        return res
-
-    k1, k2, k3 = c.freq.value, f"D{di}B", "向上"
-    v1, v2, v3 = "其他", '任意', '任意'
-
-    for n in (9, 7, 5):
-        _bis = get_sub_elements(c.bi_list, di=di, n=n)
-        if len(_bis) != n:
-            logger.warning('笔的数量不对，跳过')
-            continue
-
-        _res = __check(_bis)
-        if _res['match']:
-            v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
-            break
+        v2 = "红柱" if n_macd[-1] > 0 else "绿柱"
 
     s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
     return s
 
@@ -87,7 +78,9 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(cxt_bi_break_V221126(cat.kas['15分钟'], di=1))
+        signals.update_macd_cache(cat.kas['15分钟'])
+
+        s.update(tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {

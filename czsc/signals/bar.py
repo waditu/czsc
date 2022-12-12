@@ -385,3 +385,37 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') 
     return s
 
 
+def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> OrderedDict:
+    """单根K线的涨跌幅区间
+
+    **信号列表：**
+
+    - Signal('日线_D1ZF_300至600_满足_任意_任意_0')
+    - Signal('日线_D1DF_300至600_满足_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param mode: 模式，ZF 表示涨幅，DF 表示跌幅
+    :param span: 区间大小
+    :return: 信号识别结果
+    """
+    t1, t2 = span
+    assert t2 > t1 > 0
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}{mode}_{t1}至{t2}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    if mode == "ZF":
+        edge = (bars[-1].close / bars[-2].close - 1) * 10000
+    else:
+        assert mode == 'DF'
+        edge = (1 - bars[-1].close / bars[-2].close) * 10000
+
+    v1 = "满足" if t2 >= edge >= t1 else "其他"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+

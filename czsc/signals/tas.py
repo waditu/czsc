@@ -14,7 +14,8 @@ except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
-from czsc import CZSC, Signal
+from czsc.analyze import CZSC
+from czsc.objects import Signal, Direction
 from czsc.utils import get_sub_elements, fast_slow_cross
 from collections import OrderedDict
 
@@ -230,6 +231,101 @@ def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+def tas_macd_xt_V221208(c: CZSC, di: int = 1):
+    """MACD形态信号
+
+    **信号逻辑：**
+
+    1. MACD柱子的形态分类，具体见代码定义
+
+    **信号列表：**
+
+    - Signal('15分钟_D3K_MACD形态_多翻空_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_绿抽脚_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_空翻多_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_杀多棒_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_红缩头_任意_任意_0')
+    - Signal('15分钟_D3K_MACD形态_逼空棒_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return:
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD形态".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=5)
+    macd = [x.cache['MACD']['macd'] for x in bars]
+
+    v1 = "其他"
+    if len(macd) == 5:
+        if min(macd) > 0 and macd[-1] > macd[-2] < macd[-4]:
+            v1 = "逼空棒"
+        elif max(macd) < 0 and macd[-1] < macd[-2] > macd[-4]:
+            v1 = "杀多棒"
+        elif max(macd) < 0 and macd[-1] > macd[-2] < macd[-4]:
+            v1 = "绿抽脚"
+        elif min(macd) > 0 and macd[-1] < macd[-2] > macd[-4]:
+            v1 = "红缩头"
+        elif macd[-1] > 0 > macd[-3]:
+            v1 = "空翻多"
+        elif macd[-3] > 0 > macd[-1]:
+            v1 = "多翻空"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50):
+    """MACD背驰辅助
+
+    **信号逻辑：**
+
+    1. 近n个最低价创近m个周期新低（以收盘价为准），macd柱子不创新低，这是底部背驰信号
+    2. 若底背驰信号出现时 macd 为红柱，相当于进一步确认
+    3. 顶部背驰反之
+
+    **信号列表：**
+
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_顶部_红柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_绿柱_任意_0')
+    - Signal('15分钟_D1N3M50_MACD背驰_底部_红柱_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :param n: 近期窗口大小
+    :param m: 远期窗口大小
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_MACD背驰".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=n+m)
+    assert n >= 3, "近期窗口大小至少要大于3"
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) == n + m:
+        n_bars = bars[-n:]
+        m_bars = bars[:m]
+        assert len(n_bars) == n and len(m_bars) == m
+        n_close = [x.close for x in n_bars]
+        n_macd = [x.cache['MACD']['macd'] for x in n_bars]
+        m_close = [x.close for x in m_bars]
+        m_macd = [x.cache['MACD']['macd'] for x in m_bars]
+
+        if n_macd[-1] > n_macd[-2] and min(n_close) < min(m_close) and min(n_macd) > min(m_macd):
+            v1 = '底部'
+        elif n_macd[-1] < n_macd[-2] and max(n_close) > max(m_close) and max(n_macd) < max(m_macd):
+            v1 = '顶部'
+
+        v2 = "红柱" if n_macd[-1] > 0 else "绿柱"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
 def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55) -> OrderedDict:
     """MACD颜色变化；贡献者：马鸣
 
@@ -318,6 +414,118 @@ def tas_ma_base_V221101(c: CZSC, di: int = 1, key="SMA5") -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "多头" if bars[-1].close >= bars[-1].cache[key] else "空头"
     v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_ma_base_V221203(c: CZSC, di: int = 1, key="SMA5", th=100) -> OrderedDict:
+    """MA 多空和方向信号，加距离限制
+
+    **信号逻辑：**
+
+    1. close > ma，多头；反之，空头
+    2. ma[-1] > ma[-2]，向上；反之，向下
+    3. close 与 ma 的距离超过 th
+
+    **信号列表：**
+
+    - Signal('日线_D1T100_SMA5_多头_向上_远离_0')
+    - Signal('日线_D1T100_SMA5_多头_向上_靠近_0')
+    - Signal('日线_D1T100_SMA5_空头_向上_远离_0')
+    - Signal('日线_D1T100_SMA5_空头_向下_远离_0')
+    - Signal('日线_D1T100_SMA5_空头_向下_靠近_0')
+    - Signal('日线_D1T100_SMA5_多头_向下_靠近_0')
+    - Signal('日线_D1T100_SMA5_空头_向上_靠近_0')
+    - Signal('日线_D1T100_SMA5_多头_向下_远离_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param key: 指定使用哪个Key来计算，必须是 `update_ma_cache` 中已经缓存的 key
+    :param th: 距离阈值，单位 BP
+    :return:
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_{key.upper()}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    c = bars[-1].close
+    m = bars[-1].cache[key]
+    v1 = "多头" if c >= m else "空头"
+    v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
+    v3 = "远离" if (abs(c - m) / m) * 10000 > th else "靠近"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_ma_round_V221206(c: CZSC, di: int = 1, key: str = "SMA60", th: int = 10) -> OrderedDict:
+    """笔端点在均线附近
+
+    **信号逻辑：**
+
+    倒数第i笔的端点到均线的绝对价差 / 笔的价差 < th / 100 表示笔端点在均线附近
+
+    **信号列表：**
+
+    - Signal('15分钟_D3TH10_碰SMA233_上碰_任意_任意_0')
+    - Signal('15分钟_D3TH10_碰SMA233_下碰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 指定倒数第几笔
+    :param key: 指定均线名称
+    :param th: 笔的端点到均线的绝对价差 / 笔的价差 < th / 100 表示笔端点在均线附近
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f'{c.freq.value}_D{di}TH{th}_碰{key}'.split('_')
+
+    v1 = "其他"
+    if len(c.bi_list) > di + 3:
+        last_bi = c.bi_list[-di]
+        last_ma = np.mean([x.cache[key] for x in last_bi.fx_b.new_bars[1].raw_bars])
+        bi_change = last_bi.power_price
+
+        if last_bi.direction == Direction.Up and abs(last_bi.high - last_ma) / bi_change < th / 100:
+            v1 = "上碰"
+        elif last_bi.direction == Direction.Down and abs(last_bi.low - last_ma) / bi_change < th / 100:
+            v1 = "下碰"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_double_ma_V221203(c: CZSC, di: int = 1, ma1="SMA5", ma2='SMA10', th: int = 100) -> OrderedDict:
+    """双均线多空和强弱信号
+
+    **信号逻辑：**
+
+    1. ma1 > ma2，多头；反之，空头
+    2. ma1 离开 ma2 的距离大于 th，强势；反之，弱势
+
+    **信号列表：**
+
+    - Signal('日线_D2T100_SMA5SMA10_多头_强势_任意_0')
+    - Signal('日线_D2T100_SMA5SMA10_多头_弱势_任意_0')
+    - Signal('日线_D2T100_SMA5SMA10_空头_强势_任意_0')
+    - Signal('日线_D2T100_SMA5SMA10_空头_弱势_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param ma1: 指定短期均线，必须是 `update_ma_cache` 中已经缓存的 key
+    :param ma2: 指定长期均线，必须是 `update_ma_cache` 中已经缓存的 key
+    :param th: ma1 相比 ma2 的距离阈值，单位 BP
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_{ma1.upper()}{ma2.upper()}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    ma1v = bars[-1].cache[ma1]
+    ma2v = bars[-1].cache[ma2]
+    v1 = "多头" if ma1v >= ma2v else "空头"
+    v2 = "强势" if (abs(ma1v - ma2v) / ma2v) * 10000 >= th else "弱势"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -426,4 +634,143 @@ def tas_boll_bc_V221118(c: CZSC, di=1, n=3, m=10, line=3):
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
+
+
+# KDJ信号计算函数
+# ======================================================================================================================
+def update_kdj_cache(c: CZSC, **kwargs) -> None:
+    """更新KDJ缓存
+
+    :param c: CZSC对象
+    :return:
+    """
+    fastk_period = kwargs.get('fastk_period', 9)
+    slowk_period = kwargs.get('slowk_period', 3)
+    slowd_period = kwargs.get('slowd_period', 3)
+
+    min_count = fastk_period + slowk_period
+    cache_key = f"KDJ({fastk_period},{slowk_period},{slowd_period})"
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 30:
+        bars = c.bars_raw
+        min_count = 0
+    else:
+        bars = c.bars_raw[-min_count-30:]
+
+    high = np.array([x.high for x in bars])
+    low = np.array([x.low for x in bars])
+    close = np.array([x.close for x in bars])
+
+    k, d = ta.STOCH(high, low, close, fastk_period=fastk_period, slowk_period=slowk_period, slowd_period=slowd_period)
+    j = list(map(lambda x, y: 3*x - 2*y, k, d))
+
+    for i in range(1, len(close) - min_count - 10):
+        _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+        _c.update({cache_key: {'k': k[-i], 'd': d[-i], 'j': j[-i]}})
+        c.bars_raw[-i].cache = _c
+
+
+def tas_kdj_base_V221101(c: CZSC, di: int = 1, key="KDJ(9,3,3)") -> OrderedDict:
+    """KDJ金叉死叉信号
+
+    **信号逻辑：**
+
+    1. J > K > D，多头；反之，空头
+    2. J 值定方向
+
+    **信号列表：**
+
+    - Signal('日线_D2K_KDJ_空头_向下_任意_0')
+    - Signal('日线_D2K_KDJ_空头_向上_任意_0')
+    - Signal('日线_D2K_KDJ_多头_向上_任意_0')
+    - Signal('日线_D2K_KDJ_多头_向下_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param key: 指定使用哪个Key来计算，必须是 `update_kdj_cache` 中已经缓存的 key
+    :return:
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_KDJ".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    kdj = bars[-1].cache[key]
+
+    if kdj['j'] > kdj['k'] > kdj['d']:
+        v1 = "多头"
+    elif kdj['j'] < kdj['k'] < kdj['d']:
+        v1 = "空头"
+    else:
+        v1 = "其他"
+
+    v2 = "向上" if kdj['j'] >= bars[-2].cache[key]['j'] else "向下"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+# RSI信号计算函数
+# ======================================================================================================================
+def update_rsi_cache(c: CZSC, **kwargs) -> None:
+    """更新RSI缓存
+
+    相对强弱指数（RSI）是通过比较一段时期内的平均收盘涨数和平均收盘跌数来分析市场买沽盘的意向和实力，从而作出未来市场的走势。
+    RSI在1978年6月由WellsWider创制。
+
+    RSI = 100 × RS / (1 + RS) 或者 RSI=100－100÷(1+RS)
+    RS = X天的平均上涨点数 / X天的平均下跌点数
+
+    :param c: CZSC对象
+    :return:
+    """
+    timeperiod = kwargs.get('timeperiod', 9)
+
+    min_count = timeperiod + 5
+    cache_key = f"RSI{timeperiod}"
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 30:
+        bars = c.bars_raw
+        min_count = 0
+    else:
+        bars = c.bars_raw[-min_count-30:]
+    close = np.array([x.close for x in bars])
+
+    rsi = ta.RSI(close, timeperiod=timeperiod)
+
+    for i in range(1, len(close) - min_count - 10):
+        _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+        _c.update({cache_key: rsi[-i]})
+        c.bars_raw[-i].cache = _c
+
+
+def tas_double_rsi_V221203(c: CZSC, di: int = 1, rsi1="RSI5", rsi2='RSI10') -> OrderedDict:
+    """两个周期的RSI多空信号
+
+    **信号逻辑：**
+
+    1. rsi1 > rsi2，多头；反之，空头
+
+    **信号列表：**
+
+    - Signal('日线_D2K_RSI6RSI12_多头_任意_任意_0')
+    - Signal('日线_D2K_RSI6RSI12_空头_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param rsi1: 指定短期RSI，必须是 `update_rsi_cache` 中已经缓存的 key
+    :param rsi2: 指定长期RSI，必须是 `update_rsi_cache` 中已经缓存的 key
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_{rsi1.upper()}{rsi2.upper()}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    rsi1v = bars[-1].cache[rsi1]
+    rsi2v = bars[-1].cache[rsi2]
+    v1 = "多头" if rsi1v >= rsi2v else "空头"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
 
