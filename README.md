@@ -9,7 +9,9 @@
 
 **[API文档](https://czsc.readthedocs.io/en/latest/modules.html)**
 
->源于[缠中说缠博客（已经无法访问了）](http://blog.sina.com.cn/chzhshch)，访问原文[点击](http://www.fxgan.com/)，[缠中说禅博客原文研读](https://t.zsxq.com/04B2jmUN7)
+>源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，原始博客中的内容不太完整，且没有评论，以下是网友整理的原文备份
+* 备份网址1：https://chzhshch.blog
+* 备份网址2：http://www.fxgan.com
 
 >**假如没有了分型、笔、线段，缠论还是缠论吗？如果你的答案是“是”，这个项目是为你准备的。本项目旨在提供一个符合缠中说禅思维方式的程序化交易工具。**
 
@@ -29,6 +31,30 @@
 访问密码：mHZA
 ```
 
+## 项目贡献
+
+* 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
+* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
+* 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
+* 缠论多级别联立决策分析交易，详见 `czsc/traders/advanced.py`
+* 基于 Tushare 数据的择时、选股策略回测研究流程
+
+
+## 安装使用
+
+**注意:** python 版本必须大于等于 3.7 
+
+直接从github安装：
+```
+pip install git+git://github.com/zengbin93/czsc.git -U
+```
+
+从`pypi`安装：
+```
+pip install czsc -U -i https://pypi.python.org/simple
+```
+
+
 ## 信号开源计划
 
 >学了本ID的理论，去再看其他的理论，就可以更清楚地看到其缺陷与毛病，因此，广泛地去看不同的理论，不仅不影响本ID理论的学习，更能明白本ID理论之所以与其他理论不同的根本之处。
@@ -46,13 +72,6 @@
 * 免责声明：项目开源仅用于技术交流！
 * 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
 
-## 项目贡献
-
-* 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
-* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
-* 定义并实现了若干种基于笔的信号，详见 `czsc/signals.py`
-* 缠论多级别联立决策分析交易，详见 `czsc/traders/advanced.py`
-* 基于 Tushare 数据的择时、选股策略回测研究流程
 
 ## 使用案例
 
@@ -67,12 +86,6 @@
 * `examples/gm_realtime.py` 使用掘金终端进行策略实盘、仿真
 * `examples/gm_check_point.py` 使用掘金终端的数据进行买卖点验证
 
-## 问题讨论
-
->在 [discussions](https://github.com/zengbin93/czsc/discussions) 中提出了一些值得探讨的实战问题，欢迎积极参与讨论，我可以负责实现一些好的想法，代码开源。
-
-* [如何分析选股策略的历史表现？](https://github.com/zengbin93/czsc/discussions/34)
-* [常见问题（FAQ）](https://github.com/zengbin93/czsc/discussions/32)
 
 ## 原文整理
 
@@ -86,33 +99,20 @@
 **注意：** 如果CSDN的连接打不开，可以直接在 `czsc/docs` 目录下查看 html 文件
 
 
-## 形态挖掘
-
-* [缠中说禅形态挖掘之五笔形态](https://blog.csdn.net/baidu_25764509/article/details/113639353)
-* [缠中说禅形态挖掘之七笔形态](https://blog.csdn.net/baidu_25764509/article/details/113649988)
-* [缠中说禅形态挖掘之九笔形态](https://blog.csdn.net/baidu_25764509/article/details/113688926)
-* [本级别笔对应的小级别形态](https://blog.csdn.net/baidu_25764509/article/details/113563530)
-
-## 安装
-
-**注意:** python 版本必须大于等于 3.7 
-
-直接从github安装：
-```
-pip install git+git://github.com/zengbin93/czsc.git -U
-```
-
-从`pypi`安装：
-```
-pip install czsc -U -i https://pypi.python.org/simple
-```
-
-## 使用方法
-
-目前已经实现了缠论的 `分型、笔` 的自动识别，核心代码在 `czsc.analyze` 中；
-
 ## 资料分享
 
 * 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
 * 提取码：vhue
 
+
+## [知识星球【CZSC小圈子】](https://t.zsxq.com/04B2jmUN7)
+
+**适合人群：**
+1. 至少完成一个以上czsc库信号函数编写，目标是缠论量化交易
+2. 至少读完一遍禅师的博客
+
+**圈子服务：**
+1. 缠中说禅博客原文研读交流
+2. CZSC程序化交易库信号函数编写指导
+
+> 申请加入前请先加微信 `zengbin93`，备注【CZSC小圈子】
