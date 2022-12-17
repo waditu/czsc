@@ -13,57 +13,105 @@ from typing import List
 from loguru import logger
 from czsc import CZSC, signals, RawBar, Direction
 from czsc.data import TsDataCache, get_symbols
-from czsc.utils import get_sub_elements, single_linear
+from czsc.utils import get_sub_elements, single_linear, fast_slow_cross
 from czsc.objects import Freq, Operate, Signal, Factor, Event, BI
 from czsc.traders import CzscAdvancedTrader
 
 
 # 定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
+def macd_bs2_v2(cat: CzscAdvancedTrader, freq: str):
+    """MACD金叉死叉判断第二买卖点
 
-def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50):
-    """MACD背驰辅助
+    原理：最近一次交叉为死叉，DEA大于0，且前面三次死叉都在零轴下方，那么二买即将出现；二卖反之。
+
+    完全分类：
+        Signal('15分钟_MACD_BS2V2_二卖_任意_任意_0'),
+        Signal('15分钟_MACD_BS2V2_二买_任意_任意_0')
+    :return:
+    """
+    s = OrderedDict()
+    cache_key = f"{freq}MACD"
+    cache = cat.cache[cache_key]
+    assert cache and cache['update_dt'] == cat.end_dt
+    cross = cache['cross']
+    macd = cache['macd']
+    up = [x for x in cross if x['类型'] == "金叉"]
+    dn = [x for x in cross if x['类型'] == "死叉"]
+
+    v1 = "其他"
+
+    b2_con1 = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] > 0
+    b2_con2 = len(dn) > 3 and dn[-3]['慢线'] < 0 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
+    b2_con3 = len(macd) > 10 and macd[-1] > macd[-2]
+    if b2_con1 and b2_con2 and b2_con3:
+        v1 = "二买"
+
+    s2_con1 = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] < 0
+    s2_con2 = len(up) > 3 and up[-3]['慢线'] > 0 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
+    s2_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+    if s2_con1 and s2_con2 and s2_con3:
+        v1 = "二卖"
+
+    signal = Signal(k1=freq, k2="MACD", k3="BS2V2", v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_macd_first_bs_V221216(c: CZSC, di: int = 1):
+    """MACD金叉死叉判断第一买卖点
 
     **信号逻辑：**
 
-    1. 近n个最低价创近m个周期新低（以收盘价为准），macd柱子不创新低，这是底部背驰信号
-    2. 若底背驰信号出现时 macd 为红柱，相当于进一步确认
-    3. 顶部背驰反之
+    1. 最近一次交叉为死叉，且前面两次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+    2. 或 最近一次交叉为金叉，且前面三次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
 
     **信号列表：**
 
-    - Signal('15分钟_D1N3M50_MACD背驰_顶部_绿柱_任意_0')
-    - Signal('15分钟_D1N3M50_MACD背驰_顶部_红柱_任意_0')
-    - Signal('15分钟_D1N3M50_MACD背驰_底部_绿柱_任意_0')
-    - Signal('15分钟_D1N3M50_MACD背驰_底部_红柱_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一卖_金叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一卖_死叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一买_死叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一买_金叉_任意_0')
 
     :param c: CZSC对象
     :param di: 倒数第i根K线
-    :param n: 近期窗口大小
-    :param m: 远期窗口大小
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_MACD背驰".split('_')
-    bars = get_sub_elements(c.bars_raw, di=di, n=n+m)
-    assert n >= 3, "近期窗口大小至少要大于3"
+    k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1A".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
 
     v1 = "其他"
     v2 = "任意"
-    if len(bars) == n + m:
-        n_bars = bars[-n:]
-        m_bars = bars[:m]
-        assert len(n_bars) == n and len(m_bars) == m
-        n_close = [x.close for x in n_bars]
-        n_macd = [x.cache['MACD']['macd'] for x in n_bars]
-        m_close = [x.close for x in m_bars]
-        m_macd = [x.cache['MACD']['macd'] for x in m_bars]
+    if len(bars) >= 100:
+        dif = [x.cache['MACD']['dif'] for x in bars]
+        dea = [x.cache['MACD']['dea'] for x in bars]
+        macd = [x.cache['MACD']['macd'] for x in bars]
+        n_bars = bars[-10:]
+        m_bars = bars[-100: -10]
+        high_n = max([x.high for x in n_bars])
+        low_n = min([x.low for x in n_bars])
+        high_m = max([x.high for x in m_bars])
+        low_m = min([x.low for x in m_bars])
 
-        if n_macd[-1] > n_macd[-2] and min(n_close) < min(m_close) and min(n_macd) > min(m_macd):
-            v1 = '底部'
-        elif n_macd[-1] < n_macd[-2] and max(n_close) > max(m_close) and max(n_macd) < max(m_macd):
-            v1 = '顶部'
+        cross = fast_slow_cross(dif, dea)
+        up = [x for x in cross if x['类型'] == "金叉" and x['距离'] > 5]
+        dn = [x for x in cross if x['类型'] == "死叉" and x['距离'] > 5]
 
-        v2 = "红柱" if n_macd[-1] > 0 else "绿柱"
+        b1_con1a = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] < 0
+        b1_con1b = len(cross) > 3 and cross[-1]['类型'] == '金叉' and dn[-1]['慢线'] < 0
+        b1_con2 = len(dn) > 3 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
+        b1_con3 = len(macd) > 10 and macd[-1] > macd[-2]
+        if low_n < low_m and (b1_con1a or b1_con1b) and b1_con2 and b1_con3:
+            v1 = "一买"
+
+        s1_con1a = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] > 0
+        s1_con1b = len(cross) > 3 and cross[-1]['类型'] == '死叉' and up[-1]['慢线'] > 0
+        s1_con2 = len(dn) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
+        s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+        if high_n > high_m and (s1_con1a or s1_con1b) and s1_con2 and s1_con3:
+            v1 = "一卖"
+
+        v2 = cross[-1]['类型']
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -80,7 +128,7 @@ def trader_strategy(symbol):
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         signals.update_macd_cache(cat.kas['15分钟'])
 
-        s.update(tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
+        s.update(tas_macd_first_bs_V221216(cat.kas['15分钟'], di=1))
         return s
 
     tactic = {
