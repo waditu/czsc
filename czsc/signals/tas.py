@@ -231,6 +231,169 @@ def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+def tas_macd_first_bs_V221201(c: CZSC, di: int = 1):
+    """MACD金叉死叉判断第一买卖点
+
+    **信号逻辑：**
+
+    1. 最近一次交叉为死叉，且前面两次死叉都在零轴下方，那么一买即将出现；一卖反之。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD_BS1_一卖_任意_任意_0')
+    - Signal('15分钟_D1MACD_BS1_一买_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
+
+    v1 = "其他"
+    if len(bars) >= 100:
+        dif = [x.cache['MACD']['dif'] for x in bars]
+        dea = [x.cache['MACD']['dea'] for x in bars]
+        macd = [x.cache['MACD']['macd'] for x in bars]
+
+        cross = fast_slow_cross(dif, dea)
+        up = [x for x in cross if x['类型'] == "金叉" and x['距离'] > 5]
+        dn = [x for x in cross if x['类型'] == "死叉" and x['距离'] > 5]
+
+        b1_con1 = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] < 0
+        b1_con2 = len(dn) > 3 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
+        b1_con3 = len(macd) > 10 and macd[-1] > macd[-2]
+        if b1_con1 and b1_con2 and b1_con3:
+            v1 = "一买"
+
+        s1_con1 = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] > 0
+        s1_con2 = len(dn) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
+        s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+        if s1_con1 and s1_con2 and s1_con3:
+            v1 = "一卖"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_macd_first_bs_V221216(c: CZSC, di: int = 1):
+    """MACD金叉死叉判断第一买卖点
+
+    **信号逻辑：**
+
+    1. 最近一次交叉为死叉，且前面两次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+    2. 或 最近一次交叉为金叉，且前面三次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD_BS1A_一卖_金叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一卖_死叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一买_死叉_任意_0')
+    - Signal('15分钟_D1MACD_BS1A_一买_金叉_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1A".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) >= 100:
+        dif = [x.cache['MACD']['dif'] for x in bars]
+        dea = [x.cache['MACD']['dea'] for x in bars]
+        macd = [x.cache['MACD']['macd'] for x in bars]
+        n_bars = bars[-10:]
+        m_bars = bars[-100: -10]
+        high_n = max([x.high for x in n_bars])
+        low_n = min([x.low for x in n_bars])
+        high_m = max([x.high for x in m_bars])
+        low_m = min([x.low for x in m_bars])
+
+        cross = fast_slow_cross(dif, dea)
+        up = [x for x in cross if x['类型'] == "金叉" and x['距离'] > 5]
+        dn = [x for x in cross if x['类型'] == "死叉" and x['距离'] > 5]
+
+        b1_con1a = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] < 0
+        b1_con1b = len(cross) > 3 and cross[-1]['类型'] == '金叉' and dn[-1]['慢线'] < 0
+        b1_con2 = len(dn) > 3 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
+        b1_con3 = len(macd) > 10 and macd[-1] > macd[-2]
+        if low_n < low_m and (b1_con1a or b1_con1b) and b1_con2 and b1_con3:
+            v1 = "一买"
+
+        s1_con1a = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] > 0
+        s1_con1b = len(cross) > 3 and cross[-1]['类型'] == '死叉' and up[-1]['慢线'] > 0
+        s1_con2 = len(dn) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
+        s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+        if high_n > high_m and (s1_con1a or s1_con1b) and s1_con2 and s1_con3:
+            v1 = "一卖"
+
+        v2 = cross[-1]['类型']
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_macd_second_bs_V221201(c: CZSC, di: int = 1):
+    """MACD金叉死叉判断第二买卖点
+
+    **信号逻辑：**
+
+    1. 最近一次交叉为死叉，DEA大于0，且前面两次死叉都在零轴下方，那么二买即将出现；二卖反之。
+    2. 或 最近一次交叉为金叉，且前面三次死叉中前两次都在零轴下方，后一次在零轴上方，那么二买即将出现；二卖反之。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD_BS2_二卖_金叉_任意_0')
+    - Signal('15分钟_D1MACD_BS2_二卖_死叉_任意_0')
+    - Signal('15分钟_D1MACD_BS2_二买_金叉_任意_0')
+    - Signal('15分钟_D1MACD_BS2_二买_死叉_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS2".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) >= 100:
+        dif = [x.cache['MACD']['dif'] for x in bars]
+        dea = [x.cache['MACD']['dea'] for x in bars]
+        macd = [x.cache['MACD']['macd'] for x in bars]
+
+        cross = fast_slow_cross(dif, dea)
+        up = [x for x in cross if x['类型'] == "金叉" and x['距离'] > 5]
+        dn = [x for x in cross if x['类型'] == "死叉" and x['距离'] > 5]
+
+        b2_con1a = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] > 0 and cross[-1]['距今'] > 5
+        b2_con1b = len(cross) > 3 and cross[-1]['类型'] == '金叉' and dn[-1]['慢线'] > 0 and cross[-1]['距今'] < 5
+        b2_con2 = len(dn) > 4 and dn[-3]['慢线'] < 0 and dn[-2]['慢线'] < 0
+        b2_con3 = len(macd) > 10 and macd[-1] > macd[-2]
+        if (b2_con1a or b2_con1b) and b2_con2 and b2_con3:
+            v1 = "二买"
+
+        s2_con1a = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] < 0 and cross[-1]['距今'] > 5
+        s2_con1b = len(cross) > 3 and cross[-1]['类型'] == '死叉' and up[-1]['慢线'] < 0 and cross[-1]['距今'] < 5
+        s2_con2 = len(up) > 4 and up[-3]['慢线'] > 0 and up[-2]['慢线'] > 0
+        s2_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+        if (s2_con1a or s2_con1b) and s2_con2 and s2_con3:
+            v1 = "二卖"
+
+        v2 = cross[-1]['类型']
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
 def tas_macd_xt_V221208(c: CZSC, di: int = 1):
     """MACD形态信号
 
@@ -462,7 +625,7 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, key="SMA5", th=100) -> OrderedDict
 
 
 def tas_ma_round_V221206(c: CZSC, di: int = 1, key: str = "SMA60", th: int = 10) -> OrderedDict:
-    """笔端点在均线附近
+    """笔端点在均线附近，贡献者：谌意勇
 
     **信号逻辑：**
 

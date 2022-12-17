@@ -6,7 +6,6 @@ from . import ta
 from . import io
 from . import log
 from . import echarts_plot
-from . import fei_shu
 
 from .echarts_plot import kline_pro, heat_map
 from .log import create_logger
