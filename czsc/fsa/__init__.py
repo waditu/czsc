@@ -2,16 +2,18 @@
 """
 author: zengbin93
 email: zeng_bin8888@163.com
-create_dt: 2022/2/7 17:08
-describe: 飞书群聊机器人
-
-https://www.feishu.cn/hc/zh-CN/articles/360024984973
+create_dt: 2022/12/16 19:37
+describe: 
 """
 import requests
+from czsc.fsa.base import request, FeishuApiBase
+from czsc.fsa.spreed_sheets import SpreadSheets
 
 
 def push_text(text: str, key: str) -> None:
-    """推送文本消息到飞书群聊
+    """使用自定义机器人推送文本消息到飞书群聊
+
+    如何在群组中使用机器人: https://www.feishu.cn/hc/zh-CN/articles/360024984973
 
     :param text: 文本内容
     :param key: 机器人的key
