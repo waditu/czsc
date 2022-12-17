@@ -256,14 +256,12 @@ class StocksDaySensor:
                  edt: str,
                  dc: TsDataCache,
                  strategy: Callable,
-                 signals_n: int = 0,
-                 ):
+                 **kwargs):
 
         self.name = self.__class__.__name__
         self.version = "V20220404"
         self.strategy = strategy
         self.tactic = strategy('000001')
-        self.signals_n = signals_n
         self.get_signals, self.get_event = self.tactic['get_signals'], self.tactic['get_event']
         self.event: Event = self.get_event()
         self.base_freq = Freq.D.value
@@ -547,12 +545,12 @@ class StocksDaySensor:
                             ):
         """获取下一个交易日的强势股列表
 
-        :param index_code:
-        :param fc_top_n:
-        :param fc_min_n:
-        :param min_total_mv:
-        :param max_count:
-        :param window_size:
+        :param index_code: 指数成分过滤
+        :param fc_top_n: 板块效应过滤参数1
+        :param fc_min_n: 板块效应过滤参数2
+        :param min_total_mv: 市值效应过滤参数
+        :param max_count: b20b过滤参数，控制最大选出数量
+        :param window_size: 按 window_size 聚合多天的结果到一天
         :return:
         """
         output = self.validate_performance(index_code, fc_top_n, fc_min_n, min_total_mv, max_count, window_size)

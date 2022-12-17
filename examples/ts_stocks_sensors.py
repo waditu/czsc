@@ -75,4 +75,5 @@ if __name__ == '__main__':
     row = {"index_code": None, "fc_top_n": 10, 'fc_min_n': 3, "min_total_mv": 1e6, "max_count": 50, 'window_size': 8}
     sss.write_validate_report("8日聚合测试", row)
 
-
+    # 给定参数获取最新的强势股列表
+    df = sss.get_latest_selected(fc_top_n=None, fc_min_n=None, min_total_mv=None, max_count=None, window_size=1)
