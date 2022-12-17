@@ -81,7 +81,7 @@ def dummy(file_strategy):
                 dfs = pd.read_pickle(file_dfs)
             else:
                 ts_code, asset = symbol.split('#')
-                dfs = generate_symbol_signals(dc, ts_code, asset, "20150101", "20220101", strategy, 'hfq')
+                dfs = generate_symbol_signals(dc, ts_code, asset, "20170101", "20221001", strategy, 'hfq')
                 dfs.to_pickle(file_dfs)
 
             cdt = CzscDummyTrader(dfs, strategy)
