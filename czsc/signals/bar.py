@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2022/11/11 20:18
 describe: bar 作为前缀，代表信号属于基础 K 线信号
 """
+import numpy as np
 from datetime import datetime
 from typing import List
 from collections import OrderedDict
@@ -58,7 +59,9 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
 
     对于A股，任何K线，只要收盘价是最高价，那就不能买，只要收盘价是最低价，就不能卖。
 
-    **信号逻辑：** close等于high大于前close，近似认为是涨停；反之，跌停。
+    **信号逻辑：**
+
+    close等于high大于前close，近似认为是涨停；反之，跌停。
 
     **信号列表：**
 
@@ -145,7 +148,9 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
 def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
     """倒数第 i 根 K 线的成交量相比于前 N 根 K 线放量
 
-    **信号逻辑: ** 放量的定义为，倒数第i根K线的量能 / 过去N根的平均量能，在2-4倍之间。
+    **信号逻辑: **
+
+    放量的定义为，倒数第i根K线的量能 / 过去N根的平均量能，在2-4倍之间。
 
     **信号列表：**
 
@@ -174,10 +179,63 @@ def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
     return s
 
 
+def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> OrderedDict:
+    """放量向上突破并回踩指定均线，贡献者：琅盎
+
+    **信号逻辑：**
+
+    1. 放量突破
+    2. 缩量回踩，最近一根K线的成交量小于前面一段时间的均量
+
+    **信号列表：**
+
+    - Signal('日线_D1TH300_突破SMA233_放量突破_缩量回踩_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param ma1: 指定均线，这里固定为年线
+    :param th: 当前最低价同指定均线的距离阈值，单位 BP
+    :return: 信号识别结果
+    """
+
+    def _vol_fang_liang_break(bars: List[RawBar]):
+        if len(bars) <= 4:
+            return "其他", "其他"
+
+        # 条件1：放量突破
+        ma1v = bars[-1].cache[ma1]
+        c1 = "放量突破" if bars[-1].vol >= bars[-2].vol and bars[-1].close > ma1v else "其他"
+
+        # 条件2：缩量回踩
+        vol_min = np.mean([x.vol for x in bars[:-1]])
+        distance = all(abs(x.close / ma1v - 1) * 10000 <= th for x in bars[:-1])
+
+        if bars[-1].close >= ma1v and bars[-1].vol < vol_min and distance:
+            c2 = "缩量回踩"
+        else:
+            c2 = "其他"
+
+        return c1, c2
+
+    for n in (5, 6, 7, 8, 9):
+        _bars = get_sub_elements(c.bars_raw[300:], di=di, n=n)
+        v1, v2 = _vol_fang_liang_break(_bars)
+        if v1 != "其他":
+            break
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_突破{ma1.upper()}".split('_')
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
 def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2: int = 4) -> OrderedDict:
     """截取一段时间内的平均成交金额分类信号
 
-    **信号逻辑: ** 倒数第i根K线向前n根K线的成交金额均值在 th1 和 th2 之间
+    **信号逻辑: **
+
+    倒数第i根K线向前n根K线的成交金额均值在 th1 和 th2 之间
 
     **信号列表：**
 

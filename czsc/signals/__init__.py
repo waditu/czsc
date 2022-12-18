@@ -49,6 +49,7 @@ from czsc.signals.bar import (
     bar_zdf_V221203,
     bar_accelerate_V221110,
     bar_accelerate_V221118,
+    bar_fang_liang_break_V221216,
 )
 
 from czsc.signals.jcc import (
