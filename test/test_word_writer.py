@@ -8,7 +8,6 @@ import os
 import pandas as pd
 import inspect
 import matplotlib.pyplot as plt
-import seaborn as sns
 from czsc.utils import WordWriter
 
 
@@ -93,9 +92,9 @@ def test_word_writer():
     plt.close()
     df = pd.DataFrame({'x': list(range(100)), 'y': list(range(100))})
     ax1 = plt.subplot(211)
-    sns.lineplot(data=df, x='x', y='y', ax=ax1)
+    ax1.plot(df['x'], df['y'], 'go--', linewidth=2, markersize=12)
     ax2 = plt.subplot(212)
-    sns.lineplot(data=df, x='x', y='y', ax=ax2)
+    ax2.plot(df['x'], df['y'], 'ro--', linewidth=2, markersize=12)
     file_png = "x.png"
     plt.savefig(file_png)
     reporter.add_picture(file_png)
