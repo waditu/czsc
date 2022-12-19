@@ -17,16 +17,14 @@ def sds_czsc_v1_t1(symbol):
     """sds_czsc_v1"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        for _, c in cat.kas.items():
-            if c.freq == Freq.D:
-                s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20)))
+        signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=20)
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, key="SMA20"))
         return s
 
     def get_event():
         event = Event(name="SDS_CZSC_V1_T1", operate=Operate.LO, factors=[
-            Factor(name="MACD日线长多", signals_all=[
-                Signal(k1='日线', k2='倒1K', k3='SMA20多空', v1='多头'),
-                Signal(k1='日线', k2='倒1K', k3='SMA20方向', v1='向上'),
+            Factor(name="20日线长多", signals_all=[
+                Signal('日线_D1T100_SMA20_多头_向上_远离_0'),
             ]),
         ])
         return event
@@ -44,9 +42,9 @@ def sds_czsc_v1_t1(symbol):
 if __name__ == '__main__':
     strategy = sds_czsc_v1_t1
     data_path = r"C:\ts_data_czsc"
-    dc = TsDataCache(data_path, sdt='2000-01-01', edt='2022-03-23')
-    sdt = "20180101"
-    edt = "20220320"
+    dc = TsDataCache(data_path, sdt='2020-01-01')
+    sdt = "20210101"
+    edt = "20221218"
     experiment_name = strategy.__doc__
     experiment_path = os.path.join(data_path, experiment_name.upper())
     sss = StocksDaySensor(experiment_path, sdt, edt, dc, strategy, signals_n=0)
