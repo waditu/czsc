@@ -26,6 +26,7 @@ from czsc.signals.cxt import (
     cxt_first_buy_V221126,
     cxt_first_sell_V221126,
     cxt_bi_break_V221126,
+    cxt_sub_b3_V221212,
 )
 
 
