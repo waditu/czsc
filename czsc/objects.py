@@ -13,7 +13,6 @@ from transitions import Machine
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.ta import RSQ
 
-
 long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
 shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
 
@@ -39,7 +38,7 @@ class RawBar:
     low: [float, int]
     vol: [float, int]
     amount: [float, int] = None
-    cache: dict = None    # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
+    cache: dict = None  # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
 
     @property
     def upper(self):
@@ -70,8 +69,8 @@ class NewBar:
     low: [float, int]
     vol: [float, int]
     amount: [float, int] = None
-    elements: List = None   # 存入具有包含关系的原始K线
-    cache: dict = None      # cache 用户缓存
+    elements: List = None  # 存入具有包含关系的原始K线
+    cache: dict = None  # cache 用户缓存
 
     @property
     def raw_bars(self):
@@ -87,7 +86,7 @@ class FX:
     low: [float, int]
     fx: [float, int]
     elements: List = None
-    cache: dict = None      # cache 用户缓存
+    cache: dict = None  # cache 用户缓存
 
     @property
     def new_bars(self):
@@ -149,7 +148,7 @@ class FakeBI:
     high: [float, int]
     low: [float, int]
     power: [float, int]
-    cache: dict = None      # cache 用户缓存
+    cache: dict = None  # cache 用户缓存
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -163,15 +162,15 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 
     fake_bis = []
     for i in range(1, len(fxs)):
-        fx1 = fxs[i-1]
+        fx1 = fxs[i - 1]
         fx2 = fxs[i]
         assert fx1.mark != fx2.mark
         if fx1.mark == Mark.D:
             fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Up,
-                             high=fx2.high, low=fx1.low, power=round(fx2.high-fx1.low, 2))
+                             high=fx2.high, low=fx1.low, power=round(fx2.high - fx1.low, 2))
         elif fx1.mark == Mark.G:
             fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Down,
-                             high=fx1.high, low=fx2.low, power=round(fx1.high-fx2.low, 2))
+                             high=fx1.high, low=fx2.low, power=round(fx1.high - fx2.low, 2))
         else:
             raise ValueError
         fake_bis.append(fake_bi)
@@ -181,9 +180,9 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 @dataclass
 class BI:
     symbol: str
-    fx_a: FX = None     # 笔开始的分型
-    fx_b: FX = None     # 笔结束的分型
-    fxs: List = None    # 笔内部的分型列表
+    fx_a: FX = None  # 笔开始的分型
+    fx_b: FX = None  # 笔结束的分型
+    fxs: List = None  # 笔内部的分型列表
     direction: Direction = None
     bars: List[NewBar] = None
     cache: dict = None  # cache 用户缓存
@@ -252,7 +251,7 @@ class BI:
     @property
     def hypotenuse(self):
         """笔的斜边长度"""
-        return pow(pow(self.power_price, 2) + pow(len(self.raw_bars), 2), 1/2)
+        return pow(pow(self.power_price, 2) + pow(len(self.raw_bars), 2), 1 / 2)
 
     @property
     def angle(self):
@@ -265,7 +264,7 @@ class ZS:
     """中枢对象，主要用于辅助信号函数计算"""
     symbol: str
     bis: List[BI]
-    cache: dict = None      # cache 用户缓存
+    cache: dict = None  # cache 用户缓存
 
     @property
     def sdt(self):
@@ -314,6 +313,7 @@ class ZS:
         return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, " \
                f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, " \
                f"gg={self.gg}, dd={self.dd}, zz={self.zz})"
+
 
 @dataclass
 class Signal:
@@ -413,6 +413,35 @@ class Factor:
                 return True
         return False
 
+    def dump(self) -> dict:
+        """将 Factor 对象转存为 dict"""
+        raw = {
+            "name": self.name,
+            "signals_all": [x.signal for x in self.signals_all],
+            "signals_any": [] if not self.signals_any else [x.signal for x in self.signals_any],
+            "signals_not": [] if not self.signals_not else [x.signal for x in self.signals_not],
+        }
+        return raw
+
+    @classmethod
+    def load(cls, raw: dict):
+        """从 dict 中创建 Factor
+
+        :param raw: 样例如下
+            {'name': '单测',
+             'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0', '15分钟_倒0笔_长度_大于5_其他_其他_0'],
+             'signals_any': [],
+             'signals_not': []}
+
+        :return:
+        """
+        fa = Factor(name=raw['name'],
+                    signals_all=[Signal(x) for x in raw['signals_all']],
+                    signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
+                    signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                    )
+        return fa
+
 
 @dataclass
 class Event:
@@ -464,6 +493,42 @@ class Event:
                 return True, factor.name
 
         return False, None
+
+    def dump(self) -> dict:
+        """将 Event 对象转存为 dict"""
+        raw = {
+            "name": self.name,
+            "operate": self.operate.value,
+            "factors": [x.dump() for x in self.factors],
+            "signals_all": [x.signal for x in self.signals_all],
+            "signals_any": [] if not self.signals_any else [x.signal for x in self.signals_any],
+            "signals_not": [] if not self.signals_not else [x.signal for x in self.signals_not],
+        }
+        return raw
+
+    @classmethod
+    def load(cls, raw: dict):
+        """从 dict 中创建 Event
+
+        :param raw: 样例如下
+                {'name': '单测',
+                 'operate': '开多',
+                 'factors': [{'name': '测试',
+                   'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0'],
+                   'signals_any': [],
+                   'signals_not': []}],
+                 'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
+                 'signals_any': [],
+                 'signals_not': []}
+        :return:
+        """
+        e = Event(name=raw['name'], operate=Operate.__dict__["_value2member_map_"][raw['operate']],
+                  factors=[Factor.load(x) for x in raw['factors']],
+                  signals_all=[Signal(x) for x in raw['signals_all']],
+                  signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
+                  signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                  )
+        return e
 
 
 def cal_break_even_point(seq: List[float]) -> float:
@@ -577,9 +642,9 @@ class PositionLong:
         self.operates = []
         self.last_pair_operates = []
         self.pairs = []
-        self.long_high = -1         # 持多仓期间出现的最高价
-        self.long_cost = -1         # 最近一次加多仓的成本
-        self.long_bid = -1          # 最近一次加多仓的1分钟Bar ID
+        self.long_high = -1  # 持多仓期间出现的最高价
+        self.long_cost = -1  # 最近一次加多仓的成本
+        self.long_bid = -1  # 最近一次加多仓的1分钟Bar ID
 
         self.today = None
         self.today_pos = 0
@@ -615,7 +680,7 @@ class PositionLong:
             '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
             '事件序列': " > ".join([x['op_desc'] for x in operates]),
         }
-        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
+        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24 * 3600)
         pair['盈亏金额'] = pair['累计平仓'] - pair['累计开仓']
         # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益
         pair['交易盈亏'] = int((pair['盈亏金额'] / pair['累计开仓']) * 10000) / 10000
@@ -756,9 +821,9 @@ class PositionShort:
         self.operates = []
         self.last_pair_operates = []
         self.pairs = []
-        self.short_low = -1          # 持多仓期间出现的最低价
-        self.short_cost = -1         # 最近一次加空仓的成本
-        self.short_bid = -1          # 最近一次加空仓的1分钟Bar ID
+        self.short_low = -1  # 持多仓期间出现的最低价
+        self.short_cost = -1  # 最近一次加空仓的成本
+        self.short_bid = -1  # 最近一次加空仓的1分钟Bar ID
 
         self.today = None
         self.today_pos = 0
@@ -794,7 +859,7 @@ class PositionShort:
             '持仓K线数': operates[-1]['bid'] - operates[0]['bid'],
             '事件序列': " > ".join([x['op_desc'] for x in operates]),
         }
-        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24*3600)
+        pair['持仓天数'] = (pair['平仓时间'] - pair['开仓时间']).total_seconds() / (24 * 3600)
         # 空头计算盈亏，需要取反
         pair['盈亏金额'] = -(pair['累计平仓'] - pair['累计开仓'])
         # 注意：【交易盈亏】的计算是对交易进行的，不是对账户，所以不能用来统计账户的收益

@@ -85,6 +85,10 @@ def test_factor():
     )
     assert factor.is_match(s)
 
+    factor_raw = factor.dump()
+    new_factor = Factor.load(factor_raw)
+    assert new_factor.is_match(s)
+
     factor = Factor(
         name="单测",
         signals_all=[
@@ -146,6 +150,11 @@ def test_event():
         Signal(k1=str(freq.value), k2="倒0笔", k3="方向", v1="向上", v2='其他', v3='其他'),
     ])
     m, f = event.is_match(s)
+    assert m and f
+
+    raw = event.dump()
+    new_event = Event.load(raw)
+    m, f = new_event.is_match(s)
     assert m and f
 
     event = Event(name="单测", operate=Operate.LO,
