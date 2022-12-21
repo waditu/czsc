@@ -499,10 +499,10 @@ class Event:
         raw = {
             "name": self.name,
             "operate": self.operate.value,
-            "factors": [x.dump() for x in self.factors],
-            "signals_all": [x.signal for x in self.signals_all],
+            "signals_all": [] if not self.signals_all else [x.signal for x in self.signals_all],
             "signals_any": [] if not self.signals_any else [x.signal for x in self.signals_any],
             "signals_not": [] if not self.signals_not else [x.signal for x in self.signals_not],
+            "factors": [x.dump() for x in self.factors],
         }
         return raw
 
