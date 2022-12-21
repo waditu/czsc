@@ -524,7 +524,7 @@ class Event:
         """
         e = Event(name=raw['name'], operate=Operate.__dict__["_value2member_map_"][raw['operate']],
                   factors=[Factor.load(x) for x in raw['factors']],
-                  signals_all=[Signal(x) for x in raw['signals_all']],
+                  signals_all=[Signal(x) for x in raw['signals_all']] if raw['signals_all'] else None,
                   signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
                   signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
                   )
