@@ -1,0 +1,156 @@
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2022/12/21 20:04
+describe: 
+"""
+import os
+import glob
+import json
+import shutil
+import pandas as pd
+from loguru import logger
+from tqdm import tqdm
+from datetime import datetime
+from czsc.traders.advanced import CzscDummyTrader
+from czsc.sensors.utils import generate_symbol_signals
+from czsc.utils import get_py_namespace, dill_dump, dill_load, WordWriter
+from czsc.traders.performance import PairsPerformance
+
+
+class DummyBacktest:
+    def __init__(self, file_strategy):
+        """
+
+        :param file_strategy: 策略定义文件，必须是 .py 结尾
+        """
+        res_path = get_py_namespace(file_strategy)['results_path']
+        os.makedirs(res_path, exist_ok=True)
+        self.signals_path = os.path.join(res_path, "signals")
+        self.results_path = os.path.join(res_path, f"DEXP{datetime.now().strftime('%Y%m%d%H%M')}")
+        os.makedirs(self.signals_path, exist_ok=True)
+        os.makedirs(self.results_path, exist_ok=True)
+
+        # 创建 CzscDummyTrader 缓存路径
+        self.cdt_path = os.path.join(self.results_path, 'cache')
+        os.makedirs(self.cdt_path, exist_ok=True)
+
+        self.strategy_file = os.path.join(self.results_path, "strategy.py")
+        shutil.copy(file_strategy, self.strategy_file)
+
+    def execute(self):
+        """执行策略文件中定义的内容"""
+        signals_path = self.signals_path
+        py = get_py_namespace(self.strategy_file)
+
+        strategy = py['trader_strategy']
+        dc = py['dc']
+        symbols = py['symbols']
+
+        for symbol in symbols:
+            file_dfs = os.path.join(signals_path, f"{symbol}_signals.pkl")
+
+            try:
+                # 可以直接生成信号，也可以直接读取信号
+                if os.path.exists(file_dfs):
+                    dfs = pd.read_pickle(file_dfs)
+                else:
+                    ts_code, asset = symbol.split('#')
+                    dfs = generate_symbol_signals(dc, ts_code, asset, "20170101", "20221001", strategy, 'hfq')
+                    dfs.to_pickle(file_dfs)
+
+                cdt = CzscDummyTrader(dfs, strategy)
+                dill_dump(cdt, os.path.join(self.cdt_path, f"{symbol}.cdt"))
+
+                res = cdt.results
+                if "long_performance" in res.keys():
+                    logger.info(f"{res['long_performance']}")
+
+                if "short_performance" in res.keys():
+                    logger.info(f"{res['short_performance']}")
+            except:
+                logger.exception(f"fail on {symbol}")
+
+    def collect(self):
+        """汇集回测结果"""
+        res = {'long_pairs': [], 'lpf': [], 'short_pairs': [], 'spf': []}
+        files = glob.glob(f"{self.cdt_path}/*.cdt")
+        for file in tqdm(files, desc="DummyBacktest::collect"):
+            cdt = dill_load(file)
+
+            if cdt.results.get("long_pairs", None):
+                res['lpf'].append(cdt.results['long_performance'])
+                res['long_pairs'].append(pd.DataFrame(cdt.results['long_pairs']))
+
+            if cdt.results.get("short_pairs", None):
+                res['spf'].append(cdt.results['short_performance'])
+                res['short_pairs'].append(pd.DataFrame(cdt.results['short_pairs']))
+
+        if res['long_pairs'] and res['lpf']:
+            long_ppf = PairsPerformance(pd.concat(res['long_pairs']))
+            res['long_ppf_basic'] = long_ppf.basic_info
+            res['long_ppf_year'] = long_ppf.agg_statistics('平仓年')
+            long_ppf.agg_to_excel(os.path.join(self.results_path, 'long_ppf.xlsx'))
+
+        if res['short_pairs'] and res['spf']:
+            short_ppf = PairsPerformance(pd.concat(res['short_pairs']))
+            res['short_ppf_basic'] = short_ppf.basic_info
+            res['short_ppf_year'] = short_ppf.agg_statistics('平仓年')
+            short_ppf.agg_to_excel(os.path.join(self.results_path, 'short_ppf.xlsx'))
+
+        return res
+
+    def report(self):
+        py = get_py_namespace(self.strategy_file)
+        strategy = py['trader_strategy']('symbol')
+
+        res = self.collect()
+        file_word = os.path.join(self.results_path, "report.docx")
+        if os.path.exists(file_word):
+            os.remove(file_word)
+        writer = WordWriter(file_word)
+
+        writer.add_title("策略Dummy回测分析报告")
+        writer.add_heading("一、基础信息", level=1)
+        if strategy.get('long_events', None):
+            writer.add_heading("多头事件定义",  level=2)
+            writer.add_paragraph(json.dumps([x.dump() for x in strategy['long_events']],
+                                            ensure_ascii=False, indent=4), first_line_indent=0)
+
+        if strategy.get('short_events', None):
+            writer.add_heading("空头事件定义", level=2)
+            writer.add_paragraph(json.dumps([x.dump() for x in strategy['short_events']], ensure_ascii=False, indent=4))
+            writer.add_paragraph('\n')
+
+        writer.add_heading("二、回测分析", level=1)
+        if res.get("long_ppf_basic", None):
+            writer.add_heading("多头表现",  level=2)
+            lpb = pd.DataFrame([res['long_ppf_basic']]).T.reset_index()
+            lpb.columns = ['名称', '取值']
+            writer.add_df_table(lpb)
+            writer.add_paragraph('\n')
+
+            lpy = res['long_ppf_year'].T.reset_index()
+            lpy.columns = lpy.iloc[0]
+            lpy = lpy.iloc[1:]
+            writer.add_df_table(lpy)
+            writer.add_paragraph('\n')
+
+        if res.get("short_ppf_basic", None):
+            writer.add_heading("空头表现",  level=2)
+            pb = pd.DataFrame([res['short_ppf_basic']]).T.reset_index()
+            pb.columns = ['名称', '取值']
+            writer.add_df_table(pb)
+            writer.add_paragraph('\n')
+
+            py = res['short_ppf_year'].T.reset_index()
+            py.columns = py.iloc[0]
+            py = py.iloc[1:]
+            writer.add_df_table(py)
+            writer.add_paragraph('\n')
+
+        writer.save()
+
+
+

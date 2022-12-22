@@ -55,57 +55,10 @@ def backtest(file_strategy):
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def dummy(file_strategy):
     """使用 CzscDummyTrader 进行快速的择时策略研究"""
-    import shutil
-    from datetime import datetime
-    from czsc.traders.advanced import CzscDummyTrader
-    from czsc.sensors.utils import generate_symbol_signals
-    from czsc.utils import get_py_namespace, dill_dump, dill_load
-
-    py = get_py_namespace(file_strategy)
-    signals_path = os.path.join(py['results_path'], "signals")
-    results_path = os.path.join(py['results_path'], f"DEXP{datetime.now().strftime('%Y%m%d%H%M')}")
-    os.makedirs(signals_path, exist_ok=True)
-    os.makedirs(results_path, exist_ok=True)
-    shutil.copy(file_strategy, os.path.join(results_path, 'strategy.py'))
-
-    strategy = py['trader_strategy']
-    dc = py['dc']
-    symbols = py['symbols']
-
-    for symbol in symbols:
-        file_dfs = os.path.join(signals_path, f"{symbol}_signals.pkl")
-
-        try:
-            # 可以直接生成信号，也可以直接读取信号
-            if os.path.exists(file_dfs):
-                dfs = pd.read_pickle(file_dfs)
-            else:
-                ts_code, asset = symbol.split('#')
-                dfs = generate_symbol_signals(dc, ts_code, asset, "20170101", "20221001", strategy, 'hfq')
-                dfs.to_pickle(file_dfs)
-
-            cdt = CzscDummyTrader(dfs, strategy)
-            dill_dump(cdt, os.path.join(results_path, f"{symbol}.cdt"))
-
-            res = cdt.results
-            if "long_performance" in res.keys():
-                logger.info(f"{res['long_performance']}")
-
-            if "short_performance" in res.keys():
-                logger.info(f"{res['short_performance']}")
-        except:
-            logger.exception(f"fail on {symbol}")
-
-    # 汇总结果
-    tactic = strategy('symbol')
-    files = glob.glob(f"{results_path}/*.cdt")
-    if tactic.get("long_pos", None):
-        lpf = pd.DataFrame([dill_load(file).results['long_performance'] for file in files])
-        lpf.to_excel(os.path.join(results_path, f'{strategy.__doc__}多头回测结果.xlsx'), index=False)
-
-    if tactic.get("short_pos", None):
-        spf = pd.DataFrame([dill_load(file).results['short_performance'] for file in files])
-        spf.to_excel(os.path.join(results_path, f'{strategy.__doc__}空头回测结果.xlsx'), index=False)
+    from czsc.traders.dummy import DummyBacktest
+    dbt = DummyBacktest(file_strategy)
+    dbt.execute()
+    dbt.report()
 
 
 @czsc.command()
