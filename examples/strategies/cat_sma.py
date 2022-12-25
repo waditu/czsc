@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/10/21 19:56
-describe: 择时交易策略
+describe: 择时交易策略样例
 """
 from loguru import logger
 from collections import OrderedDict

@@ -18,46 +18,8 @@ from czsc.objects import Freq, Operate, Signal, Factor, Event, BI
 from czsc.traders import CzscAdvancedTrader
 
 
-# 定义信号函数
+# 【必须】定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def macd_bs2_v2(cat: CzscAdvancedTrader, freq: str):
-    """MACD金叉死叉判断第二买卖点
-
-    原理：最近一次交叉为死叉，DEA大于0，且前面三次死叉都在零轴下方，那么二买即将出现；二卖反之。
-
-    完全分类：
-        Signal('15分钟_MACD_BS2V2_二卖_任意_任意_0'),
-        Signal('15分钟_MACD_BS2V2_二买_任意_任意_0')
-    :return:
-    """
-    s = OrderedDict()
-    cache_key = f"{freq}MACD"
-    cache = cat.cache[cache_key]
-    assert cache and cache['update_dt'] == cat.end_dt
-    cross = cache['cross']
-    macd = cache['macd']
-    up = [x for x in cross if x['类型'] == "金叉"]
-    dn = [x for x in cross if x['类型'] == "死叉"]
-
-    v1 = "其他"
-
-    b2_con1 = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] > 0
-    b2_con2 = len(dn) > 3 and dn[-3]['慢线'] < 0 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
-    b2_con3 = len(macd) > 10 and macd[-1] > macd[-2]
-    if b2_con1 and b2_con2 and b2_con3:
-        v1 = "二买"
-
-    s2_con1 = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] < 0
-    s2_con2 = len(up) > 3 and up[-3]['慢线'] > 0 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
-    s2_con3 = len(macd) > 10 and macd[-1] < macd[-2]
-    if s2_con1 and s2_con2 and s2_con3:
-        v1 = "二卖"
-
-    signal = Signal(k1=freq, k2="MACD", k3="BS2V2", v1=v1)
-    s[signal.key] = signal.value
-    return s
-
-
 def tas_macd_first_bs_V221216(c: CZSC, di: int = 1):
     """MACD金叉死叉判断第一买卖点
 
@@ -142,9 +104,6 @@ def trader_strategy(symbol):
 # 定义命令行接口【信号检查】的特定参数
 # ----------------------------------------------------------------------------------------------------------------------
 
-# 初始化 Tushare 数据缓存
-dc = TsDataCache(r"D:\ts_data")
-
 # 信号检查参数设置【可选】
 check_params = {
     "symbol": "000001.SZ#E",    # 交易品种，格式为 {ts_code}#{asset}
@@ -166,6 +125,8 @@ def read_bars(symbol, sdt='20170101', edt='20221001'):
     adj = 'hfq'
     freq = '15min'
     ts_code, asset = symbol.split("#")
+    # 初始化 Tushare 数据缓存
+    dc = TsDataCache(r"D:\ts_data")
 
     if "min" in freq:
         bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
