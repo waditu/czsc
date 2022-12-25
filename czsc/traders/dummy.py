@@ -50,22 +50,21 @@ class DummyBacktest:
 
         # 获取单个品种的基础周期K线
         tactic = strategy("000001.SZ")
-        base_freq = tactic['base_freq']
-        symbol = replay_params.get('symbol', py['symbols'][0])
+        symbol = replay_params.get('symbol', py['dummy_params']['symbols'][0])
         sdt = pd.to_datetime(replay_params.get('sdt', '20170101'))
+        mdt = pd.to_datetime(replay_params.get('mdt', '20200101'))
         edt = pd.to_datetime(replay_params.get('edt', '20220101'))
         bars = py['read_bars'](symbol, sdt, edt)
-        logger.info(f"交易回放参数 | {symbol} - sdt: {sdt} - edt: {edt}")
+        logger.info(f"交易回放参数 | {symbol} | 时间区间：{sdt} ~ {edt}")
 
         # 设置回放快照文件保存目录
         res_path = os.path.join(self.results_path, f"replay_{symbol}")
         os.makedirs(res_path, exist_ok=True)
 
         # 拆分基础周期K线，一部分用来初始化BarGenerator，随后的K线是回放区间
-        start_date = pd.to_datetime(replay_params.get('mdt', '20200101'))
-        bg = BarGenerator(base_freq, freqs=tactic['freqs'])
-        bars1 = [x for x in bars if x.dt <= start_date]
-        bars2 = [x for x in bars if x.dt > start_date]
+        bg = BarGenerator(tactic['base_freq'], freqs=tactic['freqs'])
+        bars1 = [x for x in bars if x.dt <= mdt]
+        bars2 = [x for x in bars if x.dt > mdt]
         for bar in bars1:
             bg.update(bar)
 

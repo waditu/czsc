@@ -88,7 +88,7 @@ dc = TsDataCache(r"D:\ts_data")
 
 # 【必须】策略回测参数设置
 dummy_params = {
-    "symbol": get_symbols(dc, 'train'),  # 回测使用的标的列表
+    "symbols": get_symbols(dc, 'train'),  # 回测使用的标的列表
     "sdt": "20150101",  # K线数据开始时间
     "mdt": "20200101",  # 策略回测开始时间
     "edt": "20220101",  # 策略回测结束时间
@@ -97,7 +97,7 @@ dummy_params = {
 
 # 【可选】策略回放参数设置
 replay_params = {
-    "symbol": "000001.SZ#E",  # 回放交易品种
+    "symbol": "000002.SZ#E",  # 回放交易品种
     "sdt": "20150101",  # K线数据开始时间
     "mdt": "20200101",  # 策略回放开始时间
     "edt": "20220101",  # 策略回放结束时间
