@@ -5,8 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2022/10/21 19:56
 describe: 择时交易策略
 """
-import pandas as pd
-from datetime import timedelta
 from loguru import logger
 from collections import OrderedDict
 from czsc import signals
@@ -82,14 +80,20 @@ def trader_strategy(symbol):
 # 定义命令行接口的特定参数
 # ----------------------------------------------------------------------------------------------------------------------
 
+# 【必须】执行结果路径
+results_path = r"D:\ts_data\SMA5"
+
 # 初始化 Tushare 数据缓存
 dc = TsDataCache(r"D:\ts_data")
 
-# 【必须】定义回测使用的标的列表
-symbols = get_symbols(dc, 'stock')
+# 【必须】策略回测参数设置
+dummy_params = {
+    "symbol": get_symbols(dc, 'train'),  # 回测使用的标的列表
+    "sdt": "20150101",  # K线数据开始时间
+    "mdt": "20200101",  # 策略回测开始时间
+    "edt": "20220101",  # 策略回测结束时间
+}
 
-# 【必须】执行结果路径
-results_path = r"D:\ts_data\SMA5"
 
 # 【可选】策略回放参数设置
 replay_params = {
@@ -103,7 +107,7 @@ replay_params = {
 # 【必须】定义K线数据读取函数，这里是为了方便接入任意数据源的K线行情
 # ----------------------------------------------------------------------------------------------------------------------
 
-def read_bars(symbol, sdt='20170101', edt='20221001'):
+def read_bars(symbol, sdt, edt):
     """自定义K线数据读取函数，便于接入任意来源的行情数据进行回测一类的分析
 
     :param symbol: 标的名称
@@ -114,12 +118,11 @@ def read_bars(symbol, sdt='20170101', edt='20221001'):
     adj = 'hfq'
     freq = '15min'
     ts_code, asset = symbol.split("#")
-    sdt_ = pd.to_datetime(sdt) - timedelta(days=3000)
 
     if "min" in freq:
-        bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+        bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
     else:
-        bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+        bars = dc.pro_bar(ts_code, sdt, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
     return bars
 
 

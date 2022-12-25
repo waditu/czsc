@@ -5,7 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2022/5/6 15:54
 describe: 使用 Tushare 数据对交易策略进行持续仿真研究
 """
-from ts_fast_backtest import TsDataCache
+from czsc.data.ts_cache import TsDataCache
 from czsc.traders.ts_simulator import TradeSimulator
 from czsc.strategies import trader_strategy_a
 

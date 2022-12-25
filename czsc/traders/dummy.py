@@ -78,8 +78,10 @@ class DummyBacktest:
         :return:
         """
         py = get_py_namespace(self.strategy_file)
-        bars = py['read_bars'](symbol)
-        signals = generate_signals(bars, sdt=py['sdt'], strategy=py['trader_strategy'])
+        sdt, mdt, edt = py['dummy_params']['sdt'], py['dummy_params']['mdt'], py['dummy_params']['edt']
+
+        bars = py['read_bars'](symbol, sdt, edt)
+        signals = generate_signals(bars, sdt=mdt, strategy=py['trader_strategy'])
 
         df = pd.DataFrame(signals)
         if 'cache' in df.columns:
@@ -98,7 +100,7 @@ class DummyBacktest:
         py = get_py_namespace(self.strategy_file)
 
         strategy = py['trader_strategy']
-        symbols = py['symbols']
+        symbols = py['dummy_params']['symbols']
 
         for symbol in symbols:
             file_dfs = os.path.join(signals_path, f"{symbol}_signals.pkl")

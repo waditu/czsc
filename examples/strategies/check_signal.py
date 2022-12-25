@@ -166,11 +166,10 @@ def read_bars(symbol, sdt='20170101', edt='20221001'):
     adj = 'hfq'
     freq = '15min'
     ts_code, asset = symbol.split("#")
-    sdt_ = pd.to_datetime(sdt)
 
     if "min" in freq:
-        bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+        bars = dc.pro_bar_minutes(ts_code, sdt, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
     else:
-        bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+        bars = dc.pro_bar(ts_code, sdt, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
     return bars
 
