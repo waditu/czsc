@@ -13,10 +13,13 @@ import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 from datetime import datetime
+from czsc.utils import BarGenerator
+from czsc.traders.utils import trade_replay
 from czsc.traders.advanced import CzscDummyTrader
-from czsc.sensors.utils import generate_symbol_signals
+from czsc.sensors.utils import generate_signals
 from czsc.utils import get_py_namespace, dill_dump, dill_load, WordWriter
 from czsc.traders.performance import PairsPerformance
+from czsc.data.ts_cache import update_bars_return
 
 
 class DummyBacktest:
@@ -28,7 +31,7 @@ class DummyBacktest:
         res_path = get_py_namespace(file_strategy)['results_path']
         os.makedirs(res_path, exist_ok=True)
         self.signals_path = os.path.join(res_path, "signals")
-        self.results_path = os.path.join(res_path, f"DEXP{datetime.now().strftime('%Y%m%d%H%M')}")
+        self.results_path = os.path.join(res_path, f"DEXP_{datetime.now().strftime('%Y%m%d_%H%M%S')}")
         os.makedirs(self.signals_path, exist_ok=True)
         os.makedirs(self.results_path, exist_ok=True)
 
@@ -36,8 +39,58 @@ class DummyBacktest:
         self.cdt_path = os.path.join(self.results_path, 'cache')
         os.makedirs(self.cdt_path, exist_ok=True)
 
-        self.strategy_file = os.path.join(self.results_path, "strategy.py")
+        self.strategy_file = os.path.join(self.results_path, os.path.basename(file_strategy))
         shutil.copy(file_strategy, self.strategy_file)
+
+    def replay(self):
+        """执行策略回放"""
+        py = get_py_namespace(self.strategy_file)
+        strategy = py['trader_strategy']
+        replay_params = py.get('replay_params', {})
+
+        # 获取单个品种的基础周期K线
+        tactic = strategy("000001.SZ")
+        base_freq = tactic['base_freq']
+        symbol = replay_params.get('symbol', py['symbols'][0])
+        sdt = pd.to_datetime(replay_params.get('sdt', '20170101'))
+        edt = pd.to_datetime(replay_params.get('edt', '20220101'))
+        bars = py['read_bars'](symbol, sdt, edt)
+        logger.info(f"交易回放参数 | {symbol} - sdt: {sdt} - edt: {edt}")
+
+        # 设置回放快照文件保存目录
+        res_path = os.path.join(self.results_path, f"replay_{symbol}")
+        os.makedirs(res_path, exist_ok=True)
+
+        # 拆分基础周期K线，一部分用来初始化BarGenerator，随后的K线是回放区间
+        start_date = pd.to_datetime(replay_params.get('mdt', '20200101'))
+        bg = BarGenerator(base_freq, freqs=tactic['freqs'])
+        bars1 = [x for x in bars if x.dt <= start_date]
+        bars2 = [x for x in bars if x.dt > start_date]
+        for bar in bars1:
+            bg.update(bar)
+
+        trade_replay(bg, bars2, strategy, res_path)
+
+    def generate_symbol_signals(self, symbol):
+        """生成指定品种的交易信号
+
+        :param symbol:
+        :return:
+        """
+        py = get_py_namespace(self.strategy_file)
+        bars = py['read_bars'](symbol)
+        signals = generate_signals(bars, sdt=py['sdt'], strategy=py['trader_strategy'])
+
+        df = pd.DataFrame(signals)
+        if 'cache' in df.columns:
+            del df['cache']
+
+        c_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('object')]
+        df[c_cols] = df[c_cols].astype('category')
+
+        float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
+        df[float_cols] = df[float_cols].astype('float32')
+        return df
 
     def execute(self):
         """执行策略文件中定义的内容"""
@@ -45,7 +98,6 @@ class DummyBacktest:
         py = get_py_namespace(self.strategy_file)
 
         strategy = py['trader_strategy']
-        dc = py['dc']
         symbols = py['symbols']
 
         for symbol in symbols:
@@ -56,8 +108,7 @@ class DummyBacktest:
                 if os.path.exists(file_dfs):
                     dfs = pd.read_pickle(file_dfs)
                 else:
-                    ts_code, asset = symbol.split('#')
-                    dfs = generate_symbol_signals(dc, ts_code, asset, "20170101", "20221001", strategy, 'hfq')
+                    dfs = self.generate_symbol_signals(symbol)
                     dfs.to_pickle(file_dfs)
 
                 cdt = CzscDummyTrader(dfs, strategy)

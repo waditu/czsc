@@ -146,15 +146,31 @@ def trader_strategy(symbol):
 dc = TsDataCache(r"D:\ts_data")
 
 # 信号检查参数设置【可选】
-# check_params = {
-#     "symbol": "000001.SZ#E",    # 交易品种，格式为 {ts_code}#{asset}
-#     "sdt": "20180101",          # 开始时间
-#     "edt": "20220101",          # 结束时间
-# }
-
-
 check_params = {
-    "symbol": "300001.SZ#E",  # 交易品种，格式为 {ts_code}#{asset}
-    "sdt": "20150101",  # 开始时间
-    "edt": "20220101",  # 结束时间
+    "symbol": "000001.SZ#E",    # 交易品种，格式为 {ts_code}#{asset}
+    "sdt": "20180101",          # 开始时间
+    "edt": "20220101",          # 结束时间
 }
+
+
+# 【必须】定义K线数据读取函数，这里是为了方便接入任意数据源的K线行情
+# ----------------------------------------------------------------------------------------------------------------------
+def read_bars(symbol, sdt='20170101', edt='20221001'):
+    """自定义K线数据读取函数，便于接入任意来源的行情数据进行回测一类的分析
+
+    :param symbol: 标的名称
+    :param sdt: 行情开始时间
+    :param edt: 行情介绍时间
+    :return: list of RawBar
+    """
+    adj = 'hfq'
+    freq = '15min'
+    ts_code, asset = symbol.split("#")
+    sdt_ = pd.to_datetime(sdt)
+
+    if "min" in freq:
+        bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+    else:
+        bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq, asset=asset, adj=adj, raw_bar=True)
+    return bars
+

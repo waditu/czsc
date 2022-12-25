@@ -21,7 +21,14 @@ os.environ['max_sym_pos'] = '0.5'
 os.environ['path_gm_logs'] = 'C:/gm_logs'
 """
 from czsc.gms.gm_stocks import *
-from czsc.strategies import trader_strategy_a as strategy
+from examples.strategies.cat_sma import trader_strategy
+
+
+os.environ['strategy_id'] = 'c7991760-****-11eb-b66a-00163e0c87d1'
+os.environ['account_id'] = 'c7991760-****-11eb-b66a-00163e0c87d1'
+os.environ['wx_key'] = '2daec96b-****-4f83-818b-2952fe2731c0'
+os.environ['max_sym_pos'] = '0.5'
+os.environ['path_gm_logs'] = 'C:/gm_logs'
 
 
 def init(context):
@@ -39,7 +46,8 @@ def init(context):
         'SHSE.600010',
         'SHSE.600011'
     ]
-    name = f"{strategy.__name__}"
+    name = "stocks_sma5"
+    strategy = trader_strategy
     init_context_universal(context, name)
     init_context_env(context)
     init_context_traders(context, symbols, strategy)

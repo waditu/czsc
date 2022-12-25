@@ -32,7 +32,18 @@ os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
 from czsc.gms.gm_stocks import *
-from czsc.strategies import trader_strategy_a as strategy
+from examples.strategies.cat_sma import trader_strategy
+
+os.environ['strategy_id'] = 'b24661f5-838d-11ed-882c-988fe0675a5b'
+os.environ['wx_key'] = '2****96b-****-4f83-818b-2952fe2731c0'
+os.environ['max_sym_pos'] = '0.5'
+os.environ['path_gm_logs'] = 'C:/gm_logs'
+os.environ['backtest_start_time'] = '2020-01-01 14:30:00'
+os.environ['backtest_end_time'] = '2020-12-31 15:30:00'
+os.environ['backtest_initial_cash'] = '100000000'
+os.environ['backtest_transaction_ratio'] = '1'
+os.environ['backtest_commission_ratio'] = '0.001'
+os.environ['backtest_slippage_ratio'] = '0.0005'
 
 
 def init(context):
@@ -50,7 +61,8 @@ def init(context):
         'SHSE.600010',
         'SHSE.600011'
     ]
-    name = f"{strategy.__name__}"
+    name = "stocks_sma5"
+    strategy = trader_strategy
     init_context_universal(context, name)
     init_context_env(context)
     init_context_traders(context, symbols, strategy)

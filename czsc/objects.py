@@ -960,54 +960,48 @@ class PositionShort:
 
 
 class Position:
-    def __init__(self, symbol: str,
-                 events: List[Event],
-                 hold_a: float = 0.5,
-                 hold_b: float = 0.8,
-                 hold_c: float = 1.0,
-                 min_interval: int = None,
-                 cost: float = 0.003,
-                 T0: bool = False):
-        """空头持仓对象
+    def __init__(self, symbol: str, events: List[Event], interval: int = None,
+                 timeout: int = 1000, stop_loss=1000, T0: bool = False):
+        """简单持仓对象，仓位表达：1 持有多头，-1 持有空头，0 空仓
 
         :param symbol: 标的代码
-        :param hold_a: 首次开仓后的仓位
-        :param hold_b: 第一次加仓后的仓位
-        :param hold_c: 第二次加仓的仓位
-        :param min_interval: 两次开空仓之间的最小时间间隔，单位：秒
-        :param cost: 双边交易成本，默认为千分之三
+        :param events: 交易事件列表
+        :param interval: 同类型开仓间隔时间，单位：秒；
+                假设上次开仓为多头，那么下一次多头开仓时间必须大于 上次开仓时间 + interval；空头也是如此。
+        :param timeout: 最大允许持仓K线数量限制为最近一个开仓事件触发后的 timeout 根基础周期K线
+        :param stop_loss: 最大允许亏损比例，单位：BP， 1BP = 0.01%；成本的计算以最近一个开仓事件触发价格为准
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
-        assert 0 <= hold_a <= hold_b <= hold_c <= 1.0
-        if events[0].operate in long_operates:
-            for event in events:
-                assert event.operate in long_operates
-            self._position = PositionLong(symbol, hold_a, hold_b, hold_c, min_interval, cost, T0)
-        else:
-            for event in events:
-                assert event.operate in shor_operates
-            self._position = PositionShort(symbol, hold_a, hold_b, hold_c, min_interval, cost, T0)
+        self.symbol = symbol
+        allow_operates = [Operate.LO, Operate.LE, Operate.SO, Operate.SE]
+        for event in events:
+            assert event.operate in allow_operates
         self.events = events
-
-    @property
-    def pos(self):
-        """返回状态对应的仓位"""
-        return self._position.pos
-
-    def update(self, s: dict):
-        """更新持仓状态
-
-        :param s: 最新信号字典
-        :return:
-        """
-        op = Operate.HO
-        op_desc = ""
-
-        for event in self.events:
-            m, f = event.is_match(s)
-            if m:
-                op = event.operate
-                op_desc = f"{event.name}@{f}"
-                break
-        dt, price, bid = s['dt'], s['close'], s['bid']
-        self._position.update(dt, op, price, bid, op_desc)
+        self.interval = interval
+        self.timeout = timeout
+        self.stop_loss = stop_loss
+        self.T0 = T0
+        self.cache = {}
+    #
+    # @property
+    # def pos(self):
+    #     """返回状态对应的仓位"""
+    #     return self._position.pos
+    #
+    # def update(self, s: dict):
+    #     """更新持仓状态
+    #
+    #     :param s: 最新信号字典
+    #     :return:
+    #     """
+    #     op = Operate.HO
+    #     op_desc = ""
+    #
+    #     for event in self.events:
+    #         m, f = event.is_match(s)
+    #         if m:
+    #             op = event.operate
+    #             op_desc = f"{event.name}@{f}"
+    #             break
+    #     dt, price, bid = s['dt'], s['close'], s['bid']
+    #     self._position.update(dt, op, price, bid, op_desc)
