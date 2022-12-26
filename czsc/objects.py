@@ -8,10 +8,10 @@ describe: 常用对象结构
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import List, Callable
 from transitions import Machine
 from czsc.enum import Mark, Direction, Freq, Operate
-from czsc.utils.ta import RSQ
+from czsc.utils.corr import single_linear
 
 long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
 shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
@@ -195,15 +195,54 @@ class BI:
         return f"BI(symbol={self.symbol}, sdt={self.sdt}, edt={self.edt}, " \
                f"direction={self.direction}, high={self.high}, low={self.low})"
 
+    def get_cache_with_default(self, key, default: Callable):
+        """带有默认值计算的缓存读取
+
+        :param key: 缓存 key
+        :param default: 如果没有缓存数据，用来计算默认值并更新缓存的函数
+        :return:
+        """
+        cache = self.cache if self.cache else {}
+        value = cache.get(key, None)
+        if not value:
+            value = default()
+            cache[key] = value
+            self.cache = cache
+        return value
+
+    def get_price_linear(self, price_key="close"):
+        """计算 price 的单变量线性回归特征
+
+        :param price_key: 指定价格类型，可选值 open close high low
+        :return value: 单变量线性回归特征，样例如下
+            {'slope': 1.565, 'intercept': 67.9783, 'r2': 0.9967}
+
+            slope       标识斜率
+            intercept   截距
+            r2          拟合优度
+        """
+        cache = self.cache if self.cache else {}
+        key = f"{price_key}_linear_info"
+        value = cache.get(key, None)
+
+        if not value:
+            value = single_linear([x.__dict__[price_key] for x in self.raw_bars])
+            cache[key] = value
+            self.cache = cache
+        return value
+
     # 定义一些附加属性，用的时候才会计算，提高效率
     # ======================================================================
     @property
     def fake_bis(self):
-        return create_fake_bis(self.fxs)
+        """笔的内部分型连接得到近似次级别笔列表"""
+        def __default(): return create_fake_bis(self.fxs)
+        return self.get_cache_with_default('fake_bis', __default)
 
     @property
     def high(self):
-        return max(self.fx_a.high, self.fx_b.high)
+        def __default(): return max(self.fx_a.high, self.fx_b.high)
+        return self.get_cache_with_default('high', __default)
 
     @property
     def low(self):
@@ -236,17 +275,20 @@ class BI:
 
     @property
     def rsq(self):
-        """笔的斜率"""
-        close = [x.close for x in self.raw_bars]
-        return round(RSQ(close), 4)
+        """笔的原始K线 close 单变量线性回归 r2"""
+        value = self.get_price_linear('close')
+        return round(value['r2'], 4)
 
     @property
     def raw_bars(self):
         """构成笔的原始K线序列"""
-        x = []
-        for bar in self.bars[1:-1]:
-            x.extend(bar.raw_bars)
-        return x
+        def __default():
+            value = []
+            for bar in self.bars[1:-1]:
+                value.extend(bar.raw_bars)
+            return value
+
+        return self.get_cache_with_default('raw_bars', __default)
 
     @property
     def hypotenuse(self):
