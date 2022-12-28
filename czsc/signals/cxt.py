@@ -297,3 +297,56 @@ def cxt_sub_b3_V221212(cat: CzscAdvancedTrader, freq='60分钟', sub_freq='15分
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
+
+
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscAdvancedTrader, freq1='日线', freq2='60分钟') -> OrderedDict:
+    """大小级别中枢共振，类二买共振；贡献者：琅盎
+
+    **信号逻辑：**
+
+    1. 不区分上涨或下跌中枢
+    2. 次级别中枢 DD 大于本级别中枢中轴
+    3. 次级别向下笔出底分型开多；反之看空
+
+    **信号列表：**
+
+    - Signal('日线_60分钟_中枢共振_看多_任意_任意_0')
+    - Signal('日线_60分钟_中枢共振_看空_任意_任意_0')
+
+    :param cat:
+    :param freq1:大级别周期
+    :param freq2: 小级别周期
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{freq1}_{freq2}_中枢共振".split('_')
+
+    max_freq: CZSC = cat.kas[freq1]
+    min_freq: CZSC = cat.kas[freq2]
+    symbol = cat.symbol
+
+    def __is_zs(_bis):
+        _zs = ZS(symbol=symbol, bis=_bis)
+        if _zs.zd < _zs.zg:
+            return True
+        else:
+            return False
+
+    v1 = "其他"
+    if len(max_freq.bi_list) >= 5 and __is_zs(max_freq.bi_list[-3:]) \
+            and len(min_freq.bi_list) >= 5 and __is_zs(min_freq.bi_list[-3:]):
+
+        big_zs = ZS(symbol=symbol, bis=max_freq.bi_list[-3:])
+        small_zs = ZS(symbol=symbol, bis=min_freq.bi_list[-3:])
+
+        if small_zs.dd > big_zs.zz and min_freq.bi_list[-1].direction == Direction.Down:
+            v1 = "看多"
+
+        if small_zs.gg < big_zs.zz and min_freq.bi_list[-1].direction == Direction.Up:
+            v1 = "看空"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    s[signal.key] = signal.value
+    return s
+
+
