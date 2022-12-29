@@ -12,7 +12,6 @@ from czsc.sensors.utils import (
     generate_signals,
     generate_stocks_signals,
     generate_symbol_signals,
-    read_cached_signals,
     turn_over_rate,
     discretizer,
     compound_returns,

@@ -255,6 +255,8 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
 def compound_returns(n1b: List):
     """复利收益计算
 
+    等价于： `np.cumprod(np.array(n1b) / 10000 + 1) *  10000 - 10000`
+
     :param n1b: 逐个结算周期的收益列表，单位：BP，换算关系是 10000BP = 100%
         如，n1b = [100.1, -90.5, 212.6]，表示第一个结算周期收益为100.1BP，也就是1.001%，以此类推。
     :return: 累计复利收益，逐个结算周期的复利收益
@@ -265,57 +267,6 @@ def compound_returns(n1b: List):
         v = v * (1 + n / 10000)
         detail.append(v-10000)
     return v-10000, detail
-
-
-def read_cached_signals(file_output: str, path_pat=None, sdt=None, edt=None, keys=None) -> pd.DataFrame:
-    """读取缓存信号
-
-    :param file_output: 读取后保存结果
-    :param path_pat: 缓存信号文件路径模板，用于glob获取文件列表
-    :param keys: 需要读取的信号名称列表
-    :param sdt: 开始时间
-    :param edt: 结束时间
-    :return: 信号
-    """
-    verbose = envs.get_verbose()
-
-    if os.path.exists(file_output):
-        sf = pd.read_pickle(file_output)
-        if verbose:
-            print(f"read_cached_signals: read from {file_output}, 数据占用内存大小"
-                  f"：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
-        return sf
-
-    files = glob.glob(path_pat, recursive=False)
-    results = []
-    for file in tqdm(files, desc="read_cached_signals"):
-        df = pd.read_pickle(file)
-        if not df.empty:
-            if keys:
-                base_cols = [x for x in df.columns if len(x.split("_")) != 3]
-                df = df[base_cols + keys]
-            if sdt:
-                df = df[df['dt'] >= pd.to_datetime(sdt)]
-            if edt:
-                df = df[df['dt'] <= pd.to_datetime(edt)]
-            results.append(df)
-        else:
-            print(f"read_cached_signals: {file} is empty")
-
-    sf = pd.concat(results, ignore_index=True)
-    if verbose:
-        print(f"read_cached_signals: 原始数据占用内存大小：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
-
-    c_cols = [k for k, v in sf.dtypes.to_dict().items() if v.name.startswith('object')]
-    sf[c_cols] = sf[c_cols].astype('category')
-
-    float_cols = [k for k, v in sf.dtypes.to_dict().items() if v.name.startswith('float')]
-    sf[float_cols] = sf[float_cols].astype('float32')
-    if verbose:
-        print(f"read_cached_signals: 转类型后占用内存大小：{int(sf.memory_usage(deep=True).sum() / (1024 * 1024))} MB")
-
-    sf.to_pickle(file_output, protocol=4)
-    return sf
 
 
 def generate_symbol_signals(dc: TsDataCache,
@@ -412,21 +363,18 @@ def generate_stocks_signals(dc: TsDataCache,
 class SignalsPerformance:
     """信号表现分析"""
 
-    def __init__(self, dfs: pd.DataFrame, keys: List[AnyStr], dc: TsDataCache = None, base_freq="日线"):
+    def __init__(self, dfs: pd.DataFrame, keys: List[AnyStr]):
         """
 
         :param dfs: 信号表
         :param keys: 信号列，支持一个或多个信号列组合分析
-        :param dc: Tushare 数据缓存对象
-        :param base_freq: 信号对应的K线基础周期
         """
         if 'year' not in dfs.columns:
-            dfs['year'] = dfs['dt'].apply(lambda x: x.year)
+            y = dfs['dt'].apply(lambda x: x.year)
+            dfs['year'] = y.values
 
         self.dfs = dfs
         self.keys = keys
-        self.dc = dc
-        self.base_freq = base_freq
         self.b_cols = [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
         self.n_cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b']
 
@@ -451,7 +399,7 @@ class SignalsPerformance:
         edt = dfs['dt'].max().strftime("%Y%m%d")
 
         def __static(_df, _name):
-            _res = {"name": _name, "sdt": sdt, "edt": edt,
+            _res = {"name": _name, "date_span": f"{sdt} ~ {edt}",
                     "count": len(_df), "cover": round(len(_df) / len_dfs, 4)}
             if mode.startswith('0'):
                 _r = _df.groupby('dt')[cols].mean().mean().to_dict()
@@ -462,7 +410,7 @@ class SignalsPerformance:
 
         results = [__static(dfs, "基准")]
 
-        for values, dfg in dfs.groupby(keys):
+        for values, dfg in dfs.groupby(by=keys if len(keys) > 1 else keys[0]):
             if isinstance(values, str):
                 values = [values]
             assert len(keys) == len(values)
@@ -474,7 +422,7 @@ class SignalsPerformance:
         dfr[cols] = dfr[cols].round(2)
         return dfr
 
-    def analyze_return(self, mode='0b') -> pd.DataFrame:
+    def analyze(self, mode='0b') -> pd.DataFrame:
         """分析信号出现前后的收益情况
 
         :param mode: 分析模式，
@@ -492,138 +440,11 @@ class SignalsPerformance:
         dfr = pd.concat(results, ignore_index=True)
         return dfr
 
-    def __corr_index(self,  dfs: pd.DataFrame, index: str):
-        """分析信号每天出现的次数与指数的相关性"""
-        dc = self.dc
-        base_freq = self.base_freq
-        keys = self.keys
-        n_cols = self.n_cols
-        freq = freq_cn2ts[base_freq]
-        sdt = dfs['dt'].min().strftime("%Y%m%d")
-        edt = dfs['dt'].max().strftime("%Y%m%d")
-        adj = 'hfq'
-        asset = "I"
-
-        if "分钟" in base_freq:
-            dfi = dc.pro_bar_minutes(index, sdt, edt, freq, asset, adj, raw_bar=False)
-            dfi['dt'] = pd.to_datetime(dfi['trade_time'])
-        else:
-            dfi = dc.pro_bar(index, sdt, edt, freq, asset, adj, raw_bar=False)
-            dfi['dt'] = pd.to_datetime(dfi['trade_date'])
-
-        results = []
-        for values, dfg in dfs.groupby(keys):
-            if isinstance(values, str):
-                values = [values]
-            assert len(keys) == len(values)
-            name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-            c = dfg.groupby("dt")['symbol'].count()
-            c_col = f'{name}_count'
-            dfc = pd.DataFrame({'dt': c.index, c_col: c.values})
-            df_ = dfi.merge(dfc, on=['dt'], how='left')
-            df_[c_col] = df_[c_col].fillna(0)
-
-            res = {"name": name, 'sdt': sdt, 'edt': edt, 'index': index}
-            corr_ = df_[[c_col] + n_cols].corr(method='spearman').iloc[0][n_cols].round(4).to_dict()
-            res.update(corr_)
-            results.append(res)
-        df_corr = pd.DataFrame(results)
-        return df_corr
-
-    def analyze_corr_index(self, index: str) -> pd.DataFrame:
-        """分析信号出现前后的收益情况
-
-        :param index: Tushare 指数代码，如 000905.SH 表示中证500
-        :return:
-        """
-        dfr = self.__corr_index(self.dfs, index)
-        results = [dfr]
-        for year, df_ in self.dfs.groupby('year'):
-            dfr_ = self.__corr_index(df_, index)
-            results.append(dfr_)
-        dfr = pd.concat(results, ignore_index=True)
-        return dfr
-
-    def __ar_counts(self,  dfs: pd.DataFrame):
-        """分析信号每天出现的次数与自身收益的相关性"""
-        keys = self.keys
-        n_cols = self.n_cols
-        sdt = dfs['dt'].min().strftime("%Y%m%d")
-        edt = dfs['dt'].max().strftime("%Y%m%d")
-
-        results = []
-        for values, dfg in dfs.groupby(keys):
-            if isinstance(values, str):
-                values = [values]
-            assert len(keys) == len(values)
-            name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-            c = dfg.groupby("dt")['symbol'].count()
-            n_bars = dfg.groupby("dt")[n_cols].mean()
-            n_bars['count'] = c
-            res_ = {"name": name, 'sdt': sdt, 'edt': edt}
-            corr_ = n_bars[['count'] + n_cols].corr(method='spearman').iloc[0][n_cols].round(4).to_dict()
-            res_.update(corr_)
-            results.append(res_)
-        dfr = pd.DataFrame(results)
-        return dfr
-
-    def analyze_ar_counts(self) -> pd.DataFrame:
-        """分析信号每天出现的次数与自身收益的相关性"""
-        dfr = self.__ar_counts(self.dfs)
-        results = [dfr]
-        for year, df_ in self.dfs.groupby('year'):
-            dfr_ = self.__ar_counts(df_)
-            results.append(dfr_)
-        dfr = pd.concat(results, ignore_index=True)
-        return dfr
-
-    def __b_bar(self,  dfs: pd.DataFrame, b_col='b21b'):
-        """分析信号出现前的收益与出现后收益的相关性"""
-        keys = self.keys
-        n_cols = self.n_cols
-        sdt = dfs['dt'].min().strftime("%Y%m%d")
-        edt = dfs['dt'].max().strftime("%Y%m%d")
-
-        results = []
-        for values, dfg in dfs.groupby(keys):
-            if isinstance(values, str):
-                values = [values]
-            assert len(keys) == len(values)
-            name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-            n_bars = dfg.groupby("dt")[[b_col] + n_cols].mean()
-            res_ = {"name": name, 'sdt': sdt, 'edt': edt, 'b_col': b_col}
-            corr_ = n_bars[[b_col] + n_cols].corr(method='spearman').iloc[0][n_cols].round(4).to_dict()
-            res_.update(corr_)
-            results.append(res_)
-        dfr = pd.DataFrame(results)
-        return dfr
-
-    def analyze_b_bar(self, b_col='b21b') -> pd.DataFrame:
-        """分析信号出现前的收益与出现后收益的相关性"""
-        dfr = self.__b_bar(self.dfs, b_col)
-        results = [dfr]
-        for year, df_ in self.dfs.groupby('year'):
-            dfr_ = self.__b_bar(df_, b_col)
-            results.append(dfr_)
-        dfr = pd.concat(results, ignore_index=True)
-        return dfr
-
     def report(self, file_xlsx=None):
         res = {
-            '向前看截面': self.analyze_return('0b'),
-            '向后看截面': self.analyze_return('0n'),
-            '向前看时序': self.analyze_return('1b'),
-            '向后看时序': self.analyze_return('1n'),
-
-            '信号数量与自身收益相关性': self.analyze_ar_counts(),
+            '向后看截面': self.analyze('0n'),
+            '向后看时序': self.analyze('1n'),
         }
-
-        if self.dc:
-            res.update({
-                '信号数量与上证50相关性': self.analyze_corr_index('000016.SH'),
-                '信号数量与中证500相关性': self.analyze_corr_index('000905.SH'),
-                '信号数量与沪深300相关性': self.analyze_corr_index('000300.SH'),
-            })
         if file_xlsx:
             writer = pd.ExcelWriter(file_xlsx)
             for sn, df_ in res.items():
