@@ -124,12 +124,6 @@ class CzscAdvancedTrader(CzscSignals):
         self.name = "CzscAdvancedTrader"
         self.strategy = strategy
         tactic = self.strategy(self.symbol) if strategy else {}
-        get_signals: Callable = tactic.get('get_signals')
-        self.tactic = tactic
-        super().__init__(bg, get_signals=get_signals)
-
-        self.strategy = strategy
-        tactic = self.strategy(self.symbol) if strategy else {}
         self.get_signals: Callable = tactic.get('get_signals')
         self.tactic = tactic
         self.long_events: List[Event] = tactic.get('long_events', None)
@@ -138,6 +132,7 @@ class CzscAdvancedTrader(CzscSignals):
         self.short_events: List[Event] = tactic.get('short_events', None)
         self.short_pos: PositionShort = tactic.get('short_pos', None)
         self.short_holds = []                   # 记录基础周期结束时间对应的空头仓位信息
+        super().__init__(bg, get_signals=self.get_signals)
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
@@ -206,7 +201,7 @@ class CzscAdvancedTrader(CzscSignals):
         self.update_signals(bar)
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         dt, bid, price, symbol = self.end_dt, self.bid, self.latest_price, self.symbol
-        assert last_bar.dt == dt and last_bar.bid == bid and last_bar.close == price
+        assert last_bar.dt == dt and last_bar.id == bid and last_bar.close == price
 
         last_n1b = last_bar.close / self.kas[self.base_freq].bars_raw[-2].close - 1
         # 遍历 long_events，更新 long_pos
