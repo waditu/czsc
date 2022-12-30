@@ -236,12 +236,15 @@ class BI:
     @property
     def fake_bis(self):
         """笔的内部分型连接得到近似次级别笔列表"""
+
         def __default(): return create_fake_bis(self.fxs)
+
         return self.get_cache_with_default('fake_bis', __default)
 
     @property
     def high(self):
         def __default(): return max(self.fx_a.high, self.fx_b.high)
+
         return self.get_cache_with_default('high', __default)
 
     @property
@@ -282,6 +285,7 @@ class BI:
     @property
     def raw_bars(self):
         """构成笔的原始K线序列"""
+
         def __default():
             value = []
             for bar in self.bars[1:-1]:
@@ -1002,48 +1006,152 @@ class PositionShort:
 
 
 class Position:
-    def __init__(self, symbol: str, events: List[Event], interval: int = None,
+    def __init__(self, symbol: str, opens: List[Event], exits: List[Event] = None, interval: int = 0,
                  timeout: int = 1000, stop_loss=1000, T0: bool = False):
         """简单持仓对象，仓位表达：1 持有多头，-1 持有空头，0 空仓
 
         :param symbol: 标的代码
-        :param events: 交易事件列表
-        :param interval: 同类型开仓间隔时间，单位：秒；
+        :param opens: 开仓交易事件列表
+        :param exits: 平仓交易事件列表，允许为空
+        :param interval: 同类型开仓间隔时间，单位：秒；默认值为 0，表示同类型开仓间隔没有约束
                 假设上次开仓为多头，那么下一次多头开仓时间必须大于 上次开仓时间 + interval；空头也是如此。
         :param timeout: 最大允许持仓K线数量限制为最近一个开仓事件触发后的 timeout 根基础周期K线
         :param stop_loss: 最大允许亏损比例，单位：BP， 1BP = 0.01%；成本的计算以最近一个开仓事件触发价格为准
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         """
         self.symbol = symbol
-        allow_operates = [Operate.LO, Operate.LE, Operate.SO, Operate.SE]
-        for event in events:
-            assert event.operate in allow_operates
-        self.events = events
+        self.opens = opens
+        self.exits = exits if exits else []
+        self.events = self.opens + self.exits
+        for event in self.events:
+            assert event.operate in [Operate.LO, Operate.LE, Operate.SO, Operate.SE]
+
         self.interval = interval
         self.timeout = timeout
         self.stop_loss = stop_loss
         self.T0 = T0
-        self.cache = {}
-    #
-    # @property
-    # def pos(self):
-    #     """返回状态对应的仓位"""
-    #     return self._position.pos
-    #
-    # def update(self, s: dict):
-    #     """更新持仓状态
-    #
-    #     :param s: 最新信号字典
-    #     :return:
-    #     """
-    #     op = Operate.HO
-    #     op_desc = ""
-    #
-    #     for event in self.events:
-    #         m, f = event.is_match(s)
-    #         if m:
-    #             op = event.operate
-    #             op_desc = f"{event.name}@{f}"
-    #             break
-    #     dt, price, bid = s['dt'], s['close'], s['bid']
-    #     self._position.update(dt, op, price, bid, op_desc)
+
+        self.operates = []  # 事件触发的操作列表
+        self.holds = []     # 持仓状态列表
+        self.pos = 0
+
+        # 辅助判断的缓存数据
+        self.last_event = {'dt': None, 'bid': None, 'price': None, "op": None, 'op_desc': None}
+        self.last_lo_dt = None      # 最近一次开多交易的时间
+        self.last_so_dt = None      # 最近一次开空交易的时间
+
+    def __two_operates_pair(self, op1, op2):
+        assert op1['op'] in [Operate.LO, Operate.SO]
+        pair = {
+            '标的代码': self.symbol,
+            '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
+            '开仓时间': op1['dt'],
+            '平仓时间': op2['dt'],
+            '开仓价格': op1['price'],
+            '平仓价格': op2['price'],
+            '持仓K线数': op2['bid'] - op1['bid'],
+            '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
+            '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
+            '盈亏比例': op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price'],
+        }
+        # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
+        pair['盈亏比例'] = round(pair['盈亏比例'] * 10000, 2)
+        return pair
+
+    @property
+    def pairs(self):
+        """开平交易列表"""
+        pairs = []
+        for op1, op2 in zip(self.operates, self.operates[1:]):
+            if op1['op'] in [Operate.LO, Operate.SO]:
+                pairs.append(self.__two_operates_pair(op1, op2))
+        return pairs
+
+    def update(self, s: dict):
+        """更新持仓状态
+
+        :param s: 最新信号字典
+        :return:
+        """
+        op = Operate.HO
+        op_desc = ""
+        for event in self.events:
+            m, f = event.is_match(s)
+            if m:
+                op = event.operate
+                op_desc = f"{event.name}@{f}"
+                break
+
+        symbol, dt, price, bid = s['symbol'], s['dt'], s['close'], s['id']
+
+        # 当有新的开仓 event 发生，更新 last_event
+        if op in [Operate.LO, Operate.SO]:
+            self.last_event = {'dt': dt, 'bid': bid, 'price': price, 'op': op, 'op_desc': op_desc}
+
+        def __create_operate(_op, _op_desc):
+            return {'symbol': self.symbol, 'dt': dt, 'bid': bid, 'price': price,
+                    'op': _op, 'op_desc': _op_desc, 'pos': self.pos}
+
+        # 更新仓位
+        if op == Operate.LO:
+            if not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval:
+                # 与前一次开多间隔时间大于 interval，直接开多
+                self.pos = 1
+                self.operates.append(__create_operate(Operate.LO, op_desc))
+                self.last_lo_dt = dt
+            else:
+                # 与前一次开多间隔时间小于 interval，仅对空头平仓
+                if self.pos == -1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
+                    self.pos = 0
+                    self.operates.append(__create_operate(Operate.SE, op_desc))
+
+        if op == Operate.SO:
+            if not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval:
+                # 与前一次开空间隔时间大于 interval，直接开空
+                self.pos = -1
+                self.operates.append(__create_operate(Operate.SO, op_desc))
+                self.last_so_dt = dt
+            else:
+                # 与前一次开空间隔时间小于 interval，仅对多头平仓
+                if self.pos == 1 and (self.T0 or dt.date() != self.last_so_dt.date()):
+                    self.pos = 0
+                    self.operates.append(__create_operate(Operate.LE, op_desc))
+
+        # 多头出场
+        if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
+            assert self.last_event['dt'] >= self.last_lo_dt
+
+            # 多头平仓
+            if op == Operate.LE:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.LE, op_desc))
+
+            # 多头止损
+            if price / self.last_event['price'] - 1 < -self.stop_loss / 10000:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.LE, f"平多@{self.stop_loss}BP止损"))
+
+            # 多头超时
+            if bid - self.last_event['bid'] > self.timeout:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.LE, f"平多@{self.timeout}K超时"))
+
+        # 空头出场
+        if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
+            assert self.last_event['dt'] >= self.last_so_dt
+
+            # 空头平仓
+            if op == Operate.SE:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.SE, op_desc))
+
+            # 空头止损
+            if 1 - price / self.last_event['price'] < -self.stop_loss / 10000:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.SE, f"平空@{self.stop_loss}BP止损"))
+
+            # 空头超时
+            if bid - self.last_event['bid'] > self.timeout:
+                self.pos = 0
+                self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
+

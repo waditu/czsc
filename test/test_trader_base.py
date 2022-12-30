@@ -6,11 +6,65 @@ create_dt: 2021/11/7 21:07
 """
 import pandas as pd
 from tqdm import tqdm
+from loguru import logger
 from collections import OrderedDict
 from czsc import signals
 from czsc.traders.base import CzscSignals, CzscAdvancedTrader, BarGenerator
-from czsc.objects import Signal, Factor, Event, Operate, PositionLong, PositionShort
+from czsc.objects import Signal, Factor, Event, Operate, PositionLong, PositionShort, Position
 from test.test_analyze import read_1min, read_daily
+
+
+def test_object_position():
+    bars = read_daily()
+    bg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
+    for bar in bars[:1000]:
+        bg.update(bar)
+
+    def __get_signals(cat) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=5)
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, key='SMA5', th=100))
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=2, key='SMA5', th=100))
+        return s
+
+    opens = [
+        Event(name='开多', operate=Operate.LO, factors=[
+            Factor(name="站上SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_多头_任意_任意_0"),
+                Signal("日线_D2T100_SMA5_空头_任意_任意_0"),
+            ])
+        ]),
+        Event(name='开空', operate=Operate.SO, factors=[
+            Factor(name="跌破SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_空头_任意_任意_0"),
+                Signal("日线_D2T100_SMA5_多头_任意_任意_0"),
+            ])
+        ]),
+    ]
+
+    exits = [
+        Event(name='平多', operate=Operate.LE, factors=[
+            Factor(name="跌破SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_空头_任意_任意_0"),
+            ])
+        ]),
+        Event(name='平空', operate=Operate.SE, factors=[
+            Factor(name="站上SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_多头_任意_任意_0"),
+            ])
+        ]),
+    ]
+
+    pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
+
+    cs = CzscSignals(bg, get_signals=__get_signals)
+    for bar in bars[1000:]:
+        cs.update_signals(bar)
+        pos.update(cs.s)
+
+    df = pd.DataFrame(pos.pairs)
+    assert df.shape == (584, 10)
+    assert len(cs.s) == 13
 
 
 def get_signals(cat) -> OrderedDict:
