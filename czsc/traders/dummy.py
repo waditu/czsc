@@ -113,6 +113,9 @@ class DummyBacktest:
                     dfs = self.generate_symbol_signals(symbol)
                     dfs.to_pickle(file_dfs)
 
+                if len(dfs) == 0:
+                    continue
+
                 cdt = CzscDummyTrader(dfs, strategy)
                 dill_dump(cdt, os.path.join(self.cdt_path, f"{symbol}.cdt"))
 
@@ -123,10 +126,11 @@ class DummyBacktest:
                 if "short_performance" in res.keys():
                     logger.info(f"{res['short_performance']}")
             except Exception as e:
+                msg = f"fail on {symbol}: {e}"
                 if self.__debug:
-                    logger.exception(f"fail on {symbol}: {e}")
+                    logger.exception(msg)
                 else:
-                    logger.warning(f"fail on {symbol}: {e}")
+                    logger.warning(msg)
 
     def collect(self):
         """汇集回测结果"""
