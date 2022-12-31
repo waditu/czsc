@@ -40,23 +40,26 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs) -> None:
         'TRIMA': ta.MA_Type.TRIMA,
     }
 
-    min_count = timeperiod
     cache_key = f"{ma_type.upper()}{timeperiod}"
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 5:
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 10:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
-        min_count = 0
+        ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        assert len(ma) == len(close)
+        for i in range(len(close)):
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c.update({cache_key: ma[i] if ma[i] else close[i]})
+            c.bars_raw[i].cache = _c
+
     else:
         # 增量更新缓存
         close = np.array([x.close for x in c.bars_raw[-timeperiod - 10:]])
-
-    ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
-
-    for i in range(1, len(close) - min_count - 5):
-        _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
-        _c.update({cache_key: ma[-i]})
-        c.bars_raw[-i].cache = _c
+        ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        for i in range(1, len(close) - timeperiod - 5):
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c.update({cache_key: ma[-i]})
+            c.bars_raw[-i].cache = _c
 
 
 def update_macd_cache(c: CZSC, **kwargs) -> None:

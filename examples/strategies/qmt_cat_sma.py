@@ -48,8 +48,8 @@ def format_stock_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
         # 将每一根K线转换成 RawBar 对象
         bar = RawBar(symbol=record['symbol'], dt=pd.to_datetime(record[dt_key]), id=i, freq=freq,
                      open=record['open'], close=record['close'], high=record['high'], low=record['low'],
-                     vol=record['volume'] * 100,  # 成交量，单位：股
-                     amount=record['amount'],  # 成交额，单位：元
+                     vol=record['volume'] * 100 if record['volume'] else 0,  # 成交量，单位：股
+                     amount=record['amount'] if record['amount'] > 0 else 0,  # 成交额，单位：元
                      )
         bars.append(bar)
     return bars
@@ -201,7 +201,7 @@ replay_params = {
 }
 
 # 【可选】是否使用 debug 模式输出更多信息
-debug = False
+debug = True
 
 
 # 【必须】定义K线数据读取函数，这里是为了方便接入任意数据源的K线行情
@@ -218,7 +218,7 @@ def read_bars(symbol, sdt, edt):
     sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
     edt = pd.to_datetime(edt).strftime("%Y%m%d")
     df = get_local_kline(symbol, period='5m', start_time=sdt, end_time=edt, dividend_type='back',
-                         data_dir=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\datadir", update=False)
+                         data_dir=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\datadir", update=True)
     bars = format_stock_kline(df, Freq.F5)
     return bars
 

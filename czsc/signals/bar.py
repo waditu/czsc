@@ -8,8 +8,9 @@ describe: bar 作为前缀，代表信号属于基础 K 线信号
 import numpy as np
 from datetime import datetime
 from typing import List
+from loguru import logger
 from collections import OrderedDict
-from czsc import CZSC, Signal, CzscAdvancedTrader
+from czsc import envs, CZSC, Signal, CzscAdvancedTrader
 from czsc.objects import RawBar
 from czsc.utils import check_pressure_support, get_sub_elements
 
@@ -251,15 +252,20 @@ def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2
     """
     k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B均额", f"{th1}至{th2}千万"
 
-    if len(c.bars_raw) < di + n + 5:
-        v1 = "其他"
+    v1 = "其他"
+    if len(c.bars_raw) > di + n + 5:
+        try:
+            bars = get_sub_elements(c.bars_raw, di=di, n=n)
+            assert len(bars) == n
+            m = sum([x.amount for x in bars]) / n
+            v1 = "是" if th2 >= m / 10000000 >= th1 else "否"
 
-    else:
-        bars = get_sub_elements(c.bars_raw, di=di, n=n)
-        assert len(bars) == n
-
-        m = sum([x.amount for x in bars]) / n
-        v1 = "是" if th2 >= m / 10000000 >= th1 else "否"
+        except Exception as e:
+            msg = f"{c.symbol} - {c.bars_raw[-1].dt} fail: {e}"
+            if envs.get_verbose():
+                logger.exception(msg)
+            else:
+                logger.warning(msg)
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
