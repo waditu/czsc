@@ -121,8 +121,8 @@ class DummyBacktest:
 
                 if "short_performance" in res.keys():
                     logger.info(f"{res['short_performance']}")
-            except:
-                logger.exception(f"fail on {symbol}")
+            except Exception as e:
+                logger.warning(f"fail on {symbol}: {e}")
 
     def collect(self):
         """汇集回测结果"""

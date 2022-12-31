@@ -8,6 +8,7 @@ describe: 常用对象结构
 import math
 from dataclasses import dataclass
 from datetime import datetime
+from loguru import logger
 from typing import List, Callable
 from transitions import Machine
 from czsc.enum import Mark, Direction, Freq, Operate
@@ -1007,7 +1008,7 @@ class PositionShort:
 
 class Position:
     def __init__(self, symbol: str, opens: List[Event], exits: List[Event] = None, interval: int = 0,
-                 timeout: int = 1000, stop_loss=1000, T0: bool = False):
+                 timeout: int = 1000, stop_loss=1000, T0: bool = False, name=None):
         """简单持仓对象，仓位表达：1 持有多头，-1 持有空头，0 空仓
 
         :param symbol: 标的代码
@@ -1018,9 +1019,11 @@ class Position:
         :param timeout: 最大允许持仓K线数量限制为最近一个开仓事件触发后的 timeout 根基础周期K线
         :param stop_loss: 最大允许亏损比例，单位：BP， 1BP = 0.01%；成本的计算以最近一个开仓事件触发价格为准
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
+        :param name: 仓位名称，默认值为第一个开仓事件的名称
         """
         self.symbol = symbol
         self.opens = opens
+        self.name = name if name else opens[0].name
         self.exits = exits if exits else []
         self.events = self.opens + self.exits
         for event in self.events:
@@ -1039,6 +1042,7 @@ class Position:
         self.last_event = {'dt': None, 'bid': None, 'price': None, "op": None, 'op_desc': None}
         self.last_lo_dt = None      # 最近一次开多交易的时间
         self.last_so_dt = None      # 最近一次开空交易的时间
+        self.end_dt = None          # 最近一次信号传入的时间
 
     def __two_operates_pair(self, op1, op2):
         assert op1['op'] in [Operate.LO, Operate.SO]
@@ -1073,6 +1077,10 @@ class Position:
         :param s: 最新信号字典
         :return:
         """
+        if self.end_dt and s['dt'] <= self.end_dt:
+            logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
+            return
+
         op = Operate.HO
         op_desc = ""
         for event in self.events:
@@ -1083,6 +1091,7 @@ class Position:
                 break
 
         symbol, dt, price, bid = s['symbol'], s['dt'], s['close'], s['id']
+        self.end_dt = dt
 
         # 当有新的开仓 event 发生，更新 last_event
         if op in [Operate.LO, Operate.SO]:

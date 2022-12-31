@@ -81,7 +81,7 @@ def trader_strategy(symbol):
 # ----------------------------------------------------------------------------------------------------------------------
 
 # 【必须】执行结果路径
-results_path = r"D:\ts_data\SMA5"
+results_path = r"D:\ts_data\TS_SMA5"
 
 # 初始化 Tushare 数据缓存
 dc = TsDataCache(r"D:\ts_data")

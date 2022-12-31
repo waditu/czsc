@@ -7,6 +7,7 @@ describe: 简单的单仓位策略执行
 """
 import os
 import webbrowser
+import numpy as np
 import pandas as pd
 from collections import OrderedDict
 from typing import Callable, List
@@ -14,7 +15,7 @@ from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 from czsc.analyze import CZSC
-from czsc.objects import PositionLong, PositionShort, Operate, Event, RawBar
+from czsc.objects import Position, PositionLong, PositionShort, Operate, Event, RawBar
 from czsc.utils import BarGenerator, x_round
 from czsc.utils.cache import home_path
 
@@ -109,6 +110,51 @@ class CzscSignals:
         if self.get_signals:
             self.s = self.get_signals(self)
             self.s.update(last_bar.__dict__)
+
+
+class CzscTrader(CzscSignals):
+    """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
+
+    def __init__(self, bg: BarGenerator, get_signals: Callable = None, positions: List[Position] = None):
+        super().__init__(bg, get_signals=get_signals)
+        self.positions = positions
+
+    def update(self, bar: RawBar):
+        """输入基础周期已完成K线，更新信号，更新仓位"""
+        self.update_signals(bar)
+        if self.positions:
+            for position in self.positions:
+                position.update(self.s)
+
+    def get_ensemble_pos(self, method="mean"):
+        """获取多个仓位的集成仓位
+
+        :param method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max
+            假设有三个仓位对象，当前仓位分别是 1, 1, -1
+            mean - 平均仓位，pos = np.mean([1, 1, -1]) = 0.33
+            vote - 投票表决，pos = 1
+            max  - 取最大，pos = 1
+        :return: pos, 集成仓位
+        """
+        if not self.positions:
+            return 0
+        pos_seq = [x.pos for x in self.positions]
+
+        if method.lower() == 'mean':
+            pos = np.mean(pos_seq)
+        elif method.lower() == 'vote':
+            _v = sum(pos_seq)
+            if _v > 0:
+                pos = 1
+            elif _v < 0:
+                pos = -1
+            else:
+                pos = 0
+        elif method.lower() == 'max':
+            pos = max(pos_seq)
+        else:
+            raise ValueError
+        return pos
 
 
 class CzscAdvancedTrader(CzscSignals):
