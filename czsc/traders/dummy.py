@@ -13,13 +13,11 @@ import pandas as pd
 from loguru import logger
 from tqdm import tqdm
 from datetime import datetime
-from czsc.utils import BarGenerator
 from czsc.traders.utils import trade_replay
 from czsc.traders.advanced import CzscDummyTrader
 from czsc.sensors.utils import generate_signals
-from czsc.utils import get_py_namespace, dill_dump, dill_load, WordWriter
 from czsc.traders.performance import PairsPerformance
-from czsc.data.ts_cache import update_bars_return
+from czsc.utils import BarGenerator, get_py_namespace, dill_dump, dill_load, WordWriter
 
 
 class DummyBacktest:
@@ -41,6 +39,9 @@ class DummyBacktest:
 
         self.strategy_file = os.path.join(self.results_path, os.path.basename(file_strategy))
         shutil.copy(file_strategy, self.strategy_file)
+
+        self.__debug = get_py_namespace(self.strategy_file).get('debug', False)
+        logger.add(os.path.join(self.results_path, 'dummy.log'))
 
     def replay(self):
         """执行策略回放"""
@@ -122,7 +123,10 @@ class DummyBacktest:
                 if "short_performance" in res.keys():
                     logger.info(f"{res['short_performance']}")
             except Exception as e:
-                logger.warning(f"fail on {symbol}: {e}")
+                if self.__debug:
+                    logger.exception(f"fail on {symbol}: {e}")
+                else:
+                    logger.warning(f"fail on {symbol}: {e}")
 
     def collect(self):
         """汇集回测结果"""
