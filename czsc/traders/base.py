@@ -156,6 +156,54 @@ class CzscTrader(CzscSignals):
             raise ValueError
         return pos
 
+    def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
+        """获取快照
+
+        :param file_html: 交易快照保存的 html 文件名
+        :param width: 图表宽度
+        :param height: 图表高度
+        :return:
+        """
+        tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
+        for freq in self.freqs:
+            ka: CZSC = self.kas[freq]
+            bs = None
+            if freq == self.base_freq:
+                # 在基础周期K线上加入最近的操作记录
+                bs = []
+                for pos in self.positions:
+                    for op in pos.operates:
+                        if op['dt'] >= ka.bars_raw[0].dt:
+                            bs.append(op)
+
+            chart = ka.to_echarts(width, height, bs)
+            tab.add(chart, freq)
+
+        signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
+        for freq in self.freqs:
+            # 按各周期K线分别加入信号表
+            freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
+            for k in freq_signals.keys():
+                signals.pop(k)
+            if len(freq_signals) <= 0:
+                continue
+            t1 = Table()
+            t1.add(["名称", "数据"], [[k, v] for k, v in freq_signals.items()])
+            t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
+            tab.add(t1, f"{freq}信号")
+
+        if len(signals) > 0:
+            # 加入时间、持仓状态之类的其他信号
+            t1 = Table()
+            t1.add(["名称", "数据"], [[k, v] for k, v in signals.items()])
+            t1.set_global_opts(title_opts=ComponentTitleOpts(title="缠中说禅信号表", subtitle=""))
+            tab.add(t1, "其他信号")
+
+        if file_html:
+            tab.render(file_html)
+        else:
+            return tab
+
 
 class CzscAdvancedTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
