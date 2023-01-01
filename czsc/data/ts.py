@@ -15,8 +15,7 @@ from typing import List
 from functools import partial
 from loguru import logger
 
-from ..analyze import RawBar
-from ..enum import Freq
+from czsc.objects import RawBar, Freq
 
 
 # 数据频度 ：支持分钟(min)/日(D)/周(W)/月(M)K线，其中1min表示1分钟（类推1/5/15/30/60分钟）。
@@ -25,18 +24,6 @@ freq_map = {Freq.F1: "1min", Freq.F5: '5min', Freq.F15: "15min", Freq.F30: '30mi
             Freq.F60: "60min", Freq.D: 'D', Freq.W: "W", Freq.M: "M"}
 freq_cn_map = {"1分钟": Freq.F1, "5分钟": Freq.F5, "15分钟": Freq.F15, "30分钟": Freq.F30,
                "60分钟": Freq.F60, "日线": Freq.D}
-exchanges = {
-    "SSE": "上交所",
-    "SZSE": "深交所",
-    "CFFEX": "中金所",
-    "SHFE": "上期所",
-    "CZCE": "郑商所",
-    "DCE": "大商所",
-    "INE": "能源",
-    "IB": "银行间",
-    "XHKG": "港交所"
-}
-
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y%m%d"
 

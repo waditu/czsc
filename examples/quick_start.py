@@ -11,7 +11,7 @@ from collections import OrderedDict
 from czsc import CZSC, CzscAdvancedTrader, Freq
 from czsc.utils import BarGenerator
 from czsc import signals
-from czsc.traders.ts_backtest import TsDataCache
+from czsc.data import TsDataCache
 
 os.environ['czsc_verbose'] = "1"        # 是否输出详细执行信息，0 不输出，1 输出
 os.environ['czsc_min_bi_len'] = "6"     # 通过环境变量设定最小笔长度，6 对应新笔定义，7 对应老笔定义

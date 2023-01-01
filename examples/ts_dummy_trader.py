@@ -10,7 +10,7 @@ import pandas as pd
 from czsc.strategies import trader_strategy_a as strategy
 from czsc.traders.advanced import CzscDummyTrader
 from czsc.sensors.utils import generate_symbol_signals
-from examples.ts_fast_backtest import dc
+from examples import dc
 
 
 # 可以直接生成信号，也可以直接读取信号

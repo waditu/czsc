@@ -29,14 +29,19 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-    # signals.update_ma_cache(cat.kas['15分钟'], ma_type='SMA', timeperiod=5)
-    # signals.update_ma_cache(cat.kas['15分钟'], ma_type='SMA', timeperiod=10)
-    s.update(signals.bar_mean_amount_V221112(cat.kas['15分钟'], di=2, n=20))
-    # s.update(signals.bar_zdt_V221111(cat, '15分钟', di=2))
-
     # # 使用缓存来更新信号的方法
     # signals.update_macd_cache(cat.kas['15分钟'])
     # s.update(signals.tas_macd_direct_V221106(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_base_V221028(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_first_bs_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_second_bs_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_xt_V221208(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_change_V221105(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_boll_bc_V221118(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_kdj_base_V221101(cat.kas['15分钟'], di=1))
+    s.update(signals.tas_double_rsi_V221203(cat.kas['15分钟'], di=1))
     # signals.update_boll_cache(cat.kas['15分钟'])
     # s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
     return s

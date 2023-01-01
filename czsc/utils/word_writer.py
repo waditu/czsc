@@ -56,10 +56,18 @@ class WordWriter:
         title_run.element.rPr.rFonts.set(qn('w:eastAsia'), '微软雅黑')
         title_run.font.color.rgb = RGBColor(0, 0, 0)
 
-    def add_paragraph(self, text, style=None, bold=False):
+    def add_paragraph(self, text, style=None, bold=False, first_line_indent=0.74):
+        """新增段落
+
+        :param text: 文本
+        :param style: 段落样式
+        :param bold: 是否加粗
+        :param first_line_indent: 首行缩进，0.74 表示两个空格
+        :return:
+        """
         p = self.document.add_paragraph(style=style)
         p.paragraph_format.left_indent = Cm(0)
-        p.paragraph_format.first_line_indent = Cm(0.74)
+        p.paragraph_format.first_line_indent = Cm(first_line_indent)
         p.paragraph_format.line_spacing = 1.25
         p.paragraph_format.space_before = Pt(8)
         p.paragraph_format.space_after = Pt(8)
