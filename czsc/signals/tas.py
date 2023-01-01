@@ -8,6 +8,7 @@ describe: 使用 ta-lib 构建的信号函数
 tas = ta-lib signals 的缩写
 """
 from loguru import logger
+
 try:
     import talib as ta
 except:
@@ -42,7 +43,7 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs) -> None:
 
     cache_key = f"{ma_type.upper()}{timeperiod}"
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 10:
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
@@ -53,10 +54,10 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs) -> None:
             c.bars_raw[i].cache = _c
 
     else:
-        # 增量更新缓存
+        # 增量更新最近5个K线缓存
         close = np.array([x.close for x in c.bars_raw[-timeperiod - 10:]])
         ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
-        for i in range(1, len(close) - timeperiod - 5):
+        for i in range(1, 6):
             _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
             _c.update({cache_key: ma[-i]})
             c.bars_raw[-i].cache = _c
@@ -72,21 +73,29 @@ def update_macd_cache(c: CZSC, **kwargs) -> None:
     slowperiod = kwargs.get('slowperiod', 26)
     signalperiod = kwargs.get('signalperiod', 9)
 
-    min_count = fastperiod + slowperiod
+    min_count = signalperiod + slowperiod
     cache_key = f"MACD"
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 30:
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 15:
+        # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
-        min_count = 0
+        dif, dea, macd = ta.MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+        for i in range(len(close)):
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            dif_i = dif[i] if dif[i] else close[i]
+            dea_i = dea[i] if dea[i] else close[i]
+            macd_i = dif_i - dea_i
+            _c.update({cache_key: {'dif': dif_i, 'dea': dea_i, 'macd': macd_i}})
+            c.bars_raw[i].cache = _c
+
     else:
-        close = np.array([x.close for x in c.bars_raw[-min_count-30:]])
-
-    dif, dea, macd = ta.MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
-
-    for i in range(1, len(close) - min_count - 10):
-        _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
-        _c.update({cache_key: {'dif': dif[-i], 'dea': dea[-i], 'macd': macd[-i]}})
-        c.bars_raw[-i].cache = _c
+        # 增量更新最近5个K线缓存
+        close = np.array([x.close for x in c.bars_raw[-min_count - 10:]])
+        dif, dea, macd = ta.MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+        for i in range(1, 6):
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c.update({cache_key: {'dif': dif[-i], 'dea': dea[-i], 'macd': macd[-i]}})
+            c.bars_raw[-i].cache = _c
 
 
 def update_boll_cache(c: CZSC, **kwargs) -> None:
@@ -99,24 +108,40 @@ def update_boll_cache(c: CZSC, **kwargs) -> None:
     timeperiod = kwargs.get('timeperiod', 20)
     dev_seq = kwargs.get('dev_seq', (1.382, 2, 2.764))
 
-    min_count = timeperiod
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 30:
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+        # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
-        min_count = 0
+        u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[0], nbdevdn=dev_seq[0], matype=0)
+        u2, m, l2 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[1], nbdevdn=dev_seq[1], matype=0)
+        u3, m, l3 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[2], nbdevdn=dev_seq[2], matype=0)
+
+        for i in range(len(close)):
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            if not m[i]:
+                _data = {"上轨3": close[i], "上轨2": close[i], "上轨1": close[i],
+                         "中线": close[i],
+                         "下轨1": close[i], "下轨2": close[i], "下轨3": close[i]}
+            else:
+                _data = {"上轨3": u3[i], "上轨2": u2[i], "上轨1": u1[i],
+                         "中线": m[i],
+                         "下轨1": l1[i], "下轨2": l2[i], "下轨3": l3[i]}
+            _c.update({cache_key: _data})
+            c.bars_raw[i].cache = _c
+
     else:
-        close = np.array([x.close for x in c.bars_raw[-min_count-30:]])
+        # 增量更新最近5个K线缓存
+        close = np.array([x.close for x in c.bars_raw[-timeperiod - 10:]])
+        u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[0], nbdevdn=dev_seq[0], matype=0)
+        u2, m, l2 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[1], nbdevdn=dev_seq[1], matype=0)
+        u3, m, l3 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[2], nbdevdn=dev_seq[2], matype=0)
 
-    u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[0], nbdevdn=dev_seq[0], matype=ta.MA_Type.SMA)
-    u2, m, l2 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[1], nbdevdn=dev_seq[1], matype=ta.MA_Type.SMA)
-    u3, m, l3 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[2], nbdevdn=dev_seq[2], matype=ta.MA_Type.SMA)
-
-    for i in range(1, len(close) - min_count - 10):
-        _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
-        _c.update({cache_key: {"上轨3": u3[-i], "上轨2": u2[-i], "上轨1": u1[-i],
-                               "中线": m[-i],
-                               "下轨1": l1[-i], "下轨2": l2[-i], "下轨3": l3[-i]}})
-        c.bars_raw[-i].cache = _c
+        for i in range(1, 6):
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c.update({cache_key: {"上轨3": u3[-i], "上轨2": u2[-i], "上轨1": u1[-i],
+                                   "中线": m[-i],
+                                   "下轨1": l1[-i], "下轨2": l2[-i], "下轨3": l3[-i]}})
+            c.bars_raw[-i].cache = _c
 
 
 # MACD信号计算函数
@@ -142,6 +167,9 @@ def tas_macd_base_V221028(c: CZSC, di: int = 1, key="macd") -> OrderedDict:
     :param key: 指定使用哪个Key来计算，可选值 [macd, dif, dea]
     :return:
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     assert key.lower() in ['macd', 'dif', 'dea']
     k1, k2, k3 = f"{c.freq.value}_D{di}K_{key.upper()}".split('_')
 
@@ -170,6 +198,9 @@ def tas_macd_direct_V221106(c: CZSC, di: int = 1) -> OrderedDict:
     :param di: 连续倒3根K线
     :return:
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD方向".split("_")
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     macd = [x.cache['MACD']['macd'] for x in bars]
@@ -212,6 +243,9 @@ def tas_macd_power_V221108(c: CZSC, di: int = 1) -> OrderedDict:
     :param di: 信号产生在倒数第di根K线
     :return: 信号识别结果
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD强弱".split("_")
 
     v1 = "其他"
@@ -250,6 +284,9 @@ def tas_macd_first_bs_V221201(c: CZSC, di: int = 1):
     :param di: 倒数第i根K线
     :return: 信号识别结果
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
 
@@ -300,6 +337,9 @@ def tas_macd_first_bs_V221216(c: CZSC, di: int = 1):
     :param di: 倒数第i根K线
     :return: 信号识别结果
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1A".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
 
@@ -361,6 +401,9 @@ def tas_macd_second_bs_V221201(c: CZSC, di: int = 1):
     :param di: 倒数第i根K线
     :return: 信号识别结果
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS2".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
 
@@ -417,6 +460,9 @@ def tas_macd_xt_V221208(c: CZSC, di: int = 1):
     :param di: 倒数第i根K线
     :return:
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}K_MACD形态".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=5)
     macd = [x.cache['MACD']['macd'] for x in bars]
@@ -464,8 +510,11 @@ def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50):
     :param m: 远期窗口大小
     :return: 信号识别结果
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_MACD背驰".split('_')
-    bars = get_sub_elements(c.bars_raw, di=di, n=n+m)
+    bars = get_sub_elements(c.bars_raw, di=di, n=n + m)
     assert n >= 3, "近期窗口大小至少要大于3"
 
     v1 = "其他"
@@ -514,6 +563,9 @@ def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55) -> OrderedDict:
     :param n: 从dik往前数n根k线
     :return:
     """
+    if not c.bars_raw[-1].cache or not c.bars_raw[-1].cache.get('MACD', None):
+        update_macd_cache(c)
+
     k1, k2, k3 = f"{c.freq.value}_D{di}K{n}_MACD变色次数".split('_')
 
     bars = get_sub_elements(c.bars_raw, di=di, n=n)
@@ -821,14 +873,14 @@ def update_kdj_cache(c: CZSC, **kwargs) -> None:
         bars = c.bars_raw
         min_count = 0
     else:
-        bars = c.bars_raw[-min_count-30:]
+        bars = c.bars_raw[-min_count - 30:]
 
     high = np.array([x.high for x in bars])
     low = np.array([x.low for x in bars])
     close = np.array([x.close for x in bars])
 
     k, d = ta.STOCH(high, low, close, fastk_period=fastk_period, slowk_period=slowk_period, slowd_period=slowd_period)
-    j = list(map(lambda x, y: 3*x - 2*y, k, d))
+    j = list(map(lambda x, y: 3 * x - 2 * y, k, d))
 
     for i in range(1, len(close) - min_count - 10):
         _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
@@ -898,7 +950,7 @@ def update_rsi_cache(c: CZSC, **kwargs) -> None:
         bars = c.bars_raw
         min_count = 0
     else:
-        bars = c.bars_raw[-min_count-30:]
+        bars = c.bars_raw[-min_count - 30:]
     close = np.array([x.close for x in bars])
 
     rsi = ta.RSI(close, timeperiod=timeperiod)
@@ -937,6 +989,3 @@ def tas_double_rsi_V221203(c: CZSC, di: int = 1, rsi1="RSI5", rsi2='RSI10') -> O
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
-
-
-
