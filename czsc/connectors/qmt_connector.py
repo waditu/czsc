@@ -95,7 +95,7 @@ def get_symbols(step):
     stocks_map = {
         "index": ['000905.SH', '000016.SH', '000300.SH', '000001.SH', '000852.SH',
                   '399001.SZ', '399006.SZ', '399376.SZ', '399377.SZ', '399317.SZ', '399303.SZ'],
-        "stock": stocks.ts_code.to_list(),
+        "stock": stocks,
         "check": ['000001.SZ'],
         "train": stocks[:200],
         "valid": stocks[200:600],
