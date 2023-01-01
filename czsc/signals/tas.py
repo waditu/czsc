@@ -21,18 +21,6 @@ from czsc.utils import get_sub_elements, fast_slow_cross
 from collections import OrderedDict
 
 
-ma_type_map = {
-    'SMA': ta.MA_Type.SMA,
-    'EMA': ta.MA_Type.EMA,
-    'WMA': ta.MA_Type.WMA,
-    'KAMA': ta.MA_Type.KAMA,
-    'TEMA': ta.MA_Type.TEMA,
-    'DEMA': ta.MA_Type.DEMA,
-    'MAMA': ta.MA_Type.MAMA,
-    'TRIMA': ta.MA_Type.TRIMA,
-}
-
-
 def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     """更新均线缓存
 
@@ -41,6 +29,17 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     :param timeperiod: 计算周期
     :return:
     """
+    ma_type_map = {
+        'SMA': ta.MA_Type.SMA,
+        'EMA': ta.MA_Type.EMA,
+        'WMA': ta.MA_Type.WMA,
+        'KAMA': ta.MA_Type.KAMA,
+        'TEMA': ta.MA_Type.TEMA,
+        'DEMA': ta.MA_Type.DEMA,
+        'MAMA': ta.MA_Type.MAMA,
+        'TRIMA': ta.MA_Type.TRIMA,
+    }
+
     ma_type = ma_type.upper()
     assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
     cache_key = f"{ma_type.upper()}{timeperiod}"
