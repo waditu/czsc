@@ -23,8 +23,8 @@ def test_object_position():
     def __get_signals(cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=5)
-        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, key='SMA5', th=100))
-        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=2, key='SMA5', th=100))
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, ma_type='SMA', timeperiod=5, th=100))
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=2, ma_type='SMA', timeperiod=5, th=100))
         return s
 
     opens = [
