@@ -169,7 +169,7 @@ class CzscAdvancedTrader(CzscSignals):
         """
         self.name = "CzscAdvancedTrader"
         self.strategy = strategy
-        tactic = self.strategy(self.symbol) if strategy else {}
+        tactic = self.strategy("") if strategy else {}
         self.get_signals: Callable = tactic.get('get_signals')
         self.tactic = tactic
         self.long_events: List[Event] = tactic.get('long_events', None)
