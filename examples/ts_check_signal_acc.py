@@ -39,7 +39,9 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     # s.update(signals.tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
     # s.update(signals.tas_macd_change_V221105(cat.kas['15分钟'], di=1))
     # s.update(signals.tas_boll_bc_V221118(cat.kas['15分钟'], di=1))
-    s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_kdj_base_V221101(cat.kas['15分钟'], di=1))
+    s.update(signals.tas_double_rsi_V221203(cat.kas['15分钟'], di=1))
     # signals.update_boll_cache(cat.kas['15分钟'])
     # s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
     return s
