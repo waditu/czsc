@@ -39,8 +39,8 @@ def format_stock_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
         # 将每一根K线转换成 RawBar 对象
         bar = RawBar(symbol=record['symbol'], dt=pd.to_datetime(record[dt_key]), id=i, freq=freq,
                      open=record['open'], close=record['close'], high=record['high'], low=record['low'],
-                     vol=record['volume'] * 100,  # 成交量，单位：股
-                     amount=record['amount'],  # 成交额，单位：元
+                     vol=record['volume'] * 100 if record['volume'] else 0,  # 成交量，单位：股
+                     amount=record['amount'] if record['amount'] > 0 else 0,  # 成交额，单位：元
                      )
         bars.append(bar)
     return bars
@@ -115,6 +115,7 @@ def test_local_kline():
     df = get_local_kline(symbol='000001.SZ', period='1m', count=1000, dividend_type='front',
                          data_dir=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\datadir",
                          start_time='20200427', end_time='20221231', update=True)
+    assert not df.empty
     # df = get_local_kline(symbol='000001.SZ', period='5m', count=1000, dividend_type='front',
     #                      data_dir=r"D:\迅投极速策略交易系统交易终端 华鑫证券QMT实盘\datadir",
     #                      start_time='20200427', end_time='20221231', update=False)
