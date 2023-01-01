@@ -22,7 +22,6 @@ def test_object_position():
 
     def __get_signals(cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=5)
         s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
         s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
         s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
@@ -76,7 +75,6 @@ def test_czsc_trader():
 
     def __get_signals(cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=5)
         s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
         s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
         s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
