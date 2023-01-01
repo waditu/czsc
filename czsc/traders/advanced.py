@@ -8,6 +8,7 @@ describe: 支持分批买入卖出的高级交易员
 import os
 import webbrowser
 import pandas as pd
+from deprecated import deprecated
 from collections import OrderedDict
 from typing import Callable, List
 from pyecharts.charts import Tab
@@ -19,6 +20,7 @@ from czsc.utils import BarGenerator, x_round
 from czsc.utils.cache import home_path
 
 
+@deprecated(reason="已统一到 czsc.traders.base 中")
 class CzscAdvancedTrader:
     """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
@@ -227,6 +229,7 @@ def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], strategy: C
     :param strategy: 择时交易策略
     :return: trader
     """
+    from czsc.traders.base import CzscAdvancedTrader
     trader = CzscAdvancedTrader(bg, strategy)
     for bar in raw_bars:
         trader.update(bar)
