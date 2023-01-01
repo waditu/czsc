@@ -32,7 +32,14 @@ def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     # # 使用缓存来更新信号的方法
     # signals.update_macd_cache(cat.kas['15分钟'])
     # s.update(signals.tas_macd_direct_V221106(cat.kas['15分钟'], di=1))
-    s.update(signals.tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_base_V221028(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_first_bs_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_second_bs_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_xt_V221208(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_bc_V221201(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_macd_change_V221105(cat.kas['15分钟'], di=1))
+    # s.update(signals.tas_boll_bc_V221118(cat.kas['15分钟'], di=1))
+    s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
     # signals.update_boll_cache(cat.kas['15分钟'])
     # s.update(signals.tas_boll_power_V221112(cat.kas['15分钟'], di=1))
     return s
