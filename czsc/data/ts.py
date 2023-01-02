@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import List
 from functools import partial
 from loguru import logger
-
+from tenacity import retry, stop_after_attempt, wait_random
 from czsc.objects import RawBar, Freq
 
 
@@ -42,6 +42,7 @@ class TushareProApi:
         self.__token = token
         self.__timeout = timeout
 
+    @retry(stop=stop_after_attempt(10), wait=wait_random(1, 5))
     def query(self, api_name, fields='', **kwargs):
         if api_name in ['__getstate__', '__setstate__']:
             return pd.DataFrame()
