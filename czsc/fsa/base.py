@@ -16,11 +16,11 @@ import os
 import time
 import requests
 from loguru import logger
-from tenacity import retry, stop_after_attempt, stop_after_delay, wait_random
+from tenacity import retry, stop_after_attempt, wait_random
 from requests_toolbelt import MultipartEncoder
 
 
-@retry(stop=(stop_after_delay(10) | stop_after_attempt(5)), wait=wait_random(min=1, max=3))
+@retry(stop=stop_after_attempt(10), wait=wait_random(min=3, max=10))
 def request(method, url, headers, payload=None) -> dict:
     """飞书API标准请求
 
