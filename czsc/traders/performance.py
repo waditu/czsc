@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2022/5/10 15:19
 describe: 请描述文件用途
 """
+import os
 import glob
 import traceback
 import pandas as pd
@@ -200,4 +201,100 @@ class TradersPerformance:
                 logger.exception(f"分析失败：{file}")
         df = pd.DataFrame(_results)
         return df
+
+
+def combine_holds_and_pairs(holds, pairs, results_path):
+    """结合股票池和择时策略开平交易进行分析
+
+    :param holds: 组合股票池数据，样例：
+                 成分日期    证券代码       n1b      持仓权重
+            0  2020-01-02  000001.SZ  183.758194  0.001232
+            1  2020-01-02  000002.SZ -156.633896  0.001232
+            2  2020-01-02  000063.SZ  310.296204  0.001232
+            3  2020-01-02  000066.SZ -131.824997  0.001232
+            4  2020-01-02  000069.SZ  -38.561699  0.001232
+
+    :param pairs: 择时策略开平交易数据，数据格式如下
+                标的代码 交易方向  最大仓位   开仓时间         累计开仓       平仓时间  \
+            0  002698.SZ   多头     1 2015-01-12 13:30:00  24.02790 2015-01-13 09:45:00
+            1  300031.SZ   多头     1 2015-01-12 10:30:00  53.87420 2015-01-13 09:45:00
+            2  300046.SZ   多头     1 2015-01-12 10:15:00  41.35824 2015-01-13 09:45:00
+            3  300076.SZ   多头     1 2015-01-12 10:30:00  57.84800 2015-01-13 09:45:00
+            4  300099.SZ   多头     1 2015-01-12 10:15:00  62.57308 2015-01-13 09:45:00
+                累计平仓  累计换手 持仓K线数 持仓天数  盈亏金额  交易盈亏  盈亏比例
+            0  23.38150     2      7  0.843750 -0.64640 -0.0269 -0.0269
+            1  52.71284     2     13  0.968750 -1.16136 -0.0215 -0.0215
+            2  40.72068     2     14  0.979167 -0.63756 -0.0154 -0.0154
+            3  55.45144     2     13  0.968750 -2.39656 -0.0414 -0.0414
+            4  61.50528     2     14  0.979167 -1.06780 -0.0170 -0.0170
+
+    :param results_path: 分析结果目录
+    :return:
+    """
+    dfh = holds.copy()
+    dfh['开仓日期'] = pd.to_datetime(dfh['成分日期'])
+    dfh['标的代码'] = dfh['证券代码']
+
+    dfp = pairs.copy()
+    dfp['开仓日期'] = pd.to_datetime(dfp['开仓时间'].apply(lambda x: x.date()))
+
+    # 合并，选择组合持仓权重大于 0 的交易对
+    dfp_ = dfp.merge(dfh[['开仓日期', '标的代码', '持仓权重']], on=['开仓日期', '标的代码'], how='left')
+    df_pairs = dfp_[dfp_['持仓权重'] > 0]
+
+    # 按筛选出的交易对时间范围过滤原始交易对
+    dfp_sub = dfp[(dfp['开仓时间'] >= df_pairs['开仓时间'].min()) & (dfp['开仓时间'] <= df_pairs['开仓时间'].max())]
+
+    tp_old = PairsPerformance(dfp_sub)
+    tp_new = PairsPerformance(df_pairs)
+    print(f"原始交易：{tp_old.basic_info}，\n{tp_old.agg_statistics('平仓年')}\n")
+    print(f"组合过滤：{tp_new.basic_info}，\n{tp_new.agg_statistics('平仓年')}")
+
+    os.makedirs(results_path, exist_ok=True)
+    tp_old.agg_to_excel(os.path.join(results_path, "原始交易评价.xlsx"))
+    tp_new.agg_to_excel(os.path.join(results_path, "组合过滤评价.xlsx"))
+    df_pairs.reset_index(drop=True, inplace=True)
+    df_pairs.to_feather(os.path.join(results_path, "组合过滤交易.feather"))
+    return tp_old, tp_new
+
+
+def combine_dates_and_pairs(dates: list, pairs: pd.DataFrame, results_path):
+    """结合大盘日期择时和择时策略开平交易进行分析
+
+    :param dates: 大盘日期择时日期数据，数据样例 ['2020-01-02', ..., '2022-01-06']
+    :param pairs: 择时策略开平交易数据，数据格式如下
+                标的代码 交易方向  最大仓位   开仓时间         累计开仓       平仓时间  \
+            0  002698.SZ   多头     1 2015-01-12 13:30:00  24.02790 2015-01-13 09:45:00
+            1  300031.SZ   多头     1 2015-01-12 10:30:00  53.87420 2015-01-13 09:45:00
+            2  300046.SZ   多头     1 2015-01-12 10:15:00  41.35824 2015-01-13 09:45:00
+            3  300076.SZ   多头     1 2015-01-12 10:30:00  57.84800 2015-01-13 09:45:00
+            4  300099.SZ   多头     1 2015-01-12 10:15:00  62.57308 2015-01-13 09:45:00
+                累计平仓  累计换手 持仓K线数 持仓天数  盈亏金额  交易盈亏  盈亏比例
+            0  23.38150     2      7  0.843750 -0.64640 -0.0269 -0.0269
+            1  52.71284     2     13  0.968750 -1.16136 -0.0215 -0.0215
+            2  40.72068     2     14  0.979167 -0.63756 -0.0154 -0.0154
+            3  55.45144     2     13  0.968750 -2.39656 -0.0414 -0.0414
+            4  61.50528     2     14  0.979167 -1.06780 -0.0170 -0.0170
+
+    :param results_path: 分析结果目录
+    :return:
+    """
+    dates = [pd.to_datetime(x) for x in dates]
+    dfp = pairs.copy()
+    dfp['开仓日期'] = pd.to_datetime(dfp['开仓时间'].apply(lambda x: x.date()))
+    df_pairs = dfp[dfp['开仓日期'].isin(dates)]
+
+    # 按筛选出的交易对时间范围过滤原始交易对
+    dfp_sub = dfp[(dfp['开仓时间'] >= df_pairs['开仓时间'].min()) & (dfp['开仓时间'] <= df_pairs['开仓时间'].max())]
+
+    tp_old = PairsPerformance(dfp_sub)
+    tp_new = PairsPerformance(df_pairs)
+    print(f"原始交易：{tp_old.basic_info}，\n{tp_old.agg_statistics('平仓年')}\n")
+    print(f"组合过滤：{tp_new.basic_info}，\n{tp_new.agg_statistics('平仓年')}")
+
+    os.makedirs(results_path, exist_ok=True)
+    tp_old.agg_to_excel(os.path.join(results_path, "原始交易评价.xlsx"))
+    tp_new.agg_to_excel(os.path.join(results_path, "组合过滤评价.xlsx"))
+    return tp_old, tp_new
+
 
