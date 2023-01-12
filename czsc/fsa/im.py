@@ -54,7 +54,10 @@ class IM(FeishuApiBase):
         return response.json()['data']['file_key']
 
     def upload_im_image(self, image_path, image_type='message'):
-        """
+        """上传图片接口
+
+        支持上传 JPEG、PNG、WEBP、GIF、TIFF、BMP、ICO格式图片，图片大小不得超过10M，且不支持上传大小为0的图片。
+        https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/image/create
 
         :param image_path: 图片路径，推荐使用绝对路径
         :param image_type: 图片类型

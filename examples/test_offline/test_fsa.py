@@ -84,3 +84,7 @@ def test_im():
     payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
     app.send(payload)
 
+    app.send_text("快捷接口发送自定义文字", receive_id)
+    app.send_image(r"C:\Users\zengb\Downloads\十阶众生相.jpg", receive_id)
+    app.send_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf", receive_id)
+
