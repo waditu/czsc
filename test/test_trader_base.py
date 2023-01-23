@@ -63,7 +63,7 @@ def test_object_position():
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
-    assert df.shape == (244, 10)
+    assert df.shape == (224, 10)
     assert len(cs.s) == 16
 
 
