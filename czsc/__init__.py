@@ -20,7 +20,7 @@ from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 __version__ = "0.9.7"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230105"
+__date__ = "20230123"
 
 
 if envs.get_welcome():
