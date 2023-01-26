@@ -6,6 +6,7 @@ create_dt: 2021/11/7 21:07
 """
 import pandas as pd
 from tqdm import tqdm
+from copy import deepcopy
 from loguru import logger
 from collections import OrderedDict
 from czsc import signals
@@ -67,10 +68,44 @@ def test_object_position():
     assert len(cs.s) == 16
 
 
+def test_generate_czsc_signals():
+    from czsc.traders.base import generate_czsc_signals
+
+    bars = read_daily()
+
+    def __get_signals(cat) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
+        s.update(signals.bxt.get_s_three_bi(cat.kas['周线'], di=1))
+        s.update(signals.bxt.get_s_three_bi(cat.kas['月线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
+        return s
+
+    res = generate_czsc_signals(bars, get_signals=__get_signals, freqs=['周线', '月线'], sdt="20100101", init_n=500)
+    res_df = generate_czsc_signals(bars, get_signals=__get_signals, freqs=['周线', '月线'],
+                                   sdt="20100101", init_n=500, df=True)
+
+    assert len(res) == len(res_df)
+
+
 def test_czsc_trader():
     bars = read_daily()
+
+    sdt = "20100101"
+    init_n = 2000
+    sdt = pd.to_datetime(sdt)
+    bars_left = [x for x in bars if x.dt < sdt]
+    if len(bars_left) <= init_n:
+        bars_left = bars[:init_n]
+        bars_right = bars[init_n:]
+    else:
+        bars_right = [x for x in bars if x.dt >= sdt]
+
     bg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
-    for bar in bars[:1000]:
+    for bar in bars_left:
         bg.update(bar)
 
     def __get_signals(cat) -> OrderedDict:
@@ -173,13 +208,43 @@ def test_czsc_trader():
         pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
         return pos
 
-    ct = CzscTrader(bg, get_signals=__get_signals,
+    # 通过 update 执行
+    ct = CzscTrader(deepcopy(bg), get_signals=__get_signals,
                     positions=[__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()])
-    for bar in bars[1000:]:
+    for bar in bars_right:
         ct.update(bar)
         print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct.positions] == [0, -1, 0]
+
+    # 通过 on_bar 执行
+    ct1 = CzscTrader(deepcopy(bg), get_signals=__get_signals,
+                     positions=[__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()])
+    for bar in bars_right:
+        ct1.on_bar(bar)
+        # print(ct1.s)
+        print(f"{ct1.end_dt}: pos_seq = {[x.pos for x in ct1.positions]}mean_pos = {ct1.get_ensemble_pos('mean')}; vote_pos = {ct1.get_ensemble_pos('vote')}; max_pos = {ct1.get_ensemble_pos('max')}")
+
+    assert [x.pos for x in ct1.positions] == [0, -1, 0]
+
+    assert len(ct1.positions[0].pairs) == len(ct.positions[0].pairs)
+    assert len(ct1.positions[1].pairs) == len(ct.positions[1].pairs)
+    assert len(ct1.positions[2].pairs) == len(ct.positions[2].pairs)
+
+    # 通过 on_sig 执行
+    from czsc.traders.base import generate_czsc_signals
+    res = generate_czsc_signals(bars, get_signals=__get_signals, freqs=['周线', '月线'], sdt=sdt, init_n=init_n)
+    ct2 = CzscTrader(positions=[__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()])
+    for sig in res:
+        ct2.on_sig(sig)
+        # print(ct2.s)
+        print(f"{ct2.end_dt}: pos_seq = {[x.pos for x in ct2.positions]}mean_pos = {ct2.get_ensemble_pos('mean')}; vote_pos = {ct2.get_ensemble_pos('vote')}; max_pos = {ct2.get_ensemble_pos('max')}")
+
+    assert [x.pos for x in ct2.positions] == [0, -1, 0]
+
+    assert len(ct1.positions[0].pairs) == len(ct2.positions[0].pairs)
+    assert len(ct1.positions[1].pairs) == len(ct2.positions[1].pairs)
+    assert len(ct1.positions[2].pairs) == len(ct2.positions[2].pairs)
 
 
 def get_signals(cat) -> OrderedDict:

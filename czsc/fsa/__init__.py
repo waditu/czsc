@@ -8,6 +8,7 @@ describe:
 import requests
 from czsc.fsa.base import request, FeishuApiBase
 from czsc.fsa.spreed_sheets import SpreadSheets
+from czsc.fsa.im import IM
 
 
 def push_text(text: str, key: str) -> None:

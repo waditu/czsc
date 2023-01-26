@@ -9,8 +9,11 @@ import os
 import webbrowser
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
+from loguru import logger
+from datetime import datetime
 from collections import OrderedDict
-from typing import Callable, List
+from typing import Callable, List, AnyStr, Union
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
@@ -23,30 +26,39 @@ from czsc.utils.cache import home_path
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: BarGenerator, get_signals: Callable = None):
+    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None):
         """
 
         :param bg: K线合成器
         :param get_signals: 信号计算函数
         """
-        self.name = "CzscAdvancedTrader"
-        self.bg = bg
-        assert bg.symbol, "bg.symbol is None"
-        self.symbol = bg.symbol
-        self.base_freq = bg.base_freq
-        self.freqs = list(bg.bars.keys())
+        self.name = "CzscSignals"
         self.get_signals: Callable = get_signals
-        self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
-
         # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
         self.cache = OrderedDict()
 
-        last_bar = self.kas[self.base_freq].bars_raw[-1]
-        self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-        if self.get_signals:
-            self.s = self.get_signals(self)
-            self.s.update(last_bar.__dict__)
+        if bg:
+            self.bg = bg
+            assert bg.symbol, "bg.symbol is None"
+            self.symbol = bg.symbol
+            self.base_freq = bg.base_freq
+            self.freqs = list(bg.bars.keys())
+            self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
+
+            last_bar = self.kas[self.base_freq].bars_raw[-1]
+            self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
+            if self.get_signals:
+                self.s = self.get_signals(self)
+                self.s.update(last_bar.__dict__)
+            else:
+                self.s = OrderedDict()
         else:
+            self.bg = None
+            self.symbol = None
+            self.base_freq = None
+            self.freqs = None
+            self.kas = None
+            self.end_dt, self.bid, self.latest_price = None, None, None
             self.s = OrderedDict()
 
     def __repr__(self):
@@ -112,19 +124,87 @@ class CzscSignals:
             self.s.update(last_bar.__dict__)
 
 
+def generate_czsc_signals(bars: List[RawBar], get_signals: Callable,
+                          freqs: List[AnyStr], sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False):
+    """使用 CzscSignals 生成信号
+
+    :param bars: 基础周期 K 线序列
+    :param get_signals: 信号计算函数
+    :param freqs: K 线周期序列，不需要填写基础周期
+    :param sdt: 信号计算开始时间
+    :param init_n: 用于 BarGenerator 初始化的基础周期K线数量
+    :param df: 是否返回 df 格式的信号计算结果，默认 False
+    :return: 信号计算结果
+    """
+    sdt = pd.to_datetime(sdt)
+    bars_left = [x for x in bars if x.dt < sdt]
+    if len(bars_left) <= init_n:
+        bars_left = bars[:init_n]
+        bars_right = bars[init_n:]
+    else:
+        bars_right = [x for x in bars if x.dt >= sdt]
+
+    if len(bars_right) == 0:
+        logger.warning("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
+        return []
+
+    base_freq = str(bars[0].freq.value)
+    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
+    for bar in bars_left:
+        bg.update(bar)
+
+    _sigs = []
+    cs = CzscSignals(bg, get_signals)
+    for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
+        cs.update_signals(bar)
+        _sigs.append(dict(cs.s))
+
+    if df:
+        return pd.DataFrame(_sigs)
+    else:
+        return _sigs
+
+
 class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
-    def __init__(self, bg: BarGenerator, get_signals: Callable = None, positions: List[Position] = None):
+    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None, positions: List[Position] = None):
         super().__init__(bg, get_signals=get_signals)
         self.positions = positions
 
-    def update(self, bar: RawBar):
-        """输入基础周期已完成K线，更新信号，更新仓位"""
+    def update(self, bar: RawBar) -> None:
+        """输入基础周期已完成K线，更新信号，更新仓位
+
+        :param bar: 基础周期已完成K线
+        :return: None
+        """
         self.update_signals(bar)
         if self.positions:
             for position in self.positions:
                 position.update(self.s)
+
+    def on_sig(self, sig: dict) -> None:
+        """通过信号字典直接交易
+
+        主要用于快速回测场景
+
+        :param sig: 信号字典
+        :return: None
+        """
+        self.s = sig
+        self.symbol, self.end_dt = self.s['symbol'], self.s['dt']
+        self.bid, self.latest_price = self.s['id'], self.s['close']
+        if self.positions:
+            for position in self.positions:
+                position.update(self.s)
+
+    def on_bar(self, bar: RawBar) -> None:
+        """输入基础周期已完成K线，更新信号，更新仓位
+
+        :param bar: 基础周期已完成K线
+        :return: None
+        """
+        self.update(bar)
 
     def get_ensemble_pos(self, method="mean"):
         """获取多个仓位的集成仓位
