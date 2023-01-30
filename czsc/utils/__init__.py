@@ -50,3 +50,14 @@ def get_py_namespace(file_py: str, keys: list = None) -> dict:
         namespace = {k: v for k, v in namespace.items() if k in keys}
     return namespace
 
+
+def freqs_sorted(freqs):
+    """K线周期列表排序并去重，第一个元素是基础周期
+
+    :param freqs: K线周期列表
+    :return: K线周期排序列表
+    """
+    sf = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+    _freqs_new = [x for x in sf if x in freqs]
+    return _freqs_new
+

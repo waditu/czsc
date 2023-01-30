@@ -124,8 +124,8 @@ class CzscSignals:
             self.s.update(last_bar.__dict__)
 
 
-def generate_czsc_signals(bars: List[RawBar], get_signals: Callable,
-                          freqs: List[AnyStr], sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False):
+def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List[AnyStr],
+                          sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False, **kwargs):
     """使用 CzscSignals 生成信号
 
     :param bars: 基础周期 K 线序列
@@ -149,7 +149,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable,
         return []
 
     base_freq = str(bars[0].freq.value)
-    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
+    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=kwargs.get("bg_max_count", 5000))
     for bar in bars_left:
         bg.update(bar)
 

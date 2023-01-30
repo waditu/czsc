@@ -7,11 +7,134 @@ describe: 提供一些策略的编写案例
 
 以 trader_ 开头的是择时交易策略案例
 """
+from abc import ABC, abstractmethod, abstractproperty
 from czsc import signals
 from czsc.objects import Freq, Operate, Signal, Factor, Event
 from collections import OrderedDict
 from czsc.traders import CzscAdvancedTrader
-from czsc.objects import PositionLong, PositionShort, RawBar
+from czsc.objects import Position, PositionLong, PositionShort, RawBar
+from czsc.utils import freqs_sorted
+
+
+class CzscStrategyBase(ABC):
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    @property
+    def symbol(self):
+        """交易标的"""
+        return self.kwargs['symbol']
+
+    @property
+    def sorted_freqs(self):
+        """排好序的 K 线周期列表"""
+        return freqs_sorted(self.freqs)
+
+    @abstractmethod
+    def get_signals(cls, **kwargs) -> OrderedDict:
+        """交易信号计算函数"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def positions(self):
+        """持仓策略列表"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def freqs(self):
+        """K线周期列表"""
+        raise NotImplementedError
+
+
+class CzscStrategyExample1(CzscStrategyBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
+        return s
+
+    @property
+    def positions(self):
+        return [
+            self.create_pos_a(),
+            self.create_pos_b(),
+            self.create_pos_c(),
+        ]
+
+    @property
+    def freqs(self):
+        return ['日线', '30分钟', '60分钟']
+
+    @property
+    def __shared_exits(self):
+        return [
+            Event(name='平多', operate=Operate.LE, factors=[
+                Factor(name="日线三笔向上收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
+                ])
+            ]),
+            Event(name='平空', operate=Operate.SE, factors=[
+                Factor(name="日线三笔向下收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
+                ])
+            ]),
+        ]
+
+    def create_pos_a(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线一买", signals_all=[
+                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线一卖", signals_all=[
+                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(symbol=self.symbol, opens=opens, exits=self.__shared_exits, interval=0, timeout=20, stop_loss=100)
+        return pos
+
+    def create_pos_b(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线三笔向下无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下无背_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线三笔向上无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上无背_任意_任意_0"),
+                ])
+            ]),
+        ]
+
+        pos = Position(symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100)
+        return pos
+
+    def create_pos_c(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="站上SMA5", signals_all=[
+                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="跌破SMA5", signals_all=[
+                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(symbol=self.symbol, opens=opens, exits=self.__shared_exits, interval=0, timeout=20, stop_loss=50)
+        return pos
 
 
 def trader_standard(symbol, T0=False, min_interval=3600*4):

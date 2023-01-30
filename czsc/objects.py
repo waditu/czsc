@@ -1044,6 +1044,10 @@ class Position:
         self.last_so_dt = None      # 最近一次开空交易的时间
         self.end_dt = None          # 最近一次信号传入的时间
 
+    def __repr__(self):
+        return f"Position(symbol={self.symbol}, opens={[x.name for x in self.opens]}, timeout={self.timeout}, " \
+               f"stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
+
     def __two_operates_pair(self, op1, op2):
         assert op1['op'] in [Operate.LO, Operate.SO]
         pair = {
