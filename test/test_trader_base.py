@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 from copy import deepcopy
 from loguru import logger
+from typing import List
 from collections import OrderedDict
 from czsc import signals
 from czsc.traders.base import CzscSignals, CzscAdvancedTrader, BarGenerator, CzscTrader
@@ -216,6 +217,15 @@ def test_czsc_trader():
         print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct.positions] == [0, -1, 0]
+
+    # 测试自定义仓位集成
+    def _weighted_ensemble(positions: List[Position]):
+        return 0.5 * positions[0].pos + 0.5 * positions[1].pos
+
+    assert ct.get_ensemble_pos(_weighted_ensemble) == -0.5
+    assert ct.get_ensemble_pos('vote') == -1
+    assert ct.get_ensemble_pos('max') == 0
+    assert ct.get_ensemble_pos('mean') == -0.3333333333333333
 
     # 通过 on_bar 执行
     ct1 = CzscTrader(deepcopy(bg), get_signals=__get_signals,
