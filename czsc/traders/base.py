@@ -206,34 +206,39 @@ class CzscTrader(CzscSignals):
         """
         self.update(bar)
 
-    def get_ensemble_pos(self, method="mean"):
+    def get_ensemble_pos(self, method: Union[AnyStr, Callable] = "mean"):
         """获取多个仓位的集成仓位
 
-        :param method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max
+        :param method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max；也可以传入一个回调函数
+
             假设有三个仓位对象，当前仓位分别是 1, 1, -1
             mean - 平均仓位，pos = np.mean([1, 1, -1]) = 0.33
             vote - 投票表决，pos = 1
             max  - 取最大，pos = 1
+
+            对于传入回调函数的情况，输入是 self.positions
+
         :return: pos, 集成仓位
         """
         if not self.positions:
             return 0
-        pos_seq = [x.pos for x in self.positions]
 
-        if method.lower() == 'mean':
-            pos = np.mean(pos_seq)
-        elif method.lower() == 'vote':
-            _v = sum(pos_seq)
-            if _v > 0:
-                pos = 1
-            elif _v < 0:
-                pos = -1
+        if isinstance(method, str):
+            method = method.lower()
+            pos_seq = [x.pos for x in self.positions]
+
+            if method == 'mean':
+                pos = np.mean(pos_seq)
+            elif method == 'vote':
+                pos = np.sign(sum(pos_seq))
+            elif method == 'max':
+                pos = max(pos_seq)
             else:
-                pos = 0
-        elif method.lower() == 'max':
-            pos = max(pos_seq)
+                raise ValueError
+
         else:
-            raise ValueError
+            pos = method(self.positions)
+
         return pos
 
     def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
