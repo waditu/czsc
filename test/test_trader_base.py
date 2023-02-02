@@ -24,49 +24,57 @@ def test_object_position():
 
     def __get_signals(cat) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
-        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1))
         return s
 
     opens = [
         Event(name='开多', operate=Operate.LO, factors=[
             Factor(name="站上SMA5", signals_all=[
-                Signal("日线_D1B_BUY1_一买_任意_任意_0"),
+                Signal("日线_D1T100_SMA5_多头_向上_远离_0"),
             ])
         ]),
         Event(name='开空', operate=Operate.SO, factors=[
             Factor(name="跌破SMA5", signals_all=[
-                Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
+                Signal("日线_D1T100_SMA5_空头_向下_远离_0"),
             ])
         ]),
     ]
 
-    exits = [
-        Event(name='平多', operate=Operate.LE, factors=[
-            Factor(name="跌破SMA5", signals_all=[
-                Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
-            ])
-        ]),
-        Event(name='平空', operate=Operate.SE, factors=[
-            Factor(name="站上SMA5", signals_all=[
-                Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
-            ])
-        ]),
-    ]
+    # 没有出场条件的测试
+    pos = Position(symbol=bg.symbol, opens=opens, exits=[], interval=0, timeout=20, stop_loss=300)
 
-    pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
-
-    cs = CzscSignals(bg, get_signals=__get_signals)
+    cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
         cs.update_signals(bar)
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
-    assert df.shape == (224, 10)
-    assert len(cs.s) == 16
+    assert df.shape == (209, 10)
+    assert len(cs.s) == 12
+
+    exits = [
+        Event(name='平多', operate=Operate.LE, factors=[
+            Factor(name="跌破SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_空头_任意_任意_0"),
+            ])
+        ]),
+        Event(name='平空', operate=Operate.SE, factors=[
+            Factor(name="站上SMA5", signals_all=[
+                Signal("日线_D1T100_SMA5_多头_任意_任意_0"),
+            ])
+        ]),
+    ]
+
+    pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
+
+    cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
+    for bar in bars[1000:]:
+        cs.update_signals(bar)
+        pos.update(cs.s)
+
+    df = pd.DataFrame(pos.pairs)
+    assert df.shape == (293, 10)
+    assert len(cs.s) == 12
 
 
 def test_generate_czsc_signals():

@@ -1045,8 +1045,8 @@ class Position:
         self.end_dt = None          # 最近一次信号传入的时间
 
     def __repr__(self):
-        return f"Position(symbol={self.symbol}, opens={[x.name for x in self.opens]}, timeout={self.timeout}, " \
-               f"stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
+        return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
+               f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
 
     def __two_operates_pair(self, op1, op2):
         assert op1['op'] in [Operate.LO, Operate.SO]
@@ -1180,26 +1180,26 @@ class Position:
 
         # 更新仓位
         if op == Operate.LO:
-            if not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval:
+            if self.pos != 1 and (not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval):
                 # 与前一次开多间隔时间大于 interval，直接开多
                 self.pos = 1
                 self.operates.append(__create_operate(Operate.LO, op_desc))
                 self.last_lo_dt = dt
             else:
                 # 与前一次开多间隔时间小于 interval，仅对空头平仓
-                if self.pos == -1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
+                if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
                     self.pos = 0
                     self.operates.append(__create_operate(Operate.SE, op_desc))
 
         if op == Operate.SO:
-            if not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval:
+            if self.pos != -1 and (not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval):
                 # 与前一次开空间隔时间大于 interval，直接开空
                 self.pos = -1
                 self.operates.append(__create_operate(Operate.SO, op_desc))
                 self.last_so_dt = dt
             else:
                 # 与前一次开空间隔时间小于 interval，仅对多头平仓
-                if self.pos == 1 and (self.T0 or dt.date() != self.last_so_dt.date()):
+                if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
                     self.pos = 0
                     self.operates.append(__create_operate(Operate.LE, op_desc))
 
@@ -1240,4 +1240,6 @@ class Position:
             if bid - self.last_event['bid'] > self.timeout:
                 self.pos = 0
                 self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
+
+        self.holds.append({"dt": self.end_dt, 'pos': self.pos})
 
