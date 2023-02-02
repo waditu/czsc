@@ -259,7 +259,9 @@ class CzscTrader(CzscSignals):
                 for pos in self.positions:
                     for op in pos.operates:
                         if op['dt'] >= ka.bars_raw[0].dt:
-                            bs.append(op)
+                            _op = dict(op)
+                            _op['op_desc'] = f"{pos.name} | {_op['op_desc']}"
+                            bs.append(_op)
 
             chart = ka.to_echarts(width, height, bs)
             tab.add(chart, freq)

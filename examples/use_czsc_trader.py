@@ -25,8 +25,8 @@ dc = TsDataCache(data_path, sdt='2010-01-01', edt='20211209')
 
 symbol = '000001.SZ'
 bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='30min',
-                          sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
+                          sdt='20151101', edt='20210101', adj='qfq', raw_bar=True)
 
 if __name__ == '__main__':
     tactic = CzscStrategyExample1(symbol="000001.SHSE")
-    tactic.trade_replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test", sdt='20200101')
+    tactic.trade_replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test_20170101B", sdt='20170101')
