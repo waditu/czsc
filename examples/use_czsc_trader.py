@@ -10,11 +10,7 @@ sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
 import os
-import pandas as pd
-from typing import List
-from czsc.traders.base import CzscTrader
-from czsc.utils.bar_generator import BarGenerator, RawBar
-from czsc.strategies import CzscStrategyExample1, CzscStrategyBase
+from czsc.strategies import CzscStrategyExample1
 from czsc.data.ts_cache import TsDataCache
 
 
@@ -29,4 +25,5 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='30min',
 
 if __name__ == '__main__':
     tactic = CzscStrategyExample1(symbol="000001.SHSE")
-    tactic.trade_replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test_20170101B", sdt='20170101')
+    # trader = tactic.init_trader(bars, sdt='20200801')
+    trader = tactic.trade_replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test", sdt='20170101')

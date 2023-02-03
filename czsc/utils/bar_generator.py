@@ -147,14 +147,9 @@ class BarGenerator:
             self.bars[freq.value].append(bar_)
 
         else:
-            if last.amount:
-                amount = last.amount + bar.amount
-            else:
-                amount = None
-
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id,
                           open=last.open, close=bar.close, high=max(last.high, bar.high),
-                          low=min(last.low, bar.low), vol=last.vol + bar.vol, amount=amount)
+                          low=min(last.low, bar.low), vol=last.vol + bar.vol, amount=last.amount + bar.amount)
             self.bars[freq.value][-1] = bar_
 
     def update(self, bar: RawBar) -> None:
