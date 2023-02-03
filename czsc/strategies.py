@@ -16,9 +16,10 @@ from loguru import logger
 from czsc import signals
 from czsc.objects import RawBar, List, Freq, Operate, Signal, Factor, Event, Position
 from collections import OrderedDict
+from czsc.traders.base import CzscTrader
 from czsc.traders import CzscAdvancedTrader
 from czsc.objects import PositionLong
-from czsc.utils import x_round, freqs_sorted, BarGenerator
+from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
 
 
 class CzscStrategyBase(ABC):
@@ -58,6 +59,26 @@ class CzscStrategyBase(ABC):
         """K线周期列表"""
         raise NotImplementedError
 
+    def init_trader(self, bars: List[RawBar], **kwargs):
+        """使用策略定义初始化一个 CzscTrader 对象
+
+        :param bars: 基础周期K线
+        :param kwargs:
+            sdt  初始化开始日期
+        :return:
+        """
+        sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
+        # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
+        bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+        bars1 = [x for x in bars if x.dt <= sdt]
+        bars2 = [x for x in bars if x.dt > sdt]
+        for bar in bars1:
+            bg.update(bar)
+        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        for bar in bars2:
+            trader.on_bar(bar)
+        return trader
+
     def trade_replay(self, bars: List[RawBar], res_path, **kwargs):
         """交易策略交易过程回放
 
@@ -69,8 +90,9 @@ class CzscStrategyBase(ABC):
         """
         exist_ok = kwargs.get("exist_ok", False)
         sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
-
-        from czsc.traders.base import CzscTrader
+        if os.path.exists(res_path) and not exist_ok:
+            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            return
 
         # 拆分基础周期K线，一部分用来初始化BarGenerator，随后的K线是回放区间
         bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
@@ -97,6 +119,8 @@ class CzscStrategyBase(ABC):
                     file_html = os.path.join(pos_path, file_name)
                     trader.take_snapshot(file_html)
                     logger.info(f'{file_html}')
+        dill_dump(trader, os.path.join(res_path, "trader.ct"))
+        return trader
 
 
 class CzscStrategyExample1(CzscStrategyBase):
