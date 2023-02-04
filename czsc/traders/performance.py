@@ -11,7 +11,7 @@ import traceback
 import pandas as pd
 from tqdm import tqdm
 from loguru import logger
-from czsc.traders.advanced import CzscAdvancedTrader
+from czsc.traders.base import CzscAdvancedTrader
 from czsc.utils import dill_load
 from czsc.objects import cal_break_even_point
 

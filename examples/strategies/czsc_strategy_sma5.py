@@ -5,16 +5,9 @@ email: zeng_bin8888@163.com
 create_dt: 2023/2/2 18:30
 describe: 
 """
-import os
-import pandas as pd
-from copy import deepcopy
-from deprecated import deprecated
-from abc import ABC, abstractmethod
-from loguru import logger
 from czsc import signals
-from czsc.objects import RawBar, List, Freq, Operate, Signal, Factor, Event, Position
 from collections import OrderedDict
-from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
+from czsc.objects import Event, Position
 from czsc.strategies import CzscStrategyBase
 
 
@@ -44,76 +37,61 @@ class CzscStrategySMA5(CzscStrategyBase):
     def positions(self):
         return [
             self.create_pos_a(),
-            self.create_pos_b(),
-            self.create_pos_c(),
         ]
 
     @property
     def freqs(self):
-        return ['日线', '30分钟', '60分钟', '15分钟']
-
-    @property
-    def __shared_exits(self):
-        return [
-            Event(name='平多', operate=Operate.LE, factors=[
-                Factor(name="日线三笔向上收敛", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
-                ])
-            ]),
-            Event(name='平空', operate=Operate.SE, factors=[
-                Factor(name="日线三笔向下收敛", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
-                ])
-            ]),
-        ]
+        return ['日线', '30分钟', '15分钟']
 
     def create_pos_a(self):
         opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线一买", signals_all=[
-                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线一卖", signals_all=[
-                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
+            {'name': '开多',
+             'operate': '开多',
+             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0'],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_涨跌停_涨停_任意_任意_0'],
+             'factors': [
+                 {'name': '站上SMA5',
+                  'signals_all': ['全天_0935_1450_是_任意_任意_0',
+                                  '日线_D1K_SMA5_多头_任意_任意_0',
+                                  '日线_D5K_SMA5_空头_向下_任意_0',
+                                  '30分钟_D1B_BUY1_一买_任意_任意_0'],
+                  'signals_any': [],
+                  'signals_not': []}
+             ]},
+            {'name': '开空',
+             'operate': '开空',
+             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0'],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_涨跌停_跌停_任意_任意_0'],
+             'factors': [
+                 {'name': '站上SMA5',
+                  'signals_all': ['全天_0935_1450_是_任意_任意_0',
+                                  '日线_D1K_SMA5_空头_任意_任意_0',
+                                  '日线_D5K_SMA5_多头_向下_任意_0',
+                                  '30分钟_D1B_BUY1_一卖_任意_任意_0'],
+                  'signals_any': [],
+                  'signals_not': []}
+             ]},
         ]
-        pos = Position(name="A", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
-                       interval=0, timeout=20, stop_loss=100)
-        return pos
 
-    def create_pos_b(self):
-        opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线三笔向下无背", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向下无背_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线三笔向上无背", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向上无背_任意_任意_0"),
-                ])
-            ]),
+        exits = [
+            {'name': '平多',
+             'operate': '平多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_涨跌停_跌停_任意_任意_0'],
+             'factors': [
+                 {'name': '跌破SMA5',
+                  'signals_all': ['下午_1300_1450_是_任意_任意_0',
+                                  '日线_D1K_SMA5_空头_任意_任意_0',
+                                  '日线_D2K_SMA5_多头_任意_任意_0'],
+                  'signals_any': [],
+                  'signals_not': []}
+             ]}
         ]
-
-        pos = Position(name="B", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100)
-        return pos
-
-    def create_pos_c(self):
-        opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线一买", signals_all=[
-                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线一卖", signals_all=[
-                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
-        ]
-        pos = Position(name="C", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
-                       interval=0, timeout=20, stop_loss=50)
+        pos = Position(name="A", symbol=self.symbol,
+                       opens=[Event.load(x) for x in opens],
+                       exits=[Event.load(x) for x in exits],
+                       interval=0, timeout=20, stop_loss=1000)
         return pos

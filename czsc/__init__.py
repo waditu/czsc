@@ -13,7 +13,7 @@ from czsc import aphorism
 from czsc.analyze import CZSC
 from czsc.traders.advanced import CzscAdvancedTrader, create_advanced_trader
 from czsc.utils.ta import SMA, EMA, MACD, KDJ
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
+from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 
 

@@ -4,11 +4,9 @@ import os
 from . import qywx
 from . import ta
 from . import io
-from . import log
 from . import echarts_plot
 
 from .echarts_plot import kline_pro, heat_map
-from .log import create_logger
 from .word_writer import WordWriter
 from .corr import nmi_matrix, single_linear
 from .bar_generator import BarGenerator, freq_end_time
