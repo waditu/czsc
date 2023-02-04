@@ -98,10 +98,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        # s.update(tas_macd_first_bs_V221216(cat.kas['15分钟'], di=1))
-        # s.update(signals.tas_kdj_base_V221101(cat.kas['15分钟'], di=1, fastk_period=36))
-        s.update(tas_kdj_break_V221201(cat.kas['日线'], di=1, fastk_period=36))
-        # s.update(signals.cxt_zhong_shu_gong_zhen_V221221(cat, freq1='日线', freq2='60分钟'))
+        s.update(signals.tas_kdj_base_V221101(cat.kas['15分钟'], di=1, fastk_period=36))
         return s
 
     tactic = {
