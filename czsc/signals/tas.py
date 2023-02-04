@@ -17,7 +17,7 @@ except:
 import numpy as np
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction
-from czsc.utils import get_sub_elements, fast_slow_cross
+from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same
 from collections import OrderedDict
 
 
@@ -879,7 +879,7 @@ def update_kdj_cache(c: CZSC, **kwargs):
     fastk_period = kwargs.get('fastk_period', 9)
     slowk_period = kwargs.get('slowk_period', 3)
     slowd_period = kwargs.get('slowd_period', 3)
-    cache_key = f"KDJ({fastk_period},{slowk_period},{slowd_period})"
+    cache_key = f"KDJ{fastk_period}#{slowk_period}#{slowd_period}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
@@ -937,7 +937,7 @@ def tas_kdj_base_V221101(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     :return:
     """
     cache_key = update_kdj_cache(c, **kwargs)
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_KDJ".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_{cache_key}".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     kdj = bars[-1].cache[cache_key]
 
@@ -949,6 +949,60 @@ def tas_kdj_base_V221101(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         v1 = "其他"
 
     v2 = "向上" if kdj['j'] >= bars[-2].cache[cache_key]['j'] else "向下"
+
+    s = OrderedDict()
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    s[signal.key] = signal.value
+    return s
+
+
+def tas_kdj_evc_V221201(c: CZSC, di: int = 1, key='K', th=10, count_range=(5, 8), **kwargs) -> OrderedDict:
+    """KDJ极值计数信号, evc 是 extreme value counts 的首字母缩写
+
+    **信号逻辑：**
+
+     1. K < th，记录一次多头信号，连续出现信号次数在 count_range 范围，则认为是有效多头信号；
+     2. K > 100 - th, 记录一次空头信号，连续出现信号次数在 count_range 范围，则认为是有效空头信号
+
+    **信号列表：**
+
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C5_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C5_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C6_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C7_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C6_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C7_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param key: KDJ 值的名称，可以是 K， D， J
+    :param th: 信号计算截止倒数第i根K线
+    :param count_range: 信号计数范围
+    :return:
+    """
+    cache_key = update_kdj_cache(c, **kwargs)
+    c1, c2 = count_range
+    assert c2 > c1
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}{cache_key}_{key.upper()}值突破{c1}#{c2}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3+c2)
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) == 3 + c2:
+        key = key.lower()
+        long = [x.cache[cache_key][key] < th for x in bars]
+        short = [x.cache[cache_key][key] > 100 - th for x in bars]
+        lc = count_last_same(long) if long[-1] else 0
+        sc = count_last_same(short) if short[-1] else 0
+
+        if c2 > lc >= c1:
+            v1 = "多头"
+            v2 = f"C{lc}"
+
+        if c2 > sc >= c1:
+            assert v1 == '其他'
+            v1 = "空头"
+            v2 = f"C{sc}"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

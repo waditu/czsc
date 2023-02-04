@@ -13,14 +13,14 @@ from czsc import aphorism
 from czsc.analyze import CZSC
 from czsc.traders.advanced import CzscAdvancedTrader, create_advanced_trader
 from czsc.utils.ta import SMA, EMA, MACD, KDJ
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar
+from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 
 
-__version__ = "0.9.6"
+__version__ = "0.9.7"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20221221"
+__date__ = "20230123"
 
 
 if envs.get_welcome():

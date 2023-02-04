@@ -6,9 +6,8 @@ create_dt: 2022/10/27 23:23
 describe: 用于信号计算函数的各种辅助工具函数
 """
 import numpy as np
-from deprecated import deprecated
 from collections import Counter
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Union, Tuple
 from czsc.enum import Direction
 from czsc.objects import BI, RawBar, ZS
 
@@ -166,6 +165,21 @@ def same_dir_counts(seq: [List, np.array]):
     c = 0
     for num in seq[::-1]:
         if (num > 0 and s > 0) or (num < 0 and s < 0):
+            c += 1
+        else:
+            break
+    return c
+
+def count_last_same(seq: Union[List, np.array, Tuple]):
+    """统计与seq列表最后一个元素相似的连续元素数量
+
+    :param seq: 数字序列
+    :return:
+    """
+    s = seq[-1]
+    c = 0
+    for _s in seq[::-1]:
+        if _s == s:
             c += 1
         else:
             break

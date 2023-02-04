@@ -1044,6 +1044,10 @@ class Position:
         self.last_so_dt = None      # 最近一次开空交易的时间
         self.end_dt = None          # 最近一次信号传入的时间
 
+    def __repr__(self):
+        return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
+               f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
+
     def __two_operates_pair(self, op1, op2):
         assert op1['op'] in [Operate.LO, Operate.SO]
         pair = {
@@ -1064,12 +1068,85 @@ class Position:
 
     @property
     def pairs(self):
-        """开平交易列表"""
+        """开平交易列表
+
+        返回样例：
+
+        [{'标的代码': '000001.SH',
+          '交易方向': '多头',
+          '开仓时间': Timestamp('2020-04-17 00:00:00'),
+          '平仓时间': Timestamp('2020-04-20 00:00:00'),
+          '开仓价格': 2838.49,
+          '平仓价格': 2852.55,
+          '持仓K线数': 1,
+          '事件序列': '开多@站上SMA5 -> 开多@站上SMA5',
+          '持仓天数': 3.0,
+          '盈亏比例': 49.53},
+         {'标的代码': '000001.SH',
+          '交易方向': '多头',
+          '开仓时间': Timestamp('2020-04-20 00:00:00'),
+          '平仓时间': Timestamp('2020-04-24 00:00:00'),
+          '开仓价格': 2852.55,
+          '平仓价格': 2808.53,
+          '持仓K线数': 4,
+          '事件序列': '开多@站上SMA5 -> 平多@100BP止损',
+          '持仓天数': 4.0,
+          '盈亏比例': -154.32}]
+
+        数据说明：
+
+        1. 盈亏比例，单位是 BP
+        2. 持仓天数，单位是 自然日
+        3. 持仓K线数，指基础周期K线数量
+        """
         pairs = []
         for op1, op2 in zip(self.operates, self.operates[1:]):
             if op1['op'] in [Operate.LO, Operate.SO]:
                 pairs.append(self.__two_operates_pair(op1, op2))
         return pairs
+
+    def evaluate_pairs(self, trade_dir: str = "多空") -> dict:
+        """评估交易表现
+
+        :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
+        :return: 交易表现
+        """
+        if trade_dir == '多空':
+            pairs = self.pairs
+        else:
+            pairs = [x for x in self.pairs if x['交易方向'] == trade_dir]
+        p = {"交易标的": self.symbol, "交易方向": trade_dir,
+             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
+             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
+             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
+             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
+
+        if len(pairs) == 0:
+            return p
+
+        p['盈亏平衡点'] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
+        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 2)
+        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 2)
+        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 2)
+        p['平均持仓K线数'] = round(sum([x['持仓K线数'] for x in pairs]) / len(pairs), 2)
+
+        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
+        if len(win_) > 0:
+            p['盈利次数'] = len(win_)
+            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
+            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
+            p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
+
+        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
+        if len(loss_) > 0:
+            p['亏损次数'] = len(loss_)
+            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
+            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
+
+            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
+            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
+
+        return p
 
     def update(self, s: dict):
         """更新持仓状态
@@ -1103,26 +1180,26 @@ class Position:
 
         # 更新仓位
         if op == Operate.LO:
-            if not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval:
+            if self.pos != 1 and (not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval):
                 # 与前一次开多间隔时间大于 interval，直接开多
                 self.pos = 1
                 self.operates.append(__create_operate(Operate.LO, op_desc))
                 self.last_lo_dt = dt
             else:
                 # 与前一次开多间隔时间小于 interval，仅对空头平仓
-                if self.pos == -1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
+                if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
                     self.pos = 0
                     self.operates.append(__create_operate(Operate.SE, op_desc))
 
         if op == Operate.SO:
-            if not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval:
+            if self.pos != -1 and (not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval):
                 # 与前一次开空间隔时间大于 interval，直接开空
                 self.pos = -1
                 self.operates.append(__create_operate(Operate.SO, op_desc))
                 self.last_so_dt = dt
             else:
                 # 与前一次开空间隔时间小于 interval，仅对多头平仓
-                if self.pos == 1 and (self.T0 or dt.date() != self.last_so_dt.date()):
+                if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
                     self.pos = 0
                     self.operates.append(__create_operate(Operate.LE, op_desc))
 
@@ -1163,4 +1240,6 @@ class Position:
             if bid - self.last_event['bid'] > self.timeout:
                 self.pos = 0
                 self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
+
+        self.holds.append({"dt": self.end_dt, 'pos': self.pos})
 

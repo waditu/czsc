@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 from czsc.objects import RawBar, Freq
 from czsc.utils.bar_generator import BarGenerator, freq_end_time
-from test.test_analyze import read_1min
+from test.test_analyze import read_1min, read_daily
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
 kline = read_1min()
@@ -56,12 +56,7 @@ def test_bg_on_f1():
 
 
 def test_bg_on_d():
-    df = pd.read_csv(os.path.join(cur_path, './data/000001.SH_D.csv'))
-    bars = []
-    for i, row in df.iterrows():
-        bars.append(RawBar(symbol=row.symbol, id=i, freq=Freq.D, dt=pd.to_datetime(row['dt']),
-                           open=row.open, close=row.close, high=row.high, low=row.low, vol=row.vol))
-
+    bars = read_daily()
     bg = BarGenerator(base_freq='日线', freqs=['周线', '月线', '季线', '年线'], max_count=2000)
     for bar in bars:
         bg.update(bar)

@@ -46,6 +46,7 @@ def read_1min():
         data = pd.read_csv(f, encoding='utf-8')
 
     data['dt'] = pd.to_datetime(data['dt'])
+    data['amount'] = data['close'] * data['vol']
     records = data.to_dict('records')
 
     bars = []
@@ -59,9 +60,11 @@ def read_1min():
 def read_daily():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
+    kline['amount'] = kline['close'] * kline['vol']
+
     kline.loc[:, "dt"] = pd.to_datetime(kline.dt)
     bars = [RawBar(symbol=row['symbol'], id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
-                   close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
+                   close=row['close'], high=row['high'], low=row['low'], vol=row['vol'], amount=row['amount'])
             for i, row in kline.iterrows()]
     return bars
 

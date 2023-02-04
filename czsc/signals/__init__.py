@@ -104,6 +104,7 @@ from czsc.signals.tas import (
 
     update_kdj_cache,
     tas_kdj_base_V221101,
+    tas_kdj_evc_V221201,
 
     update_rsi_cache,
     tas_double_rsi_V221203,

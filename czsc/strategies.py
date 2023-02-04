@@ -7,13 +7,216 @@ describe: 提供一些策略的编写案例
 
 以 trader_ 开头的是择时交易策略案例
 """
+import os
+import pandas as pd
+from copy import deepcopy
+from deprecated import deprecated
+from abc import ABC, abstractmethod
+from loguru import logger
 from czsc import signals
-from czsc.objects import Freq, Operate, Signal, Factor, Event
+from czsc.objects import RawBar, List, Freq, Operate, Signal, Factor, Event, Position
 from collections import OrderedDict
+from czsc.traders.base import CzscTrader
 from czsc.traders import CzscAdvancedTrader
-from czsc.objects import PositionLong, PositionShort, RawBar
+from czsc.objects import PositionLong
+from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
 
 
+class CzscStrategyBase(ABC):
+    """
+    择时交易策略的要素：
+
+    1. 交易品种以及该品种对应的参数
+    2. K线周期列表
+    3. 交易信号计算函数
+    4. 持仓策略列表
+    """
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    @property
+    def symbol(self):
+        """交易标的"""
+        return self.kwargs['symbol']
+
+    @property
+    def sorted_freqs(self):
+        """排好序的 K 线周期列表"""
+        return freqs_sorted(self.freqs)
+
+    @abstractmethod
+    def get_signals(cls, **kwargs) -> OrderedDict:
+        """交易信号计算函数"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def positions(self) -> List[Position]:
+        """持仓策略列表"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def freqs(self):
+        """K线周期列表"""
+        raise NotImplementedError
+
+    def init_trader(self, bars: List[RawBar], **kwargs):
+        """使用策略定义初始化一个 CzscTrader 对象
+
+        :param bars: 基础周期K线
+        :param kwargs:
+            sdt  初始化开始日期
+        :return:
+        """
+        sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
+        # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
+        bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+        bars1 = [x for x in bars if x.dt <= sdt]
+        bars2 = [x for x in bars if x.dt > sdt]
+        for bar in bars1:
+            bg.update(bar)
+        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        for bar in bars2:
+            trader.on_bar(bar)
+        return trader
+
+    def trade_replay(self, bars: List[RawBar], res_path, **kwargs):
+        """交易策略交易过程回放
+
+        :param bars: 基础周期K线
+        :param res_path: 结果目录
+        :param kwargs:
+            sdt     回放开始日期
+        :return:
+        """
+        exist_ok = kwargs.get("exist_ok", False)
+        sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
+        if os.path.exists(res_path) and not exist_ok:
+            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            return
+
+        # 拆分基础周期K线，一部分用来初始化BarGenerator，随后的K线是回放区间
+        bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+        bars1 = [x for x in bars if x.dt <= sdt]
+        bars2 = [x for x in bars if x.dt > sdt]
+        for bar in bars1:
+            bg.update(bar)
+
+        os.makedirs(res_path, exist_ok=exist_ok)
+        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        for position in trader.positions:
+            pos_path = os.path.join(res_path, position.name)
+            os.makedirs(pos_path, exist_ok=exist_ok)
+
+        for bar in bars2:
+            trader.on_bar(bar)
+            for position in trader.positions:
+                pos_path = os.path.join(res_path, position.name)
+
+                if position.operates and position.operates[-1]['dt'] == bar.dt:
+                    op = position.operates[-1]
+                    _dt = op['dt'].strftime('%Y%m%d#%H%M')
+                    file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+                    file_html = os.path.join(pos_path, file_name)
+                    trader.take_snapshot(file_html)
+                    logger.info(f'{file_html}')
+        dill_dump(trader, os.path.join(res_path, "trader.ct"))
+        return trader
+
+
+class CzscStrategyExample1(CzscStrategyBase):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
+        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
+        return s
+
+    @property
+    def positions(self):
+        return [
+            self.create_pos_a(),
+            self.create_pos_b(),
+            self.create_pos_c(),
+        ]
+
+    @property
+    def freqs(self):
+        return ['日线', '30分钟', '60分钟']
+
+    @property
+    def __shared_exits(self):
+        return [
+            Event(name='平多', operate=Operate.LE, factors=[
+                Factor(name="日线三笔向上收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
+                ])
+            ]),
+            Event(name='平空', operate=Operate.SE, factors=[
+                Factor(name="日线三笔向下收敛", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
+                ])
+            ]),
+        ]
+
+    def create_pos_a(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线一买", signals_all=[
+                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线一卖", signals_all=[
+                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(name="A", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
+                       interval=0, timeout=20, stop_loss=100)
+        return pos
+
+    def create_pos_b(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线三笔向下无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向下无背_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线三笔向上无背", signals_all=[
+                    Signal("日线_倒1笔_三笔形态_向上无背_任意_任意_0"),
+                ])
+            ]),
+        ]
+
+        pos = Position(name="B", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100)
+        return pos
+
+    def create_pos_c(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="日线一买", signals_all=[
+                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="日线一卖", signals_all=[
+                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(name="C", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
+                       interval=0, timeout=20, stop_loss=50)
+        return pos
+
+
+@deprecated(reason="更新为 Position + CzscTrader 执行")
 def trader_standard(symbol, T0=False, min_interval=3600*4):
     """择时策略编写的一些标准说明
 
@@ -29,6 +232,7 @@ def trader_standard(symbol, T0=False, min_interval=3600*4):
     pass
 
 
+@deprecated(reason="更新为 Position + CzscTrader 执行")
 def trader_example1(symbol, T0=False, min_interval=3600*4):
     """A股市场择时策略样例，支持按交易标的独立设置参数
 
@@ -95,6 +299,7 @@ def trader_example1(symbol, T0=False, min_interval=3600*4):
     return tactic
 
 
+@deprecated(reason="更新为 Position + CzscTrader 执行")
 def trader_strategy_a(symbol):
     """A股市场择时策略A"""
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:

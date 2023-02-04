@@ -9,71 +9,81 @@ import talib as ta
 import numpy as np
 import pandas as pd
 from collections import OrderedDict
-from typing import List
+from typing import List, Union, Tuple
 from loguru import logger
+from czsc.signals import update_kdj_cache
 from czsc import CZSC, signals, RawBar, Direction
 from czsc.data import TsDataCache, get_symbols
-from czsc.utils import get_sub_elements, single_linear, fast_slow_cross
+from czsc.utils import get_sub_elements, single_linear, fast_slow_cross, same_dir_counts
 from czsc.objects import Freq, Operate, Signal, Factor, Event, BI
 from czsc.traders import CzscAdvancedTrader
 
 
+def count_last_same(seq: Union[List, np.array, Tuple]):
+    """统计与seq列表最后一个元素相似的连续元素数量
+
+    :param seq: 数字序列
+    :return:
+    """
+    s = seq[-1]
+    c = 0
+    for _s in seq[::-1]:
+        if _s == s:
+            c += 1
+        else:
+            break
+    return c
+
+
 # 【必须】定义信号函数
 # ----------------------------------------------------------------------------------------------------------------------
-def tas_macd_first_bs_V221216(c: CZSC, di: int = 1):
-    """MACD金叉死叉判断第一买卖点
+def tas_kdj_evc_V221201(c: CZSC, di: int = 1, key='K', th=10, count_range=(5, 8), **kwargs) -> OrderedDict:
+    """KDJ极值计数信号, evc 是 extreme value counts 的首字母缩写
 
     **信号逻辑：**
 
-    1. 最近一次交叉为死叉，且前面两次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
-    2. 或 最近一次交叉为金叉，且前面三次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+     1. K < th，记录一次多头信号，连续出现信号次数在 count_range 范围，则认为是有效多头信号；
+     2. K > 100 - th, 记录一次空头信号，连续出现信号次数在 count_range 范围，则认为是有效空头信号
 
     **信号列表：**
 
-    - Signal('15分钟_D1MACD_BS1A_一卖_金叉_任意_0')
-    - Signal('15分钟_D1MACD_BS1A_一卖_死叉_任意_0')
-    - Signal('15分钟_D1MACD_BS1A_一买_死叉_任意_0')
-    - Signal('15分钟_D1MACD_BS1A_一买_金叉_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C5_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C5_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C6_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_多头_C7_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C6_任意_0')
+    - Signal('日线_D1T10KDJ36#3#3_K值突破5#8_空头_C7_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第i根K线
-    :return: 信号识别结果
+    :param di: 信号计算截止倒数第i根K线
+    :param key: KDJ 值的名称，可以是 K， D， J
+    :param th: 信号计算截止倒数第i根K线
+    :param count_range: 信号计数范围
+    :return:
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}MACD_BS1A".split('_')
-    bars = get_sub_elements(c.bars_raw, di=di, n=350)[50:]
+    cache_key = update_kdj_cache(c, **kwargs)
+    c1, c2 = count_range
+    assert c2 > c1
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}{cache_key}_{key.upper()}值突破{c1}#{c2}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3+c2)
 
     v1 = "其他"
     v2 = "任意"
-    if len(bars) >= 100:
-        dif = [x.cache['MACD']['dif'] for x in bars]
-        dea = [x.cache['MACD']['dea'] for x in bars]
-        macd = [x.cache['MACD']['macd'] for x in bars]
-        n_bars = bars[-10:]
-        m_bars = bars[-100: -10]
-        high_n = max([x.high for x in n_bars])
-        low_n = min([x.low for x in n_bars])
-        high_m = max([x.high for x in m_bars])
-        low_m = min([x.low for x in m_bars])
+    if len(bars) == 3 + c2:
+        key = key.lower()
+        long = [x.cache[cache_key][key] < th for x in bars]
+        short = [x.cache[cache_key][key] > 100 - th for x in bars]
+        lc = count_last_same(long) if long[-1] else 0
+        sc = count_last_same(short) if short[-1] else 0
 
-        cross = fast_slow_cross(dif, dea)
-        up = [x for x in cross if x['类型'] == "金叉" and x['距离'] > 5]
-        dn = [x for x in cross if x['类型'] == "死叉" and x['距离'] > 5]
+        if c2 > lc >= c1:
+            v1 = "多头"
+            v2 = f"C{lc}"
 
-        b1_con1a = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['慢线'] < 0
-        b1_con1b = len(cross) > 3 and cross[-1]['类型'] == '金叉' and dn[-1]['慢线'] < 0
-        b1_con2 = len(dn) > 3 and dn[-2]['慢线'] < 0 and dn[-3]['慢线'] < 0
-        b1_con3 = len(macd) > 10 and macd[-1] > macd[-2]
-        if low_n < low_m and (b1_con1a or b1_con1b) and b1_con2 and b1_con3:
-            v1 = "一买"
-
-        s1_con1a = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] > 0
-        s1_con1b = len(cross) > 3 and cross[-1]['类型'] == '死叉' and up[-1]['慢线'] > 0
-        s1_con2 = len(dn) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
-        s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
-        if high_n > high_m and (s1_con1a or s1_con1b) and s1_con2 and s1_con3:
-            v1 = "一卖"
-
-        v2 = cross[-1]['类型']
+        if c2 > sc >= c1:
+            assert v1 == '其他'
+            v1 = "空头"
+            v2 = f"C{sc}"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -88,9 +98,7 @@ def trader_strategy(symbol):
 
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_macd_cache(cat.kas['15分钟'])
-
-        s.update(tas_macd_first_bs_V221216(cat.kas['15分钟'], di=1))
+        s.update(signals.tas_kdj_base_V221101(cat.kas['15分钟'], di=1, fastk_period=36))
         return s
 
     tactic = {
@@ -106,9 +114,9 @@ def trader_strategy(symbol):
 
 # 信号检查参数设置【可选】
 check_params = {
-    "symbol": "000001.SZ#E",    # 交易品种，格式为 {ts_code}#{asset}
+    "symbol": "002642.SZ#E",    # 交易品种，格式为 {ts_code}#{asset}
     "sdt": "20180101",          # 开始时间
-    "edt": "20220101",          # 结束时间
+    "edt": "20221231",          # 结束时间
 }
 
 

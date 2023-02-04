@@ -6,6 +6,9 @@ create_dt: 2022/7/12 14:22
 describe: CZSC 逐K线播放
 https://pyecharts.org/#/zh-cn/web_flask
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 from flask import Flask, render_template
 from czsc import CZSC, home_path
 from czsc.data import TsDataCache
