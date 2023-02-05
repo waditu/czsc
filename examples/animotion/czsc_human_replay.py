@@ -59,7 +59,7 @@ def bar_base():
 def index():
     global cs, remain_bars, freqs
 
-    freqs = request.args.get("freqs", '15分钟,60分钟,日线')
+    freqs = request.args.get("freqs", '1分钟,5分钟,15分钟,30分钟,60分钟,日线,周线,月线')
     freqs = freqs_sorted([f.strip() for f in freqs.split(',')])
     counts = int(request.args.get("counts", 300))
     symbol = request.args.get("symbol", random.choice(randoms))
