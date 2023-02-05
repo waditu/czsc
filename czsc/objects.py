@@ -1052,6 +1052,7 @@ class Position:
         assert op1['op'] in [Operate.LO, Operate.SO]
         pair = {
             '标的代码': self.symbol,
+            '策略标记': self.name,
             '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
             '开仓时间': op1['dt'],
             '平仓时间': op2['dt'],
@@ -1115,7 +1116,7 @@ class Position:
             pairs = self.pairs
         else:
             pairs = [x for x in self.pairs if x['交易方向'] == trade_dir]
-        p = {"交易标的": self.symbol, "交易方向": trade_dir,
+        p = {"交易标的": self.symbol, "策略标记": self.name, "交易方向": trade_dir,
              "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
