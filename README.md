@@ -114,4 +114,4 @@ pip install czsc -U -i https://pypi.python.org/simple
 2. CZSC程序化交易库信号函数编写指导
 3. `CZSC`程序库的源码解读，量化投研讨论等
 
-> 申请加入前请先加微信 `zengbin93`，备注【CZSC小圈子】
+> 加入知识星球有人工审核。**申请加入请求提交后**，加微信 `zengbin93`，备注【CZSC小圈子】
