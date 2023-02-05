@@ -9,6 +9,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
+from deprecated import deprecated
 from typing import List, Callable
 from transitions import Machine
 from czsc.enum import Mark, Direction, Freq, Operate
@@ -599,6 +600,7 @@ def cal_break_even_point(seq: List[float]) -> float:
     return sub_i / len(seq)
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> dict:
     """评估交易表现
 
@@ -648,6 +650,7 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
     return p
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class PositionLong:
     def __init__(self, symbol: str,
                  hold_long_a: float = 0.5,
@@ -827,6 +830,7 @@ class PositionLong:
             self.long_bid = -1.0
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class PositionShort:
     def __init__(self, symbol: str,
                  hold_short_a: float = 0.5,

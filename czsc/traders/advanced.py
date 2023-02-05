@@ -221,6 +221,7 @@ class CzscAdvancedTrader:
         return res
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable) -> CzscAdvancedTrader:
     """为交易策略 tactic 创建对应的 trader
 
@@ -236,6 +237,7 @@ def create_advanced_trader(bg: BarGenerator, raw_bars: List[RawBar], strategy: C
     return trader
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class CzscDummyTrader:
     """虚拟交易员，直接输入信号驱动，不需要输入K线
 

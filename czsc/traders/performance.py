@@ -11,6 +11,7 @@ import traceback
 import pandas as pd
 from tqdm import tqdm
 from loguru import logger
+from deprecated import deprecated
 from czsc.traders.base import CzscAdvancedTrader
 from czsc.utils import dill_load
 from czsc.objects import cal_break_even_point
@@ -150,6 +151,7 @@ class PairsPerformance:
         logger.info(f"交易次数：{len(self.df_pairs)}; 聚合分析结果文件：{file_xlsx}")
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class TradersPerformance:
     """Trader Strategy 的效果评估"""
     def __init__(self, traders_pat):
