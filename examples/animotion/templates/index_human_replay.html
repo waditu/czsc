@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Awesome-pyecharts</title>
+    <title>CZSC手工交易训练</title>
     <script src="https://cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script>
     <script type="text/javascript" src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
 </head>
@@ -33,9 +33,16 @@
         }
 
         .chart-container {
-            display: none;
             padding: 6px 12px;
             border-top: none;
+        }
+        #op-evaluate{
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        #op-evaluate div{
+            width: 200px;
         }
     </style>
 
@@ -48,6 +55,7 @@
         <button onclick="page.handleSubmit()">提交</button>
     </div>
     <div id="op-container" style="margin-top: 10px;"></div>
+    <div id="op-evaluate" style="margin-top: 10px;"></div>
 
 <script>
 
@@ -91,7 +99,7 @@
             $('.tab').html(this.freqs.map(it=>`<button class="tablinks" onclick="showChart(event,
                  '${it}')">${it}</button>`))
             $('.box').html(this.freqs.map(it=>`<div id="${it}" class="chart-container"
-                 style="width:1400px; height:580px;"></div>`))
+                 style="width:100%; height:580px;"></div>`))
 
             this.initCharts()
             this.initOps()
@@ -113,12 +121,11 @@
         },
         initOps(){
             let ops = [
-                {label:'下一K线', onclick:'nextK'},
-                {label:'买多', onclick:'buyLong'},
-                {label:'卖多', onclick:'sellLong'},
-                {label:'买空', onclick:'buyShort'},
-                {label:'卖空', onclick:'sellShort'},
-                {label:'重新开始', onclick:'reset'},
+                {label:'观望', onclick:'nextK'},
+                {label:'开多', onclick:'buyLong'},
+                {label:'平多', onclick:'sellLong'},
+                {label:'开空', onclick:'buyShort'},
+                {label:'平空', onclick:'sellShort'},
             ]
             let buttons = ops.map(it=> `<button style="margin-left:10px;" onclick="trader.${it.onclick}()">${it.label}</button>`)
             buttons.unshift(`<input type="checkbox" onclick="trader.auto()">自动</input>`)
@@ -176,7 +183,7 @@
         },
         async nextK(e){
             if(this.remains <= 0){
-                alert('已训练完毕，请重新开始')
+                alert('已训练完毕')
                 // from auto
                 if(this.isAuto()){
                     clearInterval(trader.interval)
@@ -220,10 +227,9 @@
                 dataType: 'json',
                 data: JSON.stringify({ops: this.ops})
             })
-            console.log("🚀 ~ file: index.html:223 ~ _addOp ~ rs", rs)
-        },
-        reset(e){
-            page.handleSubmit()
+            let evaluates = Object.keys(rs.evaluates).map(it=>
+                `<div>${it}：${rs.evaluates[it]}</div>`)
+            $('#op-evaluate').html(evaluates.join(''))
         },
         getCurrentKline(){
             let {xAxis, series} = this.getChartOption()
@@ -277,16 +283,7 @@
         page.init()
         trader.setRemains(page.counts - 1)
     })
-    // function fetchData() {
-    //     $.ajax({
-    //         type: "GET",
-    //         url: "http://127.0.0.1:5000/barChart",
-    //         dataType: 'json',
-    //         success: function (result) {
-    //             chart.setOption(result);
-    //         }
-    //     });
-    // }
+
 </script>
 </body>
 </html>

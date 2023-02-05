@@ -10,6 +10,7 @@ import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 import json
+import random
 import pandas as pd
 from flask import Flask, render_template, request, jsonify
 from czsc import home_path
@@ -21,6 +22,7 @@ app = Flask(__name__, static_folder="templates")
 dc = TsDataCache(home_path)
 
 symbols = get_symbols(dc, step='train')
+randoms = get_symbols(dc, step='train') + get_symbols(dc, step='index') + get_symbols(dc, step='etfs')
 
 
 def init_czsc_signals(freqs, counts, symbol):
@@ -60,7 +62,9 @@ def index():
     freqs = request.args.get("freqs", '15分钟,60分钟,日线')
     freqs = freqs_sorted([f.strip() for f in freqs.split(',')])
     counts = int(request.args.get("counts", 300))
-    symbol = request.args.get("symbol", symbols[0])
+    symbol = request.args.get("symbol", random.choice(randoms))
+    if symbol.lower() == 'random':
+        symbol = random.choice(randoms)
     cs, remain_bars = init_czsc_signals(freqs, counts, symbol)
     return render_template("index_human_replay.html")
 
@@ -72,17 +76,9 @@ def next_bar():
     return jsonify({"tabs": tabs})
 
 
-@app.route("/barChart")
-def get_bar_chart():
-    # 这是一个测试，不要在生产环境使用
-    bar_base()
-    tabs = [cs.kas[freq].to_echarts().dump_options_with_quotes() for freq in freqs]
-    return tabs[0]
-
-
 @app.route("/symbols")
 def get_symbols():
-    return jsonify({"symbols": symbols})
+    return jsonify({"symbols": ['random'] + symbols})
 
 
 @app.route("/evaluates", methods=['POST'])
