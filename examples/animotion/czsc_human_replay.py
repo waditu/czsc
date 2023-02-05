@@ -37,7 +37,7 @@ def init_czsc_signals(freqs, counts, symbol):
     else:
         bars = dc.pro_bar_minutes(ts_code, sdt="20150101", edt="20230101", freq=freq_map[freq],
                                   asset=asset, adj='hfq', raw_bar=True)
-
+    counts += 10
     bg = BarGenerator(base_freq=freqs[0], freqs=freqs[1:], max_count=1000)
     for bar in bars[:-counts]:
         bg.update(bar)
@@ -61,6 +61,7 @@ def index():
 
     freqs = request.args.get("freqs", '1分钟,5分钟,15分钟,30分钟,60分钟,日线,周线,月线')
     freqs = freqs_sorted([f.strip() for f in freqs.split(',')])
+    print(freqs)
     counts = int(request.args.get("counts", 300))
     symbol = request.args.get("symbol", random.choice(randoms))
     if symbol.lower() == 'random':
