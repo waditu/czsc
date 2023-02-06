@@ -66,19 +66,19 @@ def test_im():
     from czsc.fsa.im import IM
 
     app = IM(app_id=os.environ['app_id'], app_secret=os.environ['app_secret'])
-    # id = app.get_user_id({"mobiles": ["xxxx"]})
+    # id = app.get_user_id({"mobiles": ["XXXX"]})['data']['user_list'][0]['user_id']
     receive_id = "ou_6fa04b5b4d853e9fdc87d267e8f2a270"
 
     image_key = app.upload_im_image(r"C:\Users\zengb\Downloads\十阶众生相.jpg")
     payload = {"receive_id": receive_id, "content": {"image_key": image_key}, "msg_type": "image"}
-    app.send(payload)
+    print(app.send(payload))
 
     payload = {"receive_id": receive_id, "content": {"text": "自定义文字随便发"}, "msg_type": "text"}
-    app.send(payload)
+    print(app.send(payload))
 
-    file_key = app.upload_im_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf")
+    file_key = app.upload_im_file(r"C:\Users\zengb\Downloads\放量破年线.py")
     payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
-    app.send(payload)
+    print(app.send(payload))
 
     file_key = app.upload_im_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf", file_type='pdf')
     payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}

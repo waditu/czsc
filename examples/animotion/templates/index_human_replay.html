@@ -49,10 +49,10 @@
     <div class="tab"></div>
     <div class="box"></div>
     <div>
-        Symbol: <select name="symbol"></select>
-        周期：<select name="freqs" multiple></select>
-        数量：<input type="number" name="counts"/>
-        <button onclick="page.handleSubmit()">提交</button>
+        Symbol: <select name="symbol" style="margin-right: 10px;"></select>
+        周期：<span name="freqs" style="margin-right: 10px;"></span>
+        数量：<input type="number" name="counts" style="margin-right: 10px;"/>
+        <button onclick="page.handleSubmit()">开始训练</button>
     </div>
     <div id="op-container" style="margin-top: 10px;"></div>
     <div id="op-evaluate" style="margin-top: 10px;"></div>
@@ -80,13 +80,13 @@
         freqs: FREQ_OPTIONS,
         counts: 300,
         async init(){
-            $('select[name=freqs]').html(FREQ_OPTIONS.map(it=>`<option value ="${it}">${it}</option>`))
-
             let param = this.parseURLParams()
-            this.freqs = param.freqs || this.freqs
             this.counts = param.counts || this.counts
-            $('select[name=freqs]').val(this.freqs)
+            this.freqs = param.freqs || this.freqs
             $('input[name=counts]').val(this.counts)
+            $('span[name=freqs]').html(FREQ_OPTIONS.map(it=>`<input  type="checkbox" id="freq_${it}"/>
+                <label for="freq_${it}">${it}</label>`))
+            this.freqs.forEach(it=>$(`#freq_${it}`)[0].checked = true)
 
             let rs = await $.ajax({
                 type: "GET",
@@ -132,7 +132,7 @@
             $('#op-container').html(buttons.join(''))
         },
         handleSubmit(){
-            let freqs =  $('select[name=freqs]').val()
+            let freqs =  FREQ_OPTIONS.filter(it=>$(`#freq_${it}`)[0].checked)
             let symbol =  $('select[name=symbol]').val()
             let counts =  $('input[name=counts]').val()
             let param = {
@@ -183,7 +183,7 @@
         },
         async nextK(e){
             if(this.remains <= 0){
-                alert('已训练完毕')
+                alert('已训练完毕，请重新选择参数')
                 // from auto
                 if(this.isAuto()){
                     clearInterval(trader.interval)
