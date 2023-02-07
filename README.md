@@ -44,7 +44,7 @@
 
 直接从github安装：
 ```
-pip install git+git://github.com/zengbin93/czsc.git -U
+pip install git@github.com:waditu/czsc.git -U
 ```
 
 从`pypi`安装：
