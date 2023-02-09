@@ -15,6 +15,88 @@ from deprecated import deprecated
 from czsc.traders.base import CzscAdvancedTrader
 from czsc.utils import dill_load
 from czsc.objects import cal_break_even_point
+import matplotlib.pyplot as plt
+from czsc.data import TsDataCache, save_symbols_to_ebk
+from czsc.sensors.utils import max_draw_down, turn_over_rate
+
+
+plt.style.use('ggplot')
+plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['axes.unicode_minus'] = False
+
+
+def stock_holds_performance(dc: TsDataCache, dfh, res_path):
+    """计算A股日线持仓组合的表现
+
+    :param dc: Tushare 数据缓存对象
+    :param dfh: 持仓组合，样例如下，其中【证券代码】要求是tushare的格式，成分日期当天状态为持仓
+            成分日期     证券代码    持仓权重     n1b
+        0  2020-01-03  300620.SZ  0.008403  141.861099
+        1  2020-01-03  300677.SZ  0.008403  767.124023
+        2  2020-01-03  300708.SZ  0.008403   93.029297
+        3  2020-01-03  002151.SZ  0.008403   -7.465500
+        4  2020-01-03  002156.SZ  0.008403  350.101715
+    :param res_path: 结果保存路径
+    :return:
+    """
+    os.makedirs(res_path, exist_ok=True)
+    date_fmt = '%Y%m%d'
+    dfh['成分日期'] = pd.to_datetime(dfh['成分日期']).dt.strftime(date_fmt)
+    sdt = pd.to_datetime(dfh['成分日期'].min()).strftime(date_fmt)
+    edt = pd.to_datetime(dfh['成分日期'].max()).strftime(date_fmt)
+    dfh.to_feather(os.path.join(res_path, f'holds_{sdt}_{edt}.feather'))
+    latest = dfh[dfh['成分日期'] == dfh['成分日期'].max()]
+    latest.to_excel(os.path.join(res_path, "组合最新持仓.xlsx"), index=False)
+    save_symbols_to_ebk(latest['证券代码'].to_list(), os.path.join(res_path, "组合最新持仓.EBK"), source='ts')
+
+    # 一进一出算1倍组合换手
+    _, turn = turn_over_rate(dfh)
+    mean_counts = round(dfh.groupby('成分日期')['证券代码'].count().mean(), 2)
+
+    index_list = ['000905.SH', '000016.SH', '000300.SH']
+    # 计算收益曲线
+    dfa = pd.DataFrame({"成分日期": dc.get_dates_span(sdt, edt)})
+    dfa['成分日期'] = pd.to_datetime(dfa['成分日期']).apply(lambda x: x.strftime(date_fmt))
+
+    df_ = dfh.groupby('成分日期')['n1b'].mean().reset_index(drop=False)
+    dfa = dfa.merge(df_[['成分日期', 'n1b']], on=['成分日期'], how='left')
+    dfa.rename({'n1b': '组合收益'}, axis=1, inplace=True)
+
+    for _index in index_list:
+        dfi = dc.pro_bar(_index, sdt, edt, freq='D', asset="I", adj='qfq', raw_bar=False)
+        dfi['成分日期'] = dfi['dt'].apply(lambda x: x.strftime(date_fmt))
+        dfa = dfa.merge(dfi[['成分日期', 'n1b']], on=['成分日期'], how='left')
+        dfa.rename({'n1b': _index}, axis=1, inplace=True)
+
+    dfa = dfa.fillna(0)
+    dfa.to_excel(os.path.join(res_path, f'收益对比_{sdt}_{edt}.xlsx'), index=False)
+    mdd = max_draw_down(dfa['组合收益'])
+
+    # 绘制收益曲线
+    plt.close()
+    fig = plt.figure(figsize=(13, 4*len(index_list)))
+    axes = fig.subplots(len(index_list), 1, sharex=True)
+    for i, _index in enumerate(index_list):
+        ax = axes[i]
+        df_alpha = dfa.copy(deep=True).dropna(subset=['组合收益'])
+        df_alpha['超额收益'] = df_alpha['组合收益'] - df_alpha[_index]
+        df_alpha['组合收益'] = df_alpha['组合收益'].cumsum()
+        df_alpha[_index] = df_alpha[_index].cumsum()
+        df_alpha['超额收益'] = df_alpha['超额收益'].cumsum()
+        df_alpha['成分日期'] = pd.to_datetime(df_alpha['成分日期']).apply(lambda x: x.date())
+
+        ax.set_title(f"组合：日均持有{mean_counts}只股票，双边换手{round(turn, 2)}倍，最大回撤{int(mdd[2] * 10000)}BP")
+        ax.plot(df_alpha['成分日期'], df_alpha['超额收益'], "r-", alpha=0.4)
+        ax.plot(df_alpha['成分日期'], df_alpha['组合收益'], "b-", alpha=0.4)
+        ax.plot(df_alpha['成分日期'], df_alpha[_index], "g-", alpha=0.4)
+        ax.legend(['超额收益', '组合收益', f"基准：{_index}"], loc='upper left')
+        ax.set_ylabel("净值（单位: BP）")
+        plt.xticks(rotation=45)
+
+    plt.tight_layout()
+    file_png = os.path.join(res_path, f"alpha_plot.png")
+    plt.savefig(file_png, bbox_inches='tight', dpi=100)
+    plt.close()
 
 
 class PairsPerformance:
