@@ -6,6 +6,7 @@ create_dt: 2023/1/30 13:32
 describe: CzscTrader 使用案例
 """
 import sys
+
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 
@@ -39,5 +40,19 @@ def use_czsc_trader_by_qmt():
     trader = tactic.init_trader(bars, sdt='20200801')
     # trader = tactic.replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test_c", sdt='20170101')
     print(trader.positions[0].evaluate_pairs())
+
+
+def example_qmt_manager():
+    """使用 QmtTradeManager 进行交易"""
+    from czsc.connectors import qmt_connector as qmc
+
+    symbols = ['600000.SH', '600004.SH', '600006.SH', '600007.SH']
+    manager = qmc.QmtTradeManager(mini_qmt_dir=r'D:\国金QMT交易端模拟\userdata_mini', account_id='55002763',
+                                  symbols=symbols, symbol_max_pos=0.3, strategy=CzscStrategySMA5, period='5m')
+    manager.run()
+
+
+
+
 
 

@@ -57,7 +57,7 @@ def format_stock_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     return bars
 
 
-def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='none', **kwargs):
+def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='front_ratio', **kwargs):
     """获取 QMT K线数据，实盘、回测通用
 
     :param symbol: 股票代码 例如：300001.SZ
@@ -226,7 +226,7 @@ class QmtTradeManager:
         self.delta_days = int(kwargs.get('delta_days', 1))  # 定时执行获取的K线天数
 
         self.session = random.randint(10000, 20000)
-        self.xtt = XtQuantTrader(mini_qmt_dir, session=self.session, callback=qmc.TraderCallback())
+        self.xtt = XtQuantTrader(mini_qmt_dir, session=self.session, callback=TraderCallback())
         self.acc = StockAccount(account_id, 'STOCK')
         self.xtt.start()
         self.xtt.connect()
@@ -240,7 +240,8 @@ class QmtTradeManager:
         traders = {}
         for symbol in tqdm(self.symbols, desc="创建交易对象", unit="个"):
             try:
-                bars = get_kline(symbol, self.period, '20180201', datetime.now(), df=False, download_hist=True)
+                bars = get_kline(symbol, self.period, '20180201', datetime.now(),
+                                 dividend_type='front_ratio', df=False, download_hist=True)
                 trader: CzscTrader = self.strategy(symbol=symbol, data_source='qmt').init_trader(bars, sdt='20220601')
                 traders[symbol] = trader
             except Exception as e:
@@ -356,7 +357,8 @@ class QmtTradeManager:
         for symbol in self.traders.keys():
             try:
                 trader = self.traders[symbol]
-                bars = get_kline(symbol, self.period, kline_sdt, datetime.now(), df=False, download_hist=True)
+                bars = get_kline(symbol, self.period, kline_sdt, datetime.now(),
+                                 dividend_type='front_ratio', df=False, download_hist=True)
 
                 news = [x for x in bars if x.dt > trader.end_dt]
                 if news:
