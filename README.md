@@ -15,8 +15,6 @@
 
 >**假如没有了分型、笔、线段，缠论还是缠论吗？如果你的答案是“是”，这个项目是为你准备的。本项目旨在提供一个符合缠中说禅思维方式的程序化交易工具。**
 
->如果这个项目对你的交易有些许帮助，可以加微信 `zengbin93` 进行捐赠，感谢！请备注 **【CZSC捐赠】**
-
 ```
 主题: CZSC0.8.26 版本介绍 
 日期: 2022-05-22 19:53:55
@@ -46,7 +44,7 @@
 
 直接从github安装：
 ```
-pip install git+git://github.com/zengbin93/czsc.git -U
+pip install git@github.com:waditu/czsc.git -U
 ```
 
 从`pypi`安装：
@@ -105,14 +103,13 @@ pip install czsc -U -i https://pypi.python.org/simple
 * 提取码：vhue
 
 
-## [知识星球【CZSC小圈子】](https://t.zsxq.com/04B2jmUN7)
+## [知识星球【CZSC小圈子】](https://t.zsxq.com/04B2jmUN7)费用：100元
 
-**适合人群：**
-1. 至少完成一个以上czsc库信号函数编写，目标是缠论量化交易
-2. 至少读完一遍禅师的博客
-
-**圈子服务：**
-1. 缠中说禅博客原文研读交流
-2. CZSC程序化交易库信号函数编写指导
-
-> 申请加入前请先加微信 `zengbin93`，备注【CZSC小圈子】
+**知识星球【CZSC小圈子】的定位是什么？**
+  - 为仔细研读过禅师原文并且愿意使用 CZSC 库进行量化投研的朋友提供一个交流平台。
+  - 寻找一群有能力的朋友共同进行量化策略研究。
+  - 促成策略逻辑互补的实盘组合构建。
+  - 对于刚接触缠论和量化交易的新朋友，给出一些力所能及的帮助。
+> 详情点击：https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc
+> 
+> 加入知识星球有人工审核。**申请加入请求提交后**，加微信 `zengbin93`，备注【CZSC小圈子】
