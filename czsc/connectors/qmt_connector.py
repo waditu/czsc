@@ -345,7 +345,7 @@ class QmtTradeManager:
             order_volume = order_volume // 100 * 100
 
         assert self.xtt.connected, "交易服务器连接断开"
-        _id = self.xtt.order_stock(self.acc, stock_code, order_type, order_volume,
+        _id = self.xtt.order_stock(self.acc, stock_code, order_type, int(order_volume),
                                    price_type, price, strategy_name, order_remark)
         return _id
 

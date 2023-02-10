@@ -18,6 +18,11 @@ from czsc.utils import check_pressure_support, get_sub_elements
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     """分钟 K 线结束
 
+    **信号列表：**
+
+    - Signal('60分钟_K线_结束_否_任意_任意_0')
+    - Signal('60分钟_K线_结束_是_任意_任意_0')
+
     :param c: 基础周期的 CZSC 对象
     :param k1: 分钟周期名称
     :return: s
@@ -37,6 +42,11 @@ def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
 
 def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450")) -> OrderedDict:
     """日内操作时间区间，c 必须是
+
+    **信号列表：**
+
+    - Signal('开多_1400_1450_否_任意_任意_0')
+    - Signal('开多_1400_1450_是_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
     :param k1: 操作名称
