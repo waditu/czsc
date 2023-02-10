@@ -15,7 +15,7 @@ from czsc.utils import get_sub_elements
 from czsc.utils.sig import is_symmetry_zs
 
 
-def byi_symmetry_zs_V2211007(c: CZSC, di=1):
+def byi_symmetry_zs_V221107(c: CZSC, di=1):
     """对称中枢信号
 
     **信号逻辑：**

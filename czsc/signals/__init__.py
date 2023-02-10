@@ -32,7 +32,7 @@ from czsc.signals.cxt import (
 
 
 from czsc.signals.byi import (
-    byi_symmetry_zs_V2211007,
+    byi_symmetry_zs_V221107,
 )
 
 from czsc.signals.coo import (
