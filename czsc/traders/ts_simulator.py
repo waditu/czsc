@@ -11,6 +11,7 @@ import pandas as pd
 from tqdm import tqdm
 from loguru import logger
 from typing import Callable, List
+from deprecated import deprecated
 from czsc import envs
 from czsc.data import TsDataCache, freq_cn2ts
 from czsc.utils import BarGenerator, dill_load, dill_dump
@@ -23,6 +24,7 @@ pd.set_option('display.max_rows', 600)
 pd.set_option('display.max_columns', 30)
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class TradeSimulator:
     """交易策略仿真跟踪"""
 

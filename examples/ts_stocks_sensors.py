@@ -18,7 +18,7 @@ def sds_czsc_v1_t1(symbol):
     def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=20)
-        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, key="SMA20"))
+        s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, ma_type='SMA', timeperiod=20))
         return s
 
     def get_event():

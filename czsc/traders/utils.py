@@ -8,6 +8,7 @@ import os
 import dill
 from tqdm import tqdm
 from loguru import logger
+from deprecated import deprecated
 from typing import List, Callable
 from czsc.analyze import CZSC
 from czsc.utils import x_round, BarGenerator, kline_pro
@@ -15,6 +16,7 @@ from czsc.objects import RawBar
 from czsc.traders.advanced import CzscAdvancedTrader
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, res_path):
     """交易策略交易过程回放"""
     os.makedirs(res_path, exist_ok=True)
@@ -59,11 +61,8 @@ def trade_replay(bg: BarGenerator, raw_bars: List[RawBar], strategy: Callable, r
     logger.info(f"{trader.strategy.__name__} {trader.results['long_performance']}")
 
 
-def trader_fast_backtest(bars: List[RawBar],
-                         init_n: int,
-                         strategy: Callable,
-                         html_path: str = None,
-                         ):
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
+def trader_fast_backtest(bars: List[RawBar], init_n: int, strategy: Callable, html_path: str = None):
     """纯 CTA 择时系统快速回测，多空交易通通支持
 
     :param bars: 原始K线序列

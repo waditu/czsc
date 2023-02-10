@@ -59,49 +59,74 @@ class CzscStrategyBase(ABC):
         """K线周期列表"""
         raise NotImplementedError
 
+    def init_bar_generator(self, bars: List[RawBar], **kwargs):
+        """使用策略定义初始化一个 BarGenerator 对象
+
+        :param bars: 基础周期K线
+        :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
+        :return:
+        """
+        bg: BarGenerator = kwargs.get('bg', None)
+        if bg is None:
+            sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
+            n = int(kwargs.get('n', 500))
+            bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+
+            # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
+            bars_init = [x for x in bars if x.dt <= sdt]
+            if len(bars_init) > n:
+                bars1 = bars_init
+                bars2 = [x for x in bars if x.dt > sdt]
+            else:
+                bars1 = bars[:n]
+                bars2 = bars[n:]
+
+            for bar in bars1:
+                bg.update(bar)
+
+            return bg, bars2
+        else:
+            assert bg.base_freq == bars[-1].freq.value, "BarGenerator 的基础周期和 bars 的基础周期不一致"
+            bars2 = [x for x in bars if x.dt > bg.end_dt]
+            return bg, bars2
+
     def init_trader(self, bars: List[RawBar], **kwargs):
         """使用策略定义初始化一个 CzscTrader 对象
 
         :param bars: 基础周期K线
         :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
             sdt  初始化开始日期
+            n    初始化最小K线数量
         :return:
         """
-        sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
-        # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
-        bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
-        bars1 = [x for x in bars if x.dt <= sdt]
-        bars2 = [x for x in bars if x.dt > sdt]
-        for bar in bars1:
-            bg.update(bar)
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
         trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for bar in bars2:
             trader.on_bar(bar)
         return trader
 
-    def trade_replay(self, bars: List[RawBar], res_path, **kwargs):
+    def replay(self, bars: List[RawBar], res_path, **kwargs):
         """交易策略交易过程回放
 
         :param bars: 基础周期K线
         :param res_path: 结果目录
         :param kwargs:
-            sdt     回放开始日期
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
         :return:
         """
         exist_ok = kwargs.get("exist_ok", False)
-        sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
         if os.path.exists(res_path) and not exist_ok:
             logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
             return
-
-        # 拆分基础周期K线，一部分用来初始化BarGenerator，随后的K线是回放区间
-        bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
-        bars1 = [x for x in bars if x.dt <= sdt]
-        bars2 = [x for x in bars if x.dt > sdt]
-        for bar in bars1:
-            bg.update(bar)
-
         os.makedirs(res_path, exist_ok=exist_ok)
+
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
         trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
@@ -119,7 +144,13 @@ class CzscStrategyBase(ABC):
                     file_html = os.path.join(pos_path, file_name)
                     trader.take_snapshot(file_html)
                     logger.info(f'{file_html}')
-        dill_dump(trader, os.path.join(res_path, "trader.ct"))
+
+        file_trader = os.path.join(res_path, "trader.ct")
+        try:
+            dill_dump(trader, file_trader)
+            logger.info(f"交易对象保存到：{file_trader}")
+        except Exception as e:
+            logger.error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
         return trader
 
 

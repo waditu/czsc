@@ -317,7 +317,7 @@ def tas_macd_first_bs_V221201(c: CZSC, di: int = 1, **kwargs):
             v1 = "一买"
 
         s1_con1 = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['慢线'] > 0
-        s1_con2 = len(dn) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
+        s1_con2 = len(up) > 3 and up[-2]['慢线'] > 0 and up[-3]['慢线'] > 0
         s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
         if s1_con1 and s1_con2 and s1_con3:
             v1 = "一卖"

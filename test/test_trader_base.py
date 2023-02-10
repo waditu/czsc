@@ -42,7 +42,7 @@ def test_object_position():
     ]
 
     # 没有出场条件的测试
-    pos = Position(symbol=bg.symbol, opens=opens, exits=[], interval=0, timeout=20, stop_loss=300)
+    pos = Position(name="测试A", symbol=bg.symbol, opens=opens, exits=[], interval=0, timeout=20, stop_loss=300)
 
     cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
@@ -50,7 +50,7 @@ def test_object_position():
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
-    assert df.shape == (16, 10)
+    assert df.shape == (16, 11)
     assert len(cs.s) == 13
 
     exits = [
@@ -66,7 +66,7 @@ def test_object_position():
         ]),
     ]
 
-    pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
+    pos = Position(name="测试B", symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
 
     cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
@@ -74,7 +74,7 @@ def test_object_position():
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
-    assert df.shape == (21, 10)
+    assert df.shape == (21, 11)
     assert len(cs.s) == 13
 
 

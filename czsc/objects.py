@@ -9,6 +9,7 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
+from deprecated import deprecated
 from typing import List, Callable
 from transitions import Machine
 from czsc.enum import Mark, Direction, Freq, Operate
@@ -599,6 +600,7 @@ def cal_break_even_point(seq: List[float]) -> float:
     return sub_i / len(seq)
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> dict:
     """评估交易表现
 
@@ -648,6 +650,7 @@ def evaluate_pairs(pairs, symbol: str, trade_dir: str, cost: float = 0.003) -> d
     return p
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class PositionLong:
     def __init__(self, symbol: str,
                  hold_long_a: float = 0.5,
@@ -827,6 +830,7 @@ class PositionLong:
             self.long_bid = -1.0
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class PositionShort:
     def __init__(self, symbol: str,
                  hold_short_a: float = 0.5,
@@ -1052,6 +1056,7 @@ class Position:
         assert op1['op'] in [Operate.LO, Operate.SO]
         pair = {
             '标的代码': self.symbol,
+            '策略标记': self.name,
             '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
             '开仓时间': op1['dt'],
             '平仓时间': op2['dt'],
@@ -1115,7 +1120,7 @@ class Position:
             pairs = self.pairs
         else:
             pairs = [x for x in self.pairs if x['交易方向'] == trade_dir]
-        p = {"交易标的": self.symbol, "交易方向": trade_dir,
+        p = {"交易标的": self.symbol, "策略标记": self.name, "交易方向": trade_dir,
              "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
              '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
              '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,

@@ -12,6 +12,7 @@ import pandas as pd
 from tqdm import tqdm
 from loguru import logger
 from datetime import datetime
+from deprecated import deprecated
 from collections import OrderedDict
 from typing import Callable, List, AnyStr, Union
 from pyecharts.charts import Tab
@@ -292,6 +293,7 @@ class CzscTrader(CzscSignals):
             return tab
 
 
+@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
 class CzscAdvancedTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持分批开平仓 / 支持从任意周期开始交易）"""
 
