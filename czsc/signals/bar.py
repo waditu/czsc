@@ -12,7 +12,7 @@ from loguru import logger
 from collections import OrderedDict
 from czsc import envs, CZSC, Signal, CzscAdvancedTrader
 from czsc.objects import RawBar
-from czsc.utils import check_pressure_support, get_sub_elements
+from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
 
 
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
@@ -490,6 +490,79 @@ def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> Ordered
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
+
+
+def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """假突破
+
+    **信号描述：**
+
+    1. 向下假突破，最近N根K线的滑动M窗口出现过大幅下跌破K线重叠中枢，随后几根K线快速拉回，看多；
+    2. 反之，向上假突破，看空。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1N20M5_假突破_看空_任意_任意_0')
+    - Signal('15分钟_D1N20M5_假突破_看多_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 从最新的第几个 bar 开始计算
+    :return: 信号字典
+    """
+    n = kwargs.get('n', 20)
+    m = kwargs.get('m', 5)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
+
+    v1 = '其他'
+    last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
+
+    def __is_overlap(_bars):
+        """判断是否是重叠，如果是重叠，返回True和中枢的上下轨"""
+        if min([bar.high for bar in _bars]) > max([bar.low for bar in _bars]):
+            return True, min([bar.low for bar in _bars]), max([bar.high for bar in _bars])
+        else:
+            return False, None, None
+
+    if len(last_bars) != 20 or last_bars[-1].solid < last_bars[-1].upper + last_bars[-1].lower:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # 找出最近N根K线的滑动M窗口出现过K线重叠中枢
+    right_bars = []
+    dd = 0
+    gg = 0
+    for i in range(m, n - m):
+        _overlap, dd, gg = __is_overlap(last_bars[-i - m:-i])
+        if _overlap:
+            right_bars = last_bars[-i:]
+            break
+
+    if last_bars[-1].close > last_bars[-1].open:
+
+        # 条件1：收盘价新高或者最高价新高
+        c1_a = last_bars[-1].high == max([bar.high for bar in last_bars])
+        c1_b = last_bars[-1].close == max([bar.close for bar in last_bars])
+        c1 = c1_a or c1_b
+
+        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        c2 = 0 < min([bar.low for bar in right_bars]) < dd if right_bars else False
+
+        if c1 and c2:
+            v1 = "看多"
+
+    if last_bars[-1].close < last_bars[-1].open:
+        # 条件1：收盘价新低或者最低价新低
+        c1_a = last_bars[-1].low == min([bar.low for bar in last_bars])
+        c1_b = last_bars[-1].close == min([bar.close for bar in last_bars])
+        c1 = c1_a or c1_b
+
+        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        c2 = max([bar.high for bar in right_bars]) > gg > 0 if right_bars else False
+
+        if c1 and c2:
+            v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
 
 
 

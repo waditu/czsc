@@ -29,80 +29,92 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
                           sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
 
-def zhen_cang_tu_po_V230204(c: CZSC, **kwargs) -> OrderedDict:
-    """震仓突破形态信号
+def create_single_signal(**kwargs) -> OrderedDict:
+    """创建单个信号"""
+    s = OrderedDict()
+    k1, k2, k3 = kwargs.get('k1', '任意'), kwargs.get('k2', '任意'), kwargs.get('k3', '任意')
+    v1, v2, v3 = kwargs.get('v1', '任意'), kwargs.get('v2', '任意'), kwargs.get('v3', '任意')
+    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=kwargs.get('score', 0))
+    s[v.key] = v.value
+    return s
+
+
+def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """假突破
 
     **信号描述：**
-        -多头描述（空头反之）：
-        大实体阴线破小级别中枢
-        大实体阳线快速拉回
+
+    1. 向下假突破，最近N根K线的滑动M窗口出现过大幅下跌破K线重叠中枢，随后几根K线快速拉回，看多；
+    2. 反之，向上假突破，看空。
 
     **信号列表：**
 
-    - Signal('1分钟_震仓_突破_向上_任意_任意_0')
-    - Signal('1分钟_震仓_突破_向下_任意_任意_0')
+    - Signal('15分钟_D1N20M5_假突破_看空_任意_任意_0')
+    - Signal('15分钟_D1N20M5_假突破_看多_任意_任意_0')
 
     :param c: CZSC 对象
+    :param di: 从最新的第几个 bar 开始计算
     :return: 信号字典
-
-    **处理流程：**
-
-    1. 往前取20k，取成功则继续 and 本k是阳线，成功则继续
-    2. 包括本k在内，最近3k 有一条大实体阳线，成功则继续
-    3. 大实体阳线左边3k内，有一条大实体阴线(这条大阴线不一定是下穿低级别中枢的，这里只是过滤)，成功则继续
-    4. 从当前位置（4找到的大实体阴线）开始往左，2k内，看能否找到 包含左边全部3k 的实体阴线
-      5.1. 如果下穿成立，记录所有下穿成立的k的high的最大值maxgg
-    6. 如果有找到maxgg，且本k的收盘价大于maxgg，则发出信号（这里没有要求本k是大实体阳线，只要阳线，按第4条要求，近3k有大实体阳线就可）
-
-    **处理流程：**
-
-    1. 往前取20k，取成功则继续 and 本k是阳线
-    2. 小窗口N，大窗口M，
-
-
     """
     n = kwargs.get('n', 20)
-    m = kwargs.get('m', 3)
+    m = kwargs.get('m', 5)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
 
     v1 = '其他'
-    last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=1, n=n)
+    last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
 
     def __is_overlap(_bars):
+        """判断是否是重叠，如果是重叠，返回True和中枢的上下下轨"""
         if min([bar.high for bar in _bars]) > max([bar.low for bar in _bars]):
-            return True, min([bar.low for bar in _bars])
+            return True, min([bar.low for bar in _bars]), max([bar.high for bar in _bars])
         else:
-            return False, None
+            return False, None, None
 
-    if len(last_bars) == 20 and last_bars[-1].close > last_bars[-1].open:
+    if len(last_bars) != 20 or last_bars[-1].solid < last_bars[-1].upper + last_bars[-1].lower:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # 找出最近N根K线的滑动M窗口出现过K线重叠中枢
+    right_bars = []
+    dd = 0
+    gg = 0
+    for i in range(m, n - m):
+        _overlap, dd, gg = __is_overlap(last_bars[-i - m:-i])
+        if _overlap:
+            right_bars = last_bars[-i:]
+            break
+
+    if last_bars[-1].close > last_bars[-1].open:
+
+        # 条件1：收盘价新高或者最高价新高
         c1_a = last_bars[-1].high == max([bar.high for bar in last_bars])
         c1_b = last_bars[-1].close == max([bar.close for bar in last_bars])
         c1 = c1_a or c1_b
 
-        c2 = False
-        right_bars = []
-        dd = 0
-        for i in range(m, n-m):
-            c2, dd = __is_overlap(last_bars[-i-m:-i])
-            if c2:
-                right_bars = last_bars[-i:]
-                break
+        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        c2 = 0 < min([bar.low for bar in right_bars]) < dd if right_bars else False
 
-        c3 = min([bar.low for bar in right_bars]) < dd if right_bars else False
+        if c1 and c2:
+            v1 = "看多"
 
-        if c1 and c2 and c3:
-            v1 = "满足"
+    if last_bars[-1].close < last_bars[-1].open:
+        # 条件1：收盘价新低或者最低价新低
+        c1_a = last_bars[-1].low == min([bar.low for bar in last_bars])
+        c1_b = last_bars[-1].close == min([bar.close for bar in last_bars])
+        c1 = c1_a or c1_b
 
-    s = OrderedDict()
-    k1, k2, k3 = f"{c.freq.value}_N{n}M{m}_震仓突破".split("_")
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
-    return s
+        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        c2 = max([bar.high for bar in right_bars]) > gg > 0 if right_bars else False
+
+        if c1 and c2:
+            v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 使用缓存来更新信号的方法
-    s.update(zhen_cang_tu_po_V230204(cat.kas['15分钟'], di=1))
+    s.update(bar_fake_break_V230204(cat.kas['日线'], di=2))
     return s
 
 

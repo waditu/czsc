@@ -6,10 +6,20 @@ create_dt: 2022/10/27 23:23
 describe: 用于信号计算函数的各种辅助工具函数
 """
 import numpy as np
-from collections import Counter
+from collections import Counter, OrderedDict
 from typing import List, Any, Dict, Union, Tuple
 from czsc.enum import Direction
-from czsc.objects import BI, RawBar, ZS
+from czsc.objects import BI, RawBar, ZS, Signal
+
+
+def create_single_signal(**kwargs) -> OrderedDict:
+    """创建单个信号"""
+    s = OrderedDict()
+    k1, k2, k3 = kwargs.get('k1', '任意'), kwargs.get('k2', '任意'), kwargs.get('k3', '任意')
+    v1, v2, v3 = kwargs.get('v1', '任意'), kwargs.get('v2', '任意'), kwargs.get('v3', '任意')
+    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=kwargs.get('score', 0))
+    s[v.key] = v.value
+    return s
 
 
 def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
