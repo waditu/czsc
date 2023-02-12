@@ -147,7 +147,10 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
 
     if len(bars_right) == 0:
         logger.warning("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
-        return []
+        if df:
+            return pd.DataFrame()
+        else:
+            return []
 
     base_freq = str(bars[0].freq.value)
     bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=kwargs.get("bg_max_count", 5000))
