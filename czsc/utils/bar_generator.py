@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/14 12:39
 describe: 从任意周期K线开始合成更高周期K线的工具类
 """
+import pandas as pd
 from datetime import datetime, timedelta
 from typing import List
 from czsc.objects import RawBar, Freq
@@ -74,6 +75,51 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
 
     print(f'freq_end_time error: {dt} - {freq}')
     return dt
+
+
+def resample_bars(df: pd.DataFrame, target_freq: Freq, raw_bars=True, **kwargs):
+    """将df中的K线序列转换为目标周期的K线序列
+
+    :param df: 原始K线数据，必须包含以下列：symbol, dt, open, close, high, low, vol, amount。样例如下：
+               symbol                  dt     open    close     high      low  \
+        0  000001.XSHG 2015-01-05 09:31:00  3258.63  3259.69  3262.85  3258.63
+        1  000001.XSHG 2015-01-05 09:32:00  3258.33  3256.19  3259.55  3256.19
+        2  000001.XSHG 2015-01-05 09:33:00  3256.10  3257.50  3258.42  3256.10
+        3  000001.XSHG 2015-01-05 09:34:00  3259.33  3261.76  3261.76  3257.98
+        4  000001.XSHG 2015-01-05 09:35:00  3261.71  3264.88  3265.48  3261.71
+                  vol        amount
+        0  1333523100  4.346872e+12
+        1   511386100  1.665170e+12
+        2   455375200  1.483385e+12
+        3   363393800  1.185303e+12
+        4   402854600  1.315272e+12
+    :param target_freq: 目标周期
+    :param raw_bars: 是否将转换后的K线序列转换为RawBar对象
+    :return: 转换后的K线序列
+    """
+    k_cols = ['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']
+    df = df[k_cols]
+    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq))
+    dfk1 = df.groupby('freq_edt').agg(
+        {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
+         'low': 'min', 'vol': 'sum', 'amount': 'sum', 'freq_edt': 'last'})
+    dfk1.reset_index(drop=True, inplace=True)
+    dfk1['dt'] = dfk1['freq_edt']
+    dfk1 = dfk1[k_cols]
+
+    if raw_bars:
+        _bars = []
+        for i, row in enumerate(dfk1.to_dict("records"), 1):
+            row.update({'id': i, 'freq': target_freq})
+            _bars.append(RawBar(**row))
+
+        if df['dt'].iloc[-1] < _bars[-1].dt:
+            # 清除最后一根未完成的K线
+            _bars.pop()
+
+        return _bars
+    else:
+        return dfk1
 
 
 class BarGenerator:

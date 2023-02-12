@@ -9,7 +9,7 @@ from . import echarts_plot
 from .echarts_plot import kline_pro, heat_map
 from .word_writer import WordWriter
 from .corr import nmi_matrix, single_linear
-from .bar_generator import BarGenerator, freq_end_time
+from .bar_generator import BarGenerator, freq_end_time, resample_bars
 from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements
 from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
