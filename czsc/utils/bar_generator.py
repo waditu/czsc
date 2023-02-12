@@ -7,21 +7,23 @@ describe: 从任意周期K线开始合成更高周期K线的工具类
 """
 import pandas as pd
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Union, AnyStr
 from czsc.objects import RawBar, Freq
 
 
-def freq_end_time(dt: datetime, freq: Freq) -> datetime:
+def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr]) -> datetime:
     """获取 dt 对应的K线周期结束时间
 
     :param dt: datetime
     :param freq: Freq
     :return: datetime
     """
+    if not isinstance(freq, Freq):
+        freq = Freq(freq)
     dt = dt.replace(second=0, microsecond=0)
 
     if freq in [Freq.F1, Freq.F5, Freq.F15, Freq.F30, Freq.F60]:
-        m = int(freq.value.strip("分钟"))
+        m = int(str(freq.value).strip("分钟"))
         if m < 60:
             if (dt.hour == 15 and dt.minute == 0) or (dt.hour == 11 and dt.minute == 30):
                 return dt
@@ -77,7 +79,7 @@ def freq_end_time(dt: datetime, freq: Freq) -> datetime:
     return dt
 
 
-def resample_bars(df: pd.DataFrame, target_freq: Freq, raw_bars=True, **kwargs):
+def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=True, **kwargs):
     """将df中的K线序列转换为目标周期的K线序列
 
     :param df: 原始K线数据，必须包含以下列：symbol, dt, open, close, high, low, vol, amount。样例如下：
@@ -97,6 +99,9 @@ def resample_bars(df: pd.DataFrame, target_freq: Freq, raw_bars=True, **kwargs):
     :param raw_bars: 是否将转换后的K线序列转换为RawBar对象
     :return: 转换后的K线序列
     """
+    if not isinstance(target_freq, Freq):
+        target_freq = Freq(target_freq)
+
     k_cols = ['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']
     df = df[k_cols]
     df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq))
