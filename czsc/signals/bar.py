@@ -523,7 +523,7 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
         else:
             return False, None, None
 
-    if len(last_bars) != 20 or last_bars[-1].solid < last_bars[-1].upper + last_bars[-1].lower:
+    if len(last_bars) != n or last_bars[-1].solid < last_bars[-1].upper + last_bars[-1].lower:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     # 找出最近N根K线的滑动M窗口出现过K线重叠中枢
