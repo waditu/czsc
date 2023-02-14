@@ -543,7 +543,7 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
         c1_b = last_bars[-1].close == max([bar.close for bar in last_bars])
         c1 = c1_a or c1_b
 
-        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        # 条件2：随后几根K线破中枢DD快速拉回
         c2 = 0 < min([bar.low for bar in right_bars]) < dd if right_bars else False
 
         if c1 and c2:
@@ -555,7 +555,7 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
         c1_b = last_bars[-1].close == min([bar.close for bar in last_bars])
         c1 = c1_a or c1_b
 
-        # 条件2：随后几根K线跌破中枢下跪快速拉回
+        # 条件2：随后几根K线破中枢GG快速拉回
         c2 = max([bar.high for bar in right_bars]) > gg > 0 if right_bars else False
 
         if c1 and c2:

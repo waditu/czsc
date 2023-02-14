@@ -8,6 +8,7 @@ describe: 提供一些策略的编写案例
 以 trader_ 开头的是择时交易策略案例
 """
 import os
+import shutil
 import pandas as pd
 from copy import deepcopy
 from deprecated import deprecated
@@ -120,6 +121,9 @@ class CzscStrategyBase(ABC):
             n    初始化最小K线数量
         :return:
         """
+        if kwargs.get('refresh', False):
+            shutil.rmtree(res_path, ignore_errors=True)
+
         exist_ok = kwargs.get("exist_ok", False)
         if os.path.exists(res_path) and not exist_ok:
             logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")

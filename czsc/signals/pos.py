@@ -5,11 +5,13 @@ email: zeng_bin8888@163.com
 create_dt: 2022/4/13 15:03
 describe: 持仓相关信号
 """
+from deprecated import deprecated
 from collections import OrderedDict
 from czsc.objects import Operate, Signal, PositionLong
 from czsc.traders.advanced import CzscAdvancedTrader
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long01(cat: CzscAdvancedTrader, th=300):
     """多头持仓信号：亏损"""
     pos = cat.long_pos
@@ -29,6 +31,7 @@ def get_s_long01(cat: CzscAdvancedTrader, th=300):
     return s
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long02(cat: CzscAdvancedTrader, th=300):
     """多头持仓信号：回撤"""
     pos = cat.long_pos
@@ -45,6 +48,7 @@ def get_s_long02(cat: CzscAdvancedTrader, th=300):
     return s
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long03(cat: CzscAdvancedTrader, th=100):
     """多头持仓信号：持仓时间"""
     pos = cat.long_pos
@@ -62,6 +66,7 @@ def get_s_long03(cat: CzscAdvancedTrader, th=100):
     return s
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long04(cat: CzscAdvancedTrader, th=5):
     """多头持仓信号：持仓亏损时间"""
     pos = cat.long_pos
@@ -80,6 +85,7 @@ def get_s_long04(cat: CzscAdvancedTrader, th=5):
     return s
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long05(cat: CzscAdvancedTrader, span="月", th=500):
     """多头持仓信号：周期累计亏损"""
     pos: PositionLong = cat.long_pos
@@ -104,6 +110,7 @@ def get_s_long05(cat: CzscAdvancedTrader, span="月", th=500):
     return s
 
 
+@deprecated(reason="信号应该与持仓独立")
 def get_s_long06(cat: CzscAdvancedTrader, th=500):
     """多头持仓信号：最大盈亏
 

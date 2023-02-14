@@ -8,11 +8,9 @@ describe: 信号系统，注意：这里仅仅只是提供一些写信号的例�
 
 from . import bxt
 from . import ta
-from . import other
 from . import vol
 from . import cat
 from . import pos
-from . import example
 
 
 # ======================================================================================================================
