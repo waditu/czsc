@@ -8,7 +8,6 @@ describe: 使用 ta-lib 构建的信号函数
 tas = ta-lib signals 的缩写
 """
 from loguru import logger
-
 try:
     import talib as ta
 except:
@@ -79,7 +78,7 @@ def update_macd_cache(c: CZSC, **kwargs):
     slowperiod = kwargs.get('slowperiod', 26)
     signalperiod = kwargs.get('signalperiod', 9)
 
-    cache_key = f"MACD"
+    cache_key = f"MACD{fastperiod}#{slowperiod}#{signalperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
@@ -116,14 +115,14 @@ def update_boll_cache(c: CZSC, **kwargs):
     :param c: 交易对象
     :return:
     """
-    cache_key = "boll"
     timeperiod = kwargs.get('timeperiod', 20)
-    dev_seq = kwargs.get('dev_seq', (1.382, 2, 2.764))
+    cache_key = f"BOLL{timeperiod}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
+    dev_seq = (1.382, 2, 2.764)
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
     if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存

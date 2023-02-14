@@ -29,56 +29,39 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
                           sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
 
-def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
-    """单根K线的状态
+def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
+    """N根K线总成交额
 
     **信号描述：**
 
-    1. 上涨阳线，下跌阴线；
-    2. 长实体，长上影，长下影，其他；
+    1. 获取截至倒数第di根K线的前n根K线，计算总成交额，如果大于 t 千万，则为是，否则为否
 
     **信号列表：**
 
-    - Signal('日线_D2T10_状态_阴线_长实体_任意_0')
-    - Signal('日线_D2T10_状态_阳线_长实体_任意_0')
-    - Signal('日线_D2T10_状态_阴线_长上影_任意_0')
-    - Signal('日线_D2T10_状态_阳线_长上影_任意_0')
-    - Signal('日线_D2T10_状态_阴线_长下影_任意_0')
-    - Signal('日线_D2T10_状态_阳线_长下影_任意_0')
+    - Signal('日线_D2N1_累计超10千万_是_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 倒数第几根K线
+    :param n: 前几根K线
     :param kwargs:
-        t: 长实体、长上影、长下影的阈值，默认为 1.0
+        t: 总成交额阈值
     :return: 信号识别结果
     """
-    t = kwargs.get("t", 1.0)
-    t = int(round(t, 1) * 10)
-
-    k1, k2, k3 = f"{c.freq.value}", f"D{di}T{t}", "状态"
-    v1 = "其他"
-    if len(c.bars_raw) < di:
+    t = int(kwargs.get('t', 10))
+    k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}N{n}", f"累计超{t}千万", "其他"
+    if len(c.bars_raw) <= di + n + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    k = c.bars_raw[-di]
-    v1 = "阳线" if k.close > k.open else "阴线"
-
-    if k.solid > (k.upper + k.lower) * t / 10:
-        v2 = "长实体"
-    elif k.upper > (k.solid + k.lower) * t / 10:
-        v2 = "长上影"
-    elif k.lower > (k.solid + k.upper) * t / 10:
-        v2 = "长下影"
-    else:
-        v2 = "其他"
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+    _bars = get_sub_elements(c.bars_raw, di, n)
+    assert len(_bars) == n
+    v1 = "是" if sum([x.amount for x in _bars]) > (t * 1e7) else "否"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 使用缓存来更新信号的方法
-    s.update(bar_single_V230214(cat.kas['日线'], di=2))
+    s.update(signals.vol.vol_double_ma_V230214(cat.kas['日线'], di=2))
     return s
 
 

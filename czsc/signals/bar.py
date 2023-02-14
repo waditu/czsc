@@ -610,3 +610,31 @@ def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
+def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
+    """N根K线总成交额
+
+    **信号描述：**
+
+    1. 获取截至倒数第di根K线的前n根K线，计算总成交额，如果大于 t 千万，则为是，否则为否
+
+    **信号列表：**
+
+    - Signal('日线_D2N1_累计超10千万_是_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线
+    :param n: 前几根K线
+    :param kwargs:
+        t: 总成交额阈值
+    :return: 信号识别结果
+    """
+    t = int(kwargs.get('t', 10))
+    k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}N{n}", f"累计超{t}千万", "其他"
+    if len(c.bars_raw) <= di + n + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di, n)
+    assert len(_bars) == n
+    v1 = "是" if sum([x.amount for x in _bars]) > (t * 1e7) else "否"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+

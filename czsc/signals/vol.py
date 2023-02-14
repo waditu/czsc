@@ -5,105 +5,128 @@ email: zeng_bin8888@163.com
 create_dt: 2021/8/25 17:43
 describe: 成交量相关信号
 """
+from loguru import logger
+try:
+    import talib as ta
+except:
+    logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
+                   f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
 from collections import OrderedDict
-from czsc import CZSC, Freq, Signal
-from czsc.utils.ta import SMA
+from czsc.analyze import CZSC
+from czsc.objects import Freq, Signal
+from czsc.utils.sig import get_sub_elements, create_single_signal
 
 
-def get_s_vol_single_sma(c: CZSC, di: int = 1, t_seq=(5, 10, 20, 60)) -> OrderedDict:
-    """获取倒数第i根K线的成交量单均线信号"""
-    freq: Freq = c.freq
-    s = OrderedDict()
+def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
+    """更新均线缓存
 
-    k1 = str(freq.value)
-    k2 = f"倒{di}K成交量"
-    for t in t_seq:
-        x1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="其他", v2='其他', v3='其他')
-        x2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="其他", v2='其他', v3='其他')
-        s[x1.key] = x1.value
-        s[x2.key] = x2.value
+    :param c: CZSC对象
+    :param ma_type: 均线类型
+    :param timeperiod: 计算周期
+    :return:
+    """
+    ma_type_map = {
+        'SMA': ta.MA_Type.SMA,
+        'EMA': ta.MA_Type.EMA,
+        'WMA': ta.MA_Type.WMA,
+        'KAMA': ta.MA_Type.KAMA,
+        'TEMA': ta.MA_Type.TEMA,
+        'DEMA': ta.MA_Type.DEMA,
+        'MAMA': ta.MA_Type.MAMA,
+        'TRIMA': ta.MA_Type.TRIMA,
+    }
 
-    min_k_nums = max(t_seq) + 10
-    if len(c.bars_raw) < min_k_nums:
-        return s
+    ma_type = ma_type.upper()
+    assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
+    cache_key = f"VOL#{ma_type.upper()}{timeperiod}"
 
-    if di == 1:
-        vol = np.array([x.vol for x in c.bars_raw[-min_k_nums:]], dtype=np.float)
+    if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
+        # 如果最后一根K线已经有对应的缓存，不执行更新
+        return cache_key
+
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+        # 初始化缓存
+        data = np.array([x.vol for x in c.bars_raw], dtype=np.float64)
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        assert len(ma) == len(data)
+        for i in range(len(data)):
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c.update({cache_key: ma[i] if ma[i] else data[i]})
+            c.bars_raw[i].cache = _c
+
     else:
-        vol = np.array([x.vol for x in c.bars_raw[-min_k_nums-di+1:-di+1]], dtype=np.float)
-
-    for t in t_seq:
-        sma = SMA(vol[-t-10:], timeperiod=t)
-        if vol[-1] >= sma[-1]:
-            v1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="多头")
-        else:
-            v1 = Signal(k1=k1, k2=k2, k3=f"SMA{t}多空", v1="空头")
-        s[v1.key] = v1.value
-
-        if sma[-1] >= sma[-2]:
-            v2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="向上")
-        else:
-            v2 = Signal(k1=k1, k2=k2, k3=f"SMA{t}方向", v1="向下")
-        s[v2.key] = v2.value
-    return s
+        # 增量更新最近3个K线缓存
+        data = np.array([x.vol for x in c.bars_raw[-timeperiod - 10:]], dtype=np.float64)
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        for i in range(1, 4):
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c.update({cache_key: ma[-i]})
+            c.bars_raw[-i].cache = _c
+    return cache_key
 
 
-def get_s_vol_double_sma(c: CZSC, di: int = 1, t1: int = 5, t2: int = 20) -> OrderedDict:
-    """获取倒数第i根K线的成交量双均线信号"""
+def vol_single_ma_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+    """成交量单均线信号
+
+    **信号逻辑：**
+
+    1. vol > ma，多头；反之，空头
+    2. ma[-1] > ma[-2]，向上；反之，向下
+
+    **信号列表：**
+
+    - Signal('日线_D2_VOL#SMA5_多头_向上_任意_0')
+    - Signal('日线_D2_VOL#SMA5_空头_向上_任意_0')
+    - Signal('日线_D2_VOL#SMA5_空头_向下_任意_0')
+    - Signal('日线_D2_VOL#SMA5_多头_向下_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    :param timeperiod: 均线计算周期
+    :return: 信号识别结果
+    """
+    ma_type = kwargs.get("ma_type", "SMA")
+    timeperiod = kwargs.get("timeperiod", 5)
+    cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}_{cache_key}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    v1 = "多头" if bars[-1].vol >= bars[-1].cache[cache_key] else "空头"
+    v2 = "向上" if bars[-1].cache[cache_key] >= bars[-2].cache[cache_key] else "向下"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def vol_double_ma_V230214(c: CZSC, di: int = 1, t1: int = 5, t2: int = 20, **kwargs) -> OrderedDict:
+    """成交量双均线信号
+
+    **信号逻辑：**
+
+    1. 短均线在长均线上方，看多；反之，看空
+
+    **信号列表：**
+
+    - Signal('日线_D2VOL#SMA5_VOL#SMA20_看空_任意_任意_0')
+    - Signal('日线_D2VOL#SMA5_VOL#SMA20_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param t1: 短线均线
+    :param t2: 长线均线
+    :param kwargs:
+    :return: 信号识别结果
+    """
     assert t2 > t1, "t2必须是长线均线，t1为短线均线"
-    freq: Freq = c.freq
-    s = OrderedDict()
+    ma_type = kwargs.get("ma_type", "SMA")
+    cache_key1 = update_vol_ma_cache(c, ma_type, t1)
+    cache_key2 = update_vol_ma_cache(c, ma_type, t2)
 
-    k1 = str(freq.value)
-    k2 = f"倒{di}K成交量"
-    k3 = f"{t1}#{t2}双均线"
-    v = Signal(k1=k1, k2=k2, k3=k3, v1="其他", v2='其他', v3='其他')
-    s[v.key] = v.value
-
-    min_len_bars = t2 + 10
-    if len(c.bars_raw) < min_len_bars:
-        return s
-
-    if di == 1:
-        vol = np.array([x.vol for x in c.bars_raw[-min_len_bars:]], dtype=np.float)
-    else:
-        vol = np.array([x.vol for x in c.bars_raw[-min_len_bars-di+1: -di+1]], dtype=np.float)
-
-    sma1 = SMA(vol, timeperiod=t1)
-    sma2 = SMA(vol, timeperiod=t2)
-
-    if sma2[-1] >= sma1[-1]:
-        v = Signal(k1=k1, k2=k2, k3=k3, v1="多头")
-    else:
-        v = Signal(k1=k1, k2=k2, k3=k3, v1="空头")
-    s[v.key] = v.value
-    return s
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key1}_{cache_key2}".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=3)
+    v1 = "看多" if bars[-1].cache[cache_key1] >= bars[-1].cache[cache_key2] else "看空"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def get_s_amount_n(c: CZSC, di=1, n=10, total_amount=10):
-    """N日总成交额信号"""
-    s = OrderedDict()
-    if c.freq != Freq.D or len(c.bars_raw) <= di + n + 5:
-        return s
-
-    k1 = str(c.freq.value)
-    k2 = f"倒{di}K成交额"
-    k3 = f"近{n}日累计超{total_amount}亿"
-
-    if di == 1:
-        bars = c.bars_raw[-n:]
-    else:
-        bars = c.bars_raw[-n-di+1: -di+1]
-
-    assert len(bars) == n
-
-    n_total_amount = sum([x.amount for x in bars])
-    if n_total_amount > (total_amount * 1e8):
-        v1 = "是"
-    else:
-        v1 = "否"
-
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
-    return s

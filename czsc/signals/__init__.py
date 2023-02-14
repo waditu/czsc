@@ -7,7 +7,6 @@ describe: 信号系统，注意：这里仅仅只是提供一些写信号的例�
 """
 
 from . import bxt
-from . import vol
 
 # ======================================================================================================================
 # 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
@@ -33,6 +32,11 @@ from czsc.signals.coo import (
     coo_td_V221110,
 )
 
+from czsc.signals.vol import (
+    vol_single_ma_V230214,
+    vol_double_ma_V230214,
+)
+
 from czsc.signals.bar import (
     bar_end_V221111,
     bar_operate_span_V221111,
@@ -47,6 +51,8 @@ from czsc.signals.bar import (
     bar_accelerate_V221118,
     bar_fang_liang_break_V221216,
     bar_fake_break_V230204,
+    bar_single_V230214,
+    bar_amount_acc_V230214,
 )
 
 from czsc.signals.jcc import (
@@ -76,7 +82,6 @@ from czsc.signals.jcc import (
 
 
 from czsc.signals.tas import (
-    update_macd_cache,
     tas_macd_base_V221028,
     tas_macd_change_V221105,
     tas_macd_direct_V221106,
@@ -87,21 +92,17 @@ from czsc.signals.tas import (
     tas_macd_first_bs_V221216,
     tas_macd_second_bs_V221201,
 
-    update_ma_cache,
     tas_ma_base_V221101,
     tas_ma_base_V221203,
     tas_ma_round_V221206,
     tas_double_ma_V221203,
 
-    update_boll_cache,
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
 
-    update_kdj_cache,
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
 
-    update_rsi_cache,
     tas_double_rsi_V221203,
 )
 
