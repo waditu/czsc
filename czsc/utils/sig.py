@@ -45,6 +45,54 @@ def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
         return False
 
 
+def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
+    """计算 fast 和 slow 的交叉信息
+
+    :param fast: 快线
+    :param slow: 慢线
+    :return:
+    """
+    assert len(fast) == len(slow), "快线和慢线的长度不一样"
+
+    if isinstance(fast, list):
+        fast = np.array(fast)
+    if isinstance(slow, list):
+        slow = np.array(slow)
+
+    length = len(fast)
+    delta = fast - slow
+    cross_info = []
+    last_i = -1
+    last_v = 0
+    temp_fast = []
+    temp_slow = []
+    for i, v in enumerate(delta):
+        last_i += 1
+        last_v += abs(v)
+        temp_fast.append(fast[i])
+        temp_slow.append(slow[i])
+
+        if i >= 2 and delta[i-1] <= 0 < delta[i]:
+            kind = "金叉"
+        elif i >= 2 and delta[i-1] >= 0 > delta[i]:
+            kind = "死叉"
+        else:
+            continue
+
+        cross_info.append({'位置': i, "类型": kind, "快线": fast[i], "慢线": slow[i],
+                           "距离": last_i, '距今': length - i,
+                           "面积": round(last_v, 4), '价差': round(v, 4),
+                           "快线高点": max(temp_fast), "快线低点": min(temp_fast),
+                           "慢线高点": max(temp_slow), "慢线低点": min(temp_slow),
+                           })
+        last_i = 0
+        last_v = 0
+        temp_fast = []
+        temp_slow = []
+
+    return cross_info
+
+
 def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None) -> Dict:
     """检查 bars 中的支撑、压力信息
 
@@ -245,3 +293,31 @@ def is_bis_up(bis: List[BI]):
     else:
         return False
 
+
+def get_zs_seq(bis: List[BI]) -> List[ZS]:
+    """获取连续笔中的中枢序列
+
+    :param bis: 连续笔对象列表
+    :return: 中枢序列
+    """
+    zs_list = []
+    if not bis:
+        return []
+
+    for bi in bis:
+        if not zs_list:
+            zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+            continue
+
+        zs = zs_list[-1]
+        if not zs.bis:
+            zs.bis.append(bi)
+            zs_list[-1] = zs
+        else:
+            if (bi.direction == Direction.Up and bi.high < zs.zd) \
+                    or (bi.direction == Direction.Down and bi.low > zs.zg):
+                zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+            else:
+                zs.bis.append(bi)
+                zs_list[-1] = zs
+    return zs_list

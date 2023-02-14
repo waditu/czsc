@@ -564,5 +564,49 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+    """单根K线的状态
+
+    **信号描述：**
+
+    1. 上涨阳线，下跌阴线；
+    2. 长实体，长上影，长下影，其他；
+
+    **信号列表：**
+
+    - Signal('日线_D2T10_状态_阴线_长实体_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长实体_任意_0')
+    - Signal('日线_D2T10_状态_阴线_长上影_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长上影_任意_0')
+    - Signal('日线_D2T10_状态_阴线_长下影_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长下影_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线
+    :param kwargs:
+        t: 长实体、长上影、长下影的阈值，默认为 1.0
+    :return: 信号识别结果
+    """
+    t = kwargs.get("t", 1.0)
+    t = int(round(t, 1) * 10)
+
+    k1, k2, k3 = f"{c.freq.value}", f"D{di}T{t}", "状态"
+    v1 = "其他"
+    if len(c.bars_raw) < di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    k = c.bars_raw[-di]
+    v1 = "阳线" if k.close > k.open else "阴线"
+
+    if k.solid > (k.upper + k.lower) * t / 10:
+        v2 = "长实体"
+    elif k.upper > (k.solid + k.lower) * t / 10:
+        v2 = "长上影"
+    elif k.lower > (k.solid + k.upper) * t / 10:
+        v2 = "长下影"
+    else:
+        v2 = "其他"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
