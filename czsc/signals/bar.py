@@ -10,7 +10,8 @@ from datetime import datetime
 from typing import List
 from loguru import logger
 from collections import OrderedDict
-from czsc import envs, CZSC, Signal, CzscAdvancedTrader
+from czsc import envs, CZSC, Signal
+from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
 from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
 
@@ -103,7 +104,7 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedDict:
+def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     """更精确地倒数第1根K线的涨跌停计算
 
     **信号逻辑：**
@@ -115,7 +116,7 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
     - Signal('15分钟_D2K_涨跌停_跌停_任意_任意_0')
     - Signal('15分钟_D2K_涨跌停_涨停_任意_任意_0')
 
-    :param cat: CzscAdvancedTrader
+    :param cat: CzscSignals
     :param freq: K线周期
     :param di: 计算截止倒数第 di 根 K 线
     :return: s

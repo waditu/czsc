@@ -20,7 +20,8 @@ from typing import Callable
 from czsc import envs
 from czsc.utils import WordWriter, io
 from czsc.data.ts_cache import TsDataCache, Freq
-from czsc.sensors.utils import get_index_beta, generate_signals, turn_over_rate, max_draw_down
+from czsc.traders import generate_czsc_signals
+from czsc.sensors.utils import get_index_beta, turn_over_rate, max_draw_down
 
 
 class ThsConceptsSensor:
@@ -103,11 +104,7 @@ class ThsConceptsSensor:
         n_bars = dc.ths_daily(ts_code=ts_code, start_date=start_date, end_date=edt, raw_bar=False)
         nb_dicts = {row['trade_date'].strftime("%Y%m%d"): row for row in n_bars.to_dict("records")}
 
-        def __strategy(symbol):
-            return {"symbol": symbol, "base_freq": '日线', "freqs": ['周线', '月线'],
-                    "get_signals": self.get_signals}
-
-        signals = generate_signals(bars, sdt, __strategy)
+        signals = generate_czsc_signals(bars, self.get_signals, sdt=sdt, df=False, freqs=self.freqs)
         results = []
         for s in signals:
             m, f = event.is_match(s)

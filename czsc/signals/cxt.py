@@ -8,7 +8,8 @@ describe:  cxt 代表 CZSC 形态信号
 import numpy as np
 from loguru import logger
 from typing import List
-from czsc import CZSC, Signal, CzscAdvancedTrader
+from czsc import CZSC, Signal
+from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS
 from czsc.utils import get_sub_elements
 from collections import OrderedDict
@@ -253,7 +254,7 @@ def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def cxt_sub_b3_V221212(cat: CzscAdvancedTrader, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
+def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
     """小级别突破大级别中枢形成三买，贡献者：魏永超
 
     **信号逻辑：**
@@ -299,7 +300,7 @@ def cxt_sub_b3_V221212(cat: CzscAdvancedTrader, freq='60分钟', sub_freq='15分
     return s
 
 
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscAdvancedTrader, freq1='日线', freq2='60分钟') -> OrderedDict:
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟') -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
     **信号逻辑：**

@@ -18,8 +18,9 @@ from tqdm import tqdm
 from typing import Callable
 from czsc.objects import Event
 from czsc.utils import io
+from czsc.traders import generate_czsc_signals
 from czsc.data.ts_cache import TsDataCache, Freq
-from czsc.sensors.utils import get_index_beta, generate_signals, max_draw_down, turn_over_rate
+from czsc.sensors.utils import get_index_beta, max_draw_down, turn_over_rate
 from czsc.utils import WordWriter
 
 
@@ -327,7 +328,8 @@ class StocksDaySensor:
             start_date = pd.to_datetime(self.sdt) - timedelta(days=3000)
             bars = dc.pro_bar(ts_code=ts_code, start_date=start_date, end_date=edt, freq='D', asset="E", raw_bar=True)
             n_bars = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq='D', asset="E", raw_bar=False)
-            signals = generate_signals(bars, sdt, self.strategy)
+            # signals = generate_signals(bars, sdt, self.strategy)
+            signals = generate_czsc_signals(bars, self.get_signals, sdt=sdt, df=False, freqs=self.freqs)
             io.save_pkl([signals, n_bars], file_signals)
 
         nb_dicts = {row['trade_date'].strftime("%Y%m%d"): row for row in n_bars.to_dict("records")}

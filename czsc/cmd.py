@@ -29,20 +29,14 @@ def aphorism():
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def dummy(file_strategy):
     """使用 CzscDummyTrader 进行快速的择时策略研究"""
-    from czsc.traders.dummy import DummyBacktest
-    dbt = DummyBacktest(file_strategy)
-    dbt.replay()
-    dbt.execute()
-    dbt.report()
+    pass
 
 
 @czsc.command()
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def replay(file_strategy):
     """执行择时策略在某个品种上的交易回放"""
-    from czsc.traders.dummy import DummyBacktest
-    dbt = DummyBacktest(file_strategy)
-    dbt.replay()
+    pass
 
 
 @czsc.command()

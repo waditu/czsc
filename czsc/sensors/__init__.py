@@ -8,10 +8,6 @@ describe: 感应系统
 from czsc.sensors.plates import ThsConceptsSensor
 from czsc.sensors.stocks import StocksDaySensor
 from czsc.sensors.utils import (
-    check_signals_acc,
-    generate_signals,
-    generate_stocks_signals,
-    generate_symbol_signals,
     turn_over_rate,
     discretizer,
     compound_returns,

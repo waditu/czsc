@@ -5,8 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/17 18:50
 """
 import os
-import glob
-import warnings
 import traceback
 import pandas as pd
 import numpy as np
@@ -15,11 +13,7 @@ from datetime import timedelta
 from typing import Callable, List, AnyStr
 from sklearn.preprocessing import KBinsDiscretizer
 
-from .. import envs
-from ..traders.advanced import CzscAdvancedTrader, BarGenerator
 from ..data import TsDataCache, freq_cn2ts
-from ..objects import RawBar, Signal
-from ..utils.cache import home_path
 
 
 def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strategy='quantile'):
@@ -97,101 +91,6 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
         return beta
 
 
-def generate_signals(bars: List[RawBar],
-                     sdt: AnyStr,
-                     strategy: Callable,
-                     ):
-    """获取历史信号
-
-    :param bars: 日线
-    :param sdt: 信号计算开始时间
-    :param strategy: 单级别信号计算函数
-    :return: signals
-    """
-    sdt = pd.to_datetime(sdt)
-    bars_left = [x for x in bars if x.dt < sdt]
-    if len(bars_left) <= 500:
-        bars_left = bars[:500]
-        bars_right = bars[500:]
-    else:
-        bars_right = [x for x in bars if x.dt >= sdt]
-
-    if len(bars_right) == 0:
-        warnings.warn("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
-        return []
-
-    tactic = strategy(bars[0].symbol)
-    base_freq = tactic['base_freq']
-    freqs = tactic['freqs']
-    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
-    for bar in bars_left:
-        bg.update(bar)
-
-    signals = []
-    ct = CzscAdvancedTrader(bg, strategy)
-    for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
-        ct.update(bar)
-        signals.append(dict(ct.s))
-    return signals
-
-
-def check_signals_acc(bars: List[RawBar],
-                      signals: List[Signal] = None,
-                      strategy: Callable = None,
-                      delta_days: int = 5) -> None:
-    """人工验证形态信号识别的准确性的辅助工具：
-
-    输入基础周期K线和想要验证的信号，输出信号识别结果的快照
-
-    :param bars: 原始K线
-    :param signals: 需要验证的信号列表
-    :param strategy: 含有信号函数的伪交易策略
-    :param delta_days: 两次相同信号之间的间隔天数
-    :return: None
-    """
-    base_freq = str(bars[-1].freq.value)
-    assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
-    if len(bars) < 600:
-        return
-
-    sorted_freqs = ['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
-    freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
-
-    if not signals:
-        signals_ = generate_signals(bars, bars[500].dt.strftime("%Y%m%d"), strategy)
-        df = pd.DataFrame(signals_)
-        s_cols = [x for x in df.columns if len(x.split("_")) == 3]
-        signals = []
-        for col in s_cols:
-            signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
-
-    print(f"signals: {'+' * 100}")
-    for row in signals:
-        print(f"- {row}")
-
-    bars_left = bars[:500]
-    bars_right = bars[500:]
-    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
-    for bar in bars_left:
-        bg.update(bar)
-
-    ct = CzscAdvancedTrader(bg, strategy)
-    last_dt = {signal.key: ct.end_dt for signal in signals}
-
-    for bar in tqdm(bars_right, desc=f'generate snapshots of {bg.symbol}'):
-        ct.update(bar)
-
-        for signal in signals:
-            html_path = os.path.join(home_path, signal.key)
-            os.makedirs(html_path, exist_ok=True)
-            if bar.dt - last_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(ct.s):
-                file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
-                file_html = os.path.join(html_path, file_html)
-                print(file_html)
-                ct.take_snapshot(file_html)
-                last_dt[signal.key] = bar.dt
-
-
 def max_draw_down(n1b: List):
     """最大回撤
 
@@ -267,97 +166,6 @@ def compound_returns(n1b: List):
         v = v * (1 + n / 10000)
         detail.append(v-10000)
     return v-10000, detail
-
-
-def generate_symbol_signals(dc: TsDataCache,
-                            ts_code: str,
-                            asset: str,
-                            sdt: str,
-                            edt: str,
-                            strategy: Callable,
-                            adj: str = 'hfq',
-                            ):
-    """使用 Tushare 数据生产某个标的的信号
-
-    :param dc:
-    :param ts_code:
-    :param asset:
-    :param sdt:
-    :param edt:
-    :param strategy:
-    :param adj: 复权方式
-    :return:
-    """
-    tactic = strategy(ts_code)
-    base_freq = tactic['base_freq']
-
-    sdt_ = pd.to_datetime(sdt) - timedelta(days=3000)
-    if "分钟" in base_freq:
-        bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
-                                  asset=asset, adj=adj, raw_bar=True)
-        n_bars = dc.pro_bar_minutes(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
-                                    asset=asset, adj=adj, raw_bar=False)
-        n_bars['dt'] = pd.to_datetime(n_bars['trade_time'])
-
-    else:
-        bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
-                          asset=asset, adj=adj, raw_bar=True)
-        n_bars = dc.pro_bar(ts_code, sdt_, edt, freq=freq_cn2ts[base_freq],
-                            asset=asset, adj=adj, raw_bar=False)
-        n_bars['dt'] = pd.to_datetime(n_bars['trade_date'])
-
-    dt_fmt = "%Y-%m-%d %H:%M:%S"
-    nb_dicts = {row['dt'].strftime(dt_fmt): row for row in n_bars.to_dict("records")}
-    signals = generate_signals(bars, sdt, strategy)
-
-    for s in signals:
-        s.update(nb_dicts[s['dt'].strftime(dt_fmt)])
-
-    df = pd.DataFrame(signals)
-    if 'cache' in df.columns:
-        del df['cache']
-
-    c_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('object')]
-    df[c_cols] = df[c_cols].astype('category')
-
-    float_cols = [k for k, v in df.dtypes.to_dict().items() if v.name.startswith('float')]
-    df[float_cols] = df[float_cols].astype('float32')
-    return df
-
-
-def generate_stocks_signals(dc: TsDataCache,
-                            signals_path: str,
-                            sdt: str,
-                            edt: str,
-                            strategy: Callable,
-                            adj: str = 'hfq',
-                            ):
-    """使用 Tushare 数据获取股票市场全部股票的信号
-
-    :param dc:
-    :param signals_path:
-    :param sdt:
-    :param edt:
-    :param strategy:
-    :param adj:
-    :return:
-    """
-    os.makedirs(signals_path, exist_ok=True)
-    stocks = dc.stock_basic()
-
-    for row in tqdm(stocks.to_dict('records'), desc="generate_stocks_signals"):
-        ts_code = row['ts_code']
-        name = row['name']
-        try:
-            file_signals = os.path.join(signals_path, f"{ts_code}_signals.pkl")
-            if os.path.exists(file_signals):
-                print(f"file exists: {file_signals}")
-                continue
-            df = generate_symbol_signals(dc, ts_code, "E", sdt, edt, strategy, adj)
-            df.to_pickle(file_signals)
-        except:
-            print(f"generate_stocks_signals error: {ts_code}, {name}")
-            traceback.print_exc()
 
 
 class SignalsPerformance:

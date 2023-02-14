@@ -9,13 +9,11 @@ describe: 验证信号计算的准确性，仅适用于缠论笔相关的信号�
 import sys
 sys.path.insert(0, '..')
 import os
-from typing import List
 from collections import OrderedDict
 from czsc.data.ts_cache import TsDataCache
-from czsc import CzscAdvancedTrader, CZSC
-from czsc.objects import Signal, Freq, RawBar
+from czsc import CZSC
+from czsc.traders.base import CzscTrader, check_signals_acc
 from czsc.utils import get_sub_elements, create_single_signal
-from czsc.sensors.utils import check_signals_acc
 from czsc import signals
 
 
@@ -58,34 +56,16 @@ def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+def get_signals(cat: CzscTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 使用缓存来更新信号的方法
     s.update(signals.vol.vol_double_ma_V230214(cat.kas['日线'], di=2))
     return s
 
 
-def trader_strategy_base(symbol):
-    tactic = {
-        "symbol": symbol,
-        "base_freq": '15分钟',
-        "freqs": ['30分钟', '60分钟', '日线'],
-        "get_signals": get_signals,
-        "signals_n": 0,
-    }
-    return tactic
-
-
 if __name__ == '__main__':
-    # 直接查看全部信号的隔日快照
-    check_signals_acc(bars, strategy=trader_strategy_base)
+    check_signals_acc(bars, get_signals, freq=['日线'])
 
-    # 查看指定信号的隔日快照
-    # signals = [
-    #     Signal("5分钟_倒9笔_类买卖点_类一买_任意_任意_0"),
-    #     Signal("5分钟_倒9笔_类买卖点_类一卖_任意_任意_0"),
-    # ]
-    # check_signals_acc(bars, signals=signals, get_signals=get_signals)
 
 
 
