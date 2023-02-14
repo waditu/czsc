@@ -26,7 +26,6 @@ class CzscStrategySMA5(CzscStrategyBase):
         # s.update(signals.bar_end_V221111(cat.kas['5分钟'], '15分钟'))
         s.update(signals.bar_mean_amount_V221112(cat.kas['日线'], di=2, n=20, th1=2, th2=1000))
 
-        signals.update_ma_cache(cat.kas["日线"], ma_type='SMA', timeperiod=5)
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=1, ma_type='SMA', timeperiod=5))
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=2, ma_type='SMA', timeperiod=5))
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=5, ma_type='SMA', timeperiod=5))
