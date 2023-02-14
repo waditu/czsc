@@ -641,6 +641,20 @@ class Position:
         return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
                f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
 
+    def dump(self):
+        """将对象转换为 dict"""
+        raw = {
+            "symbol": self.symbol,
+            "name": self.name,
+            "opens": [x.dump() for x in self.opens],
+            "exits": [x.dump() for x in self.exits],
+            "interval": self.interval,
+            "timeout": self.timeout,
+            "stop_loss": self.stop_loss,
+            "T0": self.T0,
+        }
+        return raw
+
     def __two_operates_pair(self, op1, op2):
         assert op1['op'] in [Operate.LO, Operate.SO]
         pair = {
