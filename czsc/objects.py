@@ -641,7 +641,7 @@ class Position:
         return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
                f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
 
-    def dump(self):
+    def dump(self, with_data=False):
         """将对象转换为 dict"""
         raw = {
             "symbol": self.symbol,
@@ -653,6 +653,8 @@ class Position:
             "stop_loss": self.stop_loss,
             "T0": self.T0,
         }
+        if with_data:
+            raw.update({"pairs": self.pairs,  "holds": self.holds})
         return raw
 
     def __two_operates_pair(self, op1, op2):

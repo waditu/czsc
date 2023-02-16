@@ -225,6 +225,8 @@ def test_czsc_trader():
         ct.update(bar)
         print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
+    assert list(ct.positions[0].dump(False).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0']
+    assert list(ct.positions[0].dump(True).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0', 'pairs', 'holds']
     assert [x.pos for x in ct.positions] == [0, -1, 0]
 
     # 测试自定义仓位集成
