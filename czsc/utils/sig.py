@@ -228,6 +228,7 @@ def same_dir_counts(seq: [List, np.array]):
             break
     return c
 
+
 def count_last_same(seq: Union[List, np.array, Tuple]):
     """统计与seq列表最后一个元素相似的连续元素数量
 

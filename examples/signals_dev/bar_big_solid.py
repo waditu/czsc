@@ -62,58 +62,6 @@ def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, ma_type='SMA', ma_seq: int = 5, **kwargs) -> OrderedDict:
-    """
-
-
-    - Signal('日线_D1N10SMA5_BS1辅助_一买_任意_任意_0')
-    - Signal('日线_D1N10SMA5_BS1辅助_一卖_任意_任意_0')
-    """
-    assert 5 <= n <= 50
-    key = update_ma_cache(c, ma_type, ma_seq)
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{ma_seq}_BS1辅助".split('_')
-    v1 = '其他'
-    if len(c.bars_raw) < n + 5:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
-    sma = [x.cache[key] for x in _bars]
-    low = [x.low for x in _bars]
-    _open = [x.open for x in _bars]
-    close = [x.close for x in _bars]
-    high = [x.high for x in _bars]
-
-    # 窗口N内的K线的最低点全部小于SMA5
-    condition_1_down = np.all(np.array(sma) > np.array(low))
-    condition_1_up = np.all(np.array(sma) < np.array(high))
-
-    n1, m1 = 0, 0
-    for i in range(len(low)):
-        if close[i] < _open[i]:
-            n1 += 1
-        if close[i] > _open[i]:
-            m1 += 1
-    condition_2_down = True if (n1 / len(low)) > 0.6 else False
-    condition_2_up = True if (m1 / len(low)) > 0.6 else False
-
-    # 最近三根K线创新低
-    condition_3_down = True if min(low[-3:]) < min(low[:-3]) else False
-    condition_3_up = True if max(high[-3:]) > max(high[:-3]) else False
-
-    # 最后一根K线收在MA5之上/下
-    condition_4_down = True if close[-1] > sma[-1] else False
-    condition_4_up = True if close[-1] < sma[-1] else False
-
-    if condition_1_down and condition_2_down and condition_3_down and condition_4_down:
-        v1 = '一买'
-    elif condition_1_up and condition_2_up and condition_3_up and condition_4_up:
-        v1 = '一卖'
-    else:
-        v1 = '其他'
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
 def get_signals(cat: CzscTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 使用缓存来更新信号的方法

@@ -16,7 +16,7 @@ except:
 import numpy as np
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction
-from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same
+from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from collections import OrderedDict
 
 
@@ -192,10 +192,7 @@ def tas_macd_base_V221028(c: CZSC, di: int = 1, key="macd", **kwargs) -> Ordered
     v1 = "多头" if macd[-di] >= 0 else "空头"
     v2 = "向上" if macd[-di] >= macd[-di - 1] else "向下"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_macd_direct_V221106(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
@@ -229,10 +226,7 @@ def tas_macd_direct_V221106(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         else:
             v1 = "模糊"
 
-    s = OrderedDict()
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def tas_macd_power_V221108(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
@@ -273,10 +267,7 @@ def tas_macd_power_V221108(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         elif dif - dea < 0:
             v1 = "弱势"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def tas_macd_first_bs_V221201(c: CZSC, di: int = 1, **kwargs):
@@ -321,10 +312,7 @@ def tas_macd_first_bs_V221201(c: CZSC, di: int = 1, **kwargs):
         if s1_con1 and s1_con2 and s1_con3:
             v1 = "一卖"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def tas_macd_first_bs_V221216(c: CZSC, di: int = 1, **kwargs):
@@ -383,10 +371,7 @@ def tas_macd_first_bs_V221216(c: CZSC, di: int = 1, **kwargs):
 
         v2 = cross[-1]['类型']
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_macd_second_bs_V221201(c: CZSC, di: int = 1, **kwargs):
@@ -439,10 +424,7 @@ def tas_macd_second_bs_V221201(c: CZSC, di: int = 1, **kwargs):
 
         v2 = cross[-1]['类型']
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_macd_xt_V221208(c: CZSC, di: int = 1, **kwargs):
@@ -485,10 +467,7 @@ def tas_macd_xt_V221208(c: CZSC, di: int = 1, **kwargs):
         elif macd[-3] > 0 > macd[-1]:
             v1 = "多翻空"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50, **kwargs):
@@ -536,10 +515,7 @@ def tas_macd_bc_V221201(c: CZSC, di: int = 1, n: int = 3, m: int = 50, **kwargs)
 
         v2 = "红柱" if n_macd[-1] > 0 else "绿柱"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55, **kwargs) -> OrderedDict:
@@ -600,10 +576,7 @@ def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55, **kwargs) -> Orde
                 cross_.append(re_cross[i])
         num = len(cross_)
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=f"{num}次")
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"{num}次")
 
 
 # MA信号计算函数
@@ -635,11 +608,7 @@ def tas_ma_base_V221101(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5) -> Or
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "多头" if bars[-1].close >= bars[-1].cache[key] else "空头"
     v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=100) -> OrderedDict:
@@ -677,11 +646,7 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     v1 = "多头" if c >= m else "空头"
     v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
     v3 = "远离" if (abs(c - m) / m) * 10000 > th else "靠近"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
 def tas_ma_round_V221206(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=60, th: int = 10) -> OrderedDict:
@@ -717,10 +682,7 @@ def tas_ma_round_V221206(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=60, th:
         elif last_bi.direction == Direction.Down and abs(last_bi.low - last_ma) / bi_change < th / 100:
             v1 = "下碰"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def tas_double_ma_V221203(c: CZSC, di: int = 1, ma_type='SMA', ma_seq=(5, 10), th: int = 100) -> OrderedDict:
@@ -755,11 +717,7 @@ def tas_double_ma_V221203(c: CZSC, di: int = 1, ma_type='SMA', ma_seq=(5, 10), t
     ma2v = bars[-1].cache[ma2]
     v1 = "多头" if ma1v >= ma2v else "空头"
     v2 = "强势" if (abs(ma1v - ma2v) / ma2v) * 10000 >= th else "弱势"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 # BOLL信号计算函数
@@ -815,10 +773,7 @@ def tas_boll_power_V221112(c: CZSC, di: int = 1, **kwargs):
         else:
             v2 = "弱势"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_boll_bc_V221118(c: CZSC, di=1, n=3, m=10, line=3, **kwargs):
@@ -861,10 +816,7 @@ def tas_boll_bc_V221118(c: CZSC, di=1, n=3, m=10, line=3, **kwargs):
     else:
         v1 = "其他"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 # KDJ信号计算函数
@@ -948,11 +900,7 @@ def tas_kdj_base_V221101(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         v1 = "其他"
 
     v2 = "向上" if kdj['j'] >= bars[-2].cache[cache_key]['j'] else "向下"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_kdj_evc_V221201(c: CZSC, di: int = 1, key='K', th=10, count_range=(5, 8), **kwargs) -> OrderedDict:
@@ -1003,10 +951,7 @@ def tas_kdj_evc_V221201(c: CZSC, di: int = 1, key='K', th=10, count_range=(5, 8)
             v1 = "空头"
             v2 = f"C{sc}"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 # RSI信号计算函数
@@ -1080,8 +1025,71 @@ def tas_double_rsi_V221203(c: CZSC, di: int = 1, rsi_seq=(5, 10), **kwargs) -> O
     rsi1v = bars[-1].cache[rsi1]
     rsi2v = bars[-1].cache[rsi2]
     v1 = "多头" if rsi1v >= rsi2v else "空头"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+
+def tas_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, **kwargs) -> OrderedDict:
+    """均线结合K线形态的一买一卖辅助判断
+
+    **信号逻辑：**
+
+    1. 窗口N内的K线的最低点全部小于SMA5，且阴线数量占比超过60%，且最近三根K线创新低，最后一根K线收在SMA5上方，看多；
+    2. 反之，看空。
+
+    **信号列表：**
+
+    - Signal('日线_D1N10SMA5_BS1辅助_一买_任意_任意_0')
+    - Signal('日线_D1N10SMA5_BS1辅助_一卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线，1表示最后一根K线
+    :param n: 窗口大小
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    ma_type = kwargs.get('ma_type', 'SMA')
+    timeperiod = kwargs.get('timeperiod', 5)
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{timeperiod}_BS1辅助".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < n + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    sma = [x.cache[key] for x in _bars]
+    low = [x.low for x in _bars]
+    _open = [x.open for x in _bars]
+    close = [x.close for x in _bars]
+    high = [x.high for x in _bars]
+
+    # 窗口N内的K线的最低点全部小于SMA5
+    condition_1_down = np.all(np.array(sma) > np.array(low))
+    condition_1_up = np.all(np.array(sma) < np.array(high))
+
+    n1, m1 = 0, 0
+    for i in range(len(low)):
+        if close[i] < _open[i]:
+            n1 += 1
+        if close[i] > _open[i]:
+            m1 += 1
+    condition_2_down = True if (n1 / len(low)) > 0.6 else False
+    condition_2_up = True if (m1 / len(low)) > 0.6 else False
+
+    # 最近三根K线创新低
+    condition_3_down = True if min(low[-3:]) < min(low[:-3]) else False
+    condition_3_up = True if max(high[-3:]) > max(high[:-3]) else False
+
+    # 最后一根K线收在MA5之上/下
+    condition_4_down = True if close[-1] > sma[-1] else False
+    condition_4_up = True if close[-1] < sma[-1] else False
+
+    if condition_1_down and condition_2_down and condition_3_down and condition_4_down:
+        v1 = '一买'
+    elif condition_1_up and condition_2_up and condition_3_up and condition_4_up:
+        v1 = '一卖'
+    else:
+        v1 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+

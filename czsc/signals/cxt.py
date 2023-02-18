@@ -11,7 +11,7 @@ from typing import List
 from czsc import CZSC, Signal
 from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS
-from czsc.utils import get_sub_elements
+from czsc.utils import get_sub_elements, create_single_signal
 from collections import OrderedDict
 
 
@@ -38,15 +38,10 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     :return:
     """
     k1, k2, k3 = f"{c.freq.value}_D{di}F_分型强弱".split("_")
-
     last_fx: FX = c.fx_list[-di]
     v1 = f"{last_fx.power_str}{last_fx.mark.value[0]}"
     v2 = "有中枢" if last_fx.has_zs else "无中枢"
-
-    s = OrderedDict()
-    x1 = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[x1.key] = x1.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
@@ -113,10 +108,7 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
             v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
             break
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
 def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
@@ -190,10 +182,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
             v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
             break
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
 def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
@@ -248,10 +237,7 @@ def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
             v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
             break
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
 def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
@@ -294,10 +280,7 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
                     and last_sub_bi.low > zs.zg - (th / 100) * (zs.zg - zs.zd):
                 v1 = "确认"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟') -> OrderedDict:
@@ -345,9 +328,6 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
         if small_zs.gg < big_zs.zz and min_freq.bi_list[-1].direction == Direction.Up:
             v1 = "看空"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
