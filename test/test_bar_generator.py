@@ -4,7 +4,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from czsc.objects import RawBar, Freq
-from czsc.utils.bar_generator import BarGenerator, freq_end_time
+from czsc.utils.bar_generator import BarGenerator, freq_end_time, resample_bars
 from test.test_analyze import read_1min, read_daily
 
 cur_path = os.path.split(os.path.realpath(__file__))[0]
@@ -25,6 +25,18 @@ def test_freq_end_time():
     assert freq_end_time(pd.to_datetime("2021-11-11 09:43"), Freq.W) == pd.to_datetime("2021-11-12")
 
     assert freq_end_time(pd.to_datetime("2021-03-05"), Freq.M) == pd.to_datetime("2021-03-31")
+
+
+def test_resample_bars():
+    df = pd.DataFrame(kline)
+    _f30_bars = resample_bars(df, Freq.F30, raw_bars=True)
+    assert len(_f30_bars) == 7991
+
+    _d_bars = resample_bars(df, Freq.D, raw_bars=True)
+    assert len(_d_bars) == 1000
+
+    _f60_bars = resample_bars(df, Freq.F60, raw_bars=True)
+    assert len(_f60_bars) == 3996
 
 
 def test_bg_on_f1():

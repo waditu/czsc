@@ -29,20 +29,14 @@ def aphorism():
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def dummy(file_strategy):
     """使用 CzscDummyTrader 进行快速的择时策略研究"""
-    from czsc.traders.dummy import DummyBacktest
-    dbt = DummyBacktest(file_strategy)
-    dbt.replay()
-    dbt.execute()
-    dbt.report()
+    pass
 
 
 @czsc.command()
 @click.option('-f', '--file_strategy', type=str, required=True, help="Python择时策略文件路径")
 def replay(file_strategy):
     """执行择时策略在某个品种上的交易回放"""
-    from czsc.traders.dummy import DummyBacktest
-    dbt = DummyBacktest(file_strategy)
-    dbt.replay()
+    pass
 
 
 @czsc.command()
@@ -50,11 +44,11 @@ def replay(file_strategy):
 @click.option('-d', '--delta_days', type=int, required=False, default=1, help="两次相同信号之间的间隔天数")
 def check(file_strategy, delta_days):
     """执行择时策略中使用的信号在某个品种上的校验"""
-    from czsc.sensors.utils import check_signals_acc
+    from czsc.traders import check_signals_acc
     from czsc.utils import get_py_namespace
 
     py = get_py_namespace(file_strategy)
-    strategy = py['trader_strategy']
+    get_signals = py['get_signals']
     check_params = py.get('check_params', None)
 
     if not check_params:
@@ -67,4 +61,4 @@ def check(file_strategy, delta_days):
     bars = py['read_bars'](symbol, sdt, edt)
     logger.info(f"信号检查参数 | {symbol} - sdt: {sdt} - edt: {edt}")
 
-    check_signals_acc(bars, strategy=strategy, delta_days=delta_days)
+    check_signals_acc(bars, get_signals=get_signals, delta_days=delta_days)

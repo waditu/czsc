@@ -11,16 +11,16 @@ from czsc import traders
 from czsc import sensors
 from czsc import aphorism
 from czsc.analyze import CZSC
-from czsc.traders.advanced import CzscAdvancedTrader, create_advanced_trader
-from czsc.utils.ta import SMA, EMA, MACD, KDJ
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
+from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals
+from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs
 
 
-__version__ = "0.9.7"
+__version__ = "0.9.8"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230123"
+__date__ = "20230210"
 
 
 if envs.get_welcome():

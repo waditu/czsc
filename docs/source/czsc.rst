@@ -6,7 +6,6 @@ Subpackages
    :maxdepth: 4
 
    czsc.data
-   czsc.gms
 
 
 .. automodapi:: czsc

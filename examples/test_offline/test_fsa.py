@@ -66,6 +66,7 @@ def test_im():
     from czsc.fsa.im import IM
 
     app = IM(app_id=os.environ['app_id'], app_secret=os.environ['app_secret'])
+    # 使用手机号获取用户id
     # id = app.get_user_id({"mobiles": ["XXXX"]})['data']['user_list'][0]['user_id']
     receive_id = "ou_6fa04b5b4d853e9fdc87d267e8f2a270"
 

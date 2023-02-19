@@ -7,7 +7,7 @@ create_dt: 2021/10/30 20:21
 import os
 import pandas as pd
 from collections import OrderedDict
-from czsc import CzscAdvancedTrader, Freq, signals, Operate, Signal, Factor, Event
+from czsc import CzscSignals, signals, Operate, Signal, Factor, Event
 from czsc.sensors.stocks import StocksDaySensor, TsDataCache
 
 pd.set_option('mode.chained_assignment', None)
@@ -15,9 +15,8 @@ pd.set_option('mode.chained_assignment', None)
 
 def sds_czsc_v1_t1(symbol):
     """sds_czsc_v1"""
-    def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+    def get_signals(cat: CzscSignals) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        signals.update_ma_cache(cat.kas['日线'], ma_type='SMA', timeperiod=20)
         s.update(signals.tas_ma_base_V221203(cat.kas['日线'], di=1, ma_type='SMA', timeperiod=20))
         return s
 

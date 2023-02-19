@@ -6,14 +6,8 @@ create_dt: 2022/5/10 15:19
 describe: 请描述文件用途
 """
 import os
-import glob
-import traceback
 import pandas as pd
-from tqdm import tqdm
 from loguru import logger
-from deprecated import deprecated
-from czsc.traders.base import CzscAdvancedTrader
-from czsc.utils import dill_load
 from czsc.objects import cal_break_even_point
 import matplotlib.pyplot as plt
 from czsc.data import TsDataCache, save_symbols_to_ebk
@@ -231,60 +225,6 @@ class PairsPerformance:
             df_.to_excel(f, sheet_name=f"{col}聚合", index=False)
         f.close()
         logger.info(f"交易次数：{len(self.df_pairs)}; 聚合分析结果文件：{file_xlsx}")
-
-
-@deprecated(reason="择时策略将使用 Position + CzscTrader 代替")
-class TradersPerformance:
-    """Trader Strategy 的效果评估"""
-    def __init__(self, traders_pat):
-        self.file_traders = glob.glob(traders_pat)
-
-    def get_pairs(self, sdt, edt):
-        """获取一段时间内的所有交易对
-
-        :param sdt: 开始时间
-        :param edt: 结束时间
-        :return:
-        """
-        sdt = pd.to_datetime(sdt)
-        edt = pd.to_datetime(edt)
-        _results = []
-        for file in tqdm(self.file_traders, desc=f"get_pairs | {sdt} | {edt}"):
-            try:
-                trader: CzscAdvancedTrader = dill_load(file)
-                _pairs = [x for x in trader.long_pos.pairs if edt >= x['平仓时间'] > x['开仓时间'] >= sdt]
-                _results.extend(_pairs)
-            except:
-                print(file)
-                traceback.print_exc()
-        df = pd.DataFrame(_results)
-        return df
-
-    def get_holds(self, sdt, edt):
-        """获取一段时间内的所有持仓信号
-
-        :param sdt: 开始时间
-        :param edt: 结束时间
-        :return: 返回数据样例如下
-                    dt               symbol     long_pos   n1b
-            0 2020-01-02 09:45:00  000001.SH         0  0.004154
-            1 2020-01-02 10:00:00  000001.SH         0  0.001472
-            2 2020-01-02 10:15:00  000001.SH         0  0.001291
-            3 2020-01-02 10:30:00  000001.SH         0  0.001558
-            4 2020-01-02 10:45:00  000001.SH         0 -0.001355
-        """
-        sdt = pd.to_datetime(sdt)
-        edt = pd.to_datetime(edt)
-        _results = []
-        for file in tqdm(self.file_traders, desc=f"get_holds | {sdt} | {edt}"):
-            try:
-                trader: CzscAdvancedTrader = dill_load(file)
-                _lh = [x for x in trader.long_holds if edt >= x['dt'] >= sdt]
-                _results.extend(_lh)
-            except:
-                logger.exception(f"分析失败：{file}")
-        df = pd.DataFrame(_results)
-        return df
 
 
 def combine_holds_and_pairs(holds, pairs, results_path):

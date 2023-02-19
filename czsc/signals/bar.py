@@ -10,13 +10,19 @@ from datetime import datetime
 from typing import List
 from loguru import logger
 from collections import OrderedDict
-from czsc import envs, CZSC, Signal, CzscAdvancedTrader
+from czsc import envs, CZSC, Signal
+from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
-from czsc.utils import check_pressure_support, get_sub_elements
+from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
 
 
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     """分钟 K 线结束
+
+    **信号列表：**
+
+    - Signal('60分钟_K线_结束_否_任意_任意_0')
+    - Signal('60分钟_K线_结束_是_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
     :param k1: 分钟周期名称
@@ -37,6 +43,11 @@ def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
 
 def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450")) -> OrderedDict:
     """日内操作时间区间，c 必须是
+
+    **信号列表：**
+
+    - Signal('开多_1400_1450_否_任意_任意_0')
+    - Signal('开多_1400_1450_是_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
     :param k1: 操作名称
@@ -93,7 +104,7 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedDict:
+def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     """更精确地倒数第1根K线的涨跌停计算
 
     **信号逻辑：**
@@ -105,7 +116,7 @@ def bar_zdt_V221111(cat: CzscAdvancedTrader, freq: str, di: int = 1) -> OrderedD
     - Signal('15分钟_D2K_涨跌停_跌停_任意_任意_0')
     - Signal('15分钟_D2K_涨跌停_涨停_任意_任意_0')
 
-    :param cat: CzscAdvancedTrader
+    :param cat: CzscSignals
     :param freq: K线周期
     :param di: 计算截止倒数第 di 根 K 线
     :return: s
@@ -480,6 +491,185 @@ def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> Ordered
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
     return s
+
+
+def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """假突破
+
+    **信号描述：**
+
+    1. 向下假突破，最近N根K线的滑动M窗口出现过大幅下跌破K线重叠中枢，随后几根K线快速拉回，看多；
+    2. 反之，向上假突破，看空。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1N20M5_假突破_看空_任意_任意_0')
+    - Signal('15分钟_D1N20M5_假突破_看多_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 从最新的第几个 bar 开始计算
+    :return: 信号字典
+    """
+    n = kwargs.get('n', 20)
+    m = kwargs.get('m', 5)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
+
+    v1 = '其他'
+    last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
+
+    def __is_overlap(_bars):
+        """判断是否是重叠，如果是重叠，返回True和中枢的上下轨"""
+        if min([bar.high for bar in _bars]) > max([bar.low for bar in _bars]):
+            return True, min([bar.low for bar in _bars]), max([bar.high for bar in _bars])
+        else:
+            return False, None, None
+
+    if len(last_bars) != n or last_bars[-1].solid < last_bars[-1].upper + last_bars[-1].lower:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # 找出最近N根K线的滑动M窗口出现过K线重叠中枢
+    right_bars = []
+    dd = 0
+    gg = 0
+    for i in range(m, n - m):
+        _overlap, dd, gg = __is_overlap(last_bars[-i - m:-i])
+        if _overlap:
+            right_bars = last_bars[-i:]
+            break
+
+    if last_bars[-1].close > last_bars[-1].open:
+
+        # 条件1：收盘价新高或者最高价新高
+        c1_a = last_bars[-1].high == max([bar.high for bar in last_bars])
+        c1_b = last_bars[-1].close == max([bar.close for bar in last_bars])
+        c1 = c1_a or c1_b
+
+        # 条件2：随后几根K线破中枢DD快速拉回
+        c2 = 0 < min([bar.low for bar in right_bars]) < dd if right_bars else False
+
+        if c1 and c2:
+            v1 = "看多"
+
+    if last_bars[-1].close < last_bars[-1].open:
+        # 条件1：收盘价新低或者最低价新低
+        c1_a = last_bars[-1].low == min([bar.low for bar in last_bars])
+        c1_b = last_bars[-1].close == min([bar.close for bar in last_bars])
+        c1 = c1_a or c1_b
+
+        # 条件2：随后几根K线破中枢GG快速拉回
+        c2 = max([bar.high for bar in right_bars]) > gg > 0 if right_bars else False
+
+        if c1 and c2:
+            v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+    """单根K线的状态
+
+    **信号描述：**
+
+    1. 上涨阳线，下跌阴线；
+    2. 长实体，长上影，长下影，其他；
+
+    **信号列表：**
+
+    - Signal('日线_D2T10_状态_阴线_长实体_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长实体_任意_0')
+    - Signal('日线_D2T10_状态_阴线_长上影_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长上影_任意_0')
+    - Signal('日线_D2T10_状态_阴线_长下影_任意_0')
+    - Signal('日线_D2T10_状态_阳线_长下影_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线
+    :param kwargs:
+        t: 长实体、长上影、长下影的阈值，默认为 1.0
+    :return: 信号识别结果
+    """
+    t = kwargs.get("t", 1.0)
+    t = int(round(t, 1) * 10)
+
+    k1, k2, k3 = f"{c.freq.value}", f"D{di}T{t}", "状态"
+    v1 = "其他"
+    if len(c.bars_raw) < di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    k = c.bars_raw[-di]
+    v1 = "阳线" if k.close > k.open else "阴线"
+
+    if k.solid > (k.upper + k.lower) * t / 10:
+        v2 = "长实体"
+    elif k.upper > (k.solid + k.lower) * t / 10:
+        v2 = "长上影"
+    elif k.lower > (k.solid + k.upper) * t / 10:
+        v2 = "长下影"
+    else:
+        v2 = "其他"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
+    """N根K线总成交额
+
+    **信号描述：**
+
+    1. 获取截至倒数第di根K线的前n根K线，计算总成交额，如果大于 t 千万，则为是，否则为否
+
+    **信号列表：**
+
+    - Signal('日线_D2N1_累计超10千万_是_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线
+    :param n: 前几根K线
+    :param kwargs:
+        t: 总成交额阈值
+    :return: 信号识别结果
+    """
+    t = int(kwargs.get('t', 10))
+    k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}N{n}", f"累计超{t}千万", "其他"
+    if len(c.bars_raw) <= di + n + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di, n)
+    assert len(_bars) == n
+    v1 = "是" if sum([x.amount for x in _bars]) > (t * 1e7) else "否"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
+    """窗口内最大实体K线的中间价区分多空
+
+    **信号逻辑：**
+
+    1. 找到窗口内最大实体K线, 据其中间位置区分多空
+
+    **信号列表：**
+
+    - Signal('日线_D1N10_MID_看空_大阳_任意_0')
+    - Signal('日线_D1N10_MID_看空_大阴_任意_0')
+    - Signal('日线_D1N10_MID_看多_大阴_任意_0')
+    - Signal('日线_D1N10_MID_看多_大阳_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第i根K线
+    :param n: 窗口大小
+    :return: 信号字典
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}_MID".split('_')
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+
+    # 找到窗口内最大实体K线
+    max_i = np.argmax([x.solid for x in _bars])
+    max_solid_bar = _bars[max_i]
+    max_solid_mid = min(max_solid_bar.open, max_solid_bar.close) + 0.5 * max_solid_bar.solid
+
+    v1 = '看多' if c.bars_raw[-1].close > max_solid_mid else '看空'
+    v2 = '大阳' if max_solid_bar.close > max_solid_bar.open else '大阴'
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 

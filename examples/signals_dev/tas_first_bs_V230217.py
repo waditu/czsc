@@ -30,48 +30,29 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
                           sdt='20181101', edt='20210101', adj='qfq', raw_bar=True)
 
 
-def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
-    """窗口内最大实体K线的中间价区分多空
+def tas_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, **kwargs) -> OrderedDict:
+    """均线结合K线形态的一买一卖辅助判断
 
     **信号逻辑：**
 
-    1. 找到窗口内最大实体K线, 据其中间位置区分多空
+    1. 窗口N内的K线的最低点全部小于SMA5，且阴线数量占比超过60%，且最近三根K线创新低，最后一根K线收在SMA5上方，看多；
+    2. 反之，看空。
 
     **信号列表：**
 
-    - Signal('日线_D1N10_MID_看空_大阳_任意_0')
-    - Signal('日线_D1N10_MID_看空_大阴_任意_0')
-    - Signal('日线_D1N10_MID_看多_大阴_任意_0')
-    - Signal('日线_D1N10_MID_看多_大阳_任意_0')
-
-    :param c: CZSC 对象
-    :param di: 倒数第i根K线
-    :param n: 窗口大小
-    :return: 信号字典
-    """
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}_MID".split('_')
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
-
-    # 找到窗口内最大实体K线
-    max_i = np.argmax([x.solid for x in _bars])
-    max_solid_bar = _bars[max_i]
-    max_solid_mid = min(max_solid_bar.open, max_solid_bar.close) + 0.5 * max_solid_bar.solid
-
-    v1 = '看多' if c.bars_raw[-1].close > max_solid_mid else '看空'
-    v2 = '大阳' if max_solid_bar.close > max_solid_bar.open else '大阴'
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-
-
-def bar_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, ma_type='SMA', ma_seq: int = 5, **kwargs) -> OrderedDict:
-    """
-
-
     - Signal('日线_D1N10SMA5_BS1辅助_一买_任意_任意_0')
     - Signal('日线_D1N10SMA5_BS1辅助_一卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线，1表示最后一根K线
+    :param n: 窗口大小
+    :param kwargs:
+    :return: 信号识别结果
     """
-    assert 5 <= n <= 50
-    key = update_ma_cache(c, ma_type, ma_seq)
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{ma_seq}_BS1辅助".split('_')
+    ma_type = kwargs.get('ma_type', 'SMA')
+    timeperiod = kwargs.get('timeperiod', 5)
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{timeperiod}_BS1辅助".split('_')
     v1 = '其他'
     if len(c.bars_raw) < n + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -117,7 +98,7 @@ def bar_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, ma_type='SMA', ma_se
 def get_signals(cat: CzscTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 使用缓存来更新信号的方法
-    s.update(bar_big_solid_V230215(cat.kas['日线'], di=1, n=10))
+    s.update(tas_first_bs_V230217(cat.kas['15分钟'], di=1, n=21))
     return s
 
 

@@ -23,10 +23,9 @@ class CzscStrategySMA5(CzscStrategyBase):
         s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='下午', span=('1300', '1450')))
         s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='上午', span=('0935', '1130')))
         s.update(signals.bar_zdt_V221111(cat, '15分钟', di=1))
-        s.update(signals.bar_end_V221111(cat.kas['5分钟'], '15分钟'))
+        # s.update(signals.bar_end_V221111(cat.kas['5分钟'], '15分钟'))
         s.update(signals.bar_mean_amount_V221112(cat.kas['日线'], di=2, n=20, th1=2, th2=1000))
 
-        signals.update_ma_cache(cat.kas["日线"], ma_type='SMA', timeperiod=5)
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=1, ma_type='SMA', timeperiod=5))
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=2, ma_type='SMA', timeperiod=5))
         s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=5, ma_type='SMA', timeperiod=5))
@@ -42,14 +41,13 @@ class CzscStrategySMA5(CzscStrategyBase):
 
     @property
     def freqs(self):
-        return ['日线', '30分钟', '15分钟', '5分钟']
+        return ['日线', '30分钟', '15分钟']
 
     def create_pos_a(self):
         opens = [
             {'name': '开多',
              'operate': '开多',
-             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0',
-                             '15分钟_K线_结束_是_任意_任意_0'],
+             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0'],
              'signals_any': [],
              'signals_not': ['15分钟_D1K_涨跌停_涨停_任意_任意_0'],
              'factors': [
@@ -63,8 +61,7 @@ class CzscStrategySMA5(CzscStrategyBase):
              ]},
             {'name': '开空',
              'operate': '开空',
-             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0',
-                             '15分钟_K线_结束_是_任意_任意_0'],
+             'signals_all': ['日线_D2K20B均额_2至1000千万_是_任意_任意_0'],
              'signals_any': [],
              'signals_not': ['15分钟_D1K_涨跌停_跌停_任意_任意_0'],
              'factors': [
@@ -81,7 +78,7 @@ class CzscStrategySMA5(CzscStrategyBase):
         exits = [
             {'name': '平多',
              'operate': '平多',
-             'signals_all': ['15分钟_K线_结束_是_任意_任意_0'],
+             'signals_all': [],
              'signals_any': [],
              'signals_not': ['15分钟_D1K_涨跌停_跌停_任意_任意_0'],
              'factors': [

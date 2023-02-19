@@ -5,27 +5,30 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/4 17:39
 describe: A股强势板块传感器，板块是概念板块、行业板块、指数的统称
 """
+import sys
+sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 import os
 from collections import OrderedDict
-from czsc import signals, CzscAdvancedTrader
+from czsc import signals, CzscSignals
 from czsc.sensors.plates import ThsConceptsSensor, TsDataCache
 from czsc.objects import Freq, Signal, Factor, Event, Operate
 
 
-def get_signals(cat: CzscAdvancedTrader) -> OrderedDict:
+def get_signals(cat: CzscSignals) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     for _, c in cat.kas.items():
         if c.freq == Freq.D:
-            s.update(signals.ta.get_s_sma(c, di=1, t_seq=(5, 20, 120)))
+            s.update(signals.tas_ma_base_V221101(c, di=1, timeperiod=20))
+            s.update(signals.tas_ma_base_V221101(c, di=1, timeperiod=120))
     return s
 
 
 def get_event():
-    event = Event(name="SMA_V2", operate=Operate.LO, factors=[
+    event = Event(name="SMA", operate=Operate.LO, factors=[
         Factor(name="日超强", signals_all=[
-            Signal(k1='日线', k2='倒1K', k3='SMA20多空', v1='多头'),
-            Signal(k1='日线', k2='倒1K', k3='SMA20方向', v1='向上'),
-            Signal(k1='日线', k2='倒1K', k3='SMA120方向', v1='向上'),
+            Signal("日线_D1K_SMA20_多头_向上_任意_0"),
+            Signal("日线_D1K_SMA120_任意_向上_任意_0"),
         ]),
     ])
     return event

@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from czsc.objects import Freq, RawBar
 from czsc.fsa.im import IM
 from czsc.traders.base import CzscTrader
+from czsc.utils import resample_bars
 from xtquant import xtconstant
 from xtquant import xtdata
 from xtquant.xttrader import XtQuantTrader, XtQuantTraderCallback
@@ -102,6 +103,41 @@ def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='fro
     else:
         freq_map = {"1m": Freq.F1, "5m": Freq.F5, "1d": Freq.D}
         return format_stock_kline(df, freq=freq_map[period])
+
+
+def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+    """获取 CZSC 库定义的标准 RawBar 对象列表
+
+    :param symbol: 标的代码
+    :param freq: 周期
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param fq: 除权类型
+    :param kwargs:
+    :return:
+    """
+    freq = Freq(freq)
+    if freq == Freq.F1:
+        period = '1m'
+    elif freq in [Freq.F5, Freq.F15, Freq.F30, Freq.F60]:
+        period = '5m'
+    else:
+        period = '1d'
+
+    if fq == '前复权':
+        dividend_type = 'front_ratio'
+    elif fq == '后复权':
+        dividend_type = 'back_ratio'
+    else:
+        assert fq == '不复权'
+        dividend_type = 'none'
+
+    kline = get_kline(symbol, period, sdt, edt, dividend_type=dividend_type,
+                      download_hist=kwargs.get("download_hist", True), df=True)
+    kline['dt'] = pd.to_datetime(kline['time'])
+    kline['vol'] = kline['volume']
+    bars = resample_bars(kline, freq, raw_bars=True)
+    return bars
 
 
 def get_symbols(step):
@@ -220,9 +256,10 @@ class QmtTradeManager:
         self.symbols = kwargs.get('symbols', [])  # 交易标的列表
         self.strategy = kwargs.get('strategy', [])  # 交易策略
         self.symbol_max_pos = kwargs.get('symbol_max_pos', 0.5)  # 每个标的最大持仓比例
+        self.trade_sdt = kwargs.get('trade_sdt', '20220601')     # 交易跟踪开始日期
         self.mini_qmt_dir = mini_qmt_dir
         self.account_id = account_id
-        self.period = kwargs.get('period', '5m')
+        self.base_freq = self.strategy(symbol='symbol').sorted_freqs[0]
         self.delta_days = int(kwargs.get('delta_days', 1))  # 定时执行获取的K线天数
 
         self.session = random.randint(10000, 20000)
@@ -240,12 +277,14 @@ class QmtTradeManager:
         traders = {}
         for symbol in tqdm(self.symbols, desc="创建交易对象", unit="个"):
             try:
-                bars = get_kline(symbol, self.period, '20180201', datetime.now(),
-                                 dividend_type='front_ratio', df=False, download_hist=True)
-                trader: CzscTrader = self.strategy(symbol=symbol, data_source='qmt').init_trader(bars, sdt='20220601')
+                bars = get_raw_bars(symbol, self.base_freq, '20180101', datetime.now(), fq="前复权", download_hist=True)
+
+                trader: CzscTrader = self.strategy(symbol=symbol).init_trader(bars, sdt=self.trade_sdt)
                 traders[symbol] = trader
+                pos_info = {x.name: x.pos for x in trader.positions}
+                logger.info(f"{symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}")
             except Exception as e:
-                logger.warning(f'创建交易对象失败，symbol={symbol}, e={e}')
+                logger.exception(f'创建交易对象失败，symbol={symbol}, e={e}')
         return traders
 
     def get_assets(self):
@@ -357,8 +396,7 @@ class QmtTradeManager:
         for symbol in self.traders.keys():
             try:
                 trader = self.traders[symbol]
-                bars = get_kline(symbol, self.period, kline_sdt, datetime.now(),
-                                 dividend_type='front_ratio', df=False, download_hist=True)
+                bars = get_raw_bars(symbol, self.base_freq, kline_sdt, datetime.now(), fq="前复权", download_hist=True)
 
                 news = [x for x in bars if x.dt > trader.end_dt]
                 if news:
@@ -381,6 +419,9 @@ class QmtTradeManager:
                     self.traders[symbol] = trader
                 else:
                     logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
+
+                pos_info = {x.name: x.pos for x in trader.positions}
+                logger.info(f"{symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}")
 
             except Exception as e:
                 logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
