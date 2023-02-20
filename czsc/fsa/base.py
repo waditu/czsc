@@ -20,7 +20,7 @@ from tenacity import retry, stop_after_attempt, wait_random
 from requests_toolbelt import MultipartEncoder
 
 
-@retry(stop=stop_after_attempt(10), wait=wait_random(min=3, max=10))
+@retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5))
 def request(method, url, headers, payload=None) -> dict:
     """飞书API标准请求
 

@@ -102,15 +102,13 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    k_cols = ['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']
-    df = df[k_cols]
     df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
          'low': 'min', 'vol': 'sum', 'amount': 'sum', 'freq_edt': 'last'})
     dfk1.reset_index(drop=True, inplace=True)
     dfk1['dt'] = dfk1['freq_edt']
-    dfk1 = dfk1[k_cols]
+    dfk1 = dfk1[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']]
 
     if raw_bars:
         _bars = []
