@@ -39,11 +39,15 @@ def use_czsc_trader_by_qmt():
     print(bars[-1])
 
     # 初始化交易对象
-    # trader = tactic.init_trader(bars, sdt='20200801')
+    trader = tactic.init_trader(bars, sdt='20200801')
 
-    # 执行策略回放，生成交易快照文件
-    trader = tactic.replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test", sdt='20170101', refresh=True)
-    print(trader.positions[0].evaluate_pairs())
+    # 执行策略回放，查看交易结果
+    for i in range(len(trader.positions)):
+        print(trader.positions[i].evaluate_pairs())
+
+    # # 执行策略回放，生成交易快照文件
+    # trader = tactic.replay(bars, res_path=r"C:\ts_data_czsc\trade_replay_test", sdt='20170101', refresh=True)
+    # print(trader.positions[0].evaluate_pairs())
 
 
 def example_qmt_manager():
