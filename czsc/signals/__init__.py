@@ -21,6 +21,7 @@ from czsc.signals.cxt import (
     cxt_bi_break_V221126,
     cxt_sub_b3_V221212,
     cxt_zhong_shu_gong_zhen_V221221,
+    cxt_bi_end_V230222,
 )
 
 
