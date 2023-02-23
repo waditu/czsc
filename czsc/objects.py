@@ -627,8 +627,9 @@ class Position:
         self.stop_loss = stop_loss
         self.T0 = T0
 
-        self.operates = []  # 事件触发的操作列表
-        self.holds = []     # 持仓状态列表
+        self.pos_changed = False    # 仓位是否发生变化
+        self.operates = []          # 事件触发的操作列表
+        self.holds = []             # 持仓状态列表
         self.pos = 0
 
         # 辅助判断的缓存数据
@@ -768,6 +769,7 @@ class Position:
             logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
             return
 
+        self.pos_changed = False
         op = Operate.HO
         op_desc = ""
         for event in self.events:
@@ -785,6 +787,7 @@ class Position:
             self.last_event = {'dt': dt, 'bid': bid, 'price': price, 'op': op, 'op_desc': op_desc}
 
         def __create_operate(_op, _op_desc):
+            self.pos_changed = True
             return {'symbol': self.symbol, 'dt': dt, 'bid': bid, 'price': price,
                     'op': _op, 'op_desc': _op_desc, 'pos': self.pos}
 
