@@ -96,20 +96,37 @@ class CzscStrategyBase(ABC):
             bars2 = [x for x in bars if x.dt > bg.end_dt]
             return bg, bars2
 
-    def init_trader(self, bars: List[RawBar], **kwargs):
+    def init_trader(self, bars: List[RawBar], **kwargs) -> CzscTrader:
         """使用策略定义初始化一个 CzscTrader 对象
+
+        **注意：** 这里会将所有持仓策略在 sdt 之后的交易信号计算出来并缓存在持仓策略实例内部，所以初始化的过程本身也是回测的过程。
 
         :param bars: 基础周期K线
         :param kwargs:
             bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
             sdt  初始化开始日期
             n    初始化最小K线数量
-        :return:
+        :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for bar in bars2:
             trader.on_bar(bar)
+        return trader
+
+    def backtest(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+        trader = self.init_trader(bars, **kwargs)
+        return trader
+
+    def dummy(self, sigs: List[dict], **kwargs) -> CzscTrader:
+        """使用信号缓存进行策略回测
+
+        :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
+        :return: 完成策略回测后的 CzscTrader 对象
+        """
+        trader = CzscTrader(positions=deepcopy(self.positions))
+        for sig in sigs:
+            trader.on_sig(sig)
         return trader
 
     def replay(self, bars: List[RawBar], res_path, **kwargs):
@@ -133,7 +150,7 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)

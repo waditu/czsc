@@ -137,6 +137,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
     :param df: 是否返回 df 格式的信号计算结果，默认 False
     :return: 信号计算结果
     """
+    freqs = [freq for freq in freqs if freq != bars[0].freq.value]
     sdt = pd.to_datetime(sdt)
     bars_left = [x for x in bars if x.dt < sdt]
     if len(bars_left) <= init_n:
@@ -232,7 +233,6 @@ class CzscTrader(CzscSignals):
 
         :param bg: bar generator 对象
         :param get_signals: 信号计算函数，输入是 CzscSignals 对象，输出是信号字典
-        :param positions: 持仓对象列表
         :param ensemble_method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max；也可以传入一个回调函数
 
             假设有三个仓位对象，当前仓位分别是 1, 1, -1
