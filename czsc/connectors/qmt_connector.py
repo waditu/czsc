@@ -332,7 +332,6 @@ class TraderCallback(XtQuantTraderCallback):
 
 class QmtTradeManager:
     """QMT交易管理器（这是一个案例性质的存在，真正实盘的时候请参考这个，根据自己的逻辑重新实现）"""
-
     def __init__(self, mini_qmt_dir, account_id, **kwargs):
         """
 
@@ -341,14 +340,15 @@ class QmtTradeManager:
         :param kwargs:
 
         """
-        self.symbols = kwargs.get('symbols', [])  # 交易标的列表
+        self.symbols = kwargs.get('symbols', [])    # 交易标的列表
         self.strategy = kwargs.get('strategy', [])  # 交易策略
         self.symbol_max_pos = kwargs.get('symbol_max_pos', 0.5)  # 每个标的最大持仓比例
-        self.trade_sdt = kwargs.get('trade_sdt', '20220601')  # 交易跟踪开始日期
+        self.trade_sdt = kwargs.get('trade_sdt', '20220601')     # 交易跟踪开始日期
         self.mini_qmt_dir = mini_qmt_dir
         self.account_id = account_id
         self.base_freq = self.strategy(symbol='symbol').sorted_freqs[0]
-        self.delta_days = int(kwargs.get('delta_days', 1))  # 定时执行获取的K线天数
+        self.delta_days = int(kwargs.get('delta_days', 1))              # 定时执行获取的K线天数
+        self.forbidden_symbols = kwargs.get('forbidden_symbols', [])    # 禁止交易的品种列表
 
         self.session = random.randint(10000, 20000)
         self.callback = TraderCallback(**kwargs.get('callback_params', {}))
@@ -406,6 +406,9 @@ class QmtTradeManager:
         :param price: 股票现价
         :return: True 允许开仓，False 不允许开仓
         """
+        if symbol in self.forbidden_symbols:
+            return False
+
         # 如果 未成交的开仓委托单 存在，不允许开仓
         if self.is_order_exist(symbol, order_type=23):
             logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
@@ -423,6 +426,24 @@ class QmtTradeManager:
         assets = self.get_assets()
         if assets.cash < price * 120:
             logger.warning(f"资金不足，无法开仓，symbol={symbol}")
+            return False
+
+        return True
+
+    def is_allow_exit(self, symbol):
+        """判断是否允许平仓
+
+        :param symbol: 股票代码
+        :return: True 允许开仓，False 不允许开仓
+        """
+        if symbol in self.forbidden_symbols:
+            return False
+
+        pos = self.query_stock_positions().get(symbol)
+        if not pos:
+            return False
+
+        if pos.can_use_volume <= 0:
             return False
 
         return True
@@ -459,7 +480,7 @@ class QmtTradeManager:
         """
         stock_code = kwargs.get('stock_code')
         order_type = kwargs.get('order_type')
-        order_volume = kwargs.get('order_volume')  # 委托数量, 股票以'股'为单位, 债券以'张'为单位
+        order_volume = kwargs.get('order_volume')   # 委托数量, 股票以'股'为单位, 债券以'张'为单位
         price_type = kwargs.get('price_type', xtconstant.LATEST_PRICE)
         price = kwargs.get('price', 0)
         strategy_name = kwargs.get('strategy_name', "程序下单")
@@ -500,7 +521,7 @@ class QmtTradeManager:
                         self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
 
                     # 平多头
-                    if trader.get_ensemble_pos(method='vote') == 0 and symbol in holds.keys():
+                    if trader.get_ensemble_pos(method='vote') == 0 and self.is_allow_exit(symbol):
                         order_volume = holds[symbol].can_use_volume
                         self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
 
@@ -563,6 +584,8 @@ class QmtTradeManager:
 
     def run(self, mode='30m'):
         """运行策略"""
+        self.report()
+
         if mode.lower() == '15m':
             _times = ["09:45", "10:00", "10:15", "10:30", "10:45", "11:00", "11:15", "11:30",
                       "13:15", "13:30", "13:45", "14:00", "14:15", "14:30", "14:45", "15:00"]
