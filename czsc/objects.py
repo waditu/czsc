@@ -658,25 +658,6 @@ class Position:
             raw.update({"pairs": self.pairs,  "holds": self.holds})
         return raw
 
-    def __two_operates_pair(self, op1, op2):
-        assert op1['op'] in [Operate.LO, Operate.SO]
-        pair = {
-            '标的代码': self.symbol,
-            '策略标记': self.name,
-            '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
-            '开仓时间': op1['dt'],
-            '平仓时间': op2['dt'],
-            '开仓价格': op1['price'],
-            '平仓价格': op2['price'],
-            '持仓K线数': op2['bid'] - op1['bid'],
-            '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
-            '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
-            '盈亏比例': op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price'],
-        }
-        # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
-        pair['盈亏比例'] = round(pair['盈亏比例'] * 10000, 2)
-        return pair
-
     @property
     def pairs(self):
         """开平交易列表
@@ -711,9 +692,27 @@ class Position:
         3. 持仓K线数，指基础周期K线数量
         """
         pairs = []
+
         for op1, op2 in zip(self.operates, self.operates[1:]):
-            if op1['op'] in [Operate.LO, Operate.SO]:
-                pairs.append(self.__two_operates_pair(op1, op2))
+            if op1['op'] not in [Operate.LO, Operate.SO]:
+                continue
+
+            ykr = op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price']
+            pair = {
+                '标的代码': self.symbol,
+                '策略标记': self.name,
+                '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
+                '开仓时间': op1['dt'],
+                '平仓时间': op2['dt'],
+                '开仓价格': op1['price'],
+                '平仓价格': op2['price'],
+                '持仓K线数': op2['bid'] - op1['bid'],
+                '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
+                '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
+                '盈亏比例': round(ykr * 10000, 2),  # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
+            }
+            pairs.append(pair)
+
         return pairs
 
     def evaluate_pairs(self, trade_dir: str = "多空") -> dict:
@@ -854,5 +853,5 @@ class Position:
                 self.pos = 0
                 self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
 
-        self.holds.append({"dt": self.end_dt, 'pos': self.pos})
+        self.holds.append({"dt": self.end_dt, 'pos': self.pos, 'price': price, 'bid': bid})
 
