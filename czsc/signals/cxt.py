@@ -406,3 +406,46 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{v2}次")
 
+
+def cxt_bi_end_V230224(c: CZSC, **kwargs):
+    """量价配合的笔结束辅助
+
+    **信号逻辑：**
+
+    1. 向下笔结束：fx_b 内最低的那根K线下影大于上影的两倍，同时fx_b内的平均成交量小于当前笔的平均成交量的0.618
+    2. 向上笔结束：fx_b 内最高的那根K线上影大于下影的两倍，同时fx_b内的平均成交量大于当前笔的平均成交量的2倍
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MO3_笔结束V230224_看多_任意_任意_0')
+    - Signal('15分钟_D1MO3_笔结束V230224_看空_任意_任意_0')
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    max_overlap = int(kwargs.get('max_overlap', 3))
+    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_笔结束V230224".split('_')
+    v1 = '其他'
+    if len(c.bi_list) <= 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    bi_bars = last_bi.raw_bars
+    bi_vol_mean = np.mean([x.vol for x in bi_bars])
+    fx_bars = last_bi.fx_b.raw_bars
+    fx_vol_mean = np.mean([x.vol for x in fx_bars])
+
+    bar1 = fx_bars[np.argmin([x.low for x in fx_bars])]
+    bar2 = fx_bars[np.argmax([x.high for x in fx_bars])]
+
+    if bar1.upper > bar1.lower * 2 and fx_vol_mean > bi_vol_mean * 2:
+        v1 = '看空'
+    elif 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
+        v1 = '看多'
+    else:
+        v1 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+

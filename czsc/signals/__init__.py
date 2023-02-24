@@ -22,6 +22,7 @@ from czsc.signals.cxt import (
     cxt_sub_b3_V221212,
     cxt_zhong_shu_gong_zhen_V221221,
     cxt_bi_end_V230222,
+    cxt_bi_end_V230224,
 )
 
 
@@ -55,6 +56,7 @@ from czsc.signals.bar import (
     bar_single_V230214,
     bar_amount_acc_V230214,
     bar_big_solid_V230215,
+    bar_vol_bs1_V230224,
 )
 
 from czsc.signals.jcc import (
