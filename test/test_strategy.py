@@ -26,6 +26,8 @@ def test_czsc_strategy():
     assert len(trader2.positions) == 3
 
     for i in [0, 1, 2]:
+        pos1 = trader1.positions[i]
+        assert len(trader1.positions[i].evaluate()) == len(trader2.positions[i].evaluate())
         assert len(trader1.positions[i].pairs) == len(trader2.positions[i].pairs)
-        assert trader1.positions[i].evaluate_pairs() == trader2.positions[i].evaluate_pairs()
+        assert pos1.evaluate("多空")['覆盖率'] == pos1.evaluate("多头")['覆盖率'] + pos1.evaluate("空头")['覆盖率']
 

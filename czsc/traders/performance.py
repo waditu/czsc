@@ -178,10 +178,10 @@ class PairsPerformance:
             "平均持仓天数": round(df_pairs['持仓天数'].mean(), 2),
             "平均持仓K线数": round(df_pairs['持仓K线数'].mean(), 2),
 
-            "平均单笔收益": round(df_pairs['盈亏比例'].mean() * 10000, 2),
-            "单笔收益标准差": round(df_pairs['盈亏比例'].std() * 10000, 2),
-            "最大单笔收益": round(df_pairs['盈亏比例'].max() * 10000, 2),
-            "最小单笔收益": round(df_pairs['盈亏比例'].min() * 10000, 2),
+            "平均单笔收益": round(df_pairs['盈亏比例'].mean(), 4),
+            "单笔收益标准差": round(df_pairs['盈亏比例'].std(), 4),
+            "最大单笔收益": round(df_pairs['盈亏比例'].max(), 4),
+            "最小单笔收益": round(df_pairs['盈亏比例'].min(), 4),
 
             "交易胜率": win_pct,
             "单笔盈亏比": single_gain_loss_rate,
