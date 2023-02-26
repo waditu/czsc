@@ -710,4 +710,3 @@ def bar_vol_bs1_V230224(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-

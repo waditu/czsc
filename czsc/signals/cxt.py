@@ -447,5 +447,3 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-
-
