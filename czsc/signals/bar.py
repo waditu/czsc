@@ -672,4 +672,39 @@ def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
+def bar_vol_bs1_V230224(c: CZSC, di: int = 1, n: int = 20, **kwargs):
+    """量价配合的高低点判断
 
+    **信号逻辑：**
+
+    1. 高点看空：窗口内最近一根K线上影大于下影的两倍，同时最高价和成交量同时创新高
+    2. 反之，低点看多
+
+    **信号列表：**
+
+    - Signal('15分钟_D2N34量价_BS1辅助_看多_任意_任意_0')
+    - Signal('15分钟_D2N34量价_BS1辅助_看空_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第i根K线
+    :param n: 窗口大小
+    :return: 信号字典
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}量价_BS1辅助".split('_')
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    mean_vol = np.mean([x.amount for x in _bars])
+
+    short_c1 = _bars[-1].high == max([x.high for x in _bars]) and _bars[-1].upper > 2 * _bars[-1].lower > 0
+    short_c2 = _bars[-1].amount > mean_vol * 3
+
+    long_c1 = _bars[-1].low == min([x.low for x in _bars]) and _bars[-1].lower > 2 * _bars[-1].upper > 0
+    long_c2 = _bars[-1].amount < mean_vol * 0.7
+
+    if short_c1 and short_c2:
+        v1 = '看空'
+    elif long_c1 and long_c2:
+        v1 = '看多'
+    else:
+        v1 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

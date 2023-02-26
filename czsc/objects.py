@@ -6,6 +6,9 @@ create_dt: 2021/3/10 12:21
 describe: 常用对象结构
 """
 import math
+import pandas as pd
+import numpy as np
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
@@ -627,15 +630,16 @@ class Position:
         self.stop_loss = stop_loss
         self.T0 = T0
 
+        self.pos_changed = False  # 仓位是否发生变化
         self.operates = []  # 事件触发的操作列表
-        self.holds = []     # 持仓状态列表
+        self.holds = []  # 持仓状态列表
         self.pos = 0
 
         # 辅助判断的缓存数据
         self.last_event = {'dt': None, 'bid': None, 'price': None, "op": None, 'op_desc': None}
-        self.last_lo_dt = None      # 最近一次开多交易的时间
-        self.last_so_dt = None      # 最近一次开空交易的时间
-        self.end_dt = None          # 最近一次信号传入的时间
+        self.last_lo_dt = None  # 最近一次开多交易的时间
+        self.last_so_dt = None  # 最近一次开空交易的时间
+        self.end_dt = None  # 最近一次信号传入的时间
 
     def __repr__(self):
         return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
@@ -654,27 +658,8 @@ class Position:
             "T0": self.T0,
         }
         if with_data:
-            raw.update({"pairs": self.pairs,  "holds": self.holds})
+            raw.update({"pairs": self.pairs, "holds": self.holds})
         return raw
-
-    def __two_operates_pair(self, op1, op2):
-        assert op1['op'] in [Operate.LO, Operate.SO]
-        pair = {
-            '标的代码': self.symbol,
-            '策略标记': self.name,
-            '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
-            '开仓时间': op1['dt'],
-            '平仓时间': op2['dt'],
-            '开仓价格': op1['price'],
-            '平仓价格': op2['price'],
-            '持仓K线数': op2['bid'] - op1['bid'],
-            '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
-            '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
-            '盈亏比例': op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price'],
-        }
-        # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
-        pair['盈亏比例'] = round(pair['盈亏比例'] * 10000, 2)
-        return pair
 
     @property
     def pairs(self):
@@ -710,9 +695,27 @@ class Position:
         3. 持仓K线数，指基础周期K线数量
         """
         pairs = []
+
         for op1, op2 in zip(self.operates, self.operates[1:]):
-            if op1['op'] in [Operate.LO, Operate.SO]:
-                pairs.append(self.__two_operates_pair(op1, op2))
+            if op1['op'] not in [Operate.LO, Operate.SO]:
+                continue
+
+            ykr = op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price']
+            pair = {
+                '标的代码': self.symbol,
+                '策略标记': self.name,
+                '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
+                '开仓时间': op1['dt'],
+                '平仓时间': op2['dt'],
+                '开仓价格': op1['price'],
+                '平仓价格': op2['price'],
+                '持仓K线数': op2['bid'] - op1['bid'],
+                '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
+                '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
+                '盈亏比例': round(ykr * 10000, 2),  # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
+            }
+            pairs.append(pair)
+
         return pairs
 
     def evaluate_pairs(self, trade_dir: str = "多空") -> dict:
@@ -758,6 +761,63 @@ class Position:
 
         return p
 
+    def evaluate_holds(self, trade_dir: str = "多空") -> dict:
+        """按持仓信号评估交易表现
+
+        :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
+        :return: 交易表现
+        """
+        holds = deepcopy(self.holds)
+        if trade_dir != '多空':
+            _OD = 1 if trade_dir == "多头" else -1
+            for hold in holds:
+                if hold['pos'] != 0 and hold['pos'] != _OD:
+                    hold['pos'] = 0
+
+        p = {"交易标的": self.symbol, "策略标记": self.name, "交易方向": trade_dir,
+             "开始时间": "", "结束时间": "",
+             '覆盖率': 0, '夏普': 0, '卡玛': 0, '最大回撤': 0, '年化收益': 0, '日胜率': 0}
+
+        if len(holds) == 0 or all(x['pos'] == 0 for x in holds):
+            return p
+
+        dfh = pd.DataFrame(holds)
+        dfh['n1b'] = (dfh['price'].shift(1) - dfh['price']) / dfh['price']
+        dfh['trade_date'] = dfh['dt'].apply(lambda x: x.strftime('%Y-%m-%d'))
+        dfh['edge'] = dfh['n1b'] * dfh['pos']  # 持有下一根K线的边际收益
+
+        # 按日期聚合
+        dfv = dfh.groupby('trade_date')['edge'].sum()
+        dfv = dfv.cumsum()
+
+        yearly_n = 252
+        yearly_ret = dfv.iloc[-1] * (yearly_n / len(dfv))
+        sharp = dfv.diff().mean() / dfv.diff().std() * pow(yearly_n, 0.5) if dfv.diff().std() != 0 else 0
+        df0 = dfv.shift(1).ffill().fillna(0)
+        mdd = (1 - (df0 + 1) / (df0 + 1).cummax()).max()
+        calmar = yearly_ret / mdd if mdd != 0 else 1
+
+        p.update({
+            "开始时间": dfh['dt'].iloc[0].strftime('%Y-%m-%d'),
+            "结束时间": dfh['dt'].iloc[-1].strftime('%Y-%m-%d'),
+            '覆盖率': round(len(dfh[dfh['pos'] != 0]) / len(dfh), 4),
+            '夏普': round(sharp, 4),
+            '卡玛': round(calmar, 4),
+            '最大回撤': round(mdd, 4),
+            '年化收益': round(yearly_ret, 4),
+            '日胜率': round(sum(dfv > 0) / len(dfv), 4)})
+        return p
+
+    def evaluate(self, trade_dir: str = "多空") -> dict:
+        """评估交易表现
+
+        :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
+        :return: 交易表现
+        """
+        p = self.evaluate_pairs(trade_dir)
+        p.update(self.evaluate_holds(trade_dir))
+        return p
+
     def update(self, s: dict):
         """更新持仓状态
 
@@ -768,6 +828,7 @@ class Position:
             logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
             return
 
+        self.pos_changed = False
         op = Operate.HO
         op_desc = ""
         for event in self.events:
@@ -785,6 +846,7 @@ class Position:
             self.last_event = {'dt': dt, 'bid': bid, 'price': price, 'op': op, 'op_desc': op_desc}
 
         def __create_operate(_op, _op_desc):
+            self.pos_changed = True
             return {'symbol': self.symbol, 'dt': dt, 'bid': bid, 'price': price,
                     'op': _op, 'op_desc': _op_desc, 'pos': self.pos}
 
@@ -851,5 +913,4 @@ class Position:
                 self.pos = 0
                 self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
 
-        self.holds.append({"dt": self.end_dt, 'pos': self.pos})
-
+        self.holds.append({"dt": self.end_dt, 'pos': self.pos, 'price': price, 'bid': bid})

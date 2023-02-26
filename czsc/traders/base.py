@@ -137,6 +137,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
     :param df: 是否返回 df 格式的信号计算结果，默认 False
     :return: 信号计算结果
     """
+    freqs = [freq for freq in freqs if freq != bars[0].freq.value]
     sdt = pd.to_datetime(sdt)
     bars_left = [x for x in bars if x.dt < sdt]
     if len(bars_left) <= init_n:
@@ -226,9 +227,24 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
 class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
-    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None, positions: List[Position] = None):
+    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None,
+                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean"):
+        """
+
+        :param bg: bar generator 对象
+        :param get_signals: 信号计算函数，输入是 CzscSignals 对象，输出是信号字典
+        :param ensemble_method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max；也可以传入一个回调函数
+
+            假设有三个仓位对象，当前仓位分别是 1, 1, -1
+            mean - 平均仓位，pos = np.mean([1, 1, -1]) = 0.33
+            vote - 投票表决，pos = 1
+            max  - 取最大，pos = 1
+
+            对于传入回调函数的情况，输入是 self.positions
+        """
         super().__init__(bg, get_signals=get_signals)
         self.positions = positions
+        self.__ensemble_method = ensemble_method
 
     def update(self, bar: RawBar) -> None:
         """输入基础周期已完成K线，更新信号，更新仓位
@@ -264,7 +280,17 @@ class CzscTrader(CzscSignals):
         """
         self.update(bar)
 
-    def get_ensemble_pos(self, method: Union[AnyStr, Callable] = "mean"):
+    @property
+    def pos_changed(self) -> bool:
+        """判断仓位是否发生变化
+
+        :return: True/False
+        """
+        if not self.positions:
+            return False
+        return any([position.pos_changed for position in self.positions])
+
+    def get_ensemble_pos(self, method: Union[AnyStr, Callable] = None) -> float:
         """获取多个仓位的集成仓位
 
         :param method: 多个仓位集成一个仓位的方法，可选值 mean, vote, max；也可以传入一个回调函数
@@ -281,6 +307,7 @@ class CzscTrader(CzscSignals):
         if not self.positions:
             return 0
 
+        method = self.__ensemble_method if not method else method
         if isinstance(method, str):
             method = method.lower()
             pos_seq = [x.pos for x in self.positions]

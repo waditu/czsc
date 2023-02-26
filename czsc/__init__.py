@@ -15,12 +15,14 @@ from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals
 from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs
+from czsc.strategies import CzscStrategyBase
+from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
 
 
-__version__ = "0.9.8"
+__version__ = "0.9.9"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230210"
+__date__ = "20230220"
 
 
 if envs.get_welcome():

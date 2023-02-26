@@ -223,7 +223,12 @@ def test_czsc_trader():
                     positions=[__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()])
     for bar in bars_right:
         ct.update(bar)
-        print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
+        for _pos in ct.positions:
+            if _pos.pos_changed:
+                assert _pos.operates[-1]['dt'] == _pos.end_dt
+                print(_pos.name, _pos.operates[-1], _pos.end_dt, _pos.pos)
+                assert ct.pos_changed
+        # print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
     assert list(ct.positions[0].dump(False).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0']
     assert list(ct.positions[0].dump(True).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0', 'pairs', 'holds']

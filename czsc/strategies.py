@@ -96,20 +96,37 @@ class CzscStrategyBase(ABC):
             bars2 = [x for x in bars if x.dt > bg.end_dt]
             return bg, bars2
 
-    def init_trader(self, bars: List[RawBar], **kwargs):
+    def init_trader(self, bars: List[RawBar], **kwargs) -> CzscTrader:
         """使用策略定义初始化一个 CzscTrader 对象
+
+        **注意：** 这里会将所有持仓策略在 sdt 之后的交易信号计算出来并缓存在持仓策略实例内部，所以初始化的过程本身也是回测的过程。
 
         :param bars: 基础周期K线
         :param kwargs:
             bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
             sdt  初始化开始日期
             n    初始化最小K线数量
-        :return:
+        :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for bar in bars2:
             trader.on_bar(bar)
+        return trader
+
+    def backtest(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+        trader = self.init_trader(bars, **kwargs)
+        return trader
+
+    def dummy(self, sigs: List[dict], **kwargs) -> CzscTrader:
+        """使用信号缓存进行策略回测
+
+        :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
+        :return: 完成策略回测后的 CzscTrader 对象
+        """
+        trader = CzscTrader(positions=deepcopy(self.positions))
+        for sig in sigs:
+            trader.on_sig(sig)
         return trader
 
     def replay(self, bars: List[RawBar], res_path, **kwargs):
@@ -133,7 +150,7 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)
@@ -252,3 +269,117 @@ class CzscStrategyExample1(CzscStrategyBase):
                        interval=0, timeout=20, stop_loss=50)
         return pos
 
+
+class CzscStocksBeta(CzscStrategyBase):
+    """CZSC 股票 Beta 策略"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @classmethod
+    def get_signals(cls, cat) -> OrderedDict:
+        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='全天', span=('0935', '1450')))
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='上午', span=('0935', '1130')))
+        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='下午', span=('1300', '1450')))
+        s.update(signals.bar_zdt_V221110(cat.kas['15分钟'], di=1))
+
+        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=1, key='macd'))
+        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=5, key='macd'))
+
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=1, ma_type='SMA', timeperiod=5))
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=2, ma_type='SMA', timeperiod=5))
+        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=5, ma_type='SMA', timeperiod=5))
+        return s
+
+    @property
+    def positions(self):
+        beta1 = self.create_beta1()
+        beta2 = self.create_beta2()
+        pos_list = [deepcopy(beta1), deepcopy(beta2)]
+        return pos_list
+
+    @property
+    def freqs(self):
+        return ['日线', '60分钟', '30分钟', '15分钟']
+
+    def create_beta1(self):
+        """60分钟MACD金叉
+
+        **策略描述：**
+
+        1. 60分钟MACD金叉开多
+        2. 60分钟MACD死叉平多
+        """
+        opens = [
+            {'name': '开多',
+             'operate': '开多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
+             'factors': [{'name': '60分钟MACD金叉',
+                          'signals_all': ['全天_0935_1450_是_任意_任意_0',
+                                          '60分钟_D1K_MACD_多头_任意_任意_0',
+                                          '60分钟_D5K_MACD_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}
+                         ]},
+        ]
+
+        exits = [
+            {'name': '平多',
+             'operate': '平多',
+             'signals_all': ['全天_0935_1450_是_任意_任意_0'],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
+             'factors': [{'name': '60分钟MACD死叉',
+                          'signals_all': ['60分钟_D1K_MACD_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]},
+
+        ]
+        pos = Position(name="60分钟MACD金叉", symbol=self.symbol,
+                       opens=[Event.load(x) for x in opens],
+                       exits=[Event.load(x) for x in exits],
+                       interval=3600 * 4, timeout=16 * 30, stop_loss=500)
+        return pos
+
+    def create_beta2(self):
+        """5日线多头
+
+        **策略特征：**
+
+
+        """
+        opens = [
+            {'name': '开多',
+             'operate': '开多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
+             'factors': [{'name': '站上SMA5',
+                          'signals_all': ['上午_0935_1130_是_任意_任意_0',
+                                          '日线_D1K_SMA5_多头_任意_任意_0',
+                                          '日线_D5K_SMA5_空头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]}
+        ]
+
+        exits = [
+            {'name': '平多',
+             'operate': '平多',
+             'signals_all': [],
+             'signals_any': [],
+             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
+             'factors': [{'name': '跌破SMA5',
+                          'signals_all': ['下午_1300_1450_是_任意_任意_0',
+                                          '日线_D1K_SMA5_空头_任意_任意_0',
+                                          '日线_D2K_SMA5_多头_任意_任意_0'],
+                          'signals_any': [],
+                          'signals_not': []}]}
+        ]
+        pos = Position(name="5日线多头", symbol=self.symbol,
+                       opens=[Event.load(x) for x in opens],
+                       exits=[Event.load(x) for x in exits],
+                       interval=3600 * 4, timeout=16 * 40, stop_loss=500)
+        return pos
