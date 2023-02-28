@@ -19,10 +19,10 @@ from czsc.strategies import CzscStrategyBase
 from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
 
 
-__version__ = "0.9.9"
+__version__ = "0.9.10"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230220"
+__date__ = "20230228"
 
 
 if envs.get_welcome():

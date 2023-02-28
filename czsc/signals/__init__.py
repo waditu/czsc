@@ -57,6 +57,8 @@ from czsc.signals.bar import (
     bar_amount_acc_V230214,
     bar_big_solid_V230215,
     bar_vol_bs1_V230224,
+    bar_reversal_V230227,
+    bar_bpm_V230227,
 )
 
 from czsc.signals.jcc import (
@@ -114,6 +116,7 @@ from czsc.signals.tas import (
     tas_kdj_evc_V221201,
 
     tas_double_rsi_V221203,
+    tas_rsi_base_V230227,
 
     tas_first_bs_V230217,
 )

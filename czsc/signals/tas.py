@@ -109,6 +109,48 @@ def update_macd_cache(c: CZSC, **kwargs):
     return cache_key
 
 
+def update_boll_cache_V230228(c: CZSC, **kwargs):
+    """更新K线的BOLL缓存，仅传入一个标准差倍数
+
+    :param c: 交易对象
+    :return:
+    """
+    timeperiod = kwargs.get('timeperiod', 20)
+    nbdev = int(kwargs.get('nbdev', 20)) / 10   # 标准差倍数，计算时除以10，如20表示2.0，即2倍标准差
+    cache_key = f"BOLL{timeperiod}S{nbdev}"
+
+    if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
+        # 如果最后一根K线已经有对应的缓存，不执行更新
+        return cache_key
+
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+        # 初始化缓存
+        close = np.array([x.close for x in c.bars_raw])
+        u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=nbdev, nbdevdn=nbdev, matype=0)
+
+        for i in range(len(close)):
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            if not m[i]:
+                _data = {"上轨": close[i], "中线": close[i], "下轨": close[i]}
+            else:
+                _data = {"上轨": u1[i], "中线": m[i], "下轨": l1[i]}
+            _c.update({cache_key: _data})
+            c.bars_raw[i].cache = _c
+
+    else:
+        # 增量更新最近5个K线缓存
+        close = np.array([x.close for x in c.bars_raw[-timeperiod - 10:]])
+        u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=nbdev, nbdevdn=nbdev, matype=0)
+
+        for i in range(1, 6):
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c.update({cache_key: {"上轨": u1[i], "中线": m[i], "下轨": l1[i]}})
+            c.bars_raw[-i].cache = _c
+
+    return cache_key
+
+
 def update_boll_cache(c: CZSC, **kwargs):
     """更新K线的BOLL缓存
 
@@ -996,6 +1038,49 @@ def update_rsi_cache(c: CZSC, **kwargs):
             c.bars_raw[-i].cache = _c
 
     return cache_key
+
+
+def tas_rsi_base_V230227(c: CZSC, di=1, n: int = 6, th: int = 20, **kwargs) -> OrderedDict:
+    """RSI超买超卖信号
+
+    **信号逻辑：**
+
+    在正常情况下，RSI指标都会在30-70的区间内波动。当6日RSI超过80时，表示市场已经处于超买区间。6日RSI达到90以上时，
+    表示市场已经严重超买，股价极有可能已经达到阶段顶点。这时投资者应该果断卖出。当6日RSI下降到20时，表示市场已经处于
+    超卖区间。6日RSI一旦下降到10以下，则表示市场已经严重超卖，股价极有可能会止跌回升，是很好的买入信号。
+
+    **信号列表：**
+
+    - Signal('日线_D2T20_RSI6V230227_超卖_向下_任意_0')
+    - Signal('日线_D2T20_RSI6V230227_超买_向上_任意_0')
+    - Signal('日线_D2T20_RSI6V230227_超买_向下_任意_0')
+    - Signal('日线_D2T20_RSI6V230227_超卖_向上_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线
+    :param n: RSI的计算周期
+    :param th: RSI阈值
+    :return: 信号识别结果
+    """
+    cache_key = update_rsi_cache(c, timeperiod=n)
+    k1, k2, k3, v1 = str(c.freq.value), f"D{di}T{th}", f"{cache_key}V230227", "其他"
+    _bars = get_sub_elements(c.bars_raw, di=di, n=2)
+    if len(_bars) != 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    rsi1 = _bars[-1].cache[cache_key]
+    rsi2 = _bars[-2].cache[cache_key]
+
+    if rsi1 <= th:
+        v1 = "超卖"
+    elif rsi1 >= 100 - th:
+        v1 = "超买"
+    else:
+        v1 = "其他"
+
+    v2 = "向上" if rsi1 >= rsi2 else "向下"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def tas_double_rsi_V221203(c: CZSC, di: int = 1, rsi_seq=(5, 10), **kwargs) -> OrderedDict:
