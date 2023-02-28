@@ -782,7 +782,7 @@ class Position:
             return p
 
         dfh = pd.DataFrame(holds)
-        dfh['n1b'] = (dfh['price'].shift(1) - dfh['price']) / dfh['price']
+        dfh['n1b'] = (dfh['price'].shift(-1) - dfh['price']) / dfh['price']
         dfh['trade_date'] = dfh['dt'].apply(lambda x: x.strftime('%Y-%m-%d'))
         dfh['edge'] = dfh['n1b'] * dfh['pos']  # 持有下一根K线的边际收益
 
