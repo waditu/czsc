@@ -22,7 +22,6 @@ from czsc.utils import WordWriter, io
 from czsc.utils.plt_plot import plot_bins_return
 from czsc.data.ts_cache import TsDataCache, Freq
 from czsc.traders import generate_czsc_signals
-from czsc.traders.performance import stock_holds_performance
 from czsc.sensors.utils import get_index_beta, turn_over_rate, max_draw_down, discretizer
 
 
@@ -385,6 +384,8 @@ class MeanPlatesSensor:
 
         exp_name = f"P{'#'.join([str(x) for x in mean_col_bins])}"
         res_path = os.path.join(self.exp_path, exp_name)
+
+        from czsc.traders.performance import stock_holds_performance
         stock_holds_performance(self.dc, dfh, res_path)
         return dfh
 
@@ -449,6 +450,7 @@ class MeanPlatesSensor:
         exp_name = f"P{'#'.join([str(x) for x in mean_col_bins])}_" \
                    f"{sort_col}{'#'.join([str(x) for x in sort_col_bins])}_{max_num}_{max_adj}"
         res_path = os.path.join(self.exp_path, exp_name)
+        from czsc.traders.performance import stock_holds_performance
         stock_holds_performance(self.dc, dfh, res_path=res_path)
         return dfh
 
