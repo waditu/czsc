@@ -165,6 +165,15 @@ def get_symbols(step):
     return stocks_map[step]
 
 
+def is_trade_time():
+    """判断当前是否是A股交易时间"""
+    now = datetime.now().strftime("%H:%M")
+    if now < "09:15" or now > "15:00":
+        return False
+    else:
+        return True
+
+
 class TraderCallback(XtQuantTraderCallback):
     """基础回调类，主要是一些日志和IM通知功能"""
 
@@ -206,9 +215,9 @@ class TraderCallback(XtQuantTraderCallback):
 
     def on_disconnected(self):
         """连接断开"""
-
         logger.info("connection lost")
-        self.push_message("连接断开")
+        if is_trade_time():
+            self.push_message("连接断开")
 
     def on_stock_order(self, order):
         """委托回报推送
@@ -217,7 +226,7 @@ class TraderCallback(XtQuantTraderCallback):
         """
         logger.info(f"on order callback: {order.stock_code} {order.order_status} {order.order_sysid}")
 
-        if self.feishu_push_mode == 'detail':
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             msg = f"委托回报通知：\n{'*' * 31}\n" \
                   f"时间：{datetime.now().strftime(dt_fmt)}\n" \
                   f"标的：{order.stock_code}\n" \
@@ -232,7 +241,7 @@ class TraderCallback(XtQuantTraderCallback):
         """
         logger.info(f"on asset callback: {asset.account_id} {asset.cash} {asset.total_asset}")
 
-        if self.feishu_push_mode == 'detail':
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             msg = f"资金变动通知: \n{'*' * 31}\n" \
                   f"时间：{datetime.now().strftime(dt_fmt)}\n" \
                   f"账户ID: {asset.account_id} \n" \
@@ -247,7 +256,7 @@ class TraderCallback(XtQuantTraderCallback):
         """
         logger.info(f"on trade callback: {trade.account_id} {trade.stock_code} {trade.order_id}")
 
-        if self.feishu_push_mode == 'detail':
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             msg = f"成交变动通知：\n{'*' * 31}\n" \
                   f"时间：{datetime.now().strftime(dt_fmt)}\n" \
                   f"标的：{trade.stock_code}\n" \
@@ -263,7 +272,7 @@ class TraderCallback(XtQuantTraderCallback):
         """
         logger.info(f"on position callback: {position.stock_code} {position.volume}")
 
-        if self.feishu_push_mode == 'detail':
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             msg = f"持仓变动通知: \n{'*' * 31}\n" \
                   f"时间：{datetime.now().strftime(dt_fmt)}\n" \
                   f"标的：{position.stock_code}\n" \
@@ -275,38 +284,43 @@ class TraderCallback(XtQuantTraderCallback):
 
         :param order_error:XtOrderError 对象
         """
-        msg = f"委托失败通知: \n{'*' * 31}\n" \
-              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-              f"订单编号：{order_error.order_id}\n" \
-              f"错误编码：{order_error.error_id}\n" \
-              f"失败原因：{order_error.error_msg}"
-        self.push_message(msg, msg_type='text')
         logger.info(f"on order_error callback: {order_error.order_id} {order_error.error_id} {order_error.error_msg}")
+
+        if is_trade_time():
+            msg = f"委托失败通知: \n{'*' * 31}\n" \
+                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+                  f"订单编号：{order_error.order_id}\n" \
+                  f"错误编码：{order_error.error_id}\n" \
+                  f"失败原因：{order_error.error_msg}"
+            self.push_message(msg, msg_type='text')
 
     def on_cancel_error(self, cancel_error):
         """撤单失败推送
 
         :param cancel_error: XtCancelError 对象
         """
-        msg = f"撤单失败通知: \n{'*' * 31}\n" \
-              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-              f"订单编号：{cancel_error.order_id}\n" \
-              f"错误编码：{cancel_error.error_id}\n" \
-              f"失败原因：{cancel_error.error_msg}"
-        self.push_message(msg, msg_type='text')
         logger.info(f"{cancel_error.order_id} {cancel_error.error_id} {cancel_error.error_msg}")
+
+        if is_trade_time():
+            msg = f"撤单失败通知: \n{'*' * 31}\n" \
+                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+                  f"订单编号：{cancel_error.order_id}\n" \
+                  f"错误编码：{cancel_error.error_id}\n" \
+                  f"失败原因：{cancel_error.error_msg}"
+            self.push_message(msg, msg_type='text')
 
     def on_order_stock_async_response(self, response):
         """异步下单回报推送
 
         :param response: XtOrderResponse 对象
         """
-        msg = f"异步下单回报推送: \n{'*' * 31}\n" \
-              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-              f"资金账号：{response.account_id}\n" \
-              f"订单编号：{response.order_id}\n" \
-              f"策略名称：{response.strategy_name}"
-        self.push_message(msg, msg_type='text')
+        if is_trade_time():
+            msg = f"异步下单回报推送: \n{'*' * 31}\n" \
+                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+                  f"资金账号：{response.account_id}\n" \
+                  f"订单编号：{response.order_id}\n" \
+                  f"策略名称：{response.strategy_name}"
+            self.push_message(msg, msg_type='text')
         logger.info(f"on_order_stock_async_response: {response.order_id} {response.seq}")
 
     def on_account_status(self, status):
@@ -327,7 +341,9 @@ class TraderCallback(XtQuantTraderCallback):
         logger.info(f"账户ID: {status.account_id} "
                     f"账号类型：{'证券账户' if status.account_type == 2 else '其他'} "
                     f"账户状态：{status_map[status.status]}")
-        self.push_message(msg, msg_type='text')
+
+        if is_trade_time():
+            self.push_message(msg, msg_type='text')
 
 
 class QmtTradeManager:
