@@ -13,7 +13,7 @@ from czsc import aphorism
 from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
-from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals
+from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals, check_signals_acc
 from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs, stock_holds_performance
 from czsc.strategies import CzscStrategyBase
 from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
