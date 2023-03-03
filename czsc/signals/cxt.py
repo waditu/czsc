@@ -15,6 +15,38 @@ from czsc.utils import get_sub_elements, create_single_signal
 from collections import OrderedDict
 
 
+def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
+    """BI基础信号
+
+    **信号逻辑：**
+
+    1. 取最后一个笔，最后一笔向下，则当前笔向上，最后一笔向上，则当前笔向下；
+    2. 根据延伸K线数量判断当前笔的状态，中继或转折。
+
+    **信号列表：**
+
+    - Signal('15分钟_D0B_V230228_向下_中继_任意_0')
+    - Signal('15分钟_D0B_V230228_向上_转折_任意_0')
+    - Signal('15分钟_D0B_V230228_向下_转折_任意_0')
+    - Signal('15分钟_D0B_V230228_向上_中继_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D0B_V230228".split('_')
+    v1 = '其他'
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    assert last_bi.direction in [Direction.Up, Direction.Down]
+    v1 = '向上' if last_bi.direction == Direction.Down else '向下'
+    v2 = "中继" if len(c.bars_ubi) >= 9 else "转折"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
 def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     """倒数第di个分型的强弱
 

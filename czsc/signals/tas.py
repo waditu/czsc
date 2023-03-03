@@ -1178,3 +1178,45 @@ def tas_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, **kwargs) -> Ordered
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+# 买卖点辅助判断
+# ======================================================================================================================
+def tas_second_bs_V230228(c: CZSC, di: int = 1, n: int = 21, **kwargs) -> OrderedDict:
+    """均线结合K线形态的第二买卖点辅助判断
+
+    **信号逻辑：**
+
+    1. 二买辅助：1）MA20创新高且向上；2）近三根K线最低价跌破 MA20，且当前收盘价在MA20上
+    2. 反之，二卖辅助。
+
+    **信号列表：**
+
+    - Signal('日线_D2N21SMA20_BS2辅助V230228_二卖_任意_任意_0')
+    - Signal('日线_D2N21SMA20_BS2辅助V230228_二买_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几根K线，1表示最后一根K线
+    :param n: 窗口大小
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    ma_type = kwargs.get('ma_type', 'SMA')
+    timeperiod = kwargs.get('timeperiod', 20)
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{timeperiod}_BS2辅助V230228".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < n + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    sma = [x.cache[key] for x in _bars]
+    min_three = any([x.cache[key] > x.low for x in _bars[-3:]])
+    max_three = any([x.high > x.cache[key] for x in _bars[-3:]])
+
+    if max(sma) == sma[-1] > sma[-2] and _bars[-1].close > sma[-1] and min_three:
+        v1 = '二买'
+    elif min(sma) == sma[-1] < sma[-2] and _bars[-1].close < sma[-1] and max_three:
+        v1 = '二卖'
+    else:
+        v1 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

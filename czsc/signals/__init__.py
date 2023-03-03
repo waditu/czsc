@@ -23,6 +23,7 @@ from czsc.signals.cxt import (
     cxt_zhong_shu_gong_zhen_V221221,
     cxt_bi_end_V230222,
     cxt_bi_end_V230224,
+    cxt_bi_base_V230228,
 )
 
 
@@ -119,6 +120,7 @@ from czsc.signals.tas import (
     tas_rsi_base_V230227,
 
     tas_first_bs_V230217,
+    tas_second_bs_V230228,
 )
 
 
