@@ -121,6 +121,10 @@ from czsc.signals.tas import (
 
     tas_first_bs_V230217,
     tas_second_bs_V230228,
+    tas_second_bs_V230303,
+
+    tas_hlma_V230301,
+    tas_hlma_V230304,
 )
 
 

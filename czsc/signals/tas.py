@@ -15,7 +15,7 @@ except:
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
 from czsc.analyze import CZSC
-from czsc.objects import Signal, Direction
+from czsc.objects import Signal, Direction, BI, RawBar
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from collections import OrderedDict
 
@@ -1220,3 +1220,142 @@ def tas_second_bs_V230228(c: CZSC, di: int = 1, n: int = 21, **kwargs) -> Ordere
         v1 = '其他'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_second_bs_V230303(c: CZSC, di: int = 1, **kwargs):
+    """利用笔和均线辅助二买信号生成
+
+    **信号逻辑：**
+
+    1. 最近5笔创新低，且最近一向下笔最低点跌破中期均线，且中期均线向上，二买信号；
+    2. 反之，二卖信号。
+
+    **信号列表**
+
+    - Signal('15分钟_D1SMA34_BS2辅助V230303_二买_任意_任意_0')
+    - Signal('15分钟_D1SMA34_BS2辅助V230303_二卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 指定倒数第几笔
+    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    :param timeperiod: 均线计算周期
+    :return: 信号识别结果
+    """
+    ma_type = kwargs.get('ma_type', 'SMA')
+    timeperiod = kwargs.get('timeperiod', 30)
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f'{c.freq.value}_D{di}{key}_BS2辅助V230303'.split('_')
+    v1 = '其他'
+
+    if len(c.bi_list) < di + 13:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bi_list = get_sub_elements(c.bi_list, di=di, n=13)
+    last_bi: BI = _bi_list[-1]
+    first_bar: RawBar = last_bi.raw_bars[0]
+    last_bar: RawBar = last_bi.raw_bars[-1]
+
+    if last_bi.direction == Direction.Down and last_bar.low < last_bar.cache[key] \
+            and min([x.low for x in _bi_list[-5:]]) == min([x.low for x in _bi_list]) \
+            and first_bar.cache[key] < last_bar.cache[key]:
+        v1 = "二买"
+
+    if last_bi.direction == Direction.Up and last_bar.high > last_bar.cache[key] \
+            and max([x.high for x in _bi_list[-5:]]) == max([x.high for x in _bi_list]) \
+            and first_bar.cache[key] > last_bar.cache[key]:
+        v1 = "二卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_hlma_V230301(c: CZSC, di: int = 1, timeperiod=3, **kwargs) -> OrderedDict:
+    """HMA 多空信号
+
+    **信号逻辑：**
+
+    1. 收盘价大于HMA and 上一根K线的收盘价小于均线
+    2. 收盘价小于LMA and 上一根K线的收盘价大于均线
+
+    **信号列表：**
+
+    - Signal('30分钟_D2SMA3HLMA_V230301_看多_任意_任意_0')
+    - Signal('30分钟_D2SMA3HLMA_V230301_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param ma_type: 均线类型，必须是 ma_type_map 中的 key
+    :param timeperiod: 均线周期
+    :return:
+    """
+    ma_type = kwargs.get("ma_type", "SMA").upper()
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}{key}HLMA_V230301".split('_')
+    _bars = get_sub_elements(c.bars_raw, di=di, n=timeperiod)
+
+    hma = np.mean([x.high for x in _bars])
+    lma = np.mean([x.low for x in _bars])
+
+    if _bars[-1].close > hma and _bars[-2].close <= _bars[-2].cache[key]:
+        v1 = "看多"
+    elif _bars[-1].close < lma and _bars[-2].close >= _bars[-2].cache[key]:
+        v1 = "看空"
+    else:
+        v1 = "其他"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_hlma_V230304(c: CZSC, di: int = 1, n=3) -> OrderedDict:
+    """HMA多空信号；贡献者：琅盎
+
+    **信号逻辑：**
+
+    1. 收盘价大于HMA and 上一根K线的收盘价小于昨日HMA开多
+    2. 收盘价小于LMA and 上一根K线的收盘价大于昨日LMA开多
+
+    **信号列表：**
+
+    - Signal('30分钟_D2N34HLMA_V230304_看空_任意_任意_0')
+    - Signal('30分钟_D2N34HLMA_V230304_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param n: high均线计算周期
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}HLMA_V230304".split('_')
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+
+    hma = np.mean([x.high for x in _bars])
+    lma = np.mean([x.low for x in _bars])
+
+    # 使用缓存来更新信号的数据
+    cache_key = 'tas_hlma_V230304'
+    hlma = c.cache.get(cache_key, None)
+    _today = _bars[-1].dt.strftime('%Y-%m-%d')
+
+    if not hlma:
+        hlma = {'yesterday': _today, 'yesterday_hma': hma, 'yesterday_lma': lma,
+                'today': _today, 'today_hma': hma, 'today_lma': lma}
+
+    if _today != hlma['yesterday']:
+        hlma['yesterday_hma'] = hlma['today_hma']
+        hlma['yesterday_lma'] = hlma['today_lma']
+        hlma['yesterday'] = hlma['today']
+
+    hlma['today'] = _today
+    hlma['today_hma'] = hma
+    hlma['today_lma'] = lma
+
+    c.cache[cache_key] = hlma
+
+    # 生成信号
+    if _bars[-1].close > hma and _bars[-2].close <= hlma['yesterday_hma']:
+        v1 = "看多"
+    elif _bars[-1].close < lma and _bars[-2].close >= hlma['yesterday_lma']:
+        v1 = "看空"
+    else:
+        v1 = "其他"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
