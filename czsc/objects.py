@@ -17,9 +17,6 @@ from typing import List, Callable
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
 
-long_operates = [Operate.HO, Operate.LO, Operate.LA1, Operate.LA2, Operate.LE, Operate.LR1, Operate.LR2]
-shor_operates = [Operate.HO, Operate.SO, Operate.SA1, Operate.SA2, Operate.SE, Operate.SR1, Operate.SR2]
-
 
 @dataclass
 class Tick:
