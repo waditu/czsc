@@ -190,6 +190,8 @@ class CZSC:
         self.freq = bars[0].freq
         self.get_signals = get_signals
         self.signals = None
+        # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
+        self.cache = OrderedDict()
 
         for bar in bars:
             self.update(bar)

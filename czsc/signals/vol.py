@@ -14,7 +14,6 @@ except:
 import numpy as np
 from collections import OrderedDict
 from czsc.analyze import CZSC
-from czsc.objects import Freq, Signal
 from czsc.utils.sig import get_sub_elements, create_single_signal
 
 
@@ -84,12 +83,10 @@ def vol_single_ma_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param di: 信号计算截止倒数第i根K线
-    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    :param timeperiod: 均线计算周期
     :return: 信号识别结果
     """
-    ma_type = kwargs.get("ma_type", "SMA")
-    timeperiod = kwargs.get("timeperiod", 5)
+    ma_type = kwargs.get("ma_type", "SMA")          # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    timeperiod = kwargs.get("timeperiod", 5)        # timeperiod: 均线计算周期
     cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
 
     k1, k2, k3 = f"{c.freq.value}_D{di}_{cache_key}".split('_')

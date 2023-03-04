@@ -8,6 +8,7 @@ describe: QMT 量化交易平台接口
 import os
 import time
 import random
+import czsc
 import pandas as pd
 from typing import List
 from tqdm import tqdm
@@ -165,6 +166,15 @@ def get_symbols(step):
     return stocks_map[step]
 
 
+def is_trade_time():
+    """判断当前是否是A股交易时间"""
+    now = datetime.now().strftime("%H:%M")
+    if now < "09:15" or now > "15:00":
+        return False
+    else:
+        return True
+
+
 class TraderCallback(XtQuantTraderCallback):
     """基础回调类，主要是一些日志和IM通知功能"""
 
@@ -206,23 +216,35 @@ class TraderCallback(XtQuantTraderCallback):
 
     def on_disconnected(self):
         """连接断开"""
-
         logger.info("connection lost")
-        self.push_message("连接断开")
+        if is_trade_time():
+            self.push_message("连接断开")
 
     def on_stock_order(self, order):
         """委托回报推送
 
         :param order: XtOrder对象
+            http://docs.thinktrader.net/pages/198696/#%E5%A7%94%E6%89%98xtorder
+            http://docs.thinktrader.net/pages/198696/#%E5%A7%94%E6%89%98%E7%8A%B6%E6%80%81-order-status
         """
-        logger.info(f"on order callback: {order.stock_code} {order.order_status} {order.order_sysid}")
+        order_status_map = {xtconstant.ORDER_UNREPORTED: '未报', xtconstant.ORDER_WAIT_REPORTING: '待报',
+                            xtconstant.ORDER_REPORTED: '已报', xtconstant.ORDER_REPORTED_CANCEL: '已报待撤',
+                            xtconstant.ORDER_PARTSUCC_CANCEL: '部成待撤', xtconstant.ORDER_PART_CANCEL: '部撤',
+                            xtconstant.ORDER_CANCELED: '已撤', xtconstant.ORDER_PART_SUCC: '部成',
+                            xtconstant.ORDER_SUCCEEDED: '已成', xtconstant.ORDER_JUNK: '废单',
+                            xtconstant.ORDER_UNKNOWN: '未知',
+                            }
 
-        if self.feishu_push_mode == 'detail':
-            msg = f"委托回报通知：\n{'*' * 31}\n" \
-                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-                  f"标的：{order.stock_code}\n" \
-                  f"方向：{'做多' if order.order_type == 23 else '平多'}\n" \
-                  f"委托数量：{int(order.order_volume)}"
+        msg = f"委托回报通知：\n{'*' * 31}\n" \
+              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户：{order.account_id}\n" \
+              f"标的：{order.stock_code}\n" \
+              f"方向：{'做多' if order.order_type == 23 else '平多'}\n" \
+              f"数量：{int(order.order_volume)}\n" \
+              f"价格：{order.price}\n" \
+              f"状态：{order_status_map[order.order_status]}"
+        logger.info(f"on order callback: {msg}")
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             self.push_message(msg, msg_type='text')
 
     def on_stock_asset(self, asset):
@@ -230,14 +252,13 @@ class TraderCallback(XtQuantTraderCallback):
 
         :param asset: XtAsset对象
         """
-        logger.info(f"on asset callback: {asset.account_id} {asset.cash} {asset.total_asset}")
-
-        if self.feishu_push_mode == 'detail':
-            msg = f"资金变动通知: \n{'*' * 31}\n" \
-                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-                  f"账户ID: {asset.account_id} \n" \
-                  f"可用资金：{asset.cash} \n" \
-                  f"总资产：{asset.total_asset}"
+        msg = f"资金变动通知: \n{'*' * 31}\n" \
+              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户: {asset.account_id} \n" \
+              f"可用资金：{asset.cash} \n" \
+              f"总资产：{asset.total_asset}"
+        logger.info(f"on asset callback: {msg}")
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             self.push_message(msg, msg_type='text')
 
     def on_stock_trade(self, trade):
@@ -245,15 +266,15 @@ class TraderCallback(XtQuantTraderCallback):
 
         :param trade: XtTrade对象
         """
-        logger.info(f"on trade callback: {trade.account_id} {trade.stock_code} {trade.order_id}")
-
-        if self.feishu_push_mode == 'detail':
-            msg = f"成交变动通知：\n{'*' * 31}\n" \
-                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-                  f"标的：{trade.stock_code}\n" \
-                  f"方向：{'开多' if trade.order_type == 23 else '平多'}\n" \
-                  f"成交量：{int(trade.traded_volume)}\n" \
-                  f"成交价：{round(trade.traded_price, 2)}"
+        msg = f"成交变动通知：\n{'*' * 31}\n" \
+              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户：{trade.account_id}\n" \
+              f"标的：{trade.stock_code}\n" \
+              f"方向：{'开多' if trade.order_type == 23 else '平多'}\n" \
+              f"成交量：{int(trade.traded_volume)}\n" \
+              f"成交价：{round(trade.traded_price, 2)}"
+        logger.info(f"on trade callback: {msg}")
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             self.push_message(msg, msg_type='text')
 
     def on_stock_position(self, position):
@@ -261,13 +282,13 @@ class TraderCallback(XtQuantTraderCallback):
 
         :param position: XtPosition对象
         """
-        logger.info(f"on position callback: {position.stock_code} {position.volume}")
-
-        if self.feishu_push_mode == 'detail':
-            msg = f"持仓变动通知: \n{'*' * 31}\n" \
-                  f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-                  f"标的：{position.stock_code}\n" \
-                  f"成交量：{position.volume}"
+        msg = f"持仓变动通知: \n{'*' * 31}\n" \
+              f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户：{position.account_id}\n" \
+              f"标的：{position.stock_code}\n" \
+              f"成交量：{position.volume}"
+        logger.info(f"on position callback: {msg}")
+        if self.feishu_push_mode == 'detail' and is_trade_time():
             self.push_message(msg, msg_type='text')
 
     def on_order_error(self, order_error):
@@ -277,11 +298,13 @@ class TraderCallback(XtQuantTraderCallback):
         """
         msg = f"委托失败通知: \n{'*' * 31}\n" \
               f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户：{order_error.account_id}\n" \
               f"订单编号：{order_error.order_id}\n" \
               f"错误编码：{order_error.error_id}\n" \
               f"失败原因：{order_error.error_msg}"
-        self.push_message(msg, msg_type='text')
-        logger.info(f"on order_error callback: {order_error.order_id} {order_error.error_id} {order_error.error_msg}")
+        logger.info(f"on order_error callback: {msg}")
+        if is_trade_time():
+            self.push_message(msg, msg_type='text')
 
     def on_cancel_error(self, cancel_error):
         """撤单失败推送
@@ -290,11 +313,13 @@ class TraderCallback(XtQuantTraderCallback):
         """
         msg = f"撤单失败通知: \n{'*' * 31}\n" \
               f"时间：{datetime.now().strftime(dt_fmt)}\n" \
+              f"账户：{cancel_error.account_id}\n" \
               f"订单编号：{cancel_error.order_id}\n" \
               f"错误编码：{cancel_error.error_id}\n" \
               f"失败原因：{cancel_error.error_msg}"
-        self.push_message(msg, msg_type='text')
-        logger.info(f"{cancel_error.order_id} {cancel_error.error_id} {cancel_error.error_msg}")
+        logger.info(f"on_cancel_error: {msg}")
+        if is_trade_time():
+            self.push_message(msg, msg_type='text')
 
     def on_order_stock_async_response(self, response):
         """异步下单回报推送
@@ -303,11 +328,12 @@ class TraderCallback(XtQuantTraderCallback):
         """
         msg = f"异步下单回报推送: \n{'*' * 31}\n" \
               f"时间：{datetime.now().strftime(dt_fmt)}\n" \
-              f"资金账号：{response.account_id}\n" \
+              f"账户：{response.account_id}\n" \
               f"订单编号：{response.order_id}\n" \
               f"策略名称：{response.strategy_name}"
-        self.push_message(msg, msg_type='text')
-        logger.info(f"on_order_stock_async_response: {response.order_id} {response.seq}")
+        if is_trade_time():
+            self.push_message(msg, msg_type='text')
+        logger.info(f"on_order_stock_async_response: {msg}")
 
     def on_account_status(self, status):
         """账户状态变化推送
@@ -327,11 +353,23 @@ class TraderCallback(XtQuantTraderCallback):
         logger.info(f"账户ID: {status.account_id} "
                     f"账号类型：{'证券账户' if status.account_type == 2 else '其他'} "
                     f"账户状态：{status_map[status.status]}")
-        self.push_message(msg, msg_type='text')
+
+        if is_trade_time():
+            self.push_message(msg, msg_type='text')
 
 
 class QmtTradeManager:
-    """QMT交易管理器（这是一个案例性质的存在，真正实盘的时候请参考这个，根据自己的逻辑重新实现）"""
+    """QMT交易管理器（这是一个案例性质的存在，真正实盘的时候请参考这个，根据自己的逻辑重新实现）
+
+    功能特性：
+
+    1. 支持全市场品种定时交易
+    2. 所有交易对象持久化，程序重启后自动恢复
+    3. 仅支持股票交易
+    4. 仅在仓位发生变化时进行交易
+
+    """
+
     def __init__(self, mini_qmt_dir, account_id, **kwargs):
         """
 
@@ -340,15 +378,19 @@ class QmtTradeManager:
         :param kwargs:
 
         """
-        self.symbols = kwargs.get('symbols', [])    # 交易标的列表
+        self.cache_path = kwargs['cache_path']  # 交易缓存路径
+        os.makedirs(self.cache_path, exist_ok=True)
+        self.symbols = kwargs.get('symbols', [])  # 交易标的列表
         self.strategy = kwargs.get('strategy', [])  # 交易策略
+        assert issubclass(self.strategy, czsc.CzscStrategyBase), "交易策略必须是CzscStrategyBase的子类"
+
         self.symbol_max_pos = kwargs.get('symbol_max_pos', 0.5)  # 每个标的最大持仓比例
-        self.trade_sdt = kwargs.get('trade_sdt', '20220601')     # 交易跟踪开始日期
+        self.trade_sdt = kwargs.get('trade_sdt', '20220601')  # 交易跟踪开始日期
         self.mini_qmt_dir = mini_qmt_dir
         self.account_id = account_id
         self.base_freq = self.strategy(symbol='symbol').sorted_freqs[0]
-        self.delta_days = int(kwargs.get('delta_days', 1))              # 定时执行获取的K线天数
-        self.forbidden_symbols = kwargs.get('forbidden_symbols', [])    # 禁止交易的品种列表
+        self.delta_days = int(kwargs.get('delta_days', 1))  # 定时执行获取的K线天数
+        self.forbidden_symbols = kwargs.get('forbidden_symbols', [])  # 禁止交易的品种列表
 
         self.session = random.randint(10000, 20000)
         self.callback = TraderCallback(**kwargs.get('callback_params', {}))
@@ -365,15 +407,39 @@ class QmtTradeManager:
         """创建交易策略"""
         traders = {}
         for symbol in tqdm(self.symbols, desc="创建交易对象", unit="个"):
-            try:
-                bars = get_raw_bars(symbol, self.base_freq, '20180101', datetime.now(), fq="前复权", download_hist=True)
+            if symbol in self.forbidden_symbols:
+                continue
 
-                trader: CzscTrader = self.strategy(symbol=symbol).init_trader(bars, sdt=self.trade_sdt)
+            file_trader = os.path.join(self.cache_path, f"{symbol}.ct")
+            try:
+                if os.path.exists(file_trader):
+                    # 从缓存文件中恢复交易对象，并更新K线数据
+                    trader: CzscTrader = czsc.dill_load(file_trader)
+                    kline_sdt = pd.to_datetime(trader.end_dt) - timedelta(days=self.delta_days)
+                    bars = get_raw_bars(symbol, self.base_freq, kline_sdt, datetime.now(), fq="前复权",
+                                        download_hist=True)
+                    news = [x for x in bars if x.dt > trader.end_dt]
+                    if news:
+                        logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
+                        for bar in news:
+                            trader.on_bar(bar)
+
+                else:
+                    # 从头创建交易对象
+                    bars = get_raw_bars(symbol, self.base_freq, '20180101', datetime.now(), fq="前复权")
+                    trader: CzscTrader = self.strategy(symbol=symbol).init_trader(bars, sdt=self.trade_sdt)
+                    czsc.dill_dump(trader, file_trader)
+
+                mean_pos = trader.get_ensemble_pos('mean')
+                if mean_pos == 0:
+                    continue
+
                 traders[symbol] = trader
-                pos_info = {x.name: x.pos for x in trader.positions}
-                logger.info(f"{symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}")
+                pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
+                logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
             except Exception as e:
                 logger.exception(f'创建交易对象失败，symbol={symbol}, e={e}')
+
         return traders
 
     def get_assets(self):
@@ -389,6 +455,27 @@ class QmtTradeManager:
         :return:
         """
         return self.xtt.query_stock_orders(self.acc, cancelable_only)
+
+    def query_today_trades(self):
+        """查询当日成交"""
+        # http://docs.thinktrader.net/pages/198696/#%E6%88%90%E4%BA%A4xttrade
+        trades = self.xtt.query_stock_trades(self.acc)
+        res = [{'品种': x.stock_code, '均价': x.traded_price, "方向": "买入" if x.order_type == 23 else "卖出",
+                '数量': x.traded_volume, '金额': x.traded_amount,
+                '时间': time.strftime("%H:%M:%S", time.localtime(x.traded_time))}
+               for x in trades]
+        return res
+
+    def cancel_timeout_orders(self, minutes=30):
+        """撤销超时的委托单
+
+        :param minutes: 超时时间，单位分钟
+        :return:
+        """
+        orders = self.query_stock_orders(cancelable_only=True)
+        for o in orders:
+            if o.order_time < datetime.now() - timedelta(minutes=minutes):
+                self.xtt.cancel_order_stock(self.acc, o.order_id)
 
     def is_order_exist(self, symbol, order_type, volume=None):
         """判断是否存在相同的委托单"""
@@ -406,6 +493,7 @@ class QmtTradeManager:
         :param price: 股票现价
         :return: True 允许开仓，False 不允许开仓
         """
+        # 如果 symbol 在禁止交易的列表中，不允许开仓
         if symbol in self.forbidden_symbols:
             return False
 
@@ -436,13 +524,21 @@ class QmtTradeManager:
         :param symbol: 股票代码
         :return: True 允许开仓，False 不允许开仓
         """
+        # symbol 在禁止交易的列表中，不允许平仓
         if symbol in self.forbidden_symbols:
             return False
 
+        # 没有持仓，不允许平仓
         pos = self.query_stock_positions().get(symbol)
         if not pos:
             return False
 
+        # 未成交的平仓委托单 存在，不允许平仓
+        if self.is_order_exist(symbol, order_type=24):
+            logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
+            return False
+
+        # 持仓可用数量为 0，不允许平仓
         if pos.can_use_volume <= 0:
             return False
 
@@ -480,7 +576,7 @@ class QmtTradeManager:
         """
         stock_code = kwargs.get('stock_code')
         order_type = kwargs.get('order_type')
-        order_volume = kwargs.get('order_volume')   # 委托数量, 股票以'股'为单位, 债券以'张'为单位
+        order_volume = kwargs.get('order_volume')  # 委托数量, 股票以'股'为单位, 债券以'张'为单位
         price_type = kwargs.get('price_type', xtconstant.LATEST_PRICE)
         price = kwargs.get('price', 0)
         strategy_name = kwargs.get('strategy_name', "程序下单")
@@ -514,8 +610,9 @@ class QmtTradeManager:
                     for bar in news:
                         trader.on_bar(bar)
 
-                    # 根据策略的交易信号，下单【股票只有多头】
-                    if trader.get_ensemble_pos(method='vote') == 1 and self.is_allow_open(symbol, price=news[-1].close):
+                    # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                    if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                            and self.is_allow_open(symbol, price=news[-1].close):
                         assets = self.get_assets()
                         order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
                         self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
@@ -525,17 +622,62 @@ class QmtTradeManager:
                         order_volume = holds[symbol].can_use_volume
                         self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
 
-                    # 更新交易对象
-                    self.traders[symbol] = trader
                 else:
                     logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
 
                 if trader.get_ensemble_pos('mean') > 0:
-                    pos_info = {x.name: x.pos for x in trader.positions}
-                    logger.info(f"{symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}")
+                    pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
+                    logger.info(
+                        f"{trader.end_dt} {symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}")
+
+                # 更新交易对象
+                self.traders[symbol] = trader
 
             except Exception as e:
                 logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
+
+    def update_offline_traders(self):
+        """更新全部品种策略"""
+        traders = {}
+        kline_sdt = datetime.now() - timedelta(days=self.delta_days)
+
+        for symbol in tqdm(self.symbols, desc="更新全部股票", unit="个"):
+            if symbol in self.forbidden_symbols:
+                continue
+
+            file_trader = os.path.join(self.cache_path, f"{symbol}.ct")
+            if not os.path.exists(file_trader):
+                logger.error(f"{symbol} 交易对象不存在，无法更新")
+                continue
+
+            try:
+                bars = get_raw_bars(symbol, self.base_freq, kline_sdt, datetime.now(), fq="前复权", download_hist=True)
+                trader: CzscTrader = czsc.dill_load(file_trader)
+                news = [x for x in bars if x.dt > trader.end_dt]
+                if news:
+                    logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
+                    for bar in news:
+                        trader.on_bar(bar)
+                    czsc.dill_dump(trader, file_trader)
+
+                # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                        and self.is_allow_open(symbol, price=news[-1].close):
+                    assets = self.get_assets()
+                    order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
+                    self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+
+                mean_pos = trader.get_ensemble_pos('mean')
+                if mean_pos == 0:
+                    continue
+
+                traders[symbol] = trader
+                pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
+                logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
+            except Exception as e:
+                logger.exception(f'创建交易对象失败，symbol={symbol}, e={e}')
+
+        self.traders = traders
 
     def report(self):
         """报告状态"""
@@ -552,37 +694,45 @@ class QmtTradeManager:
                              f"账户资产：{assets.total_asset}\n"
                              f"可用资金：{assets.cash}\n"
                              f"持仓市值：{assets.market_value}\n"
-                             f"持仓情况：",
-                             first_line_indent=0)
+                             f"持仓情况：", first_line_indent=0)
 
         sp = self.query_stock_positions()
         if sp:
             _res_sp = []
             for k, v in sp.items():
+                is_auto = "程序" if k in self.traders.keys() else "人工"
                 _res_sp.append({'品种': k, '持仓股数': v.volume, '可用股数': v.can_use_volume,
-                                '成本': v.open_price, '市值': v.market_value})
+                                '成本': v.open_price, '市值': int(v.market_value), '操盘手': is_auto})
             writer.add_df_table(pd.DataFrame(_res_sp))
         else:
             writer.add_paragraph("当前没有持仓", first_line_indent=0)
+
+        # 当日成交
+        trades = self.query_today_trades()
+        writer.add_paragraph(f"当日成交：", first_line_indent=0)
+        if trades:
+            writer.add_df_table(pd.DataFrame(trades))
+        else:
+            writer.add_paragraph("当日没有成交", first_line_indent=0)
 
         writer.add_heading('二、策略状态', level=1)
 
         _res = []
         for symbol, trader in self.traders.items():
             if trader.get_ensemble_pos('mean') > 0:
-                _res.append({'symbol': symbol, 'pos': trader.get_ensemble_pos('mean'),
-                             'positions': {x.name: x.pos for x in trader.positions}})
+                _res.append({'symbol': symbol, 'pos': round(trader.get_ensemble_pos('mean'), 3),
+                             'positions': "\n\n".join([x.name for x in trader.positions if x.pos != 0])})
         if _res:
-            writer.add_df_table(pd.DataFrame(_res))
+            writer.add_df_table(pd.DataFrame(_res).sort_values(by='pos', ascending=False))
         else:
             writer.add_paragraph("当前所有品种都是空仓")
 
-        file_docx = f"QMT_交易报告_{datetime.now().strftime('%Y%m%d_%H%M')}.docx"
+        file_docx = f"QMT{self.account_id}_交易报告_{datetime.now().strftime('%Y%m%d_%H%M')}.docx"
         writer.save(file_docx)
         self.callback.push_message(file_docx, msg_type='file')
         os.remove(file_docx)
 
-    def run(self, mode='30m'):
+    def run(self, mode='30m', order_timeout=30):
         """运行策略"""
         self.report()
 
@@ -597,7 +747,10 @@ class QmtTradeManager:
             raise ValueError("mode 只能是 15m, 30m, 60m")
 
         while 1:
-            if datetime.now().strftime("%H:%M") in _times:
+            now_dt = datetime.now().strftime("%H:%M")
+            self.cancel_timeout_orders(minutes=order_timeout)
+
+            if now_dt in _times:
                 self.update_traders()
                 self.report()
                 time.sleep(60)
@@ -608,6 +761,11 @@ class QmtTradeManager:
             if not self.xtt.connected:
                 self.xtt.connect()
                 self.xtt.start()
+
+            if now_dt in ["11:35", "14:05", "15:05"]:
+                self.callback.push_message(f"{self.account_id} 开始更新离线交易员对象", msg_type='text')
+                self.update_offline_traders()
+                self.report()
 
 
 # ======================================================================================================================
