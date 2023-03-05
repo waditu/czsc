@@ -610,17 +610,17 @@ class QmtTradeManager:
                     for bar in news:
                         trader.on_bar(bar)
 
-                    # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
-                    if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
-                            and self.is_allow_open(symbol, price=news[-1].close):
-                        assets = self.get_assets()
-                        order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
-                        self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+                        # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                        if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                                and self.is_allow_open(symbol, price=news[-1].close):
+                            assets = self.get_assets()
+                            order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
+                            self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
 
-                    # 平多头
-                    if trader.get_ensemble_pos(method='vote') == 0 and self.is_allow_exit(symbol):
-                        order_volume = holds[symbol].can_use_volume
-                        self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
+                        # 平多头
+                        if trader.get_ensemble_pos(method='vote') == 0 and self.is_allow_exit(symbol):
+                            order_volume = holds[symbol].can_use_volume
+                            self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
 
                 else:
                     logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
@@ -658,14 +658,15 @@ class QmtTradeManager:
                     logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
                     for bar in news:
                         trader.on_bar(bar)
-                    czsc.dill_dump(trader, file_trader)
 
-                # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
-                if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
-                        and self.is_allow_open(symbol, price=news[-1].close):
-                    assets = self.get_assets()
-                    order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
-                    self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+                        # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                        if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                                and self.is_allow_open(symbol, price=news[-1].close):
+                            assets = self.get_assets()
+                            order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
+                            self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+
+                    czsc.dill_dump(trader, file_trader)
 
                 mean_pos = trader.get_ensemble_pos('mean')
                 if mean_pos == 0:
