@@ -22,6 +22,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Position, RawBar, Signal
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.cache import home_path
+from czsc.utils import sorted_freqs
 
 
 class CzscSignals:
@@ -185,11 +186,9 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
     if len(bars) < 600:
         return
 
-    if not kwargs.get('freqs', None):
-        sorted_freqs = ['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+    freqs = kwargs.get('freqs', None)
+    if not freqs:
         freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
-    else:
-        freqs = kwargs['freqs']
 
     df = generate_czsc_signals(bars, get_signals, freqs, df=True, **kwargs)
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
@@ -222,6 +221,30 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
                 print(file_html)
                 ct.take_snapshot(file_html)
                 last_dt[signal.key] = bar.dt
+
+
+def get_unique_signals(bars: List[RawBar], get_signals: Callable, **kwargs):
+    """获取信号函数中定义的所有信号列表
+
+    :param bars: 基础K线数据
+    :param get_signals: 信号函数
+    :param kwargs:
+    :return:
+    """
+    base_freq = str(bars[-1].freq.value)
+    assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
+    if len(bars) < 600:
+        return []
+
+    freqs = kwargs.get('freqs', None)
+    if not freqs:
+        freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
+
+    df = generate_czsc_signals(bars, get_signals, freqs, df=True, **kwargs)
+    _res = []
+    for col in [x for x in df.columns if len(x.split("_")) == 3]:
+        _res.extend([f"{col}_{v}" for v in df[col].unique() if "其他" not in v])
+    return _res
 
 
 class CzscTrader(CzscSignals):
