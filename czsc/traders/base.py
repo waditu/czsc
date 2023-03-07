@@ -186,11 +186,10 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
     if len(bars) < 600:
         return
 
-    freqs = kwargs.get('freqs', None)
-    if not freqs:
-        freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
+    if not kwargs.get('freqs', None):
+        kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
-    df = generate_czsc_signals(bars, get_signals, freqs, df=True, **kwargs)
+    df = generate_czsc_signals(bars, get_signals, df=True, **kwargs)
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
     signals = []
     for col in s_cols:
@@ -202,7 +201,7 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
 
     bars_left = bars[:500]
     bars_right = bars[500:]
-    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
+    bg = BarGenerator(base_freq=base_freq, freqs=kwargs['freqs'], max_count=5000)
     for bar in bars_left:
         bg.update(bar)
 
@@ -236,11 +235,10 @@ def get_unique_signals(bars: List[RawBar], get_signals: Callable, **kwargs):
     if len(bars) < 600:
         return []
 
-    freqs = kwargs.get('freqs', None)
-    if not freqs:
-        freqs = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
+    if not kwargs.get('freqs', None):
+        kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
-    df = generate_czsc_signals(bars, get_signals, freqs, df=True, **kwargs)
+    df = generate_czsc_signals(bars, get_signals, df=True, **kwargs)
     _res = []
     for col in [x for x in df.columns if len(x.split("_")) == 3]:
         _res.extend([f"{col}_{v}" for v in df[col].unique() if "其他" not in v])
