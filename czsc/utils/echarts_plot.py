@@ -198,19 +198,19 @@ def kline_pro(kline: List[dict],
             _price = round(op['price'], 4)
             _info = f"{op['op_desc']} - 价格{_price}"
 
-            if op['op'] in [Operate.LO, Operate.LA1, Operate.LA2]:
+            if op['op'] in [Operate.LO]:
                 long_opens['i'].append(_dt)
                 long_opens['val'].append([_price, _info])
 
-            if op['op'] in [Operate.LE, Operate.LR1, Operate.LR2]:
+            if op['op'] in [Operate.LE]:
                 long_exits['i'].append(_dt)
                 long_exits['val'].append([_price, _info])
 
-            if op['op'] in [Operate.SO, Operate.SA1, Operate.SA2]:
+            if op['op'] in [Operate.SO]:
                 short_opens['i'].append(_dt)
                 short_opens['val'].append([_price, _info])
 
-            if op['op'] in [Operate.SE, Operate.SR1, Operate.SR2]:
+            if op['op'] in [Operate.SE]:
                 short_exits['i'].append(_dt)
                 short_exits['val'].append([_price, _info])
 
