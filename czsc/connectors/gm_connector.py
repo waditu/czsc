@@ -28,8 +28,6 @@ from czsc.objects import RawBar, Freq
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
-assert czsc.__version__ >= "0.9.8"
-
 
 def set_gm_token(token):
     __file_token = os.path.join(os.path.expanduser("~"), "gm_token.txt")
@@ -383,8 +381,6 @@ def gm_take_snapshot(gm_symbol, end_dt=None, file_html=None,
     if file_html:
         ct.take_snapshot(file_html)
         print(f'saved into {file_html}')
-    else:
-        ct.open_in_browser()
     return ct
 
 

@@ -323,6 +323,29 @@ class CZSC:
                           title="{}-{}".format(self.symbol, self.freq.value))
         return chart
 
+    def to_plotly(self):
+        """使用 plotly 绘制K线分析图"""
+        import pandas as pd
+        from czsc.utils.plotly_plot import KlineChart
+
+        bi_list = self.bi_list
+        df = pd.DataFrame(self.bars_raw)
+        kline = KlineChart(n_rows=3, title="{}-{}".format(self.symbol, self.freq.value))
+        kline.add_kline(df, name="")
+        kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1.2)
+        kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
+        kline.add_vol(df, row=2)
+        kline.add_macd(df, row=3)
+
+        if len(bi_list) > 0:
+            bi = pd.DataFrame([{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list] +
+                              [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx,
+                                "text": bi_list[-1].fx_b.mark.value[0]}])
+            fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in self.fx_list])
+            kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
+            kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
+        return kline.fig
+
     def open_in_browser(self, width: str = "1400px", height: str = '580px'):
         """直接在浏览器中打开分析结果
 

@@ -360,7 +360,7 @@ class CzscTrader(CzscSignals):
         for freq in self.freqs:
             ka: CZSC = self.kas[freq]
             bs = None
-            if freq == self.base_freq:
+            if freq == self.base_freq and self.positions:
                 # 在基础周期K线上加入最近的操作记录
                 bs = []
                 for pos in self.positions:
