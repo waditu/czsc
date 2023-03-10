@@ -17,7 +17,7 @@ from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals, check_s
 from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs, stock_holds_performance
 from czsc.strategies import CzscStrategyBase
 from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
-from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round
+from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 
 
 __version__ = "0.9.11"

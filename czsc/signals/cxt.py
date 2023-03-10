@@ -48,7 +48,7 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
+def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """倒数第di个分型的强弱
 
     **信号列表：**
@@ -77,7 +77,7 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一买信号
 
     **信号列表：**
@@ -144,7 +144,7 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一卖信号
 
     **信号列表：**
@@ -218,7 +218,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_bi_break_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """向上笔突破回调不破信号
 
     **信号列表：**
@@ -273,7 +273,7 @@ def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
+def cxt_sub_b3_V221212(cat: CzscSignals, freq1='60分钟', freq2='15分钟', th=10, **kwargs) -> OrderedDict:
     """小级别突破大级别中枢形成三买，贡献者：魏永超
 
     **信号逻辑：**
@@ -286,15 +286,15 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
     - Signal('60分钟_15分钟_3买回踩10_确认_任意_任意_0')
 
     :param cat:
-    :param freq: 中枢所在的大级别
-    :param sub_freq: 突破大级别中枢，回踩形成小级别类3买的小级别
+    :param freq1: 中枢所在的大级别
+    :param freq2: 突破大级别中枢，回踩形成小级别类3买的小级别
     :param th: 小级别回落对大级别中枢区间的回踩程度，0表示回踩不进大级别中枢，10表示回踩不超过中枢区间的10%
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{freq}_{sub_freq}_三买回踩{th}".split('_')
+    k1, k2, k3 = f"{freq1}_{freq2}_三买回踩{th}".split('_')
 
-    c: CZSC = cat.kas[freq]
-    sub_c: CZSC = cat.kas[sub_freq]
+    c: CZSC = cat.kas[freq1]
+    sub_c: CZSC = cat.kas[freq2]
 
     v1 = "其他"
     if len(c.bi_list) > 13 and len(sub_c.bi_list) > 10:
@@ -316,7 +316,7 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟') -> OrderedDict:
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
     **信号逻辑：**
