@@ -474,7 +474,7 @@ class QmtTradeManager:
         """
         orders = self.query_stock_orders(cancelable_only=True)
         for o in orders:
-            if o.order_time < datetime.now() - timedelta(minutes=minutes):
+            if datetime.fromtimestamp(o.order_time) < datetime.now() - timedelta(minutes=minutes):
                 self.xtt.cancel_order_stock(self.acc, o.order_id)
 
     def is_order_exist(self, symbol, order_type, volume=None):
@@ -733,7 +733,7 @@ class QmtTradeManager:
         self.callback.push_message(file_docx, msg_type='file')
         os.remove(file_docx)
 
-    def run(self, mode='30m', order_timeout=30):
+    def run(self, mode='30m', order_timeout=120):
         """运行策略"""
         self.report()
 
