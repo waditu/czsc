@@ -161,6 +161,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
 
     _sigs = []
     cs = CzscSignals(bg, get_signals)
+    cs.cache.update({'gsc_kwargs': kwargs})
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         cs.update_signals(bar)
         _sigs.append(dict(cs.s))
