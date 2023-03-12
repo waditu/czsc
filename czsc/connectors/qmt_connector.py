@@ -730,9 +730,9 @@ class QmtTradeManager:
             if trader.get_ensemble_pos('mean') > 0:
                 _pos_str = "\n\n".join([f"{x.name}：{x.pos}" for x in trader.positions if x.pos != 0])
                 _ops = [x.operates[-1] for x in trader.positions if x.pos != 0]
-                _ops_str = "\n\n".join([f"{x['dt']}_{x['price']}_{x['op_desc']}" for x in _ops])
+                _ops_str = "\n\n".join([f"时间：{x['dt']}_价格：{x['price']}_描述：{x['op_desc']}" for x in _ops])
                 _res.append({'symbol': symbol, 'pos': round(trader.get_ensemble_pos('mean'), 3),
-                             'positions': _pos_str, 'operates': _ops})
+                             'positions': _pos_str, 'operates': _ops_str})
         if _res:
             writer.add_df_table(pd.DataFrame(_res).sort_values(by='pos', ascending=False))
         else:
