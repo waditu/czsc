@@ -166,13 +166,19 @@ def get_symbols(step):
     return stocks_map[step]
 
 
-def is_trade_time():
-    """判断当前是否是A股交易时间"""
-    now = datetime.now().strftime("%H:%M")
-    if now < "09:15" or now > "15:00":
+def is_trade_time(dt: datetime = datetime.now()):
+    """判断指定时间是否是交易时间"""
+    hm = dt.strftime("%H:%M")
+    if hm < "09:15" or hm > "15:00":
         return False
     else:
         return True
+
+
+def is_trade_day(dt: datetime = datetime.now()):
+    """判断指定日期是否是交易日"""
+    date = dt.strftime('%Y%m%d')
+    return True if xtdata.get_trading_dates('SH', date, date) else False
 
 
 class TraderCallback(XtQuantTraderCallback):
@@ -634,6 +640,7 @@ class QmtTradeManager:
                 self.traders[symbol] = trader
 
             except Exception as e:
+                self.callback.push_message(f"{symbol} 更新交易策略失败，原因是 {e}")
                 logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
 
     def update_offline_traders(self):
@@ -722,7 +729,8 @@ class QmtTradeManager:
         for symbol, trader in self.traders.items():
             if trader.get_ensemble_pos('mean') > 0:
                 _res.append({'symbol': symbol, 'pos': round(trader.get_ensemble_pos('mean'), 3),
-                             'positions': "\n\n".join([x.name for x in trader.positions if x.pos != 0])})
+                             'positions': "\n\n".join([x.name for x in trader.positions if x.pos != 0]),
+                             'operates': "\n\n".join([str(x.operates[-1]) for x in trader.positions if x.pos != 0])})
         if _res:
             writer.add_df_table(pd.DataFrame(_res).sort_values(by='pos', ascending=False))
         else:
@@ -751,7 +759,7 @@ class QmtTradeManager:
             now_dt = datetime.now().strftime("%H:%M")
             self.cancel_timeout_orders(minutes=order_timeout)
 
-            if now_dt in _times:
+            if is_trade_day() and now_dt in _times:
                 self.update_traders()
                 self.report()
                 time.sleep(60)
