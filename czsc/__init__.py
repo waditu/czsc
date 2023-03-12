@@ -6,6 +6,7 @@ create_dt: 2019/10/29 15:01
 """
 from czsc import envs
 from czsc import ai
+from czsc import fsa
 from czsc import utils
 from czsc import traders
 from czsc import sensors
@@ -23,7 +24,7 @@ from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round
 __version__ = "0.9.11"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230304"
+__date__ = "20230312"
 
 
 if envs.get_welcome():
