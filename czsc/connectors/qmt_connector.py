@@ -166,13 +166,19 @@ def get_symbols(step):
     return stocks_map[step]
 
 
-def is_trade_time():
-    """判断当前是否是A股交易时间"""
-    now = datetime.now().strftime("%H:%M")
-    if now < "09:15" or now > "15:00":
+def is_trade_time(dt: datetime = datetime.now()):
+    """判断指定时间是否是交易时间"""
+    hm = dt.strftime("%H:%M")
+    if hm < "09:15" or hm > "15:00":
         return False
     else:
         return True
+
+
+def is_trade_day(dt: datetime = datetime.now()):
+    """判断指定日期是否是交易日"""
+    date = dt.strftime('%Y%m%d')
+    return True if xtdata.get_trading_dates('SH', date, date) else False
 
 
 class TraderCallback(XtQuantTraderCallback):
@@ -474,7 +480,7 @@ class QmtTradeManager:
         """
         orders = self.query_stock_orders(cancelable_only=True)
         for o in orders:
-            if o.order_time < datetime.now() - timedelta(minutes=minutes):
+            if datetime.fromtimestamp(o.order_time) < datetime.now() - timedelta(minutes=minutes):
                 self.xtt.cancel_order_stock(self.acc, o.order_id)
 
     def is_order_exist(self, symbol, order_type, volume=None):
@@ -610,17 +616,17 @@ class QmtTradeManager:
                     for bar in news:
                         trader.on_bar(bar)
 
-                    # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
-                    if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
-                            and self.is_allow_open(symbol, price=news[-1].close):
-                        assets = self.get_assets()
-                        order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
-                        self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+                        # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                        if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                                and self.is_allow_open(symbol, price=news[-1].close):
+                            assets = self.get_assets()
+                            order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
+                            self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
 
-                    # 平多头
-                    if trader.get_ensemble_pos(method='vote') == 0 and self.is_allow_exit(symbol):
-                        order_volume = holds[symbol].can_use_volume
-                        self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
+                        # 平多头
+                        if trader.get_ensemble_pos(method='vote') == 0 and self.is_allow_exit(symbol):
+                            order_volume = holds[symbol].can_use_volume
+                            self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
 
                 else:
                     logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
@@ -634,6 +640,7 @@ class QmtTradeManager:
                 self.traders[symbol] = trader
 
             except Exception as e:
+                self.callback.push_message(f"{symbol} 更新交易策略失败，原因是 {e}")
                 logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
 
     def update_offline_traders(self):
@@ -658,14 +665,15 @@ class QmtTradeManager:
                     logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
                     for bar in news:
                         trader.on_bar(bar)
-                    czsc.dill_dump(trader, file_trader)
 
-                # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
-                if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
-                        and self.is_allow_open(symbol, price=news[-1].close):
-                    assets = self.get_assets()
-                    order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
-                    self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+                        # 根据策略的交易信号，下单【股票只有多头】，只有当信号变化时才下单
+                        if trader.get_ensemble_pos(method='vote') == 1 and trader.pos_changed \
+                                and self.is_allow_open(symbol, price=news[-1].close):
+                            assets = self.get_assets()
+                            order_volume = min(self.symbol_max_pos * assets.total_asset, assets.cash) // news[-1].close
+                            self.send_stock_order(stock_code=symbol, order_type=23, order_volume=order_volume)
+
+                    czsc.dill_dump(trader, file_trader)
 
                 mean_pos = trader.get_ensemble_pos('mean')
                 if mean_pos == 0:
@@ -720,8 +728,11 @@ class QmtTradeManager:
         _res = []
         for symbol, trader in self.traders.items():
             if trader.get_ensemble_pos('mean') > 0:
+                _pos_str = "\n\n".join([f"{x.name}：{x.pos}" for x in trader.positions if x.pos != 0])
+                _ops = [x.operates[-1] for x in trader.positions if x.pos != 0]
+                _ops_str = "\n\n".join([f"时间：{x['dt']}_价格：{x['price']}_描述：{x['op_desc']}" for x in _ops])
                 _res.append({'symbol': symbol, 'pos': round(trader.get_ensemble_pos('mean'), 3),
-                             'positions': "\n\n".join([x.name for x in trader.positions if x.pos != 0])})
+                             'positions': _pos_str, 'operates': _ops_str})
         if _res:
             writer.add_df_table(pd.DataFrame(_res).sort_values(by='pos', ascending=False))
         else:
@@ -732,7 +743,7 @@ class QmtTradeManager:
         self.callback.push_message(file_docx, msg_type='file')
         os.remove(file_docx)
 
-    def run(self, mode='30m', order_timeout=30):
+    def run(self, mode='30m', order_timeout=120):
         """运行策略"""
         self.report()
 
@@ -750,7 +761,7 @@ class QmtTradeManager:
             now_dt = datetime.now().strftime("%H:%M")
             self.cancel_timeout_orders(minutes=order_timeout)
 
-            if now_dt in _times:
+            if is_trade_day() and now_dt in _times:
                 self.update_traders()
                 self.report()
                 time.sleep(60)

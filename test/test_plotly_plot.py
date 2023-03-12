@@ -20,8 +20,8 @@ def test_kline_chart():
     df['text'] = "测试"
     kline = KlineChart(n_rows=3)
     kline.add_kline(df, name="K线")
-    kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True)
-    kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False)
+    kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1.2)
+    kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
     kline.add_vol(df, row=2)
     kline.add_macd(df, row=3)
     if len(c.bi_list) > 0:
@@ -29,8 +29,8 @@ def test_kline_chart():
                           [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx,
                             "text": c.bi_list[-1].fx_b.mark.value}])
         fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
-        kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.2)
-        kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.2)
+        kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
+        kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
     # kline.open_in_browser()
     file_html = "kline_chart_test.html"
     kline.fig.write_html(file_html)

@@ -38,6 +38,7 @@ def get_signals(cat: CzscTrader) -> OrderedDict:
 
 
 if __name__ == '__main__':
+    # check_signals_acc(bars, get_signals, freqs=['日线', '60分钟'])
     check_signals_acc(bars, get_signals)
 
 

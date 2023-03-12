@@ -48,7 +48,7 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
+def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """倒数第di个分型的强弱
 
     **信号列表：**
@@ -77,7 +77,7 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一买信号
 
     **信号列表：**
@@ -144,7 +144,7 @@ def cxt_first_buy_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一卖信号
 
     **信号列表：**
@@ -218,7 +218,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
+def cxt_bi_break_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """向上笔突破回调不破信号
 
     **信号列表：**
@@ -273,7 +273,7 @@ def cxt_bi_break_V221126(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', th=10) -> OrderedDict:
+def cxt_sub_b3_V221212(cat: CzscSignals, freq1='60分钟', freq2='15分钟', th=10, **kwargs) -> OrderedDict:
     """小级别突破大级别中枢形成三买，贡献者：魏永超
 
     **信号逻辑：**
@@ -286,15 +286,15 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
     - Signal('60分钟_15分钟_3买回踩10_确认_任意_任意_0')
 
     :param cat:
-    :param freq: 中枢所在的大级别
-    :param sub_freq: 突破大级别中枢，回踩形成小级别类3买的小级别
+    :param freq1: 中枢所在的大级别
+    :param freq2: 突破大级别中枢，回踩形成小级别类3买的小级别
     :param th: 小级别回落对大级别中枢区间的回踩程度，0表示回踩不进大级别中枢，10表示回踩不超过中枢区间的10%
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{freq}_{sub_freq}_三买回踩{th}".split('_')
+    k1, k2, k3 = f"{freq1}_{freq2}_三买回踩{th}".split('_')
 
-    c: CZSC = cat.kas[freq]
-    sub_c: CZSC = cat.kas[sub_freq]
+    c: CZSC = cat.kas[freq1]
+    sub_c: CZSC = cat.kas[freq2]
 
     v1 = "其他"
     if len(c.bi_list) > 13 and len(sub_c.bi_list) > 10:
@@ -316,7 +316,7 @@ def cxt_sub_b3_V221212(cat: CzscSignals, freq='60分钟', sub_freq='15分钟', t
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟') -> OrderedDict:
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
     **信号逻辑：**
@@ -479,6 +479,75 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
         v1 = '其他'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """笔三买辅助
+
+    **信号逻辑：**
+
+    1. 定义大于前一个向上笔的高点的笔为向上突破笔，最近所有向上突破笔有价格重叠
+    2. 当下笔的最低点在任一向上突破笔的高点上，且当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
+
+    **信号列表：**
+
+    - Signal('15分钟_D1三买辅助_V230228_三买_14笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_10笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_6笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_8笔_任意_0')
+    - Signal('15分钟_D1三买辅助_V230228_三买_12笔_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第几笔
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}三买辅助_V230228".split('_')
+    v1, v2 = '其他', '其他'
+    if len(c.bi_list) < di + 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    def check_third_buy(bis):
+        """检查 bis 是否是三买的结束
+
+        :param bis: 笔序列，按时间升序
+        :return:
+        """
+        res = {"match": False, "v1": "三买", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        if bis[-1].direction == Direction.Up or bis[0].direction == bis[-1].direction:
+            return res
+
+        # 检查三买：获取向上突破的笔列表
+        key_bis = []
+        for i in range(0, len(bis) - 2, 2):
+            if i == 0:
+                key_bis.append(bis[i])
+            else:
+                b1, _, b3 = bis[i - 2:i + 1]
+                if b3.high > b1.high:
+                    key_bis.append(b3)
+        if len(key_bis) < 2:
+            return res
+
+        tb_break = bis[-1].low > min([x.high for x in key_bis]) > max([x.low for x in key_bis])
+        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
+
+        if tb_break and tb_price:
+            res['match'] = True
+        return res
+
+    for n in (13, 11, 9, 7, 5):
+        _bis = get_sub_elements(c.bi_list, di=di, n=n+1)
+        if len(_bis) != n + 1:
+            continue
+
+        _res = check_third_buy(_bis)
+        if _res['match']:
+            v1 = _res['v1']
+            v2 = _res['v2']
+            break
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 class BXT:

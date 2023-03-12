@@ -5,6 +5,8 @@ email: zeng_bin8888@163.com
 create_dt: 2023/2/23 19:13
 describe: 
 """
+import os
+import shutil
 import pandas as pd
 from test.test_analyze import read_1min
 from czsc.utils.bar_generator import resample_bars, Freq
@@ -30,4 +32,8 @@ def test_czsc_strategy():
         assert len(trader1.positions[i].evaluate()) == len(trader2.positions[i].evaluate())
         assert len(trader1.positions[i].pairs) == len(trader2.positions[i].pairs)
         assert pos1.evaluate("多空")['覆盖率'] == pos1.evaluate("多头")['覆盖率'] + pos1.evaluate("空头")['覆盖率']
+
+    strategy.replay(bars, res_path="trade_replay_test", sdt='20170101', refresh=True)
+    assert len(os.listdir("trade_replay_test")) == 4
+    shutil.rmtree("trade_replay_test")
 

@@ -13,7 +13,7 @@ from czsc.objects import Signal, RawBar, Direction
 from czsc.utils import get_sub_elements
 
 
-def jcc_san_xing_xian_V221023(c: CZSC, di=1, th=2) -> OrderedDict:
+def jcc_san_xing_xian_V221023(c: CZSC, di=1, th=2, **kwargs) -> OrderedDict:
     """伞形线
 
     **有效信号列表：**
@@ -54,7 +54,7 @@ def jcc_san_xing_xian_V221023(c: CZSC, di=1, th=2) -> OrderedDict:
     return s
 
 
-def jcc_ten_mo_V221028(c: CZSC, di=1) -> OrderedDict:
+def jcc_ten_mo_V221028(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """吞没形态；贡献者：琅盎
 
     **吞没形态，有三条判别标准：**
@@ -99,7 +99,7 @@ def jcc_ten_mo_V221028(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5) -> OrderedDict:
+def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5, **kwargs) -> OrderedDict:
     """白三兵；贡献者：鲁克林
 
     **信号逻辑：**
@@ -146,7 +146,7 @@ def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5) -> OrderedDict:
     return s
 
 
-def jcc_wu_yun_gai_ding_V221101(c: CZSC, di=1, z=500, th=50) -> OrderedDict:
+def jcc_wu_yun_gai_ding_V221101(c: CZSC, di=1, z=500, th=50, **kwargs) -> OrderedDict:
     """乌云盖顶，贡献者：魏永超
 
     **信号逻辑：**
@@ -195,7 +195,7 @@ def jcc_wu_yun_gai_ding_V221101(c: CZSC, di=1, z=500, th=50) -> OrderedDict:
     return s
 
 
-def jcc_ci_tou_V221101(c: CZSC, di=1, z=100, th=50) -> OrderedDict:
+def jcc_ci_tou_V221101(c: CZSC, di=1, z=100, th=50, **kwargs) -> OrderedDict:
     """刺透形态
 
     **信号列表：**
@@ -225,7 +225,7 @@ def jcc_ci_tou_V221101(c: CZSC, di=1, z=100, th=50) -> OrderedDict:
     return s
 
 
-def jcc_san_fa_V20221118(c: CZSC, di=1) -> OrderedDict:
+def jcc_san_fa_V20221118(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """上升&下降三法
 
     **上升三法形态由以下几个方面组成：**
@@ -302,7 +302,7 @@ def jcc_san_fa_V20221118(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_san_fa_V20221115(c: CZSC, di=1, zdf=500) -> OrderedDict:
+def jcc_san_fa_V20221115(c: CZSC, di=1, zdf=500, **kwargs) -> OrderedDict:
     """上升&下降三法；贡献者：琅盎
 
     **上升三法形态由以下几个方面组成：**
@@ -357,7 +357,7 @@ def jcc_san_fa_V20221115(c: CZSC, di=1, zdf=500) -> OrderedDict:
     return s
 
 
-def jcc_xing_xian_V221118(c: CZSC, di=2, th=2) -> OrderedDict:
+def jcc_xing_xian_V221118(c: CZSC, di=2, th=2, **kwargs) -> OrderedDict:
     """星形态
 
     **星形态，判断标准：**
@@ -433,7 +433,7 @@ def jcc_xing_xian_V221118(c: CZSC, di=2, th=2) -> OrderedDict:
     return s
 
 
-def jcc_fen_shou_xian_V20221113(c: CZSC, di=1, zdf=300) -> OrderedDict:
+def jcc_fen_shou_xian_V20221113(c: CZSC, di=1, zdf=300, **kwargs) -> OrderedDict:
     """分手线：分手形态是一个中继形态；贡献者：琅盎
 
     **分手线形态，有三条判断标准 **
@@ -482,7 +482,7 @@ def jcc_fen_shou_xian_V20221113(c: CZSC, di=1, zdf=300) -> OrderedDict:
     return s
 
 
-def jcc_zhu_huo_xian_V221027(c: CZSC, di=1, th=2, zf=500) -> OrderedDict:
+def jcc_zhu_huo_xian_V221027(c: CZSC, di=1, th=2, zf=500, **kwargs) -> OrderedDict:
     """烛火线，贡献者：琅盎
 
     **有效信号列表： **
@@ -522,7 +522,7 @@ def jcc_zhu_huo_xian_V221027(c: CZSC, di=1, th=2, zf=500) -> OrderedDict:
     return s
 
 
-def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
+def jcc_yun_xian_V221118(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """孕线形态
 
     二日K线模式，分多头孕线与空头孕线，两者相反，以多头孕线为例，
@@ -555,7 +555,7 @@ def jcc_yun_xian_V221118(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_ping_tou_V221113(c: CZSC, di=2, th=100) -> OrderedDict:
+def jcc_ping_tou_V221113(c: CZSC, di=2, th=100, **kwargs) -> OrderedDict:
     """平头形态，贡献者：平凡
 
     **平头形态，判断标准：**
@@ -590,7 +590,7 @@ def jcc_ping_tou_V221113(c: CZSC, di=2, th=100) -> OrderedDict:
     return s
 
 
-def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20) -> OrderedDict:
+def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20, **kwargs) -> OrderedDict:
     """捉腰带线，贡献者：平凡
 
     **捉腰带线判别标准：**
@@ -635,7 +635,7 @@ def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, di: int = 1, left: int = 20) -> Order
     return s
 
 
-def jcc_two_crow_V221108(c: CZSC, di=1):
+def jcc_two_crow_V221108(c: CZSC, di=1, **kwargs):
     """两只乌鸦
 
     **信号逻辑：**
@@ -667,7 +667,7 @@ def jcc_two_crow_V221108(c: CZSC, di=1):
     return s
 
 
-def jcc_three_crow_V221108(c: CZSC, di=1):
+def jcc_three_crow_V221108(c: CZSC, di=1, **kwargs):
     """三只乌鸦，贡献者：马鸣
 
     **信号逻辑：**
@@ -752,7 +752,7 @@ def jcc_three_crow_V221108(c: CZSC, di=1):
     return s
 
 
-def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
+def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2, **kwargs) -> OrderedDict:
     """白三兵，贡献者：鲁克林
 
     **信号逻辑：**
@@ -807,7 +807,7 @@ def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2) -> OrderedDict:
     return s
 
 
-def check_szx(bar: RawBar, th: int = 10) -> bool:
+def check_szx(bar: RawBar, th: int = 10, **kwargs) -> bool:
     """判断十字线
 
     :param bar:
@@ -823,7 +823,7 @@ def check_szx(bar: RawBar, th: int = 10) -> bool:
         return False
 
 
-def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict:
     """十字线
 
     **信号逻辑：**
@@ -877,7 +877,7 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     return s
 
 
-def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
+def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict:
     """三星形态
 
     **信号逻辑：**
@@ -906,7 +906,7 @@ def jcc_san_szx_V221122(c: CZSC, di: int = 1, th: int = 10) -> OrderedDict:
     return s
 
 
-def jcc_fan_ji_xian_V221121(c: CZSC, di=1) -> OrderedDict:
+def jcc_fan_ji_xian_V221121(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """反击线；贡献者：lynxluu
 
     **信号逻辑：**
@@ -971,7 +971,7 @@ def jcc_fan_ji_xian_V221121(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_shan_chun_V221121(c: CZSC, di=1) -> OrderedDict:
+def jcc_shan_chun_V221121(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """山川形态，表示三山形态和三川形态
 
     **信号逻辑：**
@@ -1009,7 +1009,7 @@ def jcc_shan_chun_V221121(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
+def jcc_gap_yin_yang_V221121(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """跳空与并列阴阳形态 贡献者：平凡
 
     **向上跳空并列阴阳（向下反之）：**
@@ -1053,7 +1053,7 @@ def jcc_gap_yin_yang_V221121(c: CZSC, di=1) -> OrderedDict:
     return s
 
 
-def jcc_ta_xing_V221124(c: CZSC, di: int = 1) -> OrderedDict:
+def jcc_ta_xing_V221124(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """塔形顶底
 
     **信号逻辑：**

@@ -17,7 +17,7 @@ os.environ['czsc_max_bi_num'] = '20'
 import time
 import streamlit as st
 import pandas as pd
-import plotly.graph_objs as go
+from czsc.utils import KlineChart
 from czsc.traders.base import CzscSignals, BarGenerator
 from czsc.utils import freqs_sorted
 from czsc.connectors import qmt_connector as qmc
@@ -48,19 +48,26 @@ with st.empty():
         with st.container():
             # logger.info(f"当前K线：{bar.dt}, {bar.close}, freqs: {freqs}")
             st.write(f"当前K线：{bar.dt}")
+
             for i, freq in enumerate(freqs):
-                # st.subheader(f"{freq}")
-                df = pd.DataFrame(cs.kas[freq].bars_raw)
-                df['text'] = ""
-                fig = go.Figure(data=[
-                    go.Candlestick(x=df['dt'], open=df["open"], high=df["high"], low=df["low"],
-                                   close=df["close"], text=df['text']),
-                ])
-                fig.update_layout(title=f"{symbol} {freq}")
-                fig = fig.update_yaxes(showgrid=True, automargin=True, autorange=True)
-                fig = fig.update_xaxes(type='category', rangeslider_visible=True, showgrid=False, automargin=True,
-                                       showticklabels=False)
-                st.plotly_chart(fig, use_container_width=True, height=300)
+                c = cs.kas[freq]
+                df = pd.DataFrame(c.bars_raw)
+                df['text'] = "测试"
+                kline = KlineChart(n_rows=3, title=f"{freq} K线", width="100%")
+                kline.add_kline(df, name="K线")
+                kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True)
+                kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False)
+                kline.add_vol(df, row=2)
+                kline.add_macd(df, row=3)
+                if len(c.bi_list) > 0:
+                    bi = pd.DataFrame(
+                        [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in c.bi_list] +
+                        [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx,
+                          "text": c.bi_list[-1].fx_b.mark.value}])
+                    fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
+                    kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.2)
+                    kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.2)
+                st.plotly_chart(kline.fig, use_container_width=True, height=300)
         time.sleep(sleep_time)
 
 st.success(f'{symbol} {freqs} K线回放完成！', icon="✅")
