@@ -89,11 +89,11 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     if len(c.bars_raw) < di + 2:
         v1 = "其他"
     else:
-        b1, b2 = c.bars_raw[-di],  c.bars_raw[-di-1]
+        b1 = c.bars_raw[-di]
 
-        if b1.close == b1.high > b2.close:
+        if b1.close == b1.high:
             v1 = "涨停"
-        elif b1.close == b1.low < b2.close:
+        elif b1.close == b1.low:
             v1 = "跌停"
         else:
             v1 = "其他"
