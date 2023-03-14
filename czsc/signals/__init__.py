@@ -47,6 +47,7 @@ from czsc.signals.bar import (
     bar_operate_span_V221111,
     bar_zdt_V221110,
     bar_zdt_V221111,
+    bar_zdt_V230313,
     bar_cross_ps_V221112,
     bar_section_momentum_V221112,
     bar_vol_grow_V221112,
@@ -114,6 +115,7 @@ from czsc.signals.tas import (
 
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
+    tas_boll_vt_V230312,
 
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,

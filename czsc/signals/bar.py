@@ -35,10 +35,7 @@ def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     dt: datetime = c.bars_raw[-1].dt
     v = "是" if dt.minute % m == 0 else "否"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
 def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450")) -> OrderedDict:
@@ -59,11 +56,7 @@ def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450"))
 
     dt: datetime = c.bars_raw[-1].dt
     v = "是" if k2 <= dt.strftime("%H%M") <= k3 else "否"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
 def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
@@ -73,7 +66,7 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
 
     **信号逻辑：**
 
-    close等于high大于前close，近似认为是涨停；反之，跌停。
+    close等于high，近似认为是涨停；反之，跌停。
 
     **信号列表：**
 
@@ -89,19 +82,45 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     if len(c.bars_raw) < di + 2:
         v1 = "其他"
     else:
-        b1, b2 = c.bars_raw[-di],  c.bars_raw[-di-1]
+        b1 = c.bars_raw[-di]
 
-        if b1.close == b1.high > b2.close:
+        if b1.close == b1.high:
             v1 = "涨停"
-        elif b1.close == b1.low < b2.close:
+        elif b1.close == b1.low:
             v1 = "跌停"
         else:
             v1 = "其他"
 
-    s = OrderedDict()
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_zdt_V230313(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """计算倒数第di根K线的涨跌停信息
+
+    **信号逻辑：**
+
+    - close等于high大于等于前一根K线的close，近似认为是涨停；反之，跌停。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1涨跌停_V230313_跌停_任意_任意_0')
+    - Signal('15分钟_D1涨跌停_V230313_涨停_任意_任意_0')
+
+    :param c: 基础周期的 CZSC 对象
+    :param di: 倒数第 di 根 K 线
+    :return: s
+    """
+    k1, k2, k3, v1 = c.freq.value, f"D{di}涨跌停", "V230313", "其他"
+    if len(c.bars_raw) < di + 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2 = c.bars_raw[-di], c.bars_raw[-di - 1]
+    if b1.close == b1.high >= b2.close:
+        v1 = "涨停"
+    elif b1.close == b1.low <= b2.close:
+        v1 = "跌停"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
@@ -151,10 +170,7 @@ def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     else:
         v1 = "其他"
 
-    s = OrderedDict()
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[v.key] = v.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
@@ -185,10 +201,7 @@ def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
         mean_vol = sum([x.vol for x in bars[:-1]]) / n
         v1 = "是" if mean_vol * 4 >= bars[-1].vol >= mean_vol * 2 else "否"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> OrderedDict:
@@ -236,10 +249,7 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> 
             break
 
     k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_突破{ma1.upper()}".split('_')
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2: int = 4) -> OrderedDict:
@@ -278,10 +288,7 @@ def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2
             else:
                 logger.warning(msg)
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_cross_ps_V221112(c: CZSC, di=1, num=3):
@@ -369,10 +376,7 @@ def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 10
         v2 = "强势" if abs(bp) >= th else "弱势"
         v3 = "高波动" if rate >= 3 else "低波动"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
 def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDict:
@@ -413,10 +417,7 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
         if c2 and green_pct:
             v1 = "下跌"
 
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') -> OrderedDict:
@@ -442,7 +443,6 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') 
     :return: 信号识别结果
     """
     assert window > 3, "辨别加速，至少需要3根以上K线"
-    s = OrderedDict()
     k1, k2, k3 = c.freq.value, f"D{di}W{window}", f"{ma1}加速"
 
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
@@ -455,9 +455,7 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') 
     else:
         v1 = "其他"
 
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> OrderedDict:
@@ -486,11 +484,7 @@ def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> Ordered
         edge = (1 - bars[-1].close / bars[-2].close) * 10000
 
     v1 = "满足" if t2 >= edge >= t1 else "其他"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
