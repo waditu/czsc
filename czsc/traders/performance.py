@@ -158,6 +158,7 @@ class PairsPerformance:
                 "每自然日收益": 0,
                 "每根K线收益": 0,
                 "盈亏平衡点": 0,
+                "开仓日盈亏平衡点": 0,
             }
             return info
 
@@ -189,6 +190,7 @@ class PairsPerformance:
             "交易得分": round(total_gain_loss_rate * win_pct, 4),
             "赢面": round(single_gain_loss_rate * win_pct - (1 - win_pct), 4),
             "盈亏平衡点": round(cal_break_even_point(df_pairs['盈亏比例'].to_list()), 4),
+            "开仓日盈亏平衡点": round(df_pairs.groupby('开仓日')['盈亏比例'].apply(cal_break_even_point).mean(), 4),
         }
 
         info['每自然日收益'] = round(info['平均单笔收益'] / info['平均持仓天数'], 2)
