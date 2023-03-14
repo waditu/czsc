@@ -10,6 +10,7 @@ describe: 提供一些策略的编写案例
 import os
 import shutil
 import pandas as pd
+from tqdm import tqdm
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from loguru import logger
@@ -125,7 +126,7 @@ class CzscStrategyBase(ABC):
         :return: 完成策略回测后的 CzscTrader 对象
         """
         trader = CzscTrader(positions=deepcopy(self.positions))
-        for sig in sigs:
+        for sig in tqdm(sigs, desc=f"回测 {self.symbol} {self.sorted_freqs}"):
             trader.on_sig(sig)
         return trader
 
