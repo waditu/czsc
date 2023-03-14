@@ -145,7 +145,7 @@ def update_boll_cache_V230228(c: CZSC, **kwargs):
 
         for i in range(1, 6):
             _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
-            _c.update({cache_key: {"上轨": u1[i], "中线": m[i], "下轨": l1[i]}})
+            _c.update({cache_key: {"上轨": u1[-i], "中线": m[-i], "下轨": l1[-i]}})
             c.bars_raw[-i].cache = _c
 
     return cache_key
@@ -203,9 +203,42 @@ def update_boll_cache(c: CZSC, **kwargs):
     return cache_key
 
 
+def tas_boll_vt_V230312(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+    """以BOLL通道为依据的多空进出场信号
+
+    **信号逻辑：**
+
+    1. 看多，当日收盘价在上轨上方，且最近max_overlap根K线中至少有一个收盘价都在上轨下方；
+    2. 看空，当日收盘价在下轨下方，且最近max_overlap根K线中至少有一个收盘价都在下轨上方；
+
+    **信号列表：**
+
+    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230312_看空_任意_任意_0')
+    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230312_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :return:
+    """
+    key = update_boll_cache_V230228(c, **kwargs)
+    max_overlap = kwargs.get('max_overlap', 5)
+    k1, k2, k3 = f"{c.freq.value}_D{di}{key}MO{max_overlap}_BS辅助V230312".split('_')
+    v1 = "其他"
+    _bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
+    if len(_bars) < max_overlap + 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if _bars[-1].close > _bars[-1].cache[key]['上轨'] and any([x.close < x.cache[key]['上轨'] for x in _bars]):
+        v1 = "看多"
+
+    elif _bars[-1].close < _bars[-1].cache[key]['下轨'] and any([x.close > x.cache[key]['下轨'] for x in _bars]):
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 # MACD信号计算函数
 # ======================================================================================================================
-
 def tas_macd_base_V221028(c: CZSC, di: int = 1, key="macd", **kwargs) -> OrderedDict:
     """MACD|DIF|DEA 多空和方向信号
 

@@ -115,6 +115,7 @@ from czsc.signals.tas import (
 
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
+    tas_boll_vt_V230312,
 
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
