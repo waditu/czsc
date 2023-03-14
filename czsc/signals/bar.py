@@ -97,8 +97,6 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
 def bar_zdt_V230313(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """计算倒数第di根K线的涨跌停信息
 
-    对于A股，任何K线，只要收盘价是最高价，那就不能买，只要收盘价是最低价，就不能卖。
-
     **信号逻辑：**
 
     - close等于high大于等于前一根K线的close，近似认为是涨停；反之，跌停。
