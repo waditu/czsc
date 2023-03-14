@@ -21,10 +21,10 @@ from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 
 
-__version__ = "0.9.12"
+__version__ = "0.9.13"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230312"
+__date__ = "20230314"
 
 
 if envs.get_welcome():
