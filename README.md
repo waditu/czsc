@@ -19,11 +19,13 @@
 
 ## 项目贡献
 
+* [择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
 * 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
 * 定义并实现了若干信号函数，详见 `czsc/signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * 基于 Tushare 数据的择时、选股策略回测研究流程
+
 
 
 ## 安装使用
