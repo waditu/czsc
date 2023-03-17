@@ -7,10 +7,9 @@ describe: 白仪 https://www.zhihu.com/people/bai-yi-520/posts 知乎上定义�
 
 byi 是 bai yi 的缩写
 """
-from collections import OrderedDict
 from typing import List
 from czsc import CZSC
-from czsc.objects import Signal, BI, Direction
+from czsc.objects import BI, Direction
 from czsc.utils import get_sub_elements, create_single_signal
 from czsc.utils.sig import is_symmetry_zs
 
