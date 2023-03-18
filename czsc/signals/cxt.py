@@ -134,7 +134,6 @@ def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
-            logger.warning('笔的数量不对')
             continue
 
         _res = __check_first_buy(_bis)
@@ -208,7 +207,6 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
-            logger.warning('笔的数量不对，跳过')
             continue
 
         _res = __check_first_sell(_bis)

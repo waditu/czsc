@@ -14,6 +14,7 @@ from czsc import envs, CZSC, Signal
 from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
 from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
+from czsc.signals.tas import update_ma_cache
 
 
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
@@ -204,7 +205,7 @@ def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> OrderedDict:
+def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma_type='SMA', timeperiod=233, **kwargs) -> OrderedDict:
     """放量向上突破并回踩指定均线，贡献者：琅盎
 
     **信号逻辑：**
@@ -218,17 +219,20 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> 
 
     :param c: CZSC对象
     :param di: 信号计算截止倒数第i根K线
-    :param ma1: 指定均线，这里固定为年线
+    :param ma_type: 指定均线的类型，默认为SMA
+    :param timeperiod: 指定均线的周期，默认为233
     :param th: 当前最低价同指定均线的距离阈值，单位 BP
     :return: 信号识别结果
     """
+    cache_key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_突破{f'{ma_type.upper()}{timeperiod}'}".split('_')
 
     def _vol_fang_liang_break(bars: List[RawBar]):
         if len(bars) <= 4:
             return "其他", "其他"
 
         # 条件1：放量突破
-        ma1v = bars[-1].cache[ma1]
+        ma1v = bars[-1].cache[cache_key]
         c1 = "放量突破" if bars[-1].vol >= bars[-2].vol and bars[-1].close > ma1v else "其他"
 
         # 条件2：缩量回踩
@@ -248,7 +252,6 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma1="SMA233") -> 
         if v1 != "其他":
             break
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_突破{ma1.upper()}".split('_')
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
@@ -397,7 +400,7 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
     :param window: 识别加速走势的窗口大小
     :return:
     """
-    k1, k2, k3 = str(c.freq.value), f"D{di}W{window}", "加速"
+    k1, k2, k3 = str(c.freq.value), f"D{di}W{window}", "加速V221110"
 
     v1 = "其他"
     if len(c.bars_raw) > di + window + 10:
@@ -420,7 +423,7 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') -> OrderedDict:
+def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA', timeperiod=10, **kwargs) -> OrderedDict:
     """辨别加速走势
 
     **信号逻辑：**
@@ -429,24 +432,22 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma1='SMA10') 
 
     **信号列表：**
 
-    - Signal('60分钟_D1W13_SMA10加速_上涨_任意_任意_0')
-    - Signal('60分钟_D1W13_SMA10加速_下跌_任意_任意_0')
-
-    **注意事项：**
-
-    此信号函数必须与 `czsc.signals.update_ma_cache` 结合使用，需要该函数更新MA缓存
+    - Signal('日线_D1W13SMA10_加速V221118_上涨_任意_任意_0')
+    - Signal('日线_D1W13SMA10_加速V221118_下跌_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 取近n根K线为截止
-    :param ma1: 快线
+    :param ma_type: MA类型，支持SMA、EMA、WMA、DEMA、TEMA、TRIMA、KAMA、MAMA、T3
+    :param timeperiod: MA的周期
     :param window: 识别加速走势的窗口大小
     :return: 信号识别结果
     """
+    cache_key = update_ma_cache(c, ma_type, timeperiod)
     assert window > 3, "辨别加速，至少需要3根以上K线"
-    k1, k2, k3 = c.freq.value, f"D{di}W{window}", f"{ma1}加速"
+    k1, k2, k3 = c.freq.value, f"D{di}W{window}{cache_key}", f"加速V221118"
 
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
-    delta = [x.close - x.cache[ma1] for x in bars]
+    delta = [x.close - x.cache[cache_key] for x in bars]
 
     if all(x > 0 for x in delta) and delta[-1] > delta[-2] > delta[-3]:
         v1 = "上涨"
