@@ -40,6 +40,8 @@ from czsc.signals.coo import (
 from czsc.signals.vol import (
     vol_single_ma_V230214,
     vol_double_ma_V230214,
+    vol_ti_suo_V221216,
+    vol_gao_di_V221218,
 )
 
 from czsc.signals.bar import (
