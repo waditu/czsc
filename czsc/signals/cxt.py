@@ -13,6 +13,7 @@ from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS, Mark
 from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis_down
 from czsc.utils.sig import get_zs_seq
+from czsc.signals.tas import update_ma_cache
 from collections import OrderedDict
 
 
@@ -585,6 +586,114 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
             v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第三类买卖点
+
+    **信号逻辑：**
+
+    1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    2. 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA34_BS3辅助V230318_三卖_任意_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230318_三买_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230318".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+    zs_zd, zs_zg = max(b1.low, b3.low), min(b1.high, b3.high)
+    if zs_zd > zs_zg:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ma_1 = b1.fx_b.raw_bars[-1].cache[cache_key]
+    ma_3 = b3.fx_b.raw_bars[-1].cache[cache_key]
+    ma_5 = b5.fx_b.raw_bars[-1].cache[cache_key]
+
+    # 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    if b5.direction == Direction.Down and b5.low > zs_zg and ma_5 > ma_3 > ma_1:
+        v1 = "三买"
+
+    # 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+    if b5.direction == Direction.Up and b5.high < zs_zd and ma_5 < ma_3 < ma_1:
+        v1 = "三卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第三类买卖点，增加均线形态
+
+    **信号逻辑：**
+
+    1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高或均线底分
+    2. 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低或均线顶分
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三卖_均线新低_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线底分_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新高_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新低_任意_0')
+
+    **信号说明：**
+
+    类似 cxt_third_bs_V230318 信号，但增加了均线形态。
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230319".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+    zs_zd, zs_zg = max(b1.low, b3.low), min(b1.high, b3.high)
+    if zs_zd > zs_zg:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ma_1 = b1.fx_b.raw_bars[-1].cache[cache_key]
+    ma_3 = b3.fx_b.raw_bars[-1].cache[cache_key]
+    ma_5 = b5.fx_b.raw_bars[-1].cache[cache_key]
+
+    # 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    if b5.direction == Direction.Down and b5.low > zs_zg:
+        v1 = "三买"
+
+    # 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+    if b5.direction == Direction.Up and b5.high < zs_zd and ma_5 < ma_3 < ma_1:
+        v1 = "三卖"
+
+    if v1 == '其他':
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if ma_5 > ma_3 > ma_1:
+        v2 = "均线新高"
+    elif ma_5 < ma_3 < ma_1:
+        v2 = "均线新低"
+    elif ma_5 > ma_3 < ma_1:
+        v2 = "均线底分"
+    elif ma_5 < ma_3 > ma_1:
+        v2 = "均线顶分"
+    else:
+        v2 = "均线否定"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 class BXT:
