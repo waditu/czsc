@@ -11,7 +11,8 @@ from czsc.sensors.utils import (
     turn_over_rate,
     discretizer,
     compound_returns,
-    get_index_beta
+    get_index_beta,
+    holds_concepts_effect,
 )
 
 
