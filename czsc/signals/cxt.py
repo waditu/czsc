@@ -375,31 +375,27 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1MO3_结束辅助_新低_第1次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第2次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第1次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第2次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第3次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第4次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第3次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第4次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第5次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第5次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第6次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第6次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第7次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第7次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第2次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第2次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第3次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第4次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第3次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第4次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第5次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第1次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第1次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第5次_任意_0')
 
     :param c: CZSC对象
     :param kwargs:
     :return: 信号识别结果
     """
     max_overlap = int(kwargs.get('max_overlap', 3))
-    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_结束辅助".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_BE辅助V230222".split('_')
     v1 = '其他'
     v2 = '其他'
 
-    if not c.ubi_fxs:
+    if not c.ubi_fxs or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     # 为了只取最后一笔以来的分型，没有用底层fx_list
@@ -450,16 +446,15 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 
     **信号列表：**
 
-    - Signal('15分钟_D1MO3_笔结束V230224_看多_任意_任意_0')
-    - Signal('15分钟_D1MO3_笔结束V230224_看空_任意_任意_0')
+    - Signal('15分钟_D1_BE辅助V230224_看多_任意_任意_0')
+    - Signal('15分钟_D1_BE辅助V230224_看空_任意_任意_0')
 
     :param c: CZSC 对象
     :return: 信号字典
     """
-    max_overlap = int(kwargs.get('max_overlap', 3))
-    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_笔结束V230224".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D1_BE辅助V230224".split('_')
     v1 = '其他'
-    if len(c.bi_list) <= 3:
+    if len(c.bi_list) <= 3 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     last_bi = c.bi_list[-1]
@@ -473,10 +468,9 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 
     if bar1.upper > bar1.lower * 2 and fx_vol_mean > bi_vol_mean * 2:
         v1 = '看空'
-    elif 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
+
+    if 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
         v1 = '看多'
-    else:
-        v1 = '其他'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -694,6 +688,96 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
         v2 = "均线否定"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_bi_end_V230104(c: CZSC, th=50, **kwargs) -> OrderedDict:
+    """单均线辅助判断笔结束
+
+    **信号逻辑：**
+
+    1. 向下笔底分型，连续三根阳线跨越SMA5超过一定阈值，且最后一根阳线收盘价在SMA5上方，向下笔结束；
+    2. 向上笔顶分型，连续三根阴线跨越SMA5超过一定阈值，且最后一根阴线收盘价在SMA5下方，向上笔结束。
+
+    **信号列表：**
+
+    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :param th: 距离SMA5均线的阈值
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230104".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    bars = get_sub_elements(c.bars_raw, di=1, n=3)
+    bar1, bar2, bar3 = bars
+
+    lc1 = last_bi.direction == Direction.Down and min([x.low for x in bars]) == last_bi.low
+    lc2 = all(x.close > x.open for x in bars)
+    lc3 = bar3.cache[cache_key] * (1 + th / 10000) < bar3.close
+    if len(c.bars_ubi) < 7 and lc1 and lc2 and lc3:
+        v1 = "看多"
+
+    sc1 = last_bi.direction == Direction.Up and max([x.high for x in bars]) == last_bi.high
+    sc2 = all(x.close < x.open for x in bars)
+    sc3 = bar3.cache[cache_key] * (1 - th / 10000) > bar3.close
+    if len(c.bars_ubi) < 7 and sc1 and sc2 and sc3:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230105(c: CZSC, th=50, **kwargs) -> OrderedDict:
+    """K线形态+均线辅助判断笔结束
+
+    **信号逻辑：**
+
+    1. 向下笔底分型右侧两根K线，第一根阴线，第二根K线阳线，且收盘价超过均线一定阈值，向下笔结束。
+    2. 反之，向上笔结束。
+
+    **信号列表：**
+
+    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :param th: RSQ阈值，RSQ * 100 > th, 表示行情很强
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230105".split('_')
+
+    v1 = "其他"
+    if len(c.bi_list) < 3 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    bar1, bar2 = last_bi.fx_b.raw_bars[-2:]
+
+    lc1 = last_bi.direction == Direction.Down and bar1.low == last_bi.low
+    lc2 = bar1.close < bar1.open and bar2.close > bar2.cache[cache_key] * (1 + th / 10000) > bar2.open
+    if len(c.bars_ubi) < 7 and lc1 and lc2:
+        v1 = "看多"
+
+    sc1 = last_bi.direction == Direction.Up and bar1.high == last_bi.high
+    sc2 = bar1.close > bar1.open and bar2.close < bar2.cache[cache_key] * (1 - th / 10000) < bar2.open
+    if len(c.bars_ubi) < 7 and sc1 and sc2:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 class BXT:
