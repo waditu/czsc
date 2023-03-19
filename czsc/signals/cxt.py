@@ -13,7 +13,7 @@ from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS, Mark
 from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis_down
 from czsc.utils.sig import get_zs_seq
-from czsc.signals.tas import update_ma_cache
+from czsc.signals.tas import update_ma_cache, update_macd_cache
 from collections import OrderedDict
 
 
@@ -775,6 +775,47 @@ def cxt_bi_end_V230105(c: CZSC, th=50, **kwargs) -> OrderedDict:
     sc1 = last_bi.direction == Direction.Up and bar1.high == last_bi.high
     sc2 = bar1.close > bar1.open and bar2.close < bar2.cache[cache_key] * (1 - th / 10000) < bar2.open
     if len(c.bars_ubi) < 7 and sc1 and sc2:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230312(c: CZSC, **kwargs):
+    """MACD辅助判断笔结束信号
+
+    **信号逻辑：**
+
+    1. 看多，当下笔向下，笔的最后一个分型MACD向上
+    2. 反之，看空，当下笔向上，笔的最后一个分型MACD向下
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, **kwargs)
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}_BE辅助V230312".split('_')
+    v1 = "其他"
+
+    if len(c.bi_list) < 3 or len(c.bars_ubi) >= 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi: BI = c.bi_list[-1]
+    last_fx: FX = last_bi.fx_b
+    macd1 = last_fx.raw_bars[-1].cache[cache_key]['macd']
+    macd2 = last_fx.raw_bars[0].cache[cache_key]['macd']
+
+    if last_bi.direction == Direction.Down and macd1 > macd2:
+        v1 = "看多"
+
+    if last_bi.direction == Direction.Up and macd1 < macd2:
         v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
