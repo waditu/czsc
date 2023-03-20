@@ -582,6 +582,49 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第二类买卖点
+
+    **信号逻辑：**
+
+    1. 二买：1）123笔序列向下，其中 1,3 笔的低点都在均线下方；2）5的fx_a的均线值小于fx_b均线值
+    2. 二卖：1）123笔序列向上，其中 1,3 笔的高点都在均线上方；2）5的fx_a的均线值大于fx_b均线值
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA21_BS2辅助V230320_二买_任意_任意_0')
+    - Signal('15分钟_D1SMA21_BS2辅助V230320_二卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 21))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS2辅助V230320".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+
+    b1_ma_b = b1.fx_b.raw_bars[-2].cache[cache_key]
+    b3_ma_b = b3.fx_b.raw_bars[-2].cache[cache_key]
+
+    b5_ma_a = b5.fx_a.raw_bars[-2].cache[cache_key]
+    b5_ma_b = b5.fx_b.raw_bars[-2].cache[cache_key]
+
+    lc1 = b1.low < b1_ma_b and b3.low < b3_ma_b
+    if b5.direction == Direction.Down and lc1 and b5_ma_a < b5_ma_b:
+        v1 = "二买"
+
+    sc1 = b1.high > b1_ma_b and b3.high > b3_ma_b
+    if b5.direction == Direction.Up and sc1 and b5_ma_a > b5_ma_b:
+        v1 = "二卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点
 
