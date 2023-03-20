@@ -864,6 +864,70 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
+    """100以内质数时序窗口辅助笔结束判断
+
+    **信号逻辑：**
+
+    1. 未完成笔延伸长度等于某个质数，且最后3根K线创新高，或者新低，笔结束
+
+    **信号列表：**
+
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_17K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_23K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_29K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_11K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_13K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_19K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_37K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_41K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_13K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_11K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_17K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_19K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_23K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_37K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_31K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_29K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_31K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_41K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_43K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_47K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_43K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_53K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_59K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_61K_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    max_overlap = kwargs.get("max_overlap", 3)
+    k1, k2, k3, v1 = f"{c.freq.value}", f"D0质数窗口MO{max_overlap}", "BE辅助V230320", "其他"
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    primes = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+
+    last_bi = c.bi_list[-1]
+    bars = c.bars_ubi[1:]
+    raw_bars = [y for x in bars for y in x.raw_bars]
+    ubi_len = len(raw_bars)
+    ubi_min = min([x.low for x in raw_bars])
+    ubi_max = max([x.high for x in raw_bars])
+    mop_bars = raw_bars[-max_overlap:]
+
+    if last_bi.direction == Direction.Up and ubi_len in primes and min([x.low for x in mop_bars]) == ubi_min:
+        v1 = "看多"
+        v2 = f"{ubi_len}K"
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    if last_bi.direction == Direction.Down and ubi_len in primes and max([x.high for x in mop_bars]) == ubi_max:
+        v1 = "看空"
+        v2 = f"{ubi_len}K"
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
     """笔的表里关系
 

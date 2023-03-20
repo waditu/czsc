@@ -26,6 +26,7 @@ from czsc.signals.cxt import (
     cxt_bi_end_V230104,
     cxt_bi_end_V230105,
     cxt_bi_end_V230312,
+    cxt_bi_end_V230320,
     cxt_bi_base_V230228,
     cxt_third_buy_V230228,
     cxt_double_zs_V230311,
