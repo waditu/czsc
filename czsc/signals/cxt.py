@@ -887,10 +887,10 @@ def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号字典
     """
     k1, k2, k3, v1 = c.freq.value, "D1", "表里关系V230101", "其他"
-    if len(c.bi_list) < 3:
+    fxs = c.ubi_fxs
+    if len(c.bi_list) < 3 or len(fxs) < 1:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    #
     last_bi = c.bi_list[-1]
     if last_bi.direction == Direction.Down:
         v1 = "向上" if len(c.bars_ubi) > 7 else "向下"
@@ -898,14 +898,12 @@ def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
         assert last_bi.direction == Direction.Up
         v1 = "向下" if len(c.bars_ubi) > 7 else "向上"
 
-    fxs = c.ubi_fxs
     if fxs[-1].mark == Mark.D:
         v2 = "底分" if v1 == "向下" else "延伸"
     else:
         assert fxs[-1].mark == Mark.G
         v2 = "顶分" if v1 == "向上" else "延伸"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-
 
 
 
