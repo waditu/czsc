@@ -13,6 +13,7 @@ from czsc.sensors.utils import (
     compound_returns,
     get_index_beta,
     holds_concepts_effect,
+    SignalsPerformance,
 )
 
 
