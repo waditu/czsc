@@ -19,6 +19,7 @@ from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_date
 from czsc.strategies import CzscStrategyBase
 from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
+from czsc.utils import cal_trade_price
 from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSensor
 
 
