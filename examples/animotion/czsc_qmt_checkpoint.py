@@ -11,6 +11,7 @@ streamlit-echarts
 import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
+sys.path.insert(0, '../..')
 import streamlit as st
 import pandas as pd
 from datetime import datetime
@@ -20,6 +21,22 @@ from czsc.utils import freqs_sorted
 from czsc.connectors import qmt_connector as qmc
 
 st.set_page_config(layout="wide")
+
+config = {
+    "scrollZoom": True,
+    "displayModeBar": True,
+    "displaylogo": False,
+    'modeBarButtonsToRemove': [
+        'zoom2d',
+        'toggleSpikelines',
+        'pan2d',
+        'select2d',
+        'zoomIn2d',
+        'zoomOut2d',
+        'lasso2d',
+        'autoScale2d',
+        'hoverClosestCartesian',
+        'hoverCompareCartesian']}
 
 
 with st.sidebar:
@@ -57,6 +74,6 @@ for i, freq in enumerate(freqs):
         fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
         kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.2)
         kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.2)
-    st.plotly_chart(kline.fig, use_container_width=True, height=300)
+    st.plotly_chart(kline.fig, use_container_width=True, height=300, config=config)
 
 

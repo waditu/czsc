@@ -24,7 +24,6 @@ class KlineChart:
     def __init__(self, **kwargs):
         # 子图数量
         self.n_rows = kwargs.get('n_rows', 3)
-
         if self.n_rows == 3:
             row_heights = [0.6, 0.2, 0.2]
         elif self.n_rows == 4:
@@ -45,9 +44,10 @@ class KlineChart:
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
-            title=dict(text=kwargs.get('title', 'K线图'), yanchor='top'),
+            title=dict(text=kwargs.get('title', ''), yanchor='top'),
             margin=dict(t=10, b=10),
-            legend=dict(orientation='h', yanchor="top", y=1.01, xanchor="center", x=0.5),
+            # https://plotly.com/python/reference/layout/#layout-legend
+            legend=dict(orientation='h', yanchor="top", y=1.1, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),
             template="plotly_dark",
             hovermode="x unified",
             hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
