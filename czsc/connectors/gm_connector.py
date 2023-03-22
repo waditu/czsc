@@ -520,7 +520,9 @@ def report_account_status(context):
 
             row = {'交易标的': symbol, '标的名称': name,
                    '最新时间': trader.end_dt.strftime(dt_fmt),
-                   '最新价格': trader.latest_price}
+                   '最新价格': trader.latest_price,
+                   '集成仓位': trader.get_ensemble_pos(),
+                   }
 
             if "日线" in trader.kas.keys():
                 bar1, bar2 = trader.kas['日线'].bars_raw[-2:]
@@ -537,7 +539,7 @@ def report_account_status(context):
             results.append(row)
 
         df = pd.DataFrame(results)
-        df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
+        df.sort_values(['集成仓位'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
         gm_push_message(file_xlsx, msg_type='file', **context.push_msg_conf)
@@ -701,11 +703,12 @@ def init_context_traders(context, symbols: List[str], strategy):
         except Exception as e1:
             del symbols_info[symbol]
             logger.exception(f"{e1}：{symbol} - {context.stocks.get(symbol, '无名')} 初始化失败，当前时间：{context.now}")
-
-    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
-    logger.info(f"订阅成功数量：{len(symbols_info)}")
-    logger.info(f"交易标的配置：{symbols_info}")
     context.symbols_info = symbols_info
+
+    # 订阅K线数据
+    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
+    logger.info(f"订阅成功数量：{len(symbols_info)}，订阅K线周期：{frequency}")
+    logger.info(f"交易标的配置：{symbols_info}")
 
 
 def init_context_schedule(context):
