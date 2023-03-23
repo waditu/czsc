@@ -141,6 +141,48 @@ def get_kline(symbol, end_time, freq='60s', count=33000, adjust=ADJUST_PREV):
     return format_kline(df, freq_map_[freq])
 
 
+def to_tz_datetime(dt):
+    """格式化日期时间"""
+    end_dt = pd.to_datetime(dt, utc=True)
+    end_dt = end_dt.tz_convert('dateutil/PRC')
+    # 时区转换之后，要减去8个小时才是设置的时间
+    end_dt = end_dt - timedelta(hours=8)
+    return end_dt
+
+
+def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+    """获取 CZSC 库定义的标准 RawBar 对象列表
+
+    :param symbol: 标的代码
+    :param freq: 周期
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param fq: 除权类型
+    :param kwargs:
+    :return:
+    """
+    freq = Freq(freq)
+    sdt = to_tz_datetime(sdt)
+    edt = to_tz_datetime(edt)
+
+    freq_map_ = {'60s': Freq.F1, '300s': Freq.F5, '900s': Freq.F15, '1800s': Freq.F30,
+                 '3600s': Freq.F60, '1d': Freq.D}
+    freq_map_ = {v: k for k, v in freq_map_.items()}
+    period = freq_map_[freq]
+
+    if fq == '前复权':
+        adjust = ADJUST_PREV
+    elif fq == '后复权':
+        adjust = ADJUST_POST
+    else:
+        assert fq == '不复权'
+        adjust = ADJUST_NONE
+
+    bars = get_kline(symbol, freq=period, count=33000, end_time=edt, adjust=adjust)
+    bars = [bar for bar in bars if bar.dt >= sdt]
+    return bars
+
+
 def get_init_bg(symbol: str,
                 end_dt: [str, datetime],
                 base_freq: str,
