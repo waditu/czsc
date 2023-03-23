@@ -928,6 +928,63 @@ def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
+    """分型配合均线辅助判断笔的结束
+
+    **信号逻辑：**
+
+    1. 对于顶分型，如果最右边的k线的MA最小，这是向下笔正常延伸的情况
+    2. 对于底分型，如果最右边的k线的MA最大，这是向上笔正常延伸的情况
+
+    **信号列表：**
+
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_反向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_同向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_反向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_同向分型_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 5))
+    k1, k2, k3, v1, v2 = f"{c.freq.value}", "D0分型配合均线", "BE辅助V230322", "其他", "任意"
+    ubi_fxs = c.ubi_fxs
+    last_bar = c.bars_raw[-1]
+
+    if len(c.bi_list) < 3 or len(c.bars_ubi) > 7 or len(ubi_fxs) == 0 or last_bar.dt != ubi_fxs[-1].raw_bars[-1].dt:
+        # 1. 未形成笔
+        # 2. 笔结束后的k线数大于7
+        # 3. 未形成分型
+        # 4. 最后一个分型结束时间不是最后一个k线的结束时间
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    last_fx = ubi_fxs[-1]
+    max_ma = max([x.cache[cache_key] for x in last_fx.raw_bars])
+    min_ma = min([x.cache[cache_key] for x in last_fx.raw_bars])
+    right_ma = last_fx.raw_bars[-1].cache[cache_key]
+
+    if last_bi.direction == Direction.Up:
+        if last_fx.mark == Mark.G and right_ma == min_ma:
+            v1 = "看空"
+            v2 = "同向分型"
+
+        if last_fx.mark == Mark.D and right_ma != max_ma:
+            v1 = "看空"
+            v2 = "反向分型"
+
+    if last_bi.direction == Direction.Down:
+        if last_fx.mark == Mark.D and right_ma == max_ma:
+            v1 = "看多"
+            v2 = "同向分型"
+
+        if last_fx.mark == Mark.G and right_ma != min_ma:
+            v1 = "看多"
+            v2 = "反向分型"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
 def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
     """笔的表里关系
 

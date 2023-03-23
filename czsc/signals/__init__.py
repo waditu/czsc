@@ -27,6 +27,7 @@ from czsc.signals.cxt import (
     cxt_bi_end_V230105,
     cxt_bi_end_V230312,
     cxt_bi_end_V230320,
+    cxt_bi_end_V230322,
     cxt_bi_base_V230228,
     cxt_third_buy_V230228,
     cxt_double_zs_V230311,
@@ -123,6 +124,7 @@ from czsc.signals.tas import (
 
     tas_ma_base_V221101,
     tas_ma_base_V221203,
+    tas_ma_base_V230313,
     tas_ma_round_V221206,
     tas_double_ma_V221203,
 
