@@ -18,12 +18,17 @@ dummy = czsc.DummyBacktest(strategy=CzscStocksBeta, read_bars=qmc.get_raw_bars, 
                            signals_path=r'D:\QMT投研\CzscStocksBeta\signals',
                            results_path=r'D:\QMT投研\CzscStocksBeta\results_20200101_20230301')
 
-# 查看某个品种的交易回放
-dummy.replay('000001.SZ')
+# # 查看某个品种的交易回放
+# dummy.replay('000001.SZ')
 
-# 定义需要回测的品种，这里可以自定义
-symbols = qmc.get_symbols('train')
-dummy.execute(symbols, n_jobs=4)
+
+# Python中的多进程必须在if __name__ == '__main__'中执行，否则会报错
+
+if __name__ == '__main__':
+    # 定义需要回测的品种，这里可以自定义
+    symbols = qmc.get_symbols('train')
+    # 这里仅回测前10个品种，作为执行示例
+    dummy.execute(symbols[:10], n_jobs=4)
 
 
 

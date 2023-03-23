@@ -31,9 +31,7 @@ class DummyBacktest:
         assert issubclass(strategy, CzscStrategyBase), "strategy 必须是 CzscStrategyBase 的子类"
         self.strategy = strategy
         self.results_path = results_path
-        if os.path.exists(self.results_path):
-            raise ValueError(f"回测结果路径 {self.results_path} 已经存在，请修改")
-        os.makedirs(self.results_path, exist_ok=False)
+        os.makedirs(self.results_path, exist_ok=True)
         self.signals_path = signals_path
         os.makedirs(self.signals_path, exist_ok=True)
         # 缓存 poss 数据
