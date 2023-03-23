@@ -724,6 +724,48 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
+def tas_ma_base_V230313(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, **kwargs) -> OrderedDict:
+    """单均线多空和方向辅助开平仓信号
+
+    **信号逻辑：**
+
+    1. close > ma，多头；反之，空头
+    2. ma[-1] > ma[-2]，向上；反之，向下
+    3. 加入 max_overlap 参数控制相同信号最大重叠次数
+
+    **信号列表：**
+
+    - Signal('日线_D1SMA5MO5_BS辅助V230313_看空_向下_任意_0')
+    - Signal('日线_D1SMA5MO5_BS辅助V230313_看空_向上_任意_0')
+    - Signal('日线_D1SMA5MO5_BS辅助V230313_看多_向上_任意_0')
+    - Signal('日线_D1SMA5MO5_BS辅助V230313_看多_向下_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    :param timeperiod: 均线计算周期
+    :return:
+    """
+    max_overlap = int(kwargs.get("max_overlap", 5))
+    assert max_overlap >= 2, "max_overlap 必须大于等于2"
+
+    key = update_ma_cache(c, ma_type, timeperiod)
+    k1, k2, k3, v1 = c.freq.value, f"D{di}{key}MO{max_overlap}", "BS辅助V230313", "其他"
+    bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
+    if len(bars) < max_overlap + 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bars[-1].close >= bars[-1].cache[key] and not all(x.close > x.cache[key] for x in bars):
+        v1 = "看多"
+    elif bars[-1].close < bars[-1].cache[key] and not all(x.close < x.cache[key] for x in bars):
+        v1 = "看空"
+    else:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
 def tas_ma_round_V221206(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=60, th: int = 10) -> OrderedDict:
     """笔端点在均线附近，贡献者：谌意勇
 

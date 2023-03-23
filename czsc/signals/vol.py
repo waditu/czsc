@@ -12,8 +12,9 @@ except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
+from typing import List
 from collections import OrderedDict
-from czsc.analyze import CZSC
+from czsc.analyze import CZSC, RawBar
 from czsc.utils.sig import get_sub_elements, create_single_signal
 
 
@@ -127,3 +128,120 @@ def vol_double_ma_V230214(c: CZSC, di: int = 1, t1: int = 5, t2: int = 20, **kwa
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def vol_ti_suo_V221216(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """梯量/缩量柱：顺势与逆势工具，贡献者：琅盎
+
+    **信号判断标准 **
+
+    1.只要比昨缩量的就能形成“缩量柱”，只要比昨日增高的就能形成“梯量柱”。严格地讲，
+    连续三天缩量就是“缩量柱”，连续三天增量“阶梯状”就是梯量柱，它是当日量能连续同前二天的量相比。
+    2.缩量柱的形态是量柱明显走低，梯量柱的形态是成交量明显逐步走高，它们都有两种情况：量价同步和量价背离。
+    3.“价升量缩” 的 “缩量柱”，体现了供不应求的局面，主力有主动买入的倾向；
+    4.“量增价涨” 的 “梯量柱”，体现了努力上攻的态势，主力有被动买入的倾向。
+
+
+    **有效信号列表： **
+
+    - Signal('15分钟_D1K_量柱V20221216_梯量_价平_任意_0')
+    - Signal('15分钟_D1K_量柱V20221216_梯量_价跌_任意_0')
+    - Signal('15分钟_D1K_量柱V20221216_缩量_价平_任意_0')
+    - Signal('15分钟_D1K_量柱V20221216_缩量_价跌_任意_0')
+    - Signal('15分钟_D1K_量柱V20221216_梯量_价升_任意_0')
+    - Signal('15分钟_D1K_量柱V20221216_缩量_价升_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
+    :return: 信号识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221216".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bar1, bar2, bar3 = c.bars_raw[-di], c.bars_raw[-di-1], c.bars_raw[-di-2]
+    close_max = max(bar2.close, bar3.close)
+    close_min = min(bar2.close, bar3.close)
+
+    if bar1.vol > bar2.vol > bar3.vol:
+        v1 = "梯量"
+    elif bar1.vol < bar2.vol < bar3.vol:
+        v1 = "缩量"
+
+    if v1 == '其他':
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bar1.close < close_min and bar1.close < bar1.open:
+        v2 = "价跌"
+    elif bar1.close > close_max and bar1.close > bar1.open:
+        v2 = "价升"
+    else:
+        v2 = "价平"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def vol_gao_di_V221218(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """高量柱&低量柱&高量黄金柱，贡献者：琅盎
+
+    **高/低量柱判断标准 **
+
+    1.高量柱是在一个阶段内量柱的对比（3天以上），在这一阶段出现的的最高量就是高量柱。
+    2.高量柱是在对应的这一价位成交火爆的标志，出现高量柱后的走势多数向上少数向下。
+    3.高量柱出现后，不跌或横盘应看涨。
+    4.高量柱 + 缩量柱 ＝ 黄金柱 是最具价值的高量柱组合
+    5.低量柱判断标准正好和高量柱相反
+    6.低量柱出现后，不跌或横盘应看跌。
+    7.操作中还需要根据所处位置作判断
+
+    **有效信号列表： **
+
+    - Signal('15分钟_D1K_量柱V20221218_低量柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_低量柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量柱_6K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_低量柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_低量柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_低量柱_6K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_6K_任意_0')
+
+    :param c: CZSC 对象
+    :param di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
+    :return: 高量柱识别结果
+    """
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221218".split('_')
+    v1, v2 = "其他", "任意"
+
+    def _check_gao_liang_zhu(bars: List[RawBar]):
+        if len(bars) <= 5:
+            return "其他"
+
+        max_vol = max([x.vol for x in bars])
+        min_vol = min([x.vol for x in bars])
+        _v1 = "其他"
+
+        if bars[-1].vol == max_vol:
+            _v1 = "高量柱"
+        elif bars[-2].vol == max_vol and bars[-1].vol < bars[-2].vol * 0.5:
+            _v1 = "高量黄金柱"
+        elif bars[-1].vol == min_vol:
+            _v1 = "低量柱"
+        return _v1
+
+    for n in (10, 9, 8, 7, 6):
+        _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+        if len(_bars) != n:
+            continue
+
+        v1 = _check_gao_liang_zhu(_bars)
+        if v1 != "其他":
+            v2 = f"{n}K"
+            break
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

@@ -374,17 +374,16 @@ class CZSC:
 
     @property
     def finished_bis(self) -> List[BI]:
-        """返回当下基本确认完成的笔列表"""
+        """已完成的笔"""
         if not self.bi_list:
             return []
-        else:
-            if self.last_bi_extend:
-                return self.bi_list[:-1]
+        if len(self.bars_ubi) < 5:
+            return self.bi_list[:-1]
         return self.bi_list
 
     @property
     def ubi_fxs(self) -> List[FX]:
-        """返回当下基本确认完成的笔列表"""
+        """bars_ubi 中的分型"""
         if not self.bars_ubi:
             return []
         else:
@@ -392,7 +391,7 @@ class CZSC:
 
     @property
     def fx_list(self) -> List[FX]:
-        """返回当下基本确认完成的笔列表"""
+        """分型列表，包括 bars_ubi 中的分型"""
         fxs = []
         for bi_ in self.bi_list:
             fxs.extend(bi_.fxs[1:])

@@ -23,14 +23,26 @@ from czsc.signals.cxt import (
     cxt_zhong_shu_gong_zhen_V221221,
     cxt_bi_end_V230222,
     cxt_bi_end_V230224,
+    cxt_bi_end_V230104,
+    cxt_bi_end_V230105,
+    cxt_bi_end_V230312,
+    cxt_bi_end_V230320,
+    cxt_bi_end_V230322,
     cxt_bi_base_V230228,
     cxt_third_buy_V230228,
     cxt_double_zs_V230311,
+    cxt_third_bs_V230318,
+    cxt_third_bs_V230319,
+    cxt_second_bs_V230320,
+    cxt_bi_status_V230101,
+    cxt_bi_status_V230102,
 )
 
 
 from czsc.signals.byi import (
     byi_symmetry_zs_V221107,
+    byi_bi_end_V230106,
+    byi_bi_end_V230107,
 )
 
 from czsc.signals.coo import (
@@ -40,6 +52,8 @@ from czsc.signals.coo import (
 from czsc.signals.vol import (
     vol_single_ma_V230214,
     vol_double_ma_V230214,
+    vol_ti_suo_V221216,
+    vol_gao_di_V221218,
 )
 
 from czsc.signals.bar import (
@@ -110,6 +124,7 @@ from czsc.signals.tas import (
 
     tas_ma_base_V221101,
     tas_ma_base_V221203,
+    tas_ma_base_V230313,
     tas_ma_round_V221206,
     tas_double_ma_V221203,
 

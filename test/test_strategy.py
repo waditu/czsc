@@ -26,6 +26,8 @@ def test_czsc_strategy():
     sigs = generate_czsc_signals(bars, strategy.get_signals, strategy.sorted_freqs, init_n=2000, sdt="20100101")
     trader2 = strategy.dummy(sigs)
     assert len(trader2.positions) == 3
+    trader3 = strategy.dummy(sigs, sleep_time=0.1)
+    assert len(trader3.positions) == 3
 
     for i in [0, 1, 2]:
         pos1 = trader1.positions[i]

@@ -7,7 +7,7 @@ describe: 笔相关信号的计算
 """
 from typing import List, Union
 from collections import OrderedDict
-
+from deprecated import deprecated
 from czsc import analyze
 from czsc.objects import Direction, BI, FakeBI, Signal
 from czsc.enum import Freq
@@ -508,6 +508,7 @@ def check_thirteen_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> 
 # ----------------------------------------------------------------------------------------------------------------------
 # 以下是信号计算函数（前缀固定为 get_s）
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_three_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的三笔形态信号
 
@@ -549,6 +550,7 @@ def get_s_three_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_base_xt(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的基础形态信号
 
@@ -594,6 +596,7 @@ def get_s_base_xt(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_like_bs(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的类买卖点信号
 
@@ -627,6 +630,7 @@ def get_s_like_bs(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     return s
 
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
     """倒数第1笔的表里关系信号
 
@@ -661,6 +665,7 @@ def get_s_bi_status(c: analyze.CZSC) -> OrderedDict:
     return s
 
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     """倒数第0笔信号
 
@@ -706,6 +711,7 @@ def get_s_d0_bi(c: analyze.CZSC) -> OrderedDict:
     return s
 
 
+@deprecated(version='1.0.0', reason="所有笔、分型相关信号迁移至 cxt 下")
 def get_s_di_bi(c: analyze.CZSC, di: int = 1) -> OrderedDict:
     """倒数第i笔的表里关系信号
 

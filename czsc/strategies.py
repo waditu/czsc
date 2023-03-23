@@ -8,8 +8,10 @@ describe: 提供一些策略的编写案例
 以 trader_ 开头的是择时交易策略案例
 """
 import os
+import time
 import shutil
 import pandas as pd
+from tqdm import tqdm
 from copy import deepcopy
 from abc import ABC, abstractmethod
 from loguru import logger
@@ -124,9 +126,16 @@ class CzscStrategyBase(ABC):
         :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
         :return: 完成策略回测后的 CzscTrader 对象
         """
+        sleep_time = kwargs.get('sleep_time', 0)
+        sleep_step = kwargs.get('sleep_step', 1000)
+
         trader = CzscTrader(positions=deepcopy(self.positions))
-        for sig in sigs:
+        for i, sig in tqdm(enumerate(sigs), desc=f"回测 {self.symbol} {self.sorted_freqs}"):
             trader.on_sig(sig)
+
+            if i % sleep_step == 0:
+                time.sleep(sleep_time)
+
         return trader
 
     def replay(self, bars: List[RawBar], res_path, **kwargs):

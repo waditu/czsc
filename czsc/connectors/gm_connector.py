@@ -13,7 +13,7 @@ import pandas as pd
 from loguru import logger
 try:
     from gm.api import *
-except:
+except ModuleNotFoundError:
     logger.warning(f"gm 模块没有安装")
 from datetime import datetime, timedelta
 from collections import OrderedDict
@@ -23,6 +23,7 @@ from czsc.data import freq_cn2gm
 from czsc.utils import qywx as wx
 from czsc.utils import BarGenerator
 from czsc.objects import RawBar, Freq
+from czsc.fsa import push_message
 
 
 dt_fmt = "%Y-%m-%d %H:%M:%S"
@@ -41,6 +42,37 @@ if not os.path.exists(file_token):
 else:
     gm_token = open(file_token, encoding="utf-8").read()
     set_token(gm_token)
+
+
+def gm_push_message(msg: str, msg_type: str = 'text', **kwargs):
+    """统一飞书和企业微信消息推送服务
+
+    :param msg:
+    :param msg_type:
+    :param kwargs:
+    :return:
+    """
+    wx_key = kwargs.get('wx_key')
+    fs_app = kwargs.get('fs_app')
+    if wx_key:
+        try:
+            if msg_type == 'text':
+                wx.push_text(msg, wx_key)
+            elif msg_type == 'file':
+                wx.push_file(msg, wx_key)
+            else:
+                logger.debug(f"企业微信通道仅支持 text 和 file 类型，当前类型为 {msg_type}")
+        except Exception as _e:
+            logger.debug(f"企业微信消息推送失败：{_e}")
+
+    if fs_app:
+        try:
+            push_message(msg=msg, msg_type=msg_type,
+                         feishu_app_secret=fs_app['feishu_app_secret'],
+                         feishu_app_id=fs_app['feishu_app_id'],
+                         feishu_members=fs_app['feishu_members'])
+        except Exception as _e:
+            logger.debug(f"飞书消息推送失败：{_e}")
 
 
 def is_trade_date(dt):
@@ -107,6 +139,48 @@ def get_kline(symbol, end_time, freq='60s', count=33000, adjust=ADJUST_PREV):
         df = history_n(symbol=symbol, frequency=freq, end_time=end_time, adjust=adjust,
                        fields='symbol,eob,open,close,high,low,volume,amount,position', count=count, df=True)
     return format_kline(df, freq_map_[freq])
+
+
+def to_tz_datetime(dt):
+    """格式化日期时间"""
+    end_dt = pd.to_datetime(dt, utc=True)
+    end_dt = end_dt.tz_convert('dateutil/PRC')
+    # 时区转换之后，要减去8个小时才是设置的时间
+    end_dt = end_dt - timedelta(hours=8)
+    return end_dt
+
+
+def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+    """获取 CZSC 库定义的标准 RawBar 对象列表
+
+    :param symbol: 标的代码
+    :param freq: 周期
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param fq: 除权类型
+    :param kwargs:
+    :return:
+    """
+    freq = Freq(freq)
+    sdt = to_tz_datetime(sdt)
+    edt = to_tz_datetime(edt)
+
+    freq_map_ = {'60s': Freq.F1, '300s': Freq.F5, '900s': Freq.F15, '1800s': Freq.F30,
+                 '3600s': Freq.F60, '1d': Freq.D}
+    freq_map_ = {v: k for k, v in freq_map_.items()}
+    period = freq_map_[freq]
+
+    if fq == '前复权':
+        adjust = ADJUST_PREV
+    elif fq == '后复权':
+        adjust = ADJUST_POST
+    else:
+        assert fq == '不复权'
+        adjust = ADJUST_NONE
+
+    bars = get_kline(symbol, freq=period, count=33000, end_time=edt, adjust=adjust)
+    bars = [bar for bar in bars if bar.dt >= sdt]
+    return bars
 
 
 def get_init_bg(symbol: str,
@@ -215,7 +289,7 @@ def on_order_status(context, order):
 
     logger.info(msg.replace("\n", " - ").replace('*', ""))
     if context.mode != MODE_BACKTEST and order.status in [1, 3, 5, 8, 9, 12]:
-        wx.push_text(content=str(msg), key=context.wx_key)
+        gm_push_message(str(msg), msg_type='text', **context.push_msg_conf)
 
 
 def on_execution_report(context, execrpt):
@@ -243,7 +317,7 @@ def on_execution_report(context, execrpt):
 
     logger.info(msg.replace("\n", " - ").replace('*', ""))
     if context.mode != MODE_BACKTEST and execrpt.exec_type in [1, 5, 6, 8, 12, 19]:
-        wx.push_text(content=str(msg), key=context.wx_key)
+        gm_push_message(str(msg), msg_type='text', **context.push_msg_conf)
 
 
 def on_backtest_finished(context, indicator):
@@ -254,10 +328,7 @@ def on_backtest_finished(context, indicator):
         https://www.myquant.cn/docs/python/python_object_trade#bd7f5adf22081af5
     :return:
     """
-    wx_key = context.wx_key
-    symbols = context.symbols
     data_path = context.data_path
-
     logger.info(str(indicator))
     logger.info("回测结束 ... ")
     cash = context.account().cash
@@ -295,7 +366,7 @@ def on_backtest_finished(context, indicator):
     content = ""
     for k, v in row.items():
         content += "{}: {}\n".format(k, v)
-    wx.push_text(content=content, key=wx_key)
+    gm_push_message(content, msg_type='text', **context.push_msg_conf)
 
 
 def on_error(context, code, info):
@@ -305,7 +376,7 @@ def on_error(context, code, info):
     msg = "{} - {}".format(code, info)
     logger.warning(msg)
     if context.mode != MODE_BACKTEST:
-        wx.push_text(content=msg, key=context.wx_key)
+        gm_push_message(msg, msg_type='text', **context.push_msg_conf)
 
 
 def on_account_status(context, account):
@@ -323,7 +394,7 @@ def on_account_status(context, account):
     msg = f"{str(account)}"
     logger.warning(msg)
     if context.mode != MODE_BACKTEST:
-        wx.push_text(content=msg, key=context.wx_key)
+        gm_push_message(msg, msg_type='text', **context.push_msg_conf)
 
 
 def is_order_exist(context, symbol, side) -> bool:
@@ -447,7 +518,7 @@ def on_bar(context, bars):
             for bar_ in bars_new:
                 trader.update(bar_)
 
-        # sync_long_position(context, trader)
+        sync_long_position(context, trader)
 
 
 def report_account_status(context):
@@ -481,7 +552,7 @@ def report_account_status(context):
                f"可用资金：{int(cash.available)}\n" \
                f"浮动盈亏：{int(cash.fpnl)}\n" \
                f"标的数量：{len(positions)}\n"
-        wx.push_text(msg.strip("\n *"), key=context.wx_key)
+        gm_push_message(msg, msg_type='text', **context.push_msg_conf)
 
         results = []
         for symbol, info in context.symbols_info.items():
@@ -491,7 +562,9 @@ def report_account_status(context):
 
             row = {'交易标的': symbol, '标的名称': name,
                    '最新时间': trader.end_dt.strftime(dt_fmt),
-                   '最新价格': trader.latest_price}
+                   '最新价格': trader.latest_price,
+                   '集成仓位': trader.get_ensemble_pos(),
+                   }
 
             if "日线" in trader.kas.keys():
                 bar1, bar2 = trader.kas['日线'].bars_raw[-2:]
@@ -508,10 +581,10 @@ def report_account_status(context):
             results.append(row)
 
         df = pd.DataFrame(results)
-        df.sort_values(['多头持仓', '多头收益'], ascending=False, inplace=True, ignore_index=True)
+        df.sort_values(['集成仓位'], ascending=False, inplace=True, ignore_index=True)
         file_xlsx = os.path.join(context.data_path, f"holds_{context.now.strftime('%Y%m%d_%H%M')}.xlsx")
         df.to_excel(file_xlsx, index=False)
-        wx.push_file(file_xlsx, key=context.wx_key)
+        gm_push_message(file_xlsx, msg_type='file', **context.push_msg_conf)
         os.remove(file_xlsx)
 
         # 提示非策略交易标的持仓
@@ -584,7 +657,7 @@ def process_out_of_symbols(context):
             # order_target_volume(symbol=symbol, volume=0, position_side=PositionSide_Long,
             #                     order_type=OrderType_Limit, price=p.price, account=account.id)
     if oos:
-        wx.push_text(f"不在交易列表的持仓股：{', '.join(oos)}", context.wx_key)
+        gm_push_message(f"不在交易列表的持仓股：{', '.join(oos)}", msg_type='text', **context.push_msg_conf)
 
 
 def init_context_universal(context, name):
@@ -615,11 +688,7 @@ def init_context_universal(context, name):
 
 
 def init_context_env(context):
-    """通用 context 初始化：2、读入环境变量
-
-    :param context:
-    """
-    context.wx_key = os.environ['wx_key']
+    """通用 context 初始化：2、读入环境变量"""
     context.account_id = os.environ.get('account_id', '')
     if context.mode != MODE_BACKTEST:
         assert len(context.account_id) > 10, "非回测模式，必须设置 account_id "
@@ -671,16 +740,17 @@ def init_context_traders(context, symbols: List[str], strategy):
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader
-            logger.info("{} Trader 构建成功，最新时间：{}，多仓：{}".format(symbol, trader.end_dt, trader.long_pos.pos))
+            logger.info("{} Trader 构建成功，最新时间：{}，多仓：{}".format(symbol, trader.end_dt, trader.get_ensemble_pos('mean')))
 
         except Exception as e1:
             del symbols_info[symbol]
             logger.exception(f"{e1}：{symbol} - {context.stocks.get(symbol, '无名')} 初始化失败，当前时间：{context.now}")
-
-    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
-    logger.info(f"订阅成功数量：{len(symbols_info)}")
-    logger.info(f"交易标的配置：{symbols_info}")
     context.symbols_info = symbols_info
+
+    # 订阅K线数据
+    subscribe(",".join(symbols_info.keys()), frequency=frequency, count=300, wait_group=False)
+    logger.info(f"订阅成功数量：{len(symbols_info)}，订阅K线周期：{frequency}")
+    logger.info(f"交易标的配置：{symbols_info}")
 
 
 def init_context_schedule(context):

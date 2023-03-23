@@ -13,6 +13,7 @@ from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS, Mark
 from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis_down
 from czsc.utils.sig import get_zs_seq
+from czsc.signals.tas import update_ma_cache, update_macd_cache
 from collections import OrderedDict
 
 
@@ -134,7 +135,6 @@ def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
-            logger.warning('笔的数量不对')
             continue
 
         _res = __check_first_buy(_bis)
@@ -208,7 +208,6 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
         if len(_bis) != n:
-            logger.warning('笔的数量不对，跳过')
             continue
 
         _res = __check_first_sell(_bis)
@@ -376,31 +375,27 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1MO3_结束辅助_新低_第1次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第2次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第1次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第2次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第3次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第4次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第3次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第4次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第5次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第5次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第6次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第6次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新高_第7次_任意_0')
-    - Signal('15分钟_D1MO3_结束辅助_新低_第7次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第2次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第2次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第3次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第4次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第3次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第4次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第5次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第1次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新高_第1次_任意_0')
+    - Signal('日线_D1MO3_BE辅助V230222_新低_第5次_任意_0')
 
     :param c: CZSC对象
     :param kwargs:
     :return: 信号识别结果
     """
     max_overlap = int(kwargs.get('max_overlap', 3))
-    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_结束辅助".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_BE辅助V230222".split('_')
     v1 = '其他'
     v2 = '其他'
 
-    if not c.ubi_fxs:
+    if not c.ubi_fxs or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     # 为了只取最后一笔以来的分型，没有用底层fx_list
@@ -451,16 +446,15 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 
     **信号列表：**
 
-    - Signal('15分钟_D1MO3_笔结束V230224_看多_任意_任意_0')
-    - Signal('15分钟_D1MO3_笔结束V230224_看空_任意_任意_0')
+    - Signal('15分钟_D1_BE辅助V230224_看多_任意_任意_0')
+    - Signal('15分钟_D1_BE辅助V230224_看空_任意_任意_0')
 
     :param c: CZSC 对象
     :return: 信号字典
     """
-    max_overlap = int(kwargs.get('max_overlap', 3))
-    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_笔结束V230224".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D1_BE辅助V230224".split('_')
     v1 = '其他'
-    if len(c.bi_list) <= 3:
+    if len(c.bi_list) <= 3 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     last_bi = c.bi_list[-1]
@@ -474,10 +468,9 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 
     if bar1.upper > bar1.lower * 2 and fx_vol_mean > bi_vol_mean * 2:
         v1 = '看空'
-    elif 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
+
+    if 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
         v1 = '看多'
-    else:
-        v1 = '其他'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -589,576 +582,493 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-class BXT:
-    """缠论笔形态识别基础类"""
-
-    def __init__(self, bis: List[BI]):
-        self.bis = bis
-        self.xt_map = {
-            '标准趋势': self.aAbBc,
-            '类趋势': self.abcde,
-            'aAb式盘整': self.aAb,
-            'aAbcd式盘整': self.aAbcd,
-            'abcAd式盘整': self.abcAd,
-            'ABC式盘整': self.ABC,
-            'BS2': self.BS2,
-            'BS3': self.BS3,
-        }
-
-    @staticmethod
-    def is_aAbBc(bis):
-        """标准趋势"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-
-        if len(bis) >= 11:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9, bi10, bi11 = bis[-11:]
-            max_high = max([x.high for x in bis[-11:]])
-            min_low = min([x.low for x in bis[-11:]])
-
-            # 十一笔（2~4构成中枢A，8~10构成中枢B）
-            if bi11.direction == Direction.Down and max_high == bi1.high and min_low == bi11.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and is_bis_down([bi5, bi6, bi7]) \
-                    and min(bi2.low, bi4.low) > max(bi8.high, bi10.high) \
-                    and min(bi8.high, bi10.high) > max(bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A3B3"}
-                return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and min_low == bi1.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and is_bis_up([bi5, bi6, bi7]) \
-                    and max(bi2.high, bi4.high) < min(bi8.low, bi10.low) \
-                    and min(bi8.high, bi10.high) > max(bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A3B3"}
-                return res
-
-            # 十一笔（2~4构成中枢A，6~10构成中枢B）
-            if bi11.direction == Direction.Down and max_high == bi1.high and min_low == bi11.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and min(bi2.low, bi4.low) > max(bi6.high, bi8.high, bi10.high) \
-                    and min(bi6.high, bi8.high, bi10.high) > max(bi6.low, bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A3B5"}
-                return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and min_low == bi1.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and max(bi2.high, bi4.high) < min(bi6.low, bi8.low, bi10.low) \
-                    and min(bi6.high, bi8.high, bi10.high) > max(bi6.low, bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A3B5"}
-                return res
-
-            # 十一笔（2~6构成中枢A，8~10构成中枢B）
-            if bi11.direction == Direction.Down and max_high == bi1.high and min_low == bi11.low \
-                    and min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) \
-                    and min(bi2.low, bi4.low, bi6.low) > max(bi8.high, bi10.high) \
-                    and min(bi8.high, bi10.high) > max(bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A5B3"}
-                return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and min_low == bi1.low \
-                    and min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) \
-                    and max(bi2.high, bi4.high, bi6.high) < min(bi8.low, bi10.low) \
-                    and min(bi8.high, bi10.high) > max(bi8.low, bi10.low):
-                res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A5B3"}
-                return res
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            max_high = max([x.high for x in bis[-9:]])
-            min_low = min([x.low for x in bis[-9:]])
-
-            # 九笔（2~4构成中枢A，6~8构成中枢B）
-            if bi9.direction == Direction.Down and max_high == bi1.high and min_low == bi9.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and min(bi2.low, bi4.low) > max(bi6.high, bi8.high) \
-                    and min(bi6.high, bi8.high) > max(bi6.low, bi8.low):
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "A3B3"}
-                return res
-
-            if bi9.direction == Direction.Up and max_high == bi9.high and min_low == bi1.low \
-                    and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and max(bi2.high, bi4.high) < min(bi6.low, bi8.low) \
-                    and min(bi6.high, bi8.high) > max(bi6.low, bi8.low):
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "A3B3"}
-                return res
-
-        return res
-
-    @property
-    def aAbBc(self):
-        """标准趋势"""
-        return self.is_aAbBc(self.bis)
-
-    @staticmethod
-    def is_abcde(bis):
-        """类趋势"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-
-            if bi9.direction == Direction.Down and is_bis_down(bis[-9:]) \
-                    and bi2.low > bi4.high and bi4.low > bi6.high and bi6.low > bi8.high:
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-            if bi9.direction == Direction.Up and is_bis_up(bis[-9:]) \
-                    and bi8.low > bi6.high and bi6.low > bi4.high and bi4.low > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-
-            if bi7.direction == Direction.Down and is_bis_down(bis[-7:]) \
-                    and bi2.low > bi4.high and bi4.low > bi6.high:
-                res = {'match': True, 'v1': "向下", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-            if bi7.direction == Direction.Up and is_bis_up(bis[-7:]) \
-                    and bi6.low > bi4.high and bi4.low > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 5:
-            bi1, bi2, bi3, bi4, bi5 = bis[-5:]
-
-            if bi5.direction == Direction.Down and is_bis_down(bis[-5:]) \
-                    and bi2.low > bi4.high:
-                res = {'match': True, 'v1': "向下", 'v2': "5笔", 'v3': "任意"}
-                return res
-
-            if bi5.direction == Direction.Up and is_bis_up(bis[-5:]) \
-                    and bi4.low > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "5笔", 'v3': "任意"}
-                return res
-
-        return res
-
-    @property
-    def abcde(self):
-        """类趋势"""
-        return self.is_abcde(self.bis)
-
-    @staticmethod
-    def is_aAb(bis):
-        """aAb式盘整"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            max_high = max([x.high for x in bis[-9:]])
-            min_low = min([x.low for x in bis[-9:]])
-
-            if bi9.direction == Direction.Down and max_high == bi1.high and bi9.low == min_low \
-                    and min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low):
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-            if bi9.direction == Direction.Up and max_high == bi9.high and bi1.low == min_low \
-                    and min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low):
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-            max_high = max([x.high for x in bis[-7:]])
-            min_low = min([x.low for x in bis[-7:]])
-
-            if bi7.direction == Direction.Down and max_high == bi1.high and bi7.low == min_low \
-                    and min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low):
-                res = {'match': True, 'v1': "向下", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-            if bi7.direction == Direction.Up and max_high == bi7.high and bi1.low == min_low \
-                    and min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low):
-                res = {'match': True, 'v1': "向上", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 5:
-            bi1, bi2, bi3, bi4, bi5 = bis[-5:]
-            max_high = max([x.high for x in bis[-5:]])
-            min_low = min([x.low for x in bis[-5:]])
-
-            if bi5.direction == Direction.Down and max_high == bi1.high and bi5.low == min_low \
-                    and bi2.low < bi4.high:
-                res = {'match': True, 'v1': "向下", 'v2': "5笔", 'v3': "任意"}
-                return res
-
-            if bi5.direction == Direction.Up and max_high == bi5.high and bi1.low == min_low \
-                    and bi4.low < bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "5笔", 'v3': "任意"}
-                return res
-
-        return res
-
-    @property
-    def aAb(self):
-        """aAb式盘整"""
-        return self.is_aAb(self.bis)
-
-    @staticmethod
-    def is_aAbcd(bis):
-        """aAbcd式盘整"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-
-        if len(bis) >= 11:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9, bi10, bi11 = bis[-11:]
-            max_high = max([x.high for x in bis[-11:]])
-            min_low = min([x.low for x in bis[-11:]])
-
-            gg = max(bi2.high, bi4.high, bi6.high, bi8.high)
-            zg = min(bi2.high, bi4.high, bi6.high, bi8.high)
-            zd = max(bi2.low, bi4.low, bi6.low, bi8.low)
-            dd = min(bi2.low, bi4.low, bi6.low, bi8.low)
-
-            if bi11.direction == Direction.Down and max_high == bi1.high and bi11.low == min_low \
-                    and zg >= zd >= dd > bi10.high:
-                res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "任意"}
-                return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and bi1.low == min_low \
-                    and bi10.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            max_high = max([x.high for x in bis[-9:]])
-            min_low = min([x.low for x in bis[-9:]])
-
-            gg = max(bi2.high, bi4.high, bi6.high)
-            zg = min(bi2.high, bi4.high, bi6.high)
-            zd = max(bi2.low, bi4.low, bi6.low)
-            dd = min(bi2.low, bi4.low, bi6.low)
-
-            if bi9.direction == Direction.Down and max_high == bi1.high and bi9.low == min_low \
-                    and zg >= zd >= dd > bi8.high:
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-            if bi9.direction == Direction.Up and max_high == bi9.high and bi1.low == min_low \
-                    and bi8.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-            max_high = max([x.high for x in bis[-7:]])
-            min_low = min([x.low for x in bis[-7:]])
-
-            gg = max(bi2.high, bi4.high)
-            zg = min(bi2.high, bi4.high)
-            zd = max(bi2.low, bi4.low)
-            dd = min(bi2.low, bi4.low)
-
-            if bi7.direction == Direction.Down and max_high == bi1.high and bi7.low == min_low \
-                    and zg >= zd >= dd > bi6.high:
-                res = {'match': True, 'v1': "向下", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-            if bi7.direction == Direction.Up and max_high == bi7.high and bi1.low == min_low \
-                    and bi6.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向上", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-        return res
-
-    @property
-    def aAbcd(self):
-        """aAbcd式盘整"""
-        return self.is_aAbcd(self.bis)
-
-    @staticmethod
-    def is_abcAd(bis):
-        """abcAd式盘整"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-        if len(bis) >= 11:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9, bi10, bi11 = bis[-11:]
-            max_high = max([x.high for x in bis[-11:]])
-            min_low = min([x.low for x in bis[-11:]])
-
-            gg = max(bi4.high, bi6.high, bi8.high, bi10.high)
-            zg = min(bi4.high, bi6.high, bi8.high, bi10.high)
-            zd = max(bi4.low, bi6.low, bi8.low, bi10.low)
-            dd = min(bi4.low, bi6.low, bi8.low, bi10.low)
-
-            if bi11.direction == Direction.Down and max_high == bi1.high and bi11.low == min_low \
-                    and bi2.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "任意"}
-                return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and bi1.low == min_low \
-                    and zg >= zd >= dd > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            max_high = max([x.high for x in bis[-9:]])
-            min_low = min([x.low for x in bis[-9:]])
-
-            gg = max(bi4.high, bi6.high, bi8.high)
-            zg = min(bi4.high, bi6.high, bi8.high)
-            zd = max(bi4.low, bi6.low, bi8.low)
-            dd = min(bi4.low, bi6.low, bi8.low)
-
-            if bi9.direction == Direction.Down and max_high == bi1.high and bi9.low == min_low \
-                    and bi2.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-            if bi9.direction == Direction.Up and max_high == bi9.high and bi1.low == min_low \
-                    and zg >= zd >= dd > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-            max_high = max([x.high for x in bis[-7:]])
-            min_low = min([x.low for x in bis[-7:]])
-
-            gg = max(bi4.high, bi6.high)
-            zg = min(bi4.high, bi6.high)
-            zd = max(bi4.low, bi6.low)
-            dd = min(bi4.low, bi6.low)
-
-            if bi7.direction == Direction.Down and max_high == bi1.high and bi7.low == min_low \
-                    and bi2.low > gg >= zg >= zd:
-                res = {'match': True, 'v1': "向下", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-            if bi7.direction == Direction.Up and max_high == bi7.high and bi1.low == min_low \
-                    and zg >= zd >= dd > bi2.high:
-                res = {'match': True, 'v1': "向上", 'v2': "7笔", 'v3': "任意"}
-                return res
-
-        return res
-
-    @property
-    def abcAd(self):
-        """abcAd式盘整"""
-        return self.is_abcAd(self.bis)
-
-    @staticmethod
-    def is_ABC(bis):
-        """ABC式盘整"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-
-        if len(bis) >= 11:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9, bi10, bi11 = bis[-11:]
-            max_high = max([x.high for x in bis[-11:]])
-            min_low = min([x.low for x in bis[-11:]])
-
-            if bi11.direction == Direction.Down and max_high == bi1.high and bi11.low == min_low:
-                # A3B5C3
-                if is_bis_down([bi1, bi2, bi3]) and is_bis_down([bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A3B5C3"}
-                    return res
-
-                # A5B3C3
-                if is_bis_down([bi1, bi2, bi3, bi4, bi5]) and is_bis_down([bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A5B3C3"}
-                    return res
-
-                # A3B3C5
-                if is_bis_down([bi1, bi2, bi3]) and is_bis_down([bi7, bi8, bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向下", 'v2': "11笔", 'v3': "A3B3C5"}
-                    return res
-
-            if bi11.direction == Direction.Up and max_high == bi11.high and bi1.low == min_low:
-                # A3B5C3
-                if is_bis_up([bi1, bi2, bi3]) and is_bis_up([bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A3B5C3"}
-                    return res
-
-                # A5B3C3
-                if is_bis_up([bi1, bi2, bi3, bi4, bi5]) and is_bis_up([bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A5B3C3"}
-                    return res
-
-                # A3B3C5
-                if is_bis_up([bi1, bi2, bi3]) and is_bis_up([bi7, bi8, bi9, bi10, bi11]):
-                    res = {'match': True, 'v1': "向上", 'v2': "11笔", 'v3': "A3B3C5"}
-                    return res
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            max_high = max([x.high for x in bis[-9:]])
-            min_low = min([x.low for x in bis[-9:]])
-
-            if bi9.direction == Direction.Down and max_high == bi1.high and bi9.low == min_low \
-                    and is_bis_down([bi1, bi2, bi3]) and is_bis_down([bi7, bi8, bi9]):
-                res = {'match': True, 'v1': "向下", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-            if bi9.direction == Direction.Up and max_high == bi9.high and bi1.low == min_low \
-                    and is_bis_up([bi1, bi2, bi3]) and is_bis_up([bi7, bi8, bi9]):
-                res = {'match': True, 'v1': "向上", 'v2': "9笔", 'v3': "任意"}
-                return res
-
-        return res
-
-    @property
-    def ABC(self):
-        """ABC式盘整"""
-        return self.is_ABC(self.bis)
-
-    @staticmethod
-    def is_BS2(bis):
-        """BS2"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            gg = max([bi2.high, bi4.high])
-            zg = min([bi2.high, bi4.high])
-            zd = max([bi2.low, bi4.low])
-            dd = min([bi2.low, bi4.low])
-
-            if bi9.direction == Direction.Down and is_bis_down([bi1, bi2, bi3, bi4, bi5]):
-                if gg > bi9.low >= zg:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右4", 'v3': "24上沿"}
-                    return res
-
-                if zg > bi9.low >= zd:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右4", 'v3': "24内部"}
-                    return res
-
-                if zd > bi9.low >= dd:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右4", 'v3': "24下沿"}
-                    return res
-
-            if bi9.direction == Direction.Up and is_bis_up([bi1, bi2, bi3, bi4, bi5]):
-                if gg > bi9.high >= zg:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右4", 'v3': "24上沿"}
-                    return res
-
-                if zg > bi9.high >= zd:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右4", 'v3': "24内部"}
-                    return res
-
-                if zd > bi9.high >= dd:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右4", 'v3': "24下沿"}
-                    return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-            gg = max([bi2.high, bi4.high])
-            zg = min([bi2.high, bi4.high])
-            zd = max([bi2.low, bi4.low])
-            dd = min([bi2.low, bi4.low])
-
-            if bi7.direction == Direction.Down and is_bis_down([bi1, bi2, bi3, bi4, bi5]):
-                if gg > bi7.low >= zg:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右2", 'v3': "24上沿"}
-                    return res
-
-                if zg > bi7.low >= zd:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右2", 'v3': "24内部"}
-                    return res
-
-                if zd > bi7.low >= dd:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右2", 'v3': "24下沿"}
-                    return res
-
-            if bi7.direction == Direction.Up and is_bis_up([bi1, bi2, bi3, bi4, bi5]):
-                if gg > bi7.high >= zg:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右2", 'v3': "24上沿"}
-                    return res
-
-                if zg > bi7.high >= zd:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右2", 'v3': "24内部"}
-                    return res
-
-                if zd > bi7.high >= dd:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右2", 'v3': "24下沿"}
-                    return res
-
-        if len(bis) >= 5:
-            bi1, bi2, bi3, bi4, bi5 = bis[-5:]
-            if bi5.direction == Direction.Down and is_bis_down([bi1, bi2, bi3]):
-                if bi2.high > bi5.low > bi2.low:
-                    res = {'match': True, 'v1': "向下", 'v2': "左3右2", 'v3': "笔2内部"}
-                    return res
-
-                if bi5.high > bi3.high > bi5.low > bi3.low:
-                    res = {'match': True, 'v1': "向下", 'v2': "左3右2", 'v3': "笔3内部"}
-                    return res
-
-            if bi5.direction == Direction.Up and is_bis_up([bi1, bi2, bi3]):
-                if bi2.high > bi5.high > bi2.low:
-                    res = {'match': True, 'v1': "向上", 'v2': "左3右2", 'v3': "笔2内部"}
-                    return res
-
-                if bi5.high < bi3.high and bi5.low < bi3.low:
-                    res = {'match': True, 'v1': "向上", 'v2': "左3右2", 'v3': "笔3内部"}
-                    return res
-
-        return res
-
-    @property
-    def BS2(self):
-        return self.is_BS2(self.bis)
-
-    @staticmethod
-    def is_BS3(bis):
-        """BS3"""
-        # res 定义返回值标准
-        res = {'match': False, 'v1': "任意", 'v2': "任意", 'v3': "任意"}
-
-        if len(bis) >= 9:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7, bi8, bi9 = bis[-9:]
-            gg = max([bi2.high, bi4.high])
-            dd = min([bi2.low, bi4.low])
-
-            if bi9.direction == Direction.Down and is_bis_down([bi1, bi2, bi3, bi4, bi5]):
-                if bi7.low < gg < bi9.low:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右4", 'v3': "24上沿"}
-                    return res
-
-            if bi9.direction == Direction.Up and is_bis_up([bi1, bi2, bi3, bi4, bi5]):
-                if bi9.high < dd < bi7.high:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右4", 'v3': "24下沿"}
-                    return res
-
-        if len(bis) >= 7:
-            bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis[-7:]
-            gg = max([bi2.high, bi4.high])
-            dd = min([bi2.low, bi4.low])
-
-            if bi7.direction == Direction.Down and is_bis_down([bi1, bi2, bi3, bi4, bi5]):
-                if bi7.low > gg:
-                    res = {'match': True, 'v1': "向下", 'v2': "左5右2", 'v3': "24上沿"}
-                    return res
-
-            if bi7.direction == Direction.Up and is_bis_up([bi1, bi2, bi3, bi4, bi5]):
-                if bi7.high < dd:
-                    res = {'match': True, 'v1': "向上", 'v2': "左5右2", 'v3': "24下沿"}
-                    return res
-
-        if len(bis) >= 5:
-            bi1, bi2, bi3, bi4, bi5 = bis[-5:]
-            if bi5.direction == Direction.Down and is_bis_down([bi1, bi2, bi3]):
-                if bi5.low > max(bi1.high, bi3.high):
-                    res = {'match': True, 'v1': "向下", 'v2': "左3右2", 'v3': "任意"}
-                    return res
-
-            if bi5.direction == Direction.Up and is_bis_up([bi1, bi2, bi3]):
-                if bi5.high < min(bi1.low, bi3.low):
-                    res = {'match': True, 'v1': "向上", 'v2': "左3右2", 'v3': "任意"}
-                    return res
-        return res
-
-    @property
-    def BS3(self):
-        return self.is_BS3(self.bis)
+def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第二类买卖点
 
+    **信号逻辑：**
+
+    1. 二买：1）123笔序列向下，其中 1,3 笔的低点都在均线下方；2）5的fx_a的均线值小于fx_b均线值
+    2. 二卖：1）123笔序列向上，其中 1,3 笔的高点都在均线上方；2）5的fx_a的均线值大于fx_b均线值
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA21_BS2辅助V230320_二买_任意_任意_0')
+    - Signal('15分钟_D1SMA21_BS2辅助V230320_二卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 21))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS2辅助V230320".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+
+    b1_ma_b = b1.fx_b.raw_bars[-2].cache[cache_key]
+    b3_ma_b = b3.fx_b.raw_bars[-2].cache[cache_key]
+
+    b5_ma_a = b5.fx_a.raw_bars[-2].cache[cache_key]
+    b5_ma_b = b5.fx_b.raw_bars[-2].cache[cache_key]
+
+    lc1 = b1.low < b1_ma_b and b3.low < b3_ma_b
+    if b5.direction == Direction.Down and lc1 and b5_ma_a < b5_ma_b:
+        v1 = "二买"
+
+    sc1 = b1.high > b1_ma_b and b3.high > b3_ma_b
+    if b5.direction == Direction.Up and sc1 and b5_ma_a > b5_ma_b:
+        v1 = "二卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第三类买卖点
+
+    **信号逻辑：**
+
+    1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    2. 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA34_BS3辅助V230318_三卖_任意_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230318_三买_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230318".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+    zs_zd, zs_zg = max(b1.low, b3.low), min(b1.high, b3.high)
+    if zs_zd > zs_zg:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ma_1 = b1.fx_b.raw_bars[-1].cache[cache_key]
+    ma_3 = b3.fx_b.raw_bars[-1].cache[cache_key]
+    ma_5 = b5.fx_b.raw_bars[-1].cache[cache_key]
+
+    # 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    if b5.direction == Direction.Down and b5.low > zs_zg and ma_5 > ma_3 > ma_1:
+        v1 = "三买"
+
+    # 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+    if b5.direction == Direction.Up and b5.high < zs_zd and ma_5 < ma_3 < ma_1:
+        v1 = "三卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """均线辅助识别第三类买卖点，增加均线形态
+
+    **信号逻辑：**
+
+    1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高或均线底分
+    2. 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低或均线顶分
+
+    **信号列表：**
+
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三卖_均线新低_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线底分_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新高_任意_0')
+    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新低_任意_0')
+
+    **信号说明：**
+
+    类似 cxt_third_bs_V230318 信号，但增加了均线形态。
+
+    :param c: CZSC对象
+    :param di: 从最后一个笔的第几个开始识别
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230319".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5 = get_sub_elements(c.bi_list, di=di, n=5)
+    zs_zd, zs_zg = max(b1.low, b3.low), min(b1.high, b3.high)
+    if zs_zd > zs_zg:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ma_1 = b1.fx_b.raw_bars[-1].cache[cache_key]
+    ma_3 = b3.fx_b.raw_bars[-1].cache[cache_key]
+    ma_5 = b5.fx_b.raw_bars[-1].cache[cache_key]
+
+    # 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
+    if b5.direction == Direction.Down and b5.low > zs_zg:
+        v1 = "三买"
+
+    # 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
+    if b5.direction == Direction.Up and b5.high < zs_zd and ma_5 < ma_3 < ma_1:
+        v1 = "三卖"
+
+    if v1 == '其他':
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if ma_5 > ma_3 > ma_1:
+        v2 = "均线新高"
+    elif ma_5 < ma_3 < ma_1:
+        v2 = "均线新低"
+    elif ma_5 > ma_3 < ma_1:
+        v2 = "均线底分"
+    elif ma_5 < ma_3 > ma_1:
+        v2 = "均线顶分"
+    else:
+        v2 = "均线否定"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_bi_end_V230104(c: CZSC, th=50, **kwargs) -> OrderedDict:
+    """单均线辅助判断笔结束
+
+    **信号逻辑：**
+
+    1. 向下笔底分型，连续三根阳线跨越SMA5超过一定阈值，且最后一根阳线收盘价在SMA5上方，向下笔结束；
+    2. 向上笔顶分型，连续三根阴线跨越SMA5超过一定阈值，且最后一根阴线收盘价在SMA5下方，向上笔结束。
+
+    **信号列表：**
+
+    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :param th: 距离SMA5均线的阈值
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230104".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    bars = get_sub_elements(c.bars_raw, di=1, n=3)
+    bar1, bar2, bar3 = bars
+
+    lc1 = last_bi.direction == Direction.Down and min([x.low for x in bars]) == last_bi.low
+    lc2 = all(x.close > x.open for x in bars)
+    lc3 = bar3.cache[cache_key] * (1 + th / 10000) < bar3.close
+    if len(c.bars_ubi) < 7 and lc1 and lc2 and lc3:
+        v1 = "看多"
+
+    sc1 = last_bi.direction == Direction.Up and max([x.high for x in bars]) == last_bi.high
+    sc2 = all(x.close < x.open for x in bars)
+    sc3 = bar3.cache[cache_key] * (1 - th / 10000) > bar3.close
+    if len(c.bars_ubi) < 7 and sc1 and sc2 and sc3:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230105(c: CZSC, th=50, **kwargs) -> OrderedDict:
+    """K线形态+均线辅助判断笔结束
+
+    **信号逻辑：**
+
+    1. 向下笔底分型右侧两根K线，第一根阴线，第二根K线阳线，且收盘价超过均线一定阈值，向下笔结束。
+    2. 反之，向上笔结束。
+
+    **信号列表：**
+
+    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :param th: RSQ阈值，RSQ * 100 > th, 表示行情很强
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230105".split('_')
+
+    v1 = "其他"
+    if len(c.bi_list) < 3 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    bar1, bar2 = last_bi.fx_b.raw_bars[-2:]
+
+    lc1 = last_bi.direction == Direction.Down and bar1.low == last_bi.low
+    lc2 = bar1.close < bar1.open and bar2.close > bar2.cache[cache_key] * (1 + th / 10000) > bar2.open
+    if len(c.bars_ubi) < 7 and lc1 and lc2:
+        v1 = "看多"
+
+    sc1 = last_bi.direction == Direction.Up and bar1.high == last_bi.high
+    sc2 = bar1.close > bar1.open and bar2.close < bar2.cache[cache_key] * (1 - th / 10000) < bar2.open
+    if len(c.bars_ubi) < 7 and sc1 and sc2:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230312(c: CZSC, **kwargs):
+    """MACD辅助判断笔结束信号
+
+    **信号逻辑：**
+
+    1. 看多，当下笔向下，笔的最后一个分型MACD向上
+    2. 反之，看空，当下笔向上，笔的最后一个分型MACD向下
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看空_任意_任意_0')
+
+    **Notes：**
+
+    1. BE 是 Bi End 的缩写
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, **kwargs)
+    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}_BE辅助V230312".split('_')
+    v1 = "其他"
+
+    if len(c.bi_list) < 3 or len(c.bars_ubi) >= 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi: BI = c.bi_list[-1]
+    last_fx: FX = last_bi.fx_b
+    macd1 = last_fx.raw_bars[-1].cache[cache_key]['macd']
+    macd2 = last_fx.raw_bars[0].cache[cache_key]['macd']
+
+    if last_bi.direction == Direction.Down and macd1 > macd2:
+        v1 = "看多"
+
+    if last_bi.direction == Direction.Up and macd1 < macd2:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
+    """100以内质数时序窗口辅助笔结束判断
+
+    **信号逻辑：**
+
+    1. 未完成笔延伸长度等于某个质数，且最后3根K线创新高，或者新低，笔结束
+
+    **信号列表：**
+
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_17K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_23K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_29K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_11K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_13K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_19K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_37K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_41K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_13K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_11K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_17K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_19K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_23K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_37K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_31K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_29K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_31K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_41K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_43K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_47K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看多_43K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_53K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_59K_任意_0')
+    - Signal('15分钟_D0质数窗口MO3_BE辅助V230320_看空_61K_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    max_overlap = kwargs.get("max_overlap", 3)
+    k1, k2, k3, v1 = f"{c.freq.value}", f"D0质数窗口MO{max_overlap}", "BE辅助V230320", "其他"
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    primes = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
+
+    last_bi = c.bi_list[-1]
+    bars = c.bars_ubi[1:]
+    raw_bars = [y for x in bars for y in x.raw_bars]
+    ubi_len = len(raw_bars)
+    ubi_min = min([x.low for x in raw_bars])
+    ubi_max = max([x.high for x in raw_bars])
+    mop_bars = raw_bars[-max_overlap:]
+
+    if last_bi.direction == Direction.Up and ubi_len in primes and min([x.low for x in mop_bars]) == ubi_min:
+        v1 = "看多"
+        v2 = f"{ubi_len}K"
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    if last_bi.direction == Direction.Down and ubi_len in primes and max([x.high for x in mop_bars]) == ubi_max:
+        v1 = "看空"
+        v2 = f"{ubi_len}K"
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
+    """分型配合均线辅助判断笔的结束
+
+    **信号逻辑：**
+
+    1. 对于顶分型，如果最右边的k线的MA最小，这是向下笔正常延伸的情况
+    2. 对于底分型，如果最右边的k线的MA最大，这是向上笔正常延伸的情况
+
+    **信号列表：**
+
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_反向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_同向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_反向分型_任意_0')
+    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_同向分型_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 5))
+    k1, k2, k3, v1, v2 = f"{c.freq.value}", "D0分型配合均线", "BE辅助V230322", "其他", "任意"
+    ubi_fxs = c.ubi_fxs
+    last_bar = c.bars_raw[-1]
+
+    if len(c.bi_list) < 3 or len(c.bars_ubi) > 7 or len(ubi_fxs) == 0 or last_bar.dt != ubi_fxs[-1].raw_bars[-1].dt:
+        # 1. 未形成笔
+        # 2. 笔结束后的k线数大于7
+        # 3. 未形成分型
+        # 4. 最后一个分型结束时间不是最后一个k线的结束时间
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    last_fx = ubi_fxs[-1]
+    max_ma = max([x.cache[cache_key] for x in last_fx.raw_bars])
+    min_ma = min([x.cache[cache_key] for x in last_fx.raw_bars])
+    right_ma = last_fx.raw_bars[-1].cache[cache_key]
+
+    if last_bi.direction == Direction.Up:
+        if last_fx.mark == Mark.G and right_ma == min_ma:
+            v1 = "看空"
+            v2 = "同向分型"
+
+        if last_fx.mark == Mark.D and right_ma != max_ma:
+            v1 = "看空"
+            v2 = "反向分型"
+
+    if last_bi.direction == Direction.Down:
+        if last_fx.mark == Mark.D and right_ma == max_ma:
+            v1 = "看多"
+            v2 = "同向分型"
+
+        if last_fx.mark == Mark.G and right_ma != min_ma:
+            v1 = "看多"
+            v2 = "反向分型"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
+    """笔的表里关系
+
+    表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
+
+    **信号逻辑：**
+
+    1. 最后一笔向下，且未完成笔的长度大于7根K线，表里关系为向上，否则为向下；
+    2. 最后一笔向上，且未完成笔的长度大于7根K线，表里关系为向下，否则为向上；
+    3. 向下的笔遇到底分型，表里关系为底分；向上笔的遇到底分型为延伸；
+    4. 向上的笔遇到顶分型，表里关系为顶分；向下笔的遇到顶分型为延伸。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1_表里关系V230101_向下_延伸_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向下_底分_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向上_顶分_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向上_延伸_任意_0')
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    k1, k2, k3, v1 = c.freq.value, "D1", "表里关系V230101", "其他"
+    fxs = c.ubi_fxs
+    if len(c.bi_list) < 3 or len(fxs) < 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    if last_bi.direction == Direction.Down:
+        v1 = "向上" if len(c.bars_ubi) > 7 else "向下"
+    else:
+        assert last_bi.direction == Direction.Up
+        v1 = "向下" if len(c.bars_ubi) > 7 else "向上"
+
+    if fxs[-1].mark == Mark.D:
+        v2 = "底分" if v1 == "向下" else "延伸"
+    else:
+        assert fxs[-1].mark == Mark.G
+        v2 = "顶分" if v1 == "向上" else "延伸"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_bi_status_V230102(c: CZSC, **kwargs) -> OrderedDict:
+    """笔的表里关系
+
+    表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
+
+    **信号逻辑：**
+
+    1. 最后一笔向下，且未完成笔的长度大于7根K线，表里关系为向上，否则为向下；
+    2. 最后一笔向上，且未完成笔的长度大于7根K线，表里关系为向下，否则为向上；
+    3. 向下的笔遇到底分型，表里关系为底分；向上笔的遇到底分型为延伸；
+    4. 向上的笔遇到顶分型，表里关系为顶分；向下笔的遇到顶分型为延伸。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1_表里关系V230101_向下_延伸_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向下_底分_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向上_顶分_任意_0')
+    - Signal('15分钟_D1_表里关系V230101_向上_延伸_任意_0')
+
+    **注意：** 与 cxt_bi_status_V230101 的区别在于，该信号只在分型成立的最后一根K线触发，而不是每根K线都会触发。
+
+    :param c: CZSC 对象
+    :return: 信号字典
+    """
+    k1, k2, k3, v1 = c.freq.value, "D1", "表里关系V230102", "其他"
+    fxs = c.ubi_fxs
+    if len(c.bi_list) < 3 or len(fxs) < 1 or c.bars_raw[-1].dt != fxs[-1].raw_bars[-1].dt:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    if last_bi.direction == Direction.Down:
+        v1 = "向上" if len(c.bars_ubi) > 7 else "向下"
+    else:
+        assert last_bi.direction == Direction.Up
+        v1 = "向下" if len(c.bars_ubi) > 7 else "向上"
+
+    if fxs[-1].mark == Mark.D:
+        v2 = "底分" if v1 == "向下" else "延伸"
+    else:
+        assert fxs[-1].mark == Mark.G
+        v2 = "顶分" if v1 == "向上" else "延伸"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 
