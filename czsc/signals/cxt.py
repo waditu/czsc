@@ -713,7 +713,7 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
         v1 = "三买"
 
     # 三卖：1）123构成中枢，4离开，5回升不回中枢；2）均线新低
-    if b5.direction == Direction.Up and b5.high < zs_zd and ma_5 < ma_3 < ma_1:
+    if b5.direction == Direction.Up and b5.high < zs_zd:
         v1 = "三卖"
 
     if v1 == '其他':
