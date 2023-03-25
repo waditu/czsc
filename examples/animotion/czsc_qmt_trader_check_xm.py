@@ -32,6 +32,7 @@ import inspect
 import glob
 import importlib
 # from st_aggrid import AgGrid
+import io
 
 st.set_page_config(layout="wide")
 
@@ -95,6 +96,7 @@ trader:CzscTrader = tactic.init_trader(bars, sdt=mdt)
 tabnames = []
 tabnames.extend(freqs)
 tabnames.append('最后信号')
+tabnames.append('收益分析')
 tabnames.append('策略脚本')
 # print(tabnames)
 tabs = st.tabs(tabnames)
@@ -140,7 +142,8 @@ for freq in freqs:
                     _op['color'] = 'silver'
                 bs.append(_op)
     bs_df = pd.DataFrame(bs)
-    kline.add_marker_indicator(bs_df['dt'],bs_df['price'],name='OP',text=bs_df['op_desc'], row=1, line_width=0.5,tag=bs_df['tag'],color=bs_df['color'])
+    if not bs_df.empty:
+        kline.add_marker_indicator(bs_df['dt'],bs_df['price'],name='OP',text=bs_df['op_desc'], row=1, line_width=0.5,tag=bs_df['tag'],color=bs_df['color'])
     #买卖点end
 
 
@@ -157,6 +160,64 @@ with tabs[i]:
             for k in ['freq', 'cache','symbol','dt','close','id','open','high','low','vol','amount']:
                 s.pop(k)
             st.write(s)
+i += 1
+
+# 收益分析页
+def parquet_bytes2df(bytes):
+    pq_file = io.BytesIO(bytes)
+    return pd.read_parquet(pq_file)
+def performance():
+    dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
+    pos_pairs = {}
+    pos_holds = {}
+    for pos in trader.positions:
+        try:
+            pairs = pd.DataFrame(pos.pairs)
+            pairs_parquet_bytes = pairs.to_parquet(compression='gzip')
+            pos_pairs.update({pos.name: pairs_parquet_bytes})
+            dfh = pd.DataFrame(pos.holds)
+            if not dfh.empty:  # ming
+                dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
+                dfh.drop(columns=['bid'], inplace=True)
+                dfh.fillna(0, inplace=True)
+                dfh['symbol'] = pos.symbol
+                holds_parquet_bytes = dfh[dfh['pos'] != 0].to_parquet(compression='gzip')
+            else:
+                holds_parquet_bytes = pd.DataFrame().to_parquet()
+
+            pos_holds.update({pos.name: holds_parquet_bytes})
+        except Exception as e:
+            print(f"{symbol} {pos.name} 保存失败，原因：{e}")
+    pos_pairs_byte = []
+    pos_holds_byte = []
+    for pos_name in list(dumps_map.keys()):
+        pos_pairs_byte.append(pos_pairs[pos_name])
+        pos_holds_byte.append(pos_holds[pos_name])
+
+    pos_pairs = [parquet_bytes2df(x) for x in pos_pairs_byte]
+    pairs = pd.concat(pos_pairs, ignore_index=True)
+    # logger.info(f" {pos_name} 得到pairs")
+
+    if not pairs.empty:
+        pp = czsc.PairsPerformance(pairs)
+        stats = dict(pp.basic_info)
+        # 加入截面等权评价
+        pos_holds = [parquet_bytes2df(x) for x in pos_holds_byte]
+        holds = pd.concat(pos_holds, ignore_index=True)
+        cross = holds.groupby('dt').apply(
+            lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1)).sum()
+        stats['截面等权收益'] = cross
+        stats['pos_name'] = pos_name
+        return stats,pairs
+    else:
+        return pd.DataFrame(),pd.DataFrame()
+with tabs[i]:
+    stats,pairs = performance()
+    st.write(stats)
+    st.write('操作对')
+    if not pairs.empty:
+        st.write(pairs[['标的代码','策略标记','开仓时间','平仓时间','开仓价格','平仓价格',
+        '持仓K线数','事件序列','持仓天数','盈亏比例']])
 i += 1
 
 # 策略脚本页
