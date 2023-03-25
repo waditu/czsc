@@ -72,7 +72,7 @@ with st.sidebar:
     # print('策略列表',strategys)
     strategy_name = st.selectbox("选择策略", options=strategys, index=0)
     symbol = st.selectbox("选择合约", options=qmc.get_symbols('stock'), index=0)
-    sdt = st.date_input("开始日期", value=datetime(2015, 1, 1))
+    sdt = st.date_input("开始日期", value=datetime(2022, 1, 1))
     edt = st.date_input("结束日期", value=datetime.now())
     # freqs = st.multiselect("选择周期", options=['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线'],
     #                        default=['15分钟', '30分钟', '60分钟', '日线', '周线'])  # ming from 频率 to 周期 ,default修改
