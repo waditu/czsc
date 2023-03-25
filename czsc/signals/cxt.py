@@ -985,6 +985,47 @@ def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
+def cxt_bi_end_V230324(c: CZSC, **kwargs) -> OrderedDict:
+    """笔结束分型的均线突破判断笔的结束
+
+    **信号逻辑：**
+
+    1. 向上笔最后一个顶分型左边两个k线的MA最小值被收盘价突破，向上笔结束
+    2. 向下笔最后一个底分型左边两个k线的MA最大值被收盘价突破，向下笔结束
+
+    **信号列表：**
+
+    - Signal('60分钟_D0均线突破_BE辅助V230324_看空_任意_任意_0')
+    - Signal('60分钟_D0均线突破_BE辅助V230324_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 5))
+    k1, k2, k3, v1 = f"{c.freq.value}", "D0均线突破", "BE辅助V230324", "其他"
+    ubi_fxs = c.ubi_fxs
+
+    if len(c.bi_list) < 3 or len(c.bars_ubi) > 7 or len(ubi_fxs) == 0:
+        # 1. 未形成笔
+        # 2. 笔结束后的k线数大于7
+        # 3. 未形成分型
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_bi = c.bi_list[-1]
+    last_fx = last_bi.fx_b
+    max_ma = max([x.cache[cache_key] for x in last_fx.raw_bars[:-1]])
+    min_ma = min([x.cache[cache_key] for x in last_fx.raw_bars[:-1]])
+    last_close = c.bars_raw[-2].close
+
+    if last_bi.direction == Direction.Up and last_close < min_ma:
+        v1 = "看空"
+
+    if last_bi.direction == Direction.Down and last_close > max_ma:
+        v1 = "看多"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
     """笔的表里关系
 

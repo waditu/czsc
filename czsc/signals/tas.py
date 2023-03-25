@@ -15,7 +15,7 @@ except:
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
 from czsc.analyze import CZSC
-from czsc.objects import Signal, Direction, BI, RawBar
+from czsc.objects import Signal, Direction, BI, RawBar, FX
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from collections import OrderedDict
 
@@ -116,8 +116,9 @@ def update_boll_cache_V230228(c: CZSC, **kwargs):
     :return:
     """
     timeperiod = kwargs.get('timeperiod', 20)
-    nbdev = int(kwargs.get('nbdev', 20)) / 10   # 标准差倍数，计算时除以10，如20表示2.0，即2倍标准差
+    nbdev = int(kwargs.get('nbdev', 20))   # 标准差倍数，计算时除以10，如20表示2.0，即2倍标准差
     cache_key = f"BOLL{timeperiod}S{nbdev}"
+    nbdev = nbdev / 10
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
@@ -1433,4 +1434,181 @@ def tas_hlma_V230304(c: CZSC, di: int = 1, n=3) -> OrderedDict:
         v1 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_boll_cc_V230312(c: CZSC, di: int = 1, sp=400, **kwargs) -> OrderedDict:
+    """多空进出场信号，贡献者：琅盎
+
+    **信号逻辑：**
+
+    1. 收盘在布林线上轨下方，且跌破中线一定距离，看空；反之，看多。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1BOLL20S20SP400_BS辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D1BOLL20S20SP400_BS辅助V230312_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 信号计算截止倒数第i根K线
+    :param sp: 停盈点数，单位：BP；1BP = 0.01%
+    :return:
+    """
+    key = update_boll_cache_V230228(c, **kwargs)
+    k1, k2, k3 = f"{c.freq.value}_D{di}{key}SP{sp}_BS辅助V230312".split('_')
+    _bars = get_sub_elements(c.bars_raw, di=di, n=6)
+
+    bias = (_bars[-1].close / _bars[-1].cache[key]['中线'] - 1) * 10000
+
+    v1 = "其他"
+    if _bars[-1].close < _bars[-1].cache[key]['上轨'] and bias < -sp:
+        v1 = "看空"
+
+    elif _bars[-1].close > _bars[-1].cache[key]['下轨'] and bias > sp:
+        v1 = "看多"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bs1_V230312(c: CZSC, di: int = 1, **kwargs):
+    """MACD辅助一买一卖信号
+
+    **信号逻辑：**
+
+    1. 看多，最近一笔新低，且该笔的高点对应一个三卖，MACD向上；
+    2. 反之，看空，最近一笔新高，且该笔的低点对应一个三买，MACD向下。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i笔
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, **kwargs)
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS1辅助V230312".split('_')
+    v1 = "其他"
+
+    bis = get_sub_elements(c.bi_list, di=di, n=7)
+    if len(bis) < 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    last_fx: FX = bis[-1].fx_b
+    bi_low = max([x.low for x in bis[:-1] if x.direction == Direction.Up])
+    if bis[-1].direction == Direction.Down and bis[-1].low == min([x.low for x in bis]) and bis[-1].high < bi_low \
+            and last_fx.raw_bars[-1].cache[cache_key]['macd'] > last_fx.raw_bars[0].cache[cache_key]['macd']:
+        v1 = "看多"
+
+    bi_high = min([x.high for x in bis[:-1] if x.direction == Direction.Down])
+    if bis[-1].direction == Direction.Up and bis[-1].high == max([x.high for x in bis]) and bis[-1].low > bi_high \
+            and last_fx.raw_bars[-1].cache[cache_key]['macd'] < last_fx.raw_bars[0].cache[cache_key]['macd']:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bs1_V230313(c: CZSC, di: int = 1, **kwargs):
+    """MACD红绿柱判断第一买卖点，贡献者：琅盎
+
+    **信号逻辑：**
+
+    1. 最近一次交叉为死叉，且前面两次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+    2. 或 最近一次交叉为金叉，且前面三次死叉都在零轴下方，价格创新低，那么一买即将出现；一卖反之。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一买_死叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一买_金叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一卖_金叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一卖_死叉_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, **kwargs)
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS1辅助V230313".split('_')
+    bars = get_sub_elements(c.bars_raw, di=di, n=300)
+
+    v1 = "其他"
+    v2 = "任意"
+    if len(bars) <= 100:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    dif, dea, macd = [], [], []
+    for x in bars:
+        dif.append(x.cache[cache_key]['dif'])
+        dea.append(x.cache[cache_key]['dea'])
+        macd.append(x.cache[cache_key]['macd'])
+
+    n_bars = bars[-10:]
+    m_bars = bars[-100: -10]
+    high_n = max([x.high for x in n_bars])
+    low_n = min([x.low for x in n_bars])
+    high_m = max([x.high for x in m_bars])
+    low_m = min([x.low for x in m_bars])
+
+    cross = fast_slow_cross(dif, dea)
+    up = [x for x in cross if x['类型'] == "金叉"]
+    dn = [x for x in cross if x['类型'] == "死叉"]
+
+    b1_con1a = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['面积'] < cross[-2]['面积'] or cross[-1]['面积'] < cross[-3]['面积']
+    b1_con1b = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['面积'] > cross[-2]['面积'] or cross[-1]['面积'] < cross[-3]['面积']
+    b1_con2 = len(dn) > 3 and dn[-2]['面积'] < dn[-3]['面积']   # 三次死叉面积逐渐减小
+    b1_con3 = len(macd) > 10 and macd[-1] > macd[-2]          # MACD向上
+    if low_n < low_m and (b1_con1a or b1_con1b) and b1_con2 and b1_con3:
+        v1 = "一买"
+
+    s1_con1a = len(cross) > 3 and cross[-1]['类型'] == '金叉' and cross[-1]['面积'] > cross[-2]['面积'] or cross[-1]['面积'] > cross[-3]['面积']
+    s1_con1b = len(cross) > 3 and cross[-1]['类型'] == '死叉' and cross[-1]['面积'] < cross[-2]['面积'] or cross[-1]['面积'] < cross[-3]['面积']
+    s1_con2 = len(up) > 3 and up[-2]['面积'] > up[-3]['面积']
+    s1_con3 = len(macd) > 10 and macd[-1] < macd[-2]
+    if high_n > high_m and (s1_con1a or s1_con1b) and s1_con2 and s1_con3:
+        v1 = "一卖"
+
+    v2 = cross[-1]['类型']
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def tas_macd_base_V230320(c: CZSC, di: int = 1, key="macd", **kwargs) -> OrderedDict:
+    """MACD|DIF|DEA 多空和方向信号，支持 max_overlap 参数
+
+    **信号逻辑：**
+
+    1. dik 对应的MACD值大于0，多头；反之，空头；最大允许重叠 max_overlap 个K线
+    2. dik 的MACD值大于上一个值，向上；反之，向下
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_多头_向上_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_多头_向下_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_空头_向下_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_空头_向上_任意_0')
+
+    :param c: CZSC对象
+    :param di: 倒数第i根K线
+    :param key: 指定使用哪个Key来计算，可选值 [macd, dif, dea]
+    :return:
+    """
+    max_overlap = int(kwargs.get("max_overlap", 3))
+    cache_key = update_macd_cache(c, **kwargs)
+    assert key.lower() in ['macd', 'dif', 'dea']
+    k1, k2, k3, v1 = c.freq.value, f"D{di}{cache_key}MO{max_overlap}{key.upper()}", "BS辅助V230320", "其他"
+
+    if len(c.bars_raw) < 5 + di + max_overlap:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap+1)
+    value = [x.cache[cache_key][key.lower()] for x in bars]
+    if value[-1] > 0 and any([x < 0 for x in value[:-1]]):
+        v1 = "多头"
+    elif value[-1] < 0 and any([x > 0 for x in value[:-1]]):
+        v1 = "空头"
+    else:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    v2 = "向上" if value[-1] >= value[-2] else "向下"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
 

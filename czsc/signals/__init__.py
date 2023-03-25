@@ -28,6 +28,7 @@ from czsc.signals.cxt import (
     cxt_bi_end_V230312,
     cxt_bi_end_V230320,
     cxt_bi_end_V230322,
+    cxt_bi_end_V230324,
     cxt_bi_base_V230228,
     cxt_third_buy_V230228,
     cxt_double_zs_V230311,
@@ -43,6 +44,7 @@ from czsc.signals.byi import (
     byi_symmetry_zs_V221107,
     byi_bi_end_V230106,
     byi_bi_end_V230107,
+    byi_second_bs_V230324,
 )
 
 from czsc.signals.coo import (
@@ -121,6 +123,9 @@ from czsc.signals.tas import (
     tas_macd_first_bs_V221201,
     tas_macd_first_bs_V221216,
     tas_macd_second_bs_V221201,
+    tas_macd_bs1_V230313,
+    tas_macd_bs1_V230312,
+    tas_macd_base_V230320,
 
     tas_ma_base_V221101,
     tas_ma_base_V221203,
@@ -131,6 +136,7 @@ from czsc.signals.tas import (
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
     tas_boll_vt_V230312,
+    tas_boll_cc_V230312,
 
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
