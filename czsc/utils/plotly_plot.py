@@ -48,7 +48,8 @@ class KlineChart:
             title=dict(text=kwargs.get('title', ''), yanchor='top'),
             margin=dict(t=10, b=10),
             # https://plotly.com/python/reference/layout/#layout-legend
-            legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),  # ming y=1.1 to 1.05
+            # ming y=1.1 to 1.05 x from 0.5 to 0 xanchor from center to left
+            legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
             template="plotly_dark",
             hovermode="x unified",
             hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
@@ -99,16 +100,47 @@ class KlineChart:
         self.add_bar_indicator(df['dt'], macd, name="MACD", row=row, color=macd_colors, show_legend=False)
 
     # ming 抽象了一个函数，用于绘制曲线和bar型指标
-    def add_indicator(self, dt, scatters: list, scatternames: list, bar, barname, row=4, **kwargs):
+    def add_indicator(self, dt, scatters: list = None, scatternames: list = None, bar=None, barname='', row=4, **kwargs):
         """绘制曲线和bar型指标"""
         line_width = kwargs.get('line_width', 0.6)
-
-        bar_colors = np.where(np.array(bar, dtype=np.double) > 0, self.color_red, self.color_green)
+        scattercolors = kwargs.get('scattercolors', None)
+        scattertags = kwargs.get('scattertags', None)
         for i, scatter in enumerate(scatters):
             self.add_scatter_indicator(dt, scatter, name=scatternames[i], row=row,
                                        show_legend=False, line_width=line_width)  # ming from"rgba(184, 117, 225, 1.0)"
 
-        self.add_bar_indicator(dt, bar, name=barname, row=row, color=bar_colors, show_legend=False)
+        if bar:
+            bar_colors = np.where(np.array(bar, dtype=np.double) > 0, self.color_red, self.color_green)
+            self.add_bar_indicator(dt, bar, name=barname, row=row, color=bar_colors, show_legend=False)
+
+    def add_marker_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
+        """绘制线性指标
+
+        :param x: 指标的x轴
+        :param y: 指标的y轴
+        :param name: 指标名称
+        :param row: 放入第几个子图
+        :param text: 文本说明
+        :param kwargs:
+        :return:
+        """
+        line_color = kwargs.get('line_color', None)
+        line_width = kwargs.get('line_width', None)
+        hover_template = kwargs.get('hover_template', '%{y:.3f}-%{text}')
+        show_legend = kwargs.get('show_legend', True)
+        visible = True if kwargs.get('visible', True) else 'legendonly'
+        color = kwargs.get('color', None)
+        tag = kwargs.get('tag', None)
+        scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color,
+                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6, mode='markers',
+                             marker=dict(
+                                 size=10,
+                                 color=color,
+                                 symbol=tag
+                             ))
+
+        self.fig.add_trace(scatter, row=row, col=1)
+
 
     def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
         """绘制线性指标
@@ -132,6 +164,7 @@ class KlineChart:
                              hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6)  # ming opacity from 0.4 to 0.6
         self.fig.add_trace(scatter, row=row, col=1)
 
+
     def add_bar_indicator(self, x, y, name: str, row: int, color=None, **kwargs):
         """绘制条形图指标
 
@@ -153,6 +186,7 @@ class KlineChart:
         bar = go.Bar(x=x, y=y, marker_line_color=color, marker_color=color, name=name,
                      showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=True)
         self.fig.add_trace(bar, row=row, col=1)
+
 
     def open_in_browser(self, file_name: str = None, **kwargs):
         """在浏览器中打开"""
