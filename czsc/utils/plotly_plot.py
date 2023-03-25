@@ -38,7 +38,7 @@ class KlineChart:
         fig = make_subplots(rows=self.n_rows, cols=1, shared_xaxes=True, row_heights=row_heights,
                             horizontal_spacing=0, vertical_spacing=0)
 
-        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=True)
+        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=False)  # ming fixedrange to False，让y轴也能缩放
         fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
                                showticklabels=False)
 
