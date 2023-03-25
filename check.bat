@@ -1,0 +1,1 @@
+streamlit run .\examples\animotion\czsc_qmt_checkpoint_xm.py --server.port 9999

@@ -21,6 +21,7 @@ class KlineChart:
     plotly 参数详解: https://www.jianshu.com/p/4f4daf47cc85
 
     """
+
     def __init__(self, **kwargs):
         # 子图数量
         self.n_rows = kwargs.get('n_rows', 3)
@@ -41,7 +42,7 @@ class KlineChart:
         fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=False)  # ming fixedrange to False，让y轴也能缩放
         fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
                                showticklabels=False)
-
+        height = kwargs.get('height', 300)  # ming
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
             title=dict(text=kwargs.get('title', ''), yanchor='top'),
@@ -53,6 +54,7 @@ class KlineChart:
             hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
             dragmode='pan',
             legend_title_font_color="red",
+            height=height,  # ming
         )
         self.fig = fig
 
@@ -147,5 +149,3 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
-
-

@@ -63,7 +63,7 @@ for i, freq in enumerate(freqs):
     c = cs.kas[freq]
     df = pd.DataFrame(c.bars_raw)
     df['text'] = "测试"
-    kline = KlineChart(n_rows=3, title='', width="100%")  # ming title=f"{freq} K线" to ''
+    kline = KlineChart(n_rows=3, title='', width="100%",height=600)  # ming title=f"{freq} K线" to '',再添加height
     kline.add_kline(df, name="K线")
     kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True)
     kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False)
@@ -79,6 +79,6 @@ for i, freq in enumerate(freqs):
         kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text='', row=1, line_width=1.2)  # ming text=bi['text'] to ''
 
     with tabs[i]:
-        st.plotly_chart(kline.fig, use_container_width=True, height=300, config=config)
+        st.plotly_chart(kline.fig, use_container_width=True, config=config)  # ming 删除height，height通过构造函数送入，在里面通过updatelayout实现
 
 
