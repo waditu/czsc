@@ -7,6 +7,7 @@ describe: 白仪 https://www.zhihu.com/people/bai-yi-520/posts 知乎上定义�
 
 byi 是 bai yi 的缩写
 """
+import numpy as np
 from typing import List
 from czsc import CZSC
 from collections import OrderedDict
