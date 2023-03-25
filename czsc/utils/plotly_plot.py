@@ -46,7 +46,12 @@ class KlineChart:
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
             title=dict(text=kwargs.get('title', ''), yanchor='top'),
-            margin=dict(t=10, b=10),
+            margin=go.layout.Margin(
+                l=0,  # left margin
+                r=0,  # right margin
+                b=0,  # bottom margin
+                t=0  # top margin
+            ),
             # https://plotly.com/python/reference/layout/#layout-legend
             # ming y=1.1 to 1.05 x from 0.5 to 0 xanchor from center to left
             legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
@@ -141,7 +146,6 @@ class KlineChart:
 
         self.fig.add_trace(scatter, row=row, col=1)
 
-
     def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
         """绘制线性指标
 
@@ -164,7 +168,6 @@ class KlineChart:
                              hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6)  # ming opacity from 0.4 to 0.6
         self.fig.add_trace(scatter, row=row, col=1)
 
-
     def add_bar_indicator(self, x, y, name: str, row: int, color=None, **kwargs):
         """绘制条形图指标
 
@@ -186,7 +189,6 @@ class KlineChart:
         bar = go.Bar(x=x, y=y, marker_line_color=color, marker_color=color, name=name,
                      showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=True)
         self.fig.add_trace(bar, row=row, col=1)
-
 
     def open_in_browser(self, file_name: str = None, **kwargs):
         """在浏览器中打开"""

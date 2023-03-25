@@ -161,5 +161,5 @@ i += 1
 
 # 策略脚本页
 with tabs[i]:
-    st.text(codes)
+    st.code(codes)
 i += 1
