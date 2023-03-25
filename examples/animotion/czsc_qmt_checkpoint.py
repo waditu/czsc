@@ -56,6 +56,9 @@ cs, remain_bars = CzscSignals(bg), bars[-counts:]
 for bar in remain_bars:
     cs.update_signals(bar)
 
+
+tabs = st.tabs(freqs)
+
 for i, freq in enumerate(freqs):
     c = cs.kas[freq]
     df = pd.DataFrame(c.bars_raw)
@@ -74,6 +77,8 @@ for i, freq in enumerate(freqs):
         fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
         kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.2)
         kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.2)
-    st.plotly_chart(kline.fig, use_container_width=True, height=300, config=config)
+
+    with tabs[i]:
+        st.plotly_chart(kline.fig, use_container_width=True, height=300, config=config)
 
 
