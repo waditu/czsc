@@ -21,6 +21,7 @@ class KlineChart:
     plotly 参数详解: https://www.jianshu.com/p/4f4daf47cc85
 
     """
+
     def __init__(self, **kwargs):
         # 子图数量
         self.n_rows = kwargs.get('n_rows', 3)
@@ -36,23 +37,30 @@ class KlineChart:
         self.color_red = 'rgba(249,41,62,0.7)'
         self.color_green = 'rgba(0,170,59,0.7)'
         fig = make_subplots(rows=self.n_rows, cols=1, shared_xaxes=True, row_heights=row_heights,
-                            horizontal_spacing=0, vertical_spacing=0)
+                            horizontal_spacing=0, vertical_spacing=0, )
 
-        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=True)
+        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=False)  # ming fixedrange to False，让y轴也能缩放
         fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
                                showticklabels=False)
-
+        height = kwargs.get('height', 300)  # ming
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
             title=dict(text=kwargs.get('title', ''), yanchor='top'),
-            margin=dict(t=10, b=10),
+            margin=go.layout.Margin(
+                l=0,  # left margin
+                r=0,  # right margin
+                b=0,  # bottom margin
+                t=0  # top margin
+            ),
             # https://plotly.com/python/reference/layout/#layout-legend
-            legend=dict(orientation='h', yanchor="top", y=1.1, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),
+            # ming y=1.1 to 1.05 x from 0.5 to 0 xanchor from center to left
+            legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
             template="plotly_dark",
             hovermode="x unified",
             hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
             dragmode='pan',
             legend_title_font_color="red",
+            height=height,  # ming
         )
         self.fig = fig
 
@@ -87,14 +95,56 @@ class KlineChart:
         fastperiod = kwargs.get('fastperiod', 12)
         slowperiod = kwargs.get('slowperiod', 26)
         signalperiod = kwargs.get('signalperiod', 9)
-
+        line_width = kwargs.get('line_width', 0.6)
         diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
         self.add_scatter_indicator(df['dt'], diff, name="DIFF", row=row,
-                                   line_color="rgba(184, 117, 225, 1.0)", show_legend=False, line_width=0.6)
+                                   line_color='white', show_legend=False, line_width=line_width)  # ming from"rgba(184, 117, 225, 1.0)"
         self.add_scatter_indicator(df['dt'], dea, name="DEA", row=row,
-                                   line_color="rgba(255, 0, 0, 1.0)", show_legend=False, line_width=0.6)
+                                   line_color='yellow', show_legend=False, line_width=line_width)  # ming from "rgba(255, 0, 0, 1.0)"
         self.add_bar_indicator(df['dt'], macd, name="MACD", row=row, color=macd_colors, show_legend=False)
+
+    # ming 抽象了一个函数，用于绘制曲线和bar型指标
+    def add_indicator(self, dt, scatters: list = None, scatternames: list = None, bar=None, barname='', row=4, **kwargs):
+        """绘制曲线和bar型指标"""
+        line_width = kwargs.get('line_width', 0.6)
+        scattercolors = kwargs.get('scattercolors', None)
+        scattertags = kwargs.get('scattertags', None)
+        for i, scatter in enumerate(scatters):
+            self.add_scatter_indicator(dt, scatter, name=scatternames[i], row=row,
+                                       show_legend=False, line_width=line_width)  # ming from"rgba(184, 117, 225, 1.0)"
+
+        if bar:
+            bar_colors = np.where(np.array(bar, dtype=np.double) > 0, self.color_red, self.color_green)
+            self.add_bar_indicator(dt, bar, name=barname, row=row, color=bar_colors, show_legend=False)
+
+    def add_marker_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
+        """绘制线性指标
+
+        :param x: 指标的x轴
+        :param y: 指标的y轴
+        :param name: 指标名称
+        :param row: 放入第几个子图
+        :param text: 文本说明
+        :param kwargs:
+        :return:
+        """
+        line_color = kwargs.get('line_color', None)
+        line_width = kwargs.get('line_width', None)
+        hover_template = kwargs.get('hover_template', '%{y:.3f}-%{text}')
+        show_legend = kwargs.get('show_legend', True)
+        visible = True if kwargs.get('visible', True) else 'legendonly'
+        color = kwargs.get('color', None)
+        tag = kwargs.get('tag', None)
+        scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color,
+                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6, mode='markers',
+                             marker=dict(
+                                 size=10,
+                                 color=color,
+                                 symbol=tag
+                             ))
+
+        self.fig.add_trace(scatter, row=row, col=1)
 
     def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
         """绘制线性指标
@@ -115,7 +165,7 @@ class KlineChart:
         visible = True if kwargs.get('visible', True) else 'legendonly'
 
         scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color, mode=mode,
-                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.4)
+                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6)  # ming opacity from 0.4 to 0.6
         self.fig.add_trace(scatter, row=row, col=1)
 
     def add_bar_indicator(self, x, y, name: str, row: int, color=None, **kwargs):
@@ -147,5 +197,3 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
-
-
