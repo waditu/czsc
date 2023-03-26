@@ -121,7 +121,7 @@ with st.sidebar:
     # print('策略列表',strategys)
     sdt = st.date_input("开始日期", value=datetime(2022, 1, 1))
     edt = st.date_input("结束日期", value=datetime.now())
-    strategy_name = st.selectbox("选择择时策略", options=strategys, index=0)
+    strategy_name = st.selectbox("择时策略", options=strategys, index=0)
 
     pool = st.selectbox("股票池", options=get_pools(), index=0)
     selected_symbols_df,last_symbols = get_pool_symbols(pool,sdt,edt)
