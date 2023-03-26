@@ -73,6 +73,10 @@ with st.sidebar:
     # print('策略列表',strategys)
     strategy_name = st.selectbox("选择策略", options=strategys, index=0)
 
+    st.write('<style>div.row-widget.stRadio > div{flex-direction:row;justify-content: center;} </style>', unsafe_allow_html=True)
+    # st.write('<style>div.st-bf{flex-direction:column;} div.st-ag{font-weight:bold;padding-left:2px;}</style>', unsafe_allow_html=True)
+    # choose = st.radio("股票池", ("持仓", "琅盎", "自选", "全市场"))
+    stp = st.selectbox("股票池", options=("持仓", "琅盎", "自选", "全市场"), index=0)
     symbol = st.selectbox("选择合约", options=qmc.get_symbols('stock'), index=0)
     sdt = st.date_input("开始日期", value=datetime(2022, 1, 1))
     edt = st.date_input("结束日期", value=datetime.now())
@@ -174,7 +178,7 @@ def performance():
     for pos in trader.positions:
         try:
             pairs = pd.DataFrame(pos.pairs)
-            pairs_parquet_bytes = pairs.to_parquet(compression='gzip')
+            pairs_parquet_bytes = pairs #kick .to_parquet(compression='gzip')
             pos_pairs.update({pos.name: pairs_parquet_bytes})
             dfh = pd.DataFrame(pos.holds)
             if not dfh.empty:  # ming
@@ -182,9 +186,9 @@ def performance():
                 dfh.drop(columns=['bid'], inplace=True)
                 dfh.fillna(0, inplace=True)
                 dfh['symbol'] = pos.symbol
-                holds_parquet_bytes = dfh[dfh['pos'] != 0].to_parquet(compression='gzip')
+                holds_parquet_bytes = dfh[dfh['pos'] != 0] # kick .to_parquet(compression='gzip')
             else:
-                holds_parquet_bytes = pd.DataFrame().to_parquet()
+                holds_parquet_bytes = pd.DataFrame() #kick .to_parquet()
 
             pos_holds.update({pos.name: holds_parquet_bytes})
         except Exception as e:
@@ -196,7 +200,7 @@ def performance():
         pos_pairs_byte.append(pos_pairs[pos_name])
         pos_holds_byte.append(pos_holds[pos_name])
 
-    pos_pairs = [parquet_bytes2df(x) for x in pos_pairs_byte]
+    pos_pairs = pos_pairs_byte #kick [parquet_bytes2df(x) for x in pos_pairs_byte]
     pairs = pd.concat(pos_pairs, ignore_index=True)
     # logger.info(f" {pos_name} 得到pairs")
 
@@ -204,7 +208,7 @@ def performance():
         pp = czsc.PairsPerformance(pairs)
         stats = dict(pp.basic_info)
         # 加入截面等权评价
-        pos_holds = [parquet_bytes2df(x) for x in pos_holds_byte]
+        pos_holds = pos_holds_byte #kick [parquet_bytes2df(x) for x in pos_holds_byte]
         holds = pd.concat(pos_holds, ignore_index=True)
         cross = holds.groupby('dt').apply(
             lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1)).sum()
