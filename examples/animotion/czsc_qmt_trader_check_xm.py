@@ -72,6 +72,7 @@ with st.sidebar:
 
     # print('策略列表',strategys)
     strategy_name = st.selectbox("选择策略", options=strategys, index=0)
+
     symbol = st.selectbox("选择合约", options=qmc.get_symbols('stock'), index=0)
     sdt = st.date_input("开始日期", value=datetime(2022, 1, 1))
     edt = st.date_input("结束日期", value=datetime.now())
@@ -132,7 +133,7 @@ for freq in freqs:
         for op in pos.operates:
             if op['dt'] >= c.bars_raw[0].dt:
                 _op = dict(op)
-                _op['op_desc'] = f"{pos.name} | {_op['op_desc']}"
+                _op['op_desc'] = f"{pos.name} | {_op['op_desc']}"[:10]
                 _op['dt'] = freq_end_time(op['dt'], Freq(freq))
                 if op['op'] == Operate.LO:
                     _op['tag'] = 'triangle-up'
@@ -188,6 +189,7 @@ def performance():
             pos_holds.update({pos.name: holds_parquet_bytes})
         except Exception as e:
             print(f"{symbol} {pos.name} 保存失败，原因：{e}")
+            return pd.DataFrame(),pd.DataFrame()
     pos_pairs_byte = []
     pos_holds_byte = []
     for pos_name in list(dumps_map.keys()):
@@ -214,8 +216,9 @@ def performance():
 with tabs[i]:
     stats,pairs = performance()
     st.write(stats)
-    st.write('操作对')
+
     if not pairs.empty:
+        st.write('操作对')
         st.write(pairs[['标的代码','策略标记','开仓时间','平仓时间','开仓价格','平仓价格',
         '持仓K线数','事件序列','持仓天数','盈亏比例']])
 i += 1
