@@ -91,8 +91,8 @@ def get_pool_symbols(poolname, sdt_, edt_):
     pathname = os.path.join(pool_path, f'{poolname}.csv')
 
     all_df = pd.read_csv(pathname,converters={'symbol':str}, parse_dates=['dt'] )
-    print(all_df.head())
-    print(all_df['dt'].isna())
+    # print(all_df.head())
+    # print(all_df['dt'].isna())
     #csv文件中，dt为空的票，表示一直持有，所以下面代码将他们都选上
     selected_symbols_df = all_df[(all_df['dt'] >= pd.Timestamp(sdt_)) & (all_df['dt'] <= pd.Timestamp(edt_)) | (all_df['dt'].isna())]
     last_symbols_df = selected_symbols_df[(selected_symbols_df['dt'] == selected_symbols_df['dt'].max()) | (selected_symbols_df['dt'].isna())]
