@@ -9,6 +9,7 @@ describe: 使用 QMT 数据进行 CZSC K线检查
 streamlit-echarts
 """
 import sys
+
 strategy_path = 'C:\\czsc_realtime\\strategys'
 sys.path.insert(0, strategy_path)
 sys.path.insert(0, '.')
@@ -51,6 +52,8 @@ config = {
         'autoScale2d',
         'hoverClosestCartesian',
         'hoverCompareCartesian']}
+
+
 @st.cache_data
 def get_strategys():
     strategys = []
@@ -66,6 +69,20 @@ def get_strategys():
     strategys = set(strategys)
     return strategys
 
+
+margins_css = """
+    <style>
+        .main > div {
+            padding-top: 3rem;
+            padding-left: 3rem;
+            padding-right: 3rem;
+        }
+        .reportview-container .sidebar-content {{
+            padding-top: {1}rem;
+        }}
+    </style>
+"""
+st.write(margins_css, unsafe_allow_html=True)
 with st.sidebar:
     st.title("CZSC复盘工具")
     strategys = get_strategys()
@@ -89,12 +106,12 @@ with st.sidebar:
 # print(strategy_name)
 czsc_strategy = czsc.import_by_name(strategy_name)
 codes = inspect.getsource(czsc_strategy)
-tactic:CzscStrategyBase = czsc_strategy(symbol=symbol)
+tactic: CzscStrategyBase = czsc_strategy(symbol=symbol)
 freqs = freqs_sorted(tactic.freqs)
 # print(freqs)
 bars = qmc.get_raw_bars(symbol, freqs[0], sdt=sdt, edt=edt)
-mdt = max(sdt,edt-pd.Timedelta(days=60))
-trader:CzscTrader = tactic.init_trader(bars, sdt=mdt)
+mdt = max(sdt, edt - pd.Timedelta(days=60))
+trader: CzscTrader = tactic.init_trader(bars, sdt=mdt)
 # print(trader.positions[0].pairs)
 
 #########trader end
@@ -106,7 +123,7 @@ tabnames.append('策略脚本')
 # print(tabnames)
 tabs = st.tabs(tabnames)
 
-i=0
+i = 0
 # K线页
 for freq in freqs:
     c = trader.kas[freq]
@@ -129,7 +146,7 @@ for freq in freqs:
     kline.add_macd(df, row=3, line_width=1)
     s, m, l, bar = indicator_xm(df)  # s,m,l分别是短，中，长线型指标，b是bar型指标
     kline.add_indicator(dt=df['dt'], scatters=[s, m, l], scatternames=['短', '中', '长'], bar=bar, barname='柱', row=4)
-    #买卖点begin
+    # 买卖点begin
     from czsc.utils.bar_generator import freq_end_time
 
     bs = []
@@ -148,9 +165,8 @@ for freq in freqs:
                 bs.append(_op)
     bs_df = pd.DataFrame(bs)
     if not bs_df.empty:
-        kline.add_marker_indicator(bs_df['dt'],bs_df['price'],name='OP',text=bs_df['op_desc'], row=1, line_width=0.5,tag=bs_df['tag'],color=bs_df['color'])
-    #买卖点end
-
+        kline.add_marker_indicator(bs_df['dt'], bs_df['price'], name='OP', text=bs_df['op_desc'], row=1, line_width=0.5, tag=bs_df['tag'], color=bs_df['color'])
+    # 买卖点end
 
     with tabs[i]:
         st.plotly_chart(kline.fig, use_container_width=True, config=config)  # ming 删除height，height通过构造函数送入，在里面通过updatelayout实现
@@ -162,15 +178,18 @@ with tabs[i]:
         st.text(freq)
         if len(trader.s):
             s = trader.s.copy()
-            for k in ['freq', 'cache','symbol','dt','close','id','open','high','low','vol','amount']:
+            for k in ['freq', 'cache', 'symbol', 'dt', 'close', 'id', 'open', 'high', 'low', 'vol', 'amount']:
                 s.pop(k)
             st.write(s)
 i += 1
+
 
 # 收益分析页
 def parquet_bytes2df(bytes):
     pq_file = io.BytesIO(bytes)
     return pd.read_parquet(pq_file)
+
+
 def performance():
     dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
     pos_pairs = {}
@@ -178,7 +197,7 @@ def performance():
     for pos in trader.positions:
         try:
             pairs = pd.DataFrame(pos.pairs)
-            pairs_parquet_bytes = pairs #kick .to_parquet(compression='gzip')
+            pairs_parquet_bytes = pairs  # kick .to_parquet(compression='gzip')
             pos_pairs.update({pos.name: pairs_parquet_bytes})
             dfh = pd.DataFrame(pos.holds)
             if not dfh.empty:  # ming
@@ -186,21 +205,21 @@ def performance():
                 dfh.drop(columns=['bid'], inplace=True)
                 dfh.fillna(0, inplace=True)
                 dfh['symbol'] = pos.symbol
-                holds_parquet_bytes = dfh[dfh['pos'] != 0] # kick .to_parquet(compression='gzip')
+                holds_parquet_bytes = dfh[dfh['pos'] != 0]  # kick .to_parquet(compression='gzip')
             else:
-                holds_parquet_bytes = pd.DataFrame() #kick .to_parquet()
+                holds_parquet_bytes = pd.DataFrame()  # kick .to_parquet()
 
             pos_holds.update({pos.name: holds_parquet_bytes})
         except Exception as e:
             print(f"{symbol} {pos.name} 保存失败，原因：{e}")
-            return pd.DataFrame(),pd.DataFrame()
+            return pd.DataFrame(), pd.DataFrame()
     pos_pairs_byte = []
     pos_holds_byte = []
     for pos_name in list(dumps_map.keys()):
         pos_pairs_byte.append(pos_pairs[pos_name])
         pos_holds_byte.append(pos_holds[pos_name])
 
-    pos_pairs = pos_pairs_byte #kick [parquet_bytes2df(x) for x in pos_pairs_byte]
+    pos_pairs = pos_pairs_byte  # kick [parquet_bytes2df(x) for x in pos_pairs_byte]
     pairs = pd.concat(pos_pairs, ignore_index=True)
     # logger.info(f" {pos_name} 得到pairs")
 
@@ -208,23 +227,25 @@ def performance():
         pp = czsc.PairsPerformance(pairs)
         stats = dict(pp.basic_info)
         # 加入截面等权评价
-        pos_holds = pos_holds_byte #kick [parquet_bytes2df(x) for x in pos_holds_byte]
+        pos_holds = pos_holds_byte  # kick [parquet_bytes2df(x) for x in pos_holds_byte]
         holds = pd.concat(pos_holds, ignore_index=True)
         cross = holds.groupby('dt').apply(
             lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1)).sum()
         stats['截面等权收益'] = cross
         stats['pos_name'] = pos_name
-        return stats,pairs
+        return stats, pairs
     else:
-        return pd.DataFrame(),pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame()
+
+
 with tabs[i]:
-    stats,pairs = performance()
+    stats, pairs = performance()
     st.write(stats)
 
     if not pairs.empty:
         st.write('操作对')
-        st.write(pairs[['标的代码','策略标记','开仓时间','平仓时间','开仓价格','平仓价格',
-        '持仓K线数','事件序列','持仓天数','盈亏比例']])
+        st.write(pairs[['标的代码', '策略标记', '开仓时间', '平仓时间', '开仓价格', '平仓价格',
+                        '持仓K线数', '事件序列', '持仓天数', '盈亏比例']])
 i += 1
 
 # 策略脚本页
