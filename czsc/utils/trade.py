@@ -39,3 +39,52 @@ def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwarg
 
     df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount'] + price_cols].round(decimals)
     return df
+
+
+def update_nbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30), move=0) -> None:
+    """在da数据上新增后面 n 根 bar 的累计收益
+
+    收益计量单位：BP；1倍涨幅 = 10000BP
+
+    :param da: 数据，DataFrame结构
+    :param price_col: 价格列
+    :param numbers: 考察的bar的数目的列表
+    :param move: 收益计算是否要整体移位，move必须是非负整数
+        一般是当前bar的close计算收益，也可以考虑是下根bar的open。这个时候 move=1。
+    :return nbars_cols: 后面n根bar的bp值列名
+    """
+    if price_col not in da.columns:
+        raise ValueError(f"price_col {price_col} not in da.columns")
+
+    assert move >= 0
+    for n in numbers:
+        da[f"n{n}b"] = (da[price_col].shift(-n - move) / da[price_col].shift(-move) - 1) * 10000.0
+
+
+def update_bbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30)) -> None:
+    """在da数据上新增前面 n 根 bar 的累计收益
+
+    :param da: K线数据，DataFrame结构
+    :param price_col: 价格列
+    :param numbers: 考察的bar的数目的列表
+    :return: bbars_cols: 后面n根bar的bp值列名
+    """
+    if price_col not in da.columns:
+        raise ValueError(f"price_col {price_col} not in da.columns")
+
+    for n in numbers:
+        # 收益计量单位：BP；1倍涨幅 = 10000BP
+        da[f"b{n}b"] = (da[price_col] / da[price_col].shift(n) - 1) * 10000
+
+
+def update_tbars(da: pd.DataFrame, event_col: str) -> None:
+    """计算带 Event 方向信息的未来收益
+
+    :param da: K线数据，DataFrame结构
+    :param event_col: 事件信号列名，含有 0, 1, -1 三种值，0 表示无事件，1 表示看多事件，-1 表示看空事件
+    :return:
+    """
+    n_seq = [int(x.strip('nb')) for x in da.columns if x[0] == 'n' and x[-1] == 'b']
+    for n in n_seq:
+        da[f't{n}b'] = da[f'n{n}b'] * da[event_col]
+
