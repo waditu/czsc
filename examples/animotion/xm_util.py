@@ -9,13 +9,13 @@ def indicator_xm(df):
     import operator
 
     def MA(S, N):
-        return pd.Series(S).rolling(N,min_periods=1).mean().values
+        return pd.Series(S).rolling(N, min_periods=1).mean().values
 
     def HHV(S, N):
-        return pd.Series(S).rolling(N,min_periods=1).max().values
+        return pd.Series(S).rolling(N, min_periods=1).max().values
 
     def LLV(S, N):
-        return pd.Series(S).rolling(N,min_periods=1).min().values
+        return pd.Series(S).rolling(N, min_periods=1).min().values
 
     def EMA(S, N):  # alpha=2/(span+1)
         return pd.Series(S).ewm(span=N, adjust=False).mean().values
@@ -35,6 +35,6 @@ def indicator_xm(df):
     long = [50 if math.isnan(x) else round(x + 100, 4) for x in A]
     short = [50 if math.isnan(x) else round(x + 100, 4) for x in B]
     mid = [50 if math.isnan(x) else round(x + 100, 4) for x in D]
-    hist = [round(x,4) for x in list(map(operator.sub, mid, long))]  # -100 ~ 100 -> 0 - 100 : (x+100)/2
+    hist = [round(x, 4) for x in list(map(operator.sub, mid, long))]  # -100 ~ 100 -> 0 - 100 : (x+100)/2
 
-    return  short,mid,long,hist
+    return short, mid, long, hist
