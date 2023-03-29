@@ -392,8 +392,8 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
 
     **信号列表：**
 
-    - Signal('60分钟_D1W13_加速_上涨_任意_任意_0')
-    - Signal('60分钟_D1W13_加速_下跌_任意_任意_0')
+    - Signal('60分钟_D1W13_加速V221110_上涨_任意_任意_0')
+    - Signal('60分钟_D1W13_加速V221110_下跌_任意_任意_0')
 
     :param c:
     :param di: 取近n根K线为截止

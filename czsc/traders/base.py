@@ -22,7 +22,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Position, RawBar, Signal
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.cache import home_path
-from czsc.utils import sorted_freqs
+from czsc.utils import sorted_freqs, import_by_name
 
 
 class CzscSignals:
@@ -124,6 +124,31 @@ class CzscSignals:
         if self.get_signals:
             self.s = self.get_signals(self)
             self.s.update(last_bar.__dict__)
+
+
+def get_signals_by_conf(cat: CzscSignals, conf):
+    """通过信号参数配置获取信号
+
+    :param cat:
+    :param conf: 信号参数配置，格式如下：
+        conf = [
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
+        ]
+    :return: 信号字典
+    """
+    s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+    for param in conf:
+        param = dict(param)
+        sig_func = import_by_name(param.pop('name'))
+        freq = param.pop('freq', None)
+        if freq in cat.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
+            s.update(sig_func(cat.kas[freq], **param))
+        else:                # 否则使用 CAT 作为输入
+            s.update(sig_func(cat, **param))
+    return s
 
 
 def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List[AnyStr],
