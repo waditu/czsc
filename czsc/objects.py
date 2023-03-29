@@ -642,6 +642,29 @@ class Position:
         return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
                f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
 
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取所有事件的唯一信号列表"""
+        signals = []
+        for e in self.events:
+            if e.signals_all:
+                signals.extend(e.signals_all)
+            if e.signals_any:
+                signals.extend(e.signals_any)
+            if e.signals_not:
+                signals.extend(e.signals_not)
+
+            for factor in e.factors:
+                if factor.signals_all:
+                    signals.extend(factor.signals_all)
+                if factor.signals_any:
+                    signals.extend(factor.signals_any)
+                if factor.signals_not:
+                    signals.extend(factor.signals_not)
+
+        signals = {x.signal for x in signals}
+        return list(signals)
+
     def dump(self, with_data=False):
         """将对象转换为 dict"""
         raw = {
@@ -657,6 +680,22 @@ class Position:
         if with_data:
             raw.update({"pairs": self.pairs, "holds": self.holds})
         return raw
+
+    @classmethod
+    def load(cls, raw: dict):
+        """从 dict 中创建 Position
+
+        :param raw: 样例如下
+        :return:
+        """
+        pos = Position(name=raw['name'], symbol=raw['symbol'],
+                       opens=[Event.load(x) for x in raw['opens'] if raw.get('opens')],
+                       exits=[Event.load(x) for x in raw['exits'] if raw.get('exits')],
+                       interval=raw['interval'],
+                       timeout=raw['timeout'],
+                       stop_loss=raw['stop_loss'],
+                       T0=raw['T0'])
+        return pos
 
     @property
     def pairs(self):
