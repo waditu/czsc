@@ -40,6 +40,15 @@ class CzscStrategyBase(ABC):
         return self.kwargs['symbol']
 
     @property
+    def freqs(self):
+        """K线周期列表"""
+        sig_seq = []
+        for pos in self.positions:
+            sig_seq.extend(pos.unique_signals)
+        freqs_ = {Signal(x).k1 for x in sig_seq}
+        return freqs_sorted(freqs_)
+
+    @property
     def sorted_freqs(self):
         """排好序的 K 线周期列表"""
         return freqs_sorted(self.freqs)
@@ -47,7 +56,7 @@ class CzscStrategyBase(ABC):
     @property
     def base_freq(self):
         """基础 K 线周期"""
-        return self.sorted_freqs[0]
+        return self.freqs[0]
 
     @abstractmethod
     def get_signals(cls, **kwargs) -> OrderedDict:
@@ -57,11 +66,6 @@ class CzscStrategyBase(ABC):
     @abstractmethod
     def positions(self) -> List[Position]:
         """持仓策略列表"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def freqs(self):
-        """K线周期列表"""
         raise NotImplementedError
 
     def init_bar_generator(self, bars: List[RawBar], **kwargs):
@@ -74,11 +78,17 @@ class CzscStrategyBase(ABC):
             n    初始化最小K线数量
         :return:
         """
+        base_freq = str(bars[0].freq.value)
         bg: BarGenerator = kwargs.get('bg', None)
+        if base_freq in self.sorted_freqs:
+            freqs = self.sorted_freqs[1:]
+        else:
+            freqs = self.sorted_freqs
+
         if bg is None:
             sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
             n = int(kwargs.get('n', 500))
-            bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+            bg = BarGenerator(base_freq, freqs=freqs)
 
             # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
             bars_init = [x for x in bars if x.dt <= sdt]
@@ -207,10 +217,6 @@ class CzscStrategyExample1(CzscStrategyBase):
             self.create_pos_b(),
             self.create_pos_c(),
         ]
-
-    @property
-    def freqs(self):
-        return ['日线', '30分钟', '60分钟']
 
     @property
     def __shared_exits(self):
