@@ -79,6 +79,7 @@ from czsc.signals.bar import (
     bar_bpm_V230227,
     bar_time_V230327,
     bar_weekday_V230328,
+    bar_r_breaker_V230326,
 )
 
 from czsc.signals.jcc import (
