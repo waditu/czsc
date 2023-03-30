@@ -7,6 +7,7 @@ describe:
 """
 import re
 from loguru import logger
+from parse import parse
 from difflib import SequenceMatcher
 from czsc.objects import Signal
 from czsc.utils import import_by_name
@@ -24,18 +25,30 @@ class SignalsParser:
         """
         self.signals_module = signals_module
         sig_name_map = {}
+        sig_pats_map = {}
+
         signals_module = import_by_name(signals_module)
         for name in dir(signals_module):
             if "_" not in name:
                 continue
+
             try:
                 doc = getattr(signals_module, name).__doc__
+                # 解析信号函数参数
+                pats = re.findall(r"参数模板：\"(.*)\"", doc)
+                if pats:
+                    sig_pats_map[name] = pats[0]
+
+                # 解析信号列表
                 sigs = re.findall(r"Signal\('(.*)'\)", doc)
                 if sigs:
                     sig_name_map[name] = [Signal(x) for x in sigs]
+
             except Exception as e:
                 logger.error(f"解析信号函数 {name} 出错：{e}")
+
         self.sig_name_map = sig_name_map
+        self.sig_pats_map = sig_pats_map
 
         # 自动获取解析函数
         self._parse_map = {k: getattr(self, f"_SignalsParser__parse_{k}") for k in self.sig_name_map.keys()
@@ -44,6 +57,24 @@ class SignalsParser:
         # 用户自定义信号函数解析方法传入
         if kwargs.get("usr_parse_map", None):
             self._parse_map.update(kwargs.get("usr_parse_map"))
+
+    def parse_params(self, name, signal):
+        """获取信号函数参数
+
+        :param name: 信号函数名称
+        :param signal: 需要解析的信号
+        :return:
+        """
+        key = Signal(signal).key
+        pats = self.sig_pats_map.get(name, None)
+        if not pats:
+            return None
+        params = parse(pats, key).named
+        if 'di' in params:
+            params['di'] = int(params['di'])
+
+        params['name'] = f"{self.signals_module}.{name}"
+        return params
 
     def get_function_name(self, signal):
         """获取信号函数名称"""
@@ -76,13 +107,23 @@ class SignalsParser:
         res = []
         for signal in signal_seq:
             name = self.get_function_name(signal)
-            if name in self._parse_map:
+
+            # 首先使用参数模板进行解析
+            if name in self.sig_pats_map:
+                row = self.parse_params(name, signal)
+                if row not in res:
+                    res.append(row)
+
+            # 其次使用信号函数名称对应的解析方法进行解析
+            elif name in self._parse_map:
                 row = self._parse_map[name](signal)
                 row['name'] = f"{self.signals_module}.{name}"
                 if row not in res:
                     res.append(row)
+
             else:
                 logger.warning(f"未找到解析函数：{name}，请手动解析信号：{signal}")
+
         return res
 
     def parse_with_name(self, signal_map):

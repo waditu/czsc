@@ -18,8 +18,6 @@ from czsc.signals.cxt import (
     cxt_fx_power_V221107,
     cxt_first_buy_V221126,
     cxt_first_sell_V221126,
-    cxt_bi_break_V221126,
-    cxt_sub_b3_V221212,
     cxt_zhong_shu_gong_zhen_V221221,
     cxt_bi_end_V230222,
     cxt_bi_end_V230224,

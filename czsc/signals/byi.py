@@ -165,6 +165,8 @@ def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
     参考资料：https://zhuanlan.zhihu.com/p/550719065
     由于文字描述的比较模糊，笔的算法也有差异，这里的实现和原文有一定出入
 
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}回抽零轴_BS2辅助V230324"
+
     **信号逻辑：**
 
     1. 二买定义：
@@ -184,6 +186,7 @@ def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: 从倒数第几笔开始检查
     :return: 信号识别结果
     """
+    di = int(di)
     cache_key = update_macd_cache(c, **kwargs)
     k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}{cache_key}回抽零轴", "BS2辅助V230324", "其他"
 

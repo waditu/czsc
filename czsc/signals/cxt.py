@@ -20,6 +20,8 @@ from collections import OrderedDict
 def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     """BI基础信号
 
+    参数模板："{freq}_D0BL{bi_init_length}_V230228"
+
     **信号逻辑：**
 
     1. 取最后一个笔，最后一笔向下，则当前笔向上，最后一笔向上，则当前笔向下；
@@ -36,7 +38,7 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs:
     :return: 信号识别结果
     """
-    bi_init_length = kwargs.get('bi_init_length', 9)  # 笔的初始延伸长度，即笔的延伸长度小于该值时，笔的状态为转折，否则为中继
+    bi_init_length = int(kwargs.get('bi_init_length', 9))  # 笔的初始延伸长度，即笔的延伸长度小于该值时，笔的状态为转折，否则为中继
     k1, k2, k3 = f"{c.freq.value}_D0BL{bi_init_length}_V230228".split('_')
     v1 = '其他'
     if len(c.bi_list) < 3:
@@ -50,8 +52,10 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+def cxt_fx_power_V221107(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """倒数第di个分型的强弱
+
+    参数模板："{freq}_D{di}F_分型强弱"
 
     **信号列表：**
 
@@ -72,6 +76,7 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     :param di: 倒数第di个分型
     :return:
     """
+    di = int(di)
     k1, k2, k3 = f"{c.freq.value}_D{di}F_分型强弱".split("_")
     last_fx: FX = c.fx_list[-di]
     v1 = f"{last_fx.power_str}{last_fx.mark.value[0]}"
@@ -81,6 +86,8 @@ def cxt_fx_power_V221107(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
 
 def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一买信号
+
+    参数模板："{freq}_D{di}B_BUY1"
 
     **信号列表：**
 
@@ -98,6 +105,8 @@ def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: CZSC 对象
     :return: 信号字典
     """
+    di = int(di)
+
     def __check_first_buy(bis: List[BI]):
         """检查 bis 是否是一买的结束
 
@@ -148,6 +157,8 @@ def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """一卖信号
 
+    参数模板："{freq}_D{di}B_SELL1"
+
     **信号列表：**
 
     - Signal('15分钟_D1B_SELL1_一卖_17笔_任意_0')
@@ -164,6 +175,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: CZSC 对象
     :return: 信号字典
     """
+    di = int(di)
 
     def __check_first_sell(bis: List[BI]):
         """检查 bis 是否是一卖的结束
@@ -218,106 +230,10 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_bi_break_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
-    """向上笔突破回调不破信号
-
-    **信号列表：**
-
-    - Signal('15分钟_D1B_向上_突破_5笔_任意_0')
-    - Signal('15分钟_D1B_向上_突破_7笔_任意_0')
-    - Signal('15分钟_D1B_向上_突破_9笔_任意_0')
-
-    :param c: CZSC 对象
-    :param di: CZSC 对象
-    :return: 信号字典
-    """
-
-    def __check(bis: List[BI]):
-        res = {"match": False, "v1": "突破", "v2": f"{len(bis)}笔", 'v3': "任意"}
-        if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
-            return res
-
-        # 获取向上突破的笔列表
-        key_bis = []
-        for i in range(0, len(bis) - 2, 2):
-            if i == 0:
-                key_bis.append(bis[i])
-            else:
-                b1, _, b3 = bis[i - 2:i + 1]
-                if b3.high > b1.high:
-                    key_bis.append(b3)
-
-        # 检查：
-        # 1. 当下笔的最低点在任一向上突破笔的高点上
-        # 2. 当下笔的最低点离笔序列最低点的距离不超过向上突破笔列表均值的1.618倍
-        tb_break = bis[-1].low > min([x.high for x in key_bis])
-        tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
-        if tb_break and tb_price:
-            res['match'] = True
-        return res
-
-    k1, k2, k3 = c.freq.value, f"D{di}B", "向上"
-    v1, v2, v3 = "其他", '任意', '任意'
-
-    for n in (9, 7, 5):
-        _bis = get_sub_elements(c.bi_list, di=di, n=n)
-        if len(_bis) != n:
-            logger.warning('笔的数量不对，跳过')
-            continue
-
-        _res = __check(_bis)
-        if _res['match']:
-            v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
-            break
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
-
-
-def cxt_sub_b3_V221212(cat: CzscSignals, freq1='60分钟', freq2='15分钟', th=10, **kwargs) -> OrderedDict:
-    """小级别突破大级别中枢形成三买，贡献者：魏永超
-
-    **信号逻辑：**
-
-    1. freq级别中产生笔中枢，最后一笔向上时，中枢由之前3笔构成；最后一笔向下时，中枢由最后3笔构成。
-    2. sub_freq级别中出现向上笔超越大级别中枢最高点，且随后不回到大级别中枢区间的th%以内。
-
-    **信号列表：**
-
-    - Signal('60分钟_15分钟_3买回踩10_确认_任意_任意_0')
-
-    :param cat:
-    :param freq1: 中枢所在的大级别
-    :param freq2: 突破大级别中枢，回踩形成小级别类3买的小级别
-    :param th: 小级别回落对大级别中枢区间的回踩程度，0表示回踩不进大级别中枢，10表示回踩不超过中枢区间的10%
-    :return: 信号识别结果
-    """
-    k1, k2, k3 = f"{freq1}_{freq2}_三买回踩{th}".split('_')
-
-    c: CZSC = cat.kas[freq1]
-    sub_c: CZSC = cat.kas[freq2]
-
-    v1 = "其他"
-    if len(c.bi_list) > 13 and len(sub_c.bi_list) > 10:
-        last_bi = c.bi_list[-1]
-        if last_bi.direction == Direction.Down:
-            zs = ZS(symbol=cat.symbol, bis=c.bi_list[-3:])
-        else:
-            zs = ZS(symbol=cat.symbol, bis=c.bi_list[-4:-1])
-
-        min7 = min([x.low for x in c.bi_list[-7:]])
-        # 中枢成立，且中枢最低点不是最后7笔的最低点，且最后7笔最低点同时也是最后13笔最低点（保证低点起来第一个中枢）
-        if zs.zd < zs.zg and zs.dd > min7 == min([x.low for x in c.bi_list[-13:]]):
-            last_sub_bi = sub_c.bi_list[-1]
-
-            if last_sub_bi.direction == Direction.Down and last_sub_bi.high > zs.gg \
-                    and last_sub_bi.low > zs.zg - (th / 100) * (zs.zg - zs.zd):
-                v1 = "确认"
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
 def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
+
+    参数模板："{freq1}_{freq2}_中枢共振"
 
     **信号逻辑：**
 
@@ -366,6 +282,8 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
 
 def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
     """当前是最后笔的第几次新低底分型或新高顶分型，用于笔结束辅助
+
+    参数模板："{freq}_D1MO{max_overlap}_BE辅助V230222"
 
     **信号逻辑：**
 
@@ -439,6 +357,8 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
 def cxt_bi_end_V230224(c: CZSC, **kwargs):
     """量价配合的笔结束辅助
 
+    参数模板："{freq}_D1_BE辅助V230224"
+
     **信号逻辑：**
 
     1. 向下笔结束：fx_b 内最低的那根K线下影大于上影的两倍，同时fx_b内的平均成交量小于当前笔的平均成交量的0.618
@@ -478,6 +398,8 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
 def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """笔三买辅助
 
+    参数模板："{freq}_D{di}三买辅助_V230228"
+
     **信号逻辑：**
 
     1. 定义大于前一个向上笔的高点的笔为向上突破笔，最近所有向上突破笔有价格重叠
@@ -496,6 +418,7 @@ def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param kwargs:
     :return: 信号识别结果
     """
+    di = int(di)
     k1, k2, k3 = f"{c.freq.value}_D{di}三买辅助_V230228".split('_')
     v1, v2 = '其他', '其他'
     if len(c.bi_list) < di + 11:
@@ -547,6 +470,8 @@ def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
     """两个中枢组合辅助判断BS1
 
+    参数模板："{freq}_D{di}双中枢_BS1辅助V230311"
+
     **信号逻辑：**
 
     1. 最后一笔向下，最近两个中枢依次向下，最后一个中枢的倒数第一笔的K线长度大于倒数第二笔的K线长度，看多；
@@ -561,6 +486,7 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
     :param di: 倒数第 di 笔
     :return: s
     """
+    di = int(di)
     k1, k2, k3 = f"{c.freq.value}_D{di}双中枢_BS1辅助V230311".split("_")
     v1 = "其他"
 
@@ -585,6 +511,8 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
 def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """均线辅助识别第二类买卖点
 
+    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS2辅助V230320"
+
     **信号逻辑：**
 
     1. 二买：1）123笔序列向下，其中 1,3 笔的低点都在均线下方；2）5的fx_a的均线值小于fx_b均线值
@@ -592,15 +520,17 @@ def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA21_BS2辅助V230320_二买_任意_任意_0')
-    - Signal('15分钟_D1SMA21_BS2辅助V230320_二卖_任意_任意_0')
+    - Signal('15分钟_D1SMA#21_BS2辅助V230320_二买_任意_任意_0')
+    - Signal('15分钟_D1SMA#21_BS2辅助V230320_二卖_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 从最后一个笔的第几个开始识别
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 21))
+    di = int(di)
+    timeperiod = int(kwargs.get("timeperiod", 21))
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS2辅助V230320".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 6:
@@ -628,6 +558,8 @@ def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点
 
+    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS3辅助V230318"
+
     **信号逻辑：**
 
     1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高
@@ -635,15 +567,17 @@ def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA34_BS3辅助V230318_三卖_任意_任意_0')
-    - Signal('15分钟_D1SMA34_BS3辅助V230318_三买_任意_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230318_三卖_任意_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230318_三买_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 从最后一个笔的第几个开始识别
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    di = int(di)
+    timeperiod = int(kwargs.get("timeperiod", 34))
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230318".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 6:
@@ -672,6 +606,8 @@ def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点，增加均线形态
 
+    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS3辅助V230319"
+
     **信号逻辑：**
 
     1. 三买：1）123构成中枢，4离开，5回落不回中枢；2）均线新高或均线底分
@@ -679,10 +615,10 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA34_BS3辅助V230319_三卖_均线新低_任意_0')
-    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线底分_任意_0')
-    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新高_任意_0')
-    - Signal('15分钟_D1SMA34_BS3辅助V230319_三买_均线新低_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三卖_均线新低_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线底分_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线新高_任意_0')
+    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线新低_任意_0')
 
     **信号说明：**
 
@@ -693,7 +629,9 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 34))
+    di = int(di)
+    timeperiod = int(kwargs.get("timeperiod", 34))
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230319".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 6:
@@ -733,8 +671,10 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_bi_end_V230104(c: CZSC, th=50, **kwargs) -> OrderedDict:
+def cxt_bi_end_V230104(c: CZSC, **kwargs) -> OrderedDict:
     """单均线辅助判断笔结束
+
+    参数模板："{freq}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230104"
 
     **信号逻辑：**
 
@@ -743,18 +683,20 @@ def cxt_bi_end_V230104(c: CZSC, th=50, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看多_任意_任意_0')
-    - Signal('15分钟_D0SMA5T50_BE辅助V230104_看空_任意_任意_0')
+    - Signal('15分钟_D0SMA#5T50_BE辅助V230104_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA#5T50_BE辅助V230104_看空_任意_任意_0')
 
     **Notes：**
 
     1. BE 是 Bi End 的缩写
 
     :param c: CZSC对象
-    :param th: 距离SMA5均线的阈值
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期，th: 距离SMA5均线的阈值，单位：BP
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    th = int(kwargs.pop("th", 50))
+    timeperiod = int(kwargs.get("timeperiod", 5))
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230104".split('_')
     v1 = "其他"
     if len(c.bi_list) < 3:
@@ -779,8 +721,10 @@ def cxt_bi_end_V230104(c: CZSC, th=50, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_bi_end_V230105(c: CZSC, th=50, **kwargs) -> OrderedDict:
+def cxt_bi_end_V230105(c: CZSC, **kwargs) -> OrderedDict:
     """K线形态+均线辅助判断笔结束
+
+    参数模板："{freq}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230105"
 
     **信号逻辑：**
 
@@ -789,20 +733,21 @@ def cxt_bi_end_V230105(c: CZSC, th=50, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看多_任意_任意_0')
-    - Signal('15分钟_D0SMA5T50_BE辅助V230105_看空_任意_任意_0')
+    - Signal('15分钟_D0SMA#5T50_BE辅助V230105_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA#5T50_BE辅助V230105_看空_任意_任意_0')
 
     **Notes：**
 
     1. BE 是 Bi End 的缩写
 
     :param c: CZSC对象
-    :param th: RSQ阈值，RSQ * 100 > th, 表示行情很强
+    :param kwargs: ma_type: 均线类型，timeperiod: 均线周期，th: 距离SMA5均线的阈值，单位：BP
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get('ma_type', 'SMA'), timeperiod=kwargs.get('timeperiod', 5))
+    th = int(kwargs.get("th", 50))
+    timeperiod = int(kwargs.get("timeperiod", 5))
+    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230105".split('_')
-
     v1 = "其他"
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -901,7 +846,7 @@ def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
     :param c: CZSC对象
     :return: 信号识别结果
     """
-    max_overlap = kwargs.get("max_overlap", 3)
+    max_overlap = int(kwargs.get("max_overlap", 3))
     k1, k2, k3, v1 = f"{c.freq.value}", f"D0质数窗口MO{max_overlap}", "BE辅助V230320", "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

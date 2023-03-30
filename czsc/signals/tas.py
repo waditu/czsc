@@ -41,7 +41,7 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
 
     ma_type = ma_type.upper()
     assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
-    cache_key = f"{ma_type.upper()}{timeperiod}"
+    cache_key = f"{ma_type.upper()}#{timeperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
@@ -74,9 +74,9 @@ def update_macd_cache(c: CZSC, **kwargs):
     :param c: CZSC对象
     :return:
     """
-    fastperiod = kwargs.get('fastperiod', 12)
-    slowperiod = kwargs.get('slowperiod', 26)
-    signalperiod = kwargs.get('signalperiod', 9)
+    fastperiod = int(kwargs.get('fastperiod', 12))
+    slowperiod = int(kwargs.get('slowperiod', 26))
+    signalperiod = int(kwargs.get('signalperiod', 9))
 
     cache_key = f"MACD{fastperiod}#{slowperiod}#{signalperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
