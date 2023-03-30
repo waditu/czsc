@@ -174,8 +174,10 @@ def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
+def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 i 根 K 线的成交量相比于前 N 根 K 线放量
+
+    参数模板："{freq}_D{di}K{n}B_放量V221112"
 
     **信号逻辑: **
 
@@ -183,15 +185,19 @@ def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D2K5B_放量_否_任意_任意_0')
-    - Signal('15分钟_D2K5B_放量_是_任意_任意_0')
+    - Signal('15分钟_D1K5B_放量V221112_否_任意_任意_0')
+    - Signal('15分钟_D1K5B_放量V221112_是_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止的倒数第 i 根
-    :param n: 向前看 n 根
-    :return: s
+    :param kwargs: 参数字典
+        - di: 倒数第i根K线
+        - n: 过去N根K线
+    :return: 信号识别结果
     """
-    k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B", "放量"
+    di = int(kwargs.get("di", 2))
+    n = int(kwargs.get("n", 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}K{n}B_放量V221112".split("_")
 
     if len(c.bars_raw) < di + n + 10:
         v1 = "其他"
@@ -382,8 +388,10 @@ def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 10
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDict:
+def bar_accelerate_V221110(c: CZSC, **kwargs) -> OrderedDict:
     """辨别加速走势
+
+    参数模板："{freq}_D{di}W{window}_加速V221110"
 
     **信号逻辑：**
 
@@ -395,12 +403,16 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
     - Signal('60分钟_D1W13_加速V221110_上涨_任意_任意_0')
     - Signal('60分钟_D1W13_加速V221110_下跌_任意_任意_0')
 
-    :param c:
-    :param di: 取近n根K线为截止
-    :param window: 识别加速走势的窗口大小
-    :return:
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - di: 区间结束K线位置，倒数
+        - window: 取截止di的近window根K线
+    :return: 信号识别结果
     """
-    k1, k2, k3 = str(c.freq.value), f"D{di}W{window}", "加速V221110"
+    di = int(kwargs.get("di", 1))
+    window = int(kwargs.get("window", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{window}_加速V221110".split('_')
 
     v1 = "其他"
     if len(c.bars_raw) > di + window + 10:

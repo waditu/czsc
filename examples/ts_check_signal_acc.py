@@ -28,7 +28,7 @@ bars = dc.pro_bar_minutes(ts_code=symbol, asset='E', freq='15min',
 def get_signals(cat: CzscTrader) -> OrderedDict:
     s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
     # 定义需要检查的信号
-    s.update(signals.cxt_third_buy_V230228(cat.kas['15分钟'], di=1))
+    s.update(signals.bar_vol_grow_V221112(cat.kas['15分钟'], di=1))
     return s
 
 

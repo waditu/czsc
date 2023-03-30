@@ -17,8 +17,10 @@ from czsc.utils.sig import is_symmetry_zs
 from czsc.signals.tas import update_macd_cache, update_boll_cache_V230228, update_ma_cache
 
 
-def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
+def byi_symmetry_zs_V221107(c: CZSC, **kwargs):
     """对称中枢信号
+
+    参数模板："{freq}_D{di}B_对称中枢"
 
     **信号逻辑：**
 
@@ -37,9 +39,9 @@ def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
     - Signal('15分钟_D1B_对称中枢_是_向下_7笔_0')
 
     :param c: CZSC对象
-    :param di: 倒数第 di 笔
-    :return: s
+    :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
     bis: List[BI] = get_sub_elements(c.bi_list, di=di, n=10)
     k1, k2, k3 = f"{c.freq.value}_D{di}B_对称中枢".split("_")
     v1 = '其他'
@@ -61,6 +63,8 @@ def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
 
 def byi_bi_end_V230106(c: CZSC, **kwargs) -> OrderedDict:
     """白仪分型停顿辅助笔结束判断
+
+    参数模板："{freq}_D0停顿分型_BE辅助V230106"
 
     **信号逻辑：**
 
@@ -112,6 +116,8 @@ def byi_bi_end_V230106(c: CZSC, **kwargs) -> OrderedDict:
 def byi_bi_end_V230107(c: CZSC, **kwargs) -> OrderedDict:
     """白仪验证分型辅助判断笔结束
 
+    参数模板："{freq}_D0验证分型_BE辅助V230107"
+
     **信号逻辑：**
 
     验证分型图解：https://pic1.zhimg.com/80/v2-80ac88269286707db98a5560107da4ec_720w.webp
@@ -162,6 +168,8 @@ def byi_bi_end_V230107(c: CZSC, **kwargs) -> OrderedDict:
 def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """白仪二类买卖点辅助V230324
 
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}回抽零轴_BS2辅助V230324"
+
     参考资料：https://zhuanlan.zhihu.com/p/550719065
     由于文字描述的比较模糊，笔的算法也有差异，这里的实现和原文有一定出入
 
@@ -186,10 +194,11 @@ def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: 从倒数第几笔开始检查
     :return: 信号识别结果
     """
-    di = int(di)
+    di = int(kwargs.get("di", 1))
     cache_key = update_macd_cache(c, **kwargs)
-    k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}{cache_key}回抽零轴", "BS2辅助V230324", "其他"
-
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}{cache_key}回抽零轴_BS2辅助V230324".split('_')
+    v1 = "其他"
     if len(c.bi_list) < di + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
