@@ -137,27 +137,15 @@ class BarGenerator:
         self.bars = {v: [] for v in self.freqs}
         self.bars.update({base_freq: []})
         self.freq_map = {f.value: f for _, f in Freq.__members__.items()}
-        self.__validate_freq_params()
+        self.__validate_freqs()
 
-    def __validate_freq_params(self):
-        # K线周期约束，由于要求 base_freq 的输入K必须是完成的，只能生成 base_freq 以上周期的K线
-        self.base_freq_constraint = {
-            "1分钟": ['5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线'],
-            "5分钟": ['15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线'],
-            "15分钟": ['30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线'],
-            "30分钟": ['60分钟', '日线', '周线', '月线', '季线', '年线'],
-            "60分钟": ['日线', '周线', '月线', '季线', '年线'],
-            "日线": ['周线', '月线', '季线', '年线'],
-        }
-
-        assert self.base_freq in self.freq_map.keys()
-        assert self.base_freq in self.base_freq_constraint.keys()
-        bfc = self.base_freq_constraint[self.base_freq]
-
+    def __validate_freqs(self):
+        sorted_freqs = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+        i = sorted_freqs.index(self.base_freq)
+        f = sorted_freqs[i:]
         for freq in self.freqs:
-            assert freq in self.freq_map.keys()
-            assert freq in bfc, f"{freq} 不在允许生成的周期列表中"
-        assert self.base_freq not in self.freqs, 'base_freq 不能在 freqs 列表中'
+            if freq not in f:
+                raise ValueError(f'freqs中包含不支持的周期：{freq}')
 
     def init_freq_bars(self, freq: str, bars: List[RawBar]):
         """初始化某个周期的K线序列
