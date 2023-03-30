@@ -677,22 +677,6 @@ class Position:
         signals = []
         for e in self.events:
             signals.extend(e.unique_signals)
-            # if e.signals_all:
-            #     signals.extend(e.signals_all)
-            # if e.signals_any:
-            #     signals.extend(e.signals_any)
-            # if e.signals_not:
-            #     signals.extend(e.signals_not)
-            #
-            # for factor in e.factors:
-            #     if factor.signals_all:
-            #         signals.extend(factor.signals_all)
-            #     if factor.signals_any:
-            #         signals.extend(factor.signals_any)
-            #     if factor.signals_not:
-            #         signals.extend(factor.signals_not)
-
-        # signals = {x.signal if isinstance(x, S)for x in signals}
         return list(set(signals))
 
     def dump(self, with_data=False):

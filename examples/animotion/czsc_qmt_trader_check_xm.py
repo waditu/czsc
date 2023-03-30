@@ -90,14 +90,16 @@ def get_pool_symbols(poolname, sdt_, edt_):
     """
     pathname = os.path.join(pool_path, f'{poolname}.csv')
 
-    all_df = pd.read_csv(pathname,converters={'symbol':str}, parse_dates=['dt'] )
+    all_df = pd.read_csv(pathname, converters={'symbol': str}, parse_dates=['dt'])
     # print(all_df.head())
     # print(all_df['dt'].isna())
-    #csv文件中，dt为空的票，表示一直持有，所以下面代码将他们都选上
-    selected_symbols_df = all_df[(all_df['dt'] >= pd.Timestamp(sdt_)) & (all_df['dt'] <= pd.Timestamp(edt_)) | (all_df['dt'].isna())]
-    last_symbols_df = selected_symbols_df[(selected_symbols_df['dt'] == selected_symbols_df['dt'].max()) | (selected_symbols_df['dt'].isna())]
+    # csv文件中，dt为空的票，表示一直持有，所以下面代码将他们都选上
+    selected_symbols_df = all_df[
+        (all_df['dt'] >= pd.Timestamp(sdt_)) & (all_df['dt'] <= pd.Timestamp(edt_)) | (all_df['dt'].isna())]
+    last_symbols_df = selected_symbols_df[
+        (selected_symbols_df['dt'] == selected_symbols_df['dt'].max()) | (selected_symbols_df['dt'].isna())]
 
-    return selected_symbols_df,last_symbols_df['symbol']
+    return selected_symbols_df, last_symbols_df['symbol']
 
 
 # sidebar好像还没效果
@@ -124,15 +126,13 @@ with st.sidebar:
     strategy_name = st.selectbox("择时策略", options=strategys, index=0)
 
     pool = st.selectbox("股票池", options=get_pools(), index=0)
-    selected_symbols_df,last_symbols = get_pool_symbols(pool,sdt,edt)
+    selected_symbols_df, last_symbols = get_pool_symbols(pool, sdt, edt)
     mode = st.selectbox("模式", options=("个股择时", "选股分析", "选股+择时分析"), index=0)
     if "个股择时" == mode:
         symbol = st.selectbox("选择合约", options=last_symbols, index=0)
 
-
-
 if "个股择时" == mode:
-    #########trader begin
+    ######### trader begin
     # strategy_name = 'corab.CzscStocksV230316'
     # print(strategy_name)
     czsc_strategy = czsc.import_by_name(strategy_name)
@@ -168,15 +168,18 @@ if "个股择时" == mode:
                 [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx,
                   "text": c.bi_list[-1].fx_b.mark.value}])
             fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
-            kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=0.6, visible=False)  # ming line_width from 1.2 to 0.6 ,add visibal
-            kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text='', row=1, line_width=1.5)  # ming text=bi['text'] to ''
+            kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=0.6,
+                                        visible=False)  # ming line_width from 1.2 to 0.6 ,add visibal
+            kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text='', row=1,
+                                        line_width=1.5)  # ming text=bi['text'] to ''
 
         kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=0.6)  # ming add line_width
         kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=0.6)  # ming add line_width
         kline.add_vol(df, row=2, line_width=1)
         kline.add_macd(df, row=3, line_width=1)
         s, m, l, bar = indicator_xm(df)  # s,m,l分别是短，中，长线型指标，b是bar型指标
-        kline.add_indicator(dt=df['dt'], scatters=[s, m, l], scatternames=['短', '中', '长'], bar=bar, barname='柱', row=4)
+        kline.add_indicator(dt=df['dt'], scatters=[s, m, l], scatternames=['短', '中', '长'], bar=bar, barname='柱',
+                            row=4)
         # 买卖点begin
         from czsc.utils.bar_generator import freq_end_time
 
@@ -196,11 +199,13 @@ if "个股择时" == mode:
                     bs.append(_op)
         bs_df = pd.DataFrame(bs)
         if not bs_df.empty:
-            kline.add_marker_indicator(bs_df['dt'], bs_df['price'], name='OP', text=bs_df['op_desc'], row=1, line_width=0.5, tag=bs_df['tag'], color=bs_df['color'])
+            kline.add_marker_indicator(bs_df['dt'], bs_df['price'], name='OP', text=bs_df['op_desc'], row=1,
+                                       line_width=0.5, tag=bs_df['tag'], color=bs_df['color'])
         # 买卖点end
 
         with tabs[i]:
-            st.plotly_chart(kline.fig, use_container_width=True, config=config)  # ming 删除height，height通过构造函数送入，在里面通过updatelayout实现
+            st.plotly_chart(kline.fig, use_container_width=True,
+                            config=config)  # ming 删除height，height通过构造函数送入，在里面通过updatelayout实现
         i += 1
 
     # 信号页
@@ -283,11 +288,10 @@ if "个股择时" == mode:
     i += 1
 if "选股分析" == mode:
     st.write(selected_symbols_df)
-    #todo 对selected_symbols_df进行选股收益分析
-
+    # todo 对selected_symbols_df进行选股收益分析
 
 if "选股+择时分析" == mode:
     st.write(strategy_name)
     st.write(selected_symbols_df)
 
-    #todo 对selected_symbols_df进行选股+择时收益分析
+    # todo 对selected_symbols_df进行选股+择时收益分析
