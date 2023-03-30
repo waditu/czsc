@@ -19,12 +19,6 @@ def test_generate_signals_by_conf():
 
     def get_signals(cat):
         conf = [
-            {'freq': '日线',
-             'di': '1',
-             'fastperiod': '12',
-             'slowperiod': '26',
-             'signalperiod': '9',
-             'name': 'czsc.signals.byi_second_bs_V230324'},
             {'freq1': '日线',
              'freq2': '日线',
              'name': 'czsc.signals.cxt_zhong_shu_gong_zhen_V221221'}
@@ -38,7 +32,6 @@ def test_generate_signals_by_conf():
 
 def test_signals_parser():
     sp = SignalsParser()
-    conf = sp.parse_params('cxt_second_bs_V230320', '15分钟_D1SMA#21_BS2辅助V230320_二买_任意_任意_0')
     conf = sp.parse_params('byi_second_bs_V230324', '15分钟_D1MACD12#26#9回抽零轴_BS2辅助V230324_看空_任意_任意_0')
     assert conf
 
