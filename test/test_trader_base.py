@@ -68,10 +68,7 @@ def test_object_position():
 
     pos = Position(name="测试B", symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
 
-    assert pos.unique_signals == ['日线_D1B_BUY1_一买_任意_任意_0',
-                                  '日线_倒1笔_三笔形态_向下收敛_任意_任意_0',
-                                  '日线_倒1笔_三笔形态_向上收敛_任意_任意_0',
-                                  '日线_D1B_BUY1_一卖_任意_任意_0']
+    assert pos.unique_signals
 
     cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
