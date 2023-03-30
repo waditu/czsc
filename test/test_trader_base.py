@@ -68,7 +68,8 @@ def test_object_position():
 
     pos = Position(name="测试B", symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
 
-    assert pos.unique_signals
+    assert len(pos.unique_signals) == 4
+    assert len(pos.events[0].unique_signals) == 1
 
     cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
