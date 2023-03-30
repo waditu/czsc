@@ -28,7 +28,7 @@ from czsc.utils import sorted_freqs, import_by_name
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None):
+    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None, **kwargs):
         """
 
         :param bg: K线合成器
@@ -38,6 +38,7 @@ class CzscSignals:
         self.get_signals: Callable = get_signals
         # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
         self.cache = OrderedDict()
+        self.kwargs = kwargs
 
         if bg:
             self.bg = bg
@@ -275,7 +276,7 @@ class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
     def __init__(self, bg: BarGenerator = None, get_signals: Callable = None,
-                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean"):
+                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
         """
 
         :param bg: bar generator 对象
@@ -289,7 +290,7 @@ class CzscTrader(CzscSignals):
 
             对于传入回调函数的情况，输入是 self.positions
         """
-        super().__init__(bg, get_signals=get_signals)
+        super().__init__(bg, get_signals=get_signals, **kwargs)
         self.positions = positions
         self.__ensemble_method = ensemble_method
 
