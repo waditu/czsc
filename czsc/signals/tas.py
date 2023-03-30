@@ -41,7 +41,7 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
 
     ma_type = ma_type.upper()
     assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
-    cache_key = f"{ma_type.upper()}#{timeperiod}"
+    cache_key = f"{ma_type}#{timeperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
@@ -204,7 +204,7 @@ def update_boll_cache(c: CZSC, **kwargs):
     return cache_key
 
 
-def tas_boll_vt_V230312(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+def tas_boll_vt_V230212(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """以BOLL通道为依据的多空进出场信号
 
     **信号逻辑：**
@@ -214,8 +214,8 @@ def tas_boll_vt_V230312(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230312_看空_任意_任意_0')
-    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230212_看空_任意_任意_0')
+    - Signal('15分钟_D1BOLL20S20MO5_BS辅助V230212_看多_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 信号计算截止倒数第i根K线
@@ -223,7 +223,7 @@ def tas_boll_vt_V230312(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     """
     key = update_boll_cache_V230228(c, **kwargs)
     max_overlap = kwargs.get('max_overlap', 5)
-    k1, k2, k3 = f"{c.freq.value}_D{di}{key}MO{max_overlap}_BS辅助V230312".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}{key}MO{max_overlap}_BS辅助V230212".split('_')
     v1 = "其他"
     _bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
     if len(_bars) < max_overlap + 1:
@@ -658,8 +658,10 @@ def tas_macd_change_V221105(c: CZSC, di: int = 1, n: int = 55, **kwargs) -> Orde
 # MA信号计算函数
 # ======================================================================================================================
 
-def tas_ma_base_V221101(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5) -> OrderedDict:
+def tas_ma_base_V221101(c: CZSC, **kwargs) -> OrderedDict:
     """MA 多空和方向信号
+
+    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_分类V221101"
 
     **信号逻辑：**
 
@@ -668,27 +670,35 @@ def tas_ma_base_V221101(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5) -> Or
 
     **信号列表：**
 
-    - Signal('15分钟_D1K_SMA5_空头_向下_任意_0')
-    - Signal('15分钟_D1K_SMA5_多头_向下_任意_0')
-    - Signal('15分钟_D1K_SMA5_多头_向上_任意_0')
-    - Signal('15分钟_D1K_SMA5_空头_向上_任意_0')
+    - Signal('15分钟_D1SMA#5_分类V221101_空头_向下_任意_0')
+    - Signal('15分钟_D1SMA#5_分类V221101_多头_向下_任意_0')
+    - Signal('15分钟_D1SMA#5_分类V221101_多头_向上_任意_0')
+    - Signal('15分钟_D1SMA#5_分类V221101_空头_向上_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
-    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    :param timeperiod: 均线计算周期
+    :param kwargs:
+        - di: 信号计算截止倒数第i根K线
+        - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+        - timeperiod: 均线计算周期
     :return:
     """
+    di = int(kwargs.get('di', 1))
+    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    timeperiod = int(kwargs.get('timeperiod', 5))
     key = update_ma_cache(c, ma_type, timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_{key}".split('_')
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}{key}_分类V221101".split('_')
+
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "多头" if bars[-1].close >= bars[-1].cache[key] else "空头"
     v2 = "向上" if bars[-1].cache[key] >= bars[-2].cache[key] else "向下"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=100) -> OrderedDict:
+def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=100, **kwargs) -> OrderedDict:
     """MA 多空和方向信号，加距离限制
+
+    参数模板："{freq}_D{di}{ma_type}#{timeperiod}T{th}_分类V221203"
 
     **信号逻辑：**
 
@@ -698,14 +708,14 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
 
     **信号列表：**
 
-    - Signal('日线_D1T100_SMA5_多头_向上_远离_0')
-    - Signal('日线_D1T100_SMA5_多头_向上_靠近_0')
-    - Signal('日线_D1T100_SMA5_空头_向上_远离_0')
-    - Signal('日线_D1T100_SMA5_空头_向下_远离_0')
-    - Signal('日线_D1T100_SMA5_空头_向下_靠近_0')
-    - Signal('日线_D1T100_SMA5_多头_向下_靠近_0')
-    - Signal('日线_D1T100_SMA5_空头_向上_靠近_0')
-    - Signal('日线_D1T100_SMA5_多头_向下_远离_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_空头_向下_靠近_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_多头_向下_靠近_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_多头_向上_靠近_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_空头_向上_靠近_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_空头_向下_远离_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_多头_向上_远离_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_多头_向下_远离_0')
+    - Signal('15分钟_D1SMA#5T100_分类V221203_空头_向上_远离_0')
 
     :param c: CZSC对象
     :param di: 信号计算截止倒数第i根K线
@@ -714,8 +724,14 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     :param th: 距离阈值，单位 BP
     :return:
     """
+    di = int(kwargs.get('di', 1))
+    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    timeperiod = int(kwargs.get('timeperiod', 5))
+    th = int(kwargs.get('th', 100))
     key = update_ma_cache(c, ma_type, timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_{key}".split('_')
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}{key}T{th}_分类V221203".split('_')
+
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     c = bars[-1].close
     m = bars[-1].cache[key]
@@ -1189,7 +1205,7 @@ def tas_double_rsi_V221203(c: CZSC, di: int = 1, rsi_seq=(5, 10), **kwargs) -> O
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def tas_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, **kwargs) -> OrderedDict:
+def tas_first_bs_V230217(c: CZSC, **kwargs) -> OrderedDict:
     """均线结合K线形态的一买一卖辅助判断
 
     **信号逻辑：**
@@ -1199,19 +1215,23 @@ def tas_first_bs_V230217(c: CZSC, di: int = 1, n: int = 10, **kwargs) -> Ordered
 
     **信号列表：**
 
-    - Signal('日线_D1N10SMA5_BS1辅助_一买_任意_任意_0')
-    - Signal('日线_D1N10SMA5_BS1辅助_一卖_任意_任意_0')
+    - Signal('15分钟_D1N10#SMA#5_BS1辅助V230217_一买_任意_任意_0')
+    - Signal('15分钟_D1N10#SMA#5_BS1辅助V230217_一卖_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第几根K线，1表示最后一根K线
-    :param n: 窗口大小
     :param kwargs:
+        - di: 倒数第几根K线，1表示最后一根K线
+        - n: 窗口大小
+        - ma_type: 均线类型
+        - timeperiod: 均线周期
     :return: 信号识别结果
     """
-    ma_type = kwargs.get('ma_type', 'SMA')
-    timeperiod = kwargs.get('timeperiod', 5)
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 10))
+    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    timeperiod = int(kwargs.get('timeperiod', 5))
     key = update_ma_cache(c, ma_type, timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{timeperiod}_BS1辅助".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}#{ma_type}#{timeperiod}_BS1辅助V230217".split('_')
     v1 = '其他'
     if len(c.bars_raw) < n + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1518,10 +1538,10 @@ def tas_macd_bs1_V230313(c: CZSC, di: int = 1, **kwargs):
 
     **信号列表：**
 
-    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一买_死叉_任意_0')
-    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一买_金叉_任意_0')
-    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一卖_金叉_任意_0')
-    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230312_一卖_死叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230313_一买_死叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230313_一买_金叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230313_一卖_金叉_任意_0')
+    - Signal('15分钟_D1MACD12#26#9_BS1辅助V230313_一卖_死叉_任意_0')
 
     :param c: CZSC对象
     :param di: 倒数第i根K线

@@ -560,8 +560,10 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+def bar_single_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """单根K线的状态
+
+    参数模板："{freq}_D{di}T{t}_状态"
 
     **信号描述：**
 
@@ -583,13 +585,13 @@ def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         t: 长实体、长上影、长下影的阈值，默认为 1.0
     :return: 信号识别结果
     """
-    t = kwargs.get("t", 1.0)
-    t = int(round(t, 1) * 10)
+    di = int(kwargs.get("di", 1))
+    t = int(kwargs.get("t", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}T{t}_状态".split("_")
 
-    k1, k2, k3 = f"{c.freq.value}", f"D{di}T{t}", "状态"
-    v1 = "其他"
-    if len(c.bars_raw) < di:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    if len(c.bars_raw) < di + 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     k = c.bars_raw[-di]
     v1 = "阳线" if k.close > k.open else "阴线"
@@ -766,8 +768,10 @@ def bar_reversal_V230227(c: CZSC, di=1, avg_bp: int = 300, **kwargs) -> OrderedD
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> OrderedDict:
+def bar_bpm_V230227(c: CZSC, **kwargs) -> OrderedDict:
     """以BP为单位的绝对动量
+
+    参数模板："{freq}_D{di}N{n}T{th}_绝对动量V230227"
 
     **信号逻辑：**
 
@@ -782,16 +786,22 @@ def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> Ord
     - Signal('15分钟_D2N5T300_绝对动量V230227_超弱_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第几根K线
-    :param n: 连续多少根K线
-    :param th: 超过多少bp
+    :param kwargs:
+        - di: 倒数第几根K线
+        - n: 连续多少根K线
+        - th: 超过多少bp
     :return: 信号识别结果
     """
-    k1, k2, k3, v1 = str(c.freq.value), f"D{di}N{n}T{th}", "绝对动量V230227", "其他"
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
-    if len(_bars) != n:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
+    th = int(kwargs.get("th", 1000))
+    freq = c.freq.value
 
+    k1, k2, k3 = f"{freq}_D{di}N{n}T{th}_绝对动量V230227".split("_")
+    if len(c.bars_raw) < di + n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     bp = (_bars[-1].close / _bars[0].open - 1) * 10000
     if bp > 0:
         v1 = "超强" if bp > th else "强势"
@@ -799,4 +809,76 @@ def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> Ord
         v1 = "超弱" if abs(bp) > th else "弱势"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_time_V230327(c: CZSC, **kwargs):
+    """K线日内时间分段信号
+
+    参数模板："{freq}_日内时间_分段V230327"
+
+    **信号逻辑：**
+
+    - 60分钟或30分钟K线，按日内出现顺序分段
+
+    **信号列表：**
+
+    - Signal('60分钟_日内时间_分段V230327_第1段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第2段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第3段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第4段_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_日内时间_分段V230327".split("_")
+    v1 = "其他"
+    assert c.freq.value in ['30分钟', '60分钟'], "bar_time_V230327 仅支持30分钟和60分钟的K线"
+    if len(c.bars_raw) < 100:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    cache_key = 'bar_time_V230327#time_spans'
+    time_spans = c.cache.get(cache_key, None)
+    if time_spans is None:
+        bars = c.bars_raw[-100:]
+        time_spans = sorted(list(set([x.dt.strftime('%H:%M') for x in bars])))
+        c.cache[cache_key] = time_spans
+
+    v1 = f"第{time_spans.index(c.bars_raw[-1].dt.strftime('%H:%M')) + 1}段"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_weekday_V230328(c: CZSC, **kwargs):
+    """K线周内时间分段信号
+
+    参数模板："{freq}_周内时间_分段V230328"
+
+    **信号逻辑：**
+
+    - 按周内日线出现顺序分段
+
+    **信号列表：**
+
+    - Signal('60分钟_周内时间_分段V230328_周一_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周二_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周三_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周四_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周五_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_周内时间_分段V230328".split("_")
+    v1 = "其他"
+
+    if len(c.bars_raw) < 20:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    weekday_map = {0: '周一', 1: '周二', 2: '周三', 3: '周四', 4: '周五', 5: '周六', 6: '周日'}
+    v1 = weekday_map[c.bars_raw[-1].dt.weekday()]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
 

@@ -395,10 +395,10 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
     """笔三买辅助
 
-    参数模板："{freq}_D{di}三买辅助_V230228"
+    参数模板："{freq}_D{di}_三买辅助V230228"
 
     **信号逻辑：**
 
@@ -407,19 +407,20 @@ def cxt_third_buy_V230228(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1三买辅助_V230228_三买_14笔_任意_0')
-    - Signal('15分钟_D1三买辅助_V230228_三买_10笔_任意_0')
-    - Signal('15分钟_D1三买辅助_V230228_三买_6笔_任意_0')
-    - Signal('15分钟_D1三买辅助_V230228_三买_8笔_任意_0')
-    - Signal('15分钟_D1三买辅助_V230228_三买_12笔_任意_0')
+    - Signal('15分钟_D1_三买辅助V230228_三买_14笔_任意_0')
+    - Signal('15分钟_D1_三买辅助V230228_三买_10笔_任意_0')
+    - Signal('15分钟_D1_三买辅助V230228_三买_6笔_任意_0')
+    - Signal('15分钟_D1_三买辅助V230228_三买_8笔_任意_0')
+    - Signal('15分钟_D1_三买辅助V230228_三买_12笔_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第几笔
     :param kwargs:
+        - di: 倒数第几笔
     :return: 信号识别结果
     """
-    di = int(di)
-    k1, k2, k3 = f"{c.freq.value}_D{di}三买辅助_V230228".split('_')
+    di = int(kwargs.get('di', 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}_三买辅助V230228".split('_')
     v1, v2 = '其他', '其他'
     if len(c.bi_list) < di + 11:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

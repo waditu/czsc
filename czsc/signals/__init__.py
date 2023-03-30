@@ -77,12 +77,13 @@ from czsc.signals.bar import (
     bar_vol_bs1_V230224,
     bar_reversal_V230227,
     bar_bpm_V230227,
+    bar_time_V230327,
+    bar_weekday_V230328,
 )
 
 from czsc.signals.jcc import (
     jcc_san_xing_xian_V221023,
     jcc_ten_mo_V221028,
-    jcc_bai_san_bin_V221030,
     jcc_san_fa_V20221115,
     jcc_san_fa_V20221118,
     jcc_wu_yun_gai_ding_V221101,
@@ -95,7 +96,6 @@ from czsc.signals.jcc import (
     jcc_zhuo_yao_dai_xian_v221113,
     jcc_two_crow_V221108,
     jcc_three_crow_V221108,
-    jcc_three_soldiers_V221030,
     jcc_szx_V221111,
     jcc_ta_xing_V221124,
     jcc_san_szx_V221122,
@@ -133,7 +133,7 @@ from czsc.signals.tas import (
 
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
-    tas_boll_vt_V230312,
+    tas_boll_vt_V230212,
     tas_boll_cc_V230312,
 
     tas_kdj_base_V221101,

@@ -69,12 +69,17 @@ class SignalsParser:
         pats = self.sig_pats_map.get(name, None)
         if not pats:
             return None
-        params = parse(pats, key).named
-        if 'di' in params:
-            params['di'] = int(params['di'])
 
-        params['name'] = f"{self.signals_module}.{name}"
-        return params
+        try:
+            params = parse(pats, key).named
+            if 'di' in params:
+                params['di'] = int(params['di'])
+
+            params['name'] = f"{self.signals_module}.{name}"
+            return params
+        except Exception as e:
+            logger.error(f"解析信号 {signal} - {name} - {pats} 出错：{e}")
+            return None
 
     def get_function_name(self, signal):
         """获取信号函数名称"""
@@ -111,7 +116,7 @@ class SignalsParser:
             # 首先使用参数模板进行解析
             if name in self.sig_pats_map:
                 row = self.parse_params(name, signal)
-                if row not in res:
+                if row and row not in res:
                     res.append(row)
 
             # 其次使用信号函数名称对应的解析方法进行解析
