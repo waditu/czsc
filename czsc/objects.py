@@ -370,9 +370,9 @@ class Signal:
     score: int = 0
 
     # k1, k2, k3 是信号名称
-    k1: str = "任意"
-    k2: str = "任意"
-    k3: str = "任意"
+    k1: str = "任意"      # k1 一般是指明信号计算的K线周期，如 60分钟，日线，周线等
+    k2: str = "任意"      # k2 一般是记录信号计算的参数
+    k3: str = "任意"      # k3 用于区分信号，必须具有唯一性，推荐使用信号分类和开发日期进行标记
 
     # v1, v2, v3 是信号取值
     v1: str = "任意"
@@ -441,6 +441,18 @@ class Factor:
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = None
 
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取 Factor 的唯一信号列表"""
+        signals = []
+        signals.extend(self.signals_all)
+        if self.signals_any:
+            signals.extend(self.signals_any)
+        if self.signals_not:
+            signals.extend(self.signals_not)
+        signals = {x.signal if isinstance(x, Signal) else x for x in signals}
+        return list(signals)
+
     def is_match(self, s: dict) -> bool:
         """判断 factor 是否满足"""
         if self.signals_not:
@@ -507,6 +519,23 @@ class Event:
 
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = None
+
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取 Event 的唯一信号列表"""
+        signals = []
+        if self.signals_all:
+            signals.extend(self.signals_all)
+        if self.signals_any:
+            signals.extend(self.signals_any)
+        if self.signals_not:
+            signals.extend(self.signals_not)
+
+        for factor in self.factors:
+            signals.extend(factor.unique_signals)
+
+        signals = {x.signal if isinstance(x, Signal) else x for x in signals}
+        return list(signals)
 
     def is_match(self, s: dict):
         """判断 event 是否满足"""
@@ -647,23 +676,24 @@ class Position:
         """获取所有事件的唯一信号列表"""
         signals = []
         for e in self.events:
-            if e.signals_all:
-                signals.extend(e.signals_all)
-            if e.signals_any:
-                signals.extend(e.signals_any)
-            if e.signals_not:
-                signals.extend(e.signals_not)
+            signals.extend(e.unique_signals)
+            # if e.signals_all:
+            #     signals.extend(e.signals_all)
+            # if e.signals_any:
+            #     signals.extend(e.signals_any)
+            # if e.signals_not:
+            #     signals.extend(e.signals_not)
+            #
+            # for factor in e.factors:
+            #     if factor.signals_all:
+            #         signals.extend(factor.signals_all)
+            #     if factor.signals_any:
+            #         signals.extend(factor.signals_any)
+            #     if factor.signals_not:
+            #         signals.extend(factor.signals_not)
 
-            for factor in e.factors:
-                if factor.signals_all:
-                    signals.extend(factor.signals_all)
-                if factor.signals_any:
-                    signals.extend(factor.signals_any)
-                if factor.signals_not:
-                    signals.extend(factor.signals_not)
-
-        signals = {x.signal for x in signals}
-        return list(signals)
+        # signals = {x.signal if isinstance(x, S)for x in signals}
+        return list(set(signals))
 
     def dump(self, with_data=False):
         """将对象转换为 dict"""
