@@ -84,7 +84,7 @@ def bar_r_breaker_V230326(c: CZSC, **kwargs):
     elif current_bar.high > see_sell and current_bar.close < verse_sell:
         v1 = '做空'
         v2 = '反转'
-    elif current_bar.low > see_buy and current_bar.close > verse_buy:
+    elif current_bar.low < see_buy and current_bar.close > verse_buy:
         v1 = '做多'
         v2 = '反转'
     else:
