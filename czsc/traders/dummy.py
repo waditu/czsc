@@ -25,7 +25,8 @@ class DummyBacktest:
         :param results_path: 回测结果存放路径
         :param read_bars: 读入K线数据的函数
             函数签名为：read_bars(symbol, freq, sdt, edt, fq) -> List[RawBar]
-        :param kwargs:
+        :param kwargs: 其他参数
+            - signals_module_name: 信号函数模块名，用于动态加载信号文件，默认为 czsc.signals
         """
         from czsc.strategies import CzscStrategyBase
         assert issubclass(strategy, CzscStrategyBase), "strategy 必须是 CzscStrategyBase 的子类"
