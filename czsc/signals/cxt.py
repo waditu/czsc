@@ -469,7 +469,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
 
 
 def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
-    """两个中枢组合辅助判断BS1
+    """两个中枢组合辅助判断BS1，贡献者：韩知辰
 
     参数模板："{freq}_D{di}双中枢_BS1辅助V230311"
 
