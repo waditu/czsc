@@ -1608,8 +1608,10 @@ def tas_macd_bs1_V230313(c: CZSC, di: int = 1, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def tas_macd_base_V230320(c: CZSC, di: int = 1, key="macd", **kwargs) -> OrderedDict:
+def tas_macd_base_V230320(c: CZSC, **kwargs) -> OrderedDict:
     """MACD|DIF|DEA 多空和方向信号，支持 max_overlap 参数
+
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}MO{max_overlap}#{key}_BS辅助V230320"
 
     **信号逻辑：**
 
@@ -1618,21 +1620,26 @@ def tas_macd_base_V230320(c: CZSC, di: int = 1, key="macd", **kwargs) -> Ordered
 
     **信号列表：**
 
-    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_多头_向上_任意_0')
-    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_多头_向下_任意_0')
-    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_空头_向下_任意_0')
-    - Signal('15分钟_D1MACD12#26#9MO3MACD_BS辅助V230320_空头_向上_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3#MACD_BS辅助V230320_多头_向上_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3#MACD_BS辅助V230320_多头_向下_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3#MACD_BS辅助V230320_空头_向下_任意_0')
+    - Signal('15分钟_D1MACD12#26#9MO3#MACD_BS辅助V230320_空头_向上_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第i根K线
-    :param key: 指定使用哪个Key来计算，可选值 [macd, dif, dea]
-    :return:
+    :param kwargs: 其他参数
+        - max_overlap: 最大允许重叠的K线数
+        - di: 倒数第i根K线
+        - key: 指定使用哪个Key来计算，可选值 [macd, dif, dea]
+    :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
+    key = kwargs.get("key", "macd").upper()
     max_overlap = int(kwargs.get("max_overlap", 3))
     cache_key = update_macd_cache(c, **kwargs)
     assert key.lower() in ['macd', 'dif', 'dea']
-    k1, k2, k3, v1 = c.freq.value, f"D{di}{cache_key}MO{max_overlap}{key.upper()}", "BS辅助V230320", "其他"
-
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}{cache_key}MO{max_overlap}#{key}_BS辅助V230320".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 5 + di + max_overlap:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
