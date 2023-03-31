@@ -21,9 +21,10 @@ class KlineChart:
     plotly 参数详解: https://www.jianshu.com/p/4f4daf47cc85
 
     """
-    def __init__(self, **kwargs):
+
+    def __init__(self, n_rows=3, **kwargs):
         # 子图数量
-        self.n_rows = kwargs.get('n_rows', 3)
+        self.n_rows = n_rows
         if self.n_rows == 3:
             row_heights = [0.6, 0.2, 0.2]
         elif self.n_rows == 4:
@@ -37,22 +38,28 @@ class KlineChart:
         self.color_green = 'rgba(0,170,59,0.7)'
         fig = make_subplots(rows=self.n_rows, cols=1, shared_xaxes=True, row_heights=row_heights,
                             horizontal_spacing=0, vertical_spacing=0)
-
-        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True, fixedrange=True)
+        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True,
+                               fixedrange=kwargs.get('y_fixed_range', True))
         fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
                                showticklabels=False)
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
             title=dict(text=kwargs.get('title', ''), yanchor='top'),
-            margin=dict(t=10, b=10),
+            margin=go.layout.Margin(
+                l=0,  # left margin
+                r=0,  # right margin
+                b=0,  # bottom margin
+                t=0  # top margin
+            ),
             # https://plotly.com/python/reference/layout/#layout-legend
-            legend=dict(orientation='h', yanchor="top", y=1.1, xanchor="center", x=0.5, bgcolor='rgba(0,0,0,0)'),
+            legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
             template="plotly_dark",
             hovermode="x unified",
             hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
             dragmode='pan',
             legend_title_font_color="red",
+            height=kwargs.get('height', 300),
         )
         self.fig = fig
 
@@ -64,7 +71,7 @@ class KlineChart:
         candle = go.Candlestick(x=kline['dt'], open=kline["open"], high=kline["high"], low=kline["low"],
                                 close=kline["close"], text=kline["text"], name=name, showlegend=True,
                                 increasing_line_color=self.color_red, decreasing_line_color=self.color_green,
-                                increasing_fillcolor=self.color_red, decreasing_fillcolor=self.color_green)
+                                increasing_fillcolor=self.color_red, decreasing_fillcolor=self.color_green, **kwargs)
         self.fig.add_trace(candle, row=1, col=1)
 
     def add_vol(self, kline: pd.DataFrame, row=2, **kwargs):
@@ -87,17 +94,27 @@ class KlineChart:
         fastperiod = kwargs.get('fastperiod', 12)
         slowperiod = kwargs.get('slowperiod', 26)
         signalperiod = kwargs.get('signalperiod', 9)
-
+        line_width = kwargs.get('line_width', 0.6)
         diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
         self.add_scatter_indicator(df['dt'], diff, name="DIFF", row=row,
-                                   line_color="rgba(184, 117, 225, 1.0)", show_legend=False, line_width=0.6)
+                                   line_color='white', show_legend=False, line_width=line_width)
         self.add_scatter_indicator(df['dt'], dea, name="DEA", row=row,
-                                   line_color="rgba(255, 0, 0, 1.0)", show_legend=False, line_width=0.6)
+                                   line_color='yellow', show_legend=False, line_width=line_width)
         self.add_bar_indicator(df['dt'], macd, name="MACD", row=row, color=macd_colors, show_legend=False)
 
-    def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
-        """绘制线性指标
+    def add_indicator(self, dt, scatters: list = None, scatter_names: list = None, bar=None, bar_name='', row=4, **kwargs):
+        """绘制曲线叠加bar型指标"""
+        line_width = kwargs.get('line_width', 0.6)
+        for i, scatter in enumerate(scatters):
+            self.add_scatter_indicator(dt, scatter, name=scatter_names[i], row=row, show_legend=False, line_width=line_width)
+
+        if bar:
+            bar_colors = np.where(np.array(bar, dtype=np.double) > 0, self.color_red, self.color_green)
+            self.add_bar_indicator(dt, bar, name=bar_name, row=row, color=bar_colors, show_legend=False)
+
+    def add_marker_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
+        """绘制标记类指标
 
         :param x: 指标的x轴
         :param y: 指标的y轴
@@ -107,19 +124,46 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        mode = kwargs.get('mode', 'text+lines')
         line_color = kwargs.get('line_color', None)
         line_width = kwargs.get('line_width', None)
-        hover_template = kwargs.get('hover_template', '%{y:.3f}')
+        hover_template = kwargs.get('hover_template', '%{y:.3f}-%{text}')
         show_legend = kwargs.get('show_legend', True)
         visible = True if kwargs.get('visible', True) else 'legendonly'
+        color = kwargs.get('color', None)
+        tag = kwargs.get('tag', None)
+        scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color,
+                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6,
+                             mode='markers', marker=dict(size=10, color=color, symbol=tag))
 
-        scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color, mode=mode,
-                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.4)
+        self.fig.add_trace(scatter, row=row, col=1)
+
+    def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
+        """绘制线性/离散指标
+
+        绘图API文档：https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scatter.html
+
+        :param x: 指标的x轴
+        :param y: 指标的y轴
+        :param name: 指标名称
+        :param row: 放入第几个子图
+        :param text: 文本说明
+        :param kwargs:
+        :return:
+        """
+        mode = kwargs.pop('mode', 'text+lines')
+        hover_template = kwargs.pop('hover_template', '%{y:.3f}')
+        show_legend = kwargs.pop('show_legend', True)
+        opacity = kwargs.pop('opacity', 0.6)
+        visible = True if kwargs.pop('visible', True) else 'legendonly'
+
+        scatter = go.Scatter(x=x, y=y, name=name, text=text, mode=mode, hovertemplate=hover_template,
+                             showlegend=show_legend, visible=visible, opacity=opacity, **kwargs)
         self.fig.add_trace(scatter, row=row, col=1)
 
     def add_bar_indicator(self, x, y, name: str, row: int, color=None, **kwargs):
         """绘制条形图指标
+
+        绘图API文档：https://plotly.com/python-api-reference/generated/plotly.graph_objects.Bar.html
 
         :param x: 指标的x轴
         :param y: 指标的y轴
@@ -130,14 +174,15 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        hover_template = kwargs.get('hover_template', '%{y:.3f}')
-        show_legend = kwargs.get('show_legend', True)
-        visible = kwargs.get('visible', True)
+        hover_template = kwargs.pop('hover_template', '%{y:.3f}')
+        show_legend = kwargs.pop('show_legend', True)
+        visible = kwargs.pop('visible', True)
+        base = kwargs.pop('base', True)
         if color is None:
             color = self.color_red
 
         bar = go.Bar(x=x, y=y, marker_line_color=color, marker_color=color, name=name,
-                     showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=True)
+                     showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=base, **kwargs)
         self.fig.add_trace(bar, row=row, col=1)
 
     def open_in_browser(self, file_name: str = None, **kwargs):
@@ -147,5 +192,3 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
-
-

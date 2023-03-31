@@ -18,8 +18,6 @@ from czsc.signals.cxt import (
     cxt_fx_power_V221107,
     cxt_first_buy_V221126,
     cxt_first_sell_V221126,
-    cxt_bi_break_V221126,
-    cxt_sub_b3_V221212,
     cxt_zhong_shu_gong_zhen_V221221,
     cxt_bi_end_V230222,
     cxt_bi_end_V230224,
@@ -28,6 +26,7 @@ from czsc.signals.cxt import (
     cxt_bi_end_V230312,
     cxt_bi_end_V230320,
     cxt_bi_end_V230322,
+    cxt_bi_end_V230324,
     cxt_bi_base_V230228,
     cxt_third_buy_V230228,
     cxt_double_zs_V230311,
@@ -43,6 +42,7 @@ from czsc.signals.byi import (
     byi_symmetry_zs_V221107,
     byi_bi_end_V230106,
     byi_bi_end_V230107,
+    byi_second_bs_V230324,
 )
 
 from czsc.signals.coo import (
@@ -77,12 +77,14 @@ from czsc.signals.bar import (
     bar_vol_bs1_V230224,
     bar_reversal_V230227,
     bar_bpm_V230227,
+    bar_time_V230327,
+    bar_weekday_V230328,
+    bar_r_breaker_V230326,
 )
 
 from czsc.signals.jcc import (
     jcc_san_xing_xian_V221023,
     jcc_ten_mo_V221028,
-    jcc_bai_san_bin_V221030,
     jcc_san_fa_V20221115,
     jcc_san_fa_V20221118,
     jcc_wu_yun_gai_ding_V221101,
@@ -95,7 +97,6 @@ from czsc.signals.jcc import (
     jcc_zhuo_yao_dai_xian_v221113,
     jcc_two_crow_V221108,
     jcc_three_crow_V221108,
-    jcc_three_soldiers_V221030,
     jcc_szx_V221111,
     jcc_ta_xing_V221124,
     jcc_san_szx_V221122,
@@ -121,6 +122,9 @@ from czsc.signals.tas import (
     tas_macd_first_bs_V221201,
     tas_macd_first_bs_V221216,
     tas_macd_second_bs_V221201,
+    tas_macd_bs1_V230313,
+    tas_macd_bs1_V230312,
+    tas_macd_base_V230320,
 
     tas_ma_base_V221101,
     tas_ma_base_V221203,
@@ -130,7 +134,8 @@ from czsc.signals.tas import (
 
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
-    tas_boll_vt_V230312,
+    tas_boll_vt_V230212,
+    tas_boll_cc_V230312,
 
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,

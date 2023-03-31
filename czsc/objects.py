@@ -370,9 +370,9 @@ class Signal:
     score: int = 0
 
     # k1, k2, k3 是信号名称
-    k1: str = "任意"
-    k2: str = "任意"
-    k3: str = "任意"
+    k1: str = "任意"      # k1 一般是指明信号计算的K线周期，如 60分钟，日线，周线等
+    k2: str = "任意"      # k2 一般是记录信号计算的参数
+    k3: str = "任意"      # k3 用于区分信号，必须具有唯一性，推荐使用信号分类和开发日期进行标记
 
     # v1, v2, v3 是信号取值
     v1: str = "任意"
@@ -441,6 +441,18 @@ class Factor:
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = None
 
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取 Factor 的唯一信号列表"""
+        signals = []
+        signals.extend(self.signals_all)
+        if self.signals_any:
+            signals.extend(self.signals_any)
+        if self.signals_not:
+            signals.extend(self.signals_not)
+        signals = {x.signal if isinstance(x, Signal) else x for x in signals}
+        return list(signals)
+
     def is_match(self, s: dict) -> bool:
         """判断 factor 是否满足"""
         if self.signals_not:
@@ -484,8 +496,8 @@ class Factor:
         """
         fa = Factor(name=raw['name'],
                     signals_all=[Signal(x) for x in raw['signals_all']],
-                    signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
-                    signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                    signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else None,
+                    signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else None
                     )
         return fa
 
@@ -507,6 +519,23 @@ class Event:
 
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = None
+
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取 Event 的唯一信号列表"""
+        signals = []
+        if self.signals_all:
+            signals.extend(self.signals_all)
+        if self.signals_any:
+            signals.extend(self.signals_any)
+        if self.signals_not:
+            signals.extend(self.signals_not)
+
+        for factor in self.factors:
+            signals.extend(factor.unique_signals)
+
+        signals = {x.signal if isinstance(x, Signal) else x for x in signals}
+        return list(signals)
 
     def is_match(self, s: dict):
         """判断 event 是否满足"""
@@ -569,11 +598,14 @@ class Event:
                  'signals_not': []}
         :return:
         """
+        assert raw['operate'] in Operate.__dict__["_value2member_map_"], f"operate {raw['operate']} not in Operate"
+        assert raw['factors'], "factors can not be empty"
+
         e = Event(name=raw['name'], operate=Operate.__dict__["_value2member_map_"][raw['operate']],
                   factors=[Factor.load(x) for x in raw['factors']],
-                  signals_all=[Signal(x) for x in raw['signals_all']] if raw['signals_all'] else None,
-                  signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
-                  signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                  signals_all=[Signal(x) for x in raw['signals_all']] if raw.get('signals_all') else None,
+                  signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else None,
+                  signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else None
                   )
         return e
 
@@ -642,6 +674,14 @@ class Position:
         return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
                f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
 
+    @property
+    def unique_signals(self) -> List[str]:
+        """获取所有事件的唯一信号列表"""
+        signals = []
+        for e in self.events:
+            signals.extend(e.unique_signals)
+        return list(set(signals))
+
     def dump(self, with_data=False):
         """将对象转换为 dict"""
         raw = {
@@ -657,6 +697,22 @@ class Position:
         if with_data:
             raw.update({"pairs": self.pairs, "holds": self.holds})
         return raw
+
+    @classmethod
+    def load(cls, raw: dict):
+        """从 dict 中创建 Position
+
+        :param raw: 样例如下
+        :return:
+        """
+        pos = Position(name=raw['name'], symbol=raw['symbol'],
+                       opens=[Event.load(x) for x in raw['opens'] if raw.get('opens')],
+                       exits=[Event.load(x) for x in raw['exits'] if raw.get('exits')],
+                       interval=raw['interval'],
+                       timeout=raw['timeout'],
+                       stop_loss=raw['stop_loss'],
+                       T0=raw['T0'])
+        return pos
 
     @property
     def pairs(self):

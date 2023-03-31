@@ -7,16 +7,20 @@ describe: 白仪 https://www.zhihu.com/people/bai-yi-520/posts 知乎上定义�
 
 byi 是 bai yi 的缩写
 """
+import numpy as np
 from typing import List
 from czsc import CZSC
 from collections import OrderedDict
 from czsc.objects import BI, Direction, Mark
 from czsc.utils import get_sub_elements, create_single_signal
 from czsc.utils.sig import is_symmetry_zs
+from czsc.signals.tas import update_macd_cache, update_boll_cache_V230228, update_ma_cache
 
 
-def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
+def byi_symmetry_zs_V221107(c: CZSC, **kwargs):
     """对称中枢信号
+
+    参数模板："{freq}_D{di}B_对称中枢"
 
     **信号逻辑：**
 
@@ -35,9 +39,9 @@ def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
     - Signal('15分钟_D1B_对称中枢_是_向下_7笔_0')
 
     :param c: CZSC对象
-    :param di: 倒数第 di 笔
-    :return: s
+    :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
     bis: List[BI] = get_sub_elements(c.bi_list, di=di, n=10)
     k1, k2, k3 = f"{c.freq.value}_D{di}B_对称中枢".split("_")
     v1 = '其他'
@@ -59,6 +63,8 @@ def byi_symmetry_zs_V221107(c: CZSC, di=1, **kwargs):
 
 def byi_bi_end_V230106(c: CZSC, **kwargs) -> OrderedDict:
     """白仪分型停顿辅助笔结束判断
+
+    参数模板："{freq}_D0停顿分型_BE辅助V230106"
 
     **信号逻辑：**
 
@@ -110,6 +116,8 @@ def byi_bi_end_V230106(c: CZSC, **kwargs) -> OrderedDict:
 def byi_bi_end_V230107(c: CZSC, **kwargs) -> OrderedDict:
     """白仪验证分型辅助判断笔结束
 
+    参数模板："{freq}_D0验证分型_BE辅助V230107"
+
     **信号逻辑：**
 
     验证分型图解：https://pic1.zhimg.com/80/v2-80ac88269286707db98a5560107da4ec_720w.webp
@@ -155,3 +163,63 @@ def byi_bi_end_V230107(c: CZSC, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
+    """白仪二类买卖点辅助V230324
+
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}回抽零轴_BS2辅助V230324"
+
+    参考资料：https://zhuanlan.zhihu.com/p/550719065
+    由于文字描述的比较模糊，笔的算法也有差异，这里的实现和原文有一定出入
+
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}回抽零轴_BS2辅助V230324"
+
+    **信号逻辑：**
+
+    1. 二买定义：
+        a. 1,3,5笔的dif值都小于0，且1,3,5笔的dif值中最大值小于-2倍标准差，且8笔的dif值大于0，且9笔的dif值小于0.3倍标准差
+        b. 第9笔向下
+
+    2. 二卖定义：
+        a. 1,3,5笔的dif值都大于0，且1,3,5笔的dif值中最小值大于2倍标准差，且8笔的dif值小于0，且9笔的dif值大于-0.3倍标准差
+        b. 第9笔向上
+
+    **信号列表：**
+
+    - Signal('15分钟_D1MACD12#26#9回抽零轴_BS2辅助V230324_看空_任意_任意_0')
+    - Signal('15分钟_D1MACD12#26#9回抽零轴_BS2辅助V230324_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param di: 从倒数第几笔开始检查
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    cache_key = update_macd_cache(c, **kwargs)
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}{cache_key}回抽零轴_BS2辅助V230324".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3, b4, b5, b6, b7, b8, b9 = get_sub_elements(c.bi_list, di=di, n=9)
+    b1_dif = b1.fx_b.raw_bars[1].cache[cache_key]['dif']
+    b3_dif = b3.fx_b.raw_bars[1].cache[cache_key]['dif']
+    b5_dif = b5.fx_b.raw_bars[1].cache[cache_key]['dif']
+    b8_dif = b8.fx_b.raw_bars[1].cache[cache_key]['dif']
+    b9_dif = b9.fx_b.raw_bars[1].cache[cache_key]['dif']
+    dif_std = np.std([x.cache[cache_key]['dif'] for x in b1.raw_bars])
+
+    if b9.direction == Direction.Down and max(b1_dif, b3_dif, b5_dif) < 0 \
+            and min(b1_dif, b3_dif, b5_dif) < -dif_std * 2 < dif_std * 1 < b8_dif \
+            and abs(b9_dif) < dif_std * 0.3:
+        v1 = "看多"
+
+    if b9.direction == Direction.Up and min(b1_dif, b3_dif, b5_dif) > 0 \
+            and max(b1_dif, b3_dif, b5_dif) > dif_std * 2 > -dif_std * 1 > b8_dif \
+            and abs(b9_dif) < dif_std * 0.3:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+

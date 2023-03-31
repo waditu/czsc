@@ -174,8 +174,10 @@ def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
+def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 i 根 K 线的成交量相比于前 N 根 K 线放量
+
+    参数模板："{freq}_D{di}K{n}B_放量V221112"
 
     **信号逻辑: **
 
@@ -183,15 +185,19 @@ def bar_vol_grow_V221112(c: CZSC, di: int = 2, n: int = 5) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D2K5B_放量_否_任意_任意_0')
-    - Signal('15分钟_D2K5B_放量_是_任意_任意_0')
+    - Signal('15分钟_D1K5B_放量V221112_否_任意_任意_0')
+    - Signal('15分钟_D1K5B_放量V221112_是_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止的倒数第 i 根
-    :param n: 向前看 n 根
-    :return: s
+    :param kwargs: 参数字典
+        - di: 倒数第i根K线
+        - n: 过去N根K线
+    :return: 信号识别结果
     """
-    k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B", "放量"
+    di = int(kwargs.get("di", 2))
+    n = int(kwargs.get("n", 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}K{n}B_放量V221112".split("_")
 
     if len(c.bars_raw) < di + n + 10:
         v1 = "其他"
@@ -382,8 +388,10 @@ def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 10
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDict:
+def bar_accelerate_V221110(c: CZSC, **kwargs) -> OrderedDict:
     """辨别加速走势
+
+    参数模板："{freq}_D{di}W{window}_加速V221110"
 
     **信号逻辑：**
 
@@ -392,15 +400,19 @@ def bar_accelerate_V221110(c: CZSC, di: int = 1, window: int = 10) -> OrderedDic
 
     **信号列表：**
 
-    - Signal('60分钟_D1W13_加速_上涨_任意_任意_0')
-    - Signal('60分钟_D1W13_加速_下跌_任意_任意_0')
+    - Signal('60分钟_D1W13_加速V221110_上涨_任意_任意_0')
+    - Signal('60分钟_D1W13_加速V221110_下跌_任意_任意_0')
 
-    :param c:
-    :param di: 取近n根K线为截止
-    :param window: 识别加速走势的窗口大小
-    :return:
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - di: 区间结束K线位置，倒数
+        - window: 取截止di的近window根K线
+    :return: 信号识别结果
     """
-    k1, k2, k3 = str(c.freq.value), f"D{di}W{window}", "加速V221110"
+    di = int(kwargs.get("di", 1))
+    window = int(kwargs.get("window", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{window}_加速V221110".split('_')
 
     v1 = "其他"
     if len(c.bars_raw) > di + window + 10:
@@ -560,8 +572,10 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+def bar_single_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """单根K线的状态
+
+    参数模板："{freq}_D{di}T{t}_状态"
 
     **信号描述：**
 
@@ -583,13 +597,13 @@ def bar_single_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
         t: 长实体、长上影、长下影的阈值，默认为 1.0
     :return: 信号识别结果
     """
-    t = kwargs.get("t", 1.0)
-    t = int(round(t, 1) * 10)
+    di = int(kwargs.get("di", 1))
+    t = int(kwargs.get("t", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}T{t}_状态".split("_")
 
-    k1, k2, k3 = f"{c.freq.value}", f"D{di}T{t}", "状态"
-    v1 = "其他"
-    if len(c.bars_raw) < di:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    if len(c.bars_raw) < di + 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     k = c.bars_raw[-di]
     v1 = "阳线" if k.close > k.open else "阴线"
@@ -766,8 +780,10 @@ def bar_reversal_V230227(c: CZSC, di=1, avg_bp: int = 300, **kwargs) -> OrderedD
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> OrderedDict:
+def bar_bpm_V230227(c: CZSC, **kwargs) -> OrderedDict:
     """以BP为单位的绝对动量
+
+    参数模板："{freq}_D{di}N{n}T{th}_绝对动量V230227"
 
     **信号逻辑：**
 
@@ -782,16 +798,22 @@ def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> Ord
     - Signal('15分钟_D2N5T300_绝对动量V230227_超弱_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 倒数第几根K线
-    :param n: 连续多少根K线
-    :param th: 超过多少bp
+    :param kwargs:
+        - di: 倒数第几根K线
+        - n: 连续多少根K线
+        - th: 超过多少bp
     :return: 信号识别结果
     """
-    k1, k2, k3, v1 = str(c.freq.value), f"D{di}N{n}T{th}", "绝对动量V230227", "其他"
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
-    if len(_bars) != n:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
+    th = int(kwargs.get("th", 1000))
+    freq = c.freq.value
 
+    k1, k2, k3 = f"{freq}_D{di}N{n}T{th}_绝对动量V230227".split("_")
+    if len(c.bars_raw) < di + n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     bp = (_bars[-1].close / _bars[0].open - 1) * 10000
     if bp > 0:
         v1 = "超强" if bp > th else "强势"
@@ -800,3 +822,135 @@ def bar_bpm_V230227(c: CZSC, di=1, n: int = 20, th: int = 1000, **kwargs) -> Ord
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
+
+def bar_time_V230327(c: CZSC, **kwargs):
+    """K线日内时间分段信号
+
+    参数模板："{freq}_日内时间_分段V230327"
+
+    **信号逻辑：**
+
+    - 60分钟或30分钟K线，按日内出现顺序分段
+
+    **信号列表：**
+
+    - Signal('60分钟_日内时间_分段V230327_第1段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第2段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第3段_任意_任意_0')
+    - Signal('60分钟_日内时间_分段V230327_第4段_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_日内时间_分段V230327".split("_")
+    v1 = "其他"
+    assert c.freq.value in ['30分钟', '60分钟'], "bar_time_V230327 仅支持30分钟和60分钟的K线"
+    if len(c.bars_raw) < 100:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    cache_key = 'bar_time_V230327#time_spans'
+    time_spans = c.cache.get(cache_key, None)
+    if time_spans is None:
+        bars = c.bars_raw[-100:]
+        time_spans = sorted(list(set([x.dt.strftime('%H:%M') for x in bars])))
+        c.cache[cache_key] = time_spans
+
+    v1 = f"第{time_spans.index(c.bars_raw[-1].dt.strftime('%H:%M')) + 1}段"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_weekday_V230328(c: CZSC, **kwargs):
+    """K线周内时间分段信号
+
+    参数模板："{freq}_周内时间_分段V230328"
+
+    **信号逻辑：**
+
+    - 按周内日线出现顺序分段
+
+    **信号列表：**
+
+    - Signal('60分钟_周内时间_分段V230328_周一_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周二_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周三_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周四_任意_任意_0')
+    - Signal('60分钟_周内时间_分段V230328_周五_任意_任意_0')
+
+    :param c: CZSC 对象
+    :param kwargs:
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_周内时间_分段V230328".split("_")
+    v1 = "其他"
+
+    if len(c.bars_raw) < 20:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    weekday_map = {0: '周一', 1: '周二', 2: '周三', 3: '周四', 4: '周五', 5: '周六', 6: '周日'}
+    v1 = weekday_map[c.bars_raw[-1].dt.weekday()]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_r_breaker_V230326(c: CZSC, **kwargs):
+    """RBreaker日内回转交易
+
+    参数模板："{freq}_RBreaker_BS辅助V230326"
+
+    **信号逻辑：**
+
+    参见：https://www.myquant.cn/docs/python_strategyies/425
+
+    空仓时：突破策略
+    空仓时，当盘中价格>突破买入价，则认为上涨的趋势还会继续，开仓做多；
+    空仓时，当盘中价格<突破卖出价，则认为下跌的趋势还会继续，开仓做空。
+
+    持仓时：反转策略
+    持多单时：当日内最高价>观察卖出价后，盘中价格回落，跌破反转卖出价构成的支撑线时，采取反转策略，即做空；
+    持空单时：当日内最低价<观察买入价后，盘中价格反弹，超过反转买入价构成的阻力线时，采取反转策略，即做多。
+
+    **信号列表：**
+
+    - Signal('日线_RBreaker_BS辅助V230326_做多_反转_任意_0')
+    - Signal('日线_RBreaker_BS辅助V230326_做空_趋势_任意_0')
+    - Signal('日线_RBreaker_BS辅助V230326_做多_趋势_任意_0')
+    - Signal('日线_RBreaker_BS辅助V230326_做空_反转_任意_0')
+
+    :return: 信号字典
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_RBreaker_BS辅助V230326".split('_')
+    if len(c.bars_raw) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+
+    # 计算六个价位
+    H, C, L = c.bars_raw[-2].high, c.bars_raw[-2].close, c.bars_raw[-2].low
+    P = (H + C + L) / 3
+    break_buy = H + 2 * P - 2 * L
+    see_sell = P + H - L
+    verse_sell = 2 * P - L
+    verse_buy = 2 * P - H
+    see_buy = P - (H - L)
+    break_sell = L - 2 * (H - P)
+
+    # 根据价格位置判断信号
+    current_bar = c.bars_raw[-1]
+    if current_bar.close > break_buy:
+        v1 = '做多'
+        v2 = '趋势'
+    elif current_bar.close < break_sell:
+        v1 = '做空'
+        v2 = '趋势'
+    elif current_bar.high > see_sell and current_bar.close < verse_sell:
+        v1 = '做空'
+        v2 = '反转'
+    elif current_bar.low < see_buy and current_bar.close > verse_buy:
+        v1 = '做多'
+        v2 = '反转'
+    else:
+        v1 = '其他'
+        v2 = '其他'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

@@ -18,3 +18,4 @@ pytest
 tenacity>=8.1.0
 requests-toolbelt>=0.10.1
 plotly>=5.11.0
+parse>=1.19.0

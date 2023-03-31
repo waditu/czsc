@@ -122,7 +122,7 @@ class DummyBacktest:
             stats = dict(pp.basic_info)
             # 加入截面等权评价
             holds = pd.concat(pos_holds, ignore_index=True)
-            cross = holds.groupby('dt').apply(lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1))
+            cross = holds.groupby('dt').apply(lambda x: (x['n1b'] * x['pos']).sum() / sum(x['pos'] != 0))
             stats['截面等权收益'] = cross.sum()
             cross.to_excel(os.path.join(self.results_path, f"{pos_name}_截面等权收益.xlsx"), index=True)
             stats['pos_name'] = pos_name

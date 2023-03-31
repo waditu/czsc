@@ -18,7 +18,8 @@ from loguru import logger
 from czsc import signals
 from czsc.objects import RawBar, List, Operate, Signal, Factor, Event, Position
 from collections import OrderedDict
-from czsc.traders.base import CzscTrader
+from czsc.traders.base import CzscTrader, get_signals_by_conf
+from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
 from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
 
 
@@ -31,13 +32,33 @@ class CzscStrategyBase(ABC):
     3. 交易信号计算函数
     4. 持仓策略列表
     """
+
     def __init__(self, **kwargs):
         self.kwargs = kwargs
+        self.signals_module_name = kwargs.get('signals_module_name', 'czsc.signals')
 
     @property
     def symbol(self):
         """交易标的"""
         return self.kwargs['symbol']
+
+    @property
+    def unique_signals(self):
+        """所有持仓策略中的交易信号列表"""
+        sig_seq = []
+        for pos in self.positions:
+            sig_seq.extend(pos.unique_signals)
+        return list(set(sig_seq))
+
+    @property
+    def signals_config(self):
+        """K线周期列表"""
+        return get_signals_config(self.unique_signals, self.signals_module_name)
+
+    @property
+    def freqs(self):
+        """K线周期列表"""
+        return get_signals_freqs(self.unique_signals)
 
     @property
     def sorted_freqs(self):
@@ -49,19 +70,13 @@ class CzscStrategyBase(ABC):
         """基础 K 线周期"""
         return self.sorted_freqs[0]
 
-    @abstractmethod
-    def get_signals(cls, **kwargs) -> OrderedDict:
+    def get_signals(self, cat: CzscTrader, **kwargs) -> OrderedDict:
         """交易信号计算函数"""
-        raise NotImplementedError
+        return OrderedDict()
 
     @abstractmethod
     def positions(self) -> List[Position]:
         """持仓策略列表"""
-        raise NotImplementedError
-
-    @abstractmethod
-    def freqs(self):
-        """K线周期列表"""
         raise NotImplementedError
 
     def init_bar_generator(self, bars: List[RawBar], **kwargs):
@@ -74,11 +89,17 @@ class CzscStrategyBase(ABC):
             n    初始化最小K线数量
         :return:
         """
+        base_freq = str(bars[0].freq.value)
         bg: BarGenerator = kwargs.get('bg', None)
+        if base_freq in self.sorted_freqs:
+            freqs = self.sorted_freqs[1:]
+        else:
+            freqs = self.sorted_freqs
+
         if bg is None:
             sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
             n = int(kwargs.get('n', 500))
-            bg = BarGenerator(self.sorted_freqs[0], freqs=self.sorted_freqs[1:])
+            bg = BarGenerator(base_freq, freqs=freqs)
 
             # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
             bars_init = [x for x in bars if x.dt <= sdt]
@@ -111,7 +132,8 @@ class CzscStrategyBase(ABC):
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions),
+                            signals_config=deepcopy(self.signals_config), **kwargs)
         for bar in bars2:
             trader.on_bar(bar)
         return trader
@@ -159,7 +181,8 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions))
+        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions),
+                            signals_config=deepcopy(self.signals_config), **kwargs)
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)
@@ -190,8 +213,7 @@ class CzscStrategyExample1(CzscStrategyBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @classmethod
-    def get_signals(cls, cat) -> OrderedDict:
+    def get_signals(self, cat, **kwargs) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
         s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
@@ -207,10 +229,6 @@ class CzscStrategyExample1(CzscStrategyBase):
             self.create_pos_b(),
             self.create_pos_c(),
         ]
-
-    @property
-    def freqs(self):
-        return ['日线', '30分钟', '60分钟']
 
     @property
     def __shared_exits(self):
@@ -279,14 +297,69 @@ class CzscStrategyExample1(CzscStrategyBase):
         return pos
 
 
+class CzscStrategyExample2(CzscStrategyBase):
+    """仅传入Positions就完成策略创建"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    @property
+    def positions(self):
+        return [self.create_pos_a(), Position.load(self.create_pos_b())]
+
+    def create_pos_a(self):
+        opens = [
+            Event(name='开多', operate=Operate.LO, factors=[
+                Factor(name="15分钟向下笔停顿", signals_all=[
+                    Signal("15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
+                ])
+            ]),
+            Event(name='开空', operate=Operate.SO, factors=[
+                Factor(name="15分钟向上笔停顿", signals_all=[
+                    Signal("15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
+                ])
+            ]),
+        ]
+        pos = Position(name="15分钟笔停顿", symbol=self.symbol, opens=opens, exits=None,
+                       interval=0, timeout=20, stop_loss=100, T0=True)
+        return pos
+
+    def create_pos_b(self):
+        """从 json文件 / dict 中加载 Position"""
+        return {'symbol': self.symbol,
+                'name': '15分钟笔停顿B',
+                'opens': [{'name': '开多',
+                           'operate': '开多',
+                           'signals_all': [],
+                           'signals_any': [],
+                           'signals_not': [],
+                           'factors': [{'name': '15分钟向下笔停顿',
+                                        'signals_all': ['15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0'],
+                                        'signals_any': [],
+                                        'signals_not': []}]},
+                          {'name': '开空',
+                           'operate': '开空',
+                           'signals_all': [],
+                           'signals_any': [],
+                           'signals_not': [],
+                           'factors': [{'name': '15分钟向上笔停顿',
+                                        'signals_all': ['15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0'],
+                                        'signals_any': [],
+                                        'signals_not': []}]}],
+                'exits': [],
+                'interval': 0,
+                'timeout': 20,
+                'stop_loss': 100,
+                'T0': True}
+
+
 class CzscStocksBeta(CzscStrategyBase):
     """CZSC 股票 Beta 策略"""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    @classmethod
-    def get_signals(cls, cat) -> OrderedDict:
+    def get_signals(self, cat, **kwargs) -> OrderedDict:
         s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
         s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='全天', span=('0935', '1450')))
         s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='上午', span=('0935', '1130')))

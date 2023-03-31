@@ -68,12 +68,30 @@ def test_object_position():
 
     pos = Position(name="测试B", symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
 
+    assert len(pos.unique_signals) == 4
+    assert len(pos.events[0].unique_signals) == 1
+
     cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
     for bar in bars[1000:]:
         cs.update_signals(bar)
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
+    assert df.shape == (21, 11)
+    assert len(cs.s) == 13
+
+    # 测试 dump 和 load
+    pos_x = pos.dump()
+    assert isinstance(pos_x, dict)
+    pos_x['name'] = "测试C"
+    pos_y = Position.load(pos_x)
+    cs = CzscSignals(deepcopy(bg), get_signals=__get_signals)
+    for bar in bars[1000:]:
+        cs.update_signals(bar)
+        pos_y.update(cs.s)
+
+    assert pos_y.name == "测试C"
+    df = pd.DataFrame(pos_y.pairs)
     assert df.shape == (21, 11)
     assert len(cs.s) == 13
 
@@ -230,8 +248,10 @@ def test_czsc_trader():
                 assert ct.pos_changed
         # print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
-    assert list(ct.positions[0].dump(False).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0']
-    assert list(ct.positions[0].dump(True).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout', 'stop_loss', 'T0', 'pairs', 'holds']
+    assert list(ct.positions[0].dump(False).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout',
+                                                        'stop_loss', 'T0']
+    assert list(ct.positions[0].dump(True).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout',
+                                                       'stop_loss', 'T0', 'pairs', 'holds']
     assert [x.pos for x in ct.positions] == [0, -1, 0]
 
     # 测试自定义仓位集成
@@ -249,7 +269,8 @@ def test_czsc_trader():
     for bar in bars_right:
         ct1.on_bar(bar)
         # print(ct1.s)
-        print(f"{ct1.end_dt}: pos_seq = {[x.pos for x in ct1.positions]}mean_pos = {ct1.get_ensemble_pos('mean')}; vote_pos = {ct1.get_ensemble_pos('vote')}; max_pos = {ct1.get_ensemble_pos('max')}")
+        print(
+            f"{ct1.end_dt}: pos_seq = {[x.pos for x in ct1.positions]}mean_pos = {ct1.get_ensemble_pos('mean')}; vote_pos = {ct1.get_ensemble_pos('vote')}; max_pos = {ct1.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct1.positions] == [0, -1, 0]
 
@@ -264,14 +285,14 @@ def test_czsc_trader():
     for sig in res:
         ct2.on_sig(sig)
         # print(ct2.s)
-        print(f"{ct2.end_dt}: pos_seq = {[x.pos for x in ct2.positions]}mean_pos = {ct2.get_ensemble_pos('mean')}; vote_pos = {ct2.get_ensemble_pos('vote')}; max_pos = {ct2.get_ensemble_pos('max')}")
+        print(
+            f"{ct2.end_dt}: pos_seq = {[x.pos for x in ct2.positions]}mean_pos = {ct2.get_ensemble_pos('mean')}; vote_pos = {ct2.get_ensemble_pos('vote')}; max_pos = {ct2.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct2.positions] == [0, -1, 0]
 
     assert len(ct1.positions[0].pairs) == len(ct2.positions[0].pairs)
     assert len(ct1.positions[1].pairs) == len(ct2.positions[1].pairs)
     assert len(ct1.positions[2].pairs) == len(ct2.positions[2].pairs)
-
 
 # def test_czsc_signals():
 #     bars = read_daily()
@@ -283,4 +304,3 @@ def test_czsc_trader():
 #     for bar in bars[1000:]:
 #         cs.update_signals(bar)
 #     assert len(cs.s) == 14
-

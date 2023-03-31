@@ -39,7 +39,7 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
 
     ma_type = ma_type.upper()
     assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
-    cache_key = f"VOL#{ma_type.upper()}{timeperiod}"
+    cache_key = f"VOL#{ma_type}#{timeperiod}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
@@ -67,8 +67,10 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     return cache_key
 
 
-def vol_single_ma_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
+def vol_single_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """成交量单均线信号
+
+    参数模板："{freq}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214"
 
     **信号逻辑：**
 
@@ -77,20 +79,24 @@ def vol_single_ma_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('日线_D2_VOL#SMA5_多头_向上_任意_0')
-    - Signal('日线_D2_VOL#SMA5_空头_向上_任意_0')
-    - Signal('日线_D2_VOL#SMA5_空头_向下_任意_0')
-    - Signal('日线_D2_VOL#SMA5_多头_向下_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向上_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向下_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向上_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向下_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
+    :param kwargs:
+        - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+        - timeperiod: 均线计算周期
+        - di: 信号计算截止倒数第i根K线
     :return: 信号识别结果
     """
-    ma_type = kwargs.get("ma_type", "SMA")          # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    timeperiod = kwargs.get("timeperiod", 5)        # timeperiod: 均线计算周期
+    di = int(kwargs.get("di", 1))
+    ma_type = kwargs.get("ma_type", "SMA").upper()          # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    timeperiod = int(kwargs.get("timeperiod", 5))           # timeperiod: 均线计算周期
     cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}_{cache_key}".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_分类V230214".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "多头" if bars[-1].vol >= bars[-1].cache[cache_key] else "空头"
     v2 = "向上" if bars[-1].cache[cache_key] >= bars[-2].cache[cache_key] else "向下"
@@ -98,8 +104,10 @@ def vol_single_ma_V230214(c: CZSC, di: int = 1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def vol_double_ma_V230214(c: CZSC, di: int = 1, t1: int = 5, t2: int = 20, **kwargs) -> OrderedDict:
+def vol_double_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """成交量双均线信号
+
+    参数模板："{freq}_D{di}VOL双均线{ma_type}#{t1}#{t2}_BS辅助V230214"
 
     **信号逻辑：**
 
@@ -107,29 +115,35 @@ def vol_double_ma_V230214(c: CZSC, di: int = 1, t1: int = 5, t2: int = 20, **kwa
 
     **信号列表：**
 
-    - Signal('日线_D2VOL#SMA5_VOL#SMA20_看空_任意_任意_0')
-    - Signal('日线_D2VOL#SMA5_VOL#SMA20_看多_任意_任意_0')
+    - Signal('15分钟_D1VOL双均线SMA#5#20_BS辅助V230214_看空_任意_任意_0')
+    - Signal('15分钟_D1VOL双均线SMA#5#20_BS辅助V230214_看多_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
-    :param t1: 短线均线
-    :param t2: 长线均线
     :param kwargs:
+        t1: 短线均线，
+        t2: 长线均线,
+        ma_type: 均线类型,
+        di: 信号计算截止倒数第i根K线
     :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
+    t1 = int(kwargs.get("t1", 5))
+    t2 = int(kwargs.get("t2", 20))
     assert t2 > t1, "t2必须是长线均线，t1为短线均线"
-    ma_type = kwargs.get("ma_type", "SMA")
+    ma_type = kwargs.get("ma_type", "SMA").upper()  # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
     cache_key1 = update_vol_ma_cache(c, ma_type, t1)
     cache_key2 = update_vol_ma_cache(c, ma_type, t2)
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key1}_{cache_key2}".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}VOL双均线{ma_type}#{t1}#{t2}_BS辅助V230214".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "看多" if bars[-1].cache[cache_key1] >= bars[-1].cache[cache_key2] else "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def vol_ti_suo_V221216(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     """梯量/缩量柱：顺势与逆势工具，贡献者：琅盎
+
+    参数模板："{freq}_D{di}K_量柱V221216"
 
     **信号判断标准 **
 
@@ -139,20 +153,21 @@ def vol_ti_suo_V221216(c: CZSC, di=1, **kwargs) -> OrderedDict:
     3.“价升量缩” 的 “缩量柱”，体现了供不应求的局面，主力有主动买入的倾向；
     4.“量增价涨” 的 “梯量柱”，体现了努力上攻的态势，主力有被动买入的倾向。
 
-
     **有效信号列表： **
 
-    - Signal('15分钟_D1K_量柱V20221216_梯量_价平_任意_0')
-    - Signal('15分钟_D1K_量柱V20221216_梯量_价跌_任意_0')
-    - Signal('15分钟_D1K_量柱V20221216_缩量_价平_任意_0')
-    - Signal('15分钟_D1K_量柱V20221216_缩量_价跌_任意_0')
-    - Signal('15分钟_D1K_量柱V20221216_梯量_价升_任意_0')
-    - Signal('15分钟_D1K_量柱V20221216_缩量_价升_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_梯量_价平_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_梯量_价跌_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_缩量_价平_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_缩量_价跌_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_梯量_价升_任意_0')
+    - Signal('15分钟_D1K_量柱V221216_缩量_价升_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
+    :param kwargs:
+        di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
     :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221216".split('_')
     v1 = "其他"
     if len(c.bars_raw) < di + 5:
@@ -180,8 +195,10 @@ def vol_ti_suo_V221216(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def vol_gao_di_V221218(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def vol_gao_di_V221218(c: CZSC, **kwargs) -> OrderedDict:
     """高量柱&低量柱&高量黄金柱，贡献者：琅盎
+
+    参数模板："{freq}_D{di}K_量柱V221218"
 
     **高/低量柱判断标准 **
 
@@ -195,27 +212,30 @@ def vol_gao_di_V221218(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **有效信号列表： **
 
-    - Signal('15分钟_D1K_量柱V20221218_低量柱_7K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_低量柱_10K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量柱_10K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_10K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量柱_6K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_低量柱_9K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_7K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量柱_7K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_低量柱_8K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量柱_8K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_低量柱_6K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量柱_9K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_8K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_9K_任意_0')
-    - Signal('15分钟_D1K_量柱V20221218_高量黄金柱_6K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_低量柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_低量柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量黄金柱_10K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量柱_6K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_低量柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量黄金柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量柱_7K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_低量柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_低量柱_6K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量黄金柱_8K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量黄金柱_9K_任意_0')
+    - Signal('15分钟_D1K_量柱V221218_高量黄金柱_6K_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
+    :param kwargs:
+        di: 倒数第di根K线，加上这个参数就可以不用借助缓存就可以回溯
     :return: 高量柱识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221218".split('_')
+    freq = c.freq.value
+    di = int(kwargs.get("di", 1))
+    k1, k2, k3 = f"{freq}_D{di}K_量柱V221218".split('_')
     v1, v2 = "其他", "任意"
 
     def _check_gao_liang_zhu(bars: List[RawBar]):

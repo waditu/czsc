@@ -94,4 +94,44 @@ def single_linear(y: Union[np.array, list], x: Union[np.array, list] = None) -> 
     return res
 
 
+def cross_sectional_ic(df, x_col='open', y_col='n1b', method='spearman', **kwargs):
+    """分析 df 中 x_col 和 y_col 列的截面相关性（IC）
+
+    :param df：数据，DateFrame格式
+    :param x_col：X列
+    :param y_col：Y列，一般采用下期收益，也就是 n1b
+    :param method：{'pearson', 'kendall', 'spearman'} or callable
+            * pearson : standard correlation coefficient
+            * kendall : Kendall Tau correlation coefficient
+            * spearman : Spearman rank correlation
+            * callable: callable with input two 1d ndarrays and returning a float
+    :return：df，res: 前者是每日相关系数结果，后者是每日相关系数的统计结果
+    """
+    dt_col = kwargs.pop('dt_col', 'dt')
+    tqdm.pandas(desc='cross_section_ic')
+    s = df.groupby(dt_col).progress_apply(lambda row: row[x_col].corr(row[y_col], method=method))
+    df = pd.DataFrame(s, columns=['ic']).reset_index(inplace=False)
+
+    res = {
+        "method": method,
+        "IC均值": 0,
+        "IC标准差": 0,
+        "ICIR": 0,
+        "IC胜率": 0,
+        "IC绝对值>2%占比": 0,
+    }
+    if df.empty:
+        return df, res
+
+    df = df[~df['ic'].isnull()].copy()
+    ic_avg = df['ic'].mean()
+    ic_std = df['ic'].std()
+
+    res['IC均值'] = round(ic_avg, 4)
+    res['IC标准差'] = round(ic_std, 4)
+    res['ICIR'] = round(ic_avg / ic_std, 4) if ic_std != 0 else 0
+    res['IC胜率'] = round(len(df[df['ic'] > 0]) / len(df), 4)
+    res['IC绝对值>2%占比'] = round(len(df[df['ic'].abs() > 0.02]) / len(df), 4)
+    return df, res
+
 

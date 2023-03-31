@@ -22,13 +22,13 @@ from czsc.analyze import CZSC
 from czsc.objects import Position, RawBar, Signal
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.cache import home_path
-from czsc.utils import sorted_freqs
+from czsc.utils import sorted_freqs, import_by_name
 
 
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None):
+    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None, **kwargs):
         """
 
         :param bg: K线合成器
@@ -38,6 +38,8 @@ class CzscSignals:
         self.get_signals: Callable = get_signals
         # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
         self.cache = OrderedDict()
+        self.kwargs = kwargs
+        self.signals_config = kwargs.get("signals_config", None)
 
         if bg:
             self.bg = bg
@@ -50,10 +52,14 @@ class CzscSignals:
             last_bar = self.kas[self.base_freq].bars_raw[-1]
             self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
             if self.get_signals:
-                self.s = self.get_signals(self)
-                self.s.update(last_bar.__dict__)
+                s = self.get_signals(self)
             else:
-                self.s = OrderedDict()
+                s = OrderedDict()
+
+            s.update(last_bar.__dict__)
+            s.update(self.get_signals_by_conf())
+            self.s = s
+
         else:
             self.bg = None
             self.symbol = None
@@ -65,6 +71,32 @@ class CzscSignals:
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
+
+    def get_signals_by_conf(self):
+        """通过信号参数配置获取信号
+
+        信号参数配置，格式如下：
+            signals_config = [
+                {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
+                {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
+                {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
+                {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
+            ]
+        :return: 信号字典
+        """
+        s = OrderedDict()
+        if not self.signals_config:
+            return s
+
+        for param in self.signals_config:
+            param = dict(param)
+            sig_func = import_by_name(param.pop('name'))
+            freq = param.pop('freq', None)
+            if freq in self.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
+                s.update(sig_func(self.kas[freq], **param))
+            else:  # 否则使用 CAT 作为输入
+                s.update(sig_func(self, **param))
+        return s
 
     def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
         """获取快照
@@ -122,8 +154,38 @@ class CzscSignals:
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
 
         if self.get_signals:
-            self.s = self.get_signals(self)
-            self.s.update(last_bar.__dict__)
+            s = self.get_signals(self)
+        else:
+            s = OrderedDict()
+
+        s.update(last_bar.__dict__)
+        s.update(self.get_signals_by_conf())
+        self.s = s
+
+
+def get_signals_by_conf(cat: CzscSignals, conf):
+    """通过信号参数配置获取信号
+
+    :param cat:
+    :param conf: 信号参数配置，格式如下：
+        conf = [
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
+        ]
+    :return: 信号字典
+    """
+    s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
+    for param in conf:
+        param = dict(param)
+        sig_func = import_by_name(param.pop('name'))
+        freq = param.pop('freq', None)
+        if freq in cat.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
+            s.update(sig_func(cat.kas[freq], **param))
+        else:                # 否则使用 CAT 作为输入
+            s.update(sig_func(cat, **param))
+    return s
 
 
 def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List[AnyStr],
@@ -160,7 +222,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
         bg.update(bar)
 
     _sigs = []
-    cs = CzscSignals(bg, get_signals)
+    cs = CzscSignals(bg, get_signals, **kwargs)
     cs.cache.update({'gsc_kwargs': kwargs})
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         cs.update_signals(bar)
@@ -250,7 +312,7 @@ class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
     def __init__(self, bg: BarGenerator = None, get_signals: Callable = None,
-                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean"):
+                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
         """
 
         :param bg: bar generator 对象
@@ -264,9 +326,13 @@ class CzscTrader(CzscSignals):
 
             对于传入回调函数的情况，输入是 self.positions
         """
-        super().__init__(bg, get_signals=get_signals)
+        super().__init__(bg, get_signals=get_signals, **kwargs)
         self.positions = positions
         self.__ensemble_method = ensemble_method
+        self.name = "CzscTrader"
+
+    def __repr__(self):
+        return "<{} for {}>".format(self.name, self.symbol)
 
     def update(self, bar: RawBar) -> None:
         """输入基础周期已完成K线，更新信号，更新仓位

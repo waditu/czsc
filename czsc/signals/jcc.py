@@ -99,51 +99,6 @@ def jcc_ten_mo_V221028(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return s
 
 
-def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5, **kwargs) -> OrderedDict:
-    """白三兵；贡献者：鲁克林
-
-    **信号逻辑：**
-
-    1. 白三兵由接连出现的三根白色蜡烛线组成的，收盘价依次上升;
-    2. 开盘价位于前一天的收盘价和开盘价之间;
-    3. 分为三种形态: 挺进形态,受阻形态,停顿形态
-
-    **信号列表：**
-
-    * Signal('15分钟_D3TH50_白三兵_满足_挺进_任意_0')
-    * Signal('15分钟_D3TH50_白三兵_满足_受阻_任意_0')
-    * Signal('15分钟_D3TH50_白三兵_满足_停顿_任意_0')
-
-    :param c: CZSC 对象
-    :param di: 倒数第di根K线
-    :param th: 可调阈值，上影线超过实体的倍数，保留两位小数
-    :return: 白三兵识别结果
-    """
-    th = int(th * 100)
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_白三兵".split('_')
-
-    # 取三根K线 判断是否满足基础形态
-    bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=3)
-    bar1, bar2, bar3 = bars
-
-    v1 = "满足" if bar3.close > bar2.close > bar3.open > bar1.close > bar2.open > bar1.open else "其他"
-    # 判断最后一根k线的上影线 是否小于实体0.5倍 x1 bar3上影线与bar3实体的比值,
-    # 判断最后一根k线的收盘价,涨幅是否大于倒数第二根k线实体的0.2倍, x2 bar2到bar3的涨幅与bar2实体的比值,
-    v2 = "其他"
-    if v1 == "满足":
-        x1 = (bar3.high - bar3.close) / (bar3.close - bar3.open) * 100
-        x2 = (bar3.close - bar2.close) / (bar3.close - bar3.open) * 100
-        if x1 > th:
-            v2 = "受阻"
-        elif x1 <= th and x2 <= 0.2*100:
-            v2 = "停顿"
-        elif x1 <= th and x2 > 0.2*100:
-            v2 = "挺进"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
 
 
 def jcc_wu_yun_gai_ding_V221101(c: CZSC, di=1, z=500, th=50, **kwargs) -> OrderedDict:
@@ -751,60 +706,106 @@ def jcc_three_crow_V221108(c: CZSC, di=1, **kwargs):
 
     return s
 
+# def jcc_bai_san_bin_V221030(c: CZSC, di=1, th=0.5, **kwargs) -> OrderedDict:
+#     """白三兵；贡献者：鲁克林
+#
+#     **信号逻辑：**
+#
+#     1. 白三兵由接连出现的三根白色蜡烛线组成的，收盘价依次上升;
+#     2. 开盘价位于前一天的收盘价和开盘价之间;
+#     3. 分为三种形态: 挺进形态,受阻形态,停顿形态
+#
+#     **信号列表：**
+#
+#     * Signal('15分钟_D3TH50_白三兵_满足_挺进_任意_0')
+#     * Signal('15分钟_D3TH50_白三兵_满足_受阻_任意_0')
+#     * Signal('15分钟_D3TH50_白三兵_满足_停顿_任意_0')
+#
+#     :param c: CZSC 对象
+#     :param di: 倒数第di根K线
+#     :param th: 可调阈值，上影线超过实体的倍数，保留两位小数
+#     :return: 白三兵识别结果
+#     """
+#     th = int(th * 100)
+#     k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_白三兵".split('_')
+#
+#     # 取三根K线 判断是否满足基础形态
+#     bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=3)
+#     bar1, bar2, bar3 = bars
+#
+#     v1 = "满足" if bar3.close > bar2.close > bar3.open > bar1.close > bar2.open > bar1.open else "其他"
+#     # 判断最后一根k线的上影线 是否小于实体0.5倍 x1 bar3上影线与bar3实体的比值,
+#     # 判断最后一根k线的收盘价,涨幅是否大于倒数第二根k线实体的0.2倍, x2 bar2到bar3的涨幅与bar2实体的比值,
+#     v2 = "其他"
+#     if v1 == "满足":
+#         x1 = (bar3.high - bar3.close) / (bar3.close - bar3.open) * 100
+#         x2 = (bar3.close - bar2.close) / (bar3.close - bar3.open) * 100
+#         if x1 > th:
+#             v2 = "受阻"
+#         elif x1 <= th and x2 <= 0.2*100:
+#             v2 = "停顿"
+#         elif x1 <= th and x2 > 0.2*100:
+#             v2 = "挺进"
+#
+#     s = OrderedDict()
+#     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+#     s[signal.key] = signal.value
+#     return s
 
-def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2, **kwargs) -> OrderedDict:
-    """白三兵，贡献者：鲁克林
 
-    **信号逻辑：**
-
-    1. 三根K线均收盘价 > 开盘价；且开盘价越来越高； 且收盘价越来越高；
-    2. 三根K线的开盘价都在前一根K线的实体范围之间
-    3. 倒1K上影线与倒1K实体的比值th_cal小于th
-    4. 倒1K涨幅与倒2K涨幅的比值ri_cal大于ri
-
-    **信号列表：**
-
-    - Signal('60分钟_D1T100R20_白三兵_满足_挺进_任意_0')
-    - Signal('60分钟_D1T100R20_白三兵_满足_受阻_任意_0')
-    - Signal('60分钟_D1T100R20_白三兵_满足_停顿_任意_0')
-
-    :param c: CZSC 对象
-    :param di: 倒数第di跟K线 取倒数三根k线
-    :param th: 可调阈值，倒1K上影线与倒1K实体的比值，保留两位小数
-    :param ri: 可调阈值，倒1K涨幅与倒2K涨幅的比值，保留两位小数
-    :return: 白三兵识别结果
-    """
-    # th = 倒1K上涨阻力； ri = 倒1K相对涨幅；
-    th = int(th * 100)
-    ri = int(ri * 100)
-
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}R{ri}_白三兵".split('_')
-
-    # 先后顺序 bar3 <-- bar2 <-- bar1
-    bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
-
-    if bar3.open < bar3.close and bar2.open < bar2.close \
-            and bar1.close > bar1.open > bar2.open > bar3.open \
-            and bar1.close > bar2.close > bar3.close:
-        v1 = "满足"
-        th_cal = (bar1.high - bar1.close) / (bar1.close - bar1.open) * 100
-        ri_cal = (bar1.close - bar2.close) / (bar2.close - bar3.close) * 100
-
-        if ri_cal > ri:
-            if th_cal < th:
-                v2 = "挺进"
-            else:
-                v2 = "受阻"
-        else:
-            v2 = "停顿"
-    else:
-        v1 = "其他"
-        v2 = "其他"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-    s[signal.key] = signal.value
-    return s
+# def jcc_three_soldiers_V221030(c: CZSC, di=1, th=1, ri=0.2, **kwargs) -> OrderedDict:
+#     """白三兵，贡献者：鲁克林
+#
+#     **信号逻辑：**
+#
+#     1. 三根K线均收盘价 > 开盘价；且开盘价越来越高； 且收盘价越来越高；
+#     2. 三根K线的开盘价都在前一根K线的实体范围之间
+#     3. 倒1K上影线与倒1K实体的比值th_cal小于th
+#     4. 倒1K涨幅与倒2K涨幅的比值ri_cal大于ri
+#
+#     **信号列表：**
+#
+#     - Signal('60分钟_D1T100R20_白三兵_满足_挺进_任意_0')
+#     - Signal('60分钟_D1T100R20_白三兵_满足_受阻_任意_0')
+#     - Signal('60分钟_D1T100R20_白三兵_满足_停顿_任意_0')
+#
+#     :param c: CZSC 对象
+#     :param di: 倒数第di跟K线 取倒数三根k线
+#     :param th: 可调阈值，倒1K上影线与倒1K实体的比值，保留两位小数
+#     :param ri: 可调阈值，倒1K涨幅与倒2K涨幅的比值，保留两位小数
+#     :return: 白三兵识别结果
+#     """
+#     # th = 倒1K上涨阻力； ri = 倒1K相对涨幅；
+#     th = int(th * 100)
+#     ri = int(ri * 100)
+#
+#     k1, k2, k3 = f"{c.freq.value}_D{di}T{th}R{ri}_白三兵".split('_')
+#
+#     # 先后顺序 bar3 <-- bar2 <-- bar1
+#     bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
+#
+#     if bar3.open < bar3.close and bar2.open < bar2.close \
+#             and bar1.close > bar1.open > bar2.open > bar3.open \
+#             and bar1.close > bar2.close > bar3.close:
+#         v1 = "满足"
+#         th_cal = (bar1.high - bar1.close) / (bar1.close - bar1.open) * 100
+#         ri_cal = (bar1.close - bar2.close) / (bar2.close - bar3.close) * 100
+#
+#         if ri_cal > ri:
+#             if th_cal < th:
+#                 v2 = "挺进"
+#             else:
+#                 v2 = "受阻"
+#         else:
+#             v2 = "停顿"
+#     else:
+#         v1 = "其他"
+#         v2 = "其他"
+#
+#     s = OrderedDict()
+#     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+#     s[signal.key] = signal.value
+#     return s
 
 
 def check_szx(bar: RawBar, th: int = 10, **kwargs) -> bool:
@@ -823,8 +824,10 @@ def check_szx(bar: RawBar, th: int = 10, **kwargs) -> bool:
         return False
 
 
-def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict:
+def jcc_szx_V221111(c: CZSC, **kwargs) -> OrderedDict:
     """十字线
+
+    参数模板："{freq}_D{di}TH{th}_十字线"
 
     **信号逻辑：**
 
@@ -843,11 +846,15 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict
     - Signal('60分钟_D1TH10_十字线_长腿十字线_北方_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :param kwargs:
+        - di: 倒数第di跟K线
+        - th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
     :return: 十字线识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}TH{th}_十字线".split("_")
     if len(c.bars_raw) < di + 10:
         v1 = "其他"
         v2 = "其他"
