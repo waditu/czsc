@@ -30,7 +30,7 @@ __email__ = "zeng_bin8888@163.com"
 __date__ = "20230323"
 
 
-if envs.get_welcome():
+def welcome():
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
     aphorism.print_one()
 
@@ -38,6 +38,10 @@ if envs.get_welcome():
           f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
           f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
           f"czsc_bi_change_th = {envs.get_bi_change_th()}")
+
+
+if envs.get_welcome():
+    welcome()
 
 
 if get_dir_size(home_path) > pow(1024, 3) and envs.get_verbose():
