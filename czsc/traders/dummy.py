@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/23 19:12
-describe: 
+describe:
 """
 import os
 import time
@@ -48,14 +48,14 @@ class DummyBacktest:
 
     def replay(self, symbol):
         """回放单个品种的交易"""
-        tactic = self.strategy(symbol=symbol)
+        tactic = self.strategy(symbol=symbol, **self.kwargs)
         bars = self.read_bars(symbol, tactic.base_freq, self.sdt, self.edt, fq='后复权')
         tactic.replay(bars, os.path.join(self.results_path, f"{symbol}_replay"), sdt='20200101')
 
     def one_symbol_dummy(self, symbol):
         """回测单个品种"""
         start_time = time.time()
-        tactic = self.strategy(symbol=symbol)
+        tactic = self.strategy(symbol=symbol, **self.kwargs)
         symbol_path = os.path.join(self.poss_path, symbol)
         if os.path.exists(symbol_path):
             logger.info(f"{symbol} 已经回测过，跳过")
@@ -66,7 +66,8 @@ class DummyBacktest:
             file_sigs = os.path.join(self.signals_path, f"{symbol}.sigs")
             if not os.path.exists(file_sigs):
                 bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq='后复权')
-                sigs = generate_czsc_signals(bars, tactic.get_signals, freqs=tactic.freqs, sdt=self.sdt, df=True)
+                sigs = generate_czsc_signals(bars, tactic.get_signals, freqs=tactic.freqs, sdt=self.sdt, df=True,
+                                             signals_config=tactic.signals_config)
                 sigs.drop(columns=['freq', 'cache'], inplace=True)
                 sigs.to_parquet(file_sigs)
             else:
