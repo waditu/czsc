@@ -14,19 +14,21 @@ except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
+from deprecated import deprecated
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction, BI, RawBar, FX
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from collections import OrderedDict
 
 
-def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
+def update_ma_cache(c: CZSC, **kwargs):
     """更新均线缓存
 
     :param c: CZSC对象
-    :param ma_type: 均线类型
-    :param timeperiod: 计算周期
-    :return:
+    :param kwargs:
+        - ma_type: 均线类型，可选值：SMA, EMA, WMA, KAMA, TEMA, DEMA, MAMA, TRIMA
+        - timeperiod: 计算周期
+    :return: cache_key
     """
     ma_type_map = {
         'SMA': ta.MA_Type.SMA,
@@ -38,9 +40,10 @@ def update_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
         'MAMA': ta.MA_Type.MAMA,
         'TRIMA': ta.MA_Type.TRIMA,
     }
-
-    ma_type = ma_type.upper()
+    timeperiod = int(kwargs.get("timeperiod"))
+    ma_type = kwargs.get("ma_type", 'SMA').upper()
     assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
+
     cache_key = f"{ma_type}#{timeperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
@@ -158,7 +161,7 @@ def update_boll_cache(c: CZSC, **kwargs):
     :param c: 交易对象
     :return:
     """
-    timeperiod = kwargs.get('timeperiod', 20)
+    timeperiod = int(kwargs.get('timeperiod', 20))
     cache_key = f"BOLL{timeperiod}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
@@ -685,7 +688,7 @@ def tas_ma_base_V221101(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get('di', 1))
     ma_type = kwargs.get('ma_type', 'SMA').upper()
     timeperiod = int(kwargs.get('timeperiod', 5))
-    key = update_ma_cache(c, ma_type, timeperiod)
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}{key}_分类V221101".split('_')
 
@@ -728,7 +731,7 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     ma_type = kwargs.get('ma_type', 'SMA').upper()
     timeperiod = int(kwargs.get('timeperiod', 5))
     th = int(kwargs.get('th', 100))
-    key = update_ma_cache(c, ma_type, timeperiod)
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}{key}T{th}_分类V221203".split('_')
 
@@ -766,7 +769,7 @@ def tas_ma_base_V230313(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, **kwa
     max_overlap = int(kwargs.get("max_overlap", 5))
     assert max_overlap >= 2, "max_overlap 必须大于等于2"
 
-    key = update_ma_cache(c, ma_type, timeperiod)
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     k1, k2, k3, v1 = c.freq.value, f"D{di}{key}MO{max_overlap}", "BS辅助V230313", "其他"
     bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
     if len(bars) < max_overlap + 1:
@@ -802,7 +805,7 @@ def tas_ma_round_V221206(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=60, th:
     :param th: 笔的端点到均线的绝对价差 / 笔的价差 < th / 100 表示笔端点在均线附近
     :return: 信号识别结果
     """
-    key = update_ma_cache(c, ma_type, timeperiod)
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     k1, k2, k3 = f'{c.freq.value}_D{di}TH{th}_碰{key}'.split('_')
 
     v1 = "其他"
@@ -842,8 +845,8 @@ def tas_double_ma_V221203(c: CZSC, di: int = 1, ma_type='SMA', ma_seq=(5, 10), t
     :return: 信号识别结果
     """
     assert len(ma_seq) == 2 and ma_seq[1] > ma_seq[0]
-    ma1 = update_ma_cache(c, ma_type, ma_seq[0])
-    ma2 = update_ma_cache(c, ma_type, ma_seq[1])
+    ma1 = update_ma_cache(c, ma_type=ma_type, timeperiod=ma_seq[0])
+    ma2 = update_ma_cache(c, ma_type=ma_type, timeperiod=ma_seq[1])
 
     k1, k2, k3 = f"{c.freq.value}_D{di}T{th}_{ma1}{ma2}".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
@@ -858,8 +861,10 @@ def tas_double_ma_V221203(c: CZSC, di: int = 1, ma_type='SMA', ma_seq=(5, 10), t
 # ======================================================================================================================
 
 
-def tas_boll_power_V221112(c: CZSC, di: int = 1, **kwargs):
+def tas_boll_power_V221112(c: CZSC, **kwargs):
     """BOLL指标强弱
+
+    参数模板："{freq}_D{di}K_BOLL强弱"
 
     **信号逻辑：**
 
@@ -878,12 +883,16 @@ def tas_boll_power_V221112(c: CZSC, di: int = 1, **kwargs):
     - Signal('15分钟_D1K_BOLL强弱_多头_极强_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
+    :param kwargs: 其他参数
+        - di: 信号计算截止倒数第i根K线
+        - timeperiod: BOLL指标计算周期
     :return: s
     """
-    cache_key = update_boll_cache(c, **kwargs)
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_BOLL强弱".split("_")
+    di = int(kwargs.get('di', 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}K_BOLL强弱".split("_")
 
+    cache_key = update_boll_cache(c, **kwargs)
     if len(c.bars_raw) < di + 20:
         v1, v2 = '其他', '其他'
 
@@ -1230,7 +1239,7 @@ def tas_first_bs_V230217(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get('n', 10))
     ma_type = kwargs.get('ma_type', 'SMA').upper()
     timeperiod = int(kwargs.get('timeperiod', 5))
-    key = update_ma_cache(c, ma_type, timeperiod)
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}#{ma_type}#{timeperiod}_BS1辅助V230217".split('_')
     v1 = '其他'
     if len(c.bars_raw) < n + 5:
@@ -1296,8 +1305,8 @@ def tas_second_bs_V230228(c: CZSC, di: int = 1, n: int = 21, **kwargs) -> Ordere
     :return: 信号识别结果
     """
     ma_type = kwargs.get('ma_type', 'SMA')
-    timeperiod = kwargs.get('timeperiod', 20)
-    key = update_ma_cache(c, ma_type, timeperiod)
+    timeperiod = int(kwargs.get('timeperiod', 20))
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}{ma_type}{timeperiod}_BS2辅助V230228".split('_')
     v1 = '其他'
     if len(c.bars_raw) < n + 5:
@@ -1337,9 +1346,9 @@ def tas_second_bs_V230303(c: CZSC, di: int = 1, **kwargs):
     :param timeperiod: 均线计算周期
     :return: 信号识别结果
     """
-    ma_type = kwargs.get('ma_type', 'SMA')
-    timeperiod = kwargs.get('timeperiod', 30)
-    key = update_ma_cache(c, ma_type, timeperiod)
+    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    timeperiod = int(kwargs.get('timeperiod', 30))
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     k1, k2, k3 = f'{c.freq.value}_D{di}{key}_BS2辅助V230303'.split('_')
     v1 = '其他'
 
@@ -1364,8 +1373,10 @@ def tas_second_bs_V230303(c: CZSC, di: int = 1, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def tas_hlma_V230301(c: CZSC, di: int = 1, timeperiod=3, **kwargs) -> OrderedDict:
-    """HMA 多空信号
+def tas_hlma_V230301(c: CZSC, **kwargs) -> OrderedDict:
+    """HMA 多空信号，贡献者：琅盎
+
+    参数模板："{freq}_D{di}#{ma_type}#{timeperiod}HLMA_BS辅助V230301"
 
     **信号逻辑：**
 
@@ -1374,18 +1385,23 @@ def tas_hlma_V230301(c: CZSC, di: int = 1, timeperiod=3, **kwargs) -> OrderedDic
 
     **信号列表：**
 
-    - Signal('30分钟_D2SMA3HLMA_V230301_看多_任意_任意_0')
-    - Signal('30分钟_D2SMA3HLMA_V230301_看空_任意_任意_0')
+    - Signal('15分钟_D1#SMA#3HLMA_BS辅助V230301_看多_任意_任意_0')
+    - Signal('15分钟_D1#SMA#3HLMA_BS辅助V230301_看空_任意_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
-    :param ma_type: 均线类型，必须是 ma_type_map 中的 key
-    :param timeperiod: 均线周期
-    :return:
+    :param kwargs: 其他参数
+        - di: 信号计算截止倒数第i根K线
+        - ma_type: 均线类型，必须是 ma_type_map 中的 key
+        - timeperiod: 均线周期
+    :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
     ma_type = kwargs.get("ma_type", "SMA").upper()
-    key = update_ma_cache(c, ma_type, timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}{key}HLMA_V230301".split('_')
+    timeperiod = int(kwargs.get("timeperiod", 3))
+    freq = c.freq.value
+
+    key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{freq}_D{di}#{ma_type}#{timeperiod}HLMA_BS辅助V230301".split('_')
     _bars = get_sub_elements(c.bars_raw, di=di, n=timeperiod)
 
     hma = np.mean([x.high for x in _bars])
@@ -1401,6 +1417,7 @@ def tas_hlma_V230301(c: CZSC, di: int = 1, timeperiod=3, **kwargs) -> OrderedDic
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+@deprecated(version='1.0.0', reason="表现不如 tas_hlma_V230301，已废弃")
 def tas_hlma_V230304(c: CZSC, di: int = 1, n=3) -> OrderedDict:
     """HMA多空信号；贡献者：琅盎
 

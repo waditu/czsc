@@ -8,8 +8,9 @@ describe:
 import re
 from loguru import logger
 from parse import parse
+from typing import List, AnyStr, Dict
 from czsc.objects import Signal
-from czsc.utils import import_by_name
+from czsc.utils import import_by_name, sorted_freqs
 
 
 class SignalsParser:
@@ -70,8 +71,12 @@ class SignalsParser:
             logger.error(f"解析信号 {signal} - {name} - {pats} 出错：{e}")
             return None
 
-    def get_function_name(self, signal):
-        """获取信号函数名称"""
+    def get_function_name(self, signal: AnyStr):
+        """获取信号对应的信号函数名称
+
+        :param signal: 信号，数据样例：15分钟_D1K_量柱V221218_低量柱_6K_任意_0
+        :return: 信号函数名称
+        """
         sig_name_map = self.sig_name_map
         _signal = Signal(signal)
         _k3_match = list({k for k, v in sig_name_map.items() if v[0].k3 == _signal.k3})
@@ -82,7 +87,7 @@ class SignalsParser:
             logger.error(f"信号 {signal} 有多个匹配函数：{_k3_match}，请手动解析信号")
             return None
 
-    def parse(self, signal_seq):
+    def parse(self, signal_seq: List[AnyStr]):
         """解析信号序列"""
         res = []
         for signal in signal_seq:
@@ -94,3 +99,30 @@ class SignalsParser:
             else:
                 logger.warning(f"未找到解析函数：{name}，请手动解析信号：{signal}")
         return res
+
+
+def get_signals_config(signals_seq: List[AnyStr], signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+    """获取信号列表对应的信号函数配置
+
+    :param signals_seq: 信号列表
+    :param signals_module: 信号函数所在模块
+    :return: 信号函数配置
+    """
+    sp = SignalsParser(signals_module=signals_module)
+    conf = sp.parse(signals_seq)
+    return conf
+
+
+def get_signals_freqs(signals_seq: List[AnyStr]) -> List[AnyStr]:
+    """获取信号列表对应的K线周期列表
+
+    :param signals_seq: 信号列表
+    :return: K线周期列表
+    """
+    freqs = []
+    for signal in signals_seq:
+        _freqs = re.findall('|'.join(sorted_freqs), signal)
+        if _freqs:
+            freqs.extend(_freqs)
+    return [x for x in sorted_freqs if x in freqs]
+

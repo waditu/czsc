@@ -824,8 +824,10 @@ def check_szx(bar: RawBar, th: int = 10, **kwargs) -> bool:
         return False
 
 
-def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict:
+def jcc_szx_V221111(c: CZSC, **kwargs) -> OrderedDict:
     """十字线
+
+    参数模板："{freq}_D{di}TH{th}_十字线"
 
     **信号逻辑：**
 
@@ -844,11 +846,15 @@ def jcc_szx_V221111(c: CZSC, di: int = 1, th: int = 10, **kwargs) -> OrderedDict
     - Signal('60分钟_D1TH10_十字线_长腿十字线_北方_任意_0')
 
     :param c: CZSC 对象
-    :param di: 倒数第di跟K线
-    :param th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
+    :param kwargs:
+        - di: 倒数第di跟K线
+        - th: 可调阈值，(h -l) / (c - o) 的绝对值大于 th, 判定为十字线
     :return: 十字线识别结果
     """
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_十字线".split("_")
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}TH{th}_十字线".split("_")
     if len(c.bars_raw) < di + 10:
         v1 = "其他"
         v2 = "其他"

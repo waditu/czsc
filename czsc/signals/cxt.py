@@ -84,7 +84,7 @@ def cxt_fx_power_V221107(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
     """一买信号
 
     参数模板："{freq}_D{di}B_BUY1"
@@ -102,10 +102,11 @@ def cxt_first_buy_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     - Signal('15分钟_D1B_BUY1_一买_13笔_任意_0')
 
     :param c: CZSC 对象
-    :param di: CZSC 对象
+    :param kwargs:
+        - di: 倒数第di个笔
     :return: 信号字典
     """
-    di = int(di)
+    di = int(kwargs.get('di', 1))
 
     def __check_first_buy(bis: List[BI]):
         """检查 bis 是否是一买的结束
