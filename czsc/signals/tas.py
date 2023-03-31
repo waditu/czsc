@@ -744,8 +744,10 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def tas_ma_base_V230313(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, **kwargs) -> OrderedDict:
+def tas_ma_base_V230313(c: CZSC, **kwargs) -> OrderedDict:
     """单均线多空和方向辅助开平仓信号
+
+    参数模板："{freq}_D{di}#{ma_type}#{timeperiod}MO{max_overlap}_BS辅助V230313"
 
     **信号逻辑：**
 
@@ -755,22 +757,29 @@ def tas_ma_base_V230313(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, **kwa
 
     **信号列表：**
 
-    - Signal('日线_D1SMA5MO5_BS辅助V230313_看空_向下_任意_0')
-    - Signal('日线_D1SMA5MO5_BS辅助V230313_看空_向上_任意_0')
-    - Signal('日线_D1SMA5MO5_BS辅助V230313_看多_向上_任意_0')
-    - Signal('日线_D1SMA5MO5_BS辅助V230313_看多_向下_任意_0')
+    - Signal('15分钟_D1#SMA#5MO5_BS辅助V230313_看空_向下_任意_0')
+    - Signal('15分钟_D1#SMA#5MO5_BS辅助V230313_看多_向下_任意_0')
+    - Signal('15分钟_D1#SMA#5MO5_BS辅助V230313_看多_向上_任意_0')
+    - Signal('15分钟_D1#SMA#5MO5_BS辅助V230313_看空_向上_任意_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
-    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    :param timeperiod: 均线计算周期
-    :return:
+    :param kwargs: 其他参数
+        - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+        - timeperiod: 均线计算周期
+        - di: 信号计算截止倒数第i根K线
+        - max_overlap: 相同信号最大重叠次数
+    :return: 信号识别结果
     """
+    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    timeperiod = int(kwargs.get('timeperiod', 5))
+    di = int(kwargs.get('di', 1))
     max_overlap = int(kwargs.get("max_overlap", 5))
     assert max_overlap >= 2, "max_overlap 必须大于等于2"
+    freq = c.freq.value
 
+    k1, k2, k3 = f"{freq}_D{di}#{ma_type}#{timeperiod}MO{max_overlap}_BS辅助V230313".split('_')
     key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
-    k1, k2, k3, v1 = c.freq.value, f"D{di}{key}MO{max_overlap}", "BS辅助V230313", "其他"
+    v1 = "其他"
     bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
     if len(bars) < max_overlap + 1:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
