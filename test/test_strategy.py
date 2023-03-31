@@ -66,7 +66,7 @@ def test_czsc_strategy_example2():
         assert len(trader1.positions[i].pairs) == len(trader2.positions[i].pairs)
         assert round(pos1.evaluate("多空")['覆盖率'], 3) == round(pos1.evaluate("多头")['覆盖率'] + pos1.evaluate("空头")['覆盖率'], 3)
 
-    strategy.replay(bars, res_path="trade_replay_test", sdt='20170101', refresh=True)
-    assert len(os.listdir("trade_replay_test")) == 2
+    strategy.replay(bars, res_path="trade_replay_test", sdt='20190101', refresh=True)
+    assert len(os.listdir("trade_replay_test")) == 3
     shutil.rmtree("trade_replay_test")
 

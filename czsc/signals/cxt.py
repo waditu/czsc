@@ -234,7 +234,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
-    参数模板："{freq1}_{freq2}_中枢共振"
+    参数模板："{freq1}_{freq2}_中枢共振V221221"
 
     **信号逻辑：**
 
@@ -244,15 +244,15 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
 
     **信号列表：**
 
-    - Signal('日线_60分钟_中枢共振_看多_任意_任意_0')
-    - Signal('日线_60分钟_中枢共振_看空_任意_任意_0')
+    - Signal('日线_60分钟_中枢共振V221221_看空_任意_任意_0')
+    - Signal('日线_60分钟_中枢共振V221221_看多_任意_任意_0')
 
     :param cat:
-    :param freq1:大级别周期
+    :param freq1: 大级别周期
     :param freq2: 小级别周期
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{freq1}_{freq2}_中枢共振".split('_')
+    k1, k2, k3 = f"{freq1}_{freq2}_中枢共振V221221".split('_')
 
     max_freq: CZSC = cat.kas[freq1]
     min_freq: CZSC = cat.kas[freq2]
@@ -469,7 +469,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
+def cxt_double_zs_V230311(c: CZSC, **kwargs):
     """两个中枢组合辅助判断BS1，贡献者：韩知辰
 
     参数模板："{freq}_D{di}双中枢_BS1辅助V230311"
@@ -488,7 +488,7 @@ def cxt_double_zs_V230311(c: CZSC, di=1, **kwargs):
     :param di: 倒数第 di 笔
     :return: s
     """
-    di = int(di)
+    di = int(kwargs.get('di', 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}双中枢_BS1辅助V230311".split("_")
     v1 = "其他"
 
@@ -605,7 +605,7 @@ def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点，增加均线形态
 
     参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS3辅助V230319"
@@ -631,7 +631,7 @@ def cxt_third_bs_V230319(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    di = int(di)
+    di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 34))
     cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
     k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230319".split('_')
