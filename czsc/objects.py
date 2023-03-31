@@ -496,8 +496,8 @@ class Factor:
         """
         fa = Factor(name=raw['name'],
                     signals_all=[Signal(x) for x in raw['signals_all']],
-                    signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
-                    signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                    signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else None,
+                    signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else None
                     )
         return fa
 
@@ -598,11 +598,14 @@ class Event:
                  'signals_not': []}
         :return:
         """
+        assert raw['operate'] in Operate.__dict__["_value2member_map_"], f"operate {raw['operate']} not in Operate"
+        assert raw['factors'], "factors can not be empty"
+
         e = Event(name=raw['name'], operate=Operate.__dict__["_value2member_map_"][raw['operate']],
                   factors=[Factor.load(x) for x in raw['factors']],
-                  signals_all=[Signal(x) for x in raw['signals_all']] if raw['signals_all'] else None,
-                  signals_any=[Signal(x) for x in raw['signals_any']] if raw['signals_any'] else None,
-                  signals_not=[Signal(x) for x in raw['signals_not']] if raw['signals_not'] else None
+                  signals_all=[Signal(x) for x in raw['signals_all']] if raw.get('signals_all') else None,
+                  signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else None,
+                  signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else None
                   )
         return e
 
