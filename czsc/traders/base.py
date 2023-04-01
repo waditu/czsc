@@ -28,18 +28,16 @@ from czsc.utils import sorted_freqs, import_by_name
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None, **kwargs):
+    def __init__(self, bg: BarGenerator = None,  **kwargs):
         """
 
         :param bg: K线合成器
-        :param get_signals: 信号计算函数
         """
         self.name = "CzscSignals"
-        self.get_signals: Callable = get_signals
         # cache 是信号计算过程的缓存容器，需要信号计算函数自行维护
         self.cache = OrderedDict()
         self.kwargs = kwargs
-        self.signals_config = kwargs.get("signals_config", None)
+        self.signals_config = kwargs.get("signals_config", [])
 
         if bg:
             self.bg = bg
@@ -51,14 +49,8 @@ class CzscSignals:
 
             last_bar = self.kas[self.base_freq].bars_raw[-1]
             self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-            if self.get_signals:
-                s = self.get_signals(self)
-            else:
-                s = OrderedDict()
-
-            s.update(last_bar.__dict__)
-            s.update(self.get_signals_by_conf())
-            self.s = s
+            self.s = OrderedDict(last_bar.__dict__)
+            self.s.update(self.get_signals_by_conf())
 
         else:
             self.bg = None
@@ -152,17 +144,11 @@ class CzscSignals:
         self.symbol = bar.symbol
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-
-        if self.get_signals:
-            s = self.get_signals(self)
-        else:
-            s = OrderedDict()
-
-        s.update(last_bar.__dict__)
-        s.update(self.get_signals_by_conf())
-        self.s = s
+        self.s = OrderedDict(last_bar.__dict__)
+        self.s.update(self.get_signals_by_conf())
 
 
+@deprecated(version="0.9.16", reason="请使用 CzscSignals 类")
 def get_signals_by_conf(cat: CzscSignals, conf):
     """通过信号参数配置获取信号
 
@@ -188,12 +174,18 @@ def get_signals_by_conf(cat: CzscSignals, conf):
     return s
 
 
-def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List[AnyStr],
+def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict], freqs: List[AnyStr],
                           sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False, **kwargs):
     """使用 CzscSignals 生成信号
 
     :param bars: 基础周期 K 线序列
-    :param get_signals: 信号计算函数
+    :param signals_config: 信号函数配置，格式如下：
+        signals_config = [
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
+            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
+        ]
     :param freqs: K 线周期序列，不需要填写基础周期
     :param sdt: 信号计算开始时间
     :param init_n: 用于 BarGenerator 初始化的基础周期K线数量
@@ -222,7 +214,7 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
         bg.update(bar)
 
     _sigs = []
-    cs = CzscSignals(bg, get_signals, **kwargs)
+    cs = CzscSignals(bg, signals_config=signals_config, **kwargs)
     cs.cache.update({'gsc_kwargs': kwargs})
     for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
         cs.update_signals(bar)
@@ -234,13 +226,13 @@ def generate_czsc_signals(bars: List[RawBar], get_signals: Callable, freqs: List
         return _sigs
 
 
-def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int = 5, **kwargs) -> None:
+def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days: int = 5, **kwargs) -> None:
     """人工验证形态信号识别的准确性的辅助工具：
 
     输入基础周期K线和想要验证的信号，输出信号识别结果的快照
 
     :param bars: 原始K线
-    :param get_signals: 需要验证的信号列表
+    :param signals_config: 需要验证的信号列表
     :param delta_days: 两次相同信号之间的间隔天数
     :return: None
     """
@@ -252,7 +244,7 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
     if not kwargs.get('freqs', None):
         kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
-    df = generate_czsc_signals(bars, get_signals, df=True, **kwargs)
+    df = generate_czsc_signals(bars, signals_config=signals_config, df=True, **kwargs)
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
     signals = []
     for col in s_cols:
@@ -268,7 +260,7 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
     for bar in bars_left:
         bg.update(bar)
 
-    ct = CzscSignals(bg, get_signals)
+    ct = CzscSignals(bg, signals_config=signals_config, **kwargs)
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
     for bar in tqdm(bars_right, desc=f'signals of {bg.symbol}'):
@@ -285,11 +277,11 @@ def check_signals_acc(bars: List[RawBar], get_signals: Callable, delta_days: int
                 last_dt[signal.key] = bar.dt
 
 
-def get_unique_signals(bars: List[RawBar], get_signals: Callable, **kwargs):
+def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs):
     """获取信号函数中定义的所有信号列表
 
     :param bars: 基础K线数据
-    :param get_signals: 信号函数
+    :param signals_config: 信号函数配置
     :param kwargs:
     :return:
     """
@@ -301,7 +293,7 @@ def get_unique_signals(bars: List[RawBar], get_signals: Callable, **kwargs):
     if not kwargs.get('freqs', None):
         kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
-    df = generate_czsc_signals(bars, get_signals, df=True, **kwargs)
+    df = generate_czsc_signals(bars, signals_config=signals_config, df=True, **kwargs)
     _res = []
     for col in [x for x in df.columns if len(x.split("_")) == 3]:
         _res.extend([f"{col}_{v}" for v in df[col].unique() if "其他" not in v])
@@ -311,8 +303,8 @@ def get_unique_signals(bars: List[RawBar], get_signals: Callable, **kwargs):
 class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
-    def __init__(self, bg: BarGenerator = None, get_signals: Callable = None,
-                 positions: List[Position] = None, ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
+    def __init__(self, bg: BarGenerator = None, positions: List[Position] = None,
+                 ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
         """
 
         :param bg: bar generator 对象
@@ -326,7 +318,7 @@ class CzscTrader(CzscSignals):
 
             对于传入回调函数的情况，输入是 self.positions
         """
-        super().__init__(bg, get_signals=get_signals, **kwargs)
+        super().__init__(bg, **kwargs)
         self.positions = positions
         self.__ensemble_method = ensemble_method
         self.name = "CzscTrader"

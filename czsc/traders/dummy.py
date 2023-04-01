@@ -67,8 +67,8 @@ class DummyBacktest:
             file_sigs = os.path.join(self.signals_path, f"{symbol}.sigs")
             if not os.path.exists(file_sigs):
                 bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq='后复权')
-                sigs = generate_czsc_signals(bars, tactic.get_signals, freqs=tactic.freqs, sdt=self.sdt, df=True,
-                                             signals_config=tactic.signals_config)
+                sigs = generate_czsc_signals(bars, signals_config=tactic.signals_config,
+                                             freqs=tactic.freqs, sdt=self.sdt, df=True)
                 sigs.drop(columns=['freq', 'cache'], inplace=True)
                 sigs.to_parquet(file_sigs)
             else:
