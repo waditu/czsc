@@ -52,12 +52,12 @@ def test_object_position():
     exits = [
         Event(name='平多', operate=Operate.LE, factors=[
             Factor(name="跌破SMA5", signals_all=[
-                Signal("日线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0"),
+                Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
             ])
         ]),
         Event(name='平空', operate=Operate.SE, factors=[
             Factor(name="站上SMA5", signals_all=[
-                Signal("日线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0"),
+                Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
             ])
         ]),
     ]
@@ -74,7 +74,7 @@ def test_object_position():
         pos.update(cs.s)
 
     df = pd.DataFrame(pos.pairs)
-    assert df.shape == (40, 11)
+    assert df.shape == (17, 11)
     assert len(cs.s) == 13
 
     # 测试 dump 和 load
@@ -89,7 +89,7 @@ def test_object_position():
 
     assert pos_y.name == "测试C"
     df = pd.DataFrame(pos_y.pairs)
-    assert df.shape == (40, 11)
+    assert df.shape == (17, 11)
     assert len(cs.s) == 13
 
 
@@ -236,7 +236,6 @@ def test_czsc_trader():
                 assert _pos.operates[-1]['dt'] == _pos.end_dt
                 print(_pos.name, _pos.operates[-1], _pos.end_dt, _pos.pos)
                 assert ct.pos_changed
-        # print(f"{bar.dt}: pos_seq = {[x.pos for x in ct.positions]}mean_pos = {ct.get_ensemble_pos('mean')}; vote_pos = {ct.get_ensemble_pos('vote')}; max_pos = {ct.get_ensemble_pos('max')}")
 
     assert list(ct.positions[0].dump(False).keys()) == ['symbol', 'name', 'opens', 'exits', 'interval', 'timeout',
                                                         'stop_loss', 'T0']
