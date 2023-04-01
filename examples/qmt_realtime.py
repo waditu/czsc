@@ -6,7 +6,7 @@ create_dt: 2023/3/5 10:08
 describe: QMT实时交易
 """
 from czsc.connectors import qmt_connector as qmc
-from czsc.strategies import CzscStocksBeta
+from czsc.strategies import CzscStrategyExample2
 
 
 def get_index_members(index_code='000852.SH', trade_date='20230131'):
@@ -34,7 +34,7 @@ gjm = {
         # update trader时，K线获取的天数
         'delta_days': 1,
         # 交易策略
-        'strategy': CzscStocksBeta,
+        'strategy': CzscStrategyExample2,
         # TraderCallback 回调类的参数
         'callback_params': {
             # 飞书推送配置【不配置也没有影响】

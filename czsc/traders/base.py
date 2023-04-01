@@ -82,11 +82,13 @@ class CzscSignals:
 
         for param in self.signals_config:
             param = dict(param)
-            sig_func = import_by_name(param.pop('name'))
+            sig_name = param.pop('name')
+            sig_func = import_by_name(sig_name) if isinstance(sig_name, str) else sig_name
+
             freq = param.pop('freq', None)
-            if freq in self.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
+            if freq in self.kas:    # 如果指定了 freq，那么就使用 CZSC 对象作为输入
                 s.update(sig_func(self.kas[freq], **param))
-            else:  # 否则使用 CAT 作为输入
+            else:                   # 否则使用 CAT 作为输入
                 s.update(sig_func(self, **param))
         return s
 

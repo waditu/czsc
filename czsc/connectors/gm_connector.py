@@ -736,7 +736,7 @@ def init_context_traders(context, symbols: List[str], strategy):
             else:
                 tactic = strategy(symbol=symbol)
                 bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, ADJUST_PREV)
-                trader = CzscTrader(bg, get_signals=tactic.get_signals, positions=tactic.positions)
+                trader = CzscTrader(bg, signals_config=tactic.signals_config, positions=tactic.positions)
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader
