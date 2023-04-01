@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 from typing import List
 from loguru import logger
+from deprecated import deprecated
 from collections import OrderedDict
 from czsc import envs, CZSC, Signal
 from czsc.traders.base import CzscSignals
@@ -60,6 +61,42 @@ def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450"))
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
+def bar_zdt_V230331(c: CZSC, **kwargs) -> OrderedDict:
+    """计算倒数第di根K线的涨跌停信息
+
+    参数模板："{freq}_D{di}_涨跌停V230331"
+
+    **信号逻辑：**
+
+    - close等于high大于等于前一根K线的close，近似认为是涨停；反之，跌停。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1_涨跌停V230331_涨停_任意_任意_0')
+    - Signal('15分钟_D1_涨跌停V230331_跌停_任意_任意_0')
+
+    :param c: 基础周期的 CZSC 对象
+    :param kwargs:
+        - di: 倒数第 di 根 K 线
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}_涨跌停V230331".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < di + 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2 = c.bars_raw[-di], c.bars_raw[-di - 1]
+    if b1.close == b1.high >= b2.close:
+        v1 = "涨停"
+    elif b1.close == b1.low <= b2.close:
+        v1 = "跌停"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
 def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     """计算倒数第di根K线的涨跌停信息
 
@@ -95,6 +132,7 @@ def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
 def bar_zdt_V230313(c: CZSC, di=1, **kwargs) -> OrderedDict:
     """计算倒数第di根K线的涨跌停信息
 
@@ -124,6 +162,7 @@ def bar_zdt_V230313(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
 def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
     """更精确地倒数第1根K线的涨跌停计算
 
