@@ -979,9 +979,9 @@ def update_kdj_cache(c: CZSC, **kwargs):
     :param c: CZSC对象
     :return:
     """
-    fastk_period = kwargs.get('fastk_period', 9)
-    slowk_period = kwargs.get('slowk_period', 3)
-    slowd_period = kwargs.get('slowd_period', 3)
+    fastk_period = int(kwargs.get('fastk_period', 9))
+    slowk_period = int(kwargs.get('slowk_period', 3))
+    slowd_period = int(kwargs.get('slowd_period', 3))
     cache_key = f"KDJ{fastk_period}#{slowk_period}#{slowd_period}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
