@@ -29,7 +29,7 @@ class CzscStrategyBase(ABC):
 
     1. 交易品种以及该品种对应的参数
     2. K线周期列表
-    3. 交易信号计算函数
+    3. 交易信号参数配置
     4. 持仓策略列表
     """
 
@@ -52,7 +52,7 @@ class CzscStrategyBase(ABC):
 
     @property
     def signals_config(self):
-        """K线周期列表"""
+        """交易信号参数配置"""
         return get_signals_config(self.unique_signals, self.signals_module_name)
 
     @property
@@ -69,10 +69,6 @@ class CzscStrategyBase(ABC):
     def base_freq(self):
         """基础 K 线周期"""
         return self.sorted_freqs[0]
-
-    def get_signals(self, cat: CzscTrader, **kwargs) -> OrderedDict:
-        """交易信号计算函数"""
-        return OrderedDict()
 
     @abstractmethod
     def positions(self) -> List[Position]:
@@ -132,7 +128,7 @@ class CzscStrategyBase(ABC):
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions),
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
                             signals_config=deepcopy(self.signals_config), **kwargs)
         for bar in bars2:
             trader.on_bar(bar)
@@ -181,7 +177,7 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, get_signals=deepcopy(self.get_signals), positions=deepcopy(self.positions),
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
                             signals_config=deepcopy(self.signals_config), **kwargs)
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
@@ -207,94 +203,6 @@ class CzscStrategyBase(ABC):
         except Exception as e:
             logger.error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
         return trader
-
-
-class CzscStrategyExample1(CzscStrategyBase):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def get_signals(self, cat, **kwargs) -> OrderedDict:
-        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(signals.bxt.get_s_three_bi(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_buy_V221126(cat.kas['日线'], di=2))
-        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=1))
-        s.update(signals.cxt_first_sell_V221126(cat.kas['日线'], di=2))
-        return s
-
-    @property
-    def positions(self):
-        return [
-            self.create_pos_a(),
-            self.create_pos_b(),
-            self.create_pos_c(),
-        ]
-
-    @property
-    def __shared_exits(self):
-        return [
-            Event(name='平多', operate=Operate.LE, factors=[
-                Factor(name="日线三笔向上收敛", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向上收敛_任意_任意_0"),
-                ])
-            ]),
-            Event(name='平空', operate=Operate.SE, factors=[
-                Factor(name="日线三笔向下收敛", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向下收敛_任意_任意_0"),
-                ])
-            ]),
-        ]
-
-    def create_pos_a(self):
-        opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线一买", signals_all=[
-                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线一卖", signals_all=[
-                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
-        ]
-        pos = Position(name="A", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
-                       interval=0, timeout=20, stop_loss=100)
-        return pos
-
-    def create_pos_b(self):
-        opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线三笔向下无背", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向下无背_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线三笔向上无背", signals_all=[
-                    Signal("日线_倒1笔_三笔形态_向上无背_任意_任意_0"),
-                ])
-            ]),
-        ]
-
-        pos = Position(name="B", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100)
-        return pos
-
-    def create_pos_c(self):
-        opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="日线一买", signals_all=[
-                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="日线一卖", signals_all=[
-                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
-        ]
-        pos = Position(name="C", symbol=self.symbol, opens=opens, exits=self.__shared_exits,
-                       interval=0, timeout=20, stop_loss=50)
-        return pos
 
 
 class CzscStrategyExample2(CzscStrategyBase):
@@ -351,117 +259,3 @@ class CzscStrategyExample2(CzscStrategyBase):
                 'timeout': 20,
                 'stop_loss': 100,
                 'T0': True}
-
-
-class CzscStocksBeta(CzscStrategyBase):
-    """CZSC 股票 Beta 策略"""
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def get_signals(self, cat, **kwargs) -> OrderedDict:
-        s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='全天', span=('0935', '1450')))
-        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='上午', span=('0935', '1130')))
-        s.update(signals.bar_operate_span_V221111(cat.kas['15分钟'], k1='下午', span=('1300', '1450')))
-        s.update(signals.bar_zdt_V221110(cat.kas['15分钟'], di=1))
-
-        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=1, key='macd'))
-        s.update(signals.tas_macd_base_V221028(cat.kas['60分钟'], di=5, key='macd'))
-
-        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=1, ma_type='SMA', timeperiod=5))
-        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=2, ma_type='SMA', timeperiod=5))
-        s.update(signals.tas_ma_base_V221101(cat.kas["日线"], di=5, ma_type='SMA', timeperiod=5))
-        return s
-
-    @property
-    def positions(self):
-        beta1 = self.create_beta1()
-        beta2 = self.create_beta2()
-        pos_list = [deepcopy(beta1), deepcopy(beta2)]
-        return pos_list
-
-    @property
-    def freqs(self):
-        return ['日线', '60分钟', '30分钟', '15分钟']
-
-    def create_beta1(self):
-        """60分钟MACD金叉
-
-        **策略描述：**
-
-        1. 60分钟MACD金叉开多
-        2. 60分钟MACD死叉平多
-        """
-        opens = [
-            {'name': '开多',
-             'operate': '开多',
-             'signals_all': [],
-             'signals_any': [],
-             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
-             'factors': [{'name': '60分钟MACD金叉',
-                          'signals_all': ['全天_0935_1450_是_任意_任意_0',
-                                          '60分钟_D1K_MACD_多头_任意_任意_0',
-                                          '60分钟_D5K_MACD_空头_任意_任意_0'],
-                          'signals_any': [],
-                          'signals_not': []}
-                         ]},
-        ]
-
-        exits = [
-            {'name': '平多',
-             'operate': '平多',
-             'signals_all': ['全天_0935_1450_是_任意_任意_0'],
-             'signals_any': [],
-             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
-             'factors': [{'name': '60分钟MACD死叉',
-                          'signals_all': ['60分钟_D1K_MACD_空头_任意_任意_0'],
-                          'signals_any': [],
-                          'signals_not': []}]},
-
-        ]
-        pos = Position(name="60分钟MACD金叉", symbol=self.symbol,
-                       opens=[Event.load(x) for x in opens],
-                       exits=[Event.load(x) for x in exits],
-                       interval=3600 * 4, timeout=16 * 30, stop_loss=500)
-        return pos
-
-    def create_beta2(self):
-        """5日线多头
-
-        **策略特征：**
-
-
-        """
-        opens = [
-            {'name': '开多',
-             'operate': '开多',
-             'signals_all': [],
-             'signals_any': [],
-             'signals_not': ['15分钟_D1K_ZDT_涨停_任意_任意_0'],
-             'factors': [{'name': '站上SMA5',
-                          'signals_all': ['上午_0935_1130_是_任意_任意_0',
-                                          '日线_D1K_SMA5_多头_任意_任意_0',
-                                          '日线_D5K_SMA5_空头_任意_任意_0'],
-                          'signals_any': [],
-                          'signals_not': []}]}
-        ]
-
-        exits = [
-            {'name': '平多',
-             'operate': '平多',
-             'signals_all': [],
-             'signals_any': [],
-             'signals_not': ['15分钟_D1K_ZDT_跌停_任意_任意_0'],
-             'factors': [{'name': '跌破SMA5',
-                          'signals_all': ['下午_1300_1450_是_任意_任意_0',
-                                          '日线_D1K_SMA5_空头_任意_任意_0',
-                                          '日线_D2K_SMA5_多头_任意_任意_0'],
-                          'signals_any': [],
-                          'signals_not': []}]}
-        ]
-        pos = Position(name="5日线多头", symbol=self.symbol,
-                       opens=[Event.load(x) for x in opens],
-                       exits=[Event.load(x) for x in exits],
-                       interval=3600 * 4, timeout=16 * 40, stop_loss=500)
-        return pos
