@@ -16,17 +16,12 @@ from test.test_analyze import read_daily
 
 def test_generate_signals_by_conf():
     bars = read_daily()
-
-    def get_signals(cat):
-        conf = [
-            {'freq1': '日线',
-             'freq2': '日线',
-             'name': 'czsc.signals.cxt_zhong_shu_gong_zhen_V221221'}
-        ]
-
-        return czsc.get_signals_by_conf(cat, conf)
-
-    sigs = czsc.generate_czsc_signals(bars, get_signals, freqs=['日线'])
+    signals_config = [
+        {'freq1': '日线',
+         'freq2': '日线',
+         'name': 'czsc.signals.cxt_zhong_shu_gong_zhen_V221221'}
+    ]
+    sigs = czsc.generate_czsc_signals(bars, signals_config=signals_config, freqs=['日线'])
     assert len(sigs) == 860
 
 

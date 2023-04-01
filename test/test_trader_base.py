@@ -100,12 +100,7 @@ def test_generate_czsc_signals():
     signals_seq = [
         "日线_D1B_BUY1_一买_任意_任意_0",
         "日线_D1B_BUY1_一卖_任意_任意_0",
-        "日线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0",
-        "日线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0",
-        "周线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0",
-        "周线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0",
-        "月线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0",
-        "月线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0",
+        "日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"
     ]
 
     signals_config = get_signals_config(signals_seq)
@@ -151,12 +146,12 @@ def test_czsc_trader():
         exits = [
             Event(name='平多', operate=Operate.LE, factors=[
                 Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
                 ])
             ]),
             Event(name='平空', operate=Operate.SE, factors=[
                 Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
                 ])
             ]),
         ]
@@ -182,12 +177,12 @@ def test_czsc_trader():
         exits = [
             Event(name='平多', operate=Operate.LE, factors=[
                 Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
                 ])
             ]),
             Event(name='平空', operate=Operate.SE, factors=[
                 Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
                 ])
             ]),
         ]
@@ -212,12 +207,12 @@ def test_czsc_trader():
         exits = [
             Event(name='平多', operate=Operate.LE, factors=[
                 Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看空_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
                 ])
             ]),
             Event(name='平空', operate=Operate.SE, factors=[
                 Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D1#SMA#5MO5_BS辅助V230313_看多_任意_任意_0"),
+                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
                 ])
             ]),
         ]
