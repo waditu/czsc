@@ -87,6 +87,21 @@ class SignalsParser:
             logger.error(f"信号 {signal} 有多个匹配函数：{_k3_match}，请手动解析信号")
             return None
 
+    def config_to_keys(self, config: List[Dict]):
+        """将信号函数配置转换为信号key列表
+
+        :param config: 信号函数配置
+            config = [{'freq': '日线', 'max_overlap': '3', 'name': 'czsc.signals.cxt_bi_end_V230222'},
+                     {'freq1': '日线', 'freq2': '60分钟', 'name': 'czsc.signals.cxt_zhong_shu_gong_zhen_V221221'}]
+        :return: 信号key列表
+        """
+        keys = []
+        for conf in config:
+            name = conf['name'].split('.')[-1]
+            if name in self.sig_pats_map:
+                keys.append(self.sig_pats_map[name].format(**conf))
+        return keys
+
     def parse(self, signal_seq: List[AnyStr]):
         """解析信号序列"""
         res = []

@@ -29,9 +29,13 @@ def test_signals_parser():
     sp = SignalsParser()
     conf = sp.parse_params('byi_second_bs_V230324', '15分钟_D1MACD12#26#9回抽零轴_BS2辅助V230324_看空_任意_任意_0')
     assert conf
-
     conf = sp.parse_params('cxt_zhong_shu_gong_zhen_V221221', '日线_60分钟_中枢共振V221221_看多_任意_任意_0')
     assert conf
 
-    conf = sp.parse(['日线_D1MO3_BE辅助V230222_新低_第2次_任意_0'])
-    assert conf
+    conf = sp.parse(['日线_D1MO3_BE辅助V230222_新低_第2次_任意_0',
+                     '日线_60分钟_中枢共振V221221_看多_任意_任意_0'])
+    assert isinstance(conf, list)
+    keys = sp.config_to_keys(conf)
+    assert isinstance(keys, list) and len(keys) == 2
+
+
