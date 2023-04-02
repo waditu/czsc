@@ -23,6 +23,7 @@ from czsc.objects import Position, RawBar, Signal
 from czsc.utils.bar_generator import BarGenerator
 from czsc.utils.cache import home_path
 from czsc.utils import sorted_freqs, import_by_name
+from czsc.traders.sig_parse import get_signals_freqs
 
 
 class CzscSignals:
@@ -176,7 +177,7 @@ def get_signals_by_conf(cat: CzscSignals, conf):
     return s
 
 
-def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict], freqs: List[AnyStr],
+def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
                           sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False, **kwargs):
     """使用 CzscSignals 生成信号
 
@@ -188,12 +189,12 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict], freqs:
             {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
             {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
         ]
-    :param freqs: K 线周期序列，不需要填写基础周期
     :param sdt: 信号计算开始时间
     :param init_n: 用于 BarGenerator 初始化的基础周期K线数量
     :param df: 是否返回 df 格式的信号计算结果，默认 False
     :return: 信号计算结果
     """
+    freqs = get_signals_freqs(signals_config)
     freqs = [freq for freq in freqs if freq != bars[0].freq.value]
     sdt = pd.to_datetime(sdt)
     bars_left = [x for x in bars if x.dt < sdt]
@@ -243,9 +244,6 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
     if len(bars) < 600:
         return
 
-    if not kwargs.get('freqs', None):
-        kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
-
     df = generate_czsc_signals(bars, signals_config=signals_config, df=True, **kwargs)
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
     signals = []
@@ -258,7 +256,8 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
 
     bars_left = bars[:500]
     bars_right = bars[500:]
-    bg = BarGenerator(base_freq=base_freq, freqs=kwargs['freqs'], max_count=5000)
+    freqs = get_signals_freqs(signals_config)
+    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=5000)
     for bar in bars_left:
         bg.update(bar)
 
@@ -291,9 +290,6 @@ def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs)
     assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
     if len(bars) < 600:
         return []
-
-    if not kwargs.get('freqs', None):
-        kwargs['freqs'] = sorted_freqs[sorted_freqs.index(base_freq) + 1:]
 
     df = generate_czsc_signals(bars, signals_config=signals_config, df=True, **kwargs)
     _res = []
