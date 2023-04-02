@@ -128,15 +128,15 @@ def get_signals_config(signals_seq: List[AnyStr], signals_module: AnyStr = 'czsc
     return conf
 
 
-def get_signals_freqs(signals_seq: List[AnyStr]) -> List[AnyStr]:
+def get_signals_freqs(signals_seq: List) -> List[AnyStr]:
     """获取信号列表对应的K线周期列表
 
-    :param signals_seq: 信号列表
+    :param signals_seq: 信号列表 / 信号函数配置列表
     :return: K线周期列表
     """
     freqs = []
     for signal in signals_seq:
-        _freqs = re.findall('|'.join(sorted_freqs), signal)
+        _freqs = re.findall('|'.join(sorted_freqs), str(signal))
         if _freqs:
             freqs.extend(_freqs)
     return [x for x in sorted_freqs if x in freqs]

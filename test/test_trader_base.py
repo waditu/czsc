@@ -104,8 +104,14 @@ def test_generate_czsc_signals():
     ]
 
     signals_config = get_signals_config(signals_seq)
+
+    # 通过 signals_seq 得到 freqs
     freqs = get_signals_freqs(signals_seq)
 
+    # 通过 signals_config 得到 freqs
+    freqs1 = get_signals_freqs(signals_config)
+
+    assert freqs == freqs1
     res = generate_czsc_signals(bars, signals_config=signals_config, freqs=freqs, sdt="20100101", init_n=500)
     rdf = generate_czsc_signals(bars, signals_config=signals_config, freqs=freqs, sdt="20100101", init_n=500, df=True)
 
