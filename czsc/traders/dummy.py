@@ -73,6 +73,7 @@ class DummyBacktest:
                 sigs.to_parquet(file_sigs)
             else:
                 sigs = pd.read_parquet(file_sigs)
+                sigs = sigs[sigs['dt'] >= self.sdt]
 
             sigs = sigs.to_dict('records')
             trader = tactic.dummy(sigs)
