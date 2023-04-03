@@ -59,9 +59,7 @@ from czsc.signals.vol import (
 from czsc.signals.bar import (
     bar_end_V221111,
     bar_operate_span_V221111,
-    bar_zdt_V221110,
-    bar_zdt_V221111,
-    bar_zdt_V230313,
+    bar_zdt_V230331,
     bar_cross_ps_V221112,
     bar_section_momentum_V221112,
     bar_vol_grow_V221112,
@@ -80,6 +78,11 @@ from czsc.signals.bar import (
     bar_time_V230327,
     bar_weekday_V230328,
     bar_r_breaker_V230326,
+
+    # 以下是旧版本的信号函数，不再维护，仅供参考，不要使用
+    bar_zdt_V221110,
+    bar_zdt_V221111,
+    bar_zdt_V230313,
 )
 
 from czsc.signals.jcc import (

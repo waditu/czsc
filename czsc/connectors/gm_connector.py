@@ -598,7 +598,7 @@ def sync_long_position(context, trader: CzscTrader):
 
     symbol = trader.symbol
     name = context.stocks.get(symbol, "无名标的")
-    long_pos = trader.get_ensemble_pos(method='vote')
+    ensemble_pos = trader.get_ensemble_pos(method='vote')
     max_sym_pos = context.symbols_info[symbol]['max_sym_pos']  # 最大标的仓位
     if context.mode == MODE_BACKTEST:
         account = context.account()
@@ -608,20 +608,24 @@ def sync_long_position(context, trader: CzscTrader):
 
     price = trader.latest_price
     sym_position = account.position(symbol, PositionSide_Long)
-    if long_pos == 0 and not sym_position:
+    if ensemble_pos == 0 and not sym_position:
         # 如果多头仓位为0且掘金账户没有对应持仓，直接退出
         return
 
-    if long_pos == 0 and sym_position and sym_position.volume > 0:
+    if ensemble_pos == 0 and sym_position and sym_position.volume > 0:
         # 如果多头仓位为0且掘金账户依然还有持仓，清掉仓位
         order_target_volume(symbol=symbol, volume=0, position_side=PositionSide_Long,
                             order_type=OrderType_Limit, price=price, account=account.id)
         return
 
+    # 没有仓位变化，直接退出
     if not trader.pos_changed:
         return
 
-    assert long_pos > 0
+    # 仓位指向空头，直接退出
+    if ensemble_pos < 0:
+        return
+
     if cash.available < price * 120:
         logger.info(f"{context.now} {symbol} {name} 可用资金不足，无法开多仓，最少所需资金{int(price * 120)}元")
         return
@@ -630,7 +634,7 @@ def sync_long_position(context, trader: CzscTrader):
         logger.info(f"{context.now} {symbol} {name} 同方向订单已存在")
         return
 
-    percent = max_sym_pos * long_pos
+    percent = max_sym_pos * ensemble_pos
     volume = int((cash.nav * percent / price // 100) * 100)     # 单位：股
     order_target_volume(symbol=symbol, volume=volume, position_side=PositionSide_Long,
                         order_type=OrderType_Limit, price=price, account=account.id)
@@ -736,7 +740,7 @@ def init_context_traders(context, symbols: List[str], strategy):
             else:
                 tactic = strategy(symbol=symbol)
                 bg, data = get_init_bg(symbol, context.now, base_freq, freqs, 1000, ADJUST_PREV)
-                trader = CzscTrader(bg, get_signals=tactic.get_signals, positions=tactic.positions)
+                trader = CzscTrader(bg, signals_config=tactic.signals_config, positions=tactic.positions)
                 dill.dump(trader, open(file_trader, 'wb'))
 
             symbols_info[symbol]['trader'] = trader

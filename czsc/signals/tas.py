@@ -698,7 +698,7 @@ def tas_ma_base_V221101(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=100, **kwargs) -> OrderedDict:
+def tas_ma_base_V221203(c: CZSC, **kwargs) -> OrderedDict:
     """MA 多空和方向信号，加距离限制
 
     参数模板："{freq}_D{di}{ma_type}#{timeperiod}T{th}_分类V221203"
@@ -721,11 +721,12 @@ def tas_ma_base_V221203(c: CZSC, di: int = 1, ma_type='SMA', timeperiod=5, th=10
     - Signal('15分钟_D1SMA#5T100_分类V221203_空头_向上_远离_0')
 
     :param c: CZSC对象
-    :param di: 信号计算截止倒数第i根K线
-    :param ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    :param timeperiod: 均线计算周期
-    :param th: 距离阈值，单位 BP
-    :return:
+    :param kwargs:
+        - di: 信号计算截止倒数第i根K线
+        - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+        - timeperiod: 均线计算周期
+        - th: 距离阈值，单位 BP
+    :return: 信号识别结果
     """
     di = int(kwargs.get('di', 1))
     ma_type = kwargs.get('ma_type', 'SMA').upper()
@@ -979,9 +980,9 @@ def update_kdj_cache(c: CZSC, **kwargs):
     :param c: CZSC对象
     :return:
     """
-    fastk_period = kwargs.get('fastk_period', 9)
-    slowk_period = kwargs.get('slowk_period', 3)
-    slowd_period = kwargs.get('slowd_period', 3)
+    fastk_period = int(kwargs.get('fastk_period', 9))
+    slowk_period = int(kwargs.get('slowk_period', 3))
+    slowd_period = int(kwargs.get('slowd_period', 3))
     cache_key = f"KDJ{fastk_period}#{slowk_period}#{slowd_period}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):

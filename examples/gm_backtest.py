@@ -35,7 +35,7 @@ import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from czsc.connectors.gm_connector import *
-from czsc.strategies import CzscStocksBeta
+from czsc.strategies import CzscStrategyExample2
 
 os.environ['strategy_id'] = 'b24661f5-838d-11ed-882c-988fe0675a5b'
 os.environ['max_sym_pos'] = '0.5'
@@ -77,7 +77,7 @@ def init(context):
     }
 
     name = "stocks_sma5"
-    strategy = CzscStocksBeta
+    strategy = CzscStrategyExample2
     init_context_universal(context, name)
     init_context_env(context)
     init_context_traders(context, symbols, strategy)

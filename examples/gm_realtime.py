@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 from czsc.connectors.gm_connector import *
-from czsc.strategies import CzscStocksBeta
+from czsc.strategies import CzscStrategyExample2
 
 
 os.environ['strategy_id'] = '43b099b8-*****-11ed-99a6-988fe0675a5b'
@@ -59,7 +59,7 @@ def init(context):
             'feishu_members': ['ou_6fa*****d853e9fdc87d267e8f2a270'],
         }
     }
-    strategy = CzscStocksBeta
+    strategy = CzscStrategyExample2
     init_context_universal(context, strategy.__name__)
     init_context_env(context)
     init_context_traders(context, symbols, strategy)

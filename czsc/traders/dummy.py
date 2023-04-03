@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/23 19:12
-describe: 
+describe:
 """
 import os
 import time
@@ -25,7 +25,8 @@ class DummyBacktest:
         :param results_path: 回测结果存放路径
         :param read_bars: 读入K线数据的函数
             函数签名为：read_bars(symbol, freq, sdt, edt, fq) -> List[RawBar]
-        :param kwargs:
+        :param kwargs: 其他参数
+            - signals_module_name: 信号函数模块名，用于动态加载信号文件，默认为 czsc.signals
         """
         from czsc.strategies import CzscStrategyBase
         assert issubclass(strategy, CzscStrategyBase), "strategy 必须是 CzscStrategyBase 的子类"
@@ -48,14 +49,14 @@ class DummyBacktest:
 
     def replay(self, symbol):
         """回放单个品种的交易"""
-        tactic = self.strategy(symbol=symbol)
+        tactic = self.strategy(symbol=symbol, **self.kwargs)
         bars = self.read_bars(symbol, tactic.base_freq, self.sdt, self.edt, fq='后复权')
         tactic.replay(bars, os.path.join(self.results_path, f"{symbol}_replay"), sdt='20200101')
 
     def one_symbol_dummy(self, symbol):
         """回测单个品种"""
         start_time = time.time()
-        tactic = self.strategy(symbol=symbol)
+        tactic = self.strategy(symbol=symbol, **self.kwargs)
         symbol_path = os.path.join(self.poss_path, symbol)
         if os.path.exists(symbol_path):
             logger.info(f"{symbol} 已经回测过，跳过")
@@ -66,11 +67,13 @@ class DummyBacktest:
             file_sigs = os.path.join(self.signals_path, f"{symbol}.sigs")
             if not os.path.exists(file_sigs):
                 bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq='后复权')
-                sigs = generate_czsc_signals(bars, tactic.get_signals, freqs=tactic.freqs, sdt=self.sdt, df=True)
+                sigs = generate_czsc_signals(bars, signals_config=tactic.signals_config,
+                                             freqs=tactic.freqs, sdt=self.sdt, df=True)
                 sigs.drop(columns=['freq', 'cache'], inplace=True)
                 sigs.to_parquet(file_sigs)
             else:
                 sigs = pd.read_parquet(file_sigs)
+                sigs = sigs[sigs['dt'] >= self.sdt]
 
             sigs = sigs.to_dict('records')
             trader = tactic.dummy(sigs)
