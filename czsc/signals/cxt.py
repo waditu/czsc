@@ -976,6 +976,8 @@ def cxt_bi_end_V230324(c: CZSC, **kwargs) -> OrderedDict:
 def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
     """笔的表里关系
 
+    参数模板："{freq}_D1_表里关系V230101"
+
     表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
 
     **信号逻辑：**
@@ -1017,6 +1019,8 @@ def cxt_bi_status_V230101(c: CZSC, **kwargs) -> OrderedDict:
 
 def cxt_bi_status_V230102(c: CZSC, **kwargs) -> OrderedDict:
     """笔的表里关系
+
+    参数模板："{freq}_D1_表里关系V230102"
 
     表里关系的定义参考：http://blog.sina.com.cn/s/blog_486e105c01007wc1.html
 
