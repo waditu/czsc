@@ -57,8 +57,8 @@ symbols = research.get_symbols('A股主要指数')
 bars = research.get_raw_bars(symbols[0], '15分钟', '20181101', '20210101', fq='前复权')
 
 signals_config = [
-    {'name': "czsc.signals.cxt_zhong_shu_gong_zhen_V221221", 'freq1': '日线', 'freq2': '60分钟'},
-    {'name': bar_zdt_V230331, 'freq': '60分钟'},
+    {'name': "czsc.signals.bar_end_V221111", 'freq': '15分钟', 'freq1': '30分钟'},
+    # {'name': bar_zdt_V230331, 'freq': '60分钟'},
 ]
 
 if __name__ == '__main__':

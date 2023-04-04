@@ -18,25 +18,29 @@ from czsc.utils.sig import check_pressure_support, get_sub_elements, create_sing
 from czsc.signals.tas import update_ma_cache
 
 
-def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
+def bar_end_V221111(c: CZSC, freq1='30分钟') -> OrderedDict:
     """分钟 K 线结束
+
+    参数模板："{freq}_{freq1}K线结束_BS辅助V221111"
+
+    **信号逻辑：**
+
+    - 基于基础周期的 K 线，判断当前分钟 K 线是否结束
 
     **信号列表：**
 
-    - Signal('60分钟_K线_结束_否_任意_任意_0')
-    - Signal('60分钟_K线_结束_是_任意_任意_0')
+    - Signal('15分钟_30分钟K线结束_BS辅助V221111_否_任意_任意_0')
+    - Signal('15分钟_30分钟K线结束_BS辅助V221111_是_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
-    :param k1: 分钟周期名称
+    :param freq1: 分钟周期名称
     :return: s
     """
-    k2, k3 = "K线", "结束"
-    assert "分钟" in k1
-
-    m = int(k1.replace("分钟", ""))
-    dt: datetime = c.bars_raw[-1].dt
-    v = "是" if dt.minute % m == 0 else "否"
-
+    assert "分钟" in freq1, "freq1 必须是分钟周期"
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_{freq1}K线结束_BS辅助V221111".split("_")
+    m = int(freq1.replace("分钟", ""))
+    v = "是" if c.bars_raw[-1].dt.minute % m == 0 else "否"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
