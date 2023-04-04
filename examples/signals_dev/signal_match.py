@@ -41,15 +41,12 @@ if __name__ == '__main__':
     print(f"total signal functions: {len(sp.sig_name_map)}; parsed: {len(parsed_name)}")
 
     # # 测试信号配置生成信号
-    from czsc import generate_czsc_signals, get_signals_by_conf, get_signals_freqs, get_signals_config
+    from czsc import generate_czsc_signals, get_signals_freqs, get_signals_config
     from test.test_analyze import read_1min
     bars = read_1min()
 
     conf = get_signals_config(signals_seq)
     freqs = get_signals_freqs(signals_seq)
 
-    def get_signals(cat):
-        return get_signals_by_conf(cat, conf)
-
-    sigs = generate_czsc_signals(bars, get_signals, freqs=freqs, sdt='20180101', df=True)
+    sigs = generate_czsc_signals(bars, signals_config=conf, sdt='20180101', df=True)
 
