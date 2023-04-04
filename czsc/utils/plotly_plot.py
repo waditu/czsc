@@ -50,7 +50,7 @@ class KlineChart:
                 l=0,  # left margin
                 r=0,  # right margin
                 b=0,  # bottom margin
-                t=0  # top margin
+                t=0   # top margin
             ),
             # https://plotly.com/python/reference/layout/#layout-legend
             legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
