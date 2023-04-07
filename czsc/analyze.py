@@ -258,14 +258,9 @@ class CZSC:
         else:
             # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
-            if len(self.bars_ubi) >= 3:
-                edt = self.bars_ubi[-2].dt
-                self.bars_ubi = [x for x in self.bars_ubi if x.dt <= edt]
-                last_bars = [x for x in self.bars_raw[-50:] if x.dt > edt]
-            else:
-                last_bars = self.bars_ubi[-1].elements
-                last_bars[-1] = bar
-                self.bars_ubi.pop(-1)
+            last_bars = self.bars_ubi.pop(-1).raw_bars
+            assert bar.dt == last_bars[-1].dt
+            last_bars[-1] = bar
 
         # 去除包含关系
         bars_ubi = self.bars_ubi
