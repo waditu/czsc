@@ -497,7 +497,7 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA'
     :param window: 识别加速走势的窗口大小
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type, timeperiod)
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     assert window > 3, "辨别加速，至少需要3根以上K线"
     k1, k2, k3 = c.freq.value, f"D{di}W{window}{cache_key}", f"加速V221118"
 
