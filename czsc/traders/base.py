@@ -316,10 +316,10 @@ class CzscTrader(CzscSignals):
 
             对于传入回调函数的情况，输入是 self.positions
         """
-        super().__init__(bg, **kwargs)
         self.positions = positions
         self.__ensemble_method = ensemble_method
         self.name = "CzscTrader"
+        super().__init__(bg, **kwargs)
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)
