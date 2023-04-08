@@ -52,7 +52,7 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def cxt_fx_power_V221107(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_fx_power_V221107(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第di个分型的强弱
 
     参数模板："{freq}_D{di}F_分型强弱"
@@ -76,7 +76,7 @@ def cxt_fx_power_V221107(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: 倒数第di个分型
     :return:
     """
-    di = int(di)
+    di = int(kwargs.get('di', 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}F_分型强弱".split("_")
     last_fx: FX = c.fx_list[-di]
     v1 = f"{last_fx.power_str}{last_fx.mark.value[0]}"
@@ -155,7 +155,7 @@ def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict:
     """一卖信号
 
     参数模板："{freq}_D{di}B_SELL1"
@@ -176,7 +176,7 @@ def cxt_first_sell_V221126(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: CZSC 对象
     :return: 信号字典
     """
-    di = int(di)
+    di = int(kwargs.get('di', 1))
 
     def __check_first_sell(bis: List[BI]):
         """检查 bis 是否是一卖的结束
@@ -266,8 +266,8 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
             return False
 
     v1 = "其他"
-    if len(max_freq.bi_list) >= 5 and __is_zs(max_freq.bi_list[-3:]) \
-            and len(min_freq.bi_list) >= 5 and __is_zs(min_freq.bi_list[-3:]):
+    if len(max_freq.bi_list) >= 5 and __is_zs(max_freq.bi_list[-3:]) and len(min_freq.bi_list) >= 5 and __is_zs(
+            min_freq.bi_list[-3:]):
 
         big_zs = ZS(symbol=symbol, bis=max_freq.bi_list[-3:])
         small_zs = ZS(symbol=symbol, bis=min_freq.bi_list[-3:])
@@ -456,7 +456,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
         return res
 
     for n in (13, 11, 9, 7, 5):
-        _bis = get_sub_elements(c.bi_list, di=di, n=n+1)
+        _bis = get_sub_elements(c.bi_list, di=di, n=n + 1)
         if len(_bis) != n + 1:
             continue
 
@@ -510,10 +510,10 @@ def cxt_double_zs_V230311(c: CZSC, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_second_bs_V230320(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第二类买卖点
 
-    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS2辅助V230320"
+    参数模板："{freq}_D{di}#{ma_type}#{timeperiod}_BS2辅助V230320"
 
     **信号逻辑：**
 
@@ -522,18 +522,19 @@ def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA#21_BS2辅助V230320_二买_任意_任意_0')
-    - Signal('15分钟_D1SMA#21_BS2辅助V230320_二卖_任意_任意_0')
+    - Signal('15分钟_D1#SMA#21_BS2辅助V230320_二买_任意_任意_0')
+    - Signal('15分钟_D1#SMA#21_BS2辅助V230320_二卖_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 从最后一个笔的第几个开始识别
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    di = int(di)
+    di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 21))
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS2辅助V230320".split('_')
+    ma_type = kwargs.get("ma_type", "SMA").upper()
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS2辅助V230320".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 6:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -557,10 +558,10 @@ def cxt_second_bs_V230320(c: CZSC, di=1, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def cxt_third_bs_V230318(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点
 
-    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS3辅助V230318"
+    参数模板："{freq}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230318"
 
     **信号逻辑：**
 
@@ -569,19 +570,21 @@ def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA#34_BS3辅助V230318_三卖_任意_任意_0')
-    - Signal('15分钟_D1SMA#34_BS3辅助V230318_三买_任意_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230318_三卖_任意_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230318_三买_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 从最后一个笔的第几个开始识别
     :param kwargs: ma_type: 均线类型，timeperiod: 均线周期
     :return: 信号识别结果
     """
-    di = int(di)
+    di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 34))
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230318".split('_')
+    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230318".split('_')
     v1 = "其他"
+
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     if len(c.bi_list) < di + 6:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -608,7 +611,7 @@ def cxt_third_bs_V230318(c: CZSC, di=1, **kwargs) -> OrderedDict:
 def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点，增加均线形态
 
-    参数模板："{freq}_D{di}{ma_type}#{timeperiod}_BS3辅助V230319"
+    参数模板："{freq}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230319"
 
     **信号逻辑：**
 
@@ -617,10 +620,10 @@ def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三卖_均线新低_任意_0')
-    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线底分_任意_0')
-    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线新高_任意_0')
-    - Signal('15分钟_D1SMA#34_BS3辅助V230319_三买_均线新低_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230319_三卖_均线新低_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230319_三买_均线底分_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230319_三买_均线新高_任意_0')
+    - Signal('15分钟_D1#SMA#34_BS3辅助V230319_三买_均线新低_任意_0')
 
     **信号说明：**
 
@@ -633,8 +636,9 @@ def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 34))
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_BS3辅助V230319".split('_')
+    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230319".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 6:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -698,8 +702,9 @@ def cxt_bi_end_V230104(c: CZSC, **kwargs) -> OrderedDict:
     """
     th = int(kwargs.pop("th", 50))
     timeperiod = int(kwargs.get("timeperiod", 5))
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230104".split('_')
+    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230104".split('_')
     v1 = "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -748,8 +753,9 @@ def cxt_bi_end_V230105(c: CZSC, **kwargs) -> OrderedDict:
     """
     th = int(kwargs.get("th", 50))
     timeperiod = int(kwargs.get("timeperiod", 5))
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}T{th}_BE辅助V230105".split('_')
+    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230105".split('_')
     v1 = "其他"
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -773,6 +779,8 @@ def cxt_bi_end_V230105(c: CZSC, **kwargs) -> OrderedDict:
 def cxt_bi_end_V230312(c: CZSC, **kwargs):
     """MACD辅助判断笔结束信号
 
+    参数模板："{freq}_D0MACD{fastperiod}#{slowperiod}#{signalperiod}_BE辅助V230312"
+
     **信号逻辑：**
 
     1. 看多，当下笔向下，笔的最后一个分型MACD向上
@@ -780,8 +788,8 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
 
     **信号列表：**
 
-    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看多_任意_任意_0')
-    - Signal('15分钟_D1MACD12#26#9_BE辅助V230312_看空_任意_任意_0')
+    - Signal('15分钟_D0MACD12#26#9_BE辅助V230312_看多_任意_任意_0')
+    - Signal('15分钟_D0MACD12#26#9_BE辅助V230312_看空_任意_任意_0')
 
     **Notes：**
 
@@ -790,10 +798,13 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
     :param c: CZSC对象
     :return: 信号识别结果
     """
-    cache_key = update_macd_cache(c, **kwargs)
-    k1, k2, k3 = f"{c.freq.value}_D0{cache_key}_BE辅助V230312".split('_')
+    fastperiod = int(kwargs.get("fastperiod", 12))
+    slowperiod = int(kwargs.get("slowperiod", 26))
+    signalperiod = int(kwargs.get("signalperiod", 9))
+    k1, k2, k3 = f"{c.freq.value}_D0MACD{fastperiod}#{slowperiod}#{signalperiod}_BE辅助V230312".split('_')
     v1 = "其他"
 
+    cache_key = update_macd_cache(c, **kwargs)
     if len(c.bi_list) < 3 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -813,6 +824,8 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
 
 def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
     """100以内质数时序窗口辅助笔结束判断
+
+    参数模板："{freq}_D0质数窗口MO{max_overlap}_BE辅助V230320"
 
     **信号逻辑：**
 
@@ -849,7 +862,8 @@ def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     max_overlap = int(kwargs.get("max_overlap", 3))
-    k1, k2, k3, v1 = f"{c.freq.value}", f"D0质数窗口MO{max_overlap}", "BE辅助V230320", "其他"
+    k1, k2, k3 = f"{c.freq.value}_D0质数窗口MO{max_overlap}_BE辅助V230320".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
     primes = [11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
@@ -878,6 +892,8 @@ def cxt_bi_end_V230320(c: CZSC, **kwargs) -> OrderedDict:
 def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
     """分型配合均线辅助判断笔的结束
 
+    参数模板："{freq}_D0分型配合{ma_type}#{timeperiod}_BE辅助V230322"
+
     **信号逻辑：**
 
     1. 对于顶分型，如果最右边的k线的MA最小，这是向下笔正常延伸的情况
@@ -885,16 +901,19 @@ def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_反向分型_任意_0')
-    - Signal('日线_D0分型配合均线_BE辅助V230322_看多_同向分型_任意_0')
-    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_反向分型_任意_0')
-    - Signal('日线_D0分型配合均线_BE辅助V230322_看空_同向分型_任意_0')
+    - Signal('15分钟_D0分型配合SMA#5_BE辅助V230322_看多_同向分型_任意_0')
+    - Signal('15分钟_D0分型配合SMA#5_BE辅助V230322_看空_反向分型_任意_0')
+    - Signal('15分钟_D0分型配合SMA#5_BE辅助V230322_看多_反向分型_任意_0')
+    - Signal('15分钟_D0分型配合SMA#5_BE辅助V230322_看空_同向分型_任意_0')
 
     :param c: CZSC对象
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 5))
-    k1, k2, k3, v1, v2 = f"{c.freq.value}", "D0分型配合均线", "BE辅助V230322", "其他", "任意"
+    ma_type = kwargs.get("ma_type", "SMA")
+    timeperiod = int(kwargs.get("timeperiod", 5))
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D0分型配合{ma_type}#{timeperiod}_BE辅助V230322".split("_")
+    v1, v2 = "其他", "任意"
     ubi_fxs = c.ubi_fxs
     last_bar = c.bars_raw[-1]
 
@@ -935,6 +954,8 @@ def cxt_bi_end_V230322(c: CZSC, **kwargs) -> OrderedDict:
 def cxt_bi_end_V230324(c: CZSC, **kwargs) -> OrderedDict:
     """笔结束分型的均线突破判断笔的结束
 
+    参数模板："{freq}_D0{ma_type}#{timeperiod}均线突破_BE辅助V230324"
+
     **信号逻辑：**
 
     1. 向上笔最后一个顶分型左边两个k线的MA最小值被收盘价突破，向上笔结束
@@ -942,14 +963,17 @@ def cxt_bi_end_V230324(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('60分钟_D0均线突破_BE辅助V230324_看空_任意_任意_0')
-    - Signal('60分钟_D0均线突破_BE辅助V230324_看多_任意_任意_0')
+    - Signal('15分钟_D0SMA#5均线突破_BE辅助V230324_看空_任意_任意_0')
+    - Signal('15分钟_D0SMA#5均线突破_BE辅助V230324_看多_任意_任意_0')
 
     :param c: CZSC对象
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type=kwargs.get("ma_type", "SMA"), timeperiod=kwargs.get("timeperiod", 5))
-    k1, k2, k3, v1 = f"{c.freq.value}", "D0均线突破", "BE辅助V230324", "其他"
+    ma_type = kwargs.get("ma_type", "SMA")
+    timeperiod = int(kwargs.get("timeperiod", 5))
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
+    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}均线突破_BE辅助V230324".split("_")
+    v1 = "其他"
     ubi_fxs = c.ubi_fxs
 
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 7 or len(ubi_fxs) == 0:
