@@ -164,6 +164,13 @@ def test_event():
     m, f = new_event.is_match(s)
     assert m and f
 
+    raw1 = {'operate': '开多',
+            'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
+            'factors': [{'name': '测试', 'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0']}]}
+    new_event = Event.load(raw1)
+    m, f = new_event.is_match(s)
+    assert m and f
+
     event = Event(name="单测", operate=Operate.LO,
                   factors=[
                       Factor(name="测试", signals_all=[
