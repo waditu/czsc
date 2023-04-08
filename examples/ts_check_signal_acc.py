@@ -57,7 +57,7 @@ symbols = research.get_symbols('A股主要指数')
 bars = research.get_raw_bars(symbols[0], '15分钟', '20181101', '20210101', fq='前复权')
 
 signals_config = [
-    {'name': "czsc.signals.tas_macd_base_V221028", 'freq': '15分钟'},
+    {'name': "czsc.signals.tas_boll_power_V221112", 'freq': '15分钟'},
     # {'name': bar_zdt_V230331, 'freq': '60分钟'},
 ]
 

@@ -970,7 +970,7 @@ def tas_double_ma_V221203(c: CZSC, **kwargs) -> OrderedDict:
 def tas_boll_power_V221112(c: CZSC, **kwargs):
     """BOLL指标强弱
 
-    参数模板："{freq}_D{di}K_BOLL强弱V221112"
+    参数模板："{freq}_D{di}BOLL{timeperiod}_强弱V221112"
 
     **信号逻辑：**
 
@@ -979,14 +979,14 @@ def tas_boll_power_V221112(c: CZSC, **kwargs):
 
     **信号列表：**
 
-    - Signal('15分钟_D1K_BOLL强弱V221112_空头_强势_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_空头_弱势_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_多头_强势_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_多头_弱势_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_空头_超强_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_空头_极强_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_多头_超强_任意_0')
-    - Signal('15分钟_D1K_BOLL强弱V221112_多头_极强_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_空头_强势_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_空头_弱势_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_空头_超强_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_多头_弱势_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_空头_极强_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_多头_强势_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_多头_超强_任意_0')
+    - Signal('15分钟_D1BOLL20_强弱V221112_多头_极强_任意_0')
 
     :param c: CZSC对象
     :param kwargs: 其他参数
@@ -997,7 +997,7 @@ def tas_boll_power_V221112(c: CZSC, **kwargs):
     di = int(kwargs.get('di', 1))
     timeperiod = int(kwargs.get('timeperiod', 20))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}K_BOLL{timeperiod}强弱V221112".split("_")
+    k1, k2, k3 = f"{freq}_D{di}BOLL{timeperiod}_强弱V221112".split("_")
 
     cache_key = update_boll_cache(c, **kwargs)
     if len(c.bars_raw) < di + 20:
