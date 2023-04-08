@@ -162,7 +162,7 @@ def test_czsc_trader():
             ]),
         ]
 
-        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
+        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试A")
 
         return pos
 
@@ -193,7 +193,7 @@ def test_czsc_trader():
             ]),
         ]
 
-        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
+        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试B")
         return pos
 
     def __create_sma20_pos():
@@ -223,7 +223,7 @@ def test_czsc_trader():
             ]),
         ]
 
-        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100)
+        pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试C")
         return pos
 
     positions = [__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()]
