@@ -63,20 +63,20 @@ for i, freq in enumerate(freqs):
     c = cs.kas[freq]
     df = pd.DataFrame(c.bars_raw)
     df['text'] = "测试"
-    kline = KlineChart(n_rows=3, title='', width="100%")  # ming title=f"{freq} K线" to ''
+    kline = KlineChart(n_rows=3, title='', width="100%", y_fixed_range=False)
     kline.add_kline(df, name="K线")
-    kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True)
-    kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False)
+    kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1)
+    kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1)
     kline.add_vol(df, row=2)
     kline.add_macd(df, row=3)
     if len(c.bi_list) > 0:
         bi = pd.DataFrame(
             [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in c.bi_list] +
             [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx,
-              "text": c.bi_list[-1].fx_b.mark.value}])
+              "text": c.bi_list[-1].fx_b.mark.value[0]}])
         fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in c.fx_list])
         kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.2)
-        kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text='', row=1, line_width=1.2)  # ming text=bi['text'] to ''
+        kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text='', row=1, line_width=1.5)
 
     with tabs[i]:
         st.plotly_chart(kline.fig, use_container_width=True, height=300, config=config)

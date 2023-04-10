@@ -30,10 +30,10 @@ def __cal_td_seq(close: np.array):
         return up
 
     for i in range(4, len(close)):
-        if close[i] > close[i-4]:
+        if close[i] > close[i - 4]:
             u += 1
             d = 0
-        elif close[i] < close[i-4]:
+        elif close[i] < close[i - 4]:
             u = 0
             d -= 1
         else:
@@ -42,12 +42,14 @@ def __cal_td_seq(close: np.array):
         up[i] = u
         dn[i] = d
 
-    res = up+dn
+    res = up + dn
     return np.array(res, dtype=np.int32)
 
 
-def coo_td_V221110(c: CZSC, di: int = 1) -> OrderedDict:
+def coo_td_V221110(c: CZSC, **kwargs) -> OrderedDict:
     """获取倒数第i根K线的TD信号
+
+    参数模板："{freq}_D{di}K_TD"
 
     **信号列表：**
 
@@ -62,6 +64,7 @@ def coo_td_V221110(c: CZSC, di: int = 1) -> OrderedDict:
     :param di: 倒数第di根K线
     :return: s
     """
+    di = int(kwargs.get("di", 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}K_TD".split("_")
 
     if di == 1:

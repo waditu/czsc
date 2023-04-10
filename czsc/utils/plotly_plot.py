@@ -50,7 +50,7 @@ class KlineChart:
                 l=0,  # left margin
                 r=0,  # right margin
                 b=0,  # bottom margin
-                t=0  # top margin
+                t=0   # top margin
             ),
             # https://plotly.com/python/reference/layout/#layout-legend
             legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
@@ -132,7 +132,7 @@ class KlineChart:
         color = kwargs.get('color', None)
         tag = kwargs.get('tag', None)
         scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color,
-                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=0.6,
+                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=1.0,
                              mode='markers', marker=dict(size=10, color=color, symbol=tag))
 
         self.fig.add_trace(scatter, row=row, col=1)
@@ -153,7 +153,7 @@ class KlineChart:
         mode = kwargs.pop('mode', 'text+lines')
         hover_template = kwargs.pop('hover_template', '%{y:.3f}')
         show_legend = kwargs.pop('show_legend', True)
-        opacity = kwargs.pop('opacity', 0.6)
+        opacity = kwargs.pop('opacity', 1.0)
         visible = True if kwargs.pop('visible', True) else 'legendonly'
 
         scatter = go.Scatter(x=x, y=y, name=name, text=text, mode=mode, hovertemplate=hover_template,
