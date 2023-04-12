@@ -191,7 +191,7 @@ class CzscStrategyBase(ABC):
                 if position.operates and position.operates[-1]['dt'] == bar.dt:
                     op = position.operates[-1]
                     _dt = op['dt'].strftime('%Y%m%d#%H%M')
-                    file_name = f"{op['op'].value}_{_dt}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
+                    file_name = f"{_dt}_{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
                     file_html = os.path.join(pos_path, file_name)
                     trader.take_snapshot(file_html)
                     logger.info(f'{file_html}')

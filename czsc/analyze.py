@@ -43,12 +43,7 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
         else:
             raise ValueError
 
-        if k3.open > k3.close:
-            open_ = high
-            close = low
-        else:
-            open_ = low
-            close = high
+        open_, close = (high, low) if k3.open > k3.close else (low, high)
         vol = k2.vol + k3.vol
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
         # 临时解决方案是直接限定len(k2.elements)<=100
@@ -258,14 +253,9 @@ class CZSC:
         else:
             # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
-            if len(self.bars_ubi) >= 3:
-                edt = self.bars_ubi[-2].dt
-                self.bars_ubi = [x for x in self.bars_ubi if x.dt <= edt]
-                last_bars = [x for x in self.bars_raw[-50:] if x.dt > edt]
-            else:
-                last_bars = self.bars_ubi[-1].elements
-                last_bars[-1] = bar
-                self.bars_ubi.pop(-1)
+            last_bars = self.bars_ubi.pop(-1).raw_bars
+            assert bar.dt == last_bars[-1].dt
+            last_bars[-1] = bar
 
         # 去除包含关系
         bars_ubi = self.bars_ubi

@@ -45,7 +45,7 @@ class DummyBacktest:
         # 回测起止时间
         self.sdt = kwargs.get('sdt', '20100101')
         self.edt = kwargs.get('edt', '20230301')
-        self.bars_sdt = pd.to_datetime(self.sdt) - pd.Timedelta(days=365)
+        self.bars_sdt = pd.to_datetime(self.sdt) - pd.Timedelta(days=365*3)
 
     def replay(self, symbol):
         """回放单个品种的交易"""
@@ -67,8 +67,7 @@ class DummyBacktest:
             file_sigs = os.path.join(self.signals_path, f"{symbol}.sigs")
             if not os.path.exists(file_sigs):
                 bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq='后复权')
-                sigs = generate_czsc_signals(bars, signals_config=tactic.signals_config,
-                                             freqs=tactic.freqs, sdt=self.sdt, df=True)
+                sigs = generate_czsc_signals(bars, signals_config=tactic.signals_config, sdt=self.sdt, df=True)
                 sigs.drop(columns=['freq', 'cache'], inplace=True)
                 sigs.to_parquet(file_sigs)
             else:

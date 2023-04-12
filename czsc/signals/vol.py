@@ -6,6 +6,7 @@ create_dt: 2021/8/25 17:43
 describe: 成交量相关信号
 """
 from loguru import logger
+
 try:
     import talib as ta
 except:
@@ -27,14 +28,8 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     :return:
     """
     ma_type_map = {
-        'SMA': ta.MA_Type.SMA,
-        'EMA': ta.MA_Type.EMA,
-        'WMA': ta.MA_Type.WMA,
-        'KAMA': ta.MA_Type.KAMA,
-        'TEMA': ta.MA_Type.TEMA,
-        'DEMA': ta.MA_Type.DEMA,
-        'MAMA': ta.MA_Type.MAMA,
-        'TRIMA': ta.MA_Type.TRIMA,
+        'SMA': ta.MA_Type.SMA, 'EMA': ta.MA_Type.EMA, 'WMA': ta.MA_Type.WMA, 'KAMA': ta.MA_Type.KAMA,
+        'TEMA': ta.MA_Type.TEMA, 'DEMA': ta.MA_Type.DEMA, 'MAMA': ta.MA_Type.MAMA, 'TRIMA': ta.MA_Type.TRIMA,
     }
 
     ma_type = ma_type.upper()
@@ -68,35 +63,38 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
 
 
 def vol_single_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
-    """成交量单均线信号
+    """均线辅助识别第三类买卖点，增加均线形态
 
-    参数模板："{freq}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214"
+       参数模板："{freq}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214"
 
-    **信号逻辑：**
+       **信号逻辑：**
 
-    1. vol > ma，多头；反之，空头
-    2. ma[-1] > ma[-2]，向上；反之，向下
+       1. vol > ma，多头；反之，空头
+       2. ma[-1] > ma[-2]，向上；反之，向下
 
-    **信号列表：**
+       **信号列表：**
 
-    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向上_任意_0')
-    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向下_任意_0')
-    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向上_任意_0')
-    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向下_任意_0')
+       - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向上_任意_0')
+       - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向下_任意_0')
+       - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向上_任意_0')
+       - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向下_任意_0')
 
-    :param c: CZSC对象
-    :param kwargs:
+       **信号说明：**
+
+       :param c: CZSC对象
+       :param kwargs:
         - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
         - timeperiod: 均线计算周期
         - di: 信号计算截止倒数第i根K线
-    :return: 信号识别结果
-    """
-    di = int(kwargs.get("di", 1))
-    ma_type = kwargs.get("ma_type", "SMA").upper()          # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-    timeperiod = int(kwargs.get("timeperiod", 5))           # timeperiod: 均线计算周期
-    cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
+       :return: 信号识别结果
+       """
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}{cache_key}_分类V230214".split('_')
+    di = int(kwargs.get("di", 1))
+    ma_type = kwargs.get("ma_type", "SMA").upper()  # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+    timeperiod = int(kwargs.get("timeperiod", 5))  # timeperiod: 均线计算周期
+    k1, k2, k3 = f"{c.freq.value}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214".split('_')
+
+    cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "多头" if bars[-1].vol >= bars[-1].cache[cache_key] else "空头"
     v2 = "向上" if bars[-1].cache[cache_key] >= bars[-2].cache[cache_key] else "向下"
@@ -117,6 +115,8 @@ def vol_double_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
 
     - Signal('15分钟_D1VOL双均线SMA#5#20_BS辅助V230214_看空_任意_任意_0')
     - Signal('15分钟_D1VOL双均线SMA#5#20_BS辅助V230214_看多_任意_任意_0')
+
+    **信号说明：**
 
     :param c: CZSC对象
     :param kwargs:
@@ -145,7 +145,7 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
 
     参数模板："{freq}_D{di}K_量柱V221216"
 
-    **信号判断标准 **
+    **信号逻辑：**
 
     1.只要比昨缩量的就能形成“缩量柱”，只要比昨日增高的就能形成“梯量柱”。严格地讲，
     连续三天缩量就是“缩量柱”，连续三天增量“阶梯状”就是梯量柱，它是当日量能连续同前二天的量相比。
@@ -153,7 +153,7 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     3.“价升量缩” 的 “缩量柱”，体现了供不应求的局面，主力有主动买入的倾向；
     4.“量增价涨” 的 “梯量柱”，体现了努力上攻的态势，主力有被动买入的倾向。
 
-    **有效信号列表： **
+    **信号列表：**
 
     - Signal('15分钟_D1K_量柱V221216_梯量_价平_任意_0')
     - Signal('15分钟_D1K_量柱V221216_梯量_价跌_任意_0')
@@ -161,6 +161,8 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     - Signal('15分钟_D1K_量柱V221216_缩量_价跌_任意_0')
     - Signal('15分钟_D1K_量柱V221216_梯量_价升_任意_0')
     - Signal('15分钟_D1K_量柱V221216_缩量_价升_任意_0')
+
+    **信号说明：**
 
     :param c: CZSC 对象
     :param kwargs:
@@ -173,7 +175,7 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     if len(c.bars_raw) < di + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bar1, bar2, bar3 = c.bars_raw[-di], c.bars_raw[-di-1], c.bars_raw[-di-2]
+    bar1, bar2, bar3 = c.bars_raw[-di], c.bars_raw[-di - 1], c.bars_raw[-di - 2]
     close_max = max(bar2.close, bar3.close)
     close_min = min(bar2.close, bar3.close)
 
@@ -210,7 +212,7 @@ def vol_gao_di_V221218(c: CZSC, **kwargs) -> OrderedDict:
     6.低量柱出现后，不跌或横盘应看跌。
     7.操作中还需要根据所处位置作判断
 
-    **有效信号列表： **
+    **信号列表：**
 
     - Signal('15分钟_D1K_量柱V221218_低量柱_7K_任意_0')
     - Signal('15分钟_D1K_量柱V221218_低量柱_10K_任意_0')

@@ -21,6 +21,8 @@ from czsc.signals.tas import update_ma_cache
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     """分钟 K 线结束
 
+    参数模板："{freq}_K线_结束"
+
     **信号列表：**
 
     - Signal('60分钟_K线_结束_否_任意_任意_0')
@@ -40,24 +42,26 @@ def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
-def bar_operate_span_V221111(c: CZSC, k1: str = '开多', span=("1400", "1450")) -> OrderedDict:
+def bar_operate_span_V221111(c: CZSC, **kwargs) -> OrderedDict:
     """日内操作时间区间，c 必须是
+
+    参数模板："{freq}_T{t1}#{t2}_时间区间"
 
     **信号列表：**
 
-    - Signal('开多_1400_1450_否_任意_任意_0')
-    - Signal('开多_1400_1450_是_任意_任意_0')
+    - Signal('15分钟_T0935#1450_时间区间_是_任意_任意_0')
+    - Signal('15分钟_T0935#1450_时间区间_否_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
-    :param k1: 操作名称
-    :param span: 时间范围，格式是 ("%H%M", "%H%M")
     :return: s
     """
-    assert len(span) == 2
-    k2, k3 = span
+    t1 = kwargs.get("t1", "0935")
+    t2 = kwargs.get("t2", "1450")
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_T{t1}#{t2}_时间区间".split("_")
 
     dt: datetime = c.bars_raw[-1].dt
-    v = "是" if k2 <= dt.strftime("%H%M") <= k3 else "否"
+    v = "是" if t1 <= dt.strftime("%H%M") <= t2 else "否"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
@@ -96,123 +100,6 @@ def bar_zdt_V230331(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
-def bar_zdt_V221110(c: CZSC, di=1) -> OrderedDict:
-    """计算倒数第di根K线的涨跌停信息
-
-    对于A股，任何K线，只要收盘价是最高价，那就不能买，只要收盘价是最低价，就不能卖。
-
-    **信号逻辑：**
-
-    close等于high，近似认为是涨停；反之，跌停。
-
-    **信号列表：**
-
-    - Signal('15分钟_D2K_ZDT_跌停_任意_任意_0')
-    - Signal('15分钟_D2K_ZDT_涨停_任意_任意_0')
-
-    :param c: 基础周期的 CZSC 对象
-    :param di: 倒数第 di 根 K 线
-    :return: s
-    """
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_ZDT".split("_")
-
-    if len(c.bars_raw) < di + 2:
-        v1 = "其他"
-    else:
-        b1 = c.bars_raw[-di]
-
-        if b1.close == b1.high:
-            v1 = "涨停"
-        elif b1.close == b1.low:
-            v1 = "跌停"
-        else:
-            v1 = "其他"
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
-@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
-def bar_zdt_V230313(c: CZSC, di=1, **kwargs) -> OrderedDict:
-    """计算倒数第di根K线的涨跌停信息
-
-    **信号逻辑：**
-
-    - close等于high大于等于前一根K线的close，近似认为是涨停；反之，跌停。
-
-    **信号列表：**
-
-    - Signal('15分钟_D1涨跌停_V230313_跌停_任意_任意_0')
-    - Signal('15分钟_D1涨跌停_V230313_涨停_任意_任意_0')
-
-    :param c: 基础周期的 CZSC 对象
-    :param di: 倒数第 di 根 K 线
-    :return: s
-    """
-    k1, k2, k3, v1 = c.freq.value, f"D{di}涨跌停", "V230313", "其他"
-    if len(c.bars_raw) < di + 2:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    b1, b2 = c.bars_raw[-di], c.bars_raw[-di - 1]
-    if b1.close == b1.high >= b2.close:
-        v1 = "涨停"
-    elif b1.close == b1.low <= b2.close:
-        v1 = "跌停"
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
-@deprecated(version="0.9.16", reason="这个信号函数不符合规范；请使用 bar_zdt_V230331")
-def bar_zdt_V221111(cat: CzscSignals, freq: str, di: int = 1) -> OrderedDict:
-    """更精确地倒数第1根K线的涨跌停计算
-
-    **信号逻辑：**
-
-    close等于high，且相比昨天收盘价涨幅大于9%，就是涨停；反之，跌停。
-
-    **信号列表：**
-
-    - Signal('15分钟_D2K_涨跌停_跌停_任意_任意_0')
-    - Signal('15分钟_D2K_涨跌停_涨停_任意_任意_0')
-
-    :param cat: CzscSignals
-    :param freq: K线周期
-    :param di: 计算截止倒数第 di 根 K 线
-    :return: s
-    """
-    cache_key = f"{freq}_D{di}K_ZDT"
-    zdt_cache = cat.cache.get(cache_key, {})
-    bars = get_sub_elements(cat.kas[freq].bars_raw, di=di, n=300)
-    last_bar = bars[-1]
-    today = last_bar.dt.date()
-
-    if not zdt_cache:
-        yesterday_last = [x for x in bars if x.dt.date() != today][-1]
-        zdt_cache['昨日'] = yesterday_last.dt.date()
-        zdt_cache['昨收'] = yesterday_last.close
-
-    else:
-        if today != zdt_cache['今日']:
-            # 新的一天，全部刷新
-            zdt_cache['昨日'] = zdt_cache['今日']
-            zdt_cache['昨收'] = zdt_cache['今收']
-
-    zdt_cache['今日'] = last_bar.dt.date()
-    zdt_cache['今收'] = last_bar.close
-    zdt_cache['update_dt'] = last_bar.dt
-    cat.cache[cache_key] = zdt_cache
-
-    k1, k2, k3 = freq, f"D{di}K", "涨跌停"
-    if last_bar.close == last_bar.high > zdt_cache['昨收'] * 1.09:
-        v1 = "涨停"
-    elif last_bar.close == last_bar.low < zdt_cache['昨收'] * 0.91:
-        v1 = "跌停"
-    else:
-        v1 = "其他"
-
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
 def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 i 根 K 线的成交量相比于前 N 根 K 线放量
 
@@ -241,7 +128,7 @@ def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
     if len(c.bars_raw) < di + n + 10:
         v1 = "其他"
     else:
-        bars = get_sub_elements(c.bars_raw, di=di, n=n+1)
+        bars = get_sub_elements(c.bars_raw, di=di, n=n + 1)
         assert len(bars) == n + 1
 
         mean_vol = sum([x.vol for x in bars[:-1]]) / n
@@ -250,9 +137,10 @@ def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma_type='SMA', timeperiod=233, **kwargs) -> OrderedDict:
+def bar_fang_liang_break_V221216(c: CZSC, **kwargs) -> OrderedDict:
     """放量向上突破并回踩指定均线，贡献者：琅盎
 
+    参数模板："{freq}_D{di}TH{th}#{ma_type}#{timeperiod}_突破V221216"
     **信号逻辑：**
 
     1. 放量突破
@@ -260,7 +148,7 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma_type='SMA', ti
 
     **信号列表：**
 
-    - Signal('日线_D1TH300_突破SMA233_放量突破_缩量回踩_任意_0')
+    - Signal('15分钟_D1TH300#SMA#233_突破V221216_放量突破_缩量回踩_任意_0')
 
     :param c: CZSC对象
     :param di: 信号计算截止倒数第i根K线
@@ -269,8 +157,14 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma_type='SMA', ti
     :param th: 当前最低价同指定均线的距离阈值，单位 BP
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type, timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_突破{f'{ma_type.upper()}{timeperiod}'}".split('_')
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 300))
+    ma_type = kwargs.get("ma_type", "SMA").upper()
+    timeperiod = int(kwargs.get("timeperiod", 233))
+
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}#{ma_type}#{timeperiod}_突破V221216".split('_')
+
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
 
     def _vol_fang_liang_break(bars: List[RawBar]):
         if len(bars) <= 4:
@@ -300,8 +194,10 @@ def bar_fang_liang_break_V221216(c: CZSC, di: int = 1, th=300, ma_type='SMA', ti
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2: int = 4) -> OrderedDict:
+def bar_mean_amount_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """截取一段时间内的平均成交金额分类信号
+
+    参数模板："{freq}_D{di}K{n}B均额_{th1}至{th2}千万"
 
     **信号逻辑: **
 
@@ -319,6 +215,11 @@ def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2
     :param th2: 成交金额上限，单位：千万
     :return: s
     """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 10))
+    th1 = int(kwargs.get("th1", 1))
+    th2 = int(kwargs.get("th2", 4))
+
     k1, k2, k3 = str(c.freq.value), f"D{di}K{n}B均额", f"{th1}至{th2}千万"
 
     v1 = "其他"
@@ -339,8 +240,10 @@ def bar_mean_amount_V221112(c: CZSC, di: int = 1, n: int = 10, th1: int = 1, th2
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_cross_ps_V221112(c: CZSC, di=1, num=3):
+def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 di 根 K 线穿越支撑、压力位的数量【慎用，非常耗时】
+
+    参数模板："{freq}_D{di}K_N{num}"
 
     **信号逻辑：**
 
@@ -357,6 +260,9 @@ def bar_cross_ps_V221112(c: CZSC, di=1, num=3):
     :param num: 阈值
     :return: s
     """
+    di = int(kwargs.get("di", 1))
+    num = int(kwargs.get("num", 3))
+
     k1, k2, k3 = str(c.freq.value), f"D{di}K", f"N{num}"
 
     if len(c.bars_raw) < 300 + di:
@@ -390,8 +296,10 @@ def bar_cross_ps_V221112(c: CZSC, di=1, num=3):
     return s
 
 
-def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 100) -> OrderedDict:
+def bar_section_momentum_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """获取某个区间（固定K线数量）的动量强弱
+
+    参数模板："{freq}_D{di}K{n}B_阈值{th}BP"
 
     **信号列表：**
 
@@ -410,6 +318,10 @@ def bar_section_momentum_V221112(c: CZSC, di: int = 1, n: int = 10, th: int = 10
     :param th: 动量强弱划分的阈值，单位 BP
     :return: s
     """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 10))
+    th = int(kwargs.get("th", 100))
+
     k1, k2, k3 = f"{c.freq.value}_D{di}K{n}B_阈值{th}BP".split('_')
 
     if len(c.bars_raw) < di + n:
@@ -474,8 +386,10 @@ def bar_accelerate_V221110(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA', timeperiod=10, **kwargs) -> OrderedDict:
+def bar_accelerate_V221118(c: CZSC, **kwargs) -> OrderedDict:
     """辨别加速走势
+
+    参数模板："{freq}_D{di}W{window}#{ma_type}#{timeperiod}_加速V221118"
 
     **信号逻辑：**
 
@@ -483,8 +397,8 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA'
 
     **信号列表：**
 
-    - Signal('日线_D1W13SMA10_加速V221118_上涨_任意_任意_0')
-    - Signal('日线_D1W13SMA10_加速V221118_下跌_任意_任意_0')
+    - Signal('日线_D1W13#SMA#10_加速V221118_上涨_任意_任意_0')
+    - Signal('日线_D1W13#SMA#10_加速V221118_下跌_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 取近n根K线为截止
@@ -493,10 +407,15 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA'
     :param window: 识别加速走势的窗口大小
     :return: 信号识别结果
     """
-    cache_key = update_ma_cache(c, ma_type, timeperiod)
-    assert window > 3, "辨别加速，至少需要3根以上K线"
-    k1, k2, k3 = c.freq.value, f"D{di}W{window}{cache_key}", f"加速V221118"
+    di = int(kwargs.get("di", 1))
+    window = int(kwargs.get("window", 13))
+    ma_type = kwargs.get("ma_type", "SMA").upper()
+    timeperiod = int(kwargs.get("timeperiod", 10))
 
+    assert window > 3, "辨别加速，至少需要3根以上K线"
+    k1, k2, k3 = c.freq.value, f"D{di}W{window}#{ma_type}#{timeperiod}", f"加速V221118"
+
+    cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
     delta = [x.close - x.cache[cache_key] for x in bars]
 
@@ -510,8 +429,10 @@ def bar_accelerate_V221118(c: CZSC, di: int = 1, window: int = 13, ma_type='SMA'
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> OrderedDict:
+def bar_zdf_V221203(c: CZSC, **kwargs) -> OrderedDict:
     """单根K线的涨跌幅区间
+
+    参数模板："{freq}_D{di}{mode}_{t1}至{t2}"
 
     **信号列表：**
 
@@ -524,6 +445,9 @@ def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> Ordered
     :param span: 区间大小
     :return: 信号识别结果
     """
+    di = int(kwargs.get("di", 1))
+    mode = kwargs.get("mode", "ZF").upper()
+    span = kwargs.get("span", (300, 600))
     t1, t2 = span
     assert t2 > t1 > 0
 
@@ -539,8 +463,10 @@ def bar_zdf_V221203(c: CZSC, di: int = 1, mode='ZF', span=(300, 600)) -> Ordered
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def bar_fake_break_V230204(c: CZSC, **kwargs) -> OrderedDict:
     """假突破
+
+    参数模板："{freq}_D{di}N{n}M{m}_假突破"
 
     **信号描述：**
 
@@ -556,8 +482,9 @@ def bar_fake_break_V230204(c: CZSC, di=1, **kwargs) -> OrderedDict:
     :param di: 从最新的第几个 bar 开始计算
     :return: 信号字典
     """
-    n = kwargs.get('n', 20)
-    m = kwargs.get('m', 5)
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 20))
+    m = int(kwargs.get('m', 5))
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
 
     v1 = '其他'
@@ -659,8 +586,10 @@ def bar_single_V230214(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
+def bar_amount_acc_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """N根K线总成交额
+
+    参数模板："{freq}_D{di}N{n}_累计超{t}千万"
 
     **信号描述：**
 
@@ -677,6 +606,8 @@ def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
         t: 总成交额阈值
     :return: 信号识别结果
     """
+    di = int(kwargs.get('di', 2))
+    n = int(kwargs.get('n', 5))
     t = int(kwargs.get('t', 10))
     k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}N{n}", f"累计超{t}千万", "其他"
     if len(c.bars_raw) <= di + n + 5:
@@ -688,8 +619,10 @@ def bar_amount_acc_V230214(c: CZSC, di=2, n=5, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
+def bar_big_solid_V230215(c: CZSC, **kwargs):
     """窗口内最大实体K线的中间价区分多空
+
+    参数模板："{freq}_D{di}N{n}_MID"
 
     **信号逻辑：**
 
@@ -707,6 +640,9 @@ def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     :param n: 窗口大小
     :return: 信号字典
     """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 20))
+
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}_MID".split('_')
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
 
@@ -720,8 +656,10 @@ def bar_big_solid_V230215(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_vol_bs1_V230224(c: CZSC, di: int = 1, n: int = 20, **kwargs):
+def bar_vol_bs1_V230224(c: CZSC, **kwargs):
     """量价配合的高低点判断
+
+    参数模板："{freq}_D{di}N{n}量价_BS1辅助"
 
     **信号逻辑：**
 
@@ -738,6 +676,9 @@ def bar_vol_bs1_V230224(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     :param n: 窗口大小
     :return: 信号字典
     """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 20))
+
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}量价_BS1辅助".split('_')
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     mean_vol = np.mean([x.amount for x in _bars])
@@ -758,8 +699,10 @@ def bar_vol_bs1_V230224(c: CZSC, di: int = 1, n: int = 20, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def bar_reversal_V230227(c: CZSC, di=1, avg_bp: int = 300, **kwargs) -> OrderedDict:
+def bar_reversal_V230227(c: CZSC, **kwargs) -> OrderedDict:
     """判断最近一根K线是否具有反转迹象
+
+    参数模板："{freq}_D{di}A{avg_bp}_反转V230227"
 
     **信号逻辑：**
 
@@ -768,14 +711,17 @@ def bar_reversal_V230227(c: CZSC, di=1, avg_bp: int = 300, **kwargs) -> OrderedD
 
     **信号列表：**
 
-    - Signal('日线_D2A100_反转V230227_看多_任意_任意_0')
-    - Signal('日线_D2A100_反转V230227_看空_任意_任意_0')
+    - Signal('15分钟_D1A300_反转V230227_看多_任意_任意_0')
+    - Signal('15分钟_D1A300_反转V230227_看空_任意_任意_0')
 
     :param c: CZSC对象
     :param di: 倒数第几根K线
     :param avg_bp: 平均单根K线的涨跌幅，用于判断是否是反转
     :return:
     """
+    di = int(kwargs.get('di', 1))
+    avg_bp = int(kwargs.get('avg_bp', 300))
+
     k1, k2, k3 = str(c.freq.value), f"D{di}A{avg_bp}", "反转V230227"
     v1 = "其他"
     _bars = get_sub_elements(c.bars_raw, di=di, n=14)

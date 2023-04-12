@@ -316,10 +316,13 @@ class CzscTrader(CzscSignals):
 
             对于传入回调函数的情况，输入是 self.positions
         """
-        super().__init__(bg, **kwargs)
         self.positions = positions
+        if self.positions:
+            _pos_names = [x.name for x in self.positions]
+            assert len(_pos_names) == len(set(_pos_names)), "仓位策略名称不能重复"
         self.__ensemble_method = ensemble_method
         self.name = "CzscTrader"
+        super().__init__(bg, **kwargs)
 
     def __repr__(self):
         return "<{} for {}>".format(self.name, self.symbol)

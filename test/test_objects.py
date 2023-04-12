@@ -14,7 +14,7 @@ def test_raw_bar():
     key = "SMA5"
 
     # 技术指标的全部更新
-    for i in range(1, len(bars)+1):
+    for i in range(1, len(bars) + 1):
         c = dict(bars[-i].cache) if bars[-i].cache else dict()
         c.update({key: ma[-i]})
         bars[-i].cache = c
@@ -156,6 +156,21 @@ def test_event():
     m, f = new_event.is_match(s)
     assert m and f
 
+    raw1 = {'name': '单测',
+            'operate': '开多',
+            'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
+            'factors': [{'name': '测试', 'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0']}]}
+    new_event = Event.load(raw1)
+    m, f = new_event.is_match(s)
+    assert m and f
+
+    raw1 = {'operate': '开多',
+            'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
+            'factors': [{'name': '测试', 'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0']}]}
+    new_event = Event.load(raw1)
+    m, f = new_event.is_match(s)
+    assert m and f
+
     event = Event(name="单测", operate=Operate.LO,
                   factors=[
                       Factor(name="测试", signals_all=[
@@ -223,4 +238,3 @@ def test_event():
     ])
     m, f = event.is_match(s)
     assert not m and not f
-

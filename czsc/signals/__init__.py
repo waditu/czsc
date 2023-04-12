@@ -78,11 +78,6 @@ from czsc.signals.bar import (
     bar_time_V230327,
     bar_weekday_V230328,
     bar_r_breaker_V230326,
-
-    # 以下是旧版本的信号函数，不再维护，仅供参考，不要使用
-    bar_zdt_V221110,
-    bar_zdt_V221111,
-    bar_zdt_V230313,
 )
 
 from czsc.signals.jcc import (
@@ -143,7 +138,7 @@ from czsc.signals.tas import (
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
 
-    tas_double_rsi_V221203,
+    # tas_double_rsi_V221203,
     tas_rsi_base_V230227,
 
     tas_first_bs_V230217,
@@ -151,7 +146,6 @@ from czsc.signals.tas import (
     tas_second_bs_V230303,
 
     tas_hlma_V230301,
-    tas_hlma_V230304,
 )
 
 
