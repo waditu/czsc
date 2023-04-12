@@ -1787,3 +1787,151 @@ def tas_macd_base_V230320(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
+def update_cci_cache(c: CZSC, **kwargs):
+    """更新CCI缓存
+
+    CCI = (TP - MA) / MD / 0.015; 其中，
+
+    - TP=(最高价+最低价+收盘价)÷3;
+    - MA=最近N日收盘价的累计之和÷N;
+    - MD=最近N日（MA－收盘价）的累计之和÷N;
+    - 0.015为计算系数，N为计算周期
+
+    :param c: CZSC对象
+    :return:
+    """
+    timeperiod = int(kwargs.get('timeperiod', 14))
+    cache_key = f"CCI{timeperiod}"
+    if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
+        # 如果最后一根K线已经有对应的缓存，不执行更新
+        return cache_key
+
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
+    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+        # 初始化缓存
+        bars = c.bars_raw
+    else:
+        # 增量更新最近5个K线缓存
+        bars = c.bars_raw[-timeperiod - 10:]
+
+    high = np.array([x.high for x in bars])
+    low = np.array([x.low for x in bars])
+    close = np.array([x.close for x in bars])
+    cci = ta.CCI(high, low, close, timeperiod=timeperiod)
+
+    for i in range(len(bars)):
+        _c = dict(bars[i].cache) if bars[i].cache else dict()
+        if cache_key not in _c.keys():
+            _c.update({cache_key: cci[i] if cci[i] else 0})
+            bars[i].cache = _c
+
+    return cache_key
+
+
+def tas_cci_base_V230402(c: CZSC, **kwargs) -> OrderedDict:
+    """CCI基础信号
+
+    参数模板："{freq}_D{di}CCI{timeperiod}#{min_count}#{max_count}_BS辅助V230402"
+
+    **信号逻辑：**
+
+     1. CCI连续大于100的次数大于 min_count, 小于max_count，看空；反之，看多。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1CCI14#3#6_BS辅助V230402_空头_任意_任意_0')
+    - Signal('60分钟_D1CCI14#3#6_BS辅助V230402_多头_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - di: int, 默认1，倒数第几根K线
+        - timeperiod: int, 默认14，计算CCI的周期
+        - min_count: int, 默认3，CCI连续大于100的次数
+        - max_count: int, 默认min_count+3，CCI连续大于100的次数
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get('di', 1))
+    timeperiod = int(kwargs.get('timeperiod', 14))
+    min_count = int(kwargs.get('min_count', 3))
+    max_count = int(kwargs.get('max_count', min_count + 3))
+    assert min_count < max_count, "min_count 必须小于 max_count"
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}CCI{timeperiod}#{min_count}#{max_count}_BS辅助V230402".split("_")
+    v1 = "其他"
+
+    cache_key = update_cci_cache(c, timeperiod=timeperiod)
+    bars = get_sub_elements(c.bars_raw, di=di, n=max_count + 1)
+    if len(bars) != max_count + 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    cci = [x.cache[cache_key] for x in bars]
+
+    long = [x > 100 for x in cci]
+    short = [x < -100 for x in cci]
+    lc = count_last_same(long) if long[-1] else 0
+    sc = count_last_same(short) if short[-1] else 0
+
+    if max_count > lc >= min_count:
+        v1 = "多头"
+    if max_count > sc >= min_count:
+        v1 = "空头"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_kdj_evc_V230401(c: CZSC, **kwargs) -> OrderedDict:
+    """KDJ极值计数信号, evc 是 extreme value counts 的首字母缩写
+
+    参数模板："{freq}_D{di}T{th}KDJ{fastk_period}#{slowk_period}#{slowd_period}#{key}值突破{min_count}#{max_count}_BS辅助V230401"
+
+    **信号逻辑：**
+
+     1. K < th，记录一次多头信号，连续出现信号次数在 count_range 范围，则认为是有效多头信号；
+     2. K > 100 - th, 记录一次空头信号，连续出现信号次数在 count_range 范围，则认为是有效空头信号
+
+    **信号列表：**
+
+    - Signal('60分钟_D1T10KDJ9#3#3#K值突破5#8_BS辅助V230401_空头_任意_任意_0')
+    - Signal('60分钟_D1T10KDJ9#3#3#K值突破5#8_BS辅助V230401_多头_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - di: 信号计算截止倒数第i根K线
+        - key: KDJ 值的名称，可以是 K， D， J
+        - th: 信号计算截止倒数第i根K线
+        - min_count: 连续出现信号次数的最小值
+        - max_count: 连续出现信号次数的最大值
+    :return:
+    """
+    di = int(kwargs.get("di", 1))
+    key = kwargs.get("key", "K")
+    th = int(kwargs.get("th", 10))
+    min_count = int(kwargs.get("min_count", 5))
+    max_count = int(kwargs.get("max_count", min_count + 3))
+    freq = c.freq.value
+    key = key.upper()
+    assert min_count < max_count, "min_count 必须小于 max_count"
+    assert key in ['K', 'D', 'J'], "key 必须是 K， D， J 中的一个"
+    assert 0 < th < 100, "th 必须在 0 到 100 之间"
+    cache_key = update_kdj_cache(c, **kwargs)
+
+    k1, k2, k3 = f"{freq}_D{di}T{th}{cache_key}#{key}值突破{min_count}#{max_count}_BS辅助V230401".split(
+        '_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + max_count + 2:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=3 + max_count)
+    key = key.lower()
+    long = [x.cache[cache_key][key] < th for x in bars]
+    short = [x.cache[cache_key][key] > 100 - th for x in bars]
+    lc = count_last_same(long) if long[-1] else 0
+    sc = count_last_same(short) if short[-1] else 0
+
+    if max_count > lc >= min_count:
+        v1 = "多头"
+
+    if max_count > sc >= min_count:
+        assert v1 == '其他'
+        v1 = "空头"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
