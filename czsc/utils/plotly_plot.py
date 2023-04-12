@@ -38,10 +38,13 @@ class KlineChart:
         self.color_green = 'rgba(0,170,59,0.7)'
         fig = make_subplots(rows=self.n_rows, cols=1, shared_xaxes=True, row_heights=row_heights,
                             horizontal_spacing=0, vertical_spacing=0)
+
         fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True,
-                               fixedrange=kwargs.get('y_fixed_range', True))
+                               fixedrange=kwargs.get('y_fixed_range', True),
+                               showspikes=True, spikemode='across', spikesnap='cursor', showline=False, spikedash='dot')
         fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
-                               showticklabels=False)
+                               showticklabels=False, showspikes=True, spikemode='across', spikesnap='cursor',
+                               showline=False, spikedash='dot')
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
@@ -56,11 +59,12 @@ class KlineChart:
             legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
             template="plotly_dark",
             hovermode="x unified",
-            hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)'),  # 透明，更容易看清后面k线
+            hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)', font=dict(size=20)),  # 透明，更容易看清后面k线
             dragmode='pan',
             legend_title_font_color="red",
             height=kwargs.get('height', 300),
         )
+
         self.fig = fig
 
     def add_kline(self, kline: pd.DataFrame, name: str = "K线", **kwargs):
