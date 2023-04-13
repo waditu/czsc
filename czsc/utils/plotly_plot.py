@@ -25,14 +25,11 @@ class KlineChart:
     def __init__(self, n_rows=3, **kwargs):
         # 子图数量
         self.n_rows = n_rows
-        if self.n_rows == 3:
-            row_heights = [0.6, 0.2, 0.2]
-        elif self.n_rows == 4:
-            row_heights = [0.55, 0.15, 0.15, 0.15]
-        elif self.n_rows == 5:
-            row_heights = [0.4, 0.15, 0.15, 0.15, 0.15]
-        else:
-            raise ValueError("n_rows 只能是 3, 4, 5")
+        row_heights = kwargs.get("row_heights", None)
+        if not row_heights:
+            heights_map = {3: [0.6, 0.2, 0.2], 4: [0.55, 0.15, 0.15, 0.15], 5: [0.4, 0.15, 0.15, 0.15, 0.15]}
+            assert self.n_rows in heights_map.keys(), "使用内置高度配置，n_rows 只能是 3, 4, 5"
+            row_heights = heights_map[self.n_rows]
 
         self.color_red = 'rgba(249,41,62,0.7)'
         self.color_green = 'rgba(0,170,59,0.7)'
