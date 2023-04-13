@@ -271,7 +271,7 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
             html_path = os.path.join(home_path, signal.key)
             os.makedirs(html_path, exist_ok=True)
             if bar.dt - last_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(ct.s):
-                file_html = f"{bar.symbol}_{signal.key}_{ct.s[signal.key]}_{bar.dt.strftime('%Y%m%d_%H%M')}.html"
+                file_html = f"{bar.dt.strftime('%Y%m%d_%H%M')}_{signal.key}_{ct.s[signal.key]}.html"
                 file_html = os.path.join(html_path, file_html)
                 print(file_html)
                 ct.take_snapshot(file_html)
@@ -286,7 +286,6 @@ def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs)
     :param kwargs:
     :return:
     """
-    base_freq = str(bars[-1].freq.value)
     assert bars[2].dt > bars[1].dt > bars[0].dt and bars[2].id > bars[1].id, "bars 中的K线元素必须按时间升序"
     if len(bars) < 600:
         return []
