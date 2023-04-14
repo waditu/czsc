@@ -380,6 +380,32 @@ class CZSC:
             return check_fxs(self.bars_ubi)
 
     @property
+    def ubi(self):
+        """Unfinished Bi，未完成的笔"""
+        if not self.bars_ubi or not self.bi_list:
+            return None
+
+        bars_raw = [y for x in self.bars_ubi for y in x.raw_bars]
+        # 获取最高点和最低点，以及对应的时间
+        high_bar = max(bars_raw, key=lambda x: x.high)
+        low_bar = min(bars_raw, key=lambda x: x.low)
+        direction = Direction.Up if self.bi_list[-1].direction == Direction.Down else Direction.Down
+
+        bi = {
+            "symbol": self.symbol,
+            "direction": direction,
+            "high": high_bar.high,
+            "low": low_bar.low,
+            "high_bar": high_bar,
+            "low_bar": low_bar,
+            "bars": self.bars_ubi,
+            "raw_bars": bars_raw,
+            "fxs": self.ubi_fxs,
+            "fx_a": self.ubi_fxs[0],
+        }
+        return bi
+
+    @property
     def fx_list(self) -> List[FX]:
         """分型列表，包括 bars_ubi 中的分型"""
         fxs = []
