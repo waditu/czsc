@@ -13,6 +13,7 @@ import shutil
 import pandas as pd
 from tqdm import tqdm
 from copy import deepcopy
+from datetime import timedelta
 from abc import ABC, abstractmethod
 from loguru import logger
 from czsc import signals
@@ -203,6 +204,72 @@ class CzscStrategyBase(ABC):
         except Exception as e:
             logger.error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
         return trader
+
+    def check(self, bars: List[RawBar], res_path, **kwargs):
+        """检查交易策略中的信号是否正确
+
+        :param bars: 基础周期K线
+        :param res_path: 结果目录
+        :param kwargs:
+            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt  初始化开始日期
+            n    初始化最小K线数量
+        :return:
+        """
+        if kwargs.get('refresh', False):
+            shutil.rmtree(res_path, ignore_errors=True)
+
+        exist_ok = kwargs.get("exist_ok", False)
+        if os.path.exists(res_path) and not exist_ok:
+            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            return
+        os.makedirs(res_path, exist_ok=exist_ok)
+
+        # 第一遍执行，获取信号
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
+                            signals_config=deepcopy(self.signals_config), **kwargs)
+
+        _signals = []
+        for bar in bars2:
+            trader.on_bar(bar)
+            _signals.append(trader.s)
+
+        df = pd.DataFrame(_signals)
+        df.to_excel(os.path.join(res_path, "signals.xlsx"), index=False)
+        unique_signals = {}
+        for col in [x for x in df.columns if len(x.split("_")) == 3]:
+            unique_signals[col] = [Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v]
+
+        print(f"signals: {'+' * 100}")
+        for key, values in unique_signals.items():
+            print(f"\n\n{key}:")
+            for value in values:
+                print(f"- {value}")
+
+        # 第二遍执行，检查信号，生成html
+        bg, bars2 = self.init_bar_generator(bars, **kwargs)
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
+                            signals_config=deepcopy(self.signals_config), **kwargs)
+
+        # 记录每个信号最后一次出现的时间
+        last_sig_dt = {y.key: trader.end_dt for x in unique_signals.values() for y in x}
+        delta_days = kwargs.get("delta_days", 1)
+
+        for bar in bars2:
+            trader.on_bar(bar)
+
+            for key, values in unique_signals.items():
+                html_path = os.path.join(res_path, key)
+                os.makedirs(html_path, exist_ok=True)
+
+                for signal in values:
+                    if bar.dt - last_sig_dt[signal.key] > timedelta(days=delta_days) and signal.is_match(trader.s):
+                        file_html = f"{bar.dt.strftime('%Y%m%d_%H%M')}_{signal.signal}.html"
+                        file_html = os.path.join(html_path, file_html)
+                        print(file_html)
+                        trader.take_snapshot(file_html, height=kwargs.get("height", "680px"))
+                        last_sig_dt[signal.key] = bar.dt
 
 
 class CzscStrategyExample2(CzscStrategyBase):
