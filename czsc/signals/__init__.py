@@ -78,6 +78,7 @@ from czsc.signals.bar import (
     bar_time_V230327,
     bar_weekday_V230328,
     bar_r_breaker_V230326,
+    bar_dual_thrust_V230403,
 )
 
 from czsc.signals.jcc import (
