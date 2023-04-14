@@ -152,4 +152,6 @@ from czsc.signals.tas import (
     tas_kdj_evc_V230401
 )
 
-
+from czsc.signals.pos import (
+    pos_fx_stop_V230414,
+)
