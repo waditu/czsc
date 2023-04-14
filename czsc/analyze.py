@@ -153,8 +153,8 @@ def check_bi(bars: List[NewBar], benchmark: float = None):
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
 
-        low_ubi = min([x.low for x in bars_b])
-        high_ubi = max([x.high for x in bars_b])
+        low_ubi = min([x.low for y in bars_b for x in y.raw_bars])
+        high_ubi = max([x.high for y in bars_b for x in y.raw_bars])
         if (bi.direction == Direction.Up and high_ubi > bi.high) \
                 or (bi.direction == Direction.Down and low_ubi < bi.low):
             return None, bars
@@ -413,6 +413,6 @@ class CZSC:
             fxs.extend(bi_.fxs[1:])
         ubi = self.ubi_fxs
         for x in ubi:
-            if not fxs or x.dt > fxs[-1].dt:
+            if not fxs or x.dt > fxs[-1].raw_bars[-1].dt:
                 fxs.append(x)
         return fxs

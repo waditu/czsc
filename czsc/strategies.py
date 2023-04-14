@@ -235,17 +235,21 @@ class CzscStrategyBase(ABC):
             trader.on_bar(bar)
             _signals.append(trader.s)
 
+        for position in trader.positions:
+            print(f"{position.name}: {position.evaluate()}")
+
         df = pd.DataFrame(_signals)
         df.to_excel(os.path.join(res_path, "signals.xlsx"), index=False)
         unique_signals = {}
         for col in [x for x in df.columns if len(x.split("_")) == 3]:
             unique_signals[col] = [Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v]
 
-        print(f"signals: {'+' * 100}")
+        print('\n', "+" * 100)
         for key, values in unique_signals.items():
-            print(f"\n\n{key}:")
+            print(f"\n{key}:")
             for value in values:
                 print(f"- {value}")
+        print('\n', "+" * 100)
 
         # 第二遍执行，检查信号，生成html
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
