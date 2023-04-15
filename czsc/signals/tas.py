@@ -81,7 +81,7 @@ def update_macd_cache(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    min_count = signalperiod + slowperiod
+    min_count = signalperiod + slowperiod + 168
     last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
     if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 15:
         # 初始化缓存
@@ -103,7 +103,6 @@ def update_macd_cache(c: CZSC, **kwargs):
             _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
             _c.update({cache_key: {'dif': dif[-i], 'dea': dea[-i], 'macd': macd[-i]}})
             c.bars_raw[-i].cache = _c
-
     return cache_key
 
 

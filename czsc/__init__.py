@@ -27,7 +27,7 @@ from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSens
 __version__ = "0.9.17"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230412"
+__date__ = "20230415"
 
 
 def welcome():

@@ -50,9 +50,9 @@ class CzscSignals:
 
             last_bar = self.kas[self.base_freq].bars_raw[-1]
             self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-            self.s = OrderedDict(last_bar.__dict__)
+            self.s = OrderedDict()
             self.s.update(self.get_signals_by_conf())
-
+            self.s.update(last_bar.__dict__)
         else:
             self.bg = None
             self.symbol = None
@@ -147,8 +147,9 @@ class CzscSignals:
         self.symbol = bar.symbol
         last_bar = self.kas[self.base_freq].bars_raw[-1]
         self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
-        self.s = OrderedDict(last_bar.__dict__)
+        self.s = OrderedDict()
         self.s.update(self.get_signals_by_conf())
+        self.s.update(last_bar.__dict__)
 
 
 @deprecated(version="0.9.16", reason="请使用 CzscSignals 类")
