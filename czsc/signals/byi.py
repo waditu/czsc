@@ -165,7 +165,7 @@ def byi_bi_end_V230107(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-def byi_second_bs_V230324(c: CZSC, di=1, **kwargs) -> OrderedDict:
+def byi_second_bs_V230324(c: CZSC, **kwargs) -> OrderedDict:
     """白仪二类买卖点辅助V230324
 
     参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}回抽零轴_BS2辅助V230324"

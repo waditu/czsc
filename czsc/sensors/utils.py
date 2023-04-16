@@ -175,6 +175,9 @@ class SignalsPerformance:
         :param dfs: 信号表
         :param keys: 信号列，支持一个或多个信号列组合分析
         """
+        base_cols = [x for x in dfs.columns if len(x.split("_")) != 3]
+        dfs = dfs[base_cols + keys].copy()
+
         if 'year' not in dfs.columns:
             y = dfs['dt'].apply(lambda x: x.year)
             dfs['year'] = y.values
