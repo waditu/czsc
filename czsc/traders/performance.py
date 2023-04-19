@@ -120,6 +120,8 @@ class PairsPerformance:
             4  0.0231
 
         """
+        df_pairs = df_pairs.copy(deep=True)
+        # 将时间转换为年月日周
         time_convert = lambda x: (x.strftime("%Y年"), x.strftime("%Y年%m月"), x.strftime("%Y-%m-%d"),
                                   f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周",
                                   )
