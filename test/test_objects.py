@@ -28,6 +28,22 @@ def test_raw_bar():
     assert np.array([x.cache[key] for x in bars]).sum() == ma.sum() + 200
 
 
+def test_zs():
+    """测试中枢对象"""
+    from test.test_analyze import read_daily
+    from czsc.objects import ZS
+    from czsc.analyze import CZSC
+    bars = read_daily()
+    c = CZSC(bars)
+
+    zs = ZS(c.bi_list[-5:])
+    assert zs.zd < zs.zg
+    assert zs.is_valid
+
+    zs = ZS(c.bi_list[-8:-3])
+    assert not zs.is_valid
+
+
 def test_cal_break_even_point():
     assert cal_break_even_point([]) == 1
     assert cal_break_even_point([1]) == 1
