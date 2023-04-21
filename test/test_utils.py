@@ -13,5 +13,3 @@ def test_x_round():
     assert utils.x_round(1.000342, 3) == 1.0
     assert utils.x_round(1.000342, 4) == 1.0003
     assert utils.x_round(1.000342, 5) == 1.00034
-
-
