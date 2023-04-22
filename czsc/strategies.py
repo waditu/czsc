@@ -310,12 +310,14 @@ class CzscJsonStrategy(CzscStrategyBase):
     """仅传入Json配置的Positions就完成策略创建
 
     必须参数：
-        file_positions: 以 json 文件配置的策略，每个json文件对应一个持仓策略配置
+        files_position: 以 json 文件配置的策略，每个json文件对应一个持仓策略配置
+        check_position: 是否对 json 持仓策略进行 MD5 校验，默认为 True
     """
     @property
     def positions(self):
-        files = self.kwargs.get("file_positions")
-        return self.load_positions(files)
+        files = self.kwargs.get("files_position")
+        check = self.kwargs.get('check_position', True)
+        return self.load_positions(files, check)
 
 
 class CzscStrategyExample2(CzscStrategyBase):

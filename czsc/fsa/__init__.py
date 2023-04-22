@@ -15,7 +15,10 @@ from czsc.fsa.im import IM
 def push_text(text: str, key: str) -> None:
     """使用自定义机器人推送文本消息到飞书群聊
 
-    如何在群组中使用机器人: https://www.feishu.cn/hc/zh-CN/articles/360024984973
+    如何在群组中使用机器人:
+
+    - https://www.feishu.cn/hc/zh-CN/articles/360024984973
+    - https://open.feishu.cn/document/ukTMukTMukTM/ucTM5YjL3ETO24yNxkjN
 
     :param text: 文本内容
     :param key: 机器人的key
