@@ -10,18 +10,17 @@ describe: 提供一些策略的编写案例
 import os
 import time
 import shutil
+import hashlib
 import pandas as pd
 from tqdm import tqdm
 from copy import deepcopy
 from datetime import timedelta
 from abc import ABC, abstractmethod
 from loguru import logger
-from czsc import signals
 from czsc.objects import RawBar, List, Operate, Signal, Factor, Event, Position
-from collections import OrderedDict
-from czsc.traders.base import CzscTrader, get_signals_by_conf
+from czsc.traders.base import CzscTrader
 from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
-from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump
+from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump, save_json, read_json
 
 
 class CzscStrategyBase(ABC):
@@ -274,6 +273,49 @@ class CzscStrategyBase(ABC):
                         print(file_html)
                         trader.take_snapshot(file_html, height=kwargs.get("height", "680px"))
                         last_sig_dt[signal.key] = bar.dt
+
+    def save_positions(self, path):
+        """保存持仓策略配置
+
+        :param path: 结果路径
+        :return: None
+        """
+        os.makedirs(path, exist_ok=True)
+        for pos in self.positions:
+            pos_ = pos.dump()
+            pos_.pop('symbol')
+            hash_code = hashlib.md5(str(pos_).encode()).hexdigest()
+            pos_['md5'] = hash_code
+            save_json(pos_, os.path.join(path, f"{pos_['name']}.json"))
+
+    def load_positions(self, files: List, check=True) -> List[Position]:
+        """从配置文件中加载持仓策略
+
+        :param files: 以json格式保存的持仓策略文件列表
+        :param check: 是否校验 MD5 值，默认为 True
+        :return: 持仓策略列表
+        """
+        positions = []
+        for file in files:
+            pos = read_json(file)
+            md5 = pos.pop('md5')
+            if check:
+                assert md5 == hashlib.md5(str(pos).encode()).hexdigest()
+            pos['symbol'] = self.symbol
+            positions.append(Position.load(pos))
+        return positions
+
+
+class CzscJsonStrategy(CzscStrategyBase):
+    """仅传入Json配置的Positions就完成策略创建
+
+    必须参数：
+        file_positions: 以 json 文件配置的策略，每个json文件对应一个持仓策略配置
+    """
+    @property
+    def positions(self):
+        files = self.kwargs.get("file_positions")
+        return self.load_positions(files)
 
 
 class CzscStrategyExample2(CzscStrategyBase):
