@@ -90,17 +90,16 @@ def push_message(msg: str, msg_type: str = 'text', receive_id_type: str = 'open_
     if isinstance(members, str):
         members = [members]
 
-    if fim and members:
-        for member in members:
-            try:
-                if msg_type == 'text':
-                    fim.send_text(msg, member, receive_id_type)
-                elif msg_type == 'image':
-                    fim.send_image(msg, member, receive_id_type)
-                elif msg_type == 'file':
-                    fim.send_file(msg, member, receive_id_type)
-                else:
-                    logger.error(f"不支持的消息类型：{msg_type}")
-            except Exception as e:
-                logger.error(f"推送消息失败：{e}")
+    for member in members:
+        try:
+            if msg_type == 'text':
+                fim.send_text(msg, member, receive_id_type)
+            elif msg_type == 'image':
+                fim.send_image(msg, member, receive_id_type)
+            elif msg_type == 'file':
+                fim.send_file(msg, member, receive_id_type)
+            else:
+                logger.error(f"不支持的消息类型：{msg_type}")
+        except Exception as e:
+            logger.error(f"推送消息失败：{e}")
 
