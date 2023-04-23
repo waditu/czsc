@@ -123,29 +123,14 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
             4  000829.SZ  2020-01-02  0.0099
     :return: 组合换手率
     """
-    trade_dates = sorted(df_holds['成分日期'].unique().tolist())
-    daily_holds = {date: dfg for date, dfg in df_holds.groupby('成分日期')}
+    dft = pd.pivot_table(df_holds, index='成分日期', columns='证券代码', values='持仓权重', aggfunc='sum')
+    dft = dft.fillna(0)
+    df_turns = dft.diff().abs().sum(axis=1).reset_index()
+    df_turns.columns = ['date', 'change']
 
-    turns = []
-    for date_i, date in tqdm(enumerate(trade_dates), desc='turn_over_rate'):
-        if date_i == 0:
-            turns.append({'date': date, 'change': 1})
-            continue
-
-        dfg = daily_holds[date]
-        dfg_last = daily_holds[trade_dates[date_i-1]]
-        com_symbols = list(set(dfg['证券代码'].to_list()).intersection(dfg_last['证券代码'].to_list()))
-
-        dfg_pos = {row['证券代码']: row['持仓权重'] for _, row in dfg.iterrows()}
-        dfg_last_pos = {row['证券代码']: row['持仓权重'] for _, row in dfg_last.iterrows()}
-
-        change = 0
-        change += sum([abs(dfg_pos[symbol] - dfg_last_pos[symbol]) for symbol in com_symbols])
-        change += sum([v for symbol, v in dfg_pos.items() if symbol not in com_symbols])
-        change += sum([v for symbol, v in dfg_last_pos.items() if symbol not in com_symbols])
-        turns.append({'date': date, 'change': change})
-
-    df_turns = pd.DataFrame(turns)
+    # 由于是 diff 计算，第一个时刻的仓位变化被忽视了，修改一下
+    sdt = df_holds['成分日期'].min()
+    df_turns.loc[(df_turns['date'] == sdt), 'change'] = df_holds[df_holds['成分日期'] == sdt]['持仓权重'].sum()
     return df_turns, round(df_turns.change.sum() / 2, 4)
 
 

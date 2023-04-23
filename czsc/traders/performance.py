@@ -51,6 +51,7 @@ def stock_holds_performance(dc: TsDataCache, dfh, res_path):
     # 计算收益曲线
     dfa = pd.DataFrame({"成分日期": dc.get_dates_span(sdt, edt)})
     dfa['成分日期'] = pd.to_datetime(dfa['成分日期']).apply(lambda x: x.strftime(date_fmt))
+    dfa = dfa.sort_values(by='成分日期')
 
     df_ = dfh.groupby('成分日期')['n1b'].mean().reset_index(drop=False)
     dfa = dfa.merge(df_[['成分日期', 'n1b']], on=['成分日期'], how='left')
