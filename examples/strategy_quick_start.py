@@ -30,7 +30,7 @@ def create_beta_long_V230406(symbol, **kwargs):
          'signals_any': [],
          'signals_not': [],
          'factors': [{'name': '15分钟三买',
-                      'signals_all': ['15分钟_D1SMA#34_BS3辅助V230319_三买_任意_任意_0'],
+                      'signals_all': ['15分钟_D1#SMA#34_BS3辅助V230319_三买_任意_任意_0'],
                       'signals_any': [],
                       'signals_not': []}
                      ]},
@@ -78,7 +78,7 @@ def create_beta_long_V230407(symbol, **kwargs):
          'signals_any': [],
          'signals_not': [],
          'factors': [{'name': '15分钟三买',
-                      'signals_all': ['15分钟_D1SMA#34_BS3辅助V230319_三买_任意_任意_0'],
+                      'signals_all': ['15分钟_D1#SMA#34_BS3辅助V230319_三买_任意_任意_0'],
                       'signals_any': [],
                       'signals_not': []}
                      ]},
