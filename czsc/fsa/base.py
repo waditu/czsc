@@ -172,4 +172,3 @@ class FeishuApiBase:
         with open(file_path, 'w') as f:
             f.write(res.text)
         return res
-

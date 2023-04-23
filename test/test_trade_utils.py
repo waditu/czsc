@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/21 16:09
-describe: 
+describe: 测试交易价格计算
 """
 import czsc
 import numpy as np
@@ -18,7 +18,3 @@ def test_trade_price():
     close = df['close'].iloc[1:21]
     vol = df['vol'].iloc[1:21]
     assert df['VWAP20'].iloc[0] == round(np.average(close, weights=vol), 3)
-
-
-
-

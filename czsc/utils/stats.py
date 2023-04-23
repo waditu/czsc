@@ -66,7 +66,7 @@ def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True)
         calmar = y_ret / mdd if mdd != 0 else 1
 
     prefix = "有持仓时间" if exclude_zero else ""
-    res = {"夏普": round(sharp, 2), "卡玛": round(calmar, 2),  "年化": round(y_ret, 4), "最大回撤": round(mdd, 4)}
+    res = {"夏普": round(sharp, 2), "卡玛": round(calmar, 2), "年化": round(y_ret, 4), "最大回撤": round(mdd, 4)}
     res = {f"{prefix}{k}": v for k, v in res.items()}
 
     if not exclude_zero:

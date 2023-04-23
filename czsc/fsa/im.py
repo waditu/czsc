@@ -118,5 +118,3 @@ class IM(FeishuApiBase):
         file_key = self.upload_im_file(file_path, file_type='stream')
         payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
         return self.send(payload, receive_id_type)
-
-

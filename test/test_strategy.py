@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/2/23 19:13
-describe: 
+describe: 测试策略基类
 """
 import os
 import shutil
@@ -48,4 +48,3 @@ def test_czsc_strategy_example2():
     assert os.path.exists(os.path.join("trade_check_test", "signals.xlsx"))
     assert os.path.exists(os.path.join("trade_check_test", "15分钟_D0停顿分型_BE辅助V230106"))
     shutil.rmtree("trade_check_test")
-

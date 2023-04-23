@@ -4,10 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/12/21 21:59
 """
-
 import warnings
 import os
-
 import czsc
 from czsc.sensors.utils import compound_returns
 
@@ -21,5 +19,3 @@ def test_compound_returns():
     v = compound_returns(n1b)
     assert int(v[0]) == 235
     assert len(v[1]) == len(n1b)
-
-

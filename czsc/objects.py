@@ -7,12 +7,10 @@ describe: 常用对象结构
 """
 import math
 import pandas as pd
-import numpy as np
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
-from deprecated import deprecated
 from typing import List, Callable
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear

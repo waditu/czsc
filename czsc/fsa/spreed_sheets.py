@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:45
-describe: 
+describe: 飞书电子表格接口
 """
 import string
 import pandas as pd
@@ -295,6 +295,3 @@ class SpreadSheets(FeishuApiBase):
         values = res['data']['valueRange']['values']
         cols = values.pop(0)
         return pd.DataFrame(values, columns=cols)
-
-
-

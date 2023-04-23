@@ -1207,8 +1207,8 @@ def tas_kdj_evc_V221201(c: CZSC, **kwargs) -> OrderedDict:
     c1, c2 = count_range
     assert c2 > c1
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}KDJ{fastk_period}#{slowk_period}#{slowd_period}#{key}值突破{c1}#{c2}_KDJ极值V221201".split(
-        '_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}KDJ{fastk_period}#{slowk_period}" \
+                 f"#{slowd_period}#{key}值突破{c1}#{c2}_KDJ极值V221201".split('_')
     bars = get_sub_elements(c.bars_raw, di=di, n=3 + c2)
 
     v1 = "其他"
@@ -1523,8 +1523,8 @@ def tas_second_bs_V230303(c: CZSC, **kwargs):
     last_bar: RawBar = last_bi.raw_bars[-1]
 
     if last_bi.direction == Direction.Down and last_bar.low < last_bar.cache[key] and min(
-            [x.low for x in _bi_list[-5:]]) == min([x.low for x in _bi_list]) and first_bar.cache[key] < last_bar.cache[
-        key]:
+            [x.low for x in _bi_list[-5:]]) == min([x.low for x in _bi_list]) \
+            and first_bar.cache[key] < last_bar.cache[key]:
         v1 = "二买"
 
     if last_bi.direction == Direction.Up and last_bar.high > last_bar.cache[key] and max(

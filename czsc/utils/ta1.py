@@ -58,6 +58,7 @@ def KDJ(close: np.array, high: np.array, low: np.array):
     j = np.array(j, dtype=np.double)
     return k, d, j
 
+
 def RSQ(close: [np.array, list]) -> float:
     """拟合优度 R SQuare
 
@@ -83,4 +84,3 @@ def RSQ(close: [np.array, list]) -> float:
     rsq = 1 - ss_err / ss_tot
 
     return round(rsq, 4)
-
