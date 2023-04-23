@@ -250,7 +250,8 @@ class SpreadSheets(FeishuApiBase):
         return request("POST", url, self.get_headers(), operates)
 
     def add_permissions_member(self, token, doctype, member_type, member_id, perm):
-        url = self.host + "/open-apis/drive/v1/permissions/" + token + "/members?type=" + doctype + "&need_notification=false"
+        url = self.host + "/open-apis/drive/v1/permissions/" + token + "/members?type=" \
+              + doctype + "&need_notification=false"
         payload = {
             "member_type": member_type,
             "member_id": member_id,

@@ -5,7 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
 from czsc import envs
-from czsc import ai
 from czsc import fsa
 from czsc import utils
 from czsc import traders
