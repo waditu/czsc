@@ -89,3 +89,18 @@ def test_im():
     app.send_image(r"C:\Users\zengb\Downloads\十阶众生相.jpg", receive_id)
     app.send_file(r"C:\Users\zengb\Downloads\Think Python 2ed 中译版精校.pdf", receive_id)
 
+
+def test_push_message():
+    from czsc.fsa import push_message
+
+    feishu_app_id = os.environ['app_id']
+    feishu_app_secret = os.environ['app_secret']
+    push_message("自定义文字随便发", feishu_members=['ou_6fa04b5b4d853e9fdc87d267e8f2a270'],
+                 feishu_app_id=feishu_app_id, feishu_app_secret=feishu_app_secret)
+
+    # 测试群聊发送
+    push_message("发送消息到指定群聊", receive_id_type='chat_id',
+                 feishu_members=['oc_2b992348a871f875985fafa149dbec56'],
+                 feishu_app_id=feishu_app_id, feishu_app_secret=feishu_app_secret)
+
+
