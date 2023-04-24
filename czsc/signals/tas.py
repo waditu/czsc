@@ -2033,7 +2033,7 @@ def tas_atr_break_V230424(c: CZSC, **kwargs):
 def update_sar_cache(c: CZSC, **kwargs):
     """更新SAR缓存
 
-    SAR是止损转向操作点指标的简称，英文名称为“Stop and ReVere"，缩写为SAR，一般称为抛物线指标。
+    SAR是止损转向操作点指标的简称，英文名称为“Stop and Reverse"，缩写为SAR，一般称为抛物线指标。
     该指标是由美国技术分析大师威尔斯·威尔德所创造出来的。
 
     详细介绍：
