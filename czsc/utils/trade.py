@@ -26,7 +26,7 @@ def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwarg
 
     # TWAP / VWAP 价格
     df['vol_close_prod'] = df['vol'] * df['close']
-    for t in kwargs.get('t_seq', (5, 10, 15,  20, 30, 60)):
+    for t in kwargs.get('t_seq', (5, 10, 15, 20, 30, 60)):
         df[f"TWAP{t}"] = df['close'].rolling(t).mean().shift(-t)
         df[f"sum_vol_{t}"] = df['vol'].rolling(t).sum()
         df[f"sum_vcp_{t}"] = df['vol_close_prod'].rolling(t).sum()
@@ -87,4 +87,3 @@ def update_tbars(da: pd.DataFrame, event_col: str) -> None:
     n_seq = [int(x.strip('nb')) for x in da.columns if x[0] == 'n' and x[-1] == 'b']
     for n in n_seq:
         da[f't{n}b'] = da[f'n{n}b'] * da[event_col]
-

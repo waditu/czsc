@@ -33,6 +33,3 @@ def test_symbol_converter():
     assert data.tdx_symbol_to_ts(tdx_symbol) == ts_symbol
     assert data.tdx_symbol_to_gm(tdx_symbol) == gm_symbol
     assert data.tdx_symbol_to_jq(tdx_symbol) == jq_symbol
-
-
-

@@ -1,8 +1,9 @@
 # coding: utf-8
+import os
 import zipfile
 from tqdm import tqdm
 import pandas as pd
-from czsc.analyze import *
+from czsc.analyze import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, kline_pro
 from czsc.enum import Freq
 from collections import OrderedDict
 from czsc.signals.bxt import get_s_d0_bi, get_s_three_bi

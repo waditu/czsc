@@ -2,8 +2,7 @@
 import os
 import pandas as pd
 from tqdm import tqdm
-
-from czsc.objects import RawBar, Freq
+from czsc.objects import Freq
 from czsc.utils.bar_generator import BarGenerator, freq_end_time, resample_bars
 from test.test_analyze import read_1min, read_daily
 

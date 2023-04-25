@@ -357,7 +357,7 @@ class MeanPlatesSensor:
         dfs = dfs[(dfs['下期一字板'] == 0) & (dfs['is_st'] != True)]
 
         # dt 后延一期，因为 T 时刻选出的股票是 T+1 时刻的持仓
-        dts = list(pd.to_datetime(self.dc.get_dates_span(df_sp['dt'].min(), '20300101')))
+        dts = list(pd.to_datetime(self.dc.get_dates_span('20000101', '20300101')))
         next_dt = {dts[i]: dts[i+1] for i in range(len(dts)-1)}
         dfs['dt'] = dfs['dt'].apply(lambda x: next_dt[x])
 

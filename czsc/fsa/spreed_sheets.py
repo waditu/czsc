@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:45
-describe: 
+describe: 飞书电子表格接口
 """
 import string
 import pandas as pd
@@ -250,7 +250,8 @@ class SpreadSheets(FeishuApiBase):
         return request("POST", url, self.get_headers(), operates)
 
     def add_permissions_member(self, token, doctype, member_type, member_id, perm):
-        url = self.host + "/open-apis/drive/v1/permissions/" + token + "/members?type=" + doctype + "&need_notification=false"
+        url = self.host + "/open-apis/drive/v1/permissions/" + token + "/members?type=" \
+              + doctype + "&need_notification=false"
         payload = {
             "member_type": member_type,
             "member_id": member_id,
@@ -295,6 +296,3 @@ class SpreadSheets(FeishuApiBase):
         values = res['data']['valueRange']['values']
         cols = values.pop(0)
         return pd.DataFrame(values, columns=cols)
-
-
-

@@ -7,12 +7,10 @@ describe: 常用对象结构
 """
 import math
 import pandas as pd
-import numpy as np
 from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
-from deprecated import deprecated
 from typing import List, Callable
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
@@ -309,9 +307,12 @@ class BI:
 @dataclass
 class ZS:
     """中枢对象，主要用于辅助信号函数计算"""
-    symbol: str
     bis: List[BI]
+    symbol: str = None
     cache: dict = None  # cache 用户缓存
+
+    def __post_init__(self):
+        self.symbol = self.bis[0].symbol
 
     @property
     def sdt(self):
@@ -325,12 +326,12 @@ class ZS:
 
     @property
     def sdir(self):
-        """中枢第一笔方向"""
+        """中枢第一笔方向，sdir 是 start direction 的缩写"""
         return self.bis[0].direction
 
     @property
     def edir(self):
-        """中枢倒一笔方向"""
+        """中枢倒一笔方向，edir 是 end direction 的缩写"""
         return self.bis[-1].direction
 
     @property
@@ -345,6 +346,7 @@ class ZS:
 
     @property
     def zg(self):
+        """中枢上沿"""
         return min([x.high for x in self.bis[:3]])
 
     @property
@@ -354,7 +356,24 @@ class ZS:
 
     @property
     def zd(self):
+        """中枢下沿"""
         return max([x.low for x in self.bis[:3]])
+
+    @property
+    def is_valid(self):
+        """中枢是否有效"""
+        if self.zg < self.zd:
+            return False
+
+        for bi in self.bis:
+            # 中枢内的笔必须与中枢的上下沿有交集
+            if self.zg >= bi.high >= self.zd or self.zg >= bi.low >= self.zd \
+                    or bi.high >= self.zg > self.zd >= bi.low:
+                continue
+            else:
+                return False
+
+        return True
 
     def __repr__(self):
         return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, " \

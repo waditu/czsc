@@ -452,13 +452,13 @@ def jcc_fen_shou_xian_V20221113(c: CZSC, **kwargs) -> OrderedDict:
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
 
-        if bar1.low <= left_min + 0.25 * gap and bar1.open == bar2.open and bar1.close < bar2.low and bar2.close > bar2.open and (
-                bar2.close - bar1.close) / bar2.close * 10000 > zdf:
+        if bar1.low <= left_min + 0.25 * gap and bar1.open == bar2.open and bar1.close < bar2.low \
+                and bar2.close > bar2.open and (bar2.close - bar1.close) / bar2.close * 10000 > zdf:
 
             v2 = "下跌分手"
 
-        elif bar1.high >= left_max - 0.25 * gap and bar1.open == bar2.open and bar1.close > bar2.high and bar2.close < bar2.open and (
-                bar1.close - bar2.close) / bar2.close * 10000 > zdf:
+        elif bar1.high >= left_max - 0.25 * gap and bar1.open == bar2.open and bar1.close > bar2.high \
+                and bar2.close < bar2.open and (bar1.close - bar2.close) / bar2.close * 10000 > zdf:
             v2 = "上升分手"
 
     s = OrderedDict()

@@ -112,6 +112,8 @@ from czsc.signals.tas import (
     update_boll_cache,
     update_rsi_cache,
     update_cci_cache,
+    update_atr_cache,
+    update_sar_cache,
 
     tas_macd_base_V221028,
     tas_macd_change_V221105,
@@ -149,7 +151,11 @@ from czsc.signals.tas import (
 
     tas_hlma_V230301,
     tas_cci_base_V230402,
-    tas_kdj_evc_V230401
+    tas_kdj_evc_V230401,
+
+    tas_atr_break_V230424,
+
+    tas_sar_base_V230425,
 )
 
 from czsc.signals.pos import (

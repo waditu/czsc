@@ -61,8 +61,8 @@ def push_file(file: str, key: str):
         data = {"msgtype": "file", "file": {"media_id": mid}}
         r2 = requests.post(api_send, json=data)
         assert r2.json()['errmsg'] == 'ok', str(r2.json())
-    except:
-        print(f"推送文件{file_name}到企业微信群失败")
+    except Exception as e:
+        print(f"推送文件{file_name}到企业微信群失败: {e}")
 
 
 def push_msg(msg_type, content, key):
@@ -75,6 +75,5 @@ def push_msg(msg_type, content, key):
     try:
         response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
-    except:
-        print("消息推送失败")
-
+    except Exception as e:
+        print(f"消息推送失败: {e}")

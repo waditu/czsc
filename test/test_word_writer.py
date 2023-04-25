@@ -104,5 +104,5 @@ def test_word_writer():
 
     # 查看全部样式
     all_styles = list(reporter.document.styles.__iter__())
+    print(all_styles)
     os.remove(file_docx)
-

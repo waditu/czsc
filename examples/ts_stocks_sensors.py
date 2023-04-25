@@ -75,4 +75,3 @@ if __name__ == '__main__':
     # 给定参数获取最新的强势股列表
     df = sss.get_latest_selected(fc_top_n=None, fc_min_n=None, min_total_mv=None, max_count=None, window_size=1)
     print(df)
-

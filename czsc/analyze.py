@@ -139,8 +139,7 @@ def check_bi(bars: List[NewBar], benchmark: float = None):
     bars_b = [x for x in bars if x.dt >= fx_b.elements[0].dt]
 
     # 判断fx_a和fx_b价格区间是否存在包含关系
-    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) \
-                 or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
+    ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
 
     # 判断当前笔的涨跌幅是否超过benchmark的一定比例
     if benchmark and abs(fx_a.fx - fx_b.fx) > benchmark * envs.get_bi_change_th():
@@ -328,9 +327,9 @@ class CZSC:
         kline.add_macd(df, row=3)
 
         if len(bi_list) > 0:
-            bi = pd.DataFrame([{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list] +
-                              [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx,
-                                "text": bi_list[-1].fx_b.mark.value[0]}])
+            bi1 = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list]
+            bi2 = [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
+            bi = pd.DataFrame(bi1 + bi2)
             fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in self.fx_list])
             kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
             kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
@@ -413,6 +412,6 @@ class CZSC:
             fxs.extend(bi_.fxs[1:])
         ubi = self.ubi_fxs
         for x in ubi:
-            if not fxs or x.dt > fxs[-1].raw_bars[-1].dt:
+            if not fxs or x.dt > fxs[-1].raw_bars[0].dt:
                 fxs.append(x)
         return fxs

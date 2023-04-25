@@ -24,7 +24,7 @@ dummy = czsc.DummyBacktest(strategy=CzscStrategyExample2, read_bars=get_raw_bars
 symbols = get_symbols('A股主要指数')
 
 # # 查看某个品种的交易回放
-# dummy.replay(symbols[0)
+# dummy.replay(symbols[0])
 
 
 # Python中的多进程必须在if __name__ == '__main__'中执行，否则会报错

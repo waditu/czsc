@@ -5,16 +5,12 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/7 21:07
 """
 import pandas as pd
-from tqdm import tqdm
 from copy import deepcopy
-from loguru import logger
 from typing import List
-from collections import OrderedDict
-from czsc import signals
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
 from czsc.objects import Signal, Factor, Event, Operate, Position
-from test.test_analyze import read_1min, read_daily
+from test.test_analyze import read_daily
 
 
 def test_object_position():
@@ -264,8 +260,8 @@ def test_czsc_trader():
     for bar in bars_right:
         ct1.on_bar(bar)
         # print(ct1.s)
-        print(
-            f"{ct1.end_dt}: pos_seq = {[x.pos for x in ct1.positions]}mean_pos = {ct1.get_ensemble_pos('mean')}; vote_pos = {ct1.get_ensemble_pos('vote')}; max_pos = {ct1.get_ensemble_pos('max')}")
+        print(f"{ct1.end_dt}: pos_seq = {[x.pos for x in ct1.positions]}mean_pos = {ct1.get_ensemble_pos('mean')}; "
+              f"vote_pos = {ct1.get_ensemble_pos('vote')}; max_pos = {ct1.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct1.positions] == [0, 0, 0]
 
@@ -279,12 +275,11 @@ def test_czsc_trader():
     ct2 = CzscTrader(positions=[__create_sma5_pos(), __create_sma10_pos(), __create_sma20_pos()])
     for sig in res:
         ct2.on_sig(sig)
-        print(
-            f"{ct2.end_dt}: pos_seq = {[x.pos for x in ct2.positions]}mean_pos = {ct2.get_ensemble_pos('mean')}; vote_pos = {ct2.get_ensemble_pos('vote')}; max_pos = {ct2.get_ensemble_pos('max')}")
+        print(f"{ct2.end_dt}: pos_seq = {[x.pos for x in ct2.positions]}mean_pos = {ct2.get_ensemble_pos('mean')}; "
+              f"vote_pos = {ct2.get_ensemble_pos('vote')}; max_pos = {ct2.get_ensemble_pos('max')}")
 
     assert [x.pos for x in ct2.positions] == [0, 0, 0]
 
     assert len(ct1.positions[0].pairs) == len(ct2.positions[0].pairs)
     assert len(ct1.positions[1].pairs) == len(ct2.positions[1].pairs)
     assert len(ct1.positions[2].pairs) == len(ct2.positions[2].pairs)
-

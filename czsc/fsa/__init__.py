@@ -15,7 +15,10 @@ from czsc.fsa.im import IM
 def push_text(text: str, key: str) -> None:
     """使用自定义机器人推送文本消息到飞书群聊
 
-    如何在群组中使用机器人: https://www.feishu.cn/hc/zh-CN/articles/360024984973
+    如何在群组中使用机器人:
+
+    - https://www.feishu.cn/hc/zh-CN/articles/360024984973
+    - https://open.feishu.cn/document/ukTMukTMukTM/ucTM5YjL3ETO24yNxkjN
 
     :param text: 文本内容
     :param key: 机器人的key
@@ -66,7 +69,7 @@ def get_feishu_members_by_mobiles(mobiles: list, **kwargs):
     return [x['user_id'] for x in res]
 
 
-def push_message(msg: str, msg_type: str = 'text', **kwargs) -> None:
+def push_message(msg: str, msg_type: str = 'text', receive_id_type: str = 'open_id', **kwargs) -> None:
     """使用飞书APP批量推送消息
 
     API介绍：https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/create
@@ -74,10 +77,12 @@ def push_message(msg: str, msg_type: str = 'text', **kwargs) -> None:
 
     :param msg: 消息内容
     :param msg_type: 消息类型，支持：text, image, file
+    :param receive_id_type:  接收者是用户还是群聊  open_id / user_id / union_id / email / chat_id
     :param kwargs:
         feishu_app_id: 飞书APP的app_id
         feishu_app_secret: 飞书APP的app_secret
-        feishu_members: 需要通知的飞书APP的成员列表，支持单个成员或多个成员，成员格式为：'user_id'或 'open_id'
+        feishu_members: 需要通知的飞书APP的成员列表，支持单个成员或多个成员或群聊，
+                        成员格式为：'user_id'或 'open_id'，必须是同一类型的
     :return:
     """
     fim = IM(app_id=kwargs['feishu_app_id'], app_secret=kwargs['feishu_app_secret'])
@@ -85,17 +90,16 @@ def push_message(msg: str, msg_type: str = 'text', **kwargs) -> None:
     if isinstance(members, str):
         members = [members]
 
-    if fim and members:
-        for member in members:
-            try:
-                if msg_type == 'text':
-                    fim.send_text(msg, member)
-                elif msg_type == 'image':
-                    fim.send_image(msg, member)
-                elif msg_type == 'file':
-                    fim.send_file(msg, member)
-                else:
-                    logger.error(f"不支持的消息类型：{msg_type}")
-            except Exception as e:
-                logger.error(f"推送消息失败：{e}")
+    for member in members:
+        try:
+            if msg_type == 'text':
+                fim.send_text(msg, member, receive_id_type)
+            elif msg_type == 'image':
+                fim.send_image(msg, member, receive_id_type)
+            elif msg_type == 'file':
+                fim.send_file(msg, member, receive_id_type)
+            else:
+                logger.error(f"不支持的消息类型：{msg_type}")
+        except Exception as e:
+            logger.error(f"推送消息失败：{e}")
 

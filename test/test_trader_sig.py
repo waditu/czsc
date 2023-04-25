@@ -3,12 +3,8 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/29 15:28
-describe: 
+describe: 测试
 """
-import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
-import re
 import czsc
 from czsc.traders.sig_parse import SignalsParser
 from test.test_analyze import read_daily
@@ -37,5 +33,3 @@ def test_signals_parser():
     assert isinstance(conf, list)
     keys = sp.config_to_keys(conf)
     assert isinstance(keys, list) and len(keys) == 2
-
-

@@ -143,4 +143,3 @@ def RSQ(close: [np.array, list]) -> float:
     rsq = 1 - ss_err / ss_tot
 
     return round(rsq, 4)
-
