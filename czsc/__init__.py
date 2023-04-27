@@ -23,10 +23,10 @@ from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update
 from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSensor, SignalsPerformance
 
 
-__version__ = "0.9.18"
+__version__ = "0.9.19"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230419"
+__date__ = "20230428"
 
 
 def welcome():
