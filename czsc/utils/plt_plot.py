@@ -64,5 +64,7 @@ def plot_bins_return(dfv, bins_col='ma_score_bins10', file_png="bins.png"):
         plt.xticks(rotation=45)
 
     plt.tight_layout()
-    plt.savefig(file_png, bbox_inches='tight', dpi=100)
-    plt.close()
+    if file_png:
+        plt.savefig(file_png, bbox_inches='tight', dpi=100)
+        plt.close()
+    return fig
