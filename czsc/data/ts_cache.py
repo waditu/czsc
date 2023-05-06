@@ -344,6 +344,7 @@ class TsDataCache:
             df = pd.read_feather(file_cache)
         else:
             df = pro.trade_cal(exchange='', start_date='19900101', end_date="20300101")
+            df = df.sort_values('cal_date', ascending=True).reset_index(drop=True)
             df.to_feather(file_cache)
         return df
 
