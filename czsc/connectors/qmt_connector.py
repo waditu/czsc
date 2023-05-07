@@ -163,6 +163,9 @@ def get_symbols(step):
                  '510300.SH', '510500.SH', '510050.SH', '159992.SZ', '159985.SZ',
                  '159981.SZ', '159949.SZ', '159915.SZ'],
     }
+    if step.upper() == 'ALL':
+        return stocks_map['index'] + stocks_map['stock'] + stocks_map['etfs']
+
     return stocks_map[step]
 
 
