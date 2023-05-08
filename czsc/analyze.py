@@ -412,6 +412,6 @@ class CZSC:
             fxs.extend(bi_.fxs[1:])
         ubi = self.ubi_fxs
         for x in ubi:
-            if not fxs or x.dt > fxs[-1].raw_bars[0].dt:
+            if not fxs or x.dt > fxs[-1].dt:
                 fxs.append(x)
         return fxs
