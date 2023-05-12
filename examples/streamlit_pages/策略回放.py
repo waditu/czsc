@@ -47,7 +47,7 @@ from czsc.strategies import CzscStrategyExample2 as Strategy
 #                      'factors': [
 #                          {'name': f'{freq1}向下笔停顿分型',
 #                           'signals_all': [
-#                               f'{freq1}_D0停顿分型_BE辅助V230106_看多_任意_任意_0'
+#                               f'{freq1}_D0停顿分型_BE辅助V230106_看多_任意_任意_0',
 #                               f'{freq2}_D0停顿分型_BE辅助V230106_看多_任意_任意_0'
 #                           ]},
 #
@@ -82,6 +82,7 @@ from czsc.strategies import CzscStrategyExample2 as Strategy
 #     def positions(self) -> List[Position]:
 #         _pos_list = [
 #             self.create_long_bi(symbol=self.symbol, freq1='5分钟', freq2='60分钟'),
+#             # self.create_long_bi(symbol=self.symbol, freq1='15分钟', freq2='60分钟'),
 #         ]
 #         return _pos_list
 
