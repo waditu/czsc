@@ -7,8 +7,13 @@ sphinx-quickstart
 
 sphinx-apidoc.exe -o source ../czsc
 
-./make.bat clean & ./make.bat html
 
+在 base 环境下，执行以下命令，生成文档：
+
+```shell
+./make.bat clean
+./make.bat html
+```
 
 ## 参考资料
 
