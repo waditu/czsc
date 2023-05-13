@@ -79,6 +79,8 @@ from czsc.signals.bar import (
     bar_weekday_V230328,
     bar_r_breaker_V230326,
     bar_dual_thrust_V230403,
+    bar_single_V230506,
+    bar_triple_V230506,
 )
 
 from czsc.signals.jcc import (
@@ -133,6 +135,7 @@ from czsc.signals.tas import (
     tas_ma_base_V230313,
     tas_ma_round_V221206,
     tas_double_ma_V221203,
+    tas_double_ma_V230511,
 
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
@@ -160,4 +163,6 @@ from czsc.signals.tas import (
 
 from czsc.signals.pos import (
     pos_fx_stop_V230414,
+    pos_ma_V230414,
+    pos_holds_V230414,
 )

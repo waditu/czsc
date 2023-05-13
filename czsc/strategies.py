@@ -196,6 +196,12 @@ class CzscStrategyBase(ABC):
                     trader.take_snapshot(file_html)
                     logger.info(f'{file_html}')
 
+        for position in trader.positions:
+            logger.info(f"{position.name}  "
+                        f"\n 多空合并：{position.evaluate()} "
+                        f"\n 多头表现：{position.evaluate('多头')} "
+                        f"\n 空头表现：{position.evaluate('空头')}")
+
         file_trader = os.path.join(res_path, "trader.ct")
         try:
             dill_dump(trader, file_trader)

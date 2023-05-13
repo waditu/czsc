@@ -78,7 +78,7 @@ class WordWriter:
         text.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
         text.font.size = Pt(12)
 
-    def add_df_table(self, df: pd.DataFrame, style='Table Grid'):
+    def add_df_table(self, df: pd.DataFrame, style='Table Grid', **kwargs):
         """添加数据表
 
         https://www.jianshu.com/p/93e0df92cf16
@@ -93,7 +93,7 @@ class WordWriter:
 
         table = self.document.add_table(rows=1, cols=df.shape[1], style=style)
         # 设置整个表格字体属性
-        table.style.font.size = Pt(12)
+        table.style.font.size = Pt(kwargs.get("font_size", 10))
         table.style.font.color.rgb = RGBColor(0, 0, 0)
         table.style.paragraph_format.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 

@@ -26,7 +26,10 @@ def get_symbols(name, **kwargs):
     :param kwargs:
     :return:
     """
-    files = glob.glob(os.path.join(cache_path, name, "*.parquet"))
+    if name.upper() == 'ALL':
+        files = glob.glob(os.path.join(cache_path, "*", "*.parquet"))
+    else:
+        files = glob.glob(os.path.join(cache_path, name, "*.parquet"))
     return [os.path.basename(x).replace('.parquet', '') for x in files]
 
 

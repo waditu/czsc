@@ -81,11 +81,3 @@ Subpackages
    :undoc-members:
    :no-main-docstr:
    :no-inheritance-diagram:
-
-
-.. automodapi:: czsc.ai
-   :members:
-   :undoc-members:
-   :no-main-docstr:
-   :no-inheritance-diagram:
-

@@ -14,6 +14,56 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 
 
+def plot_net_value(df: pd.DataFrame, file_png: str = None, figsize=(9, 5), title=None):
+    """绘制含净值曲线
+
+    :param df: 输入数据，样例如下：
+        其中，'截面收益' 是必须列，且单位是BP；['累计净值', '动态回撤'] 为可选列，如果没有，会自动计算
+        ===================  ==========  ==========  ==========
+        dt                     截面收益    累计净值    动态回撤
+        ===================  ==========  ==========  ==========
+        2017-01-03 10:00:00           0           1           0
+        2017-01-03 10:30:00           0           1           0
+        2017-01-03 11:00:00           0           1           0
+        2017-01-03 11:30:00           0           1           0
+        2017-01-03 13:30:00           0           1           0
+        ===================  ==========  ==========  ==========
+
+    :param figsize: 图片大小，Width, height in inches.
+    :param file_png: 图片文件名
+    :param title: 图片标题
+    :return:
+    """
+    df = df.copy()
+    if '累计净值' not in df.columns:
+        df['累计净值'] = df['截面收益'].cumsum()
+        df['动态回撤'] = ((df['累计净值'] + 10000) / (df['累计净值'] + 10000).cummax() - 1) * 10000 + 10000
+
+    plt.close()
+    fig, ax1 = plt.subplots(figsize=figsize)
+    plt.xticks(rotation=45)
+    ax2 = ax1.twinx()
+    if title:
+        plt.title(title)
+    x = pd.to_datetime(df['dt'])
+    ax1.plot(x, df['累计净值'], "r-", alpha=0.4, label='累计净值')
+    ax1.bar(x, df['截面收益'], width=0.2, alpha=0.4, color='g', label='截面收益')
+
+    ax2.plot(x, df['动态回撤'], "b-", alpha=0.4, label='动态回撤')
+    ax2.grid(axis="y", ls='--')
+
+    ax1.set_ylabel("净值（单位: BP）")
+    ax2.set_ylabel("回撤（单位: BP）")
+
+    fig.legend(loc="upper left")
+    if file_png:
+        plt.savefig(file_png, bbox_inches='tight', dpi=100)
+    else:
+        plt.show()
+
+    return fig
+
+
 def plot_bins_return(dfv, bins_col='ma_score_bins10', file_png="bins.png"):
     """绘制 bins_col 的分层收益曲线
 
@@ -64,5 +114,7 @@ def plot_bins_return(dfv, bins_col='ma_score_bins10', file_png="bins.png"):
         plt.xticks(rotation=45)
 
     plt.tight_layout()
-    plt.savefig(file_png, bbox_inches='tight', dpi=100)
-    plt.close()
+    if file_png:
+        plt.savefig(file_png, bbox_inches='tight', dpi=100)
+        plt.close()
+    return fig

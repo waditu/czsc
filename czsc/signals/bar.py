@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2022/11/11 20:18
 describe: bar 作为前缀，代表信号属于基础 K 线信号
 """
+import pandas as pd
 import numpy as np
 from datetime import datetime
 from typing import List
@@ -16,6 +17,105 @@ from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
 from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
 from czsc.signals.tas import update_ma_cache
+
+
+def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:
+    """单K趋势因子辅助判断买卖点
+
+    参数模板："{freq}_D{di}单K趋势N{n}_BS辅助V230506"
+
+     **信号逻辑：**
+
+    1. 定义趋势因子：(收盘价 / 开盘价 -1) / 成交量
+    2. 选取最近100根K线，计算趋势因子，分成n层
+
+     **信号列表：**
+
+    - Signal('15分钟_D1单K趋势N5_BS辅助V230506_第3层_任意_任意_0')
+    - Signal('15分钟_D1单K趋势N5_BS辅助V230506_第4层_任意_任意_0')
+    - Signal('15分钟_D1单K趋势N5_BS辅助V230506_第2层_任意_任意_0')
+    - Signal('15分钟_D1单K趋势N5_BS辅助V230506_第1层_任意_任意_0')
+    - Signal('15分钟_D1单K趋势N5_BS辅助V230506_第5层_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 5))
+    assert n <= 20, "n 的取值范围为 1~20，分层数量不宜太多"
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}单K趋势N{n}_BS辅助V230506".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 100 + di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=100)
+    factors = [(x.close / x.open - 1) / x.vol for x in bars]
+    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{q}层")
+
+
+def bar_triple_V230506(c: CZSC, **kwargs) -> OrderedDict:
+    """三K加速形态配合成交量变化
+
+    参数模板："{freq}_D{di}三K加速_裸K形态V230506"
+
+     **信号逻辑：**
+
+    1. 连续三根阳线，【三连涨】，如果高低点不断创新高，【新高涨】
+    2. 连续三根阴线，【三连跌】，如果高低点不断创新低，【新低跌】
+    3. 加入成交量变化的判断，成交量逐渐放大 或 成交量逐渐缩小
+
+     **信号列表：**
+
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连涨_量柱无序_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连跌_量柱无序_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新高涨_依次放量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新低跌_依次缩量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新低跌_量柱无序_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连涨_依次放量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连跌_依次放量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新低跌_依次放量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连跌_依次缩量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新高涨_依次缩量_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_新高涨_量柱无序_任意_0')
+    - Signal('15分钟_D1三K加速_裸K形态V230506_三连涨_依次缩量_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}三K加速_裸K形态V230506".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b3, b2, b1 = get_sub_elements(c.bars_raw, di=di, n=3)
+
+    if b1.close > b1.open and b2.close > b2.open and b3.close > b3.open:
+        v1 = '三连涨'
+        if b1.high > b2.high > b3.high and b1.low > b2.low > b3.low:
+            v1 = "新高涨"
+
+    if b1.close < b1.open and b2.close < b2.open and b3.close < b3.open:
+        v1 = '三连跌'
+        if b1.high < b2.high < b3.high and b1.low < b2.low < b3.low:
+            v1 = "新低跌"
+
+    if v1 == '其他':
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if b1.vol > b2.vol > b3.vol:
+        v2 = '依次放量'
+    elif b1.vol < b2.vol < b3.vol:
+        v2 = '依次缩量'
+    else:
+        v2 = '量柱无序'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
 def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
