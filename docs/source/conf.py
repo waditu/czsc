@@ -15,7 +15,7 @@ import sphinx_rtd_theme
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'czsc'
-copyright = '2022, zengbin93'
+copyright = '2023, zengbin93'
 author = czsc.__author__
 release = czsc.__version__
 
