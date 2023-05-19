@@ -100,4 +100,4 @@ pip install czsc -U -i https://pypi.python.org/simple
   - 对于刚接触缠论和量化交易的新朋友，给出一些力所能及的帮助。
 > 详情点击：https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc
 > 
-> 加入知识星球有人工审核。**申请加入请求提交后**，加微信 `zengbin93`，备注【CZSC小圈子】
+> **加入知识星球后**，请加微信 `zengbin93`，备注【CZSC小圈子】
