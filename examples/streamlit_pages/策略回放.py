@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/5/11 20:49
-describe: 
+describe: CZSC策略回放
 """
 import os
 os.environ['czsc_max_bi_num'] = '20'
@@ -112,11 +112,21 @@ def update_bar_edt():
 
 def update_date_change():
     st.session_state.date_change = True
+    st.session_state.bar_edt_index = 1
 
 
 @st.cache_data
 def get_bars(symbol_, base_freq_, sdt_, edt_):
-    return get_raw_bars(symbol_, base_freq_, sdt=sdt_ - pd.Timedelta(days=365 * 3), edt=edt_)
+    delta_days_map = {
+        '1分钟': 6,
+        '5分钟': 45,
+        '15分钟': 90,
+        '30分钟': 180,
+        '60分钟': 365,
+        '日线': 365 * 3,
+        '周线': 365 * 7,
+    }
+    return get_raw_bars(symbol_, base_freq_, sdt=sdt_ - pd.Timedelta(days=delta_days_map[base_freq_]), edt=edt_)
 
 
 with st.sidebar:
