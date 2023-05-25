@@ -126,8 +126,63 @@ def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
         if cat.latest_price > max([x.high for x in fxs]):
             v1 = '空头止损'
 
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)\
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
+
+def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """按照开仓点附近的N根K线极值止损
+
+    参数模板："{pos_name}_{freq1}N{n}K_止损V2305224"
+
+    **信号逻辑：**
+
+    多头止损逻辑如下，反之为空头止损逻辑：
+
+    1. 从多头开仓点开始，在给定对的K线周期 freq1 上向前找 N 个K线，记为 F1
+    2. 将这 N 个K线的最低点，记为 L1，如果最新价跌破 L1，则止损
+
+    **信号列表：**
+
+    - Signal('日线三买多头_日线N3K_止损V2305224_多头止损_任意_任意_0')
+    - Signal('日线三买多头_日线N3K_止损V2305224_空头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，向前找的K线个数，默认为 3
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    n = int(kwargs.get('n', 3))
+    k1, k2, k3 = f"{pos_name}_{freq1}N{n}K_止损V2305224".split("_")
+    v1 = '其他'
+    assert 20 >= n >= 1, "参数 n 取值范围为 1~20"
+    # 如果没有持仓策略，则不产生信号
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos_ = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos_.operates) == 0 or pos_.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c: CZSC = cat.kas[freq1]
+    op = pos_.operates[-1]
+
+    # 多头止损逻辑
+    if op['op'] == Operate.LO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt < op['dt']][-n:]
+        if cat.latest_price < min([x.low for x in bars]):
+            v1 = '多头止损'
+
+    # 空头止损逻辑
+    if op['op'] == Operate.SO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt < op['dt']][-n:]
+        if cat.latest_price > max([x.high for x in bars]):
+            v1 = '空头止损'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
 def pos_holds_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
