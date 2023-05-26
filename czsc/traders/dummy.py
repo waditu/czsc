@@ -13,7 +13,7 @@ from loguru import logger
 from concurrent.futures import ProcessPoolExecutor
 from czsc import fsa
 from czsc.traders.base import generate_czsc_signals
-from czsc.traders.performance import PairsPerformancea
+from czsc.traders.performance import PairsPerformance
 
 
 class DummyBacktest:
