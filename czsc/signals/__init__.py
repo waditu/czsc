@@ -57,7 +57,7 @@ from czsc.signals.vol import (
 )
 
 from czsc.signals.bar import (
-    bar_end_V221111,
+    bar_end_V221211,
     bar_operate_span_V221111,
     bar_zdt_V230331,
     bar_cross_ps_V221112,

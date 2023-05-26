@@ -17,6 +17,7 @@ from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
 from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
 from czsc.signals.tas import update_ma_cache
+from czsc.utils.bar_generator import freq_end_time
 
 
 def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:
@@ -118,10 +119,10 @@ def bar_triple_V230506(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
-    """分钟 K 线结束
+def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
+    """判断分钟 K 线是否结束
 
-    参数模板："{freq}_K线_结束"
+    参数模板："{freq}_{freq1}结束_BS辅助221211"
 
     **信号列表：**
 
@@ -129,16 +130,15 @@ def bar_end_V221111(c: CZSC, k1='60分钟') -> OrderedDict:
     - Signal('60分钟_K线_结束_是_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
-    :param k1: 分钟周期名称
+    :param freq1: 分钟周期名称
     :return: s
     """
-    k2, k3 = "K线", "结束"
-    assert "分钟" in k1
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_{freq1}结束_BS辅助221211".split('_')
+    assert "分钟" in freq1
 
-    m = int(k1.replace("分钟", ""))
     dt: datetime = c.bars_raw[-1].dt
-    v = "是" if dt.minute % m == 0 else "否"
-
+    v = "是" if freq_end_time(dt, freq1) == dt else "否"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 

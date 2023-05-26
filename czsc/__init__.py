@@ -24,10 +24,10 @@ from czsc.utils import CrossSectionalPerformance
 from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSensor, SignalsPerformance
 
 
-__version__ = "0.9.19"
+__version__ = "0.9.20"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230428"
+__date__ = "20230524"
 
 
 def welcome():
