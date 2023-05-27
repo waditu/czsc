@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2023/4/14 19:27
 describe: 
 """
+from czsc.analyze import CZSC
 from collections import OrderedDict
 from czsc.traders.base import CzscTrader
 from czsc.utils import create_single_signal

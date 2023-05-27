@@ -86,7 +86,7 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
                     for bar in fx.raw_bars:
                         logger.info(f"{bar}\n")
 
-                    logger.info(f'last fx raw bars: \n')
+                    logger.info('last fx raw bars: \n')
                     for bar in fxs[-1].raw_bars:
                         logger.info(f"{bar}\n")
             else:
@@ -131,8 +131,8 @@ def check_bi(bars: List[NewBar], benchmark: float = None):
                     fx_b = fx
         else:
             raise ValueError
-    except:
-        logger.exception("笔识别错误")
+    except Exception as e:
+        logger.exception(f"笔识别错误: {e}")
         return None, bars
 
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
