@@ -22,6 +22,7 @@ from czsc.utils import WordWriter, io
 from czsc.utils.plt_plot import plot_bins_return
 from czsc.data.ts_cache import TsDataCache, Freq
 from czsc.traders import generate_czsc_signals
+from czsc.objects import Event
 from czsc.sensors.utils import get_index_beta, turn_over_rate, max_draw_down, discretizer
 
 
@@ -35,24 +36,21 @@ class ThsConceptsSensor:
                  sdt: str,
                  edt: str,
                  dc: TsDataCache,
-                 get_signals: Callable,
                  get_event: Callable,
-                 ths_index_type='N'):
+                 ths_index_type='N', **kwargs):
         """
 
         :param results_path: 结果保存路径
         :param sdt: 开始日期
         :param edt: 结束日期
         :param dc: 数据缓存对象
-        :param get_signals: 信号获取函数
         :param get_event: 事件定义函数
         :param ths_index_type: 同花顺指数类型 N-板块指数 I-行业指数 S-同花顺特色指数
         """
         self.name = self.__class__.__name__
         self.dc = dc
-        self.get_signals = get_signals
         self.get_event = get_event
-        self.event = get_event()
+        self.event: Event = get_event()
         self.base_freq = Freq.D.value
         self.freqs = [Freq.W.value, Freq.M.value]
         self.dc = dc
@@ -61,6 +59,10 @@ class ThsConceptsSensor:
         self.cache = dict()
         self.results_path = results_path
         os.makedirs(self.results_path, exist_ok=True)
+        self.kwargs = kwargs
+        from czsc.traders import get_signals_config
+        self.signals_config = get_signals_config(self.event.unique_signals,
+                                                 signals_module=kwargs.get("signals_module", "czsc.signals"))
 
         self.sdt = sdt
         self.edt = edt
@@ -74,7 +76,7 @@ class ThsConceptsSensor:
             writer.add_heading("参数配置", level=2)
             writer.add_paragraph(f"测试方法描述：{self.event.name}")
             writer.add_paragraph(f"测试起止日期：{sdt} ~ {edt}")
-            writer.add_paragraph(f"信号计算函数：\n{inspect.getsource(self.get_signals)}")
+            writer.add_paragraph(f"信号计算配置：\n{self.signals_config}")
             writer.add_paragraph(f"事件具体描述：\n{inspect.getsource(self.get_event)}")
             writer.save()
         self.writer = writer
@@ -105,7 +107,7 @@ class ThsConceptsSensor:
         n_bars = dc.ths_daily(ts_code=ts_code, start_date=start_date, end_date=edt, raw_bar=False)
         nb_dicts = {row['trade_date'].strftime("%Y%m%d"): row for row in n_bars.to_dict("records")}
 
-        signals = generate_czsc_signals(bars, self.get_signals, sdt=sdt, df=False, freqs=self.freqs)
+        signals = generate_czsc_signals(bars, self.signals_config, sdt=sdt, df=False)
         results = []
         for s in signals:
             m, f = event.is_match(s)

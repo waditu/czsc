@@ -40,6 +40,6 @@ if __name__ == '__main__':
     sdt = "20180101"
     edt = "20211114"
     results_path = os.path.join(data_path, f"ths_concepts_{get_event().name}_{sdt}_{edt}")
-    tcs = ThsConceptsSensor(results_path, sdt, edt, dc, get_signals, get_event, 'I')
+    tcs = ThsConceptsSensor(results_path, sdt, edt, dc, get_event, 'I')
     df_daily, df_detail = tcs.validate()
 
