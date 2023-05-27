@@ -21,7 +21,7 @@ from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update_tbars, update_nbars
 from czsc.utils import CrossSectionalPerformance
-from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSensor, SignalsPerformance
+from czsc.sensors import holds_concepts_effect, StocksDaySensor, ThsConceptsSensor, SignalsPerformance, CTAResearch
 
 
 __version__ = "0.9.20"

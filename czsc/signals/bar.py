@@ -1097,4 +1097,48 @@ def bar_dual_thrust_V230403(c: CZSC, **kwargs):
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def bar_zt_count_V230504(c: CZSC, **kwargs) -> OrderedDict:
+    """窗口内涨停计数
 
+    参数模板："{freq}_D{di}W{window}涨停计数_裸K形态V230504"
+
+     **信号逻辑：**
+
+    1. 连续三根阳线，且高低点不断创新高，看多
+    2. 连续三根阴线，且高低点不断创新低，看空
+
+     **信号列表：**
+
+    - Signal('日线_D1W5涨停计数_裸K形态V230504_1次_连续0次_任意_0')
+    - Signal('日线_D1W5涨停计数_裸K形态V230504_2次_连续1次_任意_0')
+    - Signal('日线_D1W5涨停计数_裸K形态V230504_3次_连续2次_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+    :return: 返回信号结果
+    """
+    di = int(kwargs.get("di", 1))
+    window = int(kwargs.get("window", 5))
+    freq = c.freq.value
+    assert freq in ['日线']
+    k1, k2, k3 = f"{freq}_D{di}W{window}涨停计数_裸K形态V230504".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 7 + di + window:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=window)
+    c = []
+    cc = 0
+    for b1, b2 in zip(bars[:-1], bars[1:]):
+        if b2.close > b1.close * 1.07 and b2.close == b2.high:
+            c.append(1)
+        else:
+            c.append(0)
+
+        if len(c) >= 2 and c[-1] == 1 and c[-2] == 1:
+            cc += 1
+
+    if sum(c) == 0:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    else:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"{sum(c)}次", v2=f"连续{cc}次")

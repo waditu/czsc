@@ -7,6 +7,7 @@ describe: 感应系统
 """
 from czsc.sensors.plates import ThsConceptsSensor
 from czsc.sensors.stocks import StocksDaySensor
+from czsc.sensors.cta import CTAResearch
 from czsc.sensors.utils import (
     turn_over_rate,
     discretizer,

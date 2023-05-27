@@ -2186,3 +2186,43 @@ def tas_sar_base_V230425(c: CZSC, **kwargs):
         v1 = '其他'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_ma_system_V230513(c: CZSC, **kwargs) -> OrderedDict:
+    """均线系统多空排列
+
+    参数模板："{freq}_D{di}SMA{ma_seq}_均线系统V230513"
+
+     **信号逻辑：**
+
+    1. 5日均线 > 10日均线 > 20日均线，多头排列，以此类推；
+    2. 5日均线 < 10日均线 < 20日均线，空头排列，以此类推；
+
+     **信号列表：**
+
+    - Signal('60分钟_D1SMA5#10#20_均线系统V230513_多头排列_任意_任意_0')
+    - Signal('60分钟_D1SMA5#10#20_均线系统V230513_空头排列_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    di = int(kwargs.get('di', 1))
+    ma_seq = kwargs.get('ma_seq', "5#10#20")
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}SMA{ma_seq}_均线系统V230513".split('_')
+    v1 = '其他'
+    ma_seq = [int(x) for x in ma_seq.split('#')]
+    for ma in ma_seq:
+        update_ma_cache(c, ma_type="SMA", timeperiod=ma)
+
+    if len(c.bars_raw) < max(ma_seq) + di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ma_val = [c.bars_raw[-di].cache[f'SMA#{x}'] for x in ma_seq]
+    if all([x > y for x, y in zip(ma_val[:-1], ma_val[1:])]):
+        v1 = '多头排列'
+    if all([x < y for x, y in zip(ma_val[:-1], ma_val[1:])]):
+        v1 = '空头排列'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
