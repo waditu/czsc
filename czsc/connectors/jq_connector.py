@@ -12,9 +12,8 @@ from urllib.parse import quote
 
 from ..objects import RawBar, Freq
 from ..utils.bar_generator import freq_end_time, BarGenerator
-from .base import freq_cn2jq
+from czsc.data.base import freq_cn2jq
 
-warnings.warn("请使用 czsc.connectors.jq_connector 替代，相关核心都已经完成迁移", DeprecationWarning)
 url = "https://dataapi.joinquant.com/apis"
 home_path = os.path.expanduser("~")
 file_token = os.path.join(home_path, "jq.token")
@@ -53,15 +52,12 @@ def get_token():
 
     body = {
         "method": "get_current_token",
-        "mob": jq_mob,          # mob是申请JQData时所填写的手机号
-        "pwd": quote(jq_pwd),   # Password为聚宽官网登录密码，新申请用户默认为手机号后6位
+        "mob": jq_mob,  # mob是申请JQData时所填写的手机号
+        "pwd": quote(jq_pwd),  # Password为聚宽官网登录密码，新申请用户默认为手机号后6位
     }
     response = requests.post(url, data=json.dumps(body))
     token = response.text
     return token
-
-
-to_jq_symbol = lambda x: x[:6] + ".XSHG" if x[0] == '6' else x[:6] + ".XSHE"
 
 
 def text2df(text):
@@ -383,7 +379,8 @@ def get_init_bg(symbol: str,
     bars2 = get_kline_period(symbol, last_day, end_dt, freq=freq_cn2jq[base_freq], fq=fq)
     data = [x for x in bars2 if x.dt > last_day]
     assert len(data) > 0
-    print(f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
+    print(
+        f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
     return bg, data
 
 
@@ -487,12 +484,19 @@ def get_share_basic(symbol):
         f10['{}EPS'.format(year)] = float(indicator.get('eps', 0)) if indicator.get('eps', 0) else 0
         f10['{}ROA'.format(year)] = float(indicator.get('roa', 0)) if indicator.get('roa', 0) else 0
         f10['{}ROE'.format(year)] = float(indicator.get('roe', 0)) if indicator.get('roe', 0) else 0
-        f10['{}销售净利率(%)'.format(year)] = float(indicator.get('net_profit_margin', 0)) if indicator.get('net_profit_margin', 0) else 0
-        f10['{}销售毛利率(%)'.format(year)] = float(indicator.get('gross_profit_margin', 0)) if indicator.get('gross_profit_margin', 0) else 0
-        f10['{}营业收入同比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_year_on_year', 0)) if indicator.get('inc_revenue_year_on_year', 0) else 0
-        f10['{}营业收入环比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_annual', 0)) if indicator.get('inc_revenue_annual', 0) else 0
-        f10['{}营业利润同比增长率(%)'.format(year)] = float(indicator.get('inc_operation_profit_year_on_year', 0)) if indicator.get('inc_operation_profit_year_on_year', 0) else 0
-        f10['{}经营活动产生的现金流量净额/营业收入(%)'.format(year)] = float(indicator.get('ocf_to_revenue', 0)) if indicator.get('ocf_to_revenue', 0) else 0
+        f10['{}销售净利率(%)'.format(year)] = float(indicator.get('net_profit_margin', 0)) if indicator.get(
+            'net_profit_margin', 0) else 0
+        f10['{}销售毛利率(%)'.format(year)] = float(indicator.get('gross_profit_margin', 0)) if indicator.get(
+            'gross_profit_margin', 0) else 0
+        f10['{}营业收入同比增长率(%)'.format(year)] = float(
+            indicator.get('inc_revenue_year_on_year', 0)) if indicator.get('inc_revenue_year_on_year', 0) else 0
+        f10['{}营业收入环比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_annual', 0)) if indicator.get(
+            'inc_revenue_annual', 0) else 0
+        f10['{}营业利润同比增长率(%)'.format(year)] = float(
+            indicator.get('inc_operation_profit_year_on_year', 0)) if indicator.get('inc_operation_profit_year_on_year',
+                                                                                    0) else 0
+        f10['{}经营活动产生的现金流量净额/营业收入(%)'.format(year)] = float(
+            indicator.get('ocf_to_revenue', 0)) if indicator.get('ocf_to_revenue', 0) else 0
 
     # 组合成可以用来推送的文本
     msg = "{}（{}）@{}\n".format(f10['股票代码'], f10['股票名称'], f10['地域'])
@@ -501,11 +505,52 @@ def get_share_basic(symbol):
         msg += "{}：{}\n".format(k, f10[k])
 
     msg += "\n{}\n".format("*" * 30)
-    cols = ['EPS', 'ROA', 'ROE', '销售净利率(%)', '销售毛利率(%)', '营业收入同比增长率(%)', '营业利润同比增长率(%)', '经营活动产生的现金流量净额/营业收入(%)']
+    cols = ['EPS', 'ROA', 'ROE', '销售净利率(%)', '销售毛利率(%)', '营业收入同比增长率(%)', '营业利润同比增长率(%)',
+            '经营活动产生的现金流量净额/营业收入(%)']
     msg += "2017~2020 财务变化\n\n"
     for k in cols:
-        msg += k + "：{} | {} | {} | {}\n".format(*[f10['{}{}'.format(year, k)] for year in ['2017', '2018', '2019', '2020']])
+        msg += k + "：{} | {} | {} | {}\n".format(
+            *[f10['{}{}'.format(year, k)] for year in ['2017', '2018', '2019', '2020']])
 
     f10['msg'] = msg
     return f10
 
+
+def get_symbols(name='ALL', **kwargs):
+    """获取指定分组下的所有标的代码
+
+    :param name: 分组名称，可选值：
+                ALL 表示 stock, index, futures, etf 全部
+                stock, fund, index, futures, etf, lof, fja, fjb, QDII_fund,
+                open_fund, bond_fund, stock_fund, money_market_fund, mixture_fund, options
+    :param kwargs: 其他参数
+    :return:
+    """
+    if name.upper() == 'ALL':
+        codes = get_all_securities('stock', date=None)['code'].unique().tolist() + \
+                get_all_securities('index', date=None)['code'].unique().tolist() + \
+                get_all_securities('futures', date=None)['code'].unique().tolist() + \
+                get_all_securities('etf', date=None)['code'].unique().tolist()
+    else:
+        codes = get_all_securities(name, date=None)['code'].unique().tolist()
+    return codes
+
+
+def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+    """获取 CZSC 库定义的标准 RawBar 对象列表
+
+    :param symbol: 标的代码
+    :param freq: 周期，支持 Freq 对象，或者字符串，如
+            '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线'
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param fq: 除权类型，投研共享数据默认都是后复权，不需要再处理
+    :param kwargs:
+    :return:
+    """
+    kwargs['fq'] = fq
+    freq = str(freq)
+    fq = True if fq == "前复权" else False
+    _map = {"1分钟": "1min", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
+            "60分钟": "60min", "日线": "D", "周线": "W", "月线": "M"}
+    return get_kline(symbol, freq=_map[freq], start_date=sdt, end_date=edt, fq=fq)

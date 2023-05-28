@@ -13,7 +13,6 @@ from loguru import logger
 from concurrent.futures import ProcessPoolExecutor
 from czsc import fsa
 from czsc.traders.base import generate_czsc_signals
-from czsc.traders.performance import PairsPerformance
 
 
 class DummyBacktest:
@@ -102,6 +101,8 @@ class DummyBacktest:
 
     def one_pos_stats(self, pos_name):
         """分析单个持仓策略的表现"""
+        from czsc.traders.performance import PairsPerformance
+
         symbols = os.listdir(self.poss_path)
         pos_pairs = []
         pos_holds = []
@@ -144,7 +145,7 @@ class DummyBacktest:
         :return:
         """
         results_path = self.results_path
-        tactic = self.strategy(symbol="symbol")
+        tactic = self.strategy(symbol="symbol", **self.kwargs)
         dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
 
         logger.info(f"策略回测，持仓策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，使用 {n_jobs} 个进程；"

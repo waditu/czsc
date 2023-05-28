@@ -20,8 +20,8 @@ def push_text(content: str, key: str) -> None:
     try:
         response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
-    except:
-        print(f"{data} - 文本消息推送失败")
+    except Exception as e:
+        print(f"{data} - 文本消息推送失败: {e}")
 
 
 def push_markdown(content: str, key: str) -> None:
@@ -38,8 +38,8 @@ def push_markdown(content: str, key: str) -> None:
     try:
         response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
-    except:
-        print(f"{data} - Markdown 消息推送失败")
+    except Exception as e:
+        print(f"{data} - Markdown 消息推送失败: {e}")
 
 
 def push_file(file: str, key: str):

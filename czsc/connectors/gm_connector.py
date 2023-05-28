@@ -7,7 +7,6 @@ describe: 掘金量化终端对接
 """
 import os
 import dill
-import czsc
 import inspect
 import pandas as pd
 from loguru import logger

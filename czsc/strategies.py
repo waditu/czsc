@@ -380,3 +380,196 @@ class CzscStrategyExample2(CzscStrategyBase):
                 'timeout': 20,
                 'stop_loss': 100,
                 'T0': True}
+
+
+def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Position:
+    """单均线多头策略
+
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_ma_base_V230313.html
+
+    """
+    mo = int(kwargs.get('max_overlap', 5))
+    base_freq = kwargs.get('base_freq', '15分钟')
+    freq = kwargs.get('freq', '15分钟')
+    opens = [
+        {'operate': '开多',
+         'signals_not': [],
+         'factors': [
+             {'name': f'{ma_name}多头',
+              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
+         ]},
+    ]
+
+    exits = [
+        {'operate': '平多',
+         'signals_not': [],
+         'factors': [
+             {'name': f'{ma_name}空头',
+              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
+         ]},
+    ]
+    if is_stocks:
+        # A股多头：涨停不开，跌停不平
+        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        pos_name = f"A股{freq}{ma_name}多头"
+    else:
+        # 非A股多头：都行。加入这个条件，主要是为了约束策略使用 15 分钟基础周期K线
+        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        pos_name = f"{freq}{ma_name}多头"
+
+    pos = Position(name=pos_name, symbol=symbol,
+                   opens=[Event.load(x) for x in opens],
+                   exits=[Event.load(x) for x in exits],
+                   interval=kwargs.get('interval', 3600*2),
+                   timeout=kwargs.get('timeout', 16*30),
+                   stop_loss=kwargs.get('stop_loss', 300))
+    return pos
+
+
+def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Position:
+    """单均线空头策略
+
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_ma_base_V230313.html
+
+    :param symbol: 标的代码
+    :param ma_name: 均线名称，如 SMA#5
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+    :return:
+    """
+    base_freq = kwargs.get('base_freq', '15分钟')
+    freq = kwargs.get('freq', '15分钟')
+    mo = int(kwargs.get('max_overlap', 5))
+    opens = [
+        {'operate': '开空',
+         'signals_not': [],
+         'factors': [
+             {'name': f'{ma_name}空头',
+              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
+         ]},
+    ]
+
+    exits = [
+        {'operate': '平空',
+         'signals_not': [],
+         'factors': [
+             {'name': f'{ma_name}多头',
+              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
+         ]},
+    ]
+    if is_stocks:
+        # A股空头：跌停不开，涨停不平
+        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        pos_name = f"A股{freq}{ma_name}空头"
+    else:
+        # 非A股空头：都行
+        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        pos_name = f"{freq}{ma_name}空头"
+
+    pos = Position(name=pos_name, symbol=symbol,
+                   opens=[Event.load(x) for x in opens],
+                   exits=[Event.load(x) for x in exits],
+                   interval=kwargs.get('interval', 3600*2),
+                   timeout=kwargs.get('timeout', 16*30),
+                   stop_loss=kwargs.get('stop_loss', 300))
+    return pos
+
+
+def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
+    """MACD 空头策略
+
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_macd_base_V230320.html
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+    :return:
+    """
+    base_freq = kwargs.get('base_freq', '15分钟')
+    freq = kwargs.get('freq', '15分钟')
+    mo = int(kwargs.get('max_overlap', 5))
+    opens = [
+        {'operate': '开空',
+         'signals_not': [],
+         'factors': [
+             {'name': f'MACD空头',
+              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
+         ]},
+    ]
+
+    exits = [
+        {'operate': '平空',
+         'signals_not': [],
+         'factors': [
+             {'name': 'MACD多头',
+              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
+         ]},
+    ]
+    if is_stocks:
+        # A股空头：跌停不开，涨停不平
+        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        pos_name = f"A股{freq}MACD空头"
+    else:
+        # 非A股空头：都行
+        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        pos_name = f"{freq}MACD空头"
+
+    pos = Position(name=pos_name, symbol=symbol,
+                   opens=[Event.load(x) for x in opens],
+                   exits=[Event.load(x) for x in exits],
+                   interval=kwargs.get('interval', 3600*2),
+                   timeout=kwargs.get('timeout', 16*30),
+                   stop_loss=kwargs.get('stop_loss', 300))
+    return pos
+
+
+def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
+    """MACD 多头策略
+
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_macd_base_V230320.html
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+    :return:
+    """
+    base_freq = kwargs.get('base_freq', '15分钟')
+    freq = kwargs.get('freq', '15分钟')
+    mo = int(kwargs.get('max_overlap', 5))
+    opens = [
+        {'operate': '开多',
+         'signals_not': [],
+         'factors': [
+             {'name': 'MACD多头',
+              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
+         ]},
+    ]
+
+    exits = [
+        {'operate': '平多',
+         'signals_not': [],
+         'factors': [
+             {'name': f'MACD空头',
+              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
+         ]},
+    ]
+    if is_stocks:
+        # A股多头：涨停不开，跌停不平
+        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        pos_name = f"A股{freq}MACD多头"
+    else:
+        # 非A股多头：都行
+        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        pos_name = f"{freq}MACD多头"
+
+    pos = Position(name=pos_name, symbol=symbol,
+                   opens=[Event.load(x) for x in opens],
+                   exits=[Event.load(x) for x in exits],
+                   interval=kwargs.get('interval', 3600*2),
+                   timeout=kwargs.get('timeout', 16*30),
+                   stop_loss=kwargs.get('stop_loss', 300))
+    return pos
