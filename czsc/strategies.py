@@ -394,6 +394,7 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
     opens = [
         {'operate': '开多',
          'signals_not': [],
+         'signals_all': [],
          'factors': [
              {'name': f'{ma_name}多头',
               'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
@@ -444,6 +445,8 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     opens = [
         {'operate': '开空',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': f'{ma_name}空头',
               'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
@@ -453,6 +456,8 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     exits = [
         {'operate': '平空',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': f'{ma_name}多头',
               'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
@@ -493,6 +498,8 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {'operate': '开空',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': f'MACD空头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
@@ -502,6 +509,8 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {'operate': '平空',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': 'MACD多头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
@@ -542,6 +551,8 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {'operate': '开多',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': 'MACD多头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
@@ -551,6 +562,8 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {'operate': '平多',
          'signals_not': [],
+         'signals_all': [],
+         'signals_any': [],
          'factors': [
              {'name': f'MACD空头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
