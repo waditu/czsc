@@ -74,6 +74,7 @@ class KlineChart:
                                 increasing_line_color=self.color_red, decreasing_line_color=self.color_green,
                                 increasing_fillcolor=self.color_red, decreasing_fillcolor=self.color_green, **kwargs)
         self.fig.add_trace(candle, row=1, col=1)
+        self.fig.update_traces(xaxis="x1")
 
     def add_vol(self, kline: pd.DataFrame, row=2, **kwargs):
         """绘制成交量图"""
@@ -137,6 +138,7 @@ class KlineChart:
                              mode='markers', marker=dict(size=10, color=color, symbol=tag))
 
         self.fig.add_trace(scatter, row=row, col=1)
+        self.fig.update_traces(xaxis="x1")
 
     def add_scatter_indicator(self, x, y, name: str, row: int, text=None, **kwargs):
         """绘制线性/离散指标
@@ -160,6 +162,7 @@ class KlineChart:
         scatter = go.Scatter(x=x, y=y, name=name, text=text, mode=mode, hovertemplate=hover_template,
                              showlegend=show_legend, visible=visible, opacity=opacity, **kwargs)
         self.fig.add_trace(scatter, row=row, col=1)
+        self.fig.update_traces(xaxis="x1")
 
     def add_bar_indicator(self, x, y, name: str, row: int, color=None, **kwargs):
         """绘制条形图指标
@@ -185,6 +188,7 @@ class KlineChart:
         bar = go.Bar(x=x, y=y, marker_line_color=color, marker_color=color, name=name,
                      showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=base, **kwargs)
         self.fig.add_trace(bar, row=row, col=1)
+        self.fig.update_traces(xaxis="x1")
 
     def open_in_browser(self, file_name: str = None, **kwargs):
         """在浏览器中打开"""

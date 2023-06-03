@@ -9,6 +9,7 @@ import os
 import time
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from loguru import logger
 from czsc.utils import WordWriter
 from czsc.utils.stats import net_value_stats
@@ -42,10 +43,12 @@ class CrossSectionalPerformance:
 
         :param kwargs: 其他参数
         """
+        self.version = 'V230528'
         dfh = dfh.copy()
         dfh['dt'] = pd.to_datetime(dfh['dt'])
         dfh['date'] = dfh['dt'].apply(lambda x: x.date())
-        self.dfh = self.__add_count(dfh)
+        self.dfh = dfh
+        # self.dfh = self.__add_count(dfh)
         self.dfh = self.__add_equal_weight(self.dfh, max_total_weight=kwargs.get('max_total_weight', 1))
         self.dfh['edge'] = self.dfh['n1b'] * self.dfh['weight']
         self.kwargs = kwargs
@@ -77,7 +80,8 @@ class CrossSectionalPerformance:
         for dt, dfg in dfh.groupby('dt'):
             dfg['weight'] = 0
             if dfg['pos'].abs().sum() != 0:
-                dfg.loc[dfg['pos'] != 0, 'weight'] = max_total_weight / dfg['pos'].abs().sum()
+                symbol_weight = max_total_weight / dfg['pos'].abs().sum()
+                dfg['weight'] = symbol_weight * dfg['pos']
             results.append(dfg)
         dfh = pd.concat(results, ignore_index=True)
         return dfh
