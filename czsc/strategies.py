@@ -387,6 +387,11 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
 
     https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_ma_base_V230313.html
 
+    :param symbol:
+    :param ma_name:
+    :param is_stocks:
+    :param kwargs:
+    :return:
     """
     mo = int(kwargs.get('max_overlap', 5))
     base_freq = kwargs.get('base_freq', '15分钟')
@@ -419,12 +424,16 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
         opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
         pos_name = f"{freq}{ma_name}多头"
 
+    T0 = kwargs.get('T0', False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
     pos = Position(name=pos_name, symbol=symbol,
                    opens=[Event.load(x) for x in opens],
                    exits=[Event.load(x) for x in exits],
-                   interval=kwargs.get('interval', 3600*2),
-                   timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+                   interval=kwargs.get('interval', 3600 * 2),
+                   timeout=kwargs.get('timeout', 16 * 30),
+                   stop_loss=kwargs.get('stop_loss', 300),
+                   T0=T0)
     return pos
 
 
@@ -446,7 +455,6 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
         {'operate': '开空',
          'signals_not': [],
          'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': f'{ma_name}空头',
               'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
@@ -456,8 +464,6 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     exits = [
         {'operate': '平空',
          'signals_not': [],
-         'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': f'{ma_name}多头',
               'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
@@ -473,12 +479,16 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
         opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
         pos_name = f"{freq}{ma_name}空头"
 
+    T0 = kwargs.get('T0', False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
     pos = Position(name=pos_name, symbol=symbol,
                    opens=[Event.load(x) for x in opens],
                    exits=[Event.load(x) for x in exits],
                    interval=kwargs.get('interval', 3600*2),
                    timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+                   stop_loss=kwargs.get('stop_loss', 300),
+                   T0=T0)
     return pos
 
 
@@ -498,8 +508,6 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {'operate': '开空',
          'signals_not': [],
-         'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': f'MACD空头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
@@ -509,8 +517,6 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {'operate': '平空',
          'signals_not': [],
-         'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': 'MACD多头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
@@ -526,12 +532,16 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
         opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
         pos_name = f"{freq}MACD空头"
 
+    T0 = kwargs.get('T0', False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
     pos = Position(name=pos_name, symbol=symbol,
                    opens=[Event.load(x) for x in opens],
                    exits=[Event.load(x) for x in exits],
                    interval=kwargs.get('interval', 3600*2),
                    timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+                   stop_loss=kwargs.get('stop_loss', 300),
+                   T0=T0)
     return pos
 
 
@@ -543,6 +553,10 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     :param symbol: 标的代码
     :param is_stocks: 是否是 A 股
     :param kwargs: 其他参数
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - max_overlap: 最大重叠数
+        - T0: 是否是 T0 策略
     :return:
     """
     base_freq = kwargs.get('base_freq', '15分钟')
@@ -551,8 +565,6 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {'operate': '开多',
          'signals_not': [],
-         'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': 'MACD多头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
@@ -562,8 +574,6 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {'operate': '平多',
          'signals_not': [],
-         'signals_all': [],
-         'signals_any': [],
          'factors': [
              {'name': f'MACD空头',
               'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
@@ -579,10 +589,14 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
         opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
         pos_name = f"{freq}MACD多头"
 
+    T0 = kwargs.get('T0', False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
     pos = Position(name=pos_name, symbol=symbol,
                    opens=[Event.load(x) for x in opens],
                    exits=[Event.load(x) for x in exits],
                    interval=kwargs.get('interval', 3600*2),
                    timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+                   stop_loss=kwargs.get('stop_loss', 300),
+                   T0=T0)
     return pos
