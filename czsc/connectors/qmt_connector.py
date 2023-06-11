@@ -138,6 +138,9 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
 
     kline = get_kline(symbol, period, sdt, edt, dividend_type=dividend_type,
                       download_hist=kwargs.get("download_hist", True), df=True)
+    if kline.empty:
+        return []
+
     kline['dt'] = pd.to_datetime(kline['time'])
     kline['vol'] = kline['volume']
     bars = resample_bars(kline, freq, raw_bars=True)

@@ -415,9 +415,13 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
          ]},
     ]
     if is_stocks:
-        # A股多头：涨停不开，跌停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0',
+            f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0',
+        ]
+        opens[0]['signals_not'].extend(zdt_sigs)
+        exits[0]['signals_not'].append(zdt_sigs)
         pos_name = f"A股{freq}{ma_name}多头"
     else:
         # 非A股多头：都行。加入这个条件，主要是为了约束策略使用 15 分钟基础周期K线
@@ -470,9 +474,13 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
          ]},
     ]
     if is_stocks:
-        # A股空头：跌停不开，涨停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0',
+            f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0',
+        ]
+        opens[0]['signals_not'].extend(zdt_sigs)
+        exits[0]['signals_not'].append(zdt_sigs)
         pos_name = f"A股{freq}{ma_name}空头"
     else:
         # 非A股空头：都行
@@ -523,9 +531,13 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
          ]},
     ]
     if is_stocks:
-        # A股空头：跌停不开，涨停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0',
+            f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0',
+        ]
+        opens[0]['signals_not'].extend(zdt_sigs)
+        exits[0]['signals_not'].append(zdt_sigs)
         pos_name = f"A股{freq}MACD空头"
     else:
         # 非A股空头：都行
@@ -580,9 +592,13 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
          ]},
     ]
     if is_stocks:
-        # A股多头：涨停不开，跌停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0',
+            f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0',
+        ]
+        opens[0]['signals_not'].extend(zdt_sigs)
+        exits[0]['signals_not'].append(zdt_sigs)
         pos_name = f"A股{freq}MACD多头"
     else:
         # 非A股多头：都行

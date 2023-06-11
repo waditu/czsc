@@ -11,7 +11,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from datetime import datetime
 from loguru import logger
-from typing import List, Callable
+from typing import List, Callable, AnyStr, Dict
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
 
@@ -556,6 +556,11 @@ class Event:
         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
         return list(signals)
 
+    def get_signals_config(self, signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+        """获取事件的信号配置"""
+        from czsc.traders.sig_parse import get_signals_config
+        return get_signals_config(self.unique_signals, signals_module)
+
     def is_match(self, s: dict):
         """判断 event 是否满足"""
         # 首先判断 event 层面的信号是否得到满足
@@ -701,6 +706,11 @@ class Position:
         for e in self.events:
             signals.extend(e.unique_signals)
         return list(set(signals))
+
+    def get_signals_config(self, signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+        """获取事件的信号配置"""
+        from czsc.traders.sig_parse import get_signals_config
+        return get_signals_config(self.unique_signals, signals_module)
 
     def dump(self, with_data=False):
         """将对象转换为 dict"""
@@ -986,4 +996,4 @@ class Position:
                 self.pos = 0
                 self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
 
-        self.holds.append({"dt": self.end_dt, 'pos': self.pos, 'price': price, 'bid': bid})
+        self.holds.append({"dt": self.end_dt, 'pos': self.pos, 'price': price})

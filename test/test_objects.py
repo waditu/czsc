@@ -254,3 +254,27 @@ def test_event():
     ])
     m, f = event.is_match(s)
     assert not m and not f
+
+    event = Event.load(
+        {
+            "name": "开多",
+            "operate": "开多",
+            "signals_all": [
+                "1分钟_D1_涨跌停V230331_任意_任意_任意_0",
+                "1分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0"
+            ],
+            "signals_any": [],
+            "signals_not": [],
+            "factors": [
+                {
+                    "name": "SMA#40多头",
+                    "signals_all": [
+                        "5分钟_D1#SMA#40MO10_BS辅助V230313_看多_任意_任意_0"
+                    ],
+                    "signals_any": [],
+                    "signals_not": []
+                }
+            ]
+        }
+    )
+    assert len(event.get_signals_config()) == 3
