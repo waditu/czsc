@@ -16,7 +16,7 @@ from czsc.utils import import_by_name, sorted_freqs
 class SignalsParser:
     """解析一串信号，生成信号函数配置"""
 
-    def __init__(self, signals_module='czsc.signals'):
+    def __init__(self, signals_module: AnyStr = 'czsc.signals'):
         """
 
         :param signals_module: 指定信号函数所在模块
