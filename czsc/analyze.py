@@ -95,7 +95,7 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     return fxs
 
 
-def check_bi(bars: List[NewBar], benchmark: float = None):
+def check_bi(bars: List[NewBar], benchmark=None):
     """输入一串无包含关系K线，查找其中的一笔
 
     :param bars: 无包含关系K线列表
@@ -167,7 +167,7 @@ def check_bi(bars: List[NewBar], benchmark: float = None):
 class CZSC:
     def __init__(self,
                  bars: List[RawBar],
-                 get_signals: Callable = None,
+                 get_signals = None,
                  max_bi_num=envs.get_max_bi_num(),
                  ):
         """
@@ -224,7 +224,8 @@ class CZSC:
             logger.info(f"{self.symbol} - {self.freq} - {bars_ubi[-1].dt} 未完成笔延伸数量: {len(bars_ubi)}")
 
         if envs.get_bi_change_th() > 0.5 and len(self.bi_list) >= 5:
-            benchmark = min(self.bi_list[-1].power_price, np.mean([x.power_price for x in self.bi_list[-5:]]))
+            price_seq = [x.power_price for x in self.bi_list[-5:]]
+            benchmark = min(self.bi_list[-1].power_price, sum(price_seq) / len(price_seq))
         else:
             benchmark = None
 
