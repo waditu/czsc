@@ -102,9 +102,10 @@ def amv_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     m = int(kwargs.get("m", 120))
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_AMV能量V230603".split('_')
-    v1 = "其他"
-    if len(c.bars_raw) < di + 120:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    if n > m or len(c.bars_raw) < di + m + 10:
+        if n > m:
+            logger.warning(f"参数错误：n={n} > m={m}；m 必须大于 n，否则无法计算。")
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     n_bars = get_sub_elements(c.bars_raw, di=di, n=n)  
     m_bars = get_sub_elements(c.bars_raw, di=di, n=m)
