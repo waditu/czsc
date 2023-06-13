@@ -8,7 +8,7 @@ describe:
 import re
 from loguru import logger
 from parse import parse
-from typing import List, AnyStr, Dict
+from typing import List, Dict
 from czsc.objects import Signal
 from czsc.utils import import_by_name, sorted_freqs
 
@@ -61,7 +61,7 @@ class SignalsParser:
             return None
 
         try:
-            params = parse(pats, key).named
+            params = parse(pats, key).named # type: ignore
             if 'di' in params:
                 params['di'] = int(params['di'])
 
