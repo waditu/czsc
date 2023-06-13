@@ -174,4 +174,7 @@ from czsc.signals.pos import (
 from czsc.signals.ang import (
     adtm_up_dw_line_V230603,
     amv_up_dw_line_V230603,
+    asi_up_dw_line_V230603,
+    clv_up_dw_line_V230605,
+    cmo_up_dw_line_V230605,
 )
