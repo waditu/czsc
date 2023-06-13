@@ -47,6 +47,7 @@ from czsc.signals.byi import (
 
 from czsc.signals.coo import (
     coo_td_V221110,
+    coo_td_V221111,
 )
 
 from czsc.signals.vol import (
