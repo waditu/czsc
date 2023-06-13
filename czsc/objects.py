@@ -6,9 +6,10 @@ create_dt: 2021/3/10 12:21
 describe: 常用对象结构
 """
 import math
+import hashlib
 import pandas as pd
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from loguru import logger
 from typing import List, Callable, AnyStr, Dict
@@ -27,17 +28,18 @@ class Tick:
 @dataclass
 class RawBar:
     """原始K线元素"""
+
     symbol: str
     id: int  # id 必须是升序
     dt: datetime
     freq: Freq
-    open: [float, int]
-    close: [float, int]
-    high: [float, int]
-    low: [float, int]
-    vol: [float, int]
-    amount: [float, int] = None
-    cache: dict = None  # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
+    open: float
+    close: float
+    high: float
+    low: float
+    vol: float
+    amount: float
+    cache: dict = field(default_factory=dict)  # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
 
     @property
     def upper(self):
@@ -58,18 +60,19 @@ class RawBar:
 @dataclass
 class NewBar:
     """去除包含关系后的K线元素"""
+
     symbol: str
     id: int  # id 必须是升序
     dt: datetime
     freq: Freq
-    open: [float, int]
-    close: [float, int]
-    high: [float, int]
-    low: [float, int]
-    vol: [float, int]
-    amount: [float, int] = None
-    elements: List = None  # 存入具有包含关系的原始K线
-    cache: dict = None  # cache 用户缓存
+    open: float
+    close: float
+    high: float
+    low: float
+    vol: float
+    amount: float
+    elements: List = field(default_factory=list)  # 存入具有包含关系的原始K线
+    cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     @property
     def raw_bars(self):
@@ -81,11 +84,11 @@ class FX:
     symbol: str
     dt: datetime
     mark: Mark
-    high: [float, int]
-    low: [float, int]
-    fx: [float, int]
-    elements: List = None
-    cache: dict = None  # cache 用户缓存
+    high: float
+    low: float
+    fx: float
+    elements: List = field(default_factory=list)
+    cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     @property
     def new_bars(self):
@@ -140,14 +143,15 @@ class FX:
 @dataclass
 class FakeBI:
     """虚拟笔：主要为笔的内部分析提供便利"""
+
     symbol: str
     sdt: datetime
     edt: datetime
     direction: Direction
-    high: [float, int]
-    low: [float, int]
-    power: [float, int]
-    cache: dict = None  # cache 用户缓存
+    high: float
+    low: float
+    power: float
+    cache: dict = field(default_factory=dict)  # cache 用户缓存
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -165,11 +169,25 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
         fx2 = fxs[i]
         assert fx1.mark != fx2.mark
         if fx1.mark == Mark.D:
-            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Up,
-                             high=fx2.high, low=fx1.low, power=round(fx2.high - fx1.low, 2))
+            fake_bi = FakeBI(
+                symbol=fx1.symbol,
+                sdt=fx1.dt,
+                edt=fx2.dt,
+                direction=Direction.Up,
+                high=fx2.high,
+                low=fx1.low,
+                power=round(fx2.high - fx1.low, 2),
+            )
         elif fx1.mark == Mark.G:
-            fake_bi = FakeBI(symbol=fx1.symbol, sdt=fx1.dt, edt=fx2.dt, direction=Direction.Down,
-                             high=fx1.high, low=fx2.low, power=round(fx1.high - fx2.low, 2))
+            fake_bi = FakeBI(
+                symbol=fx1.symbol,
+                sdt=fx1.dt,
+                edt=fx2.dt,
+                direction=Direction.Down,
+                high=fx1.high,
+                low=fx2.low,
+                power=round(fx1.high - fx2.low, 2),
+            )
         else:
             raise ValueError
         fake_bis.append(fake_bi)
@@ -179,20 +197,22 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 @dataclass
 class BI:
     symbol: str
-    fx_a: FX = None  # 笔开始的分型
-    fx_b: FX = None  # 笔结束的分型
-    fxs: List = None  # 笔内部的分型列表
-    direction: Direction = None
-    bars: List[NewBar] = None
-    cache: dict = None  # cache 用户缓存
+    fx_a: FX    # 笔开始的分型
+    fx_b: FX    # 笔结束的分型
+    fxs: List   # 笔内部的分型列表
+    direction: Direction
+    bars: List[NewBar] = field(default_factory=list)
+    cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     def __post_init__(self):
         self.sdt = self.fx_a.dt
         self.edt = self.fx_b.dt
 
     def __repr__(self):
-        return f"BI(symbol={self.symbol}, sdt={self.sdt}, edt={self.edt}, " \
-               f"direction={self.direction}, high={self.high}, low={self.low})"
+        return (
+            f"BI(symbol={self.symbol}, sdt={self.sdt}, edt={self.edt}, "
+            f"direction={self.direction}, high={self.high}, low={self.low})"
+        )
 
     def get_cache_with_default(self, key, default: Callable):
         """带有默认值计算的缓存读取
@@ -236,15 +256,17 @@ class BI:
     def fake_bis(self):
         """笔的内部分型连接得到近似次级别笔列表"""
 
-        def __default(): return create_fake_bis(self.fxs)
+        def __default():
+            return create_fake_bis(self.fxs)
 
-        return self.get_cache_with_default('fake_bis', __default)
+        return self.get_cache_with_default("fake_bis", __default)
 
     @property
     def high(self):
-        def __default(): return max(self.fx_a.high, self.fx_b.high)
+        def __default():
+            return max(self.fx_a.high, self.fx_b.high)
 
-        return self.get_cache_with_default('high', __default)
+        return self.get_cache_with_default("high", __default)
 
     @property
     def low(self):
@@ -278,8 +300,8 @@ class BI:
     @property
     def rsq(self):
         """笔的原始K线 close 单变量线性回归 r2"""
-        value = self.get_price_linear('close')
-        return round(value['r2'], 4)
+        value = self.get_price_linear("close")
+        return round(value["r2"], 4)
 
     @property
     def raw_bars(self):
@@ -291,7 +313,7 @@ class BI:
                 value.extend(bar.raw_bars)
             return value
 
-        return self.get_cache_with_default('raw_bars', __default)
+        return self.get_cache_with_default("raw_bars", __default)
 
     @property
     def hypotenuse(self):
@@ -307,9 +329,9 @@ class BI:
 @dataclass
 class ZS:
     """中枢对象，主要用于辅助信号函数计算"""
+
     bis: List[BI]
-    symbol: str = None
-    cache: dict = None  # cache 用户缓存
+    cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     def __post_init__(self):
         self.symbol = self.bis[0].symbol
@@ -367,8 +389,11 @@ class ZS:
 
         for bi in self.bis:
             # 中枢内的笔必须与中枢的上下沿有交集
-            if self.zg >= bi.high >= self.zd or self.zg >= bi.low >= self.zd \
-                    or bi.high >= self.zg > self.zd >= bi.low:
+            if (
+                self.zg >= bi.high >= self.zd
+                or self.zg >= bi.low >= self.zd
+                or bi.high >= self.zg > self.zd >= bi.low
+            ):
                 continue
             else:
                 return False
@@ -376,22 +401,24 @@ class ZS:
         return True
 
     def __repr__(self):
-        return f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, " \
-               f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, " \
-               f"gg={self.gg}, dd={self.dd}, zz={self.zz})"
+        return (
+            f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, "
+            f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, "
+            f"gg={self.gg}, dd={self.dd}, zz={self.zz})"
+        )
 
 
 @dataclass
 class Signal:
-    signal: str = None
+    signal: str = ""
 
     # score 取值在 0~100 之间，得分越高，信号越强
     score: int = 0
 
     # k1, k2, k3 是信号名称
-    k1: str = "任意"      # k1 一般是指明信号计算的K线周期，如 60分钟，日线，周线等
-    k2: str = "任意"      # k2 一般是记录信号计算的参数
-    k3: str = "任意"      # k3 用于区分信号，必须具有唯一性，推荐使用信号分类和开发日期进行标记
+    k1: str = "任意"  # k1 一般是指明信号计算的K线周期，如 60分钟，日线，周线等
+    k2: str = "任意"  # k2 一般是记录信号计算的参数
+    k3: str = "任意"  # k3 用于区分信号，必须具有唯一性，推荐使用信号分类和开发日期进行标记
 
     # v1, v2, v3 是信号取值
     v1: str = "任意"
@@ -404,7 +431,15 @@ class Signal:
         if not self.signal:
             self.signal = f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
         else:
-            self.k1, self.k2, self.k3, self.v1, self.v2, self.v3, score = self.signal.split("_")
+            (
+                self.k1,
+                self.k2,
+                self.k3,
+                self.v1,
+                self.v2,
+                self.v3,
+                score,
+            ) = self.signal.split("_")
             self.score = int(score)
 
         if self.score > 100 or self.score < 0:
@@ -440,9 +475,9 @@ class Signal:
 
         v1, v2, v3, score = v.split("_")
         if int(score) >= self.score:
-            if v1 == self.v1 or self.v1 == '任意':
-                if v2 == self.v2 or self.v2 == '任意':
-                    if v3 == self.v3 or self.v3 == '任意':
+            if v1 == self.v1 or self.v1 == "任意":
+                if v2 == self.v2 or self.v2 == "任意":
+                    if v3 == self.v3 or self.v3 == "任意":
                         return True
         return False
 
@@ -455,10 +490,10 @@ class Factor:
     signals_all: List[Signal]
 
     # signals_any 满足其中任一信号，允许为空
-    signals_any: List[Signal] = None
+    signals_any: List[Signal] = field(default_factory=list)
 
     # signals_not 不能满足其中任一信号，允许为空
-    signals_not: List[Signal] = None
+    signals_not: List[Signal] = field(default_factory=list)
 
     @property
     def unique_signals(self) -> List[str]:
@@ -493,11 +528,15 @@ class Factor:
 
     def dump(self) -> dict:
         """将 Factor 对象转存为 dict"""
+        signals_all = [x.signal for x in self.signals_all]
+        signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
+        signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
+
         raw = {
             "name": self.name,
-            "signals_all": [x.signal for x in self.signals_all],
-            "signals_any": [] if not self.signals_any else [x.signal for x in self.signals_any],
-            "signals_not": [] if not self.signals_not else [x.signal for x in self.signals_not],
+            "signals_all": signals_all,
+            "signals_any": signals_any,
+            "signals_not": signals_not,
         }
         return raw
 
@@ -507,17 +546,21 @@ class Factor:
 
         :param raw: 样例如下
             {'name': '单测',
-             'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0', '15分钟_倒0笔_长度_大于5_其他_其他_0'],
-             'signals_any': [],
-             'signals_not': []}
+            'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0', '15分钟_倒0笔_长度_大于5_其他_其他_0'],
+            'signals_any': [],
+            'signals_not': []}
 
         :return:
         """
-        fa = Factor(name=raw['name'],
-                    signals_all=[Signal(x) for x in raw['signals_all']],
-                    signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else [],
-                    signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else []
-                    )
+        signals_any = [Signal(x) for x in raw.get("signals_any", [])]
+        signals_not = [Signal(x) for x in raw.get("signals_not", [])]
+
+        fa = Factor(
+            name=raw["name"],
+            signals_all=[Signal(x) for x in raw["signals_all"]],
+            signals_any=signals_any,
+            signals_not=signals_not,
+        )
         return fa
 
 
@@ -531,13 +574,13 @@ class Event:
     factors: List[Factor]
 
     # signals_all 必须全部满足的信号，允许为空
-    signals_all: List[Signal] = None
+    signals_all: List[Signal] = field(default_factory=list)
 
     # signals_any 满足其中任一信号，允许为空
-    signals_any: List[Signal] = None
+    signals_any: List[Signal] = field(default_factory=list)
 
     # signals_not 不能满足其中任一信号，允许为空
-    signals_not: List[Signal] = None
+    signals_not: List[Signal] = field(default_factory=list)
 
     @property
     def unique_signals(self) -> List[str]:
@@ -556,9 +599,10 @@ class Event:
         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
         return list(signals)
 
-    def get_signals_config(self, signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+    def get_signals_config(self, signals_module: AnyStr = "czsc.signals") -> List[Dict]:
         """获取事件的信号配置"""
         from czsc.traders.sig_parse import get_signals_config
+
         return get_signals_config(self.unique_signals, signals_module)
 
     def is_match(self, s: dict):
@@ -596,13 +640,18 @@ class Event:
 
     def dump(self) -> dict:
         """将 Event 对象转存为 dict"""
+        signals_all = [x.signal for x in self.signals_all] if self.signals_all else []
+        signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
+        signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
+        factors = [x.dump() for x in self.factors]
+
         raw = {
             "name": self.name,
             "operate": self.operate.value,
-            "signals_all": [] if not self.signals_all else [x.signal for x in self.signals_all],
-            "signals_any": [] if not self.signals_any else [x.signal for x in self.signals_any],
-            "signals_not": [] if not self.signals_not else [x.signal for x in self.signals_not],
-            "factors": [x.dump() for x in self.factors],
+            "signals_all": signals_all,
+            "signals_any": signals_any,
+            "signals_not": signals_not,
+            "factors": factors,
         }
         return raw
 
@@ -611,27 +660,36 @@ class Event:
         """从 dict 中创建 Event
 
         :param raw: 样例如下
-                {'name': '单测',
-                 'operate': '开多',
-                 'factors': [{'name': '测试',
-                   'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0'],
-                   'signals_any': [],
-                   'signals_not': []}],
-                 'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
-                 'signals_any': [],
-                 'signals_not': []}
+                        {'name': '单测',
+                         'operate': '开多',
+                         'factors': [{'name': '测试',
+                             'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0'],
+                             'signals_any': [],
+                             'signals_not': []}],
+                         'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
+                         'signals_any': [],
+                         'signals_not': []}
         :return:
         """
-        assert raw['operate'] in Operate.__dict__["_value2member_map_"], f"operate {raw['operate']} not in Operate"
-        assert raw['factors'], "factors can not be empty"
+        # 检查输入参数是否合法
+        assert (
+            raw["operate"] in Operate.__dict__["_value2member_map_"]
+        ), f"operate {raw['operate']} not in Operate"
+        assert raw["factors"], "factors can not be empty"
 
-        e = Event(name=raw['name'] if raw.get('name') else raw['operate'],
-                  operate=Operate.__dict__["_value2member_map_"][raw['operate']],
-                  factors=[Factor.load(x) for x in raw['factors']],
-                  signals_all=[Signal(x) for x in raw['signals_all']] if raw.get('signals_all') else [],
-                  signals_any=[Signal(x) for x in raw['signals_any']] if raw.get('signals_any') else [],
-                  signals_not=[Signal(x) for x in raw['signals_not']] if raw.get('signals_not') else []
-                  )
+        # 生成 Event 的 name 和 sha256
+        name = raw.get("name", raw["operate"])
+        sha256 = hashlib.sha256(str(raw).encode("utf-8")).hexdigest().upper()[:8]
+
+        # 生成 Event 对象
+        e = Event(
+            name=f"{name}_{sha256}",
+            operate=Operate.__dict__["_value2member_map_"][raw["operate"]],
+            factors=[Factor.load(x) for x in raw["factors"]],
+            signals_all=[Signal(x) for x in raw.get("signals_all", [])],
+            signals_any=[Signal(x) for x in raw.get("signals_any", [])],
+            signals_not=[Signal(x) for x in raw.get("signals_not", [])],
+        )
         return e
 
 
@@ -657,8 +715,17 @@ def cal_break_even_point(seq: List[float]) -> float:
 
 
 class Position:
-    def __init__(self, symbol: str, opens: List[Event], exits: List[Event] = None, interval: int = 0,
-                 timeout: int = 1000, stop_loss=1000, T0: bool = False, name=None):
+    def __init__(
+        self,
+        symbol: str,
+        opens: List[Event],
+        exits: List[Event] = [],
+        interval: int = 0,
+        timeout: int = 1000,
+        stop_loss=1000,
+        T0: bool = False,
+        name=None,
+    ):
         """简单持仓对象，仓位表达：1 持有多头，-1 持有空头，0 空仓
 
         :param symbol: 标的代码
@@ -690,14 +757,22 @@ class Position:
         self.pos = 0
 
         # 辅助判断的缓存数据
-        self.last_event = {'dt': None, 'bid': None, 'price': None, "op": None, 'op_desc': None}
+        self.last_event = {
+            "dt": None,
+            "bid": None,
+            "price": None,
+            "op": None,
+            "op_desc": None,
+        }
         self.last_lo_dt = None  # 最近一次开多交易的时间
         self.last_so_dt = None  # 最近一次开空交易的时间
         self.end_dt = None  # 最近一次信号传入的时间
 
     def __repr__(self):
-        return f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, " \
-               f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
+        return (
+            f"Position(name={self.name}, symbol={self.symbol}, opens={[x.name for x in self.opens]}, "
+            f"timeout={self.timeout}, stop_loss={self.stop_loss}BP, T0={self.T0}, interval={self.interval}s)"
+        )
 
     @property
     def unique_signals(self) -> List[str]:
@@ -707,9 +782,10 @@ class Position:
             signals.extend(e.unique_signals)
         return list(set(signals))
 
-    def get_signals_config(self, signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+    def get_signals_config(self, signals_module: str = "czsc.signals") -> List[Dict]:
         """获取事件的信号配置"""
         from czsc.traders.sig_parse import get_signals_config
+
         return get_signals_config(self.unique_signals, signals_module)
 
     def dump(self, with_data=False):
@@ -735,13 +811,16 @@ class Position:
         :param raw: 样例如下
         :return:
         """
-        pos = Position(name=raw['name'], symbol=raw['symbol'],
-                       opens=[Event.load(x) for x in raw['opens'] if raw.get('opens')],
-                       exits=[Event.load(x) for x in raw['exits'] if raw.get('exits')],
-                       interval=raw['interval'],
-                       timeout=raw['timeout'],
-                       stop_loss=raw['stop_loss'],
-                       T0=raw['T0'])
+        pos = Position(
+            name=raw["name"],
+            symbol=raw["symbol"],
+            opens=[Event.load(x) for x in raw["opens"] if raw.get("opens")],
+            exits=[Event.load(x) for x in raw["exits"] if raw.get("exits")],
+            interval=raw["interval"],
+            timeout=raw["timeout"],
+            stop_loss=raw["stop_loss"],
+            T0=raw["T0"],
+        )
         return pos
 
     @property
@@ -780,22 +859,26 @@ class Position:
         pairs = []
 
         for op1, op2 in zip(self.operates, self.operates[1:]):
-            if op1['op'] not in [Operate.LO, Operate.SO]:
+            if op1["op"] not in [Operate.LO, Operate.SO]:
                 continue
 
-            ykr = op2['price'] / op1['price'] - 1 if op1['op'] == Operate.LO else 1 - op2['price'] / op1['price']
+            ykr = (
+                op2["price"] / op1["price"] - 1
+                if op1["op"] == Operate.LO
+                else 1 - op2["price"] / op1["price"]
+            )
             pair = {
-                '标的代码': self.symbol,
-                '策略标记': self.name,
-                '交易方向': "多头" if op1['op'] == Operate.LO else "空头",
-                '开仓时间': op1['dt'],
-                '平仓时间': op2['dt'],
-                '开仓价格': op1['price'],
-                '平仓价格': op2['price'],
-                '持仓K线数': op2['bid'] - op1['bid'],
-                '事件序列': f"{op1['op_desc']} -> {op2['op_desc']}",
-                '持仓天数': (op2['dt'] - op1['dt']).total_seconds() / (24 * 3600),
-                '盈亏比例': round(ykr * 10000, 2),  # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
+                "标的代码": self.symbol,
+                "策略标记": self.name,
+                "交易方向": "多头" if op1["op"] == Operate.LO else "空头",
+                "开仓时间": op1["dt"],
+                "平仓时间": op2["dt"],
+                "开仓价格": op1["price"],
+                "平仓价格": op2["price"],
+                "持仓K线数": op2["bid"] - op1["bid"],
+                "事件序列": f"{op1['op_desc']} -> {op2['op_desc']}",
+                "持仓天数": (op2["dt"] - op1["dt"]).total_seconds() / (24 * 3600),
+                "盈亏比例": round(ykr * 10000, 2),  # 盈亏比例 转换成以 BP 为单位的收益，1BP = 0.0001
             }
             pairs.append(pair)
 
@@ -807,40 +890,53 @@ class Position:
         :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
         :return: 交易表现
         """
-        if trade_dir == '多空':
+        if trade_dir == "多空":
             pairs = self.pairs
         else:
-            pairs = [x for x in self.pairs if x['交易方向'] == trade_dir]
-        p = {"交易标的": self.symbol, "策略标记": self.name, "交易方向": trade_dir,
-             "交易次数": len(pairs), '累计收益': 0, '单笔收益': 0,
-             '盈利次数': 0, '累计盈利': 0, '单笔盈利': 0,
-             '亏损次数': 0, '累计亏损': 0, '单笔亏损': 0,
-             '胜率': 0, "累计盈亏比": 0, "单笔盈亏比": 0, "盈亏平衡点": 1}
+            pairs = [x for x in self.pairs if x["交易方向"] == trade_dir]
+        p = {
+            "交易标的": self.symbol,
+            "策略标记": self.name,
+            "交易方向": trade_dir,
+            "交易次数": len(pairs),
+            "累计收益": 0,
+            "单笔收益": 0,
+            "盈利次数": 0,
+            "累计盈利": 0,
+            "单笔盈利": 0,
+            "亏损次数": 0,
+            "累计亏损": 0,
+            "单笔亏损": 0,
+            "胜率": 0,
+            "累计盈亏比": 0,
+            "单笔盈亏比": 0,
+            "盈亏平衡点": 1,
+        }
 
         if len(pairs) == 0:
             return p
 
-        p['盈亏平衡点'] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
-        p['累计收益'] = round(sum([x['盈亏比例'] for x in pairs]), 2)
-        p['单笔收益'] = round(p['累计收益'] / p['交易次数'], 2)
-        p['平均持仓天数'] = round(sum([x['持仓天数'] for x in pairs]) / len(pairs), 2)
-        p['平均持仓K线数'] = round(sum([x['持仓K线数'] for x in pairs]) / len(pairs), 2)
+        p["盈亏平衡点"] = round(cal_break_even_point([x["盈亏比例"] for x in pairs]), 4)
+        p["累计收益"] = round(sum([x["盈亏比例"] for x in pairs]), 2)
+        p["单笔收益"] = round(p["累计收益"] / p["交易次数"], 2)
+        p["平均持仓天数"] = round(sum([x["持仓天数"] for x in pairs]) / len(pairs), 2)
+        p["平均持仓K线数"] = round(sum([x["持仓K线数"] for x in pairs]) / len(pairs), 2)
 
-        win_ = [x for x in pairs if x['盈亏比例'] >= 0]
+        win_ = [x for x in pairs if x["盈亏比例"] >= 0]
         if len(win_) > 0:
-            p['盈利次数'] = len(win_)
-            p['累计盈利'] = sum([x['盈亏比例'] for x in win_])
-            p['单笔盈利'] = round(p['累计盈利'] / p['盈利次数'], 4)
-            p['胜率'] = round(p['盈利次数'] / p['交易次数'], 4)
+            p["盈利次数"] = len(win_)
+            p["累计盈利"] = sum([x["盈亏比例"] for x in win_])
+            p["单笔盈利"] = round(p["累计盈利"] / p["盈利次数"], 4)
+            p["胜率"] = round(p["盈利次数"] / p["交易次数"], 4)
 
-        loss_ = [x for x in pairs if x['盈亏比例'] < 0]
+        loss_ = [x for x in pairs if x["盈亏比例"] < 0]
         if len(loss_) > 0:
-            p['亏损次数'] = len(loss_)
-            p['累计亏损'] = sum([x['盈亏比例'] for x in loss_])
-            p['单笔亏损'] = round(p['累计亏损'] / p['亏损次数'], 4)
+            p["亏损次数"] = len(loss_)
+            p["累计亏损"] = sum([x["盈亏比例"] for x in loss_])
+            p["单笔亏损"] = round(p["累计亏损"] / p["亏损次数"], 4)
 
-            p['累计盈亏比'] = round(p['累计盈利'] / abs(p['累计亏损']), 4)
-            p['单笔盈亏比'] = round(p['单笔盈利'] / abs(p['单笔亏损']), 4)
+            p["累计盈亏比"] = round(p["累计盈利"] / abs(p["累计亏损"]), 4)
+            p["单笔盈亏比"] = round(p["单笔盈利"] / abs(p["单笔亏损"]), 4)
 
         return p
 
@@ -851,44 +947,61 @@ class Position:
         :return: 交易表现
         """
         holds = deepcopy(self.holds)
-        if trade_dir != '多空':
+        if trade_dir != "多空":
             _OD = 1 if trade_dir == "多头" else -1
             for hold in holds:
-                if hold['pos'] != 0 and hold['pos'] != _OD:
-                    hold['pos'] = 0
+                if hold["pos"] != 0 and hold["pos"] != _OD:
+                    hold["pos"] = 0
 
-        p = {"交易标的": self.symbol, "策略标记": self.name, "交易方向": trade_dir,
-             "开始时间": "", "结束时间": "",
-             '覆盖率': 0, '夏普': 0, '卡玛': 0, '最大回撤': 0, '年化收益': 0, '日胜率': 0}
+        p = {
+            "交易标的": self.symbol,
+            "策略标记": self.name,
+            "交易方向": trade_dir,
+            "开始时间": "",
+            "结束时间": "",
+            "覆盖率": 0,
+            "夏普": 0,
+            "卡玛": 0,
+            "最大回撤": 0,
+            "年化收益": 0,
+            "日胜率": 0,
+        }
 
-        if len(holds) == 0 or all(x['pos'] == 0 for x in holds):
+        if len(holds) == 0 or all(x["pos"] == 0 for x in holds):
             return p
 
         dfh = pd.DataFrame(holds)
-        dfh['n1b'] = (dfh['price'].shift(-1) - dfh['price']) / dfh['price']
-        dfh['trade_date'] = dfh['dt'].apply(lambda x: x.strftime('%Y-%m-%d'))
-        dfh['edge'] = dfh['n1b'] * dfh['pos']  # 持有下一根K线的边际收益
+        dfh["n1b"] = (dfh["price"].shift(-1) - dfh["price"]) / dfh["price"]
+        dfh["trade_date"] = dfh["dt"].apply(lambda x: x.strftime("%Y-%m-%d"))
+        dfh["edge"] = dfh["n1b"] * dfh["pos"]  # 持有下一根K线的边际收益
 
         # 按日期聚合
-        dfv = dfh.groupby('trade_date')['edge'].sum()
+        dfv = dfh.groupby("trade_date")["edge"].sum()
         dfv = dfv.cumsum()
 
         yearly_n = 252
         yearly_ret = dfv.iloc[-1] * (yearly_n / len(dfv))
-        sharp = dfv.diff().mean() / dfv.diff().std() * pow(yearly_n, 0.5) if dfv.diff().std() != 0 else 0
+        sharp = (
+            dfv.diff().mean() / dfv.diff().std() * pow(yearly_n, 0.5)
+            if dfv.diff().std() != 0
+            else 0
+        )
         df0 = dfv.shift(1).ffill().fillna(0)
         mdd = (1 - (df0 + 1) / (df0 + 1).cummax()).max()
         calmar = yearly_ret / mdd if mdd != 0 else 1
 
-        p.update({
-            "开始时间": dfh['dt'].iloc[0].strftime('%Y-%m-%d'),
-            "结束时间": dfh['dt'].iloc[-1].strftime('%Y-%m-%d'),
-            '覆盖率': round(len(dfh[dfh['pos'] != 0]) / len(dfh), 4),
-            '夏普': round(sharp, 4),
-            '卡玛': round(calmar, 4),
-            '最大回撤': round(mdd, 4),
-            '年化收益': round(yearly_ret, 4),
-            '日胜率': round(sum(dfv > 0) / len(dfv), 4)})
+        p.update(
+            {
+                "开始时间": dfh["dt"].iloc[0].strftime("%Y-%m-%d"),
+                "结束时间": dfh["dt"].iloc[-1].strftime("%Y-%m-%d"),
+                "覆盖率": round(len(dfh[dfh["pos"] != 0]) / len(dfh), 4),
+                "夏普": round(sharp, 4),
+                "卡玛": round(calmar, 4),
+                "最大回撤": round(mdd, 4),
+                "年化收益": round(yearly_ret, 4),
+                "日胜率": round(sum(dfv > 0) / len(dfv), 4),
+            }
+        )
         return p
 
     def evaluate(self, trade_dir: str = "多空") -> dict:
@@ -907,7 +1020,7 @@ class Position:
         :param s: 最新信号字典
         :return:
         """
-        if self.end_dt and s['dt'] <= self.end_dt:
+        if self.end_dt and s["dt"] <= self.end_dt:
             logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
             return
 
@@ -921,21 +1034,37 @@ class Position:
                 op_desc = f"{event.name}@{f}"
                 break
 
-        symbol, dt, price, bid = s['symbol'], s['dt'], s['close'], s['id']
+        symbol, dt, price, bid = s["symbol"], s["dt"], s["close"], s["id"]
         self.end_dt = dt
 
         # 当有新的开仓 event 发生，更新 last_event
         if op in [Operate.LO, Operate.SO]:
-            self.last_event = {'dt': dt, 'bid': bid, 'price': price, 'op': op, 'op_desc': op_desc}
+            self.last_event = {
+                "dt": dt,
+                "bid": bid,
+                "price": price,
+                "op": op,
+                "op_desc": op_desc,
+            }
 
         def __create_operate(_op, _op_desc):
             self.pos_changed = True
-            return {'symbol': self.symbol, 'dt': dt, 'bid': bid, 'price': price,
-                    'op': _op, 'op_desc': _op_desc, 'pos': self.pos}
+            return {
+                "symbol": self.symbol,
+                "dt": dt,
+                "bid": bid,
+                "price": price,
+                "op": _op,
+                "op_desc": _op_desc,
+                "pos": self.pos,
+            }
 
         # 更新仓位
         if op == Operate.LO:
-            if self.pos != 1 and (not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval):
+            if self.pos != 1 and (
+                not self.last_lo_dt
+                or (dt - self.last_lo_dt).total_seconds() > self.interval
+            ):
                 # 与前一次开多间隔时间大于 interval，直接开多
                 self.pos = 1
                 self.operates.append(__create_operate(Operate.LO, op_desc))
@@ -947,7 +1076,10 @@ class Position:
                     self.operates.append(__create_operate(Operate.SE, op_desc))
 
         if op == Operate.SO:
-            if self.pos != -1 and (not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval):
+            if self.pos != -1 and (
+                not self.last_so_dt
+                or (dt - self.last_so_dt).total_seconds() > self.interval
+            ):
                 # 与前一次开空间隔时间大于 interval，直接开空
                 self.pos = -1
                 self.operates.append(__create_operate(Operate.SO, op_desc))
@@ -960,7 +1092,7 @@ class Position:
 
         # 多头出场
         if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
-            assert self.last_event['dt'] >= self.last_lo_dt
+            assert self.last_event["dt"] >= self.last_lo_dt
 
             # 多头平仓
             if op == Operate.LE:
@@ -968,18 +1100,22 @@ class Position:
                 self.operates.append(__create_operate(Operate.LE, op_desc))
 
             # 多头止损
-            if price / self.last_event['price'] - 1 < -self.stop_loss / 10000:
+            if price / self.last_event["price"] - 1 < -self.stop_loss / 10000:
                 self.pos = 0
-                self.operates.append(__create_operate(Operate.LE, f"平多@{self.stop_loss}BP止损"))
+                self.operates.append(
+                    __create_operate(Operate.LE, f"平多@{self.stop_loss}BP止损")
+                )
 
             # 多头超时
-            if bid - self.last_event['bid'] > self.timeout:
+            if bid - self.last_event["bid"] > self.timeout:
                 self.pos = 0
-                self.operates.append(__create_operate(Operate.LE, f"平多@{self.timeout}K超时"))
+                self.operates.append(
+                    __create_operate(Operate.LE, f"平多@{self.timeout}K超时")
+                )
 
         # 空头出场
         if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
-            assert self.last_event['dt'] >= self.last_so_dt
+            assert self.last_event["dt"] >= self.last_so_dt
 
             # 空头平仓
             if op == Operate.SE:
@@ -987,13 +1123,17 @@ class Position:
                 self.operates.append(__create_operate(Operate.SE, op_desc))
 
             # 空头止损
-            if 1 - price / self.last_event['price'] < -self.stop_loss / 10000:
+            if 1 - price / self.last_event["price"] < -self.stop_loss / 10000:
                 self.pos = 0
-                self.operates.append(__create_operate(Operate.SE, f"平空@{self.stop_loss}BP止损"))
+                self.operates.append(
+                    __create_operate(Operate.SE, f"平空@{self.stop_loss}BP止损")
+                )
 
             # 空头超时
-            if bid - self.last_event['bid'] > self.timeout:
+            if bid - self.last_event["bid"] > self.timeout:
                 self.pos = 0
-                self.operates.append(__create_operate(Operate.SE, f"平空@{self.timeout}K超时"))
+                self.operates.append(
+                    __create_operate(Operate.SE, f"平空@{self.timeout}K超时")
+                )
 
-        self.holds.append({"dt": self.end_dt, 'pos': self.pos, 'price': price})
+        self.holds.append({"dt": self.end_dt, "pos": self.pos, "price": price})
