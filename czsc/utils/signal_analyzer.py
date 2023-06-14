@@ -6,6 +6,7 @@ create_dt: 2023/3/30 21:13
 describe: 
 """
 import os
+import hashlib
 import pandas as pd
 from copy import deepcopy
 from tqdm import tqdm
@@ -132,6 +133,8 @@ class SignalAnalyzer:
         self.signals_path = os.path.join(self.results_path, 'signals')
         os.makedirs(self.signals_path, exist_ok=True)
         self.kwargs = kwargs
+        self.task_hash = hashlib.sha256((str(signals_config) + str(symbols)).encode('utf-8')).hexdigest()[:8].upper()
+
 
     def generate_symbol_signals(self, symbol):
         from czsc.traders.sig_parse import get_signals_freqs
@@ -148,6 +151,10 @@ class SignalAnalyzer:
                 edt = self.kwargs.get('edt', '20220101')
                 bar_sdt = self.kwargs.get('bar_sdt', '20150101')
                 bars = self.read_bars(symbol, freqs[0], bar_sdt, edt, fq='后复权')
+                if len(bars) < 100:
+                    logger.error(f"{symbol} 信号生成失败：数据量不足")
+                    return pd.DataFrame()
+                
                 sigs = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True)
                 sigs.drop(['freq', 'cache'], axis=1, inplace=True)
                 update_nbars(sigs, price_col='open', move=1,
@@ -218,6 +225,6 @@ class SignalAnalyzer:
 
         for k, v in sps.items():
             dfp = pd.concat(v, ignore_index=True)
-            dfp.to_excel(os.path.join(results_path, f'{k}_汇总.xlsx'), index=False)
+            dfp.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_汇总.xlsx'), index=False)
             dfp_valuable = self.find_valuable_signals(dfp)
-            dfp_valuable.to_excel(os.path.join(results_path, f'{k}_有价值信号.xlsx'), index=False)
+            dfp_valuable.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_有价值信号.xlsx'), index=False)

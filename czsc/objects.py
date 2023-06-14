@@ -599,7 +599,7 @@ class Event:
         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
         return list(signals)
 
-    def get_signals_config(self, signals_module: AnyStr = "czsc.signals") -> List[Dict]:
+    def get_signals_config(self, signals_module: str = "czsc.signals") -> List[Dict]:
         """获取事件的信号配置"""
         from czsc.traders.sig_parse import get_signals_config
 

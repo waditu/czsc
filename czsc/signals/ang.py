@@ -6,7 +6,6 @@ create_dt: 2023/5/11 18:11
 describe: 琅盎的信号函数
 """
 from loguru import logger
-
 try:
     import talib as ta
 except:
@@ -54,7 +53,7 @@ def adtm_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{freq}_D{di}N{n}M{m}TH{th}_ADTMV230603".split('_')
 
     v1 = "其他"
-    if len(c.bars_raw) < di + 30:
+    if len(c.bars_raw) < di + max(n, m) + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     n_bars = get_sub_elements(c.bars_raw, di=di, n=n)  
@@ -103,8 +102,6 @@ def amv_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_AMV能量V230603".split('_')
     if n > m or len(c.bars_raw) < di + m + 10:
-        if n > m:
-            logger.warning(f"参数错误：n={n} > m={m}；m 必须大于 n，否则无法计算。")
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     n_bars = get_sub_elements(c.bars_raw, di=di, n=n)  
@@ -201,7 +198,6 @@ def clv_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
         - :param di: 信号计算截止倒数第i根K线
         - :param n: 获取K线的根数，默认为60
-        - :param m: 收盘价倍数，默认为2
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
