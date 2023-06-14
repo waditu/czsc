@@ -225,6 +225,7 @@ class SignalAnalyzer:
 
         for k, v in sps.items():
             dfp = pd.concat(v, ignore_index=True)
+            dfp.drop_duplicates(subset=['name', 'date_span'], inplace=True, ignore_index=True)
             dfp.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_汇总.xlsx'), index=False)
             dfp_valuable = self.find_valuable_signals(dfp)
             dfp_valuable.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_有价值信号.xlsx'), index=False)
