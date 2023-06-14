@@ -71,6 +71,7 @@ class SignalPerformance:
         for values, dfg in dfs.groupby(by=keys if len(keys) > 1 else keys[0]):
             if isinstance(values, str):
                 values = [values]
+            assert isinstance(keys, (list, tuple)) and isinstance(values, (list, tuple))
             assert len(keys) == len(values)
 
             name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
@@ -155,7 +156,7 @@ class SignalAnalyzer:
                     logger.error(f"{symbol} 信号生成失败：数据量不足")
                     return pd.DataFrame()
                 
-                sigs = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True)
+                sigs: pd.DataFrame = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True) # type: ignore
                 sigs.drop(['freq', 'cache'], axis=1, inplace=True)
                 update_nbars(sigs, price_col='open', move=1,
                              numbers=(1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,

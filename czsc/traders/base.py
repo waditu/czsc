@@ -197,13 +197,13 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
     """
     freqs = get_signals_freqs(signals_config)
     freqs = [freq for freq in freqs if freq != bars[0].freq.value]
-    sdt = pd.to_datetime(sdt)
-    bars_left = [x for x in bars if x.dt < sdt]
+    sdt = pd.to_datetime(sdt) # type: ignore
+    bars_left = [x for x in bars if x.dt < sdt] # type: ignore
     if len(bars_left) <= init_n:
         bars_left = bars[:init_n]
         bars_right = bars[init_n:]
     else:
-        bars_right = [x for x in bars if x.dt >= sdt]
+        bars_right = [x for x in bars if x.dt >= sdt] # type: ignore
 
     if len(bars_right) == 0:
         logger.warning("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
