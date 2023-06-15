@@ -171,7 +171,12 @@ def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     r3 = c + 0.25 * d
     r4 = np.where((a >= b) & (a >= c), r1, r2)
     r = np.where((c >= a) & (c >= b), r3, r4)
-    si = 50 * (close_prices - c + (c - open_prices) + 0.5 * (close_prices - open_prices)) / (r * k / m)
+    
+    if (r * k / m != 0).all():
+        si = 50 * (close_prices - c + (c - open_prices) + 0.5 * (close_prices - open_prices)) / (r * k / m)
+    else:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    
     asi = np.cumsum(si) 
 
     v1 = "看多" if asi[-1] > np.mean(asi[-p:]) else "看空"

@@ -6,6 +6,7 @@ from czsc import CZSC, check_signals_acc, get_sub_elements
 from czsc.utils import create_single_signal
 
 
+
 def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     """ASI多空分类，贡献者：琅盎
 
@@ -49,7 +50,7 @@ def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     o = np.concatenate([[close_prices[0]], close_prices[:-1]])
     a = np.abs(high_prices - o)
     b = np.abs(low_prices - o)
-    c = np.abs(high_prices - np.concatenate([[low_prices[0]], low_prices[:-1]]))
+    c = np.abs(high_prices - np.concatenate([[low_prices[0]], low_prices[:-1]])) # type: ignore
     d = np.abs(o - np.concatenate([[open_prices[0]], open_prices[:-1]]))
 
     k = np.maximum(a, b)  
@@ -59,7 +60,12 @@ def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     r3 = c + 0.25 * d
     r4 = np.where((a >= b) & (a >= c), r1, r2)
     r = np.where((c >= a) & (c >= b), r3, r4)
-    si = 50 * (close_prices - c + (c - open_prices) + 0.5 * (close_prices - open_prices)) / (r * k / m)
+    
+    if (r * k / m != 0).all():
+        si = 50 * (close_prices - c + (c - open_prices) + 0.5 * (close_prices - open_prices)) / (r * k / m)
+    else:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    
     asi = np.cumsum(si) 
 
     v1 = "看多" if asi[-1] > np.mean(asi[-p:]) else "看空"
