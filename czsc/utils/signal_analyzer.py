@@ -159,8 +159,7 @@ class SignalAnalyzer:
                 sigs: pd.DataFrame = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True) # type: ignore
                 sigs.drop(['freq', 'cache'], axis=1, inplace=True)
                 update_nbars(sigs, price_col='open', move=1,
-                             numbers=(1, 2, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
-                                      120, 150, 180, 200, 250, 300, 350, 400))
+                             numbers=(1, 2, 3, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100))
                 sigs.to_parquet(file_cache)
             return sigs
         except Exception as e:
@@ -181,6 +180,7 @@ class SignalAnalyzer:
         for _, dfg in dfp.groupby('date_span'):
             base = dfg[dfg['name'] == '基准'].iloc[0].to_dict()
             olds = dfg[dfg['name'] != '基准'].to_dict(orient='records')
+            sum_base = sum([base[x] for x in n_cols])
 
             for row in olds:
                 if '其他' in row['name']:
@@ -189,8 +189,11 @@ class SignalAnalyzer:
                 delta = [row[x] - base[x] for x in n_cols]
                 win_rate = sum([1 if x > 0 else 0 for x in delta]) / len(delta)
                 row['delta_win_rate'] = win_rate
+                sum_delta = sum(delta)
+                if abs(sum_delta) / sum_base < 0.1:
+                    continue
 
-                if win_rate > 0.7 or win_rate < 0.3:
+                if (win_rate > 0.7 and sum_delta > 0) or (win_rate < 0.3 and sum_delta < 0):
                     rows.append(row)
 
         return pd.DataFrame(rows)
