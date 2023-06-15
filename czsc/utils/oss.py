@@ -106,7 +106,7 @@ class AliyunOSS:
         :return: BytesIO, 文件的数据流。
         """
         result = self.bucket.get_object(oss_key)
-        return BytesIO(result.read())
+        return BytesIO(result.read()) # type: ignore
 
     def create_folder(self, folder_path: str):
         """
