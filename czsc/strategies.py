@@ -46,7 +46,7 @@ class CzscStrategyBase(ABC):
     def unique_signals(self):
         """所有持仓策略中的交易信号列表"""
         sig_seq = []
-        for pos in self.positions: # type: ignore
+        for pos in self.positions:  # type: ignore
             sig_seq.extend(pos.unique_signals)
         return list(set(sig_seq))
 
@@ -432,8 +432,9 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
     :return:
     """
     mo = int(kwargs.get("max_overlap", 5))
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    
     opens = [
         {
             "operate": "开多",
@@ -491,9 +492,10 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     :param kwargs: 其他参数
     :return:
     """
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
     mo = int(kwargs.get("max_overlap", 5))
+
     opens = [
         {
             "operate": "开空",
@@ -550,8 +552,9 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     :param kwargs: 其他参数
     :return:
     """
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+
     mo = int(kwargs.get("max_overlap", 5))
     opens = [
         {
@@ -614,8 +617,8 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
         - T0: 是否是 T0 策略
     :return:
     """
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
     mo = int(kwargs.get("max_overlap", 5))
     T0 = kwargs.get("T0", False)
 
@@ -670,7 +673,7 @@ def create_cci_long(symbol, is_stocks=False, **kwargs) -> Position:
 
     1. https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_cci_base_V230402.html
     2. https://czsc.readthedocs.io/en/latest/api/czsc.signals.bar_zdt_V230331.html
-    
+
     :param symbol: 标的代码
     :param is_stocks: 是否是 A 股
     :param kwargs: 其他参数
@@ -682,8 +685,8 @@ def create_cci_long(symbol, is_stocks=False, **kwargs) -> Position:
         - timeout: 超时出场时间
     :return:
     """
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
     cci_timeperiod = kwargs.get("cci_timeperiod", 14)
     T0 = kwargs.get("T0", False)
     interval = kwargs.get("interval", 3600 * 2)
@@ -770,8 +773,8 @@ def create_cci_short(symbol, is_stocks=False, **kwargs) -> Position:
         - timeout: 超时出场时间
     :return:
     """
-    base_freq = kwargs.get("base_freq", "15分钟")
     freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
     cci_timeperiod = kwargs.get("cci_timeperiod", 14)
     T0 = kwargs.get("T0", False)
     interval = kwargs.get("interval", 3600 * 2)
