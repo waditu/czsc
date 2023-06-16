@@ -61,12 +61,12 @@ def heat_map(data: List[dict],
 
 
 def kline_pro(kline: List[dict],
-              fx: List[dict] = None,
-              bi: List[dict] = None,
-              xd: List[dict] = None,
-              bs: List[dict] = None,
+              fx: List[dict] = [],
+              bi: List[dict] = [],
+              xd: List[dict] = [],
+              bs: List[dict] = [],
               title: str = "缠中说禅K线分析",
-              t_seq: List[int] = None,
+              t_seq: List[int] = [],
               width: str = "1400px",
               height: str = '580px') -> Grid:
     """绘制缠中说禅K线分析结果

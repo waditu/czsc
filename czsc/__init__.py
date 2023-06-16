@@ -21,13 +21,14 @@ from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update_tbars, update_nbars
 from czsc.utils import CrossSectionalPerformance
-from czsc.sensors import holds_concepts_effect, SignalsPerformance, CTAResearch
+from czsc.sensors import holds_concepts_effect, CTAResearch
+from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
 
 
-__version__ = "0.9.20"
+__version__ = "0.9.21"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230524"
+__date__ = "20230601"
 
 
 def welcome():

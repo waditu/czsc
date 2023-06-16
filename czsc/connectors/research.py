@@ -52,6 +52,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     if 'dt' not in kline.columns:
         kline['dt'] = pd.to_datetime(kline['datetime'])
     kline = kline[(kline['dt'] >= pd.to_datetime(sdt)) & (kline['dt'] <= pd.to_datetime(edt))]
+    if kline.empty:
+        return []
     _bars = czsc.resample_bars(kline, freq, raw_bars=True)
     return _bars
 

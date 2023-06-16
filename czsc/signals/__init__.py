@@ -47,6 +47,7 @@ from czsc.signals.byi import (
 
 from czsc.signals.coo import (
     coo_td_V221110,
+    coo_td_V221111,
 )
 
 from czsc.signals.vol import (
@@ -168,4 +169,13 @@ from czsc.signals.pos import (
     pos_ma_V230414,
     pos_holds_V230414,
     pos_bar_stop_V230524,
+)
+
+
+from czsc.signals.ang import (
+    adtm_up_dw_line_V230603,
+    amv_up_dw_line_V230603,
+    asi_up_dw_line_V230603,
+    clv_up_dw_line_V230605,
+    cmo_up_dw_line_V230605,
 )

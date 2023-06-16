@@ -254,12 +254,15 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
     """
     k1, k2, k3 = f"{freq1}_{freq2}_中枢共振V221221".split('_')
 
+    if not cat.kas or freq1 not in cat.kas or freq2 not in cat.kas:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
+    
     max_freq: CZSC = cat.kas[freq1]
     min_freq: CZSC = cat.kas[freq2]
     symbol = cat.symbol
 
     def __is_zs(_bis):
-        _zs = ZS(symbol=symbol, bis=_bis)
+        _zs = ZS(bis=_bis)
         if _zs.zd < _zs.zg:
             return True
         else:
@@ -269,8 +272,8 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
     if len(max_freq.bi_list) >= 5 and __is_zs(max_freq.bi_list[-3:]) and len(min_freq.bi_list) >= 5 and __is_zs(
             min_freq.bi_list[-3:]):
 
-        big_zs = ZS(symbol=symbol, bis=max_freq.bi_list[-3:])
-        small_zs = ZS(symbol=symbol, bis=min_freq.bi_list[-3:])
+        big_zs = ZS(bis=max_freq.bi_list[-3:])
+        small_zs = ZS(bis=min_freq.bi_list[-3:])
 
         if small_zs.dd > big_zs.zz and min_freq.bi_list[-1].direction == Direction.Down:
             v1 = "看多"

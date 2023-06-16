@@ -10,6 +10,7 @@ from tqdm import tqdm
 from collections import Counter
 from typing import Callable, List, AnyStr
 from sklearn.preprocessing import KBinsDiscretizer
+from deprecated import deprecated
 
 from ..data import TsDataCache, freq_cn2ts
 
@@ -134,6 +135,7 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
     return df_turns, round(df_turns.change.sum() / 2, 4)
 
 
+@deprecated(version='1.0', reason="请使用 czsc.utils.signal_analyzer.SignalPerformance")
 class SignalsPerformance:
     """信号表现分析"""
 

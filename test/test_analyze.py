@@ -50,7 +50,7 @@ def test_find_bi():
             bars1.append(NewBar(symbol=bar.symbol, id=bar.id, freq=bar.freq,
                                 dt=bar.dt, open=bar.open,
                                 close=bar.close, high=bar.high, low=bar.low,
-                                vol=bar.vol, elements=[bar]))
+                                vol=bar.vol, amount=bar.amount, elements=[bar]))
         else:
             k1, k2 = bars1[-2:]
             has_include, k3 = remove_include(k1, k2, bar)

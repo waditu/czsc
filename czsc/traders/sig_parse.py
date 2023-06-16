@@ -8,7 +8,7 @@ describe:
 import re
 from loguru import logger
 from parse import parse
-from typing import List, AnyStr, Dict
+from typing import List, Dict
 from czsc.objects import Signal
 from czsc.utils import import_by_name, sorted_freqs
 
@@ -16,7 +16,7 @@ from czsc.utils import import_by_name, sorted_freqs
 class SignalsParser:
     """解析一串信号，生成信号函数配置"""
 
-    def __init__(self, signals_module='czsc.signals'):
+    def __init__(self, signals_module: str = 'czsc.signals'):
         """
 
         :param signals_module: 指定信号函数所在模块
@@ -61,7 +61,7 @@ class SignalsParser:
             return None
 
         try:
-            params = parse(pats, key).named
+            params = parse(pats, key).named # type: ignore
             if 'di' in params:
                 params['di'] = int(params['di'])
 
@@ -71,7 +71,7 @@ class SignalsParser:
             logger.error(f"解析信号 {signal} - {name} - {pats} 出错：{e}")
             return None
 
-    def get_function_name(self, signal: AnyStr):
+    def get_function_name(self, signal: str):
         """获取信号对应的信号函数名称
 
         :param signal: 信号，数据样例：15分钟_D1K_量柱V221218_低量柱_6K_任意_0
@@ -102,7 +102,7 @@ class SignalsParser:
                 keys.append(self.sig_pats_map[name].format(**conf))
         return keys
 
-    def parse(self, signal_seq: List[AnyStr]):
+    def parse(self, signal_seq: List[str]):
         """解析信号序列"""
         res = []
         for signal in signal_seq:
@@ -116,7 +116,7 @@ class SignalsParser:
         return res
 
 
-def get_signals_config(signals_seq: List[AnyStr], signals_module: AnyStr = 'czsc.signals') -> List[Dict]:
+def get_signals_config(signals_seq: List[str], signals_module: str = 'czsc.signals') -> List[Dict]:
     """获取信号列表对应的信号函数配置
 
     :param signals_seq: 信号列表
@@ -128,7 +128,7 @@ def get_signals_config(signals_seq: List[AnyStr], signals_module: AnyStr = 'czsc
     return conf
 
 
-def get_signals_freqs(signals_seq: List) -> List[AnyStr]:
+def get_signals_freqs(signals_seq: List) -> List[str]:
     """获取信号列表对应的K线周期列表
 
     :param signals_seq: 信号列表 / 信号函数配置列表

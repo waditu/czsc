@@ -44,7 +44,7 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         data = np.array([x.vol for x in c.bars_raw], dtype=np.float64)
-        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()]) # type: ignore
         assert len(ma) == len(data)
         for i in range(len(data)):
             _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
@@ -54,7 +54,7 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     else:
         # 增量更新最近3个K线缓存
         data = np.array([x.vol for x in c.bars_raw[-timeperiod - 10:]], dtype=np.float64)
-        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()]) # type: ignore
         for i in range(1, 4):
             _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
             _c.update({cache_key: ma[-i]})

@@ -35,18 +35,18 @@ class CzscStrategyBase(ABC):
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        self.signals_module_name = kwargs.get('signals_module_name', 'czsc.signals')
+        self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
 
     @property
     def symbol(self):
         """交易标的"""
-        return self.kwargs['symbol']
+        return self.kwargs["symbol"]
 
     @property
     def unique_signals(self):
         """所有持仓策略中的交易信号列表"""
         sig_seq = []
-        for pos in self.positions:
+        for pos in self.positions:  # type: ignore
             sig_seq.extend(pos.unique_signals)
         return list(set(sig_seq))
 
@@ -86,15 +86,15 @@ class CzscStrategyBase(ABC):
         :return:
         """
         base_freq = str(bars[0].freq.value)
-        bg: BarGenerator = kwargs.get('bg', None)
+        bg: BarGenerator = kwargs.get("bg", None)
         if base_freq in self.sorted_freqs:
             freqs = self.sorted_freqs[1:]
         else:
             freqs = self.sorted_freqs
 
         if bg is None:
-            sdt = pd.to_datetime(kwargs.get('sdt', '20200101'))
-            n = int(kwargs.get('n', 500))
+            sdt = pd.to_datetime(kwargs.get("sdt", "20200101"))
+            n = int(kwargs.get("n", 500))
             bg = BarGenerator(base_freq, freqs=freqs)
 
             # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
@@ -128,8 +128,9 @@ class CzscStrategyBase(ABC):
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
+        )
         for bar in bars2:
             trader.on_bar(bar)
         return trader
@@ -144,8 +145,8 @@ class CzscStrategyBase(ABC):
         :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
         :return: 完成策略回测后的 CzscTrader 对象
         """
-        sleep_time = kwargs.get('sleep_time', 0)
-        sleep_step = kwargs.get('sleep_step', 1000)
+        sleep_time = kwargs.get("sleep_time", 0)
+        sleep_step = kwargs.get("sleep_step", 1000)
 
         trader = CzscTrader(positions=deepcopy(self.positions))
         for i, sig in tqdm(enumerate(sigs), desc=f"回测 {self.symbol} {self.sorted_freqs}"):
@@ -167,7 +168,7 @@ class CzscStrategyBase(ABC):
             n    初始化最小K线数量
         :return:
         """
-        if kwargs.get('refresh', False):
+        if kwargs.get("refresh", False):
             shutil.rmtree(res_path, ignore_errors=True)
 
         exist_ok = kwargs.get("exist_ok", False)
@@ -177,8 +178,9 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
+        )
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)
@@ -188,19 +190,21 @@ class CzscStrategyBase(ABC):
             for position in trader.positions:
                 pos_path = os.path.join(res_path, position.name)
 
-                if position.operates and position.operates[-1]['dt'] == bar.dt:
+                if position.operates and position.operates[-1]["dt"] == bar.dt:
                     op = position.operates[-1]
-                    _dt = op['dt'].strftime('%Y%m%d#%H%M')
+                    _dt = op["dt"].strftime("%Y%m%d#%H%M")
                     file_name = f"{_dt}_{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
                     file_html = os.path.join(pos_path, file_name)
                     trader.take_snapshot(file_html)
-                    logger.info(f'{file_html}')
+                    logger.info(f"{file_html}")
 
         for position in trader.positions:
-            logger.info(f"{position.name}  "
-                        f"\n 多空合并：{position.evaluate()} "
-                        f"\n 多头表现：{position.evaluate('多头')} "
-                        f"\n 空头表现：{position.evaluate('空头')}")
+            logger.info(
+                f"{position.name}  "
+                f"\n 多空合并：{position.evaluate()} "
+                f"\n 多头表现：{position.evaluate('多头')} "
+                f"\n 空头表现：{position.evaluate('空头')}"
+            )
 
         file_trader = os.path.join(res_path, "trader.ct")
         try:
@@ -221,7 +225,7 @@ class CzscStrategyBase(ABC):
             n    初始化最小K线数量
         :return:
         """
-        if kwargs.get('refresh', False):
+        if kwargs.get("refresh", False):
             shutil.rmtree(res_path, ignore_errors=True)
 
         exist_ok = kwargs.get("exist_ok", False)
@@ -232,8 +236,9 @@ class CzscStrategyBase(ABC):
 
         # 第一遍执行，获取信号
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
+        )
 
         _signals = []
         for bar in bars2:
@@ -249,17 +254,18 @@ class CzscStrategyBase(ABC):
         for col in [x for x in df.columns if len(x.split("_")) == 3]:
             unique_signals[col] = [Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v]
 
-        print('\n', "+" * 100)
+        print("\n", "+" * 100)
         for key, values in unique_signals.items():
             print(f"\n{key}:")
             for value in values:
                 print(f"- {value}")
-        print('\n', "+" * 100)
+        print("\n", "+" * 100)
 
         # 第二遍执行，检查信号，生成html
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
+        )
 
         # 记录每个信号最后一次出现的时间
         last_sig_dt = {y.key: trader.end_dt for x in unique_signals.values() for y in x}
@@ -289,9 +295,9 @@ class CzscStrategyBase(ABC):
         os.makedirs(path, exist_ok=True)
         for pos in self.positions:
             pos_ = pos.dump()
-            pos_.pop('symbol')
+            pos_.pop("symbol")
             hash_code = hashlib.md5(str(pos_).encode()).hexdigest()
-            pos_['md5'] = hash_code
+            pos_["md5"] = hash_code
             save_json(pos_, os.path.join(path, f"{pos_['name']}.json"))
 
     def load_positions(self, files: List, check=True) -> List[Position]:
@@ -304,10 +310,10 @@ class CzscStrategyBase(ABC):
         positions = []
         for file in files:
             pos = read_json(file)
-            md5 = pos.pop('md5')
+            md5 = pos.pop("md5")
             if check:
                 assert md5 == hashlib.md5(str(pos).encode()).hexdigest()
-            pos['symbol'] = self.symbol
+            pos["symbol"] = self.symbol
             positions.append(Position.load(pos))
         return positions
 
@@ -319,10 +325,11 @@ class CzscJsonStrategy(CzscStrategyBase):
         files_position: 以 json 文件配置的策略，每个json文件对应一个持仓策略配置
         check_position: 是否对 json 持仓策略进行 MD5 校验，默认为 True
     """
+
     @property
     def positions(self):
-        files = self.kwargs.get("files_position")
-        check = self.kwargs.get('check_position', True)
+        files = self.kwargs["files_position"]
+        check = self.kwargs.get("check_position", True)
         return self.load_positions(files, check)
 
 
@@ -338,48 +345,79 @@ class CzscStrategyExample2(CzscStrategyBase):
 
     def create_pos_a(self):
         opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="15分钟向下笔停顿", signals_all=[
-                    Signal("15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="15分钟向上笔停顿", signals_all=[
-                    Signal("15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
-                ])
-            ]),
+            Event(
+                name="开多",
+                operate=Operate.LO,
+                factors=[
+                    Factor(
+                        name="15分钟向下笔停顿",
+                        signals_all=[
+                            Signal("15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
+                        ],
+                    )
+                ],
+            ),
+            Event(
+                name="开空",
+                operate=Operate.SO,
+                factors=[
+                    Factor(
+                        name="15分钟向上笔停顿",
+                        signals_all=[
+                            Signal("15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
+                        ],
+                    )
+                ],
+            ),
         ]
-        pos = Position(name="15分钟笔停顿", symbol=self.symbol, opens=opens, exits=None,
-                       interval=0, timeout=20, stop_loss=100, T0=True)
+        pos = Position(
+            name="15分钟笔停顿", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100, T0=True
+        )
         return pos
 
     def create_pos_b(self):
         """从 json文件 / dict 中加载 Position"""
-        return {'symbol': self.symbol,
-                'name': '15分钟笔停顿B',
-                'opens': [{'name': '开多',
-                           'operate': '开多',
-                           'signals_all': [],
-                           'signals_any': [],
-                           'signals_not': [],
-                           'factors': [{'name': '15分钟向下笔停顿',
-                                        'signals_all': ['15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0'],
-                                        'signals_any': [],
-                                        'signals_not': []}]},
-                          {'name': '开空',
-                           'operate': '开空',
-                           'signals_all': [],
-                           'signals_any': [],
-                           'signals_not': [],
-                           'factors': [{'name': '15分钟向上笔停顿',
-                                        'signals_all': ['15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0'],
-                                        'signals_any': [],
-                                        'signals_not': []}]}],
-                'exits': [],
-                'interval': 0,
-                'timeout': 20,
-                'stop_loss': 100,
-                'T0': True}
+        return {
+            "symbol": self.symbol,
+            "name": "15分钟笔停顿B",
+            "opens": [
+                {
+                    "name": "开多",
+                    "operate": "开多",
+                    "signals_all": [],
+                    "signals_any": [],
+                    "signals_not": [],
+                    "factors": [
+                        {
+                            "name": "15分钟向下笔停顿",
+                            "signals_all": ["15分钟_D0停顿分型_BE辅助V230106_看多_强_任意_0"],
+                            "signals_any": [],
+                            "signals_not": [],
+                        }
+                    ],
+                },
+                {
+                    "name": "开空",
+                    "operate": "开空",
+                    "signals_all": [],
+                    "signals_any": [],
+                    "signals_not": [],
+                    "factors": [
+                        {
+                            "name": "15分钟向上笔停顿",
+                            "signals_all": ["15分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0"],
+                            "signals_any": [],
+                            "signals_not": [],
+                        }
+                    ],
+                },
+            ],
+            "exits": [],
+            "interval": 0,
+            "timeout": 20,
+            "stop_loss": 100,
+            "T0": True,
+        }
 
 
 def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Position:
@@ -387,43 +425,59 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
 
     https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_ma_base_V230313.html
 
+    :param symbol:
+    :param ma_name:
+    :param is_stocks:
+    :param kwargs:
+    :return:
     """
-    mo = int(kwargs.get('max_overlap', 5))
-    base_freq = kwargs.get('base_freq', '15分钟')
-    freq = kwargs.get('freq', '15分钟')
+    mo = int(kwargs.get("max_overlap", 5))
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    
     opens = [
-        {'operate': '开多',
-         'signals_not': [],
-         'factors': [
-             {'name': f'{ma_name}多头',
-              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
-         ]},
+        {
+            "operate": "开多",
+            "signals_not": [],
+            "signals_all": [],
+            "factors": [{"name": f"{ma_name}多头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0"]}],
+        },
     ]
 
     exits = [
-        {'operate': '平多',
-         'signals_not': [],
-         'factors': [
-             {'name': f'{ma_name}空头',
-              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
-         ]},
+        {
+            "operate": "平多",
+            "signals_not": [],
+            "factors": [{"name": f"{ma_name}空头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0"]}],
+        },
     ]
     if is_stocks:
-        # A股多头：涨停不开，跌停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
         pos_name = f"A股{freq}{ma_name}多头"
     else:
         # 非A股多头：都行。加入这个条件，主要是为了约束策略使用 15 分钟基础周期K线
-        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
         pos_name = f"{freq}{ma_name}多头"
 
-    pos = Position(name=pos_name, symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=kwargs.get('interval', 3600*2),
-                   timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+    T0 = kwargs.get("T0", False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
+    pos = Position(
+        name=pos_name,
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=kwargs.get("interval", 3600 * 2),
+        timeout=kwargs.get("timeout", 16 * 30),
+        stop_loss=kwargs.get("stop_loss", 300),
+        T0=T0,
+    )
     return pos
 
 
@@ -438,42 +492,53 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     :param kwargs: 其他参数
     :return:
     """
-    base_freq = kwargs.get('base_freq', '15分钟')
-    freq = kwargs.get('freq', '15分钟')
-    mo = int(kwargs.get('max_overlap', 5))
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    mo = int(kwargs.get("max_overlap", 5))
+
     opens = [
-        {'operate': '开空',
-         'signals_not': [],
-         'factors': [
-             {'name': f'{ma_name}空头',
-              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0']}
-         ]},
+        {
+            "operate": "开空",
+            "signals_not": [],
+            "signals_all": [],
+            "factors": [{"name": f"{ma_name}空头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0"]}],
+        },
     ]
 
     exits = [
-        {'operate': '平空',
-         'signals_not': [],
-         'factors': [
-             {'name': f'{ma_name}多头',
-              'signals_all': [f'{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0']}
-         ]},
+        {
+            "operate": "平空",
+            "signals_not": [],
+            "factors": [{"name": f"{ma_name}多头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0"]}],
+        },
     ]
     if is_stocks:
-        # A股空头：跌停不开，涨停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
         pos_name = f"A股{freq}{ma_name}空头"
     else:
         # 非A股空头：都行
-        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
         pos_name = f"{freq}{ma_name}空头"
 
-    pos = Position(name=pos_name, symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=kwargs.get('interval', 3600*2),
-                   timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+    T0 = kwargs.get("T0", False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
+    pos = Position(
+        name=pos_name,
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=kwargs.get("interval", 3600 * 2),
+        timeout=kwargs.get("timeout", 16 * 30),
+        stop_loss=kwargs.get("stop_loss", 300),
+        T0=T0,
+    )
     return pos
 
 
@@ -487,42 +552,54 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     :param kwargs: 其他参数
     :return:
     """
-    base_freq = kwargs.get('base_freq', '15分钟')
-    freq = kwargs.get('freq', '15分钟')
-    mo = int(kwargs.get('max_overlap', 5))
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+
+    mo = int(kwargs.get("max_overlap", 5))
     opens = [
-        {'operate': '开空',
-         'signals_not': [],
-         'factors': [
-             {'name': f'MACD空头',
-              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
-         ]},
+        {
+            "operate": "开空",
+            "signals_not": [],
+            "factors": [
+                {"name": f"MACD空头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0"]}
+            ],
+        },
     ]
 
     exits = [
-        {'operate': '平空',
-         'signals_not': [],
-         'factors': [
-             {'name': 'MACD多头',
-              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
-         ]},
+        {
+            "operate": "平空",
+            "signals_not": [],
+            "factors": [{"name": "MACD多头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0"]}],
+        },
     ]
     if is_stocks:
-        # A股空头：跌停不开，涨停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
         pos_name = f"A股{freq}MACD空头"
     else:
         # 非A股空头：都行
-        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
         pos_name = f"{freq}MACD空头"
 
-    pos = Position(name=pos_name, symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=kwargs.get('interval', 3600*2),
-                   timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+    T0 = kwargs.get("T0", False)
+    pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
+
+    pos = Position(
+        name=pos_name,
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=kwargs.get("interval", 3600 * 2),
+        timeout=kwargs.get("timeout", 16 * 30),
+        stop_loss=kwargs.get("stop_loss", 300),
+        T0=T0,
+    )
     return pos
 
 
@@ -534,42 +611,232 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     :param symbol: 标的代码
     :param is_stocks: 是否是 A 股
     :param kwargs: 其他参数
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - max_overlap: 最大重叠数
+        - T0: 是否是 T0 策略
     :return:
     """
-    base_freq = kwargs.get('base_freq', '15分钟')
-    freq = kwargs.get('freq', '15分钟')
-    mo = int(kwargs.get('max_overlap', 5))
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    mo = int(kwargs.get("max_overlap", 5))
+    T0 = kwargs.get("T0", False)
+
     opens = [
-        {'operate': '开多',
-         'signals_not': [],
-         'factors': [
-             {'name': 'MACD多头',
-              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0']}
-         ]},
+        {
+            "operate": "开多",
+            "signals_not": [],
+            "factors": [{"name": "MACD多头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0"]}],
+        },
     ]
 
     exits = [
-        {'operate': '平多',
-         'signals_not': [],
-         'factors': [
-             {'name': f'MACD空头',
-              'signals_all': [f'{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0']}
-         ]},
+        {
+            "operate": "平多",
+            "signals_not": [],
+            "factors": [
+                {"name": f"MACD空头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0"]}
+            ],
+        },
     ]
     if is_stocks:
-        # A股多头：涨停不开，跌停不平
-        opens[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0')
-        exits[0]['signals_not'].append(f'{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0')
+        # A股空头：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
         pos_name = f"A股{freq}MACD多头"
     else:
         # 非A股多头：都行
-        opens[0]['signals_all'].append(f'{base_freq}_D1_涨跌停V230331_任意_任意_任意_0')
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
         pos_name = f"{freq}MACD多头"
 
-    pos = Position(name=pos_name, symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=kwargs.get('interval', 3600*2),
-                   timeout=kwargs.get('timeout', 16*30),
-                   stop_loss=kwargs.get('stop_loss', 300))
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=kwargs.get("interval", 3600 * 2),
+        timeout=kwargs.get("timeout", 16 * 30),
+        stop_loss=kwargs.get("stop_loss", 300),
+        T0=T0,
+    )
+    return pos
+
+
+def create_cci_long(symbol, is_stocks=False, **kwargs) -> Position:
+    """CCI基础多头策略
+
+    用到的信号函数列表：
+
+    1. https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_cci_base_V230402.html
+    2. https://czsc.readthedocs.io/en/latest/api/czsc.signals.bar_zdt_V230331.html
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - cci_timeperiod: CCI 周期
+        - T0: 是否是 T0 策略
+        - interval: 同向开仓间隔时间
+        - timeout: 超时出场时间
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    cci_timeperiod = kwargs.get("cci_timeperiod", 14)
+    T0 = kwargs.get("T0", False)
+    interval = kwargs.get("interval", 3600 * 2)
+    timeout = kwargs.get("timeout", 16 * 30)
+    stop_loss = kwargs.get("stop_loss", 300)
+
+    opens = [
+        {
+            "operate": "开多",
+            "signals_all": [],
+            "signals_any": [],
+            "signals_not": [],
+            "factors": [
+                {
+                    "name": "CCI看多",
+                    "signals_all": [f"{freq}_D1CCI{cci_timeperiod}#3#10_BS辅助V230402_多头_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [],
+                },
+            ],
+        }
+    ]
+
+    exits = [
+        {
+            "operate": "平多",
+            "signals_all": [],
+            "signals_any": [],
+            "signals_not": [],
+            "factors": [
+                {
+                    "name": "CCI看空",
+                    "signals_all": [f"{freq}_D1CCI{cci_timeperiod}#3#60_BS辅助V230402_空头_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [],
+                },
+            ],
+        }
+    ]
+
+    if is_stocks:
+        # A股：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}CCI多头"
+    else:
+        # 非A股：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}CCI多头"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
+    return pos
+
+
+def create_cci_short(symbol, is_stocks=False, **kwargs) -> Position:
+    """CCI基础空头策略
+
+    用到的信号函数列表：
+
+    1. https://czsc.readthedocs.io/en/latest/api/czsc.signals.tas_cci_base_V230402.html
+    2. https://czsc.readthedocs.io/en/latest/api/czsc.signals.bar_zdt_V230331.html
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - cci_timeperiod: CCI 周期
+        - T0: 是否是 T0 策略
+        - interval: 同向开仓间隔时间
+        - timeout: 超时出场时间
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    cci_timeperiod = kwargs.get("cci_timeperiod", 14)
+    T0 = kwargs.get("T0", False)
+    interval = kwargs.get("interval", 3600 * 2)
+    timeout = kwargs.get("timeout", 16 * 30)
+    stop_loss = kwargs.get("stop_loss", 300)
+
+    opens = [
+        {
+            "operate": "开空",
+            "signals_all": [],
+            "signals_any": [],
+            "signals_not": [],
+            "factors": [
+                {
+                    "name": "CCI看空",
+                    "signals_all": [f"{freq}_D1CCI{cci_timeperiod}#3#10_BS辅助V230402_空头_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [],
+                },
+            ],
+        }
+    ]
+
+    exits = [
+        {
+            "operate": "平空",
+            "signals_all": [],
+            "signals_any": [],
+            "signals_not": [],
+            "factors": [
+                {
+                    "name": "CCI看多",
+                    "signals_all": [f"{freq}_D1CCI{cci_timeperiod}#3#60_BS辅助V230402_多头_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [],
+                },
+            ],
+        }
+    ]
+
+    if is_stocks:
+        # A股：涨跌停不交易
+        zdt_sigs = [
+            f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
+            f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
+        ]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}CCI多头"
+    else:
+        # 非A股：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}CCI多头"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
     return pos

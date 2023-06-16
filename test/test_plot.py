@@ -24,8 +24,8 @@ def test_heat_map():
 def test_kline_pro():
     file_kline = os.path.join(cur_path, "data/000001.SH_D.csv")
     kline = pd.read_csv(file_kline, encoding="utf-8")
-    bars = [RawBar(symbol=row['symbol'], id=i, freq=Freq.D, open=row['open'], dt=row['dt'],
-                   close=row['close'], high=row['high'], low=row['low'], vol=row['vol'])
+    bars = [RawBar(symbol=row['symbol'], id=i, freq=Freq.D, open=row['open'], dt=row['dt'], # type: ignore
+                   close=row['close'], high=row['high'], low=row['low'], vol=row['vol'], amount=row['vol']*row['close'])
             for i, row in kline.iterrows()]
     ka = CZSC(bars)
     # ka.open_in_browser()
