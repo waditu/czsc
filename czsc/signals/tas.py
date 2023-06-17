@@ -1407,40 +1407,6 @@ def tas_rsi_base_V230227(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-# def tas_double_rsi_V221203(c: CZSC, **kwargs) -> OrderedDict:
-#     """两个周期的RSI多空信号
-#
-#     参数模板："{freq}_D{di}K#RSI{rsi_seq[0]}#{rsi_seq[1]}_RSI多空V221203"
-#
-#     **信号逻辑：**
-#
-#     1. rsi1 > rsi2，多头；反之，空头
-#
-#     **信号列表：**
-#
-#     - Signal('15分钟_D1K#RSI5#10_RSI多空V221203_空头_任意_任意_0')
-#     - Signal('15分钟_D1K#RSI5#10_RSI多空V221203_多头_任意_任意_0')
-#
-#     :param c: CZSC对象
-#     :param di: 信号计算截止倒数第i根K线
-#     :param di: 信号计算截止倒数第i根K线
-#     :param rsi_seq: 指定短期RSI, 长期RSI 参数
-#     :return: 信号识别结果
-#     """
-#     di = int(kwargs.get('di', 1))
-#     rsi_seq = kwargs.get('rsi_seq', (5, 10))
-#     assert len(rsi_seq) == 2 and rsi_seq[1] > rsi_seq[0]
-#     rsi1 = update_rsi_cache(c, timeperiod=rsi_seq[0])
-#     rsi2 = update_rsi_cache(c, timeperiod=rsi_seq[1])
-#
-#     k1, k2, k3 = f"{c.freq.value}_D{di}K#RSI{rsi_seq[0]}#{rsi_seq[1]}_RSI多空V221203".split('_')
-#     bars = get_sub_elements(c.bars_raw, di=di, n=3)
-#     rsi1v = bars[-1].cache[rsi1]
-#     rsi2v = bars[-1].cache[rsi2]
-#     v1 = "多头" if rsi1v >= rsi2v else "空头"
-#     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
 def tas_first_bs_V230217(c: CZSC, **kwargs) -> OrderedDict:
     """均线结合K线形态的一买一卖辅助判断
 
@@ -2057,7 +2023,7 @@ def update_atr_cache(c: CZSC, **kwargs):
 def tas_atr_break_V230424(c: CZSC, **kwargs):
     """ATR突破
 
-    参数模板："{freq}_D{di}通道突破#{N}#{K1}#{K2}_BS辅助V230403"
+    参数模板："{freq}_D{di}ATR{timeperiod}T{th}突破_BS辅助V230424"
 
     **信号逻辑：**
 

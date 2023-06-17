@@ -15,6 +15,8 @@ from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis
 from czsc.utils.sig import get_zs_seq
 from czsc.signals.tas import update_ma_cache, update_macd_cache
 from collections import OrderedDict
+from deprecated import deprecated
+
 
 
 def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
@@ -561,6 +563,7 @@ def cxt_second_bs_V230320(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+@deprecated(version='1.0.0', reason="即将删除，请使用 cxt_third_bs_V230319")
 def cxt_third_bs_V230318(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点
 

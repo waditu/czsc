@@ -268,3 +268,69 @@ def cmo_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     if cmo < -m:
         v1 = "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def skdj_up_dw_line_V230611(c: CZSC, **kwargs) -> OrderedDict:
+    """SKDJ随机波动指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}N{n}M{m}UP{up}DW{dw}_SKDJ随机波动V230611"
+
+    **信号逻辑：**
+
+    SKDJ 为慢速随机波动（即慢速 KDJ）。SKDJ 中的 K 即 KDJ 中的 D，
+    SKJ 中的 D 即 KDJ 中的 D 取移动平均。其用法与 KDJ 相同。
+    当 D<40(处于超卖状态)且 K 上穿 D 时买入，当 D>60（处于超买状
+    态）K 下穿 D 时卖出。
+
+    **信号列表：**
+
+    - Signal('日线_D1N233M145UP60DW40_SKDJ随机波动V230611_看多_任意_任意_0')
+    - Signal('日线_D1N233M145UP60DW40_SKDJ随机波动V230611_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - :param di: 信号计算截止倒数第i根K线
+        - :param n: 取K线数量n必需大于m*2
+        - :param m: 计算均值需要的参数
+        - :param up: 信号预警值
+        - :param dw: 信号预警值
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 233))
+    m = int(kwargs.get("m", 89))
+    up = int(kwargs.get("up", 60))
+    dw = int(kwargs.get("dw", 40))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}UP{up}DW{dw}_SKDJ随机波动V230611".split('_')
+
+    # 计算RSV缓存
+    rsv_cache = f'RSV{n}'
+    for i, bar in enumerate(c.bars_raw):
+        if bar.cache.get(rsv_cache) is not None:
+            continue
+        if i < n:
+            n_bars = c.bars_raw[:i+1]
+        else:
+            n_bars = get_sub_elements(c.bars_raw, di=i, n=n)
+        
+        min_low = min([x.low for x in n_bars])
+        max_high = max([x.high for x in n_bars])
+        bar.cache[rsv_cache] = (bar.close - min_low) / (max_high - min_low) * 100
+
+    v1 = "其他"
+    if len(c.bars_raw) < di + m*3 + 20 or n < m:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=m*3 + 20)
+    rsv = np.array([bar.cache[rsv_cache] for bar in bars])
+    ma_rsv = np.convolve(rsv, np.ones(m)/m, mode='valid')
+    k = np.convolve(ma_rsv, np.ones(m)/m, mode='valid')
+    d = np.mean(k[-m:])
+
+    if dw < d < k[-1]:
+        v1 = "看多"
+    if k[-1] < d > up:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -178,4 +178,5 @@ from czsc.signals.ang import (
     asi_up_dw_line_V230603,
     clv_up_dw_line_V230605,
     cmo_up_dw_line_V230605,
+    skdj_up_dw_line_V230611,
 )
