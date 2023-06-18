@@ -6,12 +6,12 @@ create_dt: 2022/11/7 19:29
 describe:  cxt 代表 CZSC 形态信号
 """
 import numpy as np
-from loguru import logger
+import pandas as pd
 from typing import List
 from czsc import CZSC
 from czsc.traders.base import CzscSignals
 from czsc.objects import FX, BI, Direction, ZS, Mark
-from czsc.utils import get_sub_elements, create_single_signal, is_bis_up, is_bis_down
+from czsc.utils import get_sub_elements, create_single_signal
 from czsc.utils.sig import get_zs_seq
 from czsc.signals.tas import update_ma_cache, update_macd_cache
 from collections import OrderedDict
@@ -1093,4 +1093,44 @@ def cxt_bi_status_V230102(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
+def cxt_bi_zdf_V230601(c: CZSC, **kwargs) -> OrderedDict:
+    """BI涨跌幅的分层判断
 
+    参数模板："{freq}_D{di}N{n}_分层V230601"
+
+     **信号逻辑：**
+
+    取最近50个缠论笔，计算涨跌幅，分N层判断。
+
+     **信号列表：**
+
+    - Signal('60分钟_D1N5_分层V230601_向下_第5层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向上_第5层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向下_第3层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向上_第2层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向上_第4层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向下_第2层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向上_第1层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向下_第1层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向上_第3层_任意_0')
+    - Signal('60分钟_D1N5_分层V230601_向下_第4层_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - di: 倒数第几根K线
+        - n: 取截止dik的前n根K线
+    :return: 返回信号结果
+    """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}_分层V230601".split('_')
+    v1, v2 = '其他', '其他'
+    if len(c.bi_list) < 10 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=50)
+    v1 = bis[-1].direction.value
+    powers = [x.power for x in bis]
+    v2 = pd.qcut(powers, n, labels=False, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{v2 + 1}层")

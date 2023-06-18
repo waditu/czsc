@@ -2192,3 +2192,276 @@ def tas_ma_system_V230513(c: CZSC, **kwargs) -> OrderedDict:
         v1 = '空头排列'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bs1_V230411(c: CZSC, **kwargs) -> OrderedDict:
+    """基于MACD DIF的笔背驰判断信号
+
+    参数模板："{freq}_D{di}T{tha}#{thb}#{thc}_BS1辅助V230411"
+
+    **信号逻辑：**
+
+    tha, thb, thc 分别为阈值，取值范围为 0 ~ 10000
+
+    取5笔，从远到近分别记为 1、2、3、4、5，如果满足以下条件，则判断为顶背驰，反之为底背弛：
+
+    1. 5向上，1~3的累计涨幅超过阈值tha，且3顶部的dif值大于1顶部dif值；
+    2. 5的顶部相比于3的顶部的涨幅超过阈值-thb，且相应dif值的变化率小于阈值-thc；
+
+    **信号列表：**
+
+    - Signal('15分钟_D1T100#10#30_BS1辅助V230411_底背驰_任意_任意_0')
+    - Signal('15分钟_D1T100#10#30_BS1辅助V230411_顶背驰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - di: 信号计算截止倒数第i根K线
+        - tha: 前三笔的累计涨跌超过阈值tha，单位：BP，表示万分之一
+        - thb: 第3笔相比第1笔的顶的涨跌幅阈值thb，单位：BP，表示万分之一
+        - thc: 第5笔相比第3笔的DIF值的变化率阈值thc，单位：BP，表示万分之一
+
+    :return: 返回信号结果
+    """
+    di = int(kwargs.get("di", 1))
+    tha = int(kwargs.get("tha", 30))
+    thb = int(kwargs.get("thb", 5))
+    thc = int(kwargs.get("thc", 30))
+    freq = c.freq.value
+    assert 0 < tha < 10000, "tha 必须在 0 到 10000 之间"
+    assert 0 < thb < 10000, "thb 必须在 0 到 10000 之间"
+    assert 0 < thc < 10000, "thc 必须在 0 到 10000 之间"
+
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    k1, k2, k3 = f"{freq}_D{di}T{tha}#{thb}#{thc}_BS1辅助V230411".split('_')
+    v1 = "其他"
+    if len(c.bi_list) <= di + 7 or len(c.bars_ubi) > 9:
+        # 笔数不够，或者当下未完成笔已经延伸超过9根K线，不计算
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bi1, bi2, bi3, bi4, bi5 = get_sub_elements(c.bi_list, di=di, n=5)
+    # 第一个bar要有macd结果
+    if np.isnan(bi1.raw_bars[0].cache[cache_key]['dif']):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bi5.direction == Direction.Up:
+        bi1_dif = max([x.cache[cache_key]['dif'] for x in bi1.fx_b.raw_bars])
+        bi3_dif = max([x.cache[cache_key]['dif'] for x in bi3.fx_b.raw_bars])
+        bi5_dif = max([x.cache[cache_key]['dif'] for x in bi5.fx_b.raw_bars])
+
+        # 前三笔累计涨幅超过阈值tha
+        cond1 = ((bi3.high - bi1.low) / bi1.low) * 10000 > tha
+
+        # 第二个向上笔的顶所对应的DIF值，要高于第一个向上笔的顶所对应的DIF值
+        cond2 = bi3_dif > bi1_dif
+
+        # 第三个向上笔的顶相比第二个向上笔的顶的涨幅超过阈值thb
+        cond3 = ((bi5.high - bi3.high) / bi3.high) * 10000 > -thb
+
+        # 第三个向上笔的顶相比第二个向上笔的顶的DIF值的变化率小于阈值thc
+        cond4 = ((bi5_dif - bi3_dif) / bi3_dif) * 10000 < -thc
+
+        if cond1 and cond2 and cond3 and cond4:
+            v1 = "顶背驰"
+
+    elif bi5.direction == Direction.Down:
+        bi1_dif = min([x.cache[cache_key]['dif'] for x in bi1.fx_b.raw_bars])
+        bi3_dif = min([x.cache[cache_key]['dif'] for x in bi3.fx_b.raw_bars])
+        bi5_dif = min([x.cache[cache_key]['dif'] for x in bi5.fx_b.raw_bars])
+
+        # 前三笔累计跌幅超过阈值tha
+        cond1 = ((bi3.low - bi1.high) / bi1.high) * 10000 < -tha
+
+        # 第二个向下笔的底所对应的DIF值，要小于第一个向下笔的底所对应的DIF值
+        cond2 = bi3_dif < bi1_dif
+
+        # 第三个向下笔的底相比第二个向下笔的底的跌幅小于thb
+        cond3 = ((bi5.low - bi3.low) / bi3.low) * 10000 < thb
+
+        # 第三个向下笔的底相比第二个向下笔的底的DIF值的变化率大于thc
+        cond4 = ((bi5_dif - bi3_dif) / bi3_dif) * 10000 > thc
+
+        if cond1 and cond2 and cond3 and cond4:
+            v1 = "底背驰"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bs1_V230412(c: CZSC, **kwargs) -> OrderedDict:
+    """基于MACD DIF的笔背驰判断信号
+
+    参数模板："{freq}_D{di}T{tha}#{thb}_BS1辅助V230412"
+
+    **信号逻辑：**
+
+    取5笔，从远到近分别记为 1、2、3、4、5，如果满足以下条件，则判断为顶背驰，反之为底背弛：
+
+    1. 5向上，1~3的累计涨幅超过阈值tha，且3顶部的dif值大于1顶部dif值；
+    2. 5的顶部相比于3的顶部的涨幅超过阈值thb，且5顶部的dif值小于3顶部dif值；
+
+    **信号列表：**
+
+    - Signal('15分钟_D1T100#10_BS1辅助V230412_底背驰_任意_任意_0')
+    - Signal('15分钟_D1T100#10_BS1辅助V230412_顶背驰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - di: 信号计算截止倒数第i根K线
+        - tha: 前三笔的累计涨跌超过阈值tha
+        - thb: 第三笔相比第二个向上笔的顶的涨幅超过阈值thb
+
+    :return:
+    """
+    di = int(kwargs.get("di", 1))
+    tha = int(kwargs.get("tha", 100))
+    thb = int(kwargs.get("thb", 10))
+    freq = c.freq.value
+
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    k1, k2, k3 = f"{freq}_D{di}T{tha}#{thb}_BS1辅助V230412".split('_')
+    v1 = "其他"
+    if len(c.bi_list) <= di + 7 or len(c.bars_ubi) > 9:
+        # 笔数不够，或者当下未完成笔已经延伸超过9根K线，不计算
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bi1, bi2, bi3, bi4, bi5 = get_sub_elements(c.bi_list, di=di, n=5)
+    # 第一个bar要有macd结果
+    if np.isnan(bi1.raw_bars[0].cache[cache_key]['dif']):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bi5.direction == Direction.Up:
+        bi1_dif = max([x.cache[cache_key]['dif'] for x in bi1.fx_b.raw_bars])
+        bi3_dif = max([x.cache[cache_key]['dif'] for x in bi3.fx_b.raw_bars])
+        bi5_dif = max([x.cache[cache_key]['dif'] for x in bi5.fx_b.raw_bars])
+
+        # 前三笔累计涨幅超过阈值tha
+        cond1 = ((bi3.high - bi1.low) / bi1.low) * 10000 > tha
+
+        # 5、3、1笔的dif值，3的最大
+        cond2 = bi5_dif < bi3_dif > bi1_dif
+
+        # 第三个向上笔的顶相比第二个向上笔的顶的涨幅超过阈值thb
+        cond3 = ((bi5.high - bi3.high) / bi3.high) * 10000 > -thb
+
+        if cond1 and cond2 and cond3:
+            v1 = "顶背驰"
+
+    elif bi5.direction == Direction.Down:
+        bi1_dif = min([x.cache[cache_key]['dif'] for x in bi1.fx_b.raw_bars])
+        bi3_dif = min([x.cache[cache_key]['dif'] for x in bi3.fx_b.raw_bars])
+        bi5_dif = min([x.cache[cache_key]['dif'] for x in bi5.fx_b.raw_bars])
+
+        # 前三笔累计跌幅超过阈值tha
+        cond1 = ((bi3.low - bi1.high) / bi1.high) * 10000 < -tha
+
+        # 5、3、1笔的dif值，3的最小
+        cond2 = bi5_dif > bi3_dif < bi1_dif
+
+        # 第三个向下笔的底相比第二个向下笔的底的跌幅超过阈值-thb
+        cond3 = ((bi5.low - bi3.low) / bi3.low) * 10000 < thb
+
+        if cond1 and cond2 and cond3:
+            v1 = "底背驰"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_accelerate_V230531(c: CZSC, **kwargs) -> OrderedDict:
+    """BOLL辅助判断加速行情
+
+    参数模板："{freq}_D{di}N{n}_BOLL加速V230531"
+
+     **信号逻辑：**
+
+    最近N根K线全部在中轨上方，上轨累计涨幅大于中轨2倍以上，多头加速，反之空头加速。
+
+     **信号列表：**
+
+    - Signal('60分钟_D1N20T20_BOLL加速V230531_空头加速_未破下轨_任意_0')
+    - Signal('60分钟_D1N20T20_BOLL加速V230531_空头加速_跌破下轨_任意_0')
+    - Signal('60分钟_D1N20T20_BOLL加速V230531_多头加速_升破上轨_任意_0')
+    - Signal('60分钟_D1N20T20_BOLL加速V230531_多头加速_未破上轨_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - di: 倒数第几根K线
+        - n: 取截止dik的前n根K线
+        - t: 阈值，上下轨变化率超过中轨变化率的 t / 10 倍，默认20，即上下轨变化率超过中轨变化率的2倍
+
+    :return: 返回信号结果
+    """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 20))
+    t = int(kwargs.get('t', 20))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}T{t}_BOLL加速V230531".split('_')
+    v1, v2 = '其他', '其他'
+    cache_key = update_boll_cache_V230228(c, timeperiod=20, nbdev=20)
+
+    if len(c.bars_raw) < 40:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    mid_zdf = bars[-1].cache[cache_key]['中线'] / bars[0].cache[cache_key]['中线'] - 1
+    up_zdf = bars[-1].cache[cache_key]['上轨'] / bars[0].cache[cache_key]['上轨'] - 1
+    down_zdf = bars[-1].cache[cache_key]['下轨'] / bars[0].cache[cache_key]['下轨'] - 1
+    last_bar = bars[-1]
+
+    if all([x.close > x.cache[cache_key]['中线'] for x in bars]) and up_zdf > t / 10 * mid_zdf > 0:
+        v1 = '多头加速'
+        v2 = '升破上轨' if last_bar.cache[cache_key]['上轨'] < last_bar.high else '未破上轨'
+
+    if all([x.close < x.cache[cache_key]['中线'] for x in bars]) and down_zdf < t / 10 * mid_zdf < 0:
+        v1 = '空头加速'
+        v2 = '跌破下轨' if last_bar.cache[cache_key]['下轨'] > last_bar.low else '未破下轨'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def tas_ma_cohere_V230512(c: CZSC, **kwargs) -> OrderedDict:
+    """均线系统粘合/扩散状态
+
+    参数模板："{freq}_D{di}SMA{ma_seq}_均线系统V230512"
+
+     **信号逻辑：**
+
+    1. 计算最近100根K线中，均线系统最大值与最小值的差异；取前80根K线，计算其标准差；
+    1. 粘合：最近20根K线中，均线系统最大值与最小值的差异小于0.5倍标准差的数量超过16根
+    2. 扩散：最近20根K线中，均线系统最大值与最小值的差异大于1.0倍标准差的数量超过16根
+
+     **信号列表：**
+
+    - Signal('60分钟_D1SMA5#13#21#34#55_均线系统V230512_扩散_任意_任意_0')
+    - Signal('60分钟_D1SMA5#13#21#34#55_均线系统V230512_粘合_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    di = int(kwargs.get('di', 1))
+    ma_seq = kwargs.get('ma_seq', "5#13#21#34#55")  # 均线系统参数，以#分隔
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}SMA{ma_seq}_均线系统V230512".split('_')
+    v1 = '其他'
+    ma_seq = [int(x) for x in ma_seq.split('#')]
+    for ma in ma_seq:
+        update_ma_cache(c, ma_type="SMA", timeperiod=ma)
+
+    if len(c.bars_raw) < max(ma_seq) + di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ret_seq = []
+    for bar in get_sub_elements(c.bars_raw, di=di, n=100):
+        ma_val = [bar.cache[f'SMA#{x}'] for x in ma_seq]
+        ret_seq.append(max(ma_val) / min(ma_val) - 1)
+
+    ret_std = np.std(ret_seq[:-20])
+    if sum([1 if ret < 0.5 * ret_std else 0 for ret in ret_seq[-20:]]) >= 16:
+        v1 = "粘合"
+
+    if sum([1 if ret > 1.0 * ret_std else 0 for ret in ret_seq[-20:]]) >= 16:
+        v1 = "扩散"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

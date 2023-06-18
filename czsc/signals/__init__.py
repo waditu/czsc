@@ -35,6 +35,7 @@ from czsc.signals.cxt import (
     cxt_second_bs_V230320,
     cxt_bi_status_V230101,
     cxt_bi_status_V230102,
+    cxt_bi_zdf_V230601,
 )
 
 
@@ -48,6 +49,9 @@ from czsc.signals.byi import (
 from czsc.signals.coo import (
     coo_td_V221110,
     coo_td_V221111,
+    coo_cci_V230323,
+    coo_kdj_V230322,
+    coo_sar_V230325,
 )
 
 from czsc.signals.vol import (
