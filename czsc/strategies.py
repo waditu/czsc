@@ -823,11 +823,11 @@ def create_cci_short(symbol, is_stocks=False, **kwargs) -> Position:
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}CCI多头"
+        pos_name = f"A股{freq}CCI空头"
     else:
         # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}CCI多头"
+        pos_name = f"{freq}CCI空头"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",
