@@ -12,7 +12,7 @@ from czsc import analyze
 from czsc.objects import Direction, BI, FakeBI, Signal
 from czsc.enum import Freq
 
-
+@deprecated(reason="请使用 cxt_three_bi_V230618 函数")
 def check_three_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Signal:
     """识别由远及近的三笔形态
 
@@ -56,6 +56,7 @@ def check_three_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Sig
     return Signal(k1=freq.value, k2=f"倒{di}笔", k3='三笔形态', v1=v1)
 
 
+@deprecated(reason="请使用 cxt_five_bi_V230618 函数")
 def check_five_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Signal:
     """识别五笔形态
 
@@ -123,6 +124,7 @@ def check_five_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Sign
     return v
 
 
+@deprecated(reason="使用 check_seven_bi 替代")
 def check_seven_bi(bis: List[Union[BI, FakeBI]], freq: Freq, di: int = 1) -> Signal:
     """识别七笔形态
 

@@ -37,6 +37,9 @@ from czsc.signals.cxt import (
     cxt_bi_status_V230102,
     cxt_bi_zdf_V230601,
     cxt_bi_end_V230618,
+    cxt_three_bi_V230618,
+    cxt_five_bi_V230619,
+    cxt_seven_bi_V230620,
 )
 
 

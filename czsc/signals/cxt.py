@@ -1137,7 +1137,7 @@ def cxt_bi_zdf_V230601(c: CZSC, **kwargs) -> OrderedDict:
 
 
 def cxt_bi_end_V230618(c: CZSC, **kwargs) -> OrderedDict:
-    """笔结束辅助判断
+    """笔结束辅助判断，贡献者：chenlei
 
     参数模板："{freq}_D{di}_BE辅助V230618"
 
@@ -1162,12 +1162,12 @@ def cxt_bi_end_V230618(c: CZSC, **kwargs) -> OrderedDict:
     - Signal('日线_D1_BE辅助V230618_看空_4小中枢_任意_0')
     - Signal('日线_D1_BE辅助V230618_看多_3小中枢_任意_0')
 
-    **信号说明：**
-
-    类似 cxt_third_bs_V230318 信号，但增加了笔内有无小级别中枢的判断。用k线重叠来近似小级别中枢的判断
-
     :param c: CZSC对象
-    :param kwargs: timeperiod: 均线周期
+    :param kwargs: 
+
+        - di: 倒数第几BI
+        - timeperiod: 均线周期
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
@@ -1223,3 +1223,270 @@ def cxt_bi_end_V230618(c: CZSC, **kwargs) -> OrderedDict:
         v2 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_three_bi_V230618(c: CZSC, **kwargs) -> OrderedDict:
+    """三笔形态分类
+
+    参数模板："{freq}_D{di}三笔_形态V230618"
+
+    **信号逻辑：**
+
+    三笔的形态分类
+
+    **信号列表：**
+
+    - Signal('日线_D1三笔_形态V230618_向下盘背_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上奔走型_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上扩张_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向下奔走型_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上收敛_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向下无背_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上不重合_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向下收敛_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向下扩张_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向下不重合_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上盘背_任意_任意_0')
+    - Signal('日线_D1三笔_形态V230618_向上无背_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: 倒数第几笔
+    
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}三笔_形态V230618".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=3)
+    assert len(bis) == 3 and bis[0].direction == bis[2].direction
+    bi1, bi2, bi3 = bis
+
+    # 识别向下形态
+    if bi3.direction == Direction.Down:
+        if bi3.low > bi1.high:
+            v1 = '向下不重合'
+        elif bi2.low < bi3.low < bi1.high < bi2.high:
+            v1 = '向下奔走型'
+        elif bi1.high > bi3.high and bi1.low < bi3.low:
+            v1 = '向下收敛'
+        elif bi1.high < bi3.high and bi1.low > bi3.low:
+            v1 = '向下扩张'
+        elif bi3.low < bi1.low and bi3.high < bi1.high:
+            v1 = '向下盘背' if bi3.power < bi1.power else '向下无背'
+
+    # 识别向上形态
+    elif bi3.direction == Direction.Up:
+        if bi3.high < bi1.low:
+            v1 = '向上不重合'
+        elif bi2.low < bi1.low < bi3.high < bi2.high:
+            v1 = '向上奔走型'
+        elif bi1.high > bi3.high and bi1.low < bi3.low:
+            v1 = '向上收敛'
+        elif bi1.high < bi3.high and bi1.low > bi3.low:
+            v1 = '向上扩张'
+        elif bi3.low > bi1.low and bi3.high > bi1.high:
+            v1 = '向上盘背' if bi3.power < bi1.power else '向上无背'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_five_bi_V230619(c: CZSC, **kwargs) -> OrderedDict:
+    """五笔形态分类
+
+    参数模板："{freq}_D{di}五笔_形态V230619"
+
+    **信号逻辑：**
+
+    五笔的形态分类
+
+    **信号列表：**
+
+    - Signal('60分钟_D1五笔_形态V230619_上颈线突破_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_类三卖_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_类趋势底背驰_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_类趋势顶背驰_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_下颈线突破_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_类三买_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_aAb式顶背驰_任意_任意_0')
+    - Signal('60分钟_D1五笔_形态V230619_aAb式底背驰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: 倒数第几笔
+    
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}五笔_形态V230619".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 6 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=5)
+    assert len(bis) == 5 and bis[0].direction == bis[2].direction == bis[4].direction, "笔的方向错误"
+    bi1, bi2, bi3, bi4, bi5 = bis
+
+    direction = bi1.direction
+    max_high = max([x.high for x in bis])
+    min_low = min([x.low for x in bis])
+    assert direction in [Direction.Down, Direction.Up], "direction 的取值错误"
+
+    if direction == Direction.Down:
+        # aAb式底背驰
+        if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and max_high == bi1.high and bi5.power < bi1.power:
+            if (min_low == bi3.low and bi5.low < bi1.low) or (min_low == bi5.low):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式底背驰')
+
+        # 类趋势底背驰
+        if max_high == bi1.high and min_low == bi5.low and bi4.high < bi2.low and bi5.power < max(bi3.power, bi1.power):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势底背驰')
+
+        # 上颈线突破
+        if (min_low == bi1.low and bi5.high > min(bi1.high, bi2.high) > bi5.low > bi1.low) \
+                or (min_low == bi3.low and bi5.high > bi3.high > bi5.low > bi3.low):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='上颈线突破')
+
+        # 五笔三买，要求bi5.high是最高点
+        if max_high == bi5.high > bi5.low > max(bi1.high, bi3.high) \
+                > min(bi1.high, bi3.high) > max(bi1.low, bi3.low) > min_low:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买')
+
+    if direction == Direction.Up:
+        # aAb式顶背驰
+        if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and min_low == bi1.low and bi5.power < bi1.power:
+            if (max_high == bi3.high and bi5.high > bi1.high) or (max_high == bi5.high):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式顶背驰')
+
+        # 类趋势顶背驰
+        if min_low == bi1.low and max_high == bi5.high and bi5.power < max(bi1.power, bi3.power) and bi4.low > bi2.high:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势顶背驰')
+
+        # 下颈线突破
+        if (max_high == bi1.high and bi5.low < max(bi1.low, bi2.low) < bi5.high < max_high) \
+                or (max_high == bi3.high and bi5.low < bi3.low < bi5.high < max_high):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='下颈线突破')
+
+        # 五笔三卖，要求bi5.low是最低点
+        if min_low == bi5.low < bi5.high < min(bi1.low, bi3.low) \
+                < max(bi1.low, bi3.low) < min(bi1.high, bi3.high) < max_high:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三卖')
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_seven_bi_V230620(c: CZSC, **kwargs) -> OrderedDict:
+    """七笔形态分类
+
+    参数模板："{freq}_D{di}七笔_形态V230620"
+
+    **信号逻辑：**
+
+    七笔的形态分类
+
+    **信号列表：**
+
+    - Signal('60分钟_D1七笔_形态V230620_类三卖_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_向上中枢完成_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_aAbcd式顶背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_类三买_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_向下中枢完成_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_aAb式底背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_abcAd式顶背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_abcAd式底背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_aAb式顶背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_类趋势顶背驰_任意_任意_0')
+    - Signal('60分钟_D1七笔_形态V230620_aAbcd式底背驰_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: 倒数第几笔
+    
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}七笔_形态V230620".split('_')
+    v1 = "其他"
+    if len(c.bi_list) < di + 10 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=7)
+    assert len(bis) == 7 and bis[0].direction == bis[2].direction == bis[4].direction, "笔的方向错误"
+    bi1, bi2, bi3, bi4, bi5, bi6, bi7 = bis
+    max_high = max([x.high for x in bis])
+    min_low = min([x.low for x in bis])
+    direction = bi7.direction
+
+    if direction == Direction.Down:
+        if bi1.high == max_high and bi7.low == min_low:
+            # aAbcd式底背驰
+            if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) > bi6.high and bi7.power < bi5.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式底背驰')
+
+            # abcAd式底背驰
+            if bi2.low > min(bi4.high, bi6.high) > max(bi4.low, bi6.low) and bi7.power < (bi1.high - bi3.low):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='abcAd式底背驰')
+
+            # aAb式底背驰
+            if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) and bi7.power < bi1.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式底背驰')
+
+            # 类趋势底背驰
+            if bi2.low > bi4.high and bi4.low > bi6.high and bi7.power < max(bi5.power, bi3.power, bi1.power):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势底背驰')
+
+        # 向上中枢完成
+        if bi4.low == min_low and min(bi1.high, bi3.high) > max(bi1.low, bi3.low) \
+                and min(bi5.high, bi7.high) > max(bi5.low, bi7.low) \
+                and max(bi4.high, bi6.high) > min(bi3.high, bi4.high):
+            if max(bi1.low, bi3.low) < max(bi5.high, bi7.high):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='向上中枢完成')
+
+        # 七笔三买：1~3构成中枢，最低点在1~3，最高点在5~7，5~7的最低点大于1~3的最高点
+        if min(bi1.low, bi3.low) == min_low and max(bi5.high, bi7.high) == max_high \
+                and min(bi5.low, bi7.low) > max(bi1.high, bi3.high) \
+                and min(bi1.high, bi3.high) > max(bi1.low, bi3.low):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买')
+
+    if direction == Direction.Up:
+        # 顶背驰
+        if bi1.low == min_low and bi7.high == max_high:
+            # aAbcd式顶背驰
+            if bi6.low > min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and bi7.power < bi5.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式顶背驰')
+
+            # abcAd式顶背驰
+            if min(bi4.high, bi6.high) > max(bi4.low, bi6.low) > bi2.high and bi7.power < (bi3.high - bi1.low):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='abcAd式顶背驰')
+
+            # aAb式顶背驰
+            if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) and bi7.power < bi1.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式顶背驰')
+
+            # 类趋势顶背驰
+            if bi2.high < bi4.low and bi4.high < bi6.low and bi7.power < max(bi5.power, bi3.power, bi1.power):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势顶背驰')
+
+        # 向下中枢完成
+        if bi4.high == max_high and min(bi1.high, bi3.high) > max(bi1.low, bi3.low) \
+                and min(bi5.high, bi7.high) > max(bi5.low, bi7.low) \
+                and min(bi4.low, bi6.low) < max(bi3.low, bi4.low):
+            if min(bi1.high, bi3.high) > min(bi5.low, bi7.low):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='向下中枢完成')
+
+        # 七笔三卖：1~3构成中枢，最高点在1~3，最低点在5~7，5~7的最高点小于1~3的最低点
+        if min(bi5.low, bi7.low) == min_low and max(bi1.high, bi3.high) == max_high \
+                and max(bi7.high, bi5.high) < min(bi1.low, bi3.low) \
+                and min(bi1.high, bi3.high) > max(bi1.low, bi3.low):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三卖')
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
