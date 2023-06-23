@@ -186,4 +186,9 @@ from czsc.signals.ang import (
     clv_up_dw_line_V230605,
     cmo_up_dw_line_V230605,
     skdj_up_dw_line_V230611,
+    bias_up_dw_line_V230618,
+    dema_up_dw_line_V230605,
+    demakder_up_dw_line_V230605,
+    emv_up_dw_line_V230605,
+    er_up_dw_line_V230604,
 )

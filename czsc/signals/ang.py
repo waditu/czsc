@@ -12,6 +12,7 @@ except:
     logger.warning("ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
+import pandas as pd
 from typing import List
 from collections import OrderedDict
 from czsc.analyze import CZSC, RawBar
@@ -334,3 +335,271 @@ def skdj_up_dw_line_V230611(c: CZSC, **kwargs) -> OrderedDict:
         v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bias_up_dw_line_V230618(c: CZSC, **kwargs) -> OrderedDict:
+    """BIAS乖离率指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}N{n}M{m}P{p}TH1{th1}TH2{th2}TH3{th3}_BIAS乖离率V230618"
+
+    **信号逻辑：**
+
+    乖离率 BIAS 用来衡量收盘价与移动平均线之间的差距。
+    当 BIAS6 大于 3 且 BIAS12 大于 5 且 BIAS24 大于 8，
+    三个乖离率均进入股价强势上涨区间，产生买入信号；
+    当 BIAS6 小于-3 且 BIAS12 小于-5 且BIAS24 小于-8 时，
+    三种乖离率均进入股价强势下跌区间，产生卖出信号
+
+    **信号列表：**
+
+    - Signal('日线_D1N6M12P24TH11TH23TH35_BIAS乖离率V230618_看空_任意_任意_0')
+    - Signal('日线_D1N6M12P24TH11TH23TH35_BIAS乖离率V230618_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - :param di: 信号计算截止倒数第i根K线
+        - :param n: 获取K线的根数，默认为30
+        - :param m: 获取K线的根数，默认为20
+        
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 6))
+    m = int(kwargs.get("m", 12))
+    p = int(kwargs.get("p", 24))
+    th1 = int(kwargs.get("th1", 1))
+    th2 = int(kwargs.get("th2", 3))
+    th3 = int(kwargs.get("th3", 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}P{p}TH1{th1}TH2{th2}TH3{th3}_BIAS乖离率V230618".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + max(n, m, p):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars1 = get_sub_elements(c.bars_raw, di=di, n=n)
+    bars2 = get_sub_elements(c.bars_raw, di=di, n=m)
+    bars3 = get_sub_elements(c.bars_raw, di=di, n=p)
+
+    bias_ma1 = np.mean([bars1[i].close for i in range(len(bars1))])
+    bias_ma2 = np.mean([bars2[i].close for i in range(len(bars2))])
+    bias_ma3 = np.mean([bars3[i].close for i in range(len(bars3))])
+
+    bias1 = (bars1[-1].close - bias_ma1) / bias_ma1 * 100
+    bias2 = (bars2[-1].close - bias_ma2) / bias_ma2 * 100
+    bias3 = (bars3[-1].close - bias_ma3) / bias_ma3 * 100
+
+    if bias1 > th1 and bias2 > th2 and bias3 > th3:
+        v1 = "看多"
+    if bias1 < -th1 and bias2 < -th2 and bias3 < -th3:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def dema_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
+    """DEMA短线趋势指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}N{n}_DEMA短线趋势V230605"
+
+    **信号逻辑：**
+    
+    DEMA指标是一种趋势指标，用于衡量价格趋势的方向和强度。
+    与其他移动平均线指标相比，DEMA指标更加灵敏，能够更快地反应价格趋势的变化，因此在短期交易中具有一定的优势。
+    当收盘价大于DEMA看多， 当收盘价小于DEMA看空
+
+    **信号列表：**
+
+    - Signal('日线_D1N5_DEMA短线趋势V230605_看多_任意_任意_0')
+    - Signal('日线_D1N5_DEMA短线趋势V230605_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - :param di: 信号计算截止倒数第i根K线
+        - :param n: 获取K线的根数，默认为5
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}_DEMA短线趋势V230605".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + 2*n + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    short_bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    long_bars = get_sub_elements(c.bars_raw, di=di, n=n * 2)
+    dema = np.mean([x.close for x in short_bars]) * 2 - np.mean([x.close for x in long_bars])
+
+    v1 = "看多" if short_bars[-1].close > dema else "看空"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def demakder_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
+    """DEMAKER价格趋势指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}N{n}TH{th}TL{tl}_DEMAKER价格趋势V230605"
+
+    **信号逻辑：**
+
+    DEMAKER指标的作用是用于判断价格的趋势和力度
+    当 demaker>0.6 时上升趋势强烈，当 demaker<0.4 时下跌趋势强烈。
+    当 demaker 上穿 0.6/下穿 0.4 时产生买入/卖出信号。
+
+    **信号列表：**
+
+    - Signal('日线_D1N105TH5TL5_DEMAKER价格趋势V230605_看多_任意_任意_0')
+    - Signal('日线_D1N105TH5TL5_DEMAKER价格趋势V230605_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - :param di: 信号计算截止倒数第i根K线
+        - :param n: 获取K线的根数，默认为105
+        - :param th: 开多阈值，默认为6
+        - :param tl: 开空阈值，默认为4
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 105))
+    th = int(kwargs.get("th", 5))
+    tl = int(kwargs.get("tl", 5))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}N{n}TH{th}TL{tl}_DEMAKER价格趋势V230605".split('_')
+
+    # 增加一个约束，如果K线数量不足时直接返回
+    v1 = "其他"
+    if len(c.bars_raw) < di + n + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    demax = np.mean([bars[i].high - bars[i-1].high for i in
+                     range(1, len(bars)) if bars[i].high - bars[i-1].high > 0])
+    demin = np.mean([bars[i-1].low - bars[i].low for i in
+                     range(1, len(bars)) if bars[i-1].low - bars[i].low > 0])
+    demaker = demax / (demax + demin)
+
+    if demaker > th / 10:
+        v1 = "看多"
+    if demaker < tl / 10:
+        v1 = "看空"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def emv_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
+    """EMV简易波动指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}_EMV简易波动V230605"
+
+    **信号逻辑：**
+
+    emv 综合考虑了成交量和价格（中间价）的变化。
+    emv>0 则多头处于优势，emv 上升说明买方力量在增大；
+    emv<0 则空头处于优势，emv 下降说明卖方力量在增大。
+    如果 emv 上穿 0，则产生买入信号；
+    如果 emv 下穿 0，则产生卖出信号。
+
+    **信号列表：**
+
+    - Signal('日线_D1_EMV简易波动V230605_看多_任意_任意_0')
+    - Signal('日线_D1_EMV简易波动V230605_看空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - :param di: 信号计算截止倒数第i根K线
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}_EMV简易波动V230605".split('_')
+
+    # 增加一个约束，如果K线数量不足时直接返回
+    v1 = "其他"
+    if len(c.bars_raw) < di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=2)
+    mid_pt_move = (_bars[-1].high + _bars[-1].low) / 2 - (_bars[-2].high + _bars[-2].low) / 2
+    box_ratio = _bars[-1].vol / (_bars[-1].high - _bars[-1].low + 1e-9)
+    emv = mid_pt_move / box_ratio
+
+    v1 = "看多" if emv > 0 else "看空"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def er_up_dw_line_V230604(c: CZSC, **kwargs) -> OrderedDict:
+    """ER价格动量指标，贡献者：琅盎
+
+    参数模板："{freq}_D{di}W{w}N{n}_ER价格动量V230604"
+
+    **信号逻辑：**
+
+    er 为动量指标。用来衡量市场的多空力量对比。在多头市场，
+    人们会更贪婪地在接近高价的地方买入，BullPower 越高则当前
+    多头力量越强；而在空头市场，人们可能因为恐惧而在接近低价
+    的地方卖出。BearPower 越低则当前空头力量越强。当两者都大
+    于 0 时，反映当前多头力量占据主导地位；两者都小于 0 则反映
+    空头力量占据主导地位。
+    如果 BearPower 上穿 0，则产生买入信号；
+    如果 BullPower 下穿 0，则产生卖出信号。
+
+    **信号列表：**
+
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第10层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第9层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第8层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第5层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第1层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第10层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第2层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第6层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第7层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第8层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第9层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第4层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第5层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第7层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第3层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第2层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第6层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第1层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线下方_第4层_任意_0')
+    - Signal('日线_D1W21N10_ER价格动量V230604_均线上方_第3层_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - :param di: 信号计算截止倒数第i根K线
+        - :param n: 获取K线的根数，默认为105
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 60))
+    n = int(kwargs.get("n", 10))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}N{n}_ER价格动量V230604".split('_')
+
+    cache_key = f"ER{w}"
+    for i, bar in enumerate(c.bars_raw, 1):
+        if cache_key in bar.cache:
+            continue
+        _bars = c.bars_raw[i-w:i]
+        ma = np.mean([x.close for x in _bars])
+        bull_power = bar.high - ma if bar.high > ma else bar.low - ma
+        bar.cache.update({cache_key: bull_power})
+
+    v1 = "其他"
+    if len(c.bars_raw) < di + w + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    _bars = get_sub_elements(c.bars_raw, di=di, n=w*10)
+    factors = [x.cache[cache_key] for x in _bars]
+    factors = [x for x in factors if x * factors[-1] > 0]
+
+    v1 = "均线上方" if factors[-1] > 0 else "均线下方"
+    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{q}层")
