@@ -78,10 +78,9 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     for i in range(1, len(bars)-1):
         fx = check_fx(bars[i-1], bars[i], bars[i+1])
         if isinstance(fx, FX):
-            # 这里可能隐含Bug，默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样，这是不对的。
-            # 临时处理方案，强制要求fxs序列顶底交替
+            # 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
-                logger.info(f"check_fxs错误: \n传入K线时间范围：{bars[0].dt} -- {bars[-1].dt}, K线数量：{len(bars)}\n{bars[i]}")
+                logger.error(f"check_fxs错误: {bars[i].dt}，{fx.mark}，{fxs[-1].mark}")
             else:
                 fxs.append(fx)
     return fxs
