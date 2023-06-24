@@ -81,15 +81,7 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
             # 这里可能隐含Bug，默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样，这是不对的。
             # 临时处理方案，强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
-                if envs.get_verbose():
-                    logger.info(f"\n\ncheck_fxs: 输入数据错误{'+' * 100}")
-                    logger.info(f"当前：{fx.mark}, 上个：{fxs[-1].mark}")
-                    for bar in fx.raw_bars:
-                        logger.info(f"{bar}\n")
-
-                    logger.info('last fx raw bars: \n')
-                    for bar in fxs[-1].raw_bars:
-                        logger.info(f"{bar}\n")
+                logger.info(f"check_fxs错误: \n传入K线时间范围：{bars[0].dt} -- {bars[-1].dt}, K线数量：{len(bars)}\n{bars[i]}")
             else:
                 fxs.append(fx)
     return fxs
@@ -232,7 +224,9 @@ class CZSC:
         bars_ubi = self.bars_ubi
         if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) \
                 or (last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low):
-            self.bars_ubi = last_bi.bars[:-1] + [x for x in bars_ubi if x.dt >= last_bi.bars[-1].dt]
+            # 当前笔被破坏，将当前笔的bars与bars_ubi进行合并，并丢弃，这里容易出错，多一根K线就可能导致错误
+            # 必须是 -2，因为最后一根无包含K线有可能是未完成的
+            self.bars_ubi = last_bi.bars[:-2] + [x for x in bars_ubi if x.dt >= last_bi.bars[-2].dt]
             self.bi_list.pop(-1)
 
     def update(self, bar: RawBar):
