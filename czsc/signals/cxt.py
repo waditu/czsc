@@ -1654,10 +1654,10 @@ def cxt_eleven_bi_V230622(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('60分钟_D1九笔_形态V230621_类三买_任意_任意_0')
-    - Signal('60分钟_D1九笔_形态V230621_A3B3C5式类一卖_任意_任意_0')
-    - Signal('60分钟_D1九笔_形态V230621_类二买_任意_任意_0')
-    - Signal('60分钟_D1九笔_形态V230621_A5B3C3式类一卖_任意_任意_0')
+    - Signal('60分钟_D1十一笔_形态V230622_类三买_任意_任意_0')
+    - Signal('60分钟_D1十一笔_形态V230622_A3B3C5式类一卖_任意_任意_0')
+    - Signal('60分钟_D1十一笔_形态V230622_类二买_任意_任意_0')
+    - Signal('60分钟_D1十一笔_形态V230622_A5B3C3式类一卖_任意_任意_0')
 
     :param c: CZSC对象
     :param kwargs:
@@ -1668,7 +1668,7 @@ def cxt_eleven_bi_V230622(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}九笔_形态V230621".split('_')
+    k1, k2, k3 = f"{freq}_D{di}十一笔_形态V230622".split('_')
     v1 = "其他"
     if len(c.bi_list) < di + 16 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -7,14 +7,14 @@ describe:
 """
 import os
 import sys
-sys.path.insert(0, r'..\..')
-# 插入用户自定义信号函数模块所在目录
-sys.path.insert(0, os.path.join(os.path.expanduser('~'), '.czsc/czsc_usr_signals'))
+# sys.path.insert(0, r'..\..')
+# # 插入用户自定义信号函数模块所在目录
+# sys.path.insert(0, os.path.join(os.path.expanduser('~'), '.czsc/czsc_usr_signals'))
 
 import re
 from loguru import logger
 from czsc.utils import import_by_name
-from czsc.traders.sig_parse import SignalsParser
+from czsc import SignalsParser
 
 
 signals_module_name = 'czsc.signals'
@@ -40,13 +40,13 @@ if __name__ == '__main__':
     parsed_name = {x['name'] for x in conf}
     print(f"total signal functions: {len(sp.sig_name_map)}; parsed: {len(parsed_name)}")
 
-    # # 测试信号配置生成信号
-    from czsc import generate_czsc_signals, get_signals_freqs, get_signals_config
-    from test.test_analyze import read_1min
-    bars = read_1min()
+    # # # 测试信号配置生成信号
+    # from czsc import generate_czsc_signals, get_signals_freqs, get_signals_config
+    # from test.test_analyze import read_1min
+    # bars = read_1min()
 
-    conf = get_signals_config(signals_seq)
-    freqs = get_signals_freqs(signals_seq)
+    # conf = get_signals_config(signals_seq)
+    # freqs = get_signals_freqs(signals_seq)
 
-    sigs = generate_czsc_signals(bars, signals_config=conf, sdt='20180101', df=True)
+    # sigs = generate_czsc_signals(bars, signals_config=conf, sdt='20180101', df=True)
 

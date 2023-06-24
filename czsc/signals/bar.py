@@ -125,10 +125,17 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
 
     参数模板："{freq}_{freq1}结束_BS辅助221211"
 
+    **信号逻辑：**
+
+    以 freq 为基础周期，freq1 为大周期，判断 freq1 K线是否结束。
+    如果结束，返回信号值为 "闭合"，否则返回 "未闭x"，x 为未闭合的次数。
+
     **信号列表：**
 
-    - Signal('60分钟_K线_结束_否_任意_任意_0')
-    - Signal('60分钟_K线_结束_是_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭1_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭2_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭3_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_闭合_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
     :param freq1: 分钟周期名称
@@ -138,8 +145,18 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{freq}_{freq1}结束_BS辅助221211".split('_')
     assert "分钟" in freq1
 
-    dt: datetime = c.bars_raw[-1].dt
-    v = "是" if freq_end_time(dt, freq1) == dt else "否"
+    c1_dt = freq_end_time(c.bars_raw[-1].dt, freq1)
+    i = 0
+    for bar in c.bars_raw[::-1]:
+        _edt = freq_end_time(bar.dt, freq1)
+        if _edt != c1_dt:
+            break
+        i += 1
+
+    if c1_dt == c.bars_raw[-1].dt:
+        v = "闭合"
+    else:
+        v = "未闭{}".format(i)
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
