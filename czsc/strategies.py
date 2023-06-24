@@ -840,3 +840,124 @@ def create_cci_short(symbol, is_stocks=False, **kwargs) -> Position:
         T0=T0,
     )
     return pos
+
+
+def create_emv_long(symbol, is_stocks=False, **kwargs) -> Position:
+    """EMV 多头策略
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - T0: 是否是 T0 策略
+
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    di = int(kwargs.get("di", 1))
+    T0 = kwargs.get("T0", False)
+    timeout = int(kwargs.get("timeout", 100))
+    stop_loss = int(kwargs.get("stop_loss", 300))
+    interval = int(kwargs.get("interval", 3600 * 2))    # 同向开仓时间间隔，单位：秒；默认 2 小时，一般不用修改
+
+    opens = [
+        {
+            "operate": "开多",
+            "signals_not": [],
+            "factors": [{"name": "EMV多头", "signals_all": [f"{freq}_D{di}_EMV简易波动V230605_看多_任意_任意_0"]}],
+        }
+    ]
+
+    exits = [
+        {
+            "operate": "平多",
+            "signals_not": [],
+            "factors": [{"name": f"EMV空头", "signals_all": [f"{freq}_D{di}_EMV简易波动V230605_看空_任意_任意_0"]}],
+        }
+    ]
+    if is_stocks:
+        # A股空头：涨跌停不交易
+        zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}EMV多头"
+    else:
+        # 非A股多头：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}EMV多头"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
+    return pos
+
+
+def create_emv_short(symbol, is_stocks=False, **kwargs) -> Position:
+    """EMV 空头策略
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - T0: 是否是 T0 策略
+
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    di = int(kwargs.get("di", 1))
+    T0 = kwargs.get("T0", False)
+    timeout = int(kwargs.get("timeout", 100))
+    stop_loss = int(kwargs.get("stop_loss", 300))
+    interval = int(kwargs.get("interval", 3600 * 2))    # 同向开仓时间间隔，单位：秒；默认 2 小时，一般不用修改
+
+    opens = [
+                {
+            "operate": "开空",
+            "signals_not": [],
+            "factors": [{"name": f"EMV空头", "signals_all": [f"{freq}_D{di}_EMV简易波动V230605_看空_任意_任意_0"]}],
+        }
+
+    ]
+
+    exits = [
+        {
+            "operate": "平空",
+            "signals_not": [],
+            "factors": [{"name": "EMV多头", "signals_all": [f"{freq}_D{di}_EMV简易波动V230605_看多_任意_任意_0"]}],
+        }
+    ]
+    if is_stocks:
+        # A股：涨跌停不交易
+        zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}EMV空头"
+    else:
+        # 非A股：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}EMV空头"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
+    return pos
