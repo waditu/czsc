@@ -176,6 +176,7 @@ from czsc.signals.pos import (
     pos_ma_V230414,
     pos_holds_V230414,
     pos_bar_stop_V230524,
+    pos_fix_exit_V230624,
 )
 
 

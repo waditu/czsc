@@ -774,20 +774,6 @@ class Position:
         self.last_lo_dt = None  # 最近一次开多交易的时间
         self.last_so_dt = None  # 最近一次开空交易的时间
         self.end_dt = None  # 最近一次信号传入的时间
-        self.__update_name()
-
-    def __update_name(self):
-        """更新仓位名称"""
-        raw = {
-            "opens": [x.dump() for x in self.opens],
-            "exits": [x.dump() for x in self.exits],
-            "interval": self.interval,
-            "timeout": self.timeout,
-            "stop_loss": self.stop_loss,
-            "T0": self.T0,
-        }
-        sha256 = hashlib.sha256(str(raw).encode("utf-8")).hexdigest().upper()[:8]
-        self.name = f"{self.name}#{sha256}"
 
     def __repr__(self):
         return (

@@ -238,3 +238,53 @@ def pos_holds_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
         v1 = '空头存疑' if zdf < m else '空头良好'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_fix_exit_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """固定比例止损，止盈
+
+    参数模板："{pos_name}_固定{th}BP止盈止损_出场V230624"
+
+    **信号逻辑：**
+
+    以多头为例，如果持有收益超过 th 个BP，则止盈；如果亏损超过 th 个BP，则止损。
+
+    **信号列表：**
+
+    - Signal('日线三买多头_固定100BP止盈止损_出场V230624_多头止损_任意_任意_0')
+    - Signal('日线三买多头_固定100BP止盈止损_出场V230624_空头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，向前找的K线个数，默认为 3
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    th = int(kwargs.get('th', 300))
+    k1, k2, k3 = f"{pos_name}_固定{th}BP止盈止损_出场V230624".split("_")
+    v1 = '其他'
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos_ = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos_.operates) == 0 or pos_.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    
+    op = pos_.operates[-1]
+    op_price = op['price']
+
+    if op['op'] == Operate.LO:
+        if cat.latest_price < op_price * (1 - th / 10000):
+            v1 = '多头止损'
+        if cat.latest_price > op_price * (1 + th / 10000):
+            v1 = '多头止盈'
+
+    if op['op'] == Operate.SO:
+        if cat.latest_price > op_price * (1 + th / 10000):
+            v1 = '空头止损'
+        if cat.latest_price < op_price * (1 - th / 10000):
+            v1 = '空头止盈'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
