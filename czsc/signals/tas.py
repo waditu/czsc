@@ -15,11 +15,12 @@ except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
+from collections import OrderedDict
 from deprecated import deprecated
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction, BI, RawBar, FX
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
-from collections import OrderedDict
+from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
 
 
 def update_ma_cache(c: CZSC, **kwargs):
@@ -2463,5 +2464,210 @@ def tas_ma_cohere_V230512(c: CZSC, **kwargs) -> OrderedDict:
 
     if sum([1 if ret > 1.0 * ret_std else 0 for ret in ret_seq[-20:]]) >= 16:
         v1 = "扩散"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_cross_status_V230619(c: CZSC, **kwargs) -> OrderedDict:
+    """0轴上下金死叉次数计算信号函数 贡献者：谌意勇
+
+    参数模板："{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}_金死叉V230619"
+
+    **信号逻辑：**
+
+    精确确立MACD指标中0轴以上或以下位置第几次金叉和死叉，作为开仓的辅助买点：
+
+    **信号列表：**
+
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴上死叉第2次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下金叉第1次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下死叉第1次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下金叉第2次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下死叉第2次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下金叉第3次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴上死叉第1次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴上金叉第1次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下死叉第3次_任意_任意_0')
+    - Signal('日线_D1MACD12#26#9_金死叉V230619_0轴下金叉第4次_任意_任意_0')
+    
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - :param di: 信号计算截止倒数第i根K线
+        - :param fastperiod: MACD快线周期
+        - :param slowperiod: MACD慢线周期
+        - :param signalperiod: MACD信号线周期
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get('di', 1))
+    freq = c.freq.value
+    fastperiod = int(kwargs.get('fastperiod', 12))
+    slowperiod = int(kwargs.get('slowperiod', 26))
+    signalperiod = int(kwargs.get('signalperiod', 9))
+    cache_key = update_macd_cache(c, **kwargs)
+    s = OrderedDict()
+    bars = get_sub_elements(c.bars_raw, di=di, n=100)
+    k1, k2, k3 = f"{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}_金死叉V230619".split('_')
+    v1 = "其他"
+    if len(bars)>=100:
+        dif = [x.cache[cache_key]['dif'] for x in bars]
+        dea = [x.cache[cache_key]['dea'] for x in bars]
+
+        num_k = cross_zero_axis(dif, dea) # type: ignore
+        dif_temp = get_sub_elements(dif, di=di, n=num_k)
+        dea_temp = get_sub_elements(dea, di=di, n=num_k)
+
+        if dif[-1] < 0 and dea[-1] < 0:
+            down_num_sc = down_cross_count(dif_temp, dea_temp)
+            down_num_jc = down_cross_count(dea_temp, dif_temp)
+            if dif[-1] > dea[-1] and dif[-2] < dea[-2]:
+                v1 = f'0轴下金叉第{down_num_jc}次'
+            elif dif[-1] < dea[-1] and dif[-2] > dea[-2]:
+                v1 = f'0轴下死叉第{down_num_sc}次'
+
+
+        elif dif[-1] > 0 and dea[-1] > 0:
+            up_num_sc = down_cross_count(dif_temp, dea_temp)
+            up_num_jc = down_cross_count(dea_temp, dif_temp)
+            if dif[-1] > dea[-1] and dif[-2] < dea[-2]:
+                v1 = f'0轴上金叉第{up_num_jc}次'
+            elif dif[-1] < dea[-1] and dif[-2] > dea[-2]:
+                v1 = f'0轴上死叉第{up_num_sc}次'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    
+
+def tas_cross_status_V230624(c: CZSC, **kwargs) -> OrderedDict:
+    """指定金死叉数值信号函数,以此来确定MACD交易区间    贡献者：谌意勇
+
+    参数模板："{freq}_D{di}N{n}MD{md}_MACD交叉数量V230624"
+
+    **信号逻辑：**
+
+    1、通过指定0轴上下金死叉数量，来选择自己想要的指标形态，通过配合其他信号函数出信号
+    2、金叉数量和死叉数量要注意连续对应。0轴上一定是第一次先死叉，再金叉，死叉的数值同
+        金叉数值相比永远是相等或者大1，不能出现>=2的情况，0轴下则反之。
+
+    **信号列表：**
+
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴上金叉第1次_0轴上死叉第1次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴上金叉第1次_0轴上死叉第2次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第0次_0轴下死叉第0次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第1次_0轴下死叉第0次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第1次_0轴下死叉第1次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第2次_0轴下死叉第1次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第2次_0轴下死叉第2次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第3次_0轴下死叉第2次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴上金叉第0次_0轴上死叉第0次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴上金叉第0次_0轴上死叉第1次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第3次_0轴下死叉第3次_任意_0')
+    - Signal('日线_D1N100MD1_MACD交叉数量V230624_0轴下金叉第4次_0轴下死叉第3次_任意_0')
+
+    :param c:  czsc对象
+    :param kwargs:
+
+        - di: 倒数第i根K线
+        - n: 从dik往前数n根k线（此数值不需要精确，函数会自动截取最后上下0轴以后的数据）
+        - md: 抖动过滤参数,金死叉之间格距离小于此数值，将被忽略（去除一些杂波扰动因素,最小值不小于1）
+                0轴上下金死叉状态信息，与其他信号加以辅助操作。
+
+    :return: 信号字典
+    """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 100))
+    md = int(kwargs.get('md', 1))  # md 是 min distance 的缩写，表示金死叉之间格距离小于此数值，将被忽略（去除一些杂波扰动因素,最小值不小于1）
+    assert md >= 1, "md必须大于等于1"
+    freq = c.freq.value
+    cache_key = update_macd_cache(c, **kwargs)
+
+    k1, k2, k3 = f"{freq}_D{di}N{n}MD{md}_MACD交叉数量V230624".split('_')
+    v1 = "其他"
+    v2 = "其他"
+    if len(c.bars_raw) < n + 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    dif = [x.cache[cache_key]['dif'] for x in bars]
+    dea = [x.cache[cache_key]['dea'] for x in bars]
+    num_k = cross_zero_axis(dif, dea)
+    dif_temp = get_sub_elements(dif, di=1, n=num_k)
+    dea_temp = get_sub_elements(dea, di=1, n=num_k)
+    cross = fast_slow_cross(dif_temp, dea_temp)
+
+    jc, sc = cal_cross_num(cross, md)
+
+    if dif[-1] < 0 and dea[-1] < 0:
+        v1 = f'0轴下金叉第{jc}次'
+        v2 = f'0轴下死叉第{sc}次'
+
+    elif dif[-1] > 0 and dea[-1] > 0:
+        v1 = f'0轴上金叉第{jc}次'
+        v2 = f'0轴上死叉第{sc}次'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def tas_cross_status_V230625(c: CZSC, **kwargs) -> OrderedDict:
+    """指定金死叉数值信号函数, 以此来确定MACD交易区间    贡献者：谌意勇
+
+    参数模板："{freq}_D{di}N{n}MD{md}J{j}S{s}_MACD交叉数量V230625"
+
+    **信号逻辑：**
+
+    1、通过指定jc或者sc数值来确定为哪第几次金叉或死叉之后的信号。两者最少要指定一个，并且指定其中一个时，另外一个需为0.
+
+    **信号列表：**
+
+    - Signal('15分钟_D1N100MD1J3S0_MACD交叉数量V230625_0轴下第3次金叉以后_任意_任意_0')
+    - Signal('15分钟_D1N100MD1J3S0_MACD交叉数量V230625_0轴上第3次金叉以后_任意_任意_0')
+
+    :param c:  czsc对象
+    :param kwargs:
+
+        - di: 倒数第i根K线
+        - j: 金叉数值
+        - s: 死叉数值
+        - n: 从dik往前数n根k线（此数值不需要精确，函数会自动截取最后上下0轴以后的数据）
+        - md: 抖动过滤参数,金死叉之间格距离小于此数值，将被忽略（去除一些杂波扰动因素,最小值不小于1
+                0轴上下金死叉状态信息，与其他信号加以辅助操作。
+
+    :return: 信号字典
+    """
+    di = int(kwargs.get('di', 1))
+    j = int(kwargs.get('j', 0))
+    s = int(kwargs.get('s', 0))
+    n = int(kwargs.get('n', 100))
+    md = int(kwargs.get('md', 1))
+    freq = c.freq.value
+    cache_key = update_macd_cache(c, **kwargs)
+    assert j * s == 0, "金叉死叉参数错误, j和s必须有一个为0"
+
+    k1, k2, k3 = f"{freq}_D{di}N{n}MD{md}J{j}S{s}_MACD交叉数量V230625".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + n + 1:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    dif = [x.cache[cache_key]['dif'] for x in bars]
+    dea = [x.cache[cache_key]['dea'] for x in bars]
+    num_k = cross_zero_axis(dif, dea)
+    dif_temp = get_sub_elements(dif, di=1, n=num_k)
+    dea_temp = get_sub_elements(dea, di=1, n=num_k)
+    cross = fast_slow_cross(dif_temp, dea_temp)
+
+    jc, sc = cal_cross_num(cross, md)
+
+    if dif[-1] < 0 and dea[-1] < 0:
+        if jc >= j and s == 0:
+            v1 = f'0轴下第{j}次金叉以后'
+        elif j == 0 and sc >= s:
+            v1 = f'0轴下第{s}次死叉以后'
+
+    elif dif[-1] > 0 and dea[-1] > 0:
+        if jc >= j and s == 0:
+            v1 = f'0轴上第{j}次金叉以后'
+        elif j == 0 and sc >= s:
+            v1 = f'0轴上第{s}次死叉以后'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -39,6 +39,7 @@ from czsc.signals.cxt import (
     cxt_seven_bi_V230620,
     cxt_nine_bi_V230621,
     cxt_eleven_bi_V230622,
+    cxt_range_oscillation_V230620,
 )
 
 
@@ -169,6 +170,10 @@ from czsc.signals.tas import (
     tas_atr_break_V230424,
 
     tas_sar_base_V230425,
+
+    tas_cross_status_V230619,
+    tas_cross_status_V230624,
+    tas_cross_status_V230625,
 )
 
 from czsc.signals.pos import (
@@ -177,6 +182,7 @@ from czsc.signals.pos import (
     pos_holds_V230414,
     pos_bar_stop_V230524,
     pos_fix_exit_V230624,
+    pos_profit_loss_V230624,
 )
 
 

@@ -11,7 +11,6 @@ from czsc.sensors.utils import (
     discretizer,
     get_index_beta,
     holds_concepts_effect,
-    SignalsPerformance,
 )
 
 
