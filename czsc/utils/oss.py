@@ -7,7 +7,7 @@ describe: 阿里云OSS操作类
 """
 import os
 from loguru import logger
-
+from tqdm import tqdm
 try:
     import oss2
     from oss2.models import PartInfo
@@ -52,8 +52,10 @@ class AliyunOSS:
         with open(filepath, "rb") as file:
             result = self.bucket.put_object(oss_key, file)
             if result.status == 200:
+                logger.info(f"Upload {filepath} to {oss_key} successfully.")
                 return True
             else:
+                logger.error(f"Upload {filepath} to {oss_key} failed: {result.status}, {result.request_id}")
                 return False
 
     def download(self, oss_key: str, filepath: str) -> bool:
@@ -85,8 +87,10 @@ class AliyunOSS:
         """
         result = self.bucket.delete_object(oss_key)
         if result.status == 204:
+            logger.info(f"Delete {oss_key} successfully.")
             return True
         else:
+            logger.error(f"Delete {oss_key} failed: {result.status}, {result.request_id}")
             return False
 
     def file_exists(self, oss_key: str) -> bool:
@@ -125,7 +129,7 @@ class AliyunOSS:
         :return: list, 列举的文件的名称列表。
         """
         oss_keys = []
-        for obj in oss2.ObjectIterator(self.bucket, prefix=prefix):
+        for obj in tqdm(oss2.ObjectIterator(self.bucket, prefix=prefix), desc=f"List files of {prefix}"):
             if obj.key.endswith("/"):
                 continue
             if extensions and not any(obj.key.endswith(ext) for ext in extensions):
@@ -143,7 +147,7 @@ class AliyunOSS:
         :param threads: int, 并行上传的线程数。默认为5。
         """
         with ThreadPoolExecutor(max_workers=threads) as executor:
-            for filepath, oss_key in zip(filepaths, oss_keys):
+            for filepath, oss_key in tqdm(zip(filepaths, oss_keys), total=len(filepaths), desc="Uploading"):
                 executor.submit(self.upload, filepath, oss_key, replace)
 
     def batch_download(self, oss_keys: List[str], local_paths: List[str], threads: int = 5):
@@ -219,4 +223,6 @@ class AliyunOSS:
                 oss_key = os.path.join(oss_folder, relative_path)
                 oss_keys.append(oss_key)
 
+        logger.info(f"Uploading {local_folder} to {oss_folder}, {len(filepaths)} files in total.")
         self.batch_upload(filepaths, oss_keys, replace, threads)
+        logger.info(f"Upload {local_folder} finished.")

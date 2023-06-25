@@ -135,115 +135,23 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
     return df_turns, round(df_turns.change.sum() / 2, 4)
 
 
-@deprecated(version='1.0', reason="请使用 czsc.utils.signal_analyzer.SignalPerformance")
-class SignalsPerformance:
-    """信号表现分析"""
-
-    def __init__(self, dfs: pd.DataFrame, keys: List[AnyStr]):
-        """
-
-        :param dfs: 信号表
-        :param keys: 信号列，支持一个或多个信号列组合分析
-        """
-        base_cols = [x for x in dfs.columns if len(x.split("_")) != 3]
-        dfs = dfs[base_cols + keys].copy()
-
-        if 'year' not in dfs.columns:
-            y = dfs['dt'].apply(lambda x: x.year)
-            dfs['year'] = y.values
-
-        self.dfs = dfs
-        self.keys = keys
-        self.b_cols = [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
-        self.n_cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b']
-
-    def __return_performance(self, dfs: pd.DataFrame, mode: str = '1b') -> pd.DataFrame:
-        """分析信号组合的分类能力，也就是信号出现前后的收益情况
-
-        :param dfs: 信号数据表，
-        :param mode: 分析模式，
-            0b 截面向前看
-            0n 截面向后看
-            1b 时序向前看
-            1n 时序向后看
-        :return:
-        """
-        mode = mode.lower()
-        assert mode in ['0b', '0n', '1b', '1n']
-        keys = self.keys
-        len_dfs = len(dfs)
-        cols = self.b_cols if mode.endswith('b') else self.n_cols
-
-        sdt = dfs['dt'].min().strftime("%Y%m%d")
-        edt = dfs['dt'].max().strftime("%Y%m%d")
-
-        def __static(_df, _name):
-            _res = {"name": _name, "date_span": f"{sdt} ~ {edt}",
-                    "count": len(_df), "cover": round(len(_df) / len_dfs, 4)}
-            if mode.startswith('0'):
-                _r = _df.groupby('dt')[cols].mean().mean().to_dict()
-            else:
-                _r = _df[cols].mean().to_dict()
-            _res.update(_r)
-            return _res
-
-        results = [__static(dfs, "基准")]
-
-        for values, dfg in dfs.groupby(by=keys if len(keys) > 1 else keys[0]):
-            if isinstance(values, str):
-                values = [values]
-            assert len(keys) == len(values)
-
-            name = "#".join([f"{key1}_{name1}" for key1, name1 in zip(keys, values)])
-            results.append(__static(dfg, name))
-
-        dfr = pd.DataFrame(results)
-        dfr[cols] = dfr[cols].round(2)
-        return dfr
-
-    def analyze(self, mode='0b') -> pd.DataFrame:
-        """分析信号出现前后的收益情况
-
-        :param mode: 分析模式，
-            0b 截面向前看
-            0n 截面向后看
-            1b 时序向前看
-            1n 时序向后看
-        :return:
-        """
-        dfr = self.__return_performance(self.dfs, mode)
-        results = [dfr]
-        for year, df_ in self.dfs.groupby('year'):
-            dfr_ = self.__return_performance(df_, mode)
-            results.append(dfr_)
-        dfr = pd.concat(results, ignore_index=True)
-        return dfr
-
-    def report(self, file_xlsx=None):
-        res = {
-            '向后看截面': self.analyze('0n'),
-            '向后看时序': self.analyze('1n'),
-        }
-        if file_xlsx:
-            writer = pd.ExcelWriter(file_xlsx)
-            for sn, df_ in res.items():
-                df_.to_excel(writer, sheet_name=sn, index=False)
-            writer.close()
-        return res
-
-
 def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3, **kwargs):
     """股票持仓列表的板块效应
 
     原理概述：在选股时，如果股票的概念板块与组合中的其他股票的概念板块有重合，那么这个股票的表现会更好。
 
     :param holds: 组合股票池数据，样例：
-                 成分日期    证券代码       n1b      持仓权重
-            0  2020-01-02  000001.SZ  183.758194  0.001232
-            1  2020-01-02  000002.SZ -156.633896  0.001232
-            2  2020-01-02  000063.SZ  310.296204  0.001232
-            3  2020-01-02  000066.SZ -131.824997  0.001232
-            4  2020-01-02  000069.SZ  -38.561699  0.001232
+
+            ===================  =========  ==========
+            dt                   symbol         weight
+            ===================  =========  ==========
+            2023-05-09 00:00:00  601858.SH  0.00333333
+            2023-05-09 00:00:00  300502.SZ  0.00333333
+            2023-05-09 00:00:00  603258.SH  0.00333333
+            2023-05-09 00:00:00  300499.SZ  0.00333333
+            2023-05-09 00:00:00  300624.SZ  0.00333333
+            ===================  =========  ==========
+
     :param concepts: 股票的概念板块，样例：
             {
                 '002507.SZ': ['电子商务', '超级品牌', '国企改革'],
@@ -256,13 +164,13 @@ def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3
     if kwargs.get('copy', True):
         holds = holds.copy()
 
-    holds['概念板块'] = holds['证券代码'].map(concepts).fillna('')
+    holds['概念板块'] = holds['symbol'].map(concepts).fillna('')
     holds['概念数量'] = holds['概念板块'].apply(len)
     holds = holds[holds['概念数量'] > 0]
 
     new_holds = []
     dt_key_concepts = {}
-    for dt, dfg in tqdm(holds.groupby('成分日期'), desc='计算板块效应'):
+    for dt, dfg in tqdm(holds.groupby('dt'), desc='计算板块效应'):
         # 计算密集出现的概念
         key_concepts = [k for k, v in Counter([x for y in dfg['概念板块'] for x in y]).most_common(top_n)]
         dt_key_concepts[dt] = key_concepts
@@ -273,5 +181,5 @@ def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3
         new_holds.append(sel)
 
     dfh = pd.concat(new_holds, ignore_index=True)
-    dfk = pd.DataFrame([{"成分日期": k, '强势概念': v} for k, v in dt_key_concepts.items()])
+    dfk = pd.DataFrame([{"dt": k, '强势概念': v} for k, v in dt_key_concepts.items()])
     return dfh, dfk

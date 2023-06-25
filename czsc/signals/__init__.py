@@ -5,9 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
 describe: 信号系统，注意：这里仅仅只是提供一些写信号的例子，用来做策略是不太行的
 """
-
-from . import bxt
-
 # ======================================================================================================================
 # 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
 # 1. 前缀3个字符区分信号类别
@@ -35,6 +32,14 @@ from czsc.signals.cxt import (
     cxt_second_bs_V230320,
     cxt_bi_status_V230101,
     cxt_bi_status_V230102,
+    cxt_bi_zdf_V230601,
+    cxt_bi_end_V230618,
+    cxt_three_bi_V230618,
+    cxt_five_bi_V230619,
+    cxt_seven_bi_V230620,
+    cxt_nine_bi_V230621,
+    cxt_eleven_bi_V230622,
+    cxt_range_oscillation_V230620,
 )
 
 
@@ -48,6 +53,9 @@ from czsc.signals.byi import (
 from czsc.signals.coo import (
     coo_td_V221110,
     coo_td_V221111,
+    coo_cci_V230323,
+    coo_kdj_V230322,
+    coo_sar_V230325,
 )
 
 from czsc.signals.vol import (
@@ -162,6 +170,10 @@ from czsc.signals.tas import (
     tas_atr_break_V230424,
 
     tas_sar_base_V230425,
+
+    tas_cross_status_V230619,
+    tas_cross_status_V230624,
+    tas_cross_status_V230625,
 )
 
 from czsc.signals.pos import (
@@ -169,6 +181,8 @@ from czsc.signals.pos import (
     pos_ma_V230414,
     pos_holds_V230414,
     pos_bar_stop_V230524,
+    pos_fix_exit_V230624,
+    pos_profit_loss_V230624,
 )
 
 
@@ -178,4 +192,10 @@ from czsc.signals.ang import (
     asi_up_dw_line_V230603,
     clv_up_dw_line_V230605,
     cmo_up_dw_line_V230605,
+    skdj_up_dw_line_V230611,
+    bias_up_dw_line_V230618,
+    dema_up_dw_line_V230605,
+    demakder_up_dw_line_V230605,
+    emv_up_dw_line_V230605,
+    er_up_dw_line_V230604,
 )

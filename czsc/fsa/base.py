@@ -19,6 +19,8 @@ from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_random
 from requests_toolbelt import MultipartEncoder
 
+logger.disable(__name__)
+
 
 @retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5))
 def request(method, url, headers, payload=None) -> dict:

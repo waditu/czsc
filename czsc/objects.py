@@ -12,7 +12,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from loguru import logger
-from typing import List, Callable, AnyStr, Dict
+from typing import List, Callable, AnyStr, Dict, Optional
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
 
@@ -484,8 +484,6 @@ class Signal:
 
 @dataclass
 class Factor:
-    name: str
-
     # signals_all 必须全部满足的信号，至少需要设定一个信号
     signals_all: List[Signal]
 
@@ -494,6 +492,15 @@ class Factor:
 
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = field(default_factory=list)
+
+    name: str = ""
+
+    def __post_init__(self):
+        if not self.signals_all:
+            raise ValueError("signals_all 不能为空")
+        str_signals = str(self.dump())
+        sha256 = hashlib.sha256(str_signals.encode("utf-8")).hexdigest().upper()[:8]
+        self.name = f"{self.name}#{sha256}"
 
     @property
     def unique_signals(self) -> List[str]:
@@ -533,7 +540,6 @@ class Factor:
         signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
 
         raw = {
-            "name": self.name,
             "signals_all": signals_all,
             "signals_any": signals_any,
             "signals_not": signals_not,
@@ -556,7 +562,7 @@ class Factor:
         signals_not = [Signal(x) for x in raw.get("signals_not", [])]
 
         fa = Factor(
-            name=raw["name"],
+            name=raw.get("name", ""),
             signals_all=[Signal(x) for x in raw["signals_all"]],
             signals_any=signals_any,
             signals_not=signals_not,
@@ -566,7 +572,6 @@ class Factor:
 
 @dataclass
 class Event:
-    name: str
     operate: Operate
 
     # 多个信号组成一个因子，多个因子组成一个事件。
@@ -581,6 +586,15 @@ class Event:
 
     # signals_not 不能满足其中任一信号，允许为空
     signals_not: List[Signal] = field(default_factory=list)
+
+    name: str = ""
+
+    def __post_init__(self):
+        if not self.factors:
+            raise ValueError("factors 不能为空")
+        str_factors = str(self.dump())
+        sha256 = hashlib.sha256(str_factors.encode("utf-8")).hexdigest().upper()[:8]
+        self.name = f"{self.operate.value}#{sha256}"
 
     @property
     def unique_signals(self) -> List[str]:
@@ -646,7 +660,6 @@ class Event:
         factors = [x.dump() for x in self.factors]
 
         raw = {
-            "name": self.name,
             "operate": self.operate.value,
             "signals_all": signals_all,
             "signals_any": signals_any,
@@ -677,13 +690,7 @@ class Event:
         ), f"operate {raw['operate']} not in Operate"
         assert raw["factors"], "factors can not be empty"
 
-        # 生成 Event 的 name 和 sha256
-        name = raw.get("name", raw["operate"])
-        sha256 = hashlib.sha256(str(raw).encode("utf-8")).hexdigest().upper()[:8]
-
-        # 生成 Event 对象
         e = Event(
-            name=f"{name}_{sha256}",
             operate=Operate.__dict__["_value2member_map_"][raw["operate"]],
             factors=[Factor.load(x) for x in raw["factors"]],
             signals_all=[Signal(x) for x in raw.get("signals_all", [])],

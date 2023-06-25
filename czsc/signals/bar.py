@@ -15,9 +15,10 @@ from collections import OrderedDict
 from czsc import envs, CZSC, Signal
 from czsc.traders.base import CzscSignals
 from czsc.objects import RawBar
-from czsc.utils.sig import check_pressure_support, get_sub_elements, create_single_signal
+from czsc.utils.sig import check_pressure_support
 from czsc.signals.tas import update_ma_cache
 from czsc.utils.bar_generator import freq_end_time
+from czsc.utils import single_linear, freq_end_time, get_sub_elements, create_single_signal
 
 
 def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:
@@ -124,10 +125,17 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
 
     参数模板："{freq}_{freq1}结束_BS辅助221211"
 
+    **信号逻辑：**
+
+    以 freq 为基础周期，freq1 为大周期，判断 freq1 K线是否结束。
+    如果结束，返回信号值为 "闭合"，否则返回 "未闭x"，x 为未闭合的次数。
+
     **信号列表：**
 
-    - Signal('60分钟_K线_结束_否_任意_任意_0')
-    - Signal('60分钟_K线_结束_是_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭1_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭2_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_未闭3_任意_任意_0')
+    - Signal('15分钟_60分钟结束_BS辅助221211_闭合_任意_任意_0')
 
     :param c: 基础周期的 CZSC 对象
     :param freq1: 分钟周期名称
@@ -137,8 +145,18 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{freq}_{freq1}结束_BS辅助221211".split('_')
     assert "分钟" in freq1
 
-    dt: datetime = c.bars_raw[-1].dt
-    v = "是" if freq_end_time(dt, freq1) == dt else "否"
+    c1_dt = freq_end_time(c.bars_raw[-1].dt, freq1)
+    i = 0
+    for bar in c.bars_raw[::-1]:
+        _edt = freq_end_time(bar.dt, freq1)
+        if _edt != c1_dt:
+            break
+        i += 1
+
+    if c1_dt == c.bars_raw[-1].dt:
+        v = "闭合"
+    else:
+        v = "未闭{}".format(i)
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
@@ -1127,18 +1145,73 @@ def bar_zt_count_V230504(c: CZSC, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
-    c = []
+    c1 = []
     cc = 0
     for b1, b2 in zip(bars[:-1], bars[1:]):
         if b2.close > b1.close * 1.07 and b2.close == b2.high:
-            c.append(1)
+            c1.append(1)
         else:
-            c.append(0)
+            c1.append(0)
 
-        if len(c) >= 2 and c[-1] == 1 and c[-2] == 1:
+        if len(c1) >= 2 and c1[-1] == 1 and c1[-2] == 1:
             cc += 1
 
-    if sum(c) == 0:
+    if sum(c1) == 0:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
     else:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"{sum(c)}次", v2=f"连续{cc}次")
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"{sum(c1)}次", v2=f"连续{cc}次")
+
+
+def bar_channel_V230508(c: CZSC, **kwargs) -> OrderedDict:
+    """N日内小阴小阳通道内运行
+
+    参数模板："{freq}_D{di}M{m}_通道V230507"
+
+    **信号逻辑：**
+
+    1. 取N日内最高价和最低价，计算通道上下轨斜率；
+    2. 看多：上轨斜率大于0，下轨斜率大于0，且内部K线的涨跌幅在M以内
+    3. 看空：上轨斜率小于0，下轨斜率小于0，且内部K线的涨跌幅在M以内
+
+    **信号列表：**
+
+    - Signal('日线_D2M600_通道V230507_看空_任意_任意_0')
+    - Signal('日线_D2M600_通道V230507_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+        - :param di: 信号计算截止倒数第i根K线
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
+    m = int(kwargs.get("m", 600))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}M{m}_通道V230507".split('_')
+    v1 = "其他"
+
+    if len(c.bars_raw) < di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n)
+
+    if any(abs(x.close / x.open - 1) * 10000 > m for x in bars):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    res_high = single_linear([x.high for x in bars])
+    res_low = single_linear([x.low for x in bars])
+    high_right = max(x.high for x in bars[-3:])
+    low_right = min(x.low for x in bars[-3:])
+    max_high = max(x.high for x in bars)
+    min_low = min(x.low for x in bars)
+
+    if not (res_high['r2'] > 0.8 and res_low['r2'] > 0.8):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if res_high['slope'] > 0 and res_low['slope'] > 0 and high_right == max_high:
+        v1 = "看多"
+
+    if res_high['slope'] < 0 and res_low['slope'] < 0 and low_right == min_low:
+        v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

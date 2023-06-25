@@ -83,7 +83,6 @@ def test_object_position():
         cs.update_signals(bar)
         pos_y.update(cs.s)
 
-    assert pos_y.name == "测试C"
     df = pd.DataFrame(pos_y.pairs)
     assert df.shape == (17, 11)
     assert len(cs.s) == 13

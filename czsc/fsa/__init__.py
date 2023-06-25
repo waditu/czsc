@@ -10,6 +10,7 @@ from loguru import logger
 from czsc.fsa.base import request, FeishuApiBase
 from czsc.fsa.spreed_sheets import SpreadSheets
 from czsc.fsa.im import IM
+from czsc.fsa.bi_table import BiTable
 
 
 def push_text(text: str, key: str) -> None:

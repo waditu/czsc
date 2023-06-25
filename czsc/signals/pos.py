@@ -238,3 +238,120 @@ def pos_holds_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
         v1 = '空头存疑' if zdf < m else '空头良好'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_fix_exit_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """固定比例止损，止盈
+
+    参数模板："{pos_name}_固定{th}BP止盈止损_出场V230624"
+
+    **信号逻辑：**
+
+    以多头为例，如果持有收益超过 th 个BP，则止盈；如果亏损超过 th 个BP，则止损。
+
+    **信号列表：**
+
+    - Signal('日线三买多头_固定100BP止盈止损_出场V230624_多头止损_任意_任意_0')
+    - Signal('日线三买多头_固定100BP止盈止损_出场V230624_空头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，向前找的K线个数，默认为 3
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    th = int(kwargs.get('th', 300))
+    k1, k2, k3 = f"{pos_name}_固定{th}BP止盈止损_出场V230624".split("_")
+    v1 = '其他'
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos_ = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos_.operates) == 0 or pos_.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    op = pos_.operates[-1]
+    op_price = op['price']
+
+    if op['op'] == Operate.LO:
+        if cat.latest_price < op_price * (1 - th / 10000):
+            v1 = '多头止损'
+        if cat.latest_price > op_price * (1 + th / 10000):
+            v1 = '多头止盈'
+
+    if op['op'] == Operate.SO:
+        if cat.latest_price > op_price * (1 + th / 10000):
+            v1 = '空头止损'
+        if cat.latest_price < op_price * (1 - th / 10000):
+            v1 = '空头止盈'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_profit_loss_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """开仓后盈亏比达到一定比值，才允许平仓  贡献者：谌意勇
+
+    参数模板："{pos_name}_{freq1}YKB{ykb}N{n}_盈亏比判断V230624"
+
+    **信号逻辑：**
+
+    1. 通过公式 计算盈亏比=abs(现价-开仓价）/abs(开仓价-止损价）* 10,当比值大于一定阀值时才允许平仓
+
+    **信号列表：**
+
+    - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_空头止损_任意_任意_0')
+    - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_多头止损_任意_任意_0')
+    - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_多头达标_任意_任意_0')
+    - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_空头达标_任意_任意_0')
+    
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - ykb: int，默认为 20, 表示2倍盈亏比，计算盈亏比=abs(现价-开仓价）/abs(开仓价-止损价）
+        - n: int 默认为3  止损取最近n个分型的最低点或最高点
+
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    ykb = int(kwargs.get('ykb', 20))
+    n = int(kwargs.get('n', 3))
+    k1, k2, k3 = f"{pos_name}_{freq1}YKB{ykb}N{n}_盈亏比判断V230624".split("_")
+    v1 = '其他'
+    # 如果没有持仓策略，则不产生信号
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+    last_close = c.bars_raw[-1].close
+
+    if op['op'] == Operate.LO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op['dt']][-n:]
+        stop_price = min([x.low for x in fxs])
+        ykb_ = ((last_close - op['price']) / (op['price'] - stop_price)) * 10
+        if ykb_ > ykb:
+            v1 = '多头达标'
+        else:
+            if last_close < stop_price:
+                v1 = '多头止损'
+
+    if op['op'] == Operate.SO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op['dt']][-n:]
+        stop_price = max([x.high for x in fxs])
+        ykb_ = ((last_close - op['price']) / (op['price'] - stop_price)) * 10
+        if ykb_ > ykb:
+            v1 = '空头达标'
+        else:
+            if last_close > stop_price:
+                v1 = '空头止损'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
