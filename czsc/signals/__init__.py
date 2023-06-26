@@ -168,9 +168,9 @@ from czsc.signals.tas import (
     tas_kdj_evc_V230401,
 
     tas_atr_break_V230424,
-
     tas_sar_base_V230425,
-
+    tas_macd_bs1_V230411,
+    tas_macd_bs1_V230412,
     tas_cross_status_V230619,
     tas_cross_status_V230624,
     tas_cross_status_V230625,

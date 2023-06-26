@@ -7,13 +7,6 @@ czsc.data package
    :no-main-docstr:
    :no-inheritance-diagram:
 
-
-.. automodapi:: czsc.data.jq
-   :members:
-   :undoc-members:
-   :skip:
-   :no-main-docstr:
-
 .. automodapi:: czsc.data
    :members:
    :undoc-members:
