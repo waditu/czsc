@@ -174,6 +174,7 @@ from czsc.signals.tas import (
     tas_cross_status_V230619,
     tas_cross_status_V230624,
     tas_cross_status_V230625,
+    tas_low_trend_V230627,
 )
 
 from czsc.signals.pos import (
