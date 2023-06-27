@@ -161,7 +161,7 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
 
 
 def bar_operate_span_V221111(c: CZSC, **kwargs) -> OrderedDict:
-    """日内操作时间区间，c 必须是
+    """日内操作时间区间，c 必须是基础周期的 CZSC 对象
 
     参数模板："{freq}_T{t1}#{t2}_时间区间"
 
