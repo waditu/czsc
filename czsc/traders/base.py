@@ -407,6 +407,21 @@ class CzscTrader(CzscSignals):
 
         return pos
 
+    def get_position(self, name: str) -> Position:
+        """获取指定名称的仓位策略对象
+
+        :param name: 仓位名称
+        :return: Position
+        """
+        if not self.positions:
+            return None
+
+        for position in self.positions:
+            if position.name == name:
+                return position
+
+        return None
+
     def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
         """获取快照
 
