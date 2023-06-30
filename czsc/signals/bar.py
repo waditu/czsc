@@ -161,7 +161,7 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
 
 
 def bar_operate_span_V221111(c: CZSC, **kwargs) -> OrderedDict:
-    """日内操作时间区间，c 必须是
+    """日内操作时间区间，c 必须是基础周期的 CZSC 对象
 
     参数模板："{freq}_T{t1}#{t2}_时间区间"
 
@@ -1213,5 +1213,190 @@ def bar_channel_V230508(c: CZSC, **kwargs) -> OrderedDict:
 
     if res_high['slope'] < 0 and res_low['slope'] < 0 and low_right == min_low:
         v1 = "看空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_tnr_V230630(c: CZSC, **kwargs) -> OrderedDict:
+    """趋势噪音指标（TNR，Trend to Noise Rate）
+
+    参数模板："{freq}_D{di}TNR{timeperiod}K{k}_趋势V230630"
+
+    **信号逻辑：**
+
+    TNR计算公式：取N根K线，首尾两个close的绝对差值 除以 相邻两个close的绝对差值累计。
+
+    噪音变化判断，如果 t 时刻的 TNR > 过去k个TNR的均值，则说明噪音在减少，此时趋势较强；反之，噪音在增加，此时趋势较弱。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1TNR14K3_趋势V230630_噪音减少_任意_任意_0')
+    - Signal('15分钟_D1TNR14K3_趋势V230630_噪音增加_任意_任意_0')
+
+    :param c:  czsc对象
+    :param kwargs:
+
+        - di: 倒数第i根K线
+        - timeperiod: TNR指标的参数
+        - k: 过去k个TNR的均值
+
+    :return: 信号字典
+    """
+    di = int(kwargs.get('di', 1))
+    timeperiod = int(kwargs.get('timeperiod', 14))
+    k = int(kwargs.get('k', 3))
+    freq = c.freq.value
+
+    # 更新缓存
+    cache_key = f"TNR{timeperiod}"
+    for i, bar in enumerate(c.bars_raw, 0):
+        if cache_key in bar.cache:
+            continue
+        if i < timeperiod:
+            bar.cache[cache_key] = 0
+        else:
+            _bars = c.bars_raw[max(0, i - timeperiod):i + 1]
+            sum_abs = sum([abs(_bars[j].close - _bars[j - 1].close) for j in range(1, len(_bars))])
+            bar.cache[cache_key] = 0 if sum_abs == 0 else abs(_bars[-1].close - _bars[0].close) / sum_abs
+
+    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}K{k}_趋势V230630".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + timeperiod + 8:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=k)
+    delta_tnr = bars[-1].cache[cache_key] - np.mean([bar.cache[cache_key] for bar in bars])
+    v1 = "噪音减少" if delta_tnr > 0 else "噪音增加"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
+    """趋势噪音指标（TNR，Trend to Noise Rate）分层
+
+    参数模板："{freq}_D{di}TNR{timeperiod}_趋势V230629"
+
+    **信号逻辑：**
+
+    TNR计算公式：取N根K线，首尾两个close的绝对差值 除以 相邻两个close的绝对差值累计。
+    
+    取最近100个bar的TNR进行分层。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1TNR14_趋势V230629_第7层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第6层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第8层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第9层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第10层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第5层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第2层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第1层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第3层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第4层_任意_任意_0')
+
+    :param c:  czsc对象
+    :param kwargs:
+
+        - di: 倒数第i根K线
+        - timeperiod: TNR指标的参数
+
+    :return: 信号字典
+    """
+    di = int(kwargs.get('di', 1))
+    timeperiod = int(kwargs.get('timeperiod', 14))
+    freq = c.freq.value
+
+    # 更新缓存
+    cache_key = f"TNR{timeperiod}"
+    for i, bar in enumerate(c.bars_raw, 0):
+        if cache_key in bar.cache:
+            continue
+        if i < timeperiod:
+            bar.cache[cache_key] = 0
+        else:
+            _bars = c.bars_raw[max(0, i - timeperiod):i + 1]
+            sum_abs = sum([abs(_bars[j].close - _bars[j - 1].close) for j in range(1, len(_bars))])
+            bar.cache[cache_key] = 0 if sum_abs == 0 else abs(_bars[-1].close - _bars[0].close) / sum_abs
+
+    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}_趋势V230629".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + timeperiod + 8:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=100)
+    tnr = [bar.cache[cache_key] for bar in bars]
+    lev = pd.qcut(tnr, 10, labels=False, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
+
+
+def bar_shuang_fei_V230507(c: CZSC, **kwargs) -> OrderedDict:
+    """双飞涨停，贡献者：琅盎
+
+    参数模板："{freq}_D{di}双飞_短线V230507"
+
+    **信号逻辑：**
+
+    1. 今天涨停;
+    2. 昨天收阴，且跌幅大于5%
+    3. 前天涨停
+
+    **信号列表：**
+
+    - Signal('日线_D1双飞_短线V230507_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - di: 信号计算截止倒数第i根K线
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}双飞_短线V230507".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b4, b3, b2, b1 = get_sub_elements(c.bars_raw, di=di, n=4)
+    first_zt = b3.close == b3.high and b3.close / b4.close - 1 > 0.07
+    last_zt = b1.close / b2.close - 1 > 0.07 and b1.upper < max(b1.lower, b1.solid) / 2
+    bar2_down = b2.close < b2.open and b2.close / b3.close - 1 < -0.05
+
+    if first_zt and last_zt and b1.close > b2.high and bar2_down:
+        v1 = "看多"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_limit_down_V230525(c: CZSC, **kwargs) -> OrderedDict:
+    """跌停后出现无下影线长实体阳线做多
+
+    参数模板："{freq}_跌停后无下影线长实体阳线_短线V230525"
+
+     **信号逻辑：**
+
+    1. 跌停后出现无下影线长实体阳线做多
+
+     **信号列表：**
+
+    - Signal('日线_跌停后无下影线长实体阳线_短线V230525_满足_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+    :return: 返回信号结果
+    """
+    freq = c.freq.value
+    assert freq == '日线', "该信号只能用于日线级别，仅适用于A股"
+
+    k1, k2, k3 = f"{freq}_跌停后无下影线长实体阳线_短线V230525".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3 = c.bars_raw[-3:]
+    b2_condition = b2.low == b2.close < b1.close and b2.close / b1.close < 0.95
+    b3_condition = b3.low == b3.open and b3.close > b3.open and b3.solid > b3.upper * 2 and b3.close / b3.open > 1.07
+    if b2_condition and b3_condition and b3.low < b2.low:
+        v1 = '满足'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

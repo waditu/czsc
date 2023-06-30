@@ -34,7 +34,7 @@ def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
     if len(bis) % 2 == 0:
         return False
 
-    zs = ZS(symbol=bis[0].symbol, bis=bis)
+    zs = ZS(bis=bis)
     if zs.zd > zs.zg or max([x.low for x in bis]) > min([x.high for x in bis]):
         return False
 
@@ -307,7 +307,7 @@ def get_zs_seq(bis: List[BI]) -> List[ZS]:
 
     for bi in bis:
         if not zs_list:
-            zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+            zs_list.append(ZS(bis=[bi]))
             continue
 
         zs = zs_list[-1]
@@ -317,7 +317,7 @@ def get_zs_seq(bis: List[BI]) -> List[ZS]:
         else:
             if (bi.direction == Direction.Up and bi.high < zs.zd) \
                     or (bi.direction == Direction.Down and bi.low > zs.zg):
-                zs_list.append(ZS(symbol=bi.symbol, bis=[bi]))
+                zs_list.append(ZS(bis=[bi]))
             else:
                 zs.bis.append(bi)
                 zs_list[-1] = zs

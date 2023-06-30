@@ -25,10 +25,10 @@ from czsc.sensors import holds_concepts_effect, CTAResearch
 from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
 
 
-__version__ = "0.9.22"
+__version__ = "0.9.23"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230616"
+__date__ = "20230626"
 
 
 def welcome():

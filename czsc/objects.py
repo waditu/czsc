@@ -745,9 +745,10 @@ class Position:
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         :param name: 仓位名称，默认值为第一个开仓事件的名称
         """
+        assert name, "name 是必须的参数"
         self.symbol = symbol
         self.opens = opens
-        self.name = name if name else opens[0].name
+        self.name = name
         self.exits = exits if exits else []
         self.events = self.opens + self.exits
         for event in self.events:
