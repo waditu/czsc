@@ -1327,3 +1327,76 @@ def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
     tnr = [bar.cache[cache_key] for bar in bars]
     lev = pd.qcut(tnr, 10, labels=False, duplicates='drop')[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
+
+
+def bar_shuang_fei_V230507(c: CZSC, **kwargs) -> OrderedDict:
+    """双飞涨停，贡献者：琅盎
+
+    参数模板："{freq}_D{di}双飞_短线V230507"
+
+    **信号逻辑：**
+
+    1. 今天涨停;
+    2. 昨天收阴，且跌幅大于5%
+    3. 前天涨停
+
+    **信号列表：**
+
+    - Signal('日线_D1双飞_短线V230507_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+
+        - di: 信号计算截止倒数第i根K线
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}双飞_短线V230507".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b4, b3, b2, b1 = get_sub_elements(c.bars_raw, di=di, n=4)
+    first_zt = b3.close == b3.high and b3.close / b4.close - 1 > 0.07
+    last_zt = b1.close / b2.close - 1 > 0.07 and b1.upper < max(b1.lower, b1.solid) / 2
+    bar2_down = b2.close < b2.open and b2.close / b3.close - 1 < -0.05
+
+    if first_zt and last_zt and b1.close > b2.high and bar2_down:
+        v1 = "看多"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_limit_down_V230525(c: CZSC, **kwargs) -> OrderedDict:
+    """跌停后出现无下影线长实体阳线做多
+
+    参数模板："{freq}_跌停后无下影线长实体阳线_短线V230525"
+
+     **信号逻辑：**
+
+    1. 跌停后出现无下影线长实体阳线做多
+
+     **信号列表：**
+
+    - Signal('日线_跌停后无下影线长实体阳线_短线V230525_满足_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 参数字典
+    :return: 返回信号结果
+    """
+    freq = c.freq.value
+    assert freq == '日线', "该信号只能用于日线级别，仅适用于A股"
+
+    k1, k2, k3 = f"{freq}_跌停后无下影线长实体阳线_短线V230525".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    b1, b2, b3 = c.bars_raw[-3:]
+    b2_condition = b2.low == b2.close < b1.close and b2.close / b1.close < 0.95
+    b3_condition = b3.low == b3.open and b3.close > b3.open and b3.solid > b3.upper * 2 and b3.close / b3.open > 1.07
+    if b2_condition and b3_condition and b3.low < b2.low:
+        v1 = '满足'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
