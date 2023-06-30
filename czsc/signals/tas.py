@@ -14,6 +14,7 @@ try:
 except:
     logger.warning(f"ta-lib 没有正确安装，相关信号函数无法正常执行。" f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import math
+import pandas as pd
 import numpy as np
 from collections import OrderedDict
 from deprecated import deprecated
@@ -2786,14 +2787,20 @@ def tas_atr_V230630(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号逻辑：**
 
-    ATR与收盘价的比值衡量了价格振幅比率的大小，
-    如果二者比值小于0.5%，则说明此时开仓杠杆率LEV > 1，此时波动较小，开仓信号较强；
-    如果二者比值大于0.5%，则说明开仓杠杆率LEV < 1，此时波动较大，开仓信号较弱。
+    ATR与收盘价的比值衡量了价格振幅比率的大小，对这个值进行分层。
     
     **信号列表：**
 
-    - Signal('15分钟_D1ATR14_波动V230630_波动较大_任意_任意_0')
-    - Signal('15分钟_D1ATR14_波动V230630_波动较小_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第7层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第6层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第8层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第9层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第10层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第5层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第4层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第3层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第2层_任意_任意_0')
+    - Signal('日线_D1ATR14_波动V230630_第1层_任意_任意_0')
     
     :param c:  czsc对象
     :param kwargs:
@@ -2807,17 +2814,12 @@ def tas_atr_V230630(c: CZSC, **kwargs) -> OrderedDict:
     timeperiod = int(kwargs.get('timeperiod', 14))
     freq = c.freq.value
     cache_key = update_atr_cache(c, timeperiod=timeperiod)
-
     k1, k2, k3 = f"{freq}_D{di}ATR{timeperiod}_波动V230630".split('_')
     v1 = "其他"
     if len(c.bars_raw) < di + timeperiod + 8:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bar = c.bars_raw[di]
-    atr = bar.cache[cache_key]
-    if math.isnan(atr):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    
-    lev =  0.005 / atr * bar.close
-    v1 = "波动较大" if lev < 1 else "波动较小"
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    bars = get_sub_elements(c.bars_raw, di=di, n=100)
+    lev = [bar.cache[cache_key] / bar.close for bar in bars]
+    lev = pd.qcut(lev, 10, labels=False, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
