@@ -91,6 +91,7 @@ from czsc.signals.bar import (
     bar_single_V230506,
     bar_triple_V230506,
     bar_zt_count_V230504,
+    bar_tnr_V230630,
 )
 
 from czsc.signals.jcc import (
@@ -175,6 +176,7 @@ from czsc.signals.tas import (
     tas_cross_status_V230624,
     tas_cross_status_V230625,
     tas_low_trend_V230627,
+    tas_atr_V230630,
 )
 
 from czsc.signals.pos import (
