@@ -48,6 +48,7 @@ from czsc.signals.byi import (
     byi_bi_end_V230106,
     byi_bi_end_V230107,
     byi_second_bs_V230324,
+    byi_fx_num_V230628,
 )
 
 from czsc.signals.coo import (
