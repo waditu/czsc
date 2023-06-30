@@ -1268,3 +1268,62 @@ def bar_tnr_V230630(c: CZSC, **kwargs) -> OrderedDict:
     delta_tnr = bars[-1].cache[cache_key] - np.mean([bar.cache[cache_key] for bar in bars])
     v1 = "噪音减少" if delta_tnr > 0 else "噪音增加"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
+    """趋势噪音指标（TNR，Trend to Noise Rate）分层
+
+    参数模板："{freq}_D{di}TNR{timeperiod}_趋势V230629"
+
+    **信号逻辑：**
+
+    TNR计算公式：取N根K线，首尾两个close的绝对差值 除以 相邻两个close的绝对差值累计。
+    
+    取最近100个bar的TNR进行分层。
+
+    **信号列表：**
+
+    - Signal('15分钟_D1TNR14_趋势V230629_第7层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第6层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第8层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第9层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第10层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第5层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第2层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第1层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第3层_任意_任意_0')
+    - Signal('15分钟_D1TNR14_趋势V230629_第4层_任意_任意_0')
+
+    :param c:  czsc对象
+    :param kwargs:
+
+        - di: 倒数第i根K线
+        - timeperiod: TNR指标的参数
+
+    :return: 信号字典
+    """
+    di = int(kwargs.get('di', 1))
+    timeperiod = int(kwargs.get('timeperiod', 14))
+    freq = c.freq.value
+
+    # 更新缓存
+    cache_key = f"TNR{timeperiod}"
+    for i, bar in enumerate(c.bars_raw, 0):
+        if cache_key in bar.cache:
+            continue
+        if i < timeperiod:
+            bar.cache[cache_key] = 0
+        else:
+            _bars = c.bars_raw[max(0, i - timeperiod):i + 1]
+            sum_abs = sum([abs(_bars[j].close - _bars[j - 1].close) for j in range(1, len(_bars))])
+            bar.cache[cache_key] = 0 if sum_abs == 0 else abs(_bars[-1].close - _bars[0].close) / sum_abs
+
+    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}_趋势V230629".split('_')
+    v1 = "其他"
+    if len(c.bars_raw) < di + timeperiod + 8:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=100)
+    tnr = [bar.cache[cache_key] for bar in bars]
+    lev = pd.qcut(tnr, 10, labels=False, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
