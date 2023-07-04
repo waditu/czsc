@@ -25,10 +25,10 @@ from czsc.sensors import holds_concepts_effect, CTAResearch
 from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
 
 
-__version__ = "0.9.23"
+__version__ = "0.9.24"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230626"
+__date__ = "20230704"
 
 
 def welcome():
@@ -45,5 +45,5 @@ if envs.get_welcome():
     welcome()
 
 
-if get_dir_size(home_path) > pow(1024, 3) and envs.get_verbose():
+if get_dir_size(home_path) > pow(1024, 3):
     print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path 可以直接清空缓存")
