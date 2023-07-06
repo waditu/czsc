@@ -87,7 +87,11 @@ def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='fro
         4  000001.SZ
     """
     start_time = pd.to_datetime(start_time).strftime('%Y%m%d%H%M%S')
-    end_time = pd.to_datetime(end_time).strftime('%Y%m%d%H%M%S')
+    if '1d' == period:
+        end_time = pd.to_datetime(end_time).replace(hour=15,minute=0).strftime('%Y%m%d%H%M%S')
+    else:
+        end_time = pd.to_datetime(end_time).strftime('%Y%m%d%H%M%S')
+    
     if kwargs.get("download_hist", True):
         xtdata.download_history_data(symbol, period=period, start_time=start_time, end_time=end_time)
 
