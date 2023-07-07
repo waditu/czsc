@@ -2,14 +2,9 @@
 """
 author: zengbin93
 email: zeng_bin8888@163.com
-create_dt: 2023/4/15 12:54
-describe: Event Match Sensor
+create_dt: 2023/7/7 22:42
+describe: Event 相关的传感器
 """
-import sys
-
-sys.path.insert(0, '..')
-sys.path.insert(0, '../..')
-
 import os
 import pandas as pd
 from copy import deepcopy
@@ -18,7 +13,7 @@ from czsc.objects import Event
 from typing import List, Dict, Callable, Any
 from czsc.traders.sig_parse import get_signals_freqs
 from czsc.traders.base import generate_czsc_signals
-from czsc.utils import save_json
+from czsc.utils.io import save_json
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
@@ -143,34 +138,3 @@ class EventMatchSensor:
         df = df.groupby(["symbol", "dt"])[event_name].sum().reset_index()
         df = df.groupby("dt")[event_name].sum().reset_index()
         return df
-
-
-def use_event_matcher():
-    from czsc.connectors.research import get_raw_bars, get_symbols
-
-    symbols = get_symbols("中证500成分股")
-    events = [
-        {
-            "operate": "开多",
-            "signals_not": ["日线_D1_涨跌停V230331_跌停_任意_任意_0", "日线_D1_涨跌停V230331_涨停_任意_任意_0"],
-            "factors": [{"name": "CCI看多", "signals_all": ["日线_D1CCI14#3#10_BS辅助V230402_多头_任意_任意_0"]}],
-        },
-        {"operate": "开多", "factors": [{"name": "CCI看多", "signals_all": ["日线_D1CCI14#3#10_BS辅助V230402_多头_任意_任意_0"]}]},
-    ]
-
-    ems_params = {
-        "events": events,
-        "symbols": symbols,
-        "read_bars": get_raw_bars,
-        "bar_sdt": "2017-01-01",
-        "sdt": "2018-01-01",
-        "edt": "2023-01-01",
-        "max_workers": 10,
-        "results_path": r"D:\QMT投研\EMS测试",
-    }
-
-    ems = EventMatchSensor(**ems_params)
-
-
-if __name__ == '__main__':
-    use_event_matcher()

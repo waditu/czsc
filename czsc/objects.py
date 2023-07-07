@@ -500,7 +500,7 @@ class Factor:
             raise ValueError("signals_all 不能为空")
         str_signals = str(self.dump())
         sha256 = hashlib.sha256(str_signals.encode("utf-8")).hexdigest().upper()[:8]
-        self.name = f"{self.name}#{sha256}"
+        self.name = f"{self.name}#{sha256}" if self.name else sha256
 
     @property
     def unique_signals(self) -> List[str]:
