@@ -183,6 +183,8 @@ from czsc.signals.tas import (
     tas_low_trend_V230627,
     tas_atr_V230630,
     tas_accelerate_V230531,
+
+    tas_rumi_V230704,
 )
 
 from czsc.signals.pos import (
