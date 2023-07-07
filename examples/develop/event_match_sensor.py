@@ -147,6 +147,7 @@ class EventMatchSensor:
 
 def use_event_matcher():
     from czsc.connectors.research import get_raw_bars, get_symbols
+    from czsc import EventMatchSensor
 
     symbols = get_symbols("中证500成分股")
     events = [
@@ -166,7 +167,7 @@ def use_event_matcher():
         "sdt": "2018-01-01",
         "edt": "2023-01-01",
         "max_workers": 10,
-        "results_path": r"D:\QMT投研\EMS测试",
+        "results_path": r"D:\QMT投研\EMS测试A",
     }
 
     ems = EventMatchSensor(**ems_params)
