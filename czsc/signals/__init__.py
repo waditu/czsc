@@ -97,6 +97,7 @@ from czsc.signals.bar import (
     bar_tnr_V230630,
     bar_shuang_fei_V230507,
     bar_limit_down_V230525,
+    bar_eight_V230702,
 )
 
 from czsc.signals.jcc import (
