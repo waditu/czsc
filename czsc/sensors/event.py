@@ -10,7 +10,7 @@ import pandas as pd
 from copy import deepcopy
 from loguru import logger
 from czsc.objects import Event
-from typing import List, Dict, Callable, Any
+from typing import List, Dict, Callable, Any, Union
 from czsc.traders.sig_parse import get_signals_freqs
 from czsc.traders.base import generate_czsc_signals
 from czsc.utils.io import save_json
@@ -18,7 +18,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class EventMatchSensor:
-    def __init__(self, events: List[Dict[str, Any] | Event], symbols: List[str], read_bars: Callable, **kwargs) -> None:
+    def __init__(self, events: List[Union[Dict[str, Any], Event]], symbols: List[str], read_bars: Callable, **kwargs) -> None:
         """
         事件匹配传感器
 
