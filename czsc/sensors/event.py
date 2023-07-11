@@ -94,15 +94,16 @@ class EventMatchSensor:
         """单个symbol的事件匹配"""
         try:
             bars = self.read_bars(symbol, freq=self.base_freq, sdt=self.bar_sdt, edt=self.edt, **self.kwargs)
-            sigs = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=self.sdt, df=True)
+            sigs = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=self.sdt, df=False)
+            sigs = pd.DataFrame(sigs)
             events = deepcopy(self.events)
             new_cols = []
             for event in events:
                 e_name = event.name
                 sigs[[e_name, f'{e_name}_F']] = sigs.apply(event.is_match, axis=1, result_type="expand")  # type: ignore
                 new_cols.extend([e_name, f'{e_name}_F'])
-
-            sigs = sigs[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount'] + new_cols]  # type: ignore
+            sigs['n1b'] = (sigs['close'].shift(-1) / sigs['close'] - 1) * 10000
+            sigs = sigs[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount', 'n1b'] + new_cols]  # type: ignore
             return sigs
         except Exception as e:
             logger.error(f"{symbol} 事件匹配失败：{e}")
