@@ -12,6 +12,7 @@ manuscrips/
 */.ipynb_checkpoints/
 # C extensions
 *.so
+*api/
 
 # Distribution / packaging
 .Python
