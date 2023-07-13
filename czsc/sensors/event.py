@@ -66,8 +66,13 @@ class EventMatchSensor:
 
         self.kwargs = kwargs
         logger.info(f"事件匹配传感器初始化完成，共有{len(self.events)}个事件，{len(self.symbols)}个标的")
-        self.data = self._multi_symbols(self.symbols, max_workers=self.kwargs.pop("max_workers", 1))
-        self.data.to_feather(os.path.join(self.results_path, "data.feather"))
+        file_data = os.path.join(self.results_path, "data.feather")
+        if os.path.exists(file_data):
+            self.data = pd.read_feather(file_data)
+            logger.info(f"读取事件匹配数据：{file_data}")
+        else:
+            self.data = self._multi_symbols(self.symbols, max_workers=self.kwargs.pop("max_workers", 1))
+            self.data.to_feather(os.path.join(self.results_path, "data.feather"))
 
         _res = []
         for event_name in self.events_name:
@@ -75,8 +80,8 @@ class EventMatchSensor:
             df = df.set_index("dt")
             _res.append(df)
         df = pd.concat(_res, axis=1, ignore_index=False).reset_index()
-        file_csc = os.path.join(self.results_path, f"cross_section_counts.xlsx")
-        df.to_excel(file_csc, index=False)
+        file_csc = os.path.join(self.results_path, f"cross_section_counts.csv")
+        df.to_csv(file_csc, index=False)
         logger.info(f"截面匹配次数计算完成，结果保存至：{file_csc}")
 
         # csc = cross section count，表示截面匹配次数
