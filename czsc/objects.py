@@ -465,6 +465,16 @@ class Signal:
     def is_match(self, s: dict) -> bool:
         """判断信号是否与信号列表中的值匹配
 
+        代码的执行逻辑如下：
+
+        接收一个字典 s 作为参数，该字典包含了所有信号的信息。从字典 s 中获取名称为 key 的信号的值 v。
+        如果 v 不存在，则抛出异常。从信号的值 v 中解析出 v1、v2、v3 和 score 四个变量。
+
+        如果当前信号的得分 score 大于等于目标信号的得分 self.score，则继续执行，否则返回 False。
+        如果当前信号的第一个值 v1 等于目标信号的第一个值 self.v1 或者目标信号的第一个值为 "任意"，则继续执行，否则返回 False。
+        如果当前信号的第二个值 v2 等于目标信号的第二个值 self.v2 或者目标信号的第二个值为 "任意"，则继续执行，否则返回 False。
+        如果当前信号的第三个值 v3 等于目标信号的第三个值 self.v3 或者目标信号的第三个值为 "任意"，则返回 True，否则返回 False。
+
         :param s: 所有信号字典
         :return: bool
         """
@@ -620,7 +630,16 @@ class Event:
         return get_signals_config(self.unique_signals, signals_module)
 
     def is_match(self, s: dict):
-        """判断 event 是否满足"""
+        """判断 event 是否满足
+
+        代码的执行逻辑如下：
+
+        1. 首先判断 signals_not 中的信号是否得到满足，如果满足任意一个信号，则直接返回 False，表示事件不满足。
+        2. 接着判断 signals_all 中的信号是否全部得到满足，如果有任意一个信号不满足，则直接返回 False，表示事件不满足。
+        3. 然后判断 signals_any 中的信号是否有一个得到满足，如果一个都不满足，则直接返回 False，表示事件不满足。
+        4. 最后判断因子是否满足，顺序遍历因子列表，找到第一个满足的因子就退出，并返回 True 和该因子的名称，表示事件满足。
+        5. 如果遍历完所有因子都没有找到满足的因子，则返回 False，表示事件不满足。
+        """
         # 首先判断 event 层面的信号是否得到满足
         if self.signals_not:
             # 满足任意一个，直接返回 False
