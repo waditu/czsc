@@ -128,3 +128,8 @@ def create_grid_params(prefix: str, detail=False, **kwargs) -> dict:
         row['version'] = f"{prefix}@{key}"
         params[f"{prefix}@{key}"] = row
     return params
+
+
+def print_df_sample(df, n=5):
+    from tabulate import tabulate
+    print(tabulate(df.head(n).values, headers=df.columns, tablefmt='rst'))
