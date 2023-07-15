@@ -29,7 +29,7 @@ from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 __version__ = "0.9.24"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230708"
+__date__ = "20230709"
 
 
 def welcome():
