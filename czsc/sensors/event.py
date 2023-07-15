@@ -6,6 +6,7 @@ create_dt: 2023/7/7 22:42
 describe: Event 相关的传感器
 """
 import os
+import shutil   
 import pandas as pd
 from copy import deepcopy
 from loguru import logger
@@ -43,7 +44,9 @@ class EventMatchSensor:
         self.events_map = {event.name: event for event in self.events}
         self.events_name = [event.name for event in self.events]
         self.results_path = kwargs.pop("results_path")
-        if os.path.exists(self.results_path):
+        self.refresh = kwargs.pop("refresh", False)
+        if os.path.exists(self.results_path) and self.refresh:
+            shutil.rmtree(self.results_path)
             logger.warning(f"文件夹 {self.results_path} 已存在，程序将覆盖该文件夹下的所有文件")
         os.makedirs(self.results_path, exist_ok=True)
         save_json({e.name: e.dump() for e in self.events}, os.path.join(self.results_path, "events.json"))

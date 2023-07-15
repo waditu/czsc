@@ -23,7 +23,7 @@ from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update
 from czsc.utils import CrossSectionalPerformance
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
-from czsc.utils.stats import daily_performance, net_value_stats
+from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 
 
 __version__ = "0.9.24"

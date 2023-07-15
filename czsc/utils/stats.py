@@ -9,6 +9,28 @@ import numpy as np
 import pandas as pd
 
 
+def subtract_fee(df, fee=1):
+    """依据单品种持仓信号扣除手续费"""
+    assert 'dt' in df.columns, 'dt 列必须存在'
+    assert 'pos' in df.columns, 'pos 列必须存在'
+    assert all(x in [0, 1, -1] for x in df['pos'].unique()), "pos 列的值必须是 0, 1, -1 中的一个"
+
+    if 'n1b' not in df.columns:
+        assert 'price' in df.columns, '当n1b列不存在时，price 列必须存在'
+        df['n1b'] = (df['price'].shift(-1) / df['price'] - 1) * 10000
+    
+    df['date'] = df['dt'].dt.date
+    df['edge_pre_fee'] = df['pos'] * df['n1b']
+    df['edge_post_fee'] = df['pos'] * df['n1b']
+
+    # 扣费规则, 开仓扣费在第一个持仓K线上，平仓扣费在最后一个持仓K线上
+    open_pos = (df['pos'].shift() != df['pos']) & (df['pos'] != 0)
+    exit_pos = (df['pos'].shift(-1) != df['pos']) & (df['pos'] != 0)
+    df.loc[open_pos, 'edge_post_fee'] = df.loc[open_pos, 'edge_post_fee'] - fee
+    df.loc[exit_pos, 'edge_post_fee'] = df.loc[exit_pos, 'edge_post_fee'] - fee
+    return df
+
+
 def daily_performance(daily_returns):
     """计算日收益数据的年化收益率、夏普比率、最大回撤、卡玛比率
 
@@ -27,13 +49,14 @@ def daily_performance(daily_returns):
     cum_returns = np.cumprod(1 + daily_returns)
     max_drawdown = np.max(np.maximum.accumulate(cum_returns) - cum_returns) / np.max(cum_returns)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
+    win_pct = len(daily_returns[daily_returns > 0]) / len(daily_returns)
     return {
         "年化": round(annual_returns, 4),
         "夏普": round(sharpe_ratio, 2),
-        "最大回撤": round(max_drawdown, 4),
-        "卡玛": round(kama, 2)
+        "回撤": round(max_drawdown, 4),
+        "卡玛": round(kama, 2),
+        "胜率": round(win_pct, 4),
     }
-
 
 
 def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True) -> dict:

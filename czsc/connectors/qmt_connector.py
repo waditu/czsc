@@ -113,7 +113,7 @@ def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='fro
         return format_stock_kline(df, freq=freq_map[period])
 
 
-def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs) -> List[RawBar]:
     """获取 CZSC 库定义的标准 RawBar 对象列表
 
     :param symbol: 标的代码
