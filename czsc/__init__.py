@@ -21,14 +21,15 @@ from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update_tbars, update_nbars
 from czsc.utils import CrossSectionalPerformance
-from czsc.sensors import holds_concepts_effect, CTAResearch
+from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
+from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 
 
-__version__ = "0.9.23"
+__version__ = "0.9.24"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230626"
+__date__ = "20230709"
 
 
 def welcome():
@@ -45,5 +46,5 @@ if envs.get_welcome():
     welcome()
 
 
-if get_dir_size(home_path) > pow(1024, 3) and envs.get_verbose():
+if get_dir_size(home_path) > pow(1024, 3):
     print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path 可以直接清空缓存")

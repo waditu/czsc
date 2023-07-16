@@ -447,23 +447,24 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
     exits = [
         {
             "operate": "平多",
+            "signals_all": [],
             "signals_not": [],
             "factors": [{"name": f"{ma_name}空头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看空_任意_任意_0"]}],
         },
     ]
     if is_stocks:
-        # A股空头：涨跌停不交易
+        # A股：涨跌停不交易
         zdt_sigs = [
             f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
             f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}{ma_name}多头"
+        pos_name = f"A股{freq}{ma_name}多头基准"
     else:
-        # 非A股多头：都行。加入这个条件，主要是为了约束策略使用 15 分钟基础周期K线
+        # 非A股：都行。加入这个条件，主要是为了约束策略使用基础周期K线
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}{ma_name}多头"
+        pos_name = f"{freq}{ma_name}多头基准"
 
     T0 = kwargs.get("T0", False)
     pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
@@ -508,23 +509,24 @@ def create_single_ma_short(symbol, ma_name, is_stocks=False, **kwargs) -> Positi
     exits = [
         {
             "operate": "平空",
+            "signals_all": [],
             "signals_not": [],
             "factors": [{"name": f"{ma_name}多头", "signals_all": [f"{freq}_D1#{ma_name}MO{mo}_BS辅助V230313_看多_任意_任意_0"]}],
         },
     ]
     if is_stocks:
-        # A股空头：涨跌停不交易
+        # A股：涨跌停不交易
         zdt_sigs = [
             f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
             f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}{ma_name}空头"
+        pos_name = f"A股{freq}{ma_name}空头基准"
     else:
-        # 非A股空头：都行
+        # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}{ma_name}空头"
+        pos_name = f"{freq}{ma_name}空头基准"
 
     T0 = kwargs.get("T0", False)
     pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
@@ -559,6 +561,7 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {
             "operate": "开空",
+            "signals_all": [],
             "signals_not": [],
             "factors": [
                 {"name": f"MACD空头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0"]}
@@ -569,23 +572,24 @@ def create_macd_short(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {
             "operate": "平空",
+            "signals_all": [],
             "signals_not": [],
             "factors": [{"name": "MACD多头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0"]}],
         },
     ]
     if is_stocks:
-        # A股空头：涨跌停不交易
+        # A股：涨跌停不交易
         zdt_sigs = [
             f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
             f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}MACD空头"
+        pos_name = f"A股{freq}MACD空头基准"
     else:
-        # 非A股空头：都行
+        # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}MACD空头"
+        pos_name = f"{freq}MACD空头基准"
 
     T0 = kwargs.get("T0", False)
     pos_name = f"{pos_name}T0" if T0 else f"{pos_name}"
@@ -625,6 +629,7 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     opens = [
         {
             "operate": "开多",
+            "signals_all": [],
             "signals_not": [],
             "factors": [{"name": "MACD多头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_多头_任意_任意_0"]}],
         },
@@ -633,6 +638,7 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
     exits = [
         {
             "operate": "平多",
+            "signals_all": [],
             "signals_not": [],
             "factors": [
                 {"name": f"MACD空头", "signals_all": [f"{freq}_D1MACD12#26#9MO{mo}#MACD_BS辅助V230320_空头_任意_任意_0"]}
@@ -640,18 +646,18 @@ def create_macd_long(symbol, is_stocks=False, **kwargs) -> Position:
         },
     ]
     if is_stocks:
-        # A股空头：涨跌停不交易
+        # A股：涨跌停不交易
         zdt_sigs = [
             f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0",
             f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0",
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}MACD多头"
+        pos_name = f"A股{freq}MACD多头基准"
     else:
-        # 非A股多头：都行
+        # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}MACD多头"
+        pos_name = f"{freq}MACD多头基准"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",
@@ -735,11 +741,11 @@ def create_cci_long(symbol, is_stocks=False, **kwargs) -> Position:
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}CCI多头"
+        pos_name = f"A股{freq}CCI多头基准"
     else:
         # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}CCI多头"
+        pos_name = f"{freq}CCI多头基准"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",
@@ -823,11 +829,11 @@ def create_cci_short(symbol, is_stocks=False, **kwargs) -> Position:
         ]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}CCI空头"
+        pos_name = f"A股{freq}CCI空头基准"
     else:
         # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}CCI空头"
+        pos_name = f"{freq}CCI空头基准"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",
@@ -879,15 +885,15 @@ def create_emv_long(symbol, is_stocks=False, **kwargs) -> Position:
         }
     ]
     if is_stocks:
-        # A股空头：涨跌停不交易
+        # A股：涨跌停不交易
         zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}EMV多头"
+        pos_name = f"A股{freq}EMV多头基准"
     else:
-        # 非A股多头：都行
+        # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}EMV多头"
+        pos_name = f"{freq}EMV多头基准"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",
@@ -944,11 +950,146 @@ def create_emv_short(symbol, is_stocks=False, **kwargs) -> Position:
         zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
         opens[0]["signals_not"].extend(zdt_sigs)
         exits[0]["signals_not"].extend(zdt_sigs)
-        pos_name = f"A股{freq}EMV空头"
+        pos_name = f"A股{freq}EMV空头基准"
     else:
         # 非A股：都行
         opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
-        pos_name = f"{freq}EMV空头"
+        pos_name = f"{freq}EMV空头基准"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
+    return pos
+
+
+def create_third_buy_long(symbol, is_stocks=False, **kwargs) -> Position:
+    """缠中说禅三买多头策略
+
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.cxt_five_bi_V230619.html
+    https://czsc.readthedocs.io/en/latest/api/czsc.signals.cxt_three_bi_V230618.html
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - T0: 是否是 T0 策略
+
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    T0 = kwargs.get("T0", False)
+    timeout = int(kwargs.get("timeout", 100))
+    stop_loss = int(kwargs.get("stop_loss", 300))
+    interval = int(kwargs.get("interval", 3600 * 2))  # 同向开仓时间间隔，单位：秒；默认 2 小时，一般不用修改
+
+    opens = [
+        {
+            "operate": "开多",
+            "signals_all": [],
+            "signals_not": [],
+            "factors": [{"name": "五笔三买", "signals_all": [f"{freq}_D1五笔_形态V230619_类三买_任意_任意_0"], "signals_any": []}],
+        }
+    ]
+
+    exits = [
+        {
+            "operate": "平多",
+            "signals_all": [],
+            "signals_not": [],
+            "factors": [
+                {"name": "三笔向上盘背", "signals_all": [f"{freq}_D1三笔_形态V230618_向上盘背_任意_任意_0"], "signals_any": []},
+                {"name": "三笔向上收敛", "signals_all": [f"{freq}_D1三笔_形态V230618_向上收敛_任意_任意_0"], "signals_any": []},
+                {"name": "三笔向上扩张", "signals_all": [f"{freq}_D1三笔_形态V230618_向上扩张_任意_任意_0"], "signals_any": []},
+                {"name": "三笔不创新高", "signals_all": [f"{freq}_D1三笔_形态V230618_向上奔走型_任意_任意_0"], "signals_any": []},
+            ],
+        }
+    ]
+    if is_stocks:
+        # A股：涨跌停不交易
+        zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}缠论三买多头基准"
+    else:
+        # 非A股：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}缠论三买多头基准"
+
+    pos = Position(
+        name=f"{pos_name}T0" if T0 else f"{pos_name}",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=interval,
+        timeout=timeout,
+        stop_loss=stop_loss,
+        T0=T0,
+    )
+    return pos
+
+
+def create_third_sell_short(symbol, is_stocks=False, **kwargs) -> Position:
+    """缠中说禅三卖空头策略
+
+    :param symbol: 标的代码
+    :param is_stocks: 是否是 A 股
+    :param kwargs: 其他参数
+
+        - base_freq: 基础级别
+        - freq: 信号级别
+        - T0: 是否是 T0 策略
+
+    :return:
+    """
+    freq = kwargs.get("freq", "15分钟")
+    base_freq = kwargs.get("base_freq", freq)
+    T0 = kwargs.get("T0", False)
+    timeout = int(kwargs.get("timeout", 100))
+    stop_loss = int(kwargs.get("stop_loss", 300))
+    interval = int(kwargs.get("interval", 3600 * 2))  # 同向开仓时间间隔，单位：秒；默认 2 小时，一般不用修改
+
+    opens = [
+        {
+            "operate": "开空",
+            "signals_all": [],
+            "signals_not": [],
+            "factors": [{"name": "五笔三卖", "signals_all": [f"{freq}_D1五笔_形态V230619_类三卖_任意_任意_0"], "signals_any": []}],
+        }
+    ]
+
+    exits = [
+        {
+            "operate": "平空",
+            "signals_all": [],
+            "signals_not": [],
+            "factors": [
+                {"name": "三笔向下盘背", "signals_all": [f"{freq}_D1三笔_形态V230618_向下盘背_任意_任意_0"], "signals_any": []},
+                {"name": "三笔向下收敛", "signals_all": [f"{freq}_D1三笔_形态V230618_向下收敛_任意_任意_0"], "signals_any": []},
+                {"name": "三笔向下扩张", "signals_all": [f"{freq}_D1三笔_形态V230618_向下扩张_任意_任意_0"], "signals_any": []},
+                {"name": "三笔不创新低", "signals_all": [f"{freq}_D1三笔_形态V230618_向下奔走型_任意_任意_0"], "signals_any": []},
+            ],
+        }
+    ]
+    if is_stocks:
+        # A股：涨跌停不交易
+        zdt_sigs = [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0", f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"]
+        opens[0]["signals_not"].extend(zdt_sigs)
+        exits[0]["signals_not"].extend(zdt_sigs)
+        pos_name = f"A股{freq}缠论三卖空头基准"
+    else:
+        # 非A股：都行
+        opens[0]["signals_all"].append(f"{base_freq}_D1_涨跌停V230331_任意_任意_任意_0")
+        pos_name = f"{freq}缠论三卖空头基准"
 
     pos = Position(
         name=f"{pos_name}T0" if T0 else f"{pos_name}",

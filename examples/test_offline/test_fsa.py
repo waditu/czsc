@@ -5,9 +5,16 @@ email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:51
 describe: 
 """
+import sys
+sys.path.insert(0, '../..')
+import czsc
+czsc.welcome()
 import os
 import pandas as pd
 from loguru import logger
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=r"D:\ZB\git_repo\waditu\czsc\examples\test_offline\.env", verbose=True, override=True)
 
 logger.enable('fsa.base')
 
@@ -46,7 +53,7 @@ def test_spread_sheets():
     assert meta['data']['sheet']['grid_properties']['column_count'] == 1
 
     df = pd.DataFrame({'x': list(range(100)), 'y': list(range(100)), 'z': list(range(100))})
-    app.append(token, sheet_id, df)
+    app.append(token, sheet_id, df, overwrite=True)
     meta = app.get_sheet_meta(token, sheet_id)
     assert meta['data']['sheet']['grid_properties']['row_count'] == 101
     assert meta['data']['sheet']['grid_properties']['column_count'] == 3
@@ -60,6 +67,45 @@ def test_spread_sheets():
     assert meta['data']['sheet']['grid_properties']['column_count'] == 1
 
     app.remove(token, kind='sheet')
+
+
+def test_spread_sheets_append():
+    from czsc.fsa.spreed_sheets import SpreadSheets
+
+    app = SpreadSheets(app_id=os.environ['app_id'], app_secret=os.environ['app_secret'])
+
+    token = 'N9listQTEhGTretilqVc2ZYvn3c'
+    sheet_id = "19f286"
+
+    # 第一次全量写入
+    df = pd.DataFrame({'x': list(range(100)), 'y': list(range(100)), 'z': list(range(100))})
+    app.append(token, sheet_id, df, overwrite=True)
+
+    # 获取列名
+    cols = app.get_sheet_cols(token, sheet_id, n=1)
+
+    # 第二次增量写入
+    df = pd.DataFrame({'x': list(range(100, 110)), 'y': list(range(100, 110)), 'z': list(range(100, 110))})
+    app.append(token, sheet_id, df, overwrite=False)
+
+
+def test_single_sheet():
+    from czsc.fsa import SingleSheet
+
+    sheet = SingleSheet(app_id=os.environ['app_id'], app_secret=os.environ['app_secret'], token='N9listQTEhGTretilqVc2ZYvn3c', sheet_id="j7vdPg")
+
+    # 第一次全量写入
+    df = pd.DataFrame({'x': list(range(100)), 'y': list(range(100)), 'z': list(range(100))})
+    sheet.single_append(df, overwrite=True)
+
+    # 获取列名
+    cols = sheet.get_cols(n=1)
+
+    # 第二次增量写入
+    df = pd.DataFrame({'x': list(range(100, 110)), 'y': list(range(100, 110)), 'z': list(range(100, 110))})
+    sheet.single_append(df, overwrite=False)
+
+    sheet.single_delete_values()
 
 
 def test_im():

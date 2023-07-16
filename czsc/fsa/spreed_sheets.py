@@ -7,6 +7,7 @@ describe: 飞书电子表格接口
 """
 import string
 import pandas as pd
+from loguru import logger
 from czsc.fsa.base import FeishuApiBase, request
 
 
@@ -148,10 +149,13 @@ class SpreadSheets(FeishuApiBase):
         return request("POST", url, self.get_headers(), data)
 
     def read_sheet(self, token, sheet_id):
-        """
+        """获取工作表中的单个数据范围
+
         https://open.feishu.cn/document/ukTMukTMukTM/ugTMzUjL4EzM14COxMTN
 
-        :return:
+        :param token: spreadsheetToken
+        :param sheet_id: sheetId，有四种表达方式，参考文档说明，可以获取指定表格内的特定范围数据
+        :return: 返回数据
         """
         url = f"{self.host}/open-apis/sheets/v2/spreadsheets/{token}/values/{sheet_id}"
         return request("GET", url, self.get_headers())
@@ -173,7 +177,7 @@ class SpreadSheets(FeishuApiBase):
                     "sheetId": sheet_id,
                     "majorDimension": "ROWS",
                     "startIndex": 1,
-                    "endIndex": min(4001, row_count)
+                    "endIndex": min(4001, row_count),
                 }
             }
             request('DELETE', url, self.get_headers(), data)
@@ -186,7 +190,7 @@ class SpreadSheets(FeishuApiBase):
                     "sheetId": sheet_id,
                     "majorDimension": "COLUMNS",
                     "startIndex": 1,
-                    "endIndex": min(4001, col_count)
+                    "endIndex": min(4001, col_count),
                 }
             }
             request('DELETE', url, self.get_headers(), data)
@@ -250,40 +254,70 @@ class SpreadSheets(FeishuApiBase):
         return request("POST", url, self.get_headers(), operates)
 
     def add_permissions_member(self, token, doctype, member_type, member_id, perm):
-        url = self.host + "/open-apis/drive/v1/permissions/" + token + "/members?type=" \
-              + doctype + "&need_notification=false"
-        payload = {
-            "member_type": member_type,
-            "member_id": member_id,
-            "perm": perm
-        }
+        url = (
+            self.host
+            + "/open-apis/drive/v1/permissions/"
+            + token
+            + "/members?type="
+            + doctype
+            + "&need_notification=false"
+        )
+        payload = {"member_type": member_type, "member_id": member_id, "perm": perm}
         request("POST", url, self.get_headers(), payload)
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # 以下是便捷使用的封装，非官方API接口
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def append(self, token, sheet_id, df: pd.DataFrame, batch_size=2000):
+    def append(self, token, sheet_id, df: pd.DataFrame, batch_size=2000, overwrite=True):
         """往 sheet 中追加数据
 
-        :param token:
-        :param sheet_id:
-        :param df:
+        :param token: spreadsheetToken
+        :param sheet_id: sheetId
+        :param df: 待写入的数据
         :param batch_size: 批次写入行数
-        :return:
+        :return: None
         """
-        cols = df.columns.tolist()
-        col_range = f"{sheet_id}!A1:{string.ascii_uppercase[len(cols) - 1]}1"
-        self.update_values(token, {'valueRanges': [{"range": col_range, "values": [cols]}]})
+        if df.empty:
+            logger.warning("待写入的数据为空，不执行写入操作")
+            return
+        
+        if overwrite:
+            self.delete_values(token, sheet_id)
+            cols = df.columns.tolist()
+            col_range = f"{sheet_id}!A1:{string.ascii_uppercase[len(cols) - 1]}1"
+            self.update_values(token, {'valueRanges': [{"range": col_range, "values": [cols]}]})
+
+        # 读取表格列名，确保 df 列名与表格列名一致
+        sheet_cols = self.get_sheet_cols(token, sheet_id)
+        df = df[sheet_cols]
+
         meta = self.get_sheet_meta(token, sheet_id)
         start_index = meta['data']['sheet']['grid_properties']['row_count']
+        col_count = meta['data']['sheet']['grid_properties']['column_count']
+        assert df.shape[1] == col_count, f"df 列数 {df.shape[1]} 与表格列数 {col_count} 不一致"
 
         for i in range(0, len(df), batch_size):
-            dfi = df.iloc[i: i + batch_size]
+            dfi = df.iloc[i : i + batch_size]
             si = i + start_index + 1
             ei = si + batch_size
-            vol_range = f"{sheet_id}!A{si}:{string.ascii_uppercase[len(cols) - 1]}{ei}"
+            vol_range = f"{sheet_id}!A{si}:{string.ascii_uppercase[col_count - 1]}{ei}"
             self.update_values(token, {'valueRanges': [{"range": vol_range, "values": dfi.values.tolist()}]})
+
+    def get_sheet_cols(self, token, sheet_id, n=1):
+        """读取表格列名
+
+        :param token: spreadsheetToken
+        :param sheet_id: sheetId
+        :param n: 指名第几行为列名，默认为第一行
+        :return: 列名列表
+        """
+        meta = self.get_sheet_meta(token, sheet_id)
+        col_count = meta['data']['sheet']['grid_properties']['column_count']
+        res = self.read_sheet(token, f"{sheet_id}!A{n}:{string.ascii_uppercase[col_count - 1]}{n}")
+        values = res['data']['valueRange']['values']
+        cols = values.pop(0)
+        return cols
 
     def read_table(self, token, sheet_id):
         """读取表格
@@ -296,3 +330,53 @@ class SpreadSheets(FeishuApiBase):
         values = res['data']['valueRange']['values']
         cols = values.pop(0)
         return pd.DataFrame(values, columns=cols)
+
+
+class SingleSheet(SpreadSheets):
+    """飞书表格中单个工作表的操作，继承自 SpreadSheets"""
+
+    def __init__(self, app_id, app_secret, token, sheet_id):
+        """
+        初始化 SingleSheet 类
+
+        :param app_id: 飞书应用的 app_id
+        :param app_secret: 飞书应用的 app_secret
+        :param token: 电子表格的 token
+        :param sheet_id: 电子表格的 sheet_id
+        """
+        super().__init__(app_id, app_secret)
+        self.token = token
+        self.sheet_id = sheet_id
+
+    def get_meta(self):
+        """获取电子表格的元数据"""
+        return super().get_sheet_meta(self.token, self.sheet_id)
+
+    def get_cols(self, n=1):
+        """
+        获取电子表格的列名
+
+        :param n: 指名第几行为列名，默认为第一行
+        :return: 列名列表
+        """
+        super().get_sheet_cols(self.token, self.sheet_id, n)
+
+    def single_append(self, df: pd.DataFrame, batch_size=2000, overwrite=False):
+        """
+        在电子表格的末尾追加数据
+
+        :param df: 待追加的数据
+        :param batch_size: 每次追加的数据量
+        :param overwrite: 是否覆盖原有数据
+        """
+        super().append(self.token, self.sheet_id, df, batch_size, overwrite)
+
+    def single_read_table(self):
+        """读取整个电子表格的数据"""
+        super().read_table(self.token, self.sheet_id)
+
+    def single_delete_values(self):
+        """
+        删除电子表格的所有数据
+        """
+        super().delete_values(self.token, self.sheet_id)

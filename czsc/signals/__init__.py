@@ -40,6 +40,7 @@ from czsc.signals.cxt import (
     cxt_nine_bi_V230621,
     cxt_eleven_bi_V230622,
     cxt_range_oscillation_V230620,
+    cxt_intraday_V230701,
 )
 
 
@@ -96,6 +97,7 @@ from czsc.signals.bar import (
     bar_tnr_V230630,
     bar_shuang_fei_V230507,
     bar_limit_down_V230525,
+    bar_eight_V230702,
 )
 
 from czsc.signals.jcc import (
@@ -182,6 +184,8 @@ from czsc.signals.tas import (
     tas_low_trend_V230627,
     tas_atr_V230630,
     tas_accelerate_V230531,
+
+    tas_rumi_V230704,
 )
 
 from czsc.signals.pos import (
