@@ -7,6 +7,7 @@ describe: 飞书电子表格接口
 """
 import string
 import pandas as pd
+from loguru import logger
 from czsc.fsa.base import FeishuApiBase, request
 
 
@@ -277,6 +278,10 @@ class SpreadSheets(FeishuApiBase):
         :param batch_size: 批次写入行数
         :return: None
         """
+        if df.empty:
+            logger.warning("待写入的数据为空，不执行写入操作")
+            return
+        
         if overwrite:
             self.delete_values(token, sheet_id)
             cols = df.columns.tolist()
