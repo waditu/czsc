@@ -618,6 +618,8 @@ def obvm_line_V230610(c: CZSC, **kwargs) -> OrderedDict:
     首先，根据传入的参数 di、n 和 m，从 CZSC 对象中获取对应的 K 线数据，然后计算 OBV 序列。
     接着，使用 talib 库中的 EMA 函数计算 OBV 序列的短期和长期指数移动平均线，
     最后根据两条移动平均线的大小关系判断看多或看空信号。
+
+    飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/CEMLwa46Ii1sJZkT3IVcJKAwntc
     
     **信号列表：**
 
