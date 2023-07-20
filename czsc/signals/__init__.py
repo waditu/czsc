@@ -186,6 +186,11 @@ from czsc.signals.tas import (
     tas_accelerate_V230531,
 
     tas_rumi_V230704,
+    tas_macd_dist_V230408,
+    tas_macd_dist_V230409,
+    tas_macd_dist_V230410,
+    cat_macd_V230518,
+    cat_macd_V230520,
 )
 
 from czsc.signals.pos import (
@@ -211,4 +216,26 @@ from czsc.signals.ang import (
     emv_up_dw_line_V230605,
     er_up_dw_line_V230604,
     obvm_line_V230610,
+)
+
+
+from czsc.signals.zdy import (
+    zdy_stop_loss_V230406,
+    zdy_vibrate_V230406,
+    zdy_bi_end_V230406,
+    zdy_take_profit_V230407,
+    zdy_take_profit_V230406,
+    zdy_zs_V230423,
+    zdy_macd_bc_V230422,
+    zdy_zs_space_V230421,
+    zdy_bi_end_V230407,
+    zdy_macd_bs1_V230422,
+    zdy_macd_dif_V230516,
+    zdy_macd_dif_V230517,
+    zdy_macd_V230518,
+    zdy_macd_V230519,
+    zdy_macd_dif_iqr_V230521,
+    zdy_macd_V230527,
+    zdy_dif_V230527,
+    zdy_dif_V230528,
 )
