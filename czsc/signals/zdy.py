@@ -296,7 +296,6 @@ def zdy_stop_loss_V230406(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{freq1}_{pos_name}F{first_stop}_止损V230406".split("_")
     v1, v2 = '其他', '其他'
     if hasattr(cat, 'positions') is False:
-        logger.error(f"cat.positions is None, please check it")
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
@@ -387,6 +386,8 @@ def zdy_take_profit_V230406(cat: CzscTrader, **kwargs) -> OrderedDict:
     freq1 = kwargs["freq1"]  # 笔的观察周期
     k1, k2, k3 = f"{freq1}_{pos_name}_止盈V230406".split("_")
     v1, v2 = '其他', '其他'
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
     if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
@@ -433,6 +434,8 @@ def zdy_take_profit_V230407(cat: CzscTrader, **kwargs) -> OrderedDict:
     freq1 = kwargs["freq1"]  # 笔的观察周期
     k1, k2, k3 = f"{freq1}_{pos_name}_止盈V230407".split("_")
     v1, v2 = '其他', '其他'
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
     if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:

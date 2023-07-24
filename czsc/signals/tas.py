@@ -2424,7 +2424,7 @@ def tas_macd_bs1_V230412(c: CZSC, **kwargs) -> OrderedDict:
 def tas_accelerate_V230531(c: CZSC, **kwargs) -> OrderedDict:
     """BOLL辅助判断加速行情
 
-    参数模板："{freq}_D{di}N{n}_BOLL加速V230531"
+    参数模板："{freq}_D{di}N{n}T{t}_BOLL加速V230531"
 
      **信号逻辑：**
 
