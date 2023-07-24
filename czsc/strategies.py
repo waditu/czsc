@@ -14,7 +14,7 @@ import hashlib
 import pandas as pd
 from tqdm import tqdm
 from copy import deepcopy
-from datetime import timedelta
+from datetime import timedelta, datetime
 from abc import ABC, abstractmethod
 from loguru import logger
 from czsc.objects import RawBar, List, Operate, Signal, Factor, Event, Position
@@ -112,6 +112,7 @@ class CzscStrategyBase(ABC):
             return bg, bars2
         else:
             assert bg.base_freq == bars[-1].freq.value, "BarGenerator 的基础周期和 bars 的基础周期不一致"
+            assert isinstance(bg.end_dt, datetime), "BarGenerator 的 end_dt 必须是 datetime 类型"
             bars2 = [x for x in bars if x.dt > bg.end_dt]
             return bg, bars2
 
@@ -128,9 +129,8 @@ class CzscStrategyBase(ABC):
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(
-            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
-        )
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
+                            signals_config=deepcopy(self.signals_config), **kwargs)
         for bar in bars2:
             trader.on_bar(bar)
         return trader
@@ -148,7 +148,7 @@ class CzscStrategyBase(ABC):
         sleep_time = kwargs.get("sleep_time", 0)
         sleep_step = kwargs.get("sleep_step", 1000)
 
-        trader = CzscTrader(positions=deepcopy(self.positions))
+        trader = CzscTrader(positions=deepcopy(self.positions)) # type: ignore
         for i, sig in tqdm(enumerate(sigs), desc=f"回测 {self.symbol} {self.sorted_freqs}"):
             trader.on_sig(sig)
 
@@ -178,9 +178,8 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(
-            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
-        )
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
+                            signals_config=deepcopy(self.signals_config), **kwargs)
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)
@@ -236,9 +235,8 @@ class CzscStrategyBase(ABC):
 
         # 第一遍执行，获取信号
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(
-            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
-        )
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
+                            signals_config=deepcopy(self.signals_config), **kwargs)
 
         _signals = []
         for bar in bars2:
@@ -263,9 +261,8 @@ class CzscStrategyBase(ABC):
 
         # 第二遍执行，检查信号，生成html
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(
-            bg=bg, positions=deepcopy(self.positions), signals_config=deepcopy(self.signals_config), **kwargs
-        )
+        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
+                            signals_config=deepcopy(self.signals_config), **kwargs)
 
         # 记录每个信号最后一次出现的时间
         last_sig_dt = {y.key: trader.end_dt for x in unique_signals.values() for y in x}
@@ -293,7 +290,7 @@ class CzscStrategyBase(ABC):
         :return: None
         """
         os.makedirs(path, exist_ok=True)
-        for pos in self.positions:
+        for pos in self.positions: # type: ignore
             pos_ = pos.dump()
             pos_.pop("symbol")
             hash_code = hashlib.md5(str(pos_).encode()).hexdigest()
@@ -371,7 +368,7 @@ class CzscStrategyExample2(CzscStrategyBase):
             ),
         ]
         pos = Position(
-            name="15分钟笔停顿", symbol=self.symbol, opens=opens, exits=None, interval=0, timeout=20, stop_loss=100, T0=True
+            name="15分钟笔停顿", symbol=self.symbol, opens=opens, exits=[], interval=0, timeout=20, stop_loss=100, T0=True
         )
         return pos
 

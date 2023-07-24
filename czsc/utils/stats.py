@@ -34,6 +34,8 @@ def subtract_fee(df, fee=1):
 def daily_performance(daily_returns):
     """计算日收益数据的年化收益率、夏普比率、最大回撤、卡玛比率
 
+    所有计算都采用单利计算
+
     :param daily_returns: 日收益率数据，样例：
         [0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01]
     :return: dict
@@ -44,10 +46,10 @@ def daily_performance(daily_returns):
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
         return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0}
     
-    annual_returns = (1 + np.sum(daily_returns) / len(daily_returns)) ** 252 - 1
+    annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
-    cum_returns = np.cumprod(1 + daily_returns)
-    max_drawdown = np.max(np.maximum.accumulate(cum_returns) - cum_returns) / np.max(cum_returns)
+    cum_returns = np.cumsum(daily_returns)
+    max_drawdown = np.max(np.maximum.accumulate(cum_returns) - cum_returns)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
     win_pct = len(daily_returns[daily_returns > 0]) / len(daily_returns)
     return {

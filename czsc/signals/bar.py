@@ -1435,7 +1435,7 @@ def bar_eight_V230702(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=8)
     zs_list = []
     for b1, b2, b3 in zip(bars[:-2], bars[1:-1], bars[2:]):
-        if min(b1.high, b2.high, b3.high) > max(b1.low, b2.low, b3.low):
+        if min(b1.high, b2.high, b3.high) >= max(b1.low, b2.low, b3.low):
             zs_list.append([b1, b2, b3])
     
     _dir = "上涨" if bars[-1].close > bars[0].open else "下跌"

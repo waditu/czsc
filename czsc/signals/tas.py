@@ -20,6 +20,7 @@ from collections import OrderedDict
 from deprecated import deprecated
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction, BI, RawBar, FX
+from czsc.traders.base import CzscSignals
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
 
@@ -2423,7 +2424,7 @@ def tas_macd_bs1_V230412(c: CZSC, **kwargs) -> OrderedDict:
 def tas_accelerate_V230531(c: CZSC, **kwargs) -> OrderedDict:
     """BOLL辅助判断加速行情
 
-    参数模板："{freq}_D{di}N{n}_BOLL加速V230531"
+    参数模板："{freq}_D{di}N{n}T{t}_BOLL加速V230531"
 
      **信号逻辑：**
 
@@ -2882,3 +2883,302 @@ def tas_rumi_V230704(c: CZSC, **kwargs) -> OrderedDict:
         v1='空头'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+
+def tas_macd_dist_V230408(c: CZSC, **kwargs) -> OrderedDict:
+    """DIF/DEA/MACD 分层信号辅助判断买卖点
+
+    参数模板："{freq}_{key}分层W{w}N{n}_BS辅助V230408"
+
+    **信号逻辑：**
+
+    1. 获取最近 w 根K线，计算 DIF/DEA/MACD，分成 n 层
+
+
+    **信号列表：**
+
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第7层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第6层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第5层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第4层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第3层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第2层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第1层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第8层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第9层_任意_任意_0')
+    - Signal('15分钟_DIF分层W100N10_BS辅助V230408_第10层_任意_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    n = int(kwargs.get("n", 10))
+    w = int(kwargs.get("w", 100))
+    key = kwargs.get("key", "dif").upper()
+    assert key in ["DIF", "DEA", "MACD"]
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_{key}分层W{w}N{n}_BS辅助V230408".split("_")
+    v1 = '其他'
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=w)
+    factors = [x.cache[cache_key][key.lower()] for x in bars]
+    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{q}层")
+
+
+def tas_macd_dist_V230409(c: CZSC, **kwargs) -> OrderedDict:
+    """DIF/DEA/MACD 远离零轴辅助判断买卖点
+
+    参数模板："{freq}_{key}远离W{w}N{n}T{t}_BS辅助V230409"
+
+    **信号逻辑：**
+
+    1. 获取最近 w 根K线，计算 DIF/DEA/MACD，计算绝对值的平均值
+    2. 如果最新的值大于平均值 * t / 10，则认为远离零轴
+
+    **信号列表：**
+
+    - Signal('60分钟_DIF远离W100N10T20_BS辅助V230409_空头远离_任意_任意_0')
+    - Signal('60分钟_DIF远离W100N10T20_BS辅助V230409_多头远离_任意_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    n = int(kwargs.get("n", 10))
+    w = int(kwargs.get("w", 100))
+    t = int(kwargs.get("t", 20))    # 远离零轴的阈值，绝对值，越大越远离零轴，比较的基准是窗口内绝对值得平均；20表示2倍
+    key = kwargs.get("key", "dif").upper()
+    assert key in ["DIF", "DEA", "MACD"]
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_{key}远离W{w}N{n}T{t}_BS辅助V230409".split("_")
+    v1 = '其他'
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=w)
+    factors = [x.cache[cache_key][key.lower()] for x in bars]
+    mean = np.mean(np.abs(factors))
+    if max([abs(x) for x in factors[-n:]]) > mean * t / 10:
+        v1 = f"{'多头' if factors[-1] > 0 else '空头'}远离"
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_dist_V230410(c: CZSC, **kwargs) -> OrderedDict:
+    """DIF/DEA/MACD 分层信号辅助判断买卖点
+
+    参数模板："{freq}_{key}多空分层W{w}N{n}_BS辅助V230410"
+
+    **信号逻辑：**
+
+    1. 获取最近 w 根K线，计算 DIF/DEA/MACD
+    2. 最近一根K线的值，如果大于0，则认为多头，小于0，则认为空头
+    3. 多头情况下，只对 DIF/DEA/MACD 的值大于0的分层进行判断，空头情况下，只对 DIF/DEA/MACD 的值小于0的分层进行判断
+
+    **信号列表：**
+
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_多头_第1层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_多头_第2层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_空头_第5层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_空头_第4层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_空头_第3层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_空头_第2层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_空头_第1层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_多头_第3层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_多头_第4层_任意_0')
+    - Signal('60分钟_DIF多空分层W200N5_BS辅助V230410_多头_第5层_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    n = int(kwargs.get("n", 5))
+    w = int(kwargs.get("w", 200))
+    key = kwargs.get("key", "dif").upper()
+    assert key in ["DIF", "DEA", "MACD"]
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_{key}多空分层W{w}N{n}_BS辅助V230410".split("_")
+    v1 = '其他'
+    if len(c.bi_list) < 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=w)
+    factors = [x.cache[cache_key][key.lower()] for x in bars]
+    v1 = '多头' if factors[-1] > 0 else '空头'
+    if v1 == '多头':
+        factors = [x for x in factors if x > 0]
+    else:
+        factors = [x for x in factors if x < 0]
+
+    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{q}层")
+
+
+def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
+    """freq1 与 freq2 联立信号，freq1 > freq2
+
+    参数模板："{freq1}#{freq2}_MACD交叉_联立V230518"
+
+     **信号逻辑：**
+
+    1. 看多：freq1 MACD金叉后，freq2 MACD首次金叉
+    2. 看空：freq1 MACD死叉后，freq2 MACD首次死叉
+
+     **信号列表：**
+
+    - Signal('日线#60分钟_MACD交叉_联立V230518_看空_任意_任意_0')
+    - Signal('日线#60分钟_MACD交叉_联立V230518_看多_任意_任意_0')
+
+    :param cat: CzscSignals对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    freq1 = kwargs.get('freq1', '5分钟')
+    freq2 = kwargs.get('freq2', '1分钟')
+    c1: CZSC = cat.kas[freq1]
+    c2: CZSC = cat.kas[freq2]
+    _ = update_macd_cache(c1, fastperiod=12, slowperiod=26, signalperiod=9)
+    cache_key = update_macd_cache(c2, fastperiod=12, slowperiod=26, signalperiod=9)
+    k1, k2, k3 = f"{freq1}#{freq2}_MACD交叉_联立V230518".split('_')
+    if len(c1.bars_raw) < 50 or len(c2.bars_raw) < 50:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+
+    c1_bars = get_sub_elements(c1.bars_raw, di=1, n=8)
+    c1_macd = [x.cache[cache_key]['macd'] for x in c1_bars]
+    c2_bars = get_sub_elements(c2.bars_raw, di=1, n=50)
+
+    if c1_macd[-1] > 0 and sum([1 if x > 0 else 0 for x in c1_macd]) != len(c1_macd):
+        # 找出 c1 的最近一次金叉
+        macd_gold_bars = []
+        for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
+            if bar1.cache[cache_key]['macd'] < 0 and bar2.cache[cache_key]['macd'] > 0:
+                macd_gold_bars.append(bar2)
+        assert macd_gold_bars, "没有找到金叉"
+        macd_gold_bar = macd_gold_bars[-1]
+
+        # 找出 c2 的最近一次金叉
+        c2_bars = [x for x in c2_bars if x.dt > macd_gold_bar.dt]
+        if len(c2_bars) > 3:
+            c2_gold_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] < 0 and bar2.cache[cache_key]['macd'] > 0:
+                    c2_gold_bars.append(bar2)
+
+            if len(c2_gold_bars) == 1:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='看多')
+
+    if c1_macd[-1] < 0 and sum([1 if x < 0 else 0 for x in c1_macd]) != len(c1_macd):
+        # 找出 c1 的最近一次死叉
+        macd_dead_bars = []
+        for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
+            if bar1.cache[cache_key]['macd'] > 0 and bar2.cache[cache_key]['macd'] < 0:
+                macd_dead_bars.append(bar2)
+        assert macd_dead_bars, "没有找到死叉"
+        macd_dead_bar = macd_dead_bars[-1]
+
+        # 找出 c2 的最近一次死叉
+        c2_bars = [x for x in c2_bars if x.dt > macd_dead_bar.dt]
+        if len(c2_bars) > 3:
+            c2_dead_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] > 0 and bar2.cache[cache_key]['macd'] < 0:
+                    c2_dead_bars.append(bar2)
+
+            if len(c2_dead_bars) == 1:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='看空')
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+
+
+def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
+    """freq1 与 freq2 联立信号，freq1 > freq2
+
+    参数模板："{freq1}#{freq2}_MACD交叉_联立V230520"
+
+    **信号逻辑：**
+
+    1. 看多：freq1 MACD多头缩柱后，freq2 MACD首次金叉
+    2. 看空：freq1 MACD空头缩柱后，freq2 MACD首次死叉
+
+    **信号列表：**
+
+    - Signal('日线#60分钟_MACD交叉_联立V230520_看空_零轴下方_任意_0')
+    - Signal('日线#60分钟_MACD交叉_联立V230520_看多_零轴上方_任意_0')
+    - Signal('日线#60分钟_MACD交叉_联立V230520_看空_零轴上方_任意_0')
+    - Signal('日线#60分钟_MACD交叉_联立V230520_看多_零轴下方_任意_0')
+
+    :param cat: CzscSignals对象
+    :param kwargs: 参数字典
+    :return: 返回信号结果
+    """
+    freq1 = kwargs.get('freq1', '5分钟')
+    freq2 = kwargs.get('freq2', '1分钟')
+    c1: CZSC = cat.kas[freq1]
+    c2: CZSC = cat.kas[freq2]
+    _ = update_macd_cache(c1, fastperiod=12, slowperiod=26, signalperiod=9)
+    cache_key = update_macd_cache(c2, fastperiod=12, slowperiod=26, signalperiod=9)
+    k1, k2, k3 = f"{freq1}#{freq2}_MACD交叉_联立V230520".split('_')
+    if len(c1.bars_raw) < 50 or len(c2.bars_raw) < 50:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+
+    c1_bars = get_sub_elements(c1.bars_raw, di=1, n=8)
+    c1_macd = [x.cache[cache_key]['macd'] for x in c1_bars]
+    c2_bars = get_sub_elements(c2.bars_raw, di=1, n=50)
+
+    # Check for three consecutive increases in MACD values for bull shrinkage
+    min_bar = min(c1_bars, key=lambda x: x.low)
+    if all(x < y for x, y in zip(c1_macd[-3:], c1_macd[-2:])) and min(c1_macd) < 0:
+
+        c2_bars = [x for x in c2_bars if x.dt > min_bar.dt]
+        if len(c2_bars) > 3:
+            last_bar = c2_bars[-1]
+
+            min_macd = min([x.cache[cache_key]['macd'] for x in c2_bars])
+            max_macd = max([x.cache[cache_key]['macd'] for x in c2_bars])
+
+            c2_gold_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] < 0 and bar2.cache[cache_key]['macd'] > 0:
+                    c2_gold_bars.append(bar2)
+
+            c2_dead_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] > 0 and bar2.cache[cache_key]['macd'] < 0:
+                    c2_dead_bars.append(bar2)
+
+            if len(c2_gold_bars) == 1 and len(c2_dead_bars) == 1 and c2_gold_bars[-1].id - c2_dead_bars[-1].id >= 5 \
+                    and last_bar.dt == c2_gold_bars[0].dt > c2_dead_bars[0].dt and abs(min_macd) > abs(max_macd) * 0.3:
+                v2 = '零轴上方' if c2_gold_bars[0].cache[cache_key]['dea'] > 0 else '零轴下方'
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='看多', v2=v2)
+
+    # Check for three consecutive decreases in MACD values for bear shrinkage
+    max_bar = max(c1_bars, key=lambda x: x.high)
+    if all(x > y for x, y in zip(c1_macd[-3:], c1_macd[-2:])) and max(c1_macd) > 0:
+
+        c2_bars = [x for x in c2_bars if x.dt > max_bar.dt]
+        if len(c2_bars) > 3:
+            last_bar = c2_bars[-1]
+            min_macd = min([x.cache[cache_key]['macd'] for x in c2_bars])
+            max_macd = max([x.cache[cache_key]['macd'] for x in c2_bars])
+
+            c2_gold_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] < 0 and bar2.cache[cache_key]['macd'] > 0:
+                    c2_gold_bars.append(bar2)
+
+            c2_dead_bars = []
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+                if bar1.cache[cache_key]['macd'] > 0 and bar2.cache[cache_key]['macd'] < 0:
+                    c2_dead_bars.append(bar2)
+
+            if len(c2_dead_bars) == 1 and len(c2_gold_bars) == 1 and c2_dead_bars[-1].id - c2_gold_bars[-1].id >= 5\
+                    and last_bar.dt == c2_dead_bars[0].dt > c2_gold_bars[0].dt and abs(max_macd) > abs(min_macd) * 0.3:
+                v2 = '零轴上方' if c2_dead_bars[0].cache[cache_key]['dea'] > 0 else '零轴下方'
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='看空', v2=v2)
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
