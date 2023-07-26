@@ -26,10 +26,10 @@ from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
 from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 
 
-__version__ = "0.9.25"
+__version__ = "0.9.26"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230716"
+__date__ = "20230726"
 
 
 def welcome():
