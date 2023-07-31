@@ -65,6 +65,7 @@ from czsc.signals.vol import (
     vol_double_ma_V230214,
     vol_ti_suo_V221216,
     vol_gao_di_V221218,
+    vol_window_V230731,
 )
 
 from czsc.signals.bar import (
@@ -98,6 +99,7 @@ from czsc.signals.bar import (
     bar_shuang_fei_V230507,
     bar_limit_down_V230525,
     bar_eight_V230702,
+    bar_window_std_V230731,
 )
 
 from czsc.signals.jcc import (
