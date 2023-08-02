@@ -13,6 +13,7 @@ except:
     logger.warning("ta-lib 没有正确安装，相关信号函数无法正常执行。"
                    "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
 import numpy as np
+import pandas as pd
 from typing import List
 from collections import OrderedDict
 from czsc.analyze import CZSC, RawBar
