@@ -1042,7 +1042,7 @@ class Position:
         """
         from czsc.utils.stats import evaluate_pairs
 
-        p = evaluate_pairs(trade_dir)
+        p = evaluate_pairs(pd.DataFrame(self.pairs), trade_dir)
         p.update(self.evaluate_holds(trade_dir))
         return p
 
