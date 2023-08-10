@@ -355,3 +355,106 @@ def pos_profit_loss_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
                 v1 = '空头止损'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_status_V230808(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """Position策略的持仓状态
+
+    参数模板："{pos_name}_持仓状态_BS辅助V230808"
+
+    **信号逻辑：**
+
+    对指定的持仓策略，有三种状态：持多、持空、持币。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_持仓状态_BS辅助V230808_持多_任意_任意_0')
+    - Signal('日线三买多头N1_持仓状态_BS辅助V230808_持空_任意_任意_0')
+    - Signal('日线三买多头N1_持仓状态_BS辅助V230808_持币_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+        - pos_name: str，开仓信号的名称
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    k1, k2, k3 = f"{pos_name}_持仓状态_BS辅助V230808".split("_")
+    # 如果没有持仓策略，则不产生信号
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
+
+    pos = cat.get_position(pos_name)
+    v1 = '持币'
+    if len(pos.operates) == 0:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    op = pos.operates[-1]
+    if op['op'] == Operate.LO:
+        v1 = '持多'
+    if op['op'] == Operate.SO:
+        v1 = '持空'
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """开仓后N根K线收益小于M%%，且当前收益大于T%%，平仓保本
+
+    参数模板："{pos_name}_{freq1}N{n}M{m}T{t}_BS辅助V230807"
+
+    **信号逻辑：**
+
+    1. 针对某个开仓点，如果 N 根K线之后，收益低于 M，则认为开仓失误；
+    2. 开仓的失误发生后，如果市场给了逃命的机会，不贪心，等待收益大于 T 时，平仓保本；
+    3. 保本有两种场景：开仓后先亏损后反弹；开仓后先盈利后回落。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_60分钟N5M50T10_BS辅助V230807_多头保本_任意_任意_0')
+    - Signal('日线三买多头N1_60分钟N5M50T10_BS辅助V230807_空头保本_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，最少持有K线数量，默认为 5，表示5根K线之后开始判断
+        - m: int，收益最小阈值，默认为 100，表示收益小于 100BP 时，需要开始判断保本单
+        - t: int，保本收益阈值，默认为 10，表示收益大于 10BP 时，可以平仓保本
+
+    :return:
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    n = int(kwargs.get('n', 5))
+    m = int(kwargs.get('m', 50))
+    t = int(kwargs.get('t', 10))
+    assert m > t > 0, "参数 m 必须大于 t"
+    k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}T{t}_BS辅助V230807".split("_")
+    v1 = '其他'
+    # 如果没有持仓策略，则不产生信号
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+    bars = [x for x in c.bars_raw[-100:] if x.dt > op['dt']]
+    if len(bars) < n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if op['op'] == Operate.LO:
+        zdf = (bars[-1].close - op['price']) / op['price'] * 10000
+        if t < zdf < m:
+            v1 = '多头保本'
+
+    if op['op'] == Operate.SO:
+        zdf = (op['price'] - bars[-1].close) / op['price'] * 10000
+        if t < zdf < m:
+            v1 = '空头保本'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+

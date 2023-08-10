@@ -66,6 +66,7 @@ from czsc.signals.vol import (
     vol_ti_suo_V221216,
     vol_gao_di_V221218,
     vol_window_V230731,
+    vol_window_V230801,
 )
 
 from czsc.signals.bar import (
@@ -202,6 +203,8 @@ from czsc.signals.pos import (
     pos_bar_stop_V230524,
     pos_fix_exit_V230624,
     pos_profit_loss_V230624,
+    pos_status_V230808,
+    pos_holds_V230807,
 )
 
 
