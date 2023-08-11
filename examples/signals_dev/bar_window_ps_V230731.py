@@ -46,7 +46,9 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
     l = int(kwargs.get("l", 5))
 
     assert m > l * 2 > 2, "参数 m 必须大于 l * 2，且 l 必须大于 2"
-    assert w < m, "参数 w 必须小于 m"
+    assert w < m, "参数 w 必须小于 m"    
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_W{w}M{m}N{n}L{l}_支撑压力位V230731".split('_')
 
     if len(c.bi_list) <  n+2:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
@@ -58,9 +60,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
         if cache_key_pct in bar.cache:
             continue  
         bar.cache[cache_key_pct] = (bar.close - L_line) / (H_line - L_line)
-        
-    freq = c.freq.value
-    k1, k2, k3 = f"{freq}_W{w}M{m}N{n}L{l}_支撑压力位V230731".split('_')
+
     fenweis = [x.cache[cache_key_pct] for x in get_sub_elements(c.bars_raw, n=m)]
     layer = pd.qcut(fenweis, l, labels=False, duplicates='drop')
     max_layer = max(layer[-w:]) + 1
