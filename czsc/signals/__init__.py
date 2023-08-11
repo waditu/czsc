@@ -189,6 +189,7 @@ from czsc.signals.tas import (
     tas_low_trend_V230627,
     tas_atr_V230630,
     tas_accelerate_V230531,
+    tas_angle_V230802,
 
     tas_rumi_V230704,
     tas_macd_dist_V230408,
@@ -196,6 +197,7 @@ from czsc.signals.tas import (
     tas_macd_dist_V230410,
     cat_macd_V230518,
     cat_macd_V230520,
+    tas_macd_bc_V230803,
 )
 
 from czsc.signals.pos import (
