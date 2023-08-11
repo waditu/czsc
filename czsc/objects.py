@@ -12,11 +12,13 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
 from loguru import logger
-from typing import List, Callable, AnyStr, Dict, Optional
+from deprecated import deprecated
+from typing import List, Callable, Dict
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
 
 
+@deprecated(version="1.0.0", reason="请使用 RawBar")
 @dataclass
 class Tick:
     symbol: str
@@ -911,6 +913,7 @@ class Position:
 
         return pairs
 
+    @deprecated(version="1.0.0", reason="请使用 czsc.utils.stats.evaluate_pairs")
     def evaluate_pairs(self, trade_dir: str = "多空") -> dict:
         """评估交易表现
 
@@ -1037,7 +1040,9 @@ class Position:
         :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
         :return: 交易表现
         """
-        p = self.evaluate_pairs(trade_dir)
+        from czsc.utils.stats import evaluate_pairs
+
+        p = evaluate_pairs(pd.DataFrame(self.pairs), trade_dir)
         p.update(self.evaluate_holds(trade_dir))
         return p
 

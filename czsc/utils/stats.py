@@ -7,6 +7,7 @@ describe:
 """
 import numpy as np
 import pandas as pd
+from typing import List
 
 
 def subtract_fee(df, fee=1):
@@ -44,7 +45,7 @@ def daily_performance(daily_returns):
         daily_returns = np.array(daily_returns)
     
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
-        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0}
+        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0}
     
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
@@ -55,9 +56,9 @@ def daily_performance(daily_returns):
     return {
         "年化": round(annual_returns, 4),
         "夏普": round(sharpe_ratio, 2),
-        "回撤": round(max_drawdown, 4),
+        "最大回撤": round(max_drawdown, 4),
         "卡玛": round(kama, 2),
-        "胜率": round(win_pct, 4),
+        "日胜率": round(win_pct, 4),
     }
 
 
@@ -125,3 +126,89 @@ def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True)
     if not exclude_zero:
         res['持仓覆盖'] = round(len(nv[(nv['edge'] != 0) | (nv['cost'] != 0)]) / len(nv), 4) if len(nv) > 0 else 0
     return res
+
+
+def cal_break_even_point(seq: List[float]) -> float:
+    """计算单笔收益序列的盈亏平衡点
+
+    :param seq: 单笔收益序列
+    :return: 盈亏平衡点
+    """
+    if sum(seq) < 0:
+        return 1.0
+    seq = np.cumsum(sorted(seq))
+    return (np.sum(seq < 0) + 1) / len(seq)
+
+
+def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
+    """评估开平交易记录的表现
+
+    :param pairs: 开平交易记录，数据样例如下：
+
+        ==========  ==========  ===================  ===================  ==========  ==========  ===========  ============  ==========  ==========
+        标的代码     交易方向     开仓时间              平仓时间              开仓价格    平仓价格     持仓K线数    事件序列        持仓天数     盈亏比例
+        ==========  ==========  ===================  ===================  ==========  ==========  ===========  ============  ==========  ==========
+        DLi9001     多头        2019-02-25 21:36:00  2019-02-25 21:51:00     1147.8      1150.72           16  开多 -> 平多           0       25.47
+        DLi9001     多头        2021-09-15 14:06:00  2021-09-15 14:09:00     3155.88     3153.61            4  开多 -> 平多           0       -7.22
+        DLi9001     多头        2019-08-29 21:01:00  2019-08-29 22:54:00     1445.86     1454.55          114  开多 -> 平多           0       60.09
+        DLi9001     多头        2021-10-11 21:46:00  2021-10-11 22:11:00     3631.77     3622.66           26  开多 -> 平多           0      -25.08
+        DLi9001     多头        2020-05-13 09:16:00  2020-05-13 09:26:00     1913.13     1917.64           11  开多 -> 平多           0       23.55
+        ==========  ==========  ===================  ===================  ==========  ==========  ===========  ============  ==========  ==========
+
+    :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
+    :return: 交易表现
+    """
+    from czsc.objects import cal_break_even_point
+
+    pairs = pairs.copy()
+    if trade_dir in ["多头", "空头"]:
+        pairs = pairs[pairs["交易方向"] == trade_dir]
+    else:
+        assert trade_dir == "多空", "trade_dir 参数错误，可选值 ['多头', '空头', '多空']"
+
+    p = {
+        "交易方向": trade_dir,
+        "交易次数": len(pairs),
+        "累计收益": 0,
+        "单笔收益": 0,
+        "盈利次数": 0,
+        "累计盈利": 0,
+        "单笔盈利": 0,
+        "亏损次数": 0,
+        "累计亏损": 0,
+        "单笔亏损": 0,
+        "交易胜率": 0,
+        "累计盈亏比": 0,
+        "单笔盈亏比": 0,
+        "盈亏平衡点": 1,
+        "持仓天数": 0,
+        "持仓K线数": 0,
+    }
+
+    if len(pairs) == 0:
+        return p
+    
+    pairs = pairs.to_dict(orient='records')
+    p["盈亏平衡点"] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
+    p["累计收益"] = round(sum([x["盈亏比例"] for x in pairs]), 2)
+    p["单笔收益"] = round(p["累计收益"] / p["交易次数"], 2)
+    p["持仓天数"] = round(sum([x["持仓天数"] for x in pairs]) / len(pairs), 2)
+    p["持仓K线数"] = round(sum([x["持仓K线数"] for x in pairs]) / len(pairs), 2)
+
+    win_ = [x for x in pairs if x["盈亏比例"] >= 0]
+    if len(win_) > 0:
+        p["盈利次数"] = len(win_)
+        p["累计盈利"] = sum([x["盈亏比例"] for x in win_])
+        p["单笔盈利"] = round(p["累计盈利"] / p["盈利次数"], 4)
+        p["交易胜率"] = round(p["盈利次数"] / p["交易次数"], 4)
+
+    loss_ = [x for x in pairs if x["盈亏比例"] < 0]
+    if len(loss_) > 0:
+        p["亏损次数"] = len(loss_)
+        p["累计亏损"] = sum([x["盈亏比例"] for x in loss_])
+        p["单笔亏损"] = round(p["累计亏损"] / p["亏损次数"], 4)
+
+        p["累计盈亏比"] = round(p["累计盈利"] / abs(p["累计亏损"]), 4)
+        p["单笔盈亏比"] = round(p["单笔盈利"] / abs(p["单笔亏损"]), 4)
+
+    return p

@@ -138,8 +138,13 @@ class FeatureAnalyzeBase:
 
 
 class FixedNumberSelector:
-    """选择固定数量（等权）的交易品种"""
-
+    """选择固定数量（等权）的交易品种
+    
+    可优化项：
+    1. 传入 res_path, 将分析过程和分析结果保存下来
+    2. 支持传入大盘择时信号，例如：大盘择时信号为空头时，多头只平不开
+    """
+    
     def __init__(self, dfs, k, d, **kwargs):
         """
         

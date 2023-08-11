@@ -65,6 +65,8 @@ from czsc.signals.vol import (
     vol_double_ma_V230214,
     vol_ti_suo_V221216,
     vol_gao_di_V221218,
+    vol_window_V230731,
+    vol_window_V230801,
 )
 
 from czsc.signals.bar import (
@@ -98,6 +100,9 @@ from czsc.signals.bar import (
     bar_shuang_fei_V230507,
     bar_limit_down_V230525,
     bar_eight_V230702,
+    bar_window_std_V230731,
+    bar_window_ps_V230731,
+    bar_window_ps_V230801,
 )
 
 from czsc.signals.jcc import (
@@ -184,6 +189,7 @@ from czsc.signals.tas import (
     tas_low_trend_V230627,
     tas_atr_V230630,
     tas_accelerate_V230531,
+    tas_angle_V230802,
 
     tas_rumi_V230704,
     tas_macd_dist_V230408,
@@ -191,6 +197,7 @@ from czsc.signals.tas import (
     tas_macd_dist_V230410,
     cat_macd_V230518,
     cat_macd_V230520,
+    tas_macd_bc_V230803,
 )
 
 from czsc.signals.pos import (
@@ -200,6 +207,8 @@ from czsc.signals.pos import (
     pos_bar_stop_V230524,
     pos_fix_exit_V230624,
     pos_profit_loss_V230624,
+    pos_status_V230808,
+    pos_holds_V230807,
 )
 
 
