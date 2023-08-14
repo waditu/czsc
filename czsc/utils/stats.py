@@ -160,7 +160,11 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
     """
     from czsc.objects import cal_break_even_point
 
-    pairs = pairs.copy()
+    if pairs.empty:
+        pairs = pairs.reindex(columns=["标的代码", "策略标记", "交易方向", "开仓时间","平仓时间", "开仓价格", "平
+仓价格", "持仓K线数", "事件序列", "持仓天数", "盈亏比例"])
+    else:
+        pairs = pairs.copy()
     if trade_dir in ["多头", "空头"]:
         pairs = pairs[pairs["交易方向"] == trade_dir]
     else:
