@@ -14,7 +14,7 @@ from loguru import logger
 from datetime import datetime, timedelta
 from deprecated import deprecated
 from collections import OrderedDict
-from typing import Callable, List, AnyStr, Union
+from typing import Callable, List, AnyStr, Union, Optional
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
@@ -473,3 +473,40 @@ class CzscTrader(CzscSignals):
         else:
             return tab
 
+    def get_ensemble_weight(self, method: Optional[Union[AnyStr, Callable]] = None):
+        """获取 CzscTrader 中所有 positions 按照 method 方法集成之后的权重
+
+        :param method: str or callable
+            集成方法，可选值包括：'mean', 'max', 'min', 'vote'
+            也可以传入自定义的函数，函数的输入为 dict，key 为 position.name，value 为 position.pos, 样例输入：
+                {'多头策略A': 1, '多头策略B': 1, '空头策略A': -1}
+        :param kwargs:
+        :return: pd.DataFrame
+            columns = ['dt', 'symbol', 'weight', 'price']    
+        """
+        from czsc.traders.weight_backtest import get_ensemble_weight
+        method = self.__ensemble_method if not method else method
+        return get_ensemble_weight(self, method)
+
+    def weight_backtest(self, **kwargs):
+        """执行仓位集成权重的回测
+
+        :param kwargs:
+
+            - method: str or callable，集成方法，参考 get_ensemble_weight 方法
+            - digits: int，权重小数点后保留的位数，例如 2 表示保留两位小数
+            - fee_rate: float，手续费率，例如 0.0002 表示万二
+            - res_path: str，回测结果保存路径
+
+        :return: 回测结果
+        """
+        from czsc.traders.weight_backtest import WeightBacktest
+
+        method = kwargs.get("method", self.__ensemble_method)
+        digits = kwargs.get("digits", 2)
+        fee_rate = kwargs.get("fee_rate", 0.0002)
+        res_path = kwargs.get("res_path", "./weight_backtest")
+        dfw = self.get_ensemble_weight(method)
+        wb = WeightBacktest(dfw, digits=digits, fee_rate=fee_rate, res_path=res_path)
+        _res = wb.backtest()
+        return _res

@@ -8,12 +8,12 @@ describe: 按持仓权重回测
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from czsc.traders.base import CzscTrader
 from loguru import logger
 from pathlib import Path
 from typing import Union, AnyStr, Callable
-from czsc.utils.stats import daily_performance, evaluate_pairs
+from czsc.traders.base import CzscTrader
 from czsc.utils.io import save_json
+from czsc.utils.stats import daily_performance, evaluate_pairs
 
 
 def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'mean'):
