@@ -249,6 +249,7 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
     signals = []
     for col in s_cols:
+        print('=' * 100, "\n", df[col].value_counts())
         signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
 
     print(f"signals: {'+' * 100}")
