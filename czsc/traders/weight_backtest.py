@@ -68,13 +68,13 @@ class WeightBacktest:
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
         
-        :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，
-            其中 
-                dt      为结束时间，
-                symbol  为合约代码，
-                weight  为持仓权重，
-                price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
-            
+        :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
+
+            dt      为K线结束时间，
+            symbol  为合约代码，
+            weight  为K线结束时间对应的持仓权重，
+            price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
+        
             数据样例如下：
             ===================  ========  ========  =======
             dt                   symbol      weight    price
@@ -88,7 +88,10 @@ class WeightBacktest:
             
         :param digits: int, 权重列保留小数位数
         :param kwargs:
+
             - fee_rate: float，单边交易成本，包括手续费与冲击成本, 默认为 0.0002
+            - res_path: str，回测结果保存路径，默认为 "weight_backtest"
+            
         """
         self.kwargs = kwargs
         self.dfw = dfw.copy()
@@ -139,10 +142,7 @@ class WeightBacktest:
     def get_symbol_pairs(self, symbol):
         """获取某个合约的开平交易记录"""
         dfs = self.dfw[self.dfw['symbol'] == symbol].copy()
-        dfs['direction'] = 0
-        dfs.loc[dfs['weight'] > 0, 'direction'] = 1
-        dfs.loc[dfs['weight'] < 0, 'direction'] = -1
-        dfs['volume'] = (dfs['weight'] * pow(10, self.digits)).astype(int) * dfs['direction']
+        dfs['volume'] = (dfs['weight'] * pow(10, self.digits)).astype(int)
         dfs['bar_id'] = list(range(1, len(dfs)+1))
 
         # 根据权重变化生成开平仓记录
@@ -227,7 +227,9 @@ class WeightBacktest:
         dret = pd.concat([v['daily'] for v in res.values()], ignore_index=True)
         dret = pd.pivot_table(dret, index='date', columns='symbol', values='return').fillna(0)
         dret['total'] = dret[list(res.keys())].mean(axis=1)
-        logger.info(f"品种等权费后日收益率：{daily_performance(dret['total'])}")
+        stats = {"开始日期": dret.index.min().strftime("%Y%m%d"), "结束日期": dret.index.max().strftime("%Y%m%d")}
+        stats.update(daily_performance(dret['total']))
+        logger.info(f"品种等权费后日收益率：{stats}")
         dret.to_excel(self.res_path.joinpath("daily_return.xlsx"), index=True)
         logger.info(f"品种等权费后日收益率已保存到 {self.res_path.joinpath('daily_return.xlsx')}")
 
@@ -243,7 +245,8 @@ class WeightBacktest:
         pairs_stats = evaluate_pairs(dfp)
         pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
         logger.info(f"所有开平交易记录的表现：{pairs_stats}")
-        save_json(pairs_stats, self.res_path.joinpath("pairs_stats.json"))
-        logger.info(f"所有开平交易记录的表现已保存到 {self.res_path.joinpath('pairs_stats.json')}")
-
+        stats.update(pairs_stats)
+        logger.info(f"策略评价：{stats}")
+        save_json(stats, self.res_path.joinpath("stats.json"))
+        res['stats'] = stats
         return res
