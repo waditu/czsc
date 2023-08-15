@@ -314,7 +314,8 @@ class CzscTrader(CzscSignals):
             vote - 投票表决，pos = 1
             max  - 取最大，pos = 1
 
-            对于传入回调函数的情况，输入是 self.positions
+            对于传入回调函数的情况，函数的输入为 dict，key 为 position.name，value 为 position.pos, 样例输入：
+            {'多头策略A': 1, '多头策略B': 1, '空头策略A': -1}
         """
         self.positions = positions
         if self.positions:
@@ -403,7 +404,7 @@ class CzscTrader(CzscSignals):
                 raise ValueError
 
         else:
-            pos = method(self.positions)
+            pos = method({x.name: x.pos for x in self.positions})
 
         return pos
 

@@ -245,8 +245,8 @@ def test_czsc_trader():
     assert [x.pos for x in ct.positions] == [0, 0, 0]
 
     # 测试自定义仓位集成
-    def _weighted_ensemble(positions: List[Position]):
-        return 0.5 * positions[0].pos + 0.5 * positions[1].pos
+    def _weighted_ensemble(poss):
+        return 0.5 * poss['测试A'] + 0.5 * poss['测试B']
 
     assert ct.get_ensemble_pos(_weighted_ensemble) == 0
     assert ct.get_ensemble_pos('vote') == 0
