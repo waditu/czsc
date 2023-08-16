@@ -5,10 +5,8 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/7 21:07
 """
 import os
-import shutil
 import pandas as pd
 from copy import deepcopy
-from typing import List
 from czsc.utils.cache import home_path
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
