@@ -46,13 +46,13 @@ def tas_angle_V230802(c: CZSC, **kwargs) -> OrderedDict:
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}N{n}_笔角度V230802".split('_')
     v1 = '其他'
-    if len(c.bi_list) < di + n or len(c.bars_ubi) >= 7:
+    if len(c.bi_list) < di + 2 * n + 2 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bis = get_sub_elements(c.bi_list, di=di, n=n)
+    bis = get_sub_elements(c.bi_list, di=di, n=n*2+1)
     b1 = bis[-1]
     b1_angle = b1.power_price / b1.length
-    same_dir_ang = [bi.power_price / bi.length for bi in bis[:-1] if bi.direction == b1.direction]
+    same_dir_ang = [bi.power_price / bi.length for bi in bis[:-1] if bi.direction == b1.direction][-n:]
 
     if b1_angle < np.mean(same_dir_ang):
         v1 = '空头' if b1.direction == Direction.Up else '多头'

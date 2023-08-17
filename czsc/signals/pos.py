@@ -432,7 +432,7 @@ def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}T{t}_BS辅助V230807".split("_")
     v1 = '其他'
     # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
+    if not cat.kas or not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]

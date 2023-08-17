@@ -136,8 +136,8 @@ def cal_break_even_point(seq: List[float]) -> float:
     """
     if sum(seq) < 0:
         return 1.0
-    seq = np.cumsum(sorted(seq))
-    return (np.sum(seq < 0) + 1) / len(seq)
+    seq = np.cumsum(sorted(seq)) # type: ignore
+    return (np.sum(seq < 0) + 1) / len(seq) # type: ignore
 
 
 def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
@@ -164,7 +164,7 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
 
     p = {
         "交易方向": trade_dir,
-        "交易次数": len(pairs),
+        "交易次数": 0,
         "累计收益": 0,
         "单笔收益": 0,
         "盈利次数": 0,
@@ -191,8 +191,9 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
 
     if len(pairs) == 0:
         return p
-    
+
     pairs = pairs.to_dict(orient='records')
+    p['交易次数'] = len(pairs)
     p["盈亏平衡点"] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
     p["累计收益"] = round(sum([x["盈亏比例"] for x in pairs]), 2)
     p["单笔收益"] = round(p["累计收益"] / p["交易次数"], 2)

@@ -17,4 +17,5 @@
         "120"
     ],
     "typescript.locale": "zh-CN",
+    "python.analysis.typeCheckingMode": "basic",
 }
