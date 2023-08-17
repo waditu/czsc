@@ -42,6 +42,8 @@ from czsc.signals.cxt import (
     cxt_range_oscillation_V230620,
     cxt_intraday_V230701,
     cxt_ubi_end_V230816,
+    cxt_bi_end_V230815,
+    cxt_bi_stop_V230815,
 )
 
 
