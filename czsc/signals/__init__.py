@@ -41,6 +41,9 @@ from czsc.signals.cxt import (
     cxt_eleven_bi_V230622,
     cxt_range_oscillation_V230620,
     cxt_intraday_V230701,
+    cxt_ubi_end_V230816,
+    cxt_bi_end_V230815,
+    cxt_bi_stop_V230815,
 )
 
 
@@ -198,6 +201,8 @@ from czsc.signals.tas import (
     cat_macd_V230518,
     cat_macd_V230520,
     tas_macd_bc_V230803,
+    tas_macd_bc_V230804,
+    tas_macd_bc_ubi_V230804,
 )
 
 from czsc.signals.pos import (

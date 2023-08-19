@@ -19,7 +19,7 @@ import numpy as np
 from collections import OrderedDict
 from deprecated import deprecated
 from czsc.analyze import CZSC
-from czsc.objects import Signal, Direction, BI, RawBar, FX, Mark
+from czsc.objects import Signal, Direction, BI, RawBar, FX, Mark, ZS
 from czsc.traders.base import CzscSignals
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
 from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
@@ -3187,17 +3187,17 @@ def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
 def tas_angle_V230802(c: CZSC, **kwargs) -> OrderedDict:
     """笔的角度比较 贡献者：谌意勇
 
-    参数模板："{freq}_D{di}N{n}_笔角度V230802"
+    参数模板："{freq}_D{di}N{n}T{th}_笔角度V230802"
 
     **信号逻辑：**
 
     笔的角度，走过的笔的空间最高价和最低价的空间与走过的时间（原始K的数量）形成比值。
-    如果当前笔的角度小于前面N笔的平均角度，当前笔向上认为是空头笔，否则是多头笔。
+    如果当前笔的角度小于前面9笔的平均角度的50%，当前笔向上认为是空头笔，否则是多头笔。
 
     **信号列表：**
 
-    - Signal('60分钟_D1N9_笔角度V230802_多头_任意_任意_0')
-    - Signal('60分钟_D1N9_笔角度V230802_空头_任意_任意_0')
+    - Signal('60分钟_D1N9T50_笔角度V230802_空头_任意_任意_0')
+    - Signal('60分钟_D1N9T50_笔角度V230802_多头_任意_任意_0')
 
     :param c: CZSC对象
     :param kwargs:
@@ -3209,18 +3209,21 @@ def tas_angle_V230802(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get('di', 1))
     n = int(kwargs.get('n', 9))
+    th = int(kwargs.get('th', 50))
+    assert 300 > th > 30, "th 取值范围为 30 ~ 300"
+    
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}_笔角度V230802".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}T{th}_笔角度V230802".split('_')
     v1 = '其他'
-    if len(c.bi_list) < di + n or len(c.bars_ubi) >= 7:
+    if len(c.bi_list) < di + 2 * n + 2 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bis = get_sub_elements(c.bi_list, di=di, n=n)
+    bis = get_sub_elements(c.bi_list, di=di, n=n*2+1)
     b1 = bis[-1]
     b1_angle = b1.power_price / b1.length
-    same_dir_ang = [bi.power_price / bi.length for bi in bis[:-1] if bi.direction == b1.direction]
+    same_dir_ang = [bi.power_price / bi.length for bi in bis[:-1] if bi.direction == b1.direction][-n:]
 
-    if b1_angle < np.mean(same_dir_ang):
+    if b1_angle < np.mean(same_dir_ang) * th / 100:
         v1 = '空头' if b1.direction == Direction.Up else '多头'
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -3262,6 +3265,104 @@ def tas_macd_bc_V230803(c: CZSC, **kwargs) -> OrderedDict:
         macd1 = fx1.raw_bars[1].cache[cache_key]['macd']
         macd2 = fx2.raw_bars[1].cache[cache_key]['macd']
         if macd1 < macd2 < 0:
+            v1 = '多头'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bc_V230804(c: CZSC, **kwargs) -> OrderedDict:
+    """MACD黄白线辅助背驰判断
+
+    参数模板："{freq}_D{di}MACD背驰_BS辅助V230804"
+
+    **信号逻辑：**
+
+    以向上笔为例，当前笔在中枢中轴上方，且MACD黄白线不是最高，认为是背驰，做空；反之，做多。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1MACD背驰_BS辅助V230804_空头_任意_任意_0')
+    - Signal('60分钟_D1MACD背驰_BS辅助V230804_多头_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get('di', 1))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}MACD背驰_BS辅助V230804".split('_')
+    v1 = '其他'
+    cache_key = update_macd_cache(c)
+    if len(c.bi_list) < 7 or len(c.bars_ubi) >= 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=7)
+    zs = ZS(bis=bis[-5:])
+    if not zs.is_valid:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    dd = min([bi.low for bi in bis])
+    gg = max([bi.high for bi in bis])
+    b1, b2, b3, b4, b5 = bis[-5:]
+    if b5.direction == Direction.Up and b5.high > (gg - (gg - dd) / 4):
+        b5_dif = max([x.cache[cache_key]['dif'] for x in b5.fx_b.raw_bars])
+        od_dif = max([x.cache[cache_key]['dif'] for x in b1.fx_b.raw_bars + b3.fx_b.raw_bars])
+        if 0 < b5_dif < od_dif:
+            v1 = '空头'
+    
+    if b5.direction == Direction.Down and b5.low < (dd + (gg - dd) / 4):
+        b5_dif = min([x.cache[cache_key]['dif'] for x in b5.fx_b.raw_bars])
+        od_dif = min([x.cache[cache_key]['dif'] for x in b1.fx_b.raw_bars + b3.fx_b.raw_bars])
+        if 0 > b5_dif > od_dif:
+            v1 = '多头'
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_macd_bc_ubi_V230804(c: CZSC, **kwargs) -> OrderedDict:
+    """未完成笔MACD黄白线辅助背驰判断
+
+    参数模板："{freq}_MACD背驰_BS辅助V230804"
+
+    **信号逻辑：**
+
+    以向上未完成笔为例，当前笔在中枢中轴上方，且MACD黄白线不是最高，认为是背驰，做空；反之，做多。
+
+    **信号列表：**
+
+    - Signal('60分钟_MACD背驰_UBI观察V230804_多头_任意_任意_0')
+    - Signal('60分钟_MACD背驰_UBI观察V230804_空头_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_MACD背驰_UBI观察V230804".split('_')
+    v1 = '其他'
+    cache_key = update_macd_cache(c)
+    ubi = c.ubi
+    if len(c.bi_list) < 7 or not ubi or len(ubi['raw_bars']) < 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=6)
+    zs = ZS(bis=bis[-5:])
+    if not zs.is_valid:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    dd = min([bi.low for bi in bis])
+    gg = max([bi.high for bi in bis])
+    b1, b2, b3, b4, b5 = bis[-5:]
+    if ubi['direction'] == Direction.Up and ubi['high'] > (gg - (gg - dd) / 4):
+        b5_dif = max([x.cache[cache_key]['dif'] for x in ubi['raw_bars'][-5:]])
+        od_dif = max([x.cache[cache_key]['dif'] for x in b2.fx_b.raw_bars + b4.fx_b.raw_bars])
+        if 0 < b5_dif < od_dif:
+            v1 = '空头'
+    
+    if ubi['direction'] == Direction.Down and ubi['low'] < (dd + (gg - dd) / 4):
+        b5_dif = min([x.cache[cache_key]['dif'] for x in ubi['raw_bars'][-5:]])
+        od_dif = min([x.cache[cache_key]['dif'] for x in b2.fx_b.raw_bars + b4.fx_b.raw_bars])
+        if 0 > b5_dif > od_dif:
             v1 = '多头'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -4,9 +4,10 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/7 21:07
 """
+import os
 import pandas as pd
 from copy import deepcopy
-from typing import List
+from czsc.utils.cache import home_path
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
 from czsc.objects import Signal, Factor, Event, Operate, Position
@@ -245,13 +246,17 @@ def test_czsc_trader():
     assert [x.pos for x in ct.positions] == [0, 0, 0]
 
     # 测试自定义仓位集成
-    def _weighted_ensemble(positions: List[Position]):
-        return 0.5 * positions[0].pos + 0.5 * positions[1].pos
+    def _weighted_ensemble(poss):
+        return 0.5 * poss['测试A'] + 0.5 * poss['测试B']
 
     assert ct.get_ensemble_pos(_weighted_ensemble) == 0
     assert ct.get_ensemble_pos('vote') == 0
     assert ct.get_ensemble_pos('max') == 0
     assert ct.get_ensemble_pos('mean') == 0
+    dfw = ct.get_ensemble_weight(method='mean')
+    assert len(dfw) == len(bars_right)
+
+    res = ct.weight_backtest(method='mean', res_path=os.path.join(home_path, "test_trader"))
 
     # 通过 on_bar 执行
     ct1 = CzscTrader(deepcopy(bg), signals_config=signals_config,

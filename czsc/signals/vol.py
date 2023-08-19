@@ -273,7 +273,7 @@ def vol_gao_di_V221218(c: CZSC, **kwargs) -> OrderedDict:
 def vol_window_V230731(c: CZSC, **kwargs) -> OrderedDict:
     """指定窗口内成交量的特征
 
-    参数模板："{freq}_D{di}W{window}M{m}N{n}_窗口能量V230731"
+    参数模板："{freq}_D{di}W{w}M{m}N{n}_窗口能量V230731"
 
     **信号逻辑：**
 

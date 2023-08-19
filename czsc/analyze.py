@@ -369,7 +369,8 @@ class CZSC:
     @property
     def ubi(self):
         """Unfinished Bi，未完成的笔"""
-        if not self.bars_ubi or not self.bi_list:
+        ubi_fxs = self.ubi_fxs
+        if not self.bars_ubi or not self.bi_list or not ubi_fxs:
             return None
 
         bars_raw = [y for x in self.bars_ubi for y in x.raw_bars]
@@ -387,8 +388,8 @@ class CZSC:
             "low_bar": low_bar,
             "bars": self.bars_ubi,
             "raw_bars": bars_raw,
-            "fxs": self.ubi_fxs,
-            "fx_a": self.ubi_fxs[0],
+            "fxs": ubi_fxs,
+            "fx_a": ubi_fxs[0],
         }
         return bi
 
