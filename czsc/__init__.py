@@ -29,10 +29,10 @@ from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 
 
-__version__ = "0.9.27"
+__version__ = "0.9.28"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230812"
+__date__ = "20230820"
 
 
 def welcome():
