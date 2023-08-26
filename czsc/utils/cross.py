@@ -183,7 +183,7 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
     :param y_col: 预测列名
     :param kwargs: 其他参数
 
-        - model_params: dict, 模型参数，默认{'n_estimators': 1000, 'learning_rate': 0.01}，可调整，参考lightgbm文档
+        - model_params: dict, 模型参数，默认{'n_estimators': 40, 'learning_rate': 0.01}，可调整，参考lightgbm文档
         - n_splits: int, 时间拆分次数，默认5，即5段时间
         - rank_ascending: bool, 打分排序是否升序，默认False-降序
         - copy: bool, 是否拷贝df，True-拷贝，False-不拷贝
@@ -205,7 +205,7 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
     df['dt'] = pd.to_datetime(df['dt'])
     df = df.sort_values(['dt', y_col], ascending=[True, False])
 
-    model_params = kwargs.get('model_params', {'n_estimators': 1000, 'learning_rate': 0.01})
+    model_params = kwargs.get('model_params', {'n_estimators': 40, 'learning_rate': 0.01})
     model = LGBMRanker(**model_params)
 
     dfd = pd.DataFrame({'dt': sorted(df['dt'].unique())}).values
