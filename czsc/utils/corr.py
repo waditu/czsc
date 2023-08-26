@@ -113,6 +113,8 @@ def cross_sectional_ic(df, x_col='open', y_col='n1b', method='spearman', **kwarg
     df = pd.DataFrame(s, columns=['ic']).reset_index(inplace=False)
 
     res = {
+        "x_col": x_col,
+        "y_col": y_col,
         "method": method,
         "IC均值": 0,
         "IC标准差": 0,

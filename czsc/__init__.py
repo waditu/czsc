@@ -23,7 +23,7 @@ from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
 from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
 from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update_tbars, update_nbars
-from czsc.utils import CrossSectionalPerformance
+from czsc.utils import CrossSectionalPerformance, cross_sectional_ranker
 from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
 from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
 from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
