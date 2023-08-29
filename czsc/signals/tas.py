@@ -3322,7 +3322,7 @@ def tas_macd_bc_V230804(c: CZSC, **kwargs) -> OrderedDict:
 def tas_macd_bc_ubi_V230804(c: CZSC, **kwargs) -> OrderedDict:
     """未完成笔MACD黄白线辅助背驰判断
 
-    参数模板："{freq}_MACD背驰_BS辅助V230804"
+    参数模板："{freq}_MACD背驰_UBI观察V230804"
 
     **信号逻辑：**
 

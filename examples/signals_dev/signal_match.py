@@ -52,5 +52,5 @@ if __name__ == '__main__':
     bars = read_1min()
     conf = get_signals_config(signals_seq)
     freqs = get_signals_freqs(signals_seq)
-    sigs = generate_czsc_signals(bars, signals_config=conf, sdt='20180101', df=True)
+    sigs = generate_czsc_signals(bars, signals_config=conf, sdt='20190101', df=True)
     print(sigs.shape)
