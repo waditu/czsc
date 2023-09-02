@@ -135,5 +135,3 @@ def cross_sectional_ic(df, x_col='open', y_col='n1b', method='spearman', **kwarg
     res['IC胜率'] = round(len(df[df['ic'] > 0]) / len(df), 4)
     res['IC绝对值>2%占比'] = round(len(df[df['ic'].abs() > 0.02]) / len(df), 4)
     return df, res
-
-
