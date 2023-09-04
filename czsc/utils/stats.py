@@ -19,7 +19,7 @@ def subtract_fee(df, fee=1):
     if 'n1b' not in df.columns:
         assert 'price' in df.columns, '当n1b列不存在时，price 列必须存在'
         df['n1b'] = (df['price'].shift(-1) / df['price'] - 1) * 10000
-  
+
     df['date'] = df['dt'].dt.date
     df['edge_pre_fee'] = df['pos'] * df['n1b']
     df['edge_post_fee'] = df['pos'] * df['n1b']
@@ -42,7 +42,7 @@ def daily_performance(daily_returns):
     :return: dict
     """
     daily_returns = np.array(daily_returns, dtype=np.float64)
- 
+
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
         return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0, "年化波动率": 0, "非零覆盖": 0}
 
@@ -188,7 +188,7 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
 
     if len(pairs) == 0:
         return p
-    
+
     if trade_dir in ["多头", "空头"]:
         pairs = pairs[pairs["交易方向"] == trade_dir]
     else:

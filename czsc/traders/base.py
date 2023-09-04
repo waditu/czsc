@@ -172,7 +172,7 @@ def get_signals_by_conf(cat: CzscSignals, conf):
         sig_func = import_by_name(param.pop('name'))
         freq = param.pop('freq', None)
         if freq in cat.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
-            s.update(sig_func(cat.kas[freq], **param))
+            s.update(sig_func(cat.kas[freq], **param))   # type: ignore
         else:                # 否则使用 CAT 作为输入
             s.update(sig_func(cat, **param))
     return s
@@ -197,13 +197,13 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
     """
     freqs = get_signals_freqs(signals_config)
     freqs = [freq for freq in freqs if freq != bars[0].freq.value]
-    sdt = pd.to_datetime(sdt) # type: ignore
-    bars_left = [x for x in bars if x.dt < sdt] # type: ignore
+    sdt = pd.to_datetime(sdt)                       # type: ignore
+    bars_left = [x for x in bars if x.dt < sdt]     # type: ignore
     if len(bars_left) <= init_n:
         bars_left = bars[:init_n]
         bars_right = bars[init_n:]
     else:
-        bars_right = [x for x in bars if x.dt >= sdt] # type: ignore
+        bars_right = [x for x in bars if x.dt >= sdt]   # type: ignore
 
     if len(bars_right) == 0:
         logger.warning("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
@@ -302,7 +302,7 @@ def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs)
 class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
-    def __init__(self, bg: BarGenerator = None, positions: List[Position] = None,
+    def __init__(self, bg: Optional[BarGenerator] = None, positions: Optional[List[Position]] = None,
                  ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
         """
 
@@ -483,7 +483,7 @@ class CzscTrader(CzscSignals):
                 {'多头策略A': 1, '多头策略B': 1, '空头策略A': -1}
         :param kwargs:
         :return: pd.DataFrame
-            columns = ['dt', 'symbol', 'weight', 'price']    
+            columns = ['dt', 'symbol', 'weight', 'price']
         """
         from czsc.traders.weight_backtest import get_ensemble_weight
         method = self.__ensemble_method if not method else method
