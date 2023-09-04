@@ -7,9 +7,8 @@ describe: 缠论分型、笔的识别
 """
 import os
 import webbrowser
-import numpy as np
 from loguru import logger
-from typing import List, Callable
+from typing import List
 from collections import OrderedDict
 from czsc.enum import Mark, Direction
 from czsc.objects import BI, FX, RawBar, NewBar

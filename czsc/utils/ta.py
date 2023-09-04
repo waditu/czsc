@@ -22,7 +22,7 @@ def SMA(close: np.array, timeperiod=5):
     res = []
     for i in range(len(close)):
         if i < timeperiod:
-            seq = close[0: i+1]
+            seq = close[0: i + 1]
         else:
             seq = close[i - timeperiod + 1: i + 1]
         res.append(seq.mean())
@@ -44,7 +44,7 @@ def EMA(close: np.array, timeperiod=5):
         if i < 1:
             res.append(close[i])
         else:
-            ema = (2 * close[i] + res[i-1] * (timeperiod-1)) / (timeperiod+1)
+            ema = (2 * close[i] + res[i - 1] * (timeperiod - 1)) / (timeperiod + 1)
             res.append(ema)
     return np.array(res, dtype=np.double).round(4)
 
@@ -85,8 +85,8 @@ def KDJ(close: np.array, high: np.array, low: np.array):
     lv = []
     for i in range(len(close)):
         if i < n:
-            h_ = high[0: i+1]
-            l_ = low[0: i+1]
+            h_ = high[0: i + 1]
+            l_ = low[0: i + 1]
         else:
             h_ = high[i - n + 1: i + 1]
             l_ = low[i - n + 1: i + 1]
@@ -105,8 +105,8 @@ def KDJ(close: np.array, high: np.array, low: np.array):
             k_ = rsv[i]
             d_ = k_
         else:
-            k_ = (2 / 3) * k[i-1] + (1 / 3) * rsv[i]
-            d_ = (2 / 3) * d[i-1] + (1 / 3) * k_
+            k_ = (2 / 3) * k[i - 1] + (1 / 3) * rsv[i]
+            d_ = (2 / 3) * d[i - 1] + (1 / 3) * k_
 
         k.append(k_)
         d.append(d_)

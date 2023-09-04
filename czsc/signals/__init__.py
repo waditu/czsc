@@ -44,6 +44,7 @@ from czsc.signals.cxt import (
     cxt_ubi_end_V230816,
     cxt_bi_end_V230815,
     cxt_bi_stop_V230815,
+    cxt_bi_trend_V230824,
 )
 
 
@@ -232,6 +233,8 @@ from czsc.signals.ang import (
     obvm_line_V230610,
     obv_up_dw_line_V230719,
     cvolp_up_dw_line_V230612,
+    kcatr_up_dw_line_V230823,
+    ntmdk_V230824,
 )
 
 

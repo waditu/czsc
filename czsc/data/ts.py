@@ -93,10 +93,10 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
 
     for i, record in enumerate(records):
         if freq == Freq.D:
-            vol = int(record['vol']*100)
-            amount = int(record.get('amount', 0)*1000)
+            vol = int(record['vol'] * 100) if record['vol'] > 0 else 0
+            amount = int(record.get('amount', 0) * 1000)
         else:
-            vol = int(record['vol'])
+            vol = int(record['vol']) if record['vol'] > 0 else 0
             amount = int(record.get('amount', 0))
 
         # 将每一根K线转换成 RawBar 对象

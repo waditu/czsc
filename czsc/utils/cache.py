@@ -28,5 +28,3 @@ def empty_cache_path():
     shutil.rmtree(home_path)
     os.makedirs(home_path, exist_ok=False)
     print(f"已清空缓存文件夹：{home_path}")
-
-

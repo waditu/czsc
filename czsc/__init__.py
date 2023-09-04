@@ -12,37 +12,76 @@ from czsc import sensors
 from czsc import aphorism
 from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
-
-from czsc.traders import CzscTrader, CzscSignals, generate_czsc_signals, check_signals_acc, get_unique_signals
-from czsc.traders import PairsPerformance, combine_holds_and_pairs, combine_dates_and_pairs, stock_holds_performance
-from czsc.traders import DummyBacktest, SignalsParser, get_signals_by_conf, get_signals_config, get_signals_freqs
-from czsc.traders import WeightBacktest, get_ensemble_weight
-from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
+from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
+from czsc.traders import (
+    CzscTrader,
+    CzscSignals,
+    generate_czsc_signals,
+    check_signals_acc,
+    get_unique_signals,
+    PairsPerformance,
+    combine_holds_and_pairs,
+    combine_dates_and_pairs,
+    stock_holds_performance,
+    DummyBacktest,
+    SignalsParser,
+    get_signals_by_conf,
+    get_signals_config,
+    get_signals_freqs,
+    WeightBacktest,
+    get_ensemble_weight,
+)
+from czsc.utils import (
+    KlineChart,
+    WordWriter,
+    BarGenerator,
+    freq_end_time,
+    resample_bars,
+    dill_dump,
+    dill_load,
+    read_json,
+    save_json,
+    get_sub_elements,
+    get_py_namespace,
+    freqs_sorted,
+    x_round,
+    import_by_name,
+    create_grid_params,
+    cal_trade_price,
+    update_bbars,
+    update_tbars,
+    update_nbars,
+    CrossSectionalPerformance,
+    cross_sectional_ranker,
+    cross_sectional_ic,
+    SignalAnalyzer,
+    SignalPerformance,
+    daily_performance,
+    net_value_stats,
+    subtract_fee,
+    home_path,
+    get_dir_size,
+    empty_cache_path,
+)
 
-from czsc.utils import KlineChart, BarGenerator, resample_bars, dill_dump, dill_load, read_json, save_json
-from czsc.utils import get_sub_elements, get_py_namespace, freqs_sorted, x_round, import_by_name, create_grid_params
-from czsc.utils import cal_trade_price, cross_sectional_ic, update_bbars, update_tbars, update_nbars
-from czsc.utils import CrossSectionalPerformance
-from czsc.utils.signal_analyzer import SignalAnalyzer, SignalPerformance
-from czsc.utils.stats import daily_performance, net_value_stats, subtract_fee
-from czsc.utils.cache import home_path, get_dir_size, empty_cache_path
 
-
-__version__ = "0.9.27"
+__version__ = "0.9.28"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230812"
+__date__ = "20230820"
 
 
 def welcome():
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
     aphorism.print_one()
 
-    print(f"CZSC环境变量："
-          f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
-          f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
-          f"czsc_bi_change_th = {envs.get_bi_change_th()}")
+    print(
+        f"CZSC环境变量："
+        f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
+        f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
+        f"czsc_bi_change_th = {envs.get_bi_change_th()}"
+    )
 
 
 if envs.get_welcome():

@@ -27,7 +27,7 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'm
             {'多头策略A': 1, '多头策略B': 1, '空头策略A': -1}
     :param kwargs:
     :return: pd.DataFrame
-        columns = ['dt', 'symbol', 'weight', 'price']    
+        columns = ['dt', 'symbol', 'weight', 'price']
     """
     logger.info(f"trader positions: {[p.name for p in trader.positions]}")
 
@@ -40,7 +40,7 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'm
             assert dfp['dt'].equals(p_pos['dt'])
             dfp = dfp.merge(p_pos[['dt', 'pos']], on='dt', how='left')
         dfp.rename(columns={'pos': p.name}, inplace=True)
-    
+
     pos_cols = [c for c in dfp.columns if c not in ['dt', 'weight', 'price']]
     if callable(method):
         dfp['weight'] = dfp[pos_cols].apply(lambda x: method(x.to_dict()), axis=1)
@@ -56,7 +56,7 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'm
             dfp['weight'] = dfp[pos_cols].apply(lambda x: np.sign(np.sum(x)), axis=1)
         else:
             raise ValueError(f"method {method} not supported")
-    
+
     dfp['symbol'] = trader.symbol
     logger.info(f"trader weight decribe: {dfp['weight'].describe().round(4).to_dict()}")
     return dfp[['dt', 'symbol', 'weight', 'price']].copy()
@@ -67,14 +67,14 @@ class WeightBacktest:
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
-        
+
         :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
 
             dt      为K线结束时间，
             symbol  为合约代码，
             weight  为K线结束时间对应的持仓权重，
             price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
-        
+
             数据样例如下：
             ===================  ========  ========  =======
             dt                   symbol      weight    price
@@ -85,13 +85,13 @@ class WeightBacktest:
             2019-01-02 09:04:00  DLi9001       0.25  960.72
             2019-01-02 09:05:00  DLi9001       0.25  961.695
             ===================  ========  ========  =======
-            
+
         :param digits: int, 权重列保留小数位数
         :param kwargs:
 
             - fee_rate: float，单边交易成本，包括手续费与冲击成本, 默认为 0.0002
             - res_path: str，回测结果保存路径，默认为 "weight_backtest"
-            
+
         """
         self.kwargs = kwargs
         self.dfw = dfw.copy()
@@ -100,7 +100,7 @@ class WeightBacktest:
         self.dfw['weight'] = self.dfw['weight'].round(digits)
         self.symbols = list(self.dfw['symbol'].unique().tolist())
         self.res_path = Path(kwargs.get('res_path', "weight_backtest"))
-        self.res_path.mkdir(exist_ok=True, parents=True)    
+        self.res_path.mkdir(exist_ok=True, parents=True)
         logger.add(self.res_path.joinpath("weight_backtest.log"), rotation="1 week")
         logger.info(f"持仓权重回测参数：digits={digits}, fee_rate={self.fee_rate}，res_path={self.res_path}，kwargs={kwargs}")
 
@@ -116,7 +116,7 @@ class WeightBacktest:
                 edge    为每日收益率，
                 return  为每日收益率减去交易成本后的真实收益，
                 cost    为交易成本
-            
+
             数据样例如下：
 
                 ==========  ========  ============  ============  =======
@@ -181,13 +181,13 @@ class WeightBacktest:
                 # 多头转换成空头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平多')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开空')
-            
+
             elif row1['volume'] <= 0 and row2['volume'] >= 0:
                 # 空头转换成多头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平空')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开多')
 
-        pairs, opens =[], []
+        pairs, opens = [], []
         for op in operates:
             if op['operate'] in ['开多', '开空']:
                 opens.append(op)
@@ -202,9 +202,9 @@ class WeightBacktest:
                 p_ret = round((open_op['price'] - op['price']) / open_op['price'] * 10000, 2)
                 p_dir = '空头'
             pair = {"标的代码": symbol, "交易方向": p_dir,
-                    "开仓时间": open_op['dt'], "平仓时间": op['dt'], 
+                    "开仓时间": open_op['dt'], "平仓时间": op['dt'],
                     "开仓价格": open_op['price'], "平仓价格": op['price'],
-                    "持仓K线数": op['bar_id'] - open_op['bar_id'] + 1, 
+                    "持仓K线数": op['bar_id'] - open_op['bar_id'] + 1,
                     "事件序列": f"{open_op['operate']} -> {op['operate']}",
                     "持仓天数": (op['dt'] - open_op['dt']).days,
                     "盈亏比例": p_ret}

@@ -57,3 +57,33 @@ def test_subtract_fee():
     # 执行函数并捕获异常
     with pytest.raises(AssertionError):
         subtract_fee(df, fee=1)
+
+
+def test_ranker():
+    import numpy as np
+    import pandas as pd
+    from czsc.utils.cross import cross_sectional_ranker
+
+    np.random.seed(42)
+    dates = pd.date_range('2021-01-01', '2023-01-05')
+    symbols = ['AAPL', 'GOOG', 'TSLA', 'MSFT']
+    data = {'date': [], 'symbol': [], 'return': [], 'factor1': [], 'factor2': []}
+    for date in dates:
+        returns = np.random.randn(len(symbols))
+        ranks = np.argsort(returns) + 1
+        for ticker, rank in zip(symbols, ranks):
+            data['date'].append(date)
+            data['symbol'].append(ticker)
+            data['return'].append(rank)  # 'return' 现在代表了每天的收益率排名
+            data['factor1'].append(np.random.randn())
+            data['factor2'].append(np.random.randn())
+    df = pd.DataFrame(data)
+    df['dt'] = df['date']
+
+    x_cols = ['factor1', 'factor2']
+    y_col = 'return'
+
+    dfp = cross_sectional_ranker(df, x_cols, y_col)
+    assert dfp['rank'].max() == len(symbols)
+    assert dfp['rank'].min() == 1
+    assert dfp['rank'].mean() == 2.5
