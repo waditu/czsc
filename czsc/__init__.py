@@ -66,10 +66,10 @@ from czsc.utils import (
 )
 
 
-__version__ = "0.9.28"
+__version__ = "0.9.29"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230820"
+__date__ = "20230904"
 
 
 def welcome():
