@@ -70,7 +70,7 @@ class WeightBacktest:
 
         :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
 
-            dt      为K线结束时间，
+            dt      为K线结束时间，必须是连续的交易时间序列，不允许有时间断层
             symbol  为合约代码，
             weight  为K线结束时间对应的持仓权重，
             price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
@@ -109,6 +109,7 @@ class WeightBacktest:
 
         :param symbol: str，合约代码
         :return: pd.DataFrame，品种每日收益率，
+
             columns = ['date', 'symbol', 'edge', 'return', 'cost']
             其中
                 date    为交易日，
@@ -143,7 +144,7 @@ class WeightBacktest:
         """获取某个合约的开平交易记录"""
         dfs = self.dfw[self.dfw['symbol'] == symbol].copy()
         dfs['volume'] = (dfs['weight'] * pow(10, self.digits)).astype(int)
-        dfs['bar_id'] = list(range(1, len(dfs)+1))
+        dfs['bar_id'] = list(range(1, len(dfs) + 1))
 
         # 根据权重变化生成开平仓记录
         operates = []

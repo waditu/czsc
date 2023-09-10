@@ -56,5 +56,3 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         return []
     _bars = czsc.resample_bars(kline, freq, raw_bars=True)
     return _bars
-
-

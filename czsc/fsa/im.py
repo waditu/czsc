@@ -95,7 +95,7 @@ class IM(FeishuApiBase):
         payload = {"receive_id": receive_id, "content": {"text": text}, "msg_type": "text"}
         return self.send(payload, receive_id_type)
 
-    def send_image(self,  image_path, receive_id, receive_id_type='open_id'):
+    def send_image(self, image_path, receive_id, receive_id_type='open_id'):
         """发送图片
 
         :param image_path: 图片路径

@@ -26,7 +26,6 @@ from czsc.traders import (
     stock_holds_performance,
     DummyBacktest,
     SignalsParser,
-    get_signals_by_conf,
     get_signals_config,
     get_signals_freqs,
     WeightBacktest,

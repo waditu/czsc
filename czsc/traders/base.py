@@ -29,7 +29,7 @@ from czsc.traders.sig_parse import get_signals_freqs
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: BarGenerator = None,  **kwargs):
+    def __init__(self, bg: Optional[BarGenerator] = None, **kwargs):
         """
 
         :param bg: K线合成器
@@ -69,12 +69,14 @@ class CzscSignals:
         """通过信号参数配置获取信号
 
         信号参数配置，格式如下：
+
             signals_config = [
                 {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
                 {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
                 {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
                 {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
             ]
+
         :return: 信号字典
         """
         s = OrderedDict()
@@ -150,32 +152,6 @@ class CzscSignals:
         self.s = OrderedDict()
         self.s.update(self.get_signals_by_conf())
         self.s.update(last_bar.__dict__)
-
-
-@deprecated(version="0.9.16", reason="请使用 CzscSignals 类")
-def get_signals_by_conf(cat: CzscSignals, conf):
-    """通过信号参数配置获取信号
-
-    :param cat:
-    :param conf: 信号参数配置，格式如下：
-        conf = [
-            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 1, 'ma_type': 'SMA', 'timeperiod': 5},
-            {'name': 'czsc.signals.tas_ma_base_V221101', 'freq': '日线', 'di': 5, 'ma_type': 'SMA', 'timeperiod': 5},
-            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 1, 'ma_seq': (5, 20), 'th': 100},
-            {'name': 'czsc.signals.tas_double_ma_V221203', 'freq': '日线', 'di': 5, 'ma_seq': (5, 20), 'th': 100},
-        ]
-    :return: 信号字典
-    """
-    s = OrderedDict({"symbol": cat.symbol, "dt": cat.end_dt, "close": cat.latest_price})
-    for param in conf:
-        param = dict(param)
-        sig_func = import_by_name(param.pop('name'))
-        freq = param.pop('freq', None)
-        if freq in cat.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
-            s.update(sig_func(cat.kas[freq], **param))   # type: ignore
-        else:                # 否则使用 CAT 作为输入
-            s.update(sig_func(cat, **param))
-    return s
 
 
 def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
@@ -409,7 +385,7 @@ class CzscTrader(CzscSignals):
 
         return pos
 
-    def get_position(self, name: str) -> Position:
+    def get_position(self, name: str) -> Optional[Position]:
         """获取指定名称的仓位策略对象
 
         :param name: 仓位名称

@@ -8,11 +8,9 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from collections import Counter
-from typing import Callable, List, AnyStr
+from typing import List
 from sklearn.preprocessing import KBinsDiscretizer
-from deprecated import deprecated
-
-from ..data import TsDataCache, freq_cn2ts
+from ..data import TsDataCache
 
 
 def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strategy='quantile'):
