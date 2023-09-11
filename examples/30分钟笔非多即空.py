@@ -99,26 +99,3 @@ if __name__ == '__main__':
 
     # 当策略执行过程符合预期后，将持仓策略保存到本地 json 文件中
     tactic.save_positions(results_path / "positions")
-
-
-    # for _pos in trader.positions:
-    #     print(_pos.name, symbol, _pos.evaluate('多头'))
-
-    # # dummy backtest, 只能通过命令行执行，不能在PyCharm中的Python终端执行
-    # from czsc import DummyBacktest
-    # db = DummyBacktest(strategy=CzscStocksBeta, signals_path=r'D:\策略研究\signals',
-    #                    results_path=r'D:\策略研究\CzscStocksBetaV2', read_bars=research.get_raw_bars)
-    # # db.execute(symbols=symbols, n_jobs=10)
-
-    # # on bar 回测
-    # stats = []
-    # for symbol in symbols[:3]:
-    #     try:
-    #         tactic = CzscStocksBeta(symbol=symbol, is_stocks=True)
-    #         bars = research.get_raw_bars(symbol, freq=tactic.base_freq, sdt='20150101', edt='20220101')
-    #         trader = tactic.backtest(bars, sdt='20200101')
-    #         for _pos in trader.positions:
-    #             stats.append(_pos.evaluate('多头'))
-    #             print(_pos.name, symbol, _pos.evaluate('多头'))
-    #     except Exception as e:
-    #         print(symbol, '回测失败', e)
