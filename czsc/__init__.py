@@ -62,6 +62,7 @@ from czsc.utils import (
     home_path,
     get_dir_size,
     empty_cache_path,
+    print_df_sample,
 )
 
 from czsc.utils.calendar import (
