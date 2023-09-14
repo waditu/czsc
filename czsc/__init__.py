@@ -14,6 +14,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
+from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
 from czsc.traders import (
     CzscTrader,
     CzscSignals,
@@ -30,6 +31,7 @@ from czsc.traders import (
     get_signals_freqs,
     WeightBacktest,
     get_ensemble_weight,
+    long_short_equity,
 )
 from czsc.utils import (
     KlineChart,
