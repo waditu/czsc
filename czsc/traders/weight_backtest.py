@@ -67,13 +67,14 @@ def long_short_equity(factors, returns, hold_period=2, rank=5, **kwargs):
     assert weight.sum(axis=1).unique().tolist() == [0], '每个时间截面的多空权重之和必须为0'
 
     # 2. 计算多空组合的收益率
-    lrt = returns[long].mean(1) / 2
-    srt = (-returns[short]).mean(1) / 2
-    lst = (returns * weight).sum(axis=1) / (rank * 2)
-    cost = weight.diff().abs().sum(axis=1) / (rank * 4) * fee * 2
-    ret = pd.DataFrame({'多头': lrt, '空头': srt, '多空': lst, '多空费后': lst - cost})
-    df_nav = ret.cumsum().resample('1D').last().dropna(axis=0, thresh=3)
-    df_nav = ret.dropna(axis=0, thresh=3).diff()
+    long_ret = returns[long].mean(1).cumsum()
+    short_ret = (-returns[short]).mean(1).cumsum()
+    ls_ret = ((returns * weight).sum(axis=1) / (rank * 2)).cumsum()
+    ls_post_fee_ret = ((returns * weight).sum(axis=1) / (rank * 2) - weight.diff().abs().sum(axis=1) / (rank * 4) * fee * 2).cumsum()
+
+    ret = pd.DataFrame({'多头': long_ret / 2, '空头': short_ret / 2, '多空': ls_ret, '多空费后': ls_post_fee_ret})
+    df_nav = ret.resample('1D').last().dropna(axis=0, thresh=3)
+    df_nav = df_nav.diff()
 
     # 2. 分品种收益统计
     ret_symbol = pd.concat([returns[long].sum(), -returns[short].sum()], axis=1)
