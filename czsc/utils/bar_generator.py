@@ -6,9 +6,109 @@ create_dt: 2021/11/14 12:39
 describe: 从任意周期K线开始合成更高周期K线的工具类
 """
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import List, Union, AnyStr
 from czsc.objects import RawBar, Freq
+from pathlib import Path
+from loguru import logger
+from czsc.utils.calendar import next_trading_date
+
+
+mss = pd.read_feather(Path(__file__).parent / "minites_split.feather")
+freq_market_times, freq_edt_map = {}, {}
+for _m, dfg in mss.groupby('market'):
+    for _f in [x for x in mss.columns if x.endswith("分钟")]:
+        freq_market_times[f"{_f}_{_m}"] = list(dfg[_f].unique())
+        freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
+
+
+def check_freq_and_market(time_seq: List[AnyStr]):
+    """检查时间序列是否为同一周期，是否为同一市场
+
+    :param time_seq: 时间序列，如 ['11:00', '15:00', '23:00', '01:00', '02:30']
+    :return:
+        - freq      K线周期
+        - market    交易市场
+    """
+    assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
+    res = {}
+    for key, tts in freq_market_times.items():
+        if set(tts) == set(time_seq):
+            freq, market = key.split("_")
+            return freq, market
+
+        if len(time_seq) < len(tts) * 0.9 or len(time_seq) > len(tts) * 1.1:
+            continue
+
+        res[key] = len(set(time_seq).intersection(set(tts))) / len(tts)
+    freq, market = sorted(res.items(), key=lambda x: x[1], reverse=True)[0][0].split("_")
+    return freq, market
+
+
+def freq_end_date(dt, freq: Union[Freq, AnyStr]):
+    """交易日结束时间计算"""
+    if not isinstance(dt, date):
+        dt = pd.to_datetime(dt).date()
+    if not isinstance(freq, Freq):
+        freq = Freq(freq)
+
+    dt = pd.to_datetime(dt)
+    if freq == Freq.D:
+        return dt
+
+    if freq == Freq.W:
+        return dt + timedelta(days=5 - dt.isoweekday())
+
+    if freq == Freq.Y:
+        return datetime(year=dt.year, month=12, day=31)
+
+    if freq == Freq.M:
+        if dt.month == 12:
+            edt = datetime(year=dt.year, month=12, day=31)
+        else:
+            edt = datetime(year=dt.year, month=dt.month + 1, day=1) - timedelta(days=1)
+        return edt
+
+    if freq == Freq.S:
+        dt_m = dt.month
+        if dt_m in [1, 2, 3]:
+            edt = datetime(year=dt.year, month=4, day=1) - timedelta(days=1)
+        elif dt_m in [4, 5, 6]:
+            edt = datetime(year=dt.year, month=7, day=1) - timedelta(days=1)
+        elif dt_m in [7, 8, 9]:
+            edt = datetime(year=dt.year, month=10, day=1) - timedelta(days=1)
+        else:
+            edt = datetime(year=dt.year, month=12, day=31)
+        return edt
+
+    logger.warning(f'error: {dt} - {freq}')
+    return dt
+
+
+def freq_end_time_V230921(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> datetime:
+    """A股与期货市场精确的获取 dt 对应的K线周期结束时间
+
+    :param dt: datetime
+    :param freq: Freq
+    :return: datetime
+    """
+    assert market in ['A股', '期货', '默认'], "market 参数必须为 A股 或 期货 或 默认"
+    if not isinstance(freq, Freq):
+        freq = Freq(freq)
+    if dt.second > 0 or dt.microsecond > 0:
+        dt = dt.replace(second=0, microsecond=0) + timedelta(minutes=1)
+
+    hm = dt.strftime("%H:%M")
+    key = f"{freq.value}_{market}"
+    if freq.value.endswith("分钟"):
+        h, m = freq_edt_map[key][hm].split(":")
+        edt = dt.replace(hour=int(h), minute=int(m))
+        return edt
+
+    if not ("15:00" > hm > "09:00") and market == "期货":
+        dt = next_trading_date(dt.strftime("%Y-%m-%d"), 1)
+
+    return freq_end_date(dt.date(), freq)
 
 
 def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr]) -> datetime:
@@ -44,39 +144,7 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr]) -> datetime:
                     return edt
 
     # 处理 日、周、月、季、年 的结束时间
-    dt = dt.replace(hour=0, minute=0)
-
-    if freq == Freq.D:
-        return dt
-
-    if freq == Freq.W:
-        sdt = dt + timedelta(days=5 - dt.isoweekday())
-        return sdt
-
-    if freq == Freq.M:
-        if dt.month == 12:
-            sdt = datetime(year=dt.year + 1, month=1, day=1) - timedelta(days=1)
-        else:
-            sdt = datetime(year=dt.year, month=dt.month + 1, day=1) - timedelta(days=1)
-        return sdt
-
-    if freq == Freq.S:
-        dt_m = dt.month
-        if dt_m in [1, 2, 3]:
-            sdt = datetime(year=dt.year, month=4, day=1) - timedelta(days=1)
-        elif dt_m in [4, 5, 6]:
-            sdt = datetime(year=dt.year, month=7, day=1) - timedelta(days=1)
-        elif dt_m in [7, 8, 9]:
-            sdt = datetime(year=dt.year, month=10, day=1) - timedelta(days=1)
-        else:
-            sdt = datetime(year=dt.year + 1, month=1, day=1) - timedelta(days=1)
-        return sdt
-
-    if freq == Freq.Y:
-        return datetime(year=dt.year, month=12, day=31)
-
-    print(f'freq_end_time error: {dt} - {freq}')
-    return dt
+    return freq_end_date(dt.date(), freq)
 
 
 def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=True, **kwargs):
@@ -102,7 +170,8 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq))
+    market = kwargs.get("market", "默认")
+    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time_V230921(x, target_freq, market))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
          'low': 'min', 'vol': 'sum', 'amount': 'sum', 'freq_edt': 'last'})

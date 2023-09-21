@@ -6,12 +6,11 @@ create_dt: 2023/2/7 13:17
 describe: 用于探索性分析的函数
 """
 import numpy as np
-import pandas as pd
 
 
 def vwap(price: np.array, volume: np.array, **kwargs) -> float:
     """计算成交量加权平均价
-    
+
     :param price: 价格序列
     :param volume: 成交量序列
     :return: 平均价
@@ -26,7 +25,3 @@ def twap(price: np.array, **kwargs) -> float:
     :return: 平均价
     """
     return np.average(price)
-
-
-
-

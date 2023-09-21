@@ -21,48 +21,44 @@ def create_long_short_V230908(symbol, **kwargs):
     """
     opens = [
         {
-        "operate": "开多",
-        "signals_all": [],
-        "signals_any": [],
-        "signals_not": [],
-        "factors": [
-            {
-            "signals_all": [
-                "30分钟_D1_表里关系V230101_向上_任意_任意_0"
-            ],
+            "operate": "开多",
+            "signals_all": [],
             "signals_any": [],
-            "signals_not": [
-                "30分钟_D1_涨跌停V230331_涨停_任意_任意_0"
-            ]
-            }
-        ]
+            "signals_not": [],
+            "factors": [
+                {
+                    "signals_all": ["30分钟_D1_表里关系V230101_向上_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": ["30分钟_D1_涨跌停V230331_涨停_任意_任意_0"],
+                }
+            ],
         },
-
         {
-        "operate": "开空",
-        "signals_all": [],
-        "signals_any": [],
-        "signals_not": [],
-        "factors": [
-            {
-            "signals_all": [
-                "30分钟_D1_表里关系V230101_向下_任意_任意_0"
-            ],
+            "operate": "开空",
+            "signals_all": [],
             "signals_any": [],
-            "signals_not": [
-                "30分钟_D1_涨跌停V230331_跌停_任意_任意_0"
-            ]
-            }
-        ]
-        }
+            "signals_not": [],
+            "factors": [
+                {
+                    "signals_all": ["30分钟_D1_表里关系V230101_向下_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": ["30分钟_D1_涨跌停V230331_跌停_任意_任意_0"],
+                }
+            ],
+        },
     ]
 
     exits = []
 
-    pos = Position(name="30分钟笔非多即空", symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=3600 * 4, timeout=16 * 30, stop_loss=500)
+    pos = Position(
+        name="30分钟笔非多即空",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=3600 * 4,
+        timeout=16 * 30,
+        stop_loss=500,
+    )
     return pos
 
 
@@ -77,50 +73,45 @@ def create_long_short_V230909(symbol, **kwargs):
 
     opens = [
         {
-        "operate": "开多",
-        "signals_all": [],
-        "signals_any": [],
-        "signals_not": [],
-        "factors": [
-            {
-            "signals_all": [
-                f"{base_freq}_D1_表里关系V230101_向上_任意_任意_0"
-            ],
+            "operate": "开多",
+            "signals_all": [],
             "signals_any": [],
-            "signals_not": [
-                f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"
-            ]
-            }
-        ]
+            "signals_not": [],
+            "factors": [
+                {
+                    "signals_all": [f"{base_freq}_D1_表里关系V230101_向上_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [f"{base_freq}_D1_涨跌停V230331_涨停_任意_任意_0"],
+                }
+            ],
         },
-
         {
-        "operate": "开空",
-        "signals_all": [],
-        "signals_any": [],
-        "signals_not": [],
-        "factors": [
-            {
-            "signals_all": [
-                f"{base_freq}_D1_表里关系V230101_向下_任意_任意_0"
-            ],
+            "operate": "开空",
+            "signals_all": [],
             "signals_any": [],
-            "signals_not": [
-                f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0"
-            ]
-            }
-        ]
-        }
+            "signals_not": [],
+            "factors": [
+                {
+                    "signals_all": [f"{base_freq}_D1_表里关系V230101_向下_任意_任意_0"],
+                    "signals_any": [],
+                    "signals_not": [f"{base_freq}_D1_涨跌停V230331_跌停_任意_任意_0"],
+                }
+            ],
+        },
     ]
 
     exits = []
 
-    pos = Position(name=f"{base_freq}笔非多即空", symbol=symbol,
-                   opens=[Event.load(x) for x in opens],
-                   exits=[Event.load(x) for x in exits],
-                   interval=3600 * 4, timeout=16 * 30, stop_loss=500)
+    pos = Position(
+        name=f"{base_freq}笔非多即空",
+        symbol=symbol,
+        opens=[Event.load(x) for x in opens],
+        exits=[Event.load(x) for x in exits],
+        interval=3600 * 4,
+        timeout=16 * 30,
+        stop_loss=500,
+    )
     return pos
-
 
 
 class Strategy(czsc.CzscStrategyBase):

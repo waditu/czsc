@@ -50,5 +50,5 @@ def get_bi_change_th(v: float = None) -> float:
     """
     bi_change_th = v if v else os.environ.get('czsc_bi_change_th', '1')
     bi_change_th = float(bi_change_th)
-    assert 2 >= bi_change_th >= 0.5 or bi_change_th == -1, f"czsc_bi_change_th not in [0.5, 2]"
+    assert 2 >= bi_change_th >= 0.5 or bi_change_th == -1, "czsc_bi_change_th not in [0.5, 2]"
     return bi_change_th

@@ -17,6 +17,7 @@ freq_gm2cn = {"60s": "1分钟", "300s": "5分钟", "900s": "15分钟", "1800s": 
               "3600s": "60分钟", "1d": "日线"}
 freq_cn2gm = {v: k for k, v in freq_gm2cn.items()}
 
+
 def jq_symbol_to_gm(symbol: str) -> str:
     """聚宽代码转掘金代码"""
     code, exchange = symbol.split(".")
@@ -154,4 +155,3 @@ def save_symbols_to_ebk(symbols, file_ebk, source='ts'):
     tdx_symbols = [symbol_to_tdx(ts_code) for ts_code in symbols]
     with open(file_ebk, encoding='utf-8', mode='w') as f:
         f.write("\n".join(tdx_symbols))
-
