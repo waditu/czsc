@@ -67,11 +67,17 @@ from czsc.utils import (
     print_df_sample,
 )
 
+# 交易日历工具
 from czsc.utils.calendar import (
     is_trading_date,
     next_trading_date,
     prev_trading_date,
     get_trading_dates,
+)
+
+# streamlit 量化分析组件
+from czsc.utils.st_components import (
+    show_daily_return,
 )
 
 
