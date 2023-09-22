@@ -234,8 +234,10 @@ def bar_vol_grow_V221112(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
+
         - di: 倒数第i根K线
         - n: 过去N根K线
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 2))
@@ -358,6 +360,7 @@ def bar_mean_amount_V221112(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+@deprecated(version='1.0.0', reason="计算耗时，逻辑不严谨")
 def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 di 根 K 线穿越支撑、压力位的数量【慎用，非常耗时】
 
@@ -1278,7 +1281,7 @@ def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
     **信号逻辑：**
 
     TNR计算公式：取N根K线，首尾两个close的绝对差值 除以 相邻两个close的绝对差值累计。
-    
+
     取最近100个bar的TNR进行分层。
 
     **信号列表：**
@@ -1437,13 +1440,13 @@ def bar_eight_V230702(c: CZSC, **kwargs) -> OrderedDict:
     for b1, b2, b3 in zip(bars[:-2], bars[1:-1], bars[2:]):
         if min(b1.high, b2.high, b3.high) >= max(b1.low, b2.low, b3.low):
             zs_list.append([b1, b2, b3])
-    
+
     _dir = "上涨" if bars[-1].close > bars[0].open else "下跌"
 
     if not zs_list:
         v1 = f"无中枢{_dir}"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    
+
     # 双中枢的情况，有一根K线的 high low 与前后两个中枢没有重叠
     if len(zs_list) >= 2:
         zs1, zs2 = zs_list[0], zs_list[-1]
@@ -1452,11 +1455,11 @@ def bar_eight_V230702(c: CZSC, **kwargs) -> OrderedDict:
         if _dir == "上涨" and zs1_high < zs2_low:
             v1 = f"双中枢{_dir}"
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-        
+
         if _dir == "下跌" and zs1_low > zs2_high:
             v1 = f"双中枢{_dir}"
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-        
+
     # 单中枢的情况，前三根K线出现高点：弱平衡市，前三根K线出现低点：强平衡市，否则：转折平衡市
     high_first = max(bars[0].high, bars[1].high, bars[2].high) == max([x.high for x in bars])
     low_first = min(bars[0].low, bars[1].low, bars[2].low) == min([x.low for x in bars])
@@ -1466,7 +1469,7 @@ def bar_eight_V230702(c: CZSC, **kwargs) -> OrderedDict:
         v1 = "强平衡市"
     else:
         v1 = "转折平衡市"
-        
+
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
@@ -1500,7 +1503,7 @@ def bar_window_std_V230731(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
-    
+
         - :param di: 信号计算截止倒数第i根K线
         - :param w: 观察的窗口大小。
         - :param m: 计算分位数所需取K线的数量。
@@ -1577,7 +1580,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
 
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_W{w}M{m}N{n}L{l}_支撑压力位V230731".split('_')
-    if len(c.bi_list) <  n+2:
+    if len(c.bi_list) < n + 2:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     # 更新支撑压力位位置
@@ -1585,7 +1588,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
     H_line, L_line = max([x.high for x in c.bi_list[-n:]]), min([x.low for x in c.bi_list[-n:]])
     for i, bar in enumerate(c.bars_raw):
         if cache_key_pct in bar.cache:
-            continue  
+            continue
         bar.cache[cache_key_pct] = (bar.close - L_line) / (H_line - L_line)
 
     fenweis = [x.cache[cache_key_pct] for x in get_sub_elements(c.bars_raw, n=m)]
@@ -1610,6 +1613,18 @@ def bar_window_ps_V230801(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N7_最小N4_当前N5_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N8_最小N4_当前N4_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N6_最小N2_当前N6_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N6_最小N2_当前N5_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N6_最小N2_当前N3_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N4_最小N0_当前N3_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N4_最小N0_当前N2_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N4_最小N0_当前N1_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N7_最小N3_当前N6_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N9_最小N4_当前N9_0')
+    - Signal('60分钟_N8W5_支撑压力位V230801_最大N4_最小N0_当前N4_0')
+
     :param c: CZSC对象
     :param kwargs: 参数字典
 
@@ -1623,11 +1638,12 @@ def bar_window_ps_V230801(c: CZSC, **kwargs) -> OrderedDict:
 
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_N{n}W{w}_支撑压力位V230801".split('_')
-    if len(c.bi_list) < n+2:
+    ubi = c.ubi
+    if len(c.bi_list) < n + 2 or not ubi:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
-    ubi = c.ubi
-    H_line, L_line = max([x.high for x in c.bi_list[-n:]] + [ubi['high']]), min([x.low for x in c.bi_list[-n:]] + [ubi['low']])
+    H_line = max([x.high for x in c.bi_list[-n:]] + [ubi['high']])
+    L_line = min([x.low for x in c.bi_list[-n:]] + [ubi['low']])
 
     pcts = [int(max((x.close - L_line) / (H_line - L_line), 0) * 10) for x in c.bars_raw[-w:]]
     v1, v2, v3 = f"最大N{max(pcts)}", f"最小N{min(pcts)}", f"当前N{pcts[-1]}"
