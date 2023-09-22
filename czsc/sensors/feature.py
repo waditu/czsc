@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class FeatureAnalyzeBase:
-    """【基类】特征计算与分析"""
+    """【基类】特征计算与分析，适用于时序量价类因子"""
 
     def __init__(self, symbols, read_bars, **kwargs) -> None:
         """初始化函数
@@ -124,7 +124,7 @@ class FeatureAnalyzeBase:
 
         for feature in self.new_features:
             logger.info(f"特征 {feature} 的取值范围：{self.dfs[feature].describe().round(4).to_dict()}")
-            df1, res1 = cross_sectional_ic(self.dfs,  x_col=feature, y_col='n1b', method=corr_method, dt_col='dt')
+            df1, res1 = cross_sectional_ic(self.dfs, x_col=feature, y_col='n1b', method=corr_method, dt_col='dt')
             logger.info(f"特征 {feature} 与未来1日收益的相关系数：{res1}")
             _ = self.layering(feature, 0.95, 1)
             _ = self.layering(feature, 0.9, 1)

@@ -195,7 +195,6 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
 
 
 class BarGenerator:
-    """使用日线合成周线、月线、季线"""
 
     def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000):
         self.symbol = None
