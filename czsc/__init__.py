@@ -32,6 +32,7 @@ from czsc.traders import (
     WeightBacktest,
     get_ensemble_weight,
     long_short_equity,
+    RedisWeightsClient,
 )
 from czsc.utils import (
     KlineChart,
