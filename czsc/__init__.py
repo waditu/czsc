@@ -83,6 +83,11 @@ from czsc.utils.st_components import (
     show_daily_return,
 )
 
+from czsc.utils.bi_info import (
+    calculate_bi_info,
+    symbols_bi_infos,
+)
+
 
 __version__ = "0.9.29"
 __author__ = "zengbin93"
