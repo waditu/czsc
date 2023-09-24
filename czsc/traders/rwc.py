@@ -19,7 +19,7 @@ class RedisWeightsClient:
 
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
-        :param name: str, 策略名
+        :param strategy_name: str, 策略名
         :param redis_url: str, redis连接字符串
 
             For example::
@@ -133,7 +133,7 @@ class RedisWeightsClient:
             key = f'{self.heartbeat_prefix}:{self.strategy_name}'
             try:
                 self.heartbeat_client.set(key, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-            except:
+            except Exception:
                 continue
             time.sleep(15)
 
