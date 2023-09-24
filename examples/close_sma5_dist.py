@@ -1,7 +1,7 @@
-from czsc.sensors.feature import FeatureAnalyzeBase
+import czsc
 
 
-class SMA5Dist(FeatureAnalyzeBase):
+class SMA5Dist(czsc.FeatureAnalyzeBase):
 
     @property
     def new_features(self):
@@ -31,5 +31,4 @@ if __name__ == '__main__':
     from czsc.connectors.research import get_raw_bars, get_symbols
 
     sd = SMA5Dist(symbols=get_symbols('中证500成分股'), read_bars=get_raw_bars, freq='日线', sdt='20210101', edt='20230101',
-                max_workers=10,
-                results_path=r"C:\sma5dist")
+                  max_workers=10, results_path=r"C:\sma5dist")

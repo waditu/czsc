@@ -90,7 +90,6 @@ class DummyBacktest:
 
                 dfh = pd.DataFrame(pos.holds)
                 dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
-                dfh.drop(columns=['bid'], inplace=True)
                 dfh.fillna(0, inplace=True)
                 dfh['symbol'] = pos.symbol
                 dfh.to_parquet(file_holds)

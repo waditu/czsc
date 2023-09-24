@@ -8,7 +8,6 @@ describe: 命令行工具集
 https://click.palletsprojects.com/en/8.0.x/quickstart/
 """
 import click
-from loguru import logger
 
 
 @click.group()

@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class FeatureAnalyzeBase:
-    """【基类】特征计算与分析"""
+    """【基类】特征计算与分析，适用于时序量价类因子"""
 
     def __init__(self, symbols, read_bars, **kwargs) -> None:
         """初始化函数
@@ -73,7 +73,7 @@ class FeatureAnalyzeBase:
         except Exception as e:
             logger.error(f"{symbol} error: {e}")
             return pd.DataFrame()
-    
+
     def get_features(self) -> pd.DataFrame:
         """
         此方法检索self.symbols中每个符号的K线数据，
@@ -96,7 +96,7 @@ class FeatureAnalyzeBase:
                     res.append(df)
 
         return pd.concat(res, ignore_index=True)
-    
+
     def layering(self, feature, min_q, max_q):
         """分层回测"""
         df = self.dfs.copy()
@@ -106,7 +106,7 @@ class FeatureAnalyzeBase:
         dfm = df1.groupby('dt').agg({'n1b': 'mean'}).fillna(0)
         logger.info(f"分层累计收益 {feature} {min_q}-{max_q}：{dfm['n1b'].sum():.4f}; {daily_performance((dfm['n1b'] / 10000).to_list())}")
         return dfm
-    
+
     def report(self):
         """打印特征分析报告"""
         results_path = self.kwargs.get('results_path', None)
@@ -124,13 +124,13 @@ class FeatureAnalyzeBase:
 
         for feature in self.new_features:
             logger.info(f"特征 {feature} 的取值范围：{self.dfs[feature].describe().round(4).to_dict()}")
-            df1, res1 = cross_sectional_ic(self.dfs,  x_col=feature, y_col='n1b', method=corr_method, dt_col='dt')
+            df1, res1 = cross_sectional_ic(self.dfs, x_col=feature, y_col='n1b', method=corr_method, dt_col='dt')
             logger.info(f"特征 {feature} 与未来1日收益的相关系数：{res1}")
             _ = self.layering(feature, 0.95, 1)
             _ = self.layering(feature, 0.9, 1)
             _ = self.layering(feature, 0, 0.1)
             _ = self.layering(feature, 0, 0.05)
-            
+
             df1['年月'] = df1['dt'].apply(lambda x: x.strftime("%Y年%m月"))
             dfm = df1.groupby('年月').agg({'ic': 'mean'})
             logger.info(f"特征 {feature} 与未来1日收益的相关系数月度描述：{dfm.describe().round(4).to_dict()}")
@@ -139,15 +139,15 @@ class FeatureAnalyzeBase:
 
 class FixedNumberSelector:
     """选择固定数量（等权）的交易品种
-    
+
     可优化项：
     1. 传入 res_path, 将分析过程和分析结果保存下来
     2. 支持传入大盘择时信号，例如：大盘择时信号为空头时，多头只平不开
     """
-    
+
     def __init__(self, dfs, k, d, **kwargs):
         """
-        
+
         :param dfs: pd.DataFrame，所有交易品种的特征打分数据，必须包含以下列：dt, open, close, high, low, vol, amount, score；数据样例：
 
             ===================  =========  =======  =======  =======  =======  ========  =========  ========  =============
@@ -163,7 +163,7 @@ class FixedNumberSelector:
             2017-01-12 00:00:00  000001.SZ  956.441  958.536  960.631  956.441  42800677  391869402   10.9411    2.5563e-11
             2017-01-13 00:00:00  000001.SZ  957.488  959.583  962.726  955.393  43430137  397601906  -32.7865    2.51649e-11
             2017-01-16 00:00:00  000001.SZ  958.536  957.488  959.583  950.155  68316586  623025820   21.9292   -3.19607e-11
-            ===================  =========  =======  =======  =======  =======  ========  =========  ========  =============   
+            ===================  =========  =======  =======  =======  =======  ========  =========  ========  =============
 
         :param k: int，每期固定选择的数量
         :param d: int，每期允许变动的数量
@@ -193,7 +193,7 @@ class FixedNumberSelector:
         last_dt_map = {dt: dts[i-1] for i, dt in enumerate(dts)}
         self.dts, self.last_dt_map = dts, last_dt_map
         self.score_map = {dt: dfg[['symbol', 'dt', 'open', 'close', 'high', 'low', 'score', 'n1b']].copy() for dt, dfg in self.dfs.groupby('dt')}
-    
+
     def __deal_one_time(self, dt):
         """单次调整记录"""
         k, d, is_stocks = self.k, self.d, self.is_stocks
@@ -217,8 +217,8 @@ class FixedNumberSelector:
 
             _df_operates = [{'symbol': row['symbol'], 'dt': dt, 'action': 'buy', 'price': row['close']} for _, row in _df.iterrows()]
             self.operates[dt] = pd.DataFrame(_df_operates)
-            return 
-        
+            return
+
         # 有持仓的情况
         score = self.score_map[dt]
         last_dt = self.last_dt_map[dt]
@@ -239,7 +239,7 @@ class FixedNumberSelector:
         assert len(buy_symbols) == len(sell_symbols), "买入品种数量必须等于卖出品种数量"
         assert len(keep_symbols + buy_symbols) == k, "保持品种数量+买入品种数量必须等于k"
         _df = score[score.symbol.isin(keep_symbols + buy_symbols)].sort_values(by='score', ascending=False)
-    
+
         if len(_df) != k:
             logger.warning(f"选择的品种数量不等于{k}，当前只有{len(_df)}个品种")
 
@@ -250,9 +250,9 @@ class FixedNumberSelector:
         last_holds['edge'] = last_holds.apply(lambda row: row['edge'] - self.operate_fee if row['symbol'] in sell_symbols else row['edge'], axis=1)
         self.holds[last_dt] = last_holds
 
-        _sell_operates = [{'symbol': row['symbol'], 'dt': dt, 'action': 'sell', 'price': row['close']} 
+        _sell_operates = [{'symbol': row['symbol'], 'dt': dt, 'action': 'sell', 'price': row['close']}
                           for _, row in score[score.symbol.isin(sell_symbols)].iterrows()]
         _buy_operates = [{'symbol': row['symbol'], 'dt': dt, 'action': 'buy', 'price': row['close']}
-                            for _, row in score[score.symbol.isin(buy_symbols)].iterrows()]
+                         for _, row in score[score.symbol.isin(buy_symbols)].iterrows()]
         _df_operates = pd.DataFrame(_sell_operates + _buy_operates)
         self.operates[dt] = _df_operates

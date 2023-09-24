@@ -69,7 +69,7 @@ def stock_holds_performance(dc: TsDataCache, dfh, res_path):
 
     # 绘制收益曲线
     plt.close()
-    fig = plt.figure(figsize=(13, 4*len(index_list)))
+    fig = plt.figure(figsize=(13, 4 * len(index_list)))
     axes = fig.subplots(len(index_list), 1, sharex=True)
     for i, _index in enumerate(index_list):
         ax = axes[i]
@@ -325,5 +325,3 @@ def combine_dates_and_pairs(dates: list, pairs: pd.DataFrame, results_path):
     tp_old.agg_to_excel(os.path.join(results_path, "原始交易评价.xlsx"))
     tp_new.agg_to_excel(os.path.join(results_path, "组合过滤评价.xlsx"))
     return tp_old, tp_new
-
-

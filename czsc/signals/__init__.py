@@ -45,6 +45,7 @@ from czsc.signals.cxt import (
     cxt_bi_end_V230815,
     cxt_bi_stop_V230815,
     cxt_bi_trend_V230824,
+    cxt_bi_trend_V230913,
 )
 
 

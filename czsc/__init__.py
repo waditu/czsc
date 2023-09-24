@@ -14,6 +14,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
+from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
 from czsc.traders import (
     CzscTrader,
     CzscSignals,
@@ -26,11 +27,14 @@ from czsc.traders import (
     stock_holds_performance,
     DummyBacktest,
     SignalsParser,
-    get_signals_by_conf,
     get_signals_config,
     get_signals_freqs,
     WeightBacktest,
     get_ensemble_weight,
+    long_short_equity,
+    RedisWeightsClient,
+    OpensOptimize,
+    ExitsOptimize,
 )
 from czsc.utils import (
     KlineChart,
@@ -63,13 +67,32 @@ from czsc.utils import (
     home_path,
     get_dir_size,
     empty_cache_path,
+    print_df_sample,
+)
+
+# 交易日历工具
+from czsc.utils.calendar import (
+    is_trading_date,
+    next_trading_date,
+    prev_trading_date,
+    get_trading_dates,
+)
+
+# streamlit 量化分析组件
+from czsc.utils.st_components import (
+    show_daily_return,
+)
+
+from czsc.utils.bi_info import (
+    calculate_bi_info,
+    symbols_bi_infos,
 )
 
 
-__version__ = "0.9.28"
+__version__ = "0.9.29"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230820"
+__date__ = "20230904"
 
 
 def welcome():

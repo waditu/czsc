@@ -281,7 +281,7 @@ class SpreadSheets(FeishuApiBase):
         if df.empty:
             logger.warning("待写入的数据为空，不执行写入操作")
             return
-        
+
         if overwrite:
             self.delete_values(token, sheet_id)
             cols = df.columns.tolist()
@@ -298,7 +298,7 @@ class SpreadSheets(FeishuApiBase):
         assert df.shape[1] == col_count, f"df 列数 {df.shape[1]} 与表格列数 {col_count} 不一致"
 
         for i in range(0, len(df), batch_size):
-            dfi = df.iloc[i : i + batch_size]
+            dfi = df.iloc[i: i + batch_size]
             si = i + start_index + 1
             ei = si + batch_size
             vol_range = f"{sheet_id}!A{si}:{string.ascii_uppercase[col_count - 1]}{ei}"

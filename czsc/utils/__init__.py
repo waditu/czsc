@@ -125,7 +125,7 @@ def create_grid_params(prefix: str, detail=False, **kwargs) -> dict:
             key = "#".join([f"{k}={v}" for k, v in row.items()])
             # params[f"{prefix}@{key}"] = row
         else:
-            key = f"{'0' * (3-len(str(i)))}{i}"
+            key = str(i).zfill(3)
 
         row['version'] = f"{prefix}@{key}"
         params[f"{prefix}@{key}"] = row

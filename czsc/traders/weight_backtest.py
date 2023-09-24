@@ -16,6 +16,76 @@ from czsc.utils.io import save_json
 from czsc.utils.stats import daily_performance, evaluate_pairs
 
 
+def long_short_equity(factors, returns, hold_period=2, rank=5, **kwargs):
+    """根据截面因子值与收益率，回测分析多空对冲组合的收益率
+
+    :param factors: 截面因子，因子值越大，越偏向于做多，因子值越小，越偏向于做空；数据格式如下：
+                        SFIH9001  SFIF9001  SFIC9001
+            dt
+            2022-08-31  1.403915  1.252826  0.968868
+            2022-09-01  1.376690  1.253377  0.972276
+            2022-09-02  1.380867  1.253929  0.974999
+            2022-09-05  1.370359  1.254482  0.977737
+            2022-09-06  0.685180  0.633634  0.493986
+
+    :param returns: 品种收益率矩阵，数据格式如下：
+                        SFIH9001  SFIF9001  SFIC9001
+            dt
+            2021-01-04  0.007803  0.017228  0.004843
+            2021-01-05  0.014068  0.008300  0.000598
+            2021-01-06  0.024520  0.022766  0.004974
+            2021-01-07 -0.006193 -0.003698  0.005951
+            2021-01-08 -0.005651 -0.012263 -0.016441
+
+    :param hold_period: 持仓周期，dt 时刻的数量，如果是 2，则表示每两个交易时刻调仓一次
+    :param rank: 排序因子值前几名，或者排名因子值的前百分之几；
+        如果是整数，则表示排名因子值前几名；如果是浮点数，则表示排名因子值的前百分之几。
+        排名靠前，越偏向于做多；排名靠后，越偏向于做空。
+    :param kwargs:
+    :return:
+    """
+    # 单边费率
+    fee = kwargs.get('fee', 2) / 10000
+    factors, returns = factors.copy(), returns.copy()
+    factors.index = pd.to_datetime(factors.index)
+    returns.index = pd.to_datetime(returns.index)
+
+    # index 对齐
+    factors, returns = factors.align(returns, join='inner')
+    assert len(factors) == len(returns), 'factors and cross_ret must have the same length'
+    assert factors.index.equals(returns.index), 'factors and cross_ret must have the same index'
+    assert factors.columns.sort_values().tolist() == returns.columns.sort_values().tolist(), 'factors and cross_ret must have the same columns'
+
+    if isinstance(rank, float):
+        assert 0 < rank < 1, 'rank must be between 0 and 1'
+        rank = int(len(factors.columns) * rank)
+
+    # 1. 计算截面品种的多空权重
+    long = (factors.rank(1, ascending=True, method='first') <= rank).iloc[::hold_period].reindex(factors.index).ffill()
+    short = (factors.rank(1, ascending=False, method='first') <= rank).iloc[::hold_period].reindex(factors.index).ffill()
+    weight = long + 0 - short
+    assert weight.sum(axis=1).unique().tolist() == [0], '每个时间截面的多空权重之和必须为0'
+
+    # 2. 计算多空组合的收益率
+    long_ret = returns[long].mean(1).cumsum()
+    short_ret = (-returns[short]).mean(1).cumsum()
+    ls_ret = ((returns * weight).sum(axis=1) / (rank * 2)).cumsum()
+    ls_post_fee_ret = ((returns * weight).sum(axis=1) / (rank * 2) - weight.diff().abs().sum(axis=1) / (rank * 4) * fee * 2).cumsum()
+
+    ret = pd.DataFrame({'多头': long_ret / 2, '空头': short_ret / 2, '多空': ls_ret, '多空费后': ls_post_fee_ret})
+    df_nav = ret.resample('1D').last().dropna(axis=0, thresh=3)
+    df_nav = df_nav.diff()
+
+    # 2. 分品种收益统计
+    ret_symbol = pd.concat([returns[long].sum(), -returns[short].sum()], axis=1)
+    ret_symbol.columns = ['多头', '空头']
+    ret_symbol['多空'] = ret_symbol['多头'] + ret_symbol['空头']
+    ret_symbol = ret_symbol.sort_values(by='多空')
+
+    results = {'日收益率': df_nav, '品种收益': ret_symbol, '持仓权重': weight}
+    return results
+
+
 def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'mean'):
     """获取 CzscTrader 中所有 positions 按照 method 方法集成之后的权重
 
@@ -70,7 +140,7 @@ class WeightBacktest:
 
         :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
 
-            dt      为K线结束时间，
+            dt      为K线结束时间，必须是连续的交易时间序列，不允许有时间断层
             symbol  为合约代码，
             weight  为K线结束时间对应的持仓权重，
             price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
@@ -109,6 +179,7 @@ class WeightBacktest:
 
         :param symbol: str，合约代码
         :return: pd.DataFrame，品种每日收益率，
+
             columns = ['date', 'symbol', 'edge', 'return', 'cost']
             其中
                 date    为交易日，
@@ -143,7 +214,7 @@ class WeightBacktest:
         """获取某个合约的开平交易记录"""
         dfs = self.dfw[self.dfw['symbol'] == symbol].copy()
         dfs['volume'] = (dfs['weight'] * pow(10, self.digits)).astype(int)
-        dfs['bar_id'] = list(range(1, len(dfs)+1))
+        dfs['bar_id'] = list(range(1, len(dfs) + 1))
 
         # 根据权重变化生成开平仓记录
         operates = []

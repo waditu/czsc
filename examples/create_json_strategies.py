@@ -9,6 +9,7 @@ from czsc.strategies import (
 )
 from czsc import CzscStrategyBase, Position
 
+
 class BetaStrategy(CzscStrategyBase):
 
     @property
@@ -101,6 +102,7 @@ class BetaStrategy(CzscStrategyBase):
         ]
         return _pos
 
+
 if __name__ == "__main__":
-    tactic = BetaStrategy(symbol="000001.XSHG")
+    tactic = BetaStrategy(symbol="000001.XSHG", signals_module_name='czsc.signals')
     tactic.save_positions(r"D:\QMT投研\基础策略V230707")

@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/29 10:04
-describe: 
+describe:
 """
 import re
 from loguru import logger
@@ -61,7 +61,7 @@ class SignalsParser:
             return None
 
         try:
-            params = parse(pats, key).named # type: ignore
+            params = parse(pats, key).named     # type: ignore
             if 'di' in params:
                 params['di'] = int(params['di'])
 
@@ -140,4 +140,3 @@ def get_signals_freqs(signals_seq: List) -> List[str]:
         if _freqs:
             freqs.extend(_freqs)
     return [x for x in sorted_freqs if x in freqs]
-

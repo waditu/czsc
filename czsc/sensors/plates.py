@@ -251,4 +251,3 @@ class MeanPlatesSensor:
         from czsc.traders.performance import stock_holds_performance
         stock_holds_performance(self.dc, dfh, res_path=res_path)
         return dfh
-
