@@ -510,8 +510,9 @@ class Factor:
     def __post_init__(self):
         if not self.signals_all:
             raise ValueError("signals_all 不能为空")
-        str_signals = str(self.dump())
-        sha256 = hashlib.sha256(str_signals.encode("utf-8")).hexdigest().upper()[:8]
+        _fatcor = self.dump()
+        _fatcor.pop("name")
+        sha256 = hashlib.sha256(str(_fatcor).encode("utf-8")).hexdigest().upper()[:8]
         self.name = f"{self.name}#{sha256}" if self.name else sha256
 
     @property
@@ -552,6 +553,7 @@ class Factor:
         signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
 
         raw = {
+            "name": self.name,
             "signals_all": signals_all,
             "signals_any": signals_any,
             "signals_not": signals_not,
@@ -604,9 +606,14 @@ class Event:
     def __post_init__(self):
         if not self.factors:
             raise ValueError("factors 不能为空")
-        str_factors = str(self.dump())
-        sha256 = hashlib.sha256(str_factors.encode("utf-8")).hexdigest().upper()[:8]
-        self.name = f"{self.operate.value}#{sha256}"
+        _event = self.dump()
+        _event.pop("name")
+        sha256 = hashlib.sha256(str(_event).encode("utf-8")).hexdigest().upper()[:8]
+        if self.name:
+            self.name = f"{self.name}#{sha256}"
+        else:
+            self.name = f"{self.operate.value}#{sha256}"
+        self.sha256 = sha256
 
     @property
     def unique_signals(self) -> List[str]:
@@ -681,6 +688,7 @@ class Event:
         factors = [x.dump() for x in self.factors]
 
         raw = {
+            "name": self.name,
             "operate": self.operate.value,
             "signals_all": signals_all,
             "signals_any": signals_any,
@@ -712,6 +720,7 @@ class Event:
         assert raw["factors"], "factors can not be empty"
 
         e = Event(
+            name=raw.get("name", ""),
             operate=Operate.__dict__["_value2member_map_"][raw["operate"]],
             factors=[Factor.load(x) for x in raw["factors"]],
             signals_all=[Signal(x) for x in raw.get("signals_all", [])],
