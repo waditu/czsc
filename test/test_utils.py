@@ -7,6 +7,7 @@ describe: czsc.utils 单元测试
 """
 import pytest
 import pandas as pd
+import numpy as np
 from czsc import utils
 
 
@@ -87,3 +88,27 @@ def test_ranker():
     assert dfp['rank'].max() == len(symbols)
     assert dfp['rank'].min() == 1
     assert dfp['rank'].mean() == 2.5
+
+
+def test_daily_performance():
+    from czsc.utils.stats import daily_performance
+
+    # Test case 1: empty daily returns
+    result = daily_performance([])
+    assert result == {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0, "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0}
+
+    # Test case 2: daily returns with zero standard deviation
+    result = daily_performance([1, 1, 1, 1, 1])
+    assert result == {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0, "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0}
+
+    # Test case 3: daily returns with all zeros
+    result = daily_performance([0, 0, 0, 0, 0])
+    assert result == {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0, "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0}
+
+    # Test case 4: normal daily returns
+    daily_returns = np.array([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
+    result = daily_performance(daily_returns)
+    assert result == {'年化': 2.016, '夏普': 8.27, '最大回撤': 0.02, '卡玛': 100.8, '日胜率': 0.7, '年化波动率': 0.2439, '非零覆盖': 1.0, '盈亏平衡点': 0.7}
+
+    result = daily_performance([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
+    assert result == {'年化': 2.016, '夏普': 8.27, '最大回撤': 0.02, '卡玛': 100.8, '日胜率': 0.7, '年化波动率': 0.2439, '非零覆盖': 1.0, '盈亏平衡点': 0.7}
