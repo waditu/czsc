@@ -17,6 +17,8 @@ from datetime import datetime
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
+    version = "V231005"
+
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
         :param strategy_name: str, 策略名
@@ -53,12 +55,21 @@ class RedisWeightsClient:
 
     def set_metadata(self, base_freq, description, author, outsample_sdt, **kwargs):
         """设置策略元数据"""
+        key = f'{self.strategy_name}:meta'
+        if self.r.exists(key):
+            if not kwargs.pop('overwrite', False):
+                logger.warning(f'已存在 {self.strategy_name} 的元数据，如需覆盖请设置 overwrite=True')
+                return
+            else:
+                self.r.delete(key)
+                logger.warning(f'删除 {self.strategy_name} 的元数据，重新写入')
+
         outsample_sdt = pd.to_datetime(outsample_sdt).strftime('%Y%m%d')
         meta = {'name': self.strategy_name, 'base_freq': base_freq, 'key_prefix': self.key_prefix,
                 'description': description, 'author': author, 'outsample_sdt': outsample_sdt,
                 'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'kwargs': json.dumps(kwargs)}
-        self.r.hset(f'{self.strategy_name}:meta', mapping=meta)
+        self.r.hset(key, mapping=meta)
 
     @property
     def metadata(self):
