@@ -321,12 +321,6 @@ class WeightBacktest:
 
         # 品种等权费后日收益率
         dret = res['品种等权日收益'].copy()
-        # dret = pd.concat([v['daily'] for v in res.values()], ignore_index=True)
-        # dret = pd.pivot_table(dret, index='date', columns='symbol', values='return').fillna(0)
-        # dret['total'] = dret[list(res.keys())].mean(axis=1)
-        # stats = {"开始日期": dret.index.min().strftime("%Y%m%d"), "结束日期": dret.index.max().strftime("%Y%m%d")}
-        # stats.update(daily_performance(dret['total']))
-        # logger.info(f"品种等权费后日收益率：{stats}")
         dret.to_excel(res_path.joinpath("daily_return.xlsx"), index=True)
         logger.info(f"品种等权费后日收益率已保存到 {res_path.joinpath('daily_return.xlsx')}")
 
@@ -339,11 +333,6 @@ class WeightBacktest:
 
         # 所有开平交易记录的表现
         stats = res['绩效评价'].copy()
-        # dfp = pd.concat([v['pairs'] for v in res.values()], ignore_index=True)
-        # pairs_stats = evaluate_pairs(dfp)
-        # pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
-        # logger.info(f"所有开平交易记录的表现：{pairs_stats}")
-        # stats.update(pairs_stats)
         logger.info(f"绩效评价：{stats}")
         save_json(stats, res_path.joinpath("stats.json"))
         logger.info(f"绩效评价已保存到 {res_path.joinpath('stats.json')}")

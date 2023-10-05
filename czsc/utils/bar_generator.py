@@ -22,6 +22,24 @@ for _m, dfg in mss.groupby('market'):
         freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
 
 
+def is_trading_time(dt: datetime = datetime.now(), market="A股"):
+    """判断指定时间是否是交易时间"""
+    hm = dt.strftime("%H:%M")
+    times = freq_market_times[f"1分钟_{market}"]
+    return True if hm in times else False
+
+
+def get_intraday_times(freq='1分钟', market="A股"):
+    """获取指定市场的交易时间段
+
+    :param market: 市场名称，可选值：A股、期货、默认
+    :return: 交易时间段列表
+    """
+    assert market in ['A股', '期货', '默认'], "market 参数必须为 A股 或 期货 或 默认"
+    assert freq.endswith("分钟"), "freq 参数必须为分钟级别的K线周期"
+    return freq_market_times[f"{freq}_{market}"]
+
+
 def check_freq_and_market(time_seq: List[AnyStr]):
     """检查时间序列是否为同一周期，是否为同一市场
 

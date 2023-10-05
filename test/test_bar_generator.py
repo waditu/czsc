@@ -338,3 +338,33 @@ def test_bg_on_d():
     assert len(bg.bars['月线']) == 165
     assert len(bg.bars['年线']) == 15
     assert bg.bars['月线'][-2].id > bg.bars['月线'][-3].id
+
+
+def test_is_trading_time():
+    from datetime import datetime
+    from czsc.utils.bar_generator import is_trading_time
+
+    # Test for A股 market
+    assert not is_trading_time(datetime(2022, 1, 3, 9, 30), market="A股")
+    assert is_trading_time(datetime(2022, 1, 3, 9, 31), market="A股")
+    assert is_trading_time(datetime(2022, 1, 3, 11, 30), market="A股")
+    assert not is_trading_time(datetime(2022, 1, 3, 12, 59), market="A股")
+    assert is_trading_time(datetime(2022, 1, 3, 15, 0), market="A股")
+    assert not is_trading_time(datetime(2022, 1, 3, 20, 0), market="A股")
+
+    # Test for other markets
+    assert is_trading_time(datetime(2022, 1, 3, 9, 30), market="期货")
+    assert not is_trading_time(datetime(2022, 1, 3, 10, 25), market="期货")
+    assert not is_trading_time(datetime(2022, 1, 3, 12, 59), market="期货")
+    assert is_trading_time(datetime(2022, 1, 3, 15, 0), market="期货")
+    assert not is_trading_time(datetime(2022, 1, 3, 20, 0), market="期货")
+
+
+def test_get_intraday_times():
+    from czsc.utils.bar_generator import get_intraday_times
+
+    assert get_intraday_times(freq='60分钟', market='A股') == ['10:30', '11:30', '14:00', '15:00']
+    assert get_intraday_times(freq='120分钟', market='A股') == ['11:30', '15:00']
+    assert get_intraday_times(freq='120分钟', market='期货') == ['11:00', '15:00', '23:00', '01:00', '02:30']
+    x = ['02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00', '00:00']
+    assert get_intraday_times(freq='120分钟', market='默认') == x
