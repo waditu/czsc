@@ -85,11 +85,19 @@ from czsc.utils.calendar import (
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
+    show_correlation,
+    show_sectional_ic,
+    show_factor_returns,
+    show_factor_layering,
 )
 
 from czsc.utils.bi_info import (
     calculate_bi_info,
     symbols_bi_infos,
+)
+
+from czsc.utils.features import (
+    normalize_feature,
 )
 
 
