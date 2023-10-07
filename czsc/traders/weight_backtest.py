@@ -133,7 +133,11 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'm
 
 
 class WeightBacktest:
-    """持仓权重回测"""
+    """持仓权重回测
+
+    飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/Pf1fw1woQi4iJikbKJmcYToznxb
+    """
+    version = "V231005"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
@@ -142,7 +146,7 @@ class WeightBacktest:
 
             dt      为K线结束时间，必须是连续的交易时间序列，不允许有时间断层
             symbol  为合约代码，
-            weight  为K线结束时间对应的持仓权重，
+            weight  为K线结束时间对应的持仓权重，品种之间的权重是独立的，不会互相影响
             price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
 
             数据样例如下：
@@ -169,10 +173,7 @@ class WeightBacktest:
         self.fee_rate = kwargs.get('fee_rate', 0.0002)
         self.dfw['weight'] = self.dfw['weight'].round(digits)
         self.symbols = list(self.dfw['symbol'].unique().tolist())
-        self.res_path = Path(kwargs.get('res_path', "weight_backtest"))
-        self.res_path.mkdir(exist_ok=True, parents=True)
-        logger.add(self.res_path.joinpath("weight_backtest.log"), rotation="1 week")
-        logger.info(f"持仓权重回测参数：digits={digits}, fee_rate={self.fee_rate}，res_path={self.res_path}，kwargs={kwargs}")
+        self.results = self.backtest()
 
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
@@ -285,39 +286,53 @@ class WeightBacktest:
 
     def backtest(self):
         """回测所有合约的收益率"""
+        symbols = self.symbols
         res = {}
-        for symbol in self.symbols:
+        for symbol in symbols:
             daily = self.get_symbol_daily(symbol)
             pairs = self.get_symbol_pairs(symbol)
             res[symbol] = {"daily": daily, "pairs": pairs}
 
-        pd.to_pickle(res, self.res_path.joinpath("res.pkl"))
-        logger.info(f"回测结果已保存到 {self.res_path.joinpath('res.pkl')}")
-
-        # 品种等权费后日收益率
-        dret = pd.concat([v['daily'] for v in res.values()], ignore_index=True)
+        dret = pd.concat([v['daily'] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index='date', columns='symbol', values='return').fillna(0)
         dret['total'] = dret[list(res.keys())].mean(axis=1)
+        res['品种等权日收益'] = dret
+
         stats = {"开始日期": dret.index.min().strftime("%Y%m%d"), "结束日期": dret.index.max().strftime("%Y%m%d")}
         stats.update(daily_performance(dret['total']))
-        logger.info(f"品种等权费后日收益率：{stats}")
-        dret.to_excel(self.res_path.joinpath("daily_return.xlsx"), index=True)
-        logger.info(f"品种等权费后日收益率已保存到 {self.res_path.joinpath('daily_return.xlsx')}")
+        dfp = pd.concat([v['pairs'] for k, v in res.items() if k in symbols], ignore_index=True)
+        pairs_stats = evaluate_pairs(dfp)
+        pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
+        stats.update(pairs_stats)
+
+        res['绩效评价'] = stats
+        return res
+
+    def report(self, res_path):
+        """回测报告"""
+        res_path = Path(res_path)
+        res_path.mkdir(exist_ok=True, parents=True)
+        logger.add(res_path.joinpath("weight_backtest.log"), rotation="1 week")
+        logger.info(f"持仓权重回测参数：digits={self.digits}, fee_rate={self.fee_rate}，res_path={res_path}")
+
+        res = self.results
+        pd.to_pickle(res, res_path.joinpath("res.pkl"))
+        logger.info(f"回测结果已保存到 {res_path.joinpath('res.pkl')}")
+
+        # 品种等权费后日收益率
+        dret = res['品种等权日收益'].copy()
+        dret.to_excel(res_path.joinpath("daily_return.xlsx"), index=True)
+        logger.info(f"品种等权费后日收益率已保存到 {res_path.joinpath('daily_return.xlsx')}")
 
         # 品种等权费后日收益率资金曲线绘制
         dret = dret.cumsum()
         fig = px.line(dret, y=dret.columns.to_list(), title="费后日收益率资金曲线")
         fig.for_each_trace(lambda trace: trace.update(visible=True if trace.name == 'total' else 'legendonly'))
-        fig.write_html(self.res_path.joinpath("daily_return.html"))
-        logger.info(f"费后日收益率资金曲线已保存到 {self.res_path.joinpath('daily_return.html')}")
+        fig.write_html(res_path.joinpath("daily_return.html"))
+        logger.info(f"费后日收益率资金曲线已保存到 {res_path.joinpath('daily_return.html')}")
 
         # 所有开平交易记录的表现
-        dfp = pd.concat([v['pairs'] for v in res.values()], ignore_index=True)
-        pairs_stats = evaluate_pairs(dfp)
-        pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
-        logger.info(f"所有开平交易记录的表现：{pairs_stats}")
-        stats.update(pairs_stats)
-        logger.info(f"策略评价：{stats}")
-        save_json(stats, self.res_path.joinpath("stats.json"))
-        res['stats'] = stats
-        return res
+        stats = res['绩效评价'].copy()
+        logger.info(f"绩效评价：{stats}")
+        save_json(stats, res_path.joinpath("stats.json"))
+        logger.info(f"绩效评价已保存到 {res_path.joinpath('stats.json')}")

@@ -32,7 +32,3 @@ symbols = get_symbols('A股主要指数')
 if __name__ == '__main__':
     # 这里仅回测前10个品种，作为执行示例
     dummy.execute(symbols[:10], n_jobs=4)
-
-
-
-

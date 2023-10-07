@@ -17,6 +17,8 @@ from datetime import datetime
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
+    version = "V231006"
+
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
         :param strategy_name: str, 策略名
@@ -39,6 +41,7 @@ class RedisWeightsClient:
         """
         self.strategy_name = strategy_name
         self.redis_url = redis_url
+        self.key_prefix = kwargs.get("key_prefix", "Weights")
 
         self.heartbeat_client = redis.from_url(redis_url, decode_responses=True)
         self.heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
@@ -47,22 +50,33 @@ class RedisWeightsClient:
         self.r = redis.Redis(connection_pool=thread_safe_pool)
         self.lua_publish = RedisWeightsClient.register_lua_publish(self.r)
 
-        self.heartbeat_thread = threading.Thread(target=self.__heartbeat, daemon=True)
-        self.heartbeat_thread.start()
+        if kwargs.get('send_heartbeat', True):
+            self.heartbeat_thread = threading.Thread(target=self.__heartbeat, daemon=True)
+            self.heartbeat_thread.start()
 
     def set_metadata(self, base_freq, description, author, outsample_sdt, **kwargs):
         """设置策略元数据"""
+        key = f'{self.key_prefix}:META:{self.strategy_name}'
+        if self.r.exists(key):
+            if not kwargs.pop('overwrite', False):
+                logger.warning(f'已存在 {self.strategy_name} 的元数据，如需覆盖请设置 overwrite=True')
+                return
+            else:
+                self.r.delete(key)
+                logger.warning(f'删除 {self.strategy_name} 的元数据，重新写入')
+
         outsample_sdt = pd.to_datetime(outsample_sdt).strftime('%Y%m%d')
-        meta = {'name': self.strategy_name, 'base_freq': base_freq,
+        meta = {'name': self.strategy_name, 'base_freq': base_freq, 'key_prefix': self.key_prefix,
                 'description': description, 'author': author, 'outsample_sdt': outsample_sdt,
                 'update_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'kwargs': json.dumps(kwargs)}
-        self.r.hset(f'{self.strategy_name}:meta', mapping=meta)
+        self.r.hset(key, mapping=meta)
 
     @property
     def metadata(self):
         """获取策略元数据"""
-        return self.r.hgetall(f'{self.strategy_name}:meta')
+        key = f'{self.key_prefix}:META:{self.strategy_name}'
+        return self.r.hgetall(key)
 
     def publish(self, symbol, dt, weight, price=0, ref=None, overwrite=False):
         """发布单个策略持仓权重
@@ -79,7 +93,7 @@ class RedisWeightsClient:
             dt = pd.to_datetime(dt)
 
         udt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        key = f'Weights:{self.strategy_name}:{symbol}:{dt.strftime("%Y%m%d%H%M%S")}'
+        key = f'{self.key_prefix}:{self.strategy_name}:{symbol}:{dt.strftime("%Y%m%d%H%M%S")}'
         ref = ref if ref else '{}'
         ref_str = json.dumps(ref) if isinstance(ref, dict) else ref
         return self.lua_publish(keys=[key], args=[1 if overwrite else 0, udt, weight, price, ref_str])
@@ -103,7 +117,7 @@ class RedisWeightsClient:
 
         keys, args = [], []
         for row in df[['symbol', 'dt', 'weight', 'price', 'ref']].to_numpy():
-            key = f'Weights:{self.strategy_name}:{row[0]}:{row[1].strftime("%Y%m%d%H%M%S")}'
+            key = f'{self.key_prefix}:{self.strategy_name}:{row[0]}:{row[1].strftime("%Y%m%d%H%M%S")}'
             keys.append(key)
 
             args.append(row[2])
@@ -130,7 +144,7 @@ class RedisWeightsClient:
 
     def __heartbeat(self):
         while True:
-            key = f'{self.heartbeat_prefix}:{self.strategy_name}'
+            key = f'{self.key_prefix}:{self.heartbeat_prefix}:{self.strategy_name}'
             try:
                 self.heartbeat_client.set(key, datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             except Exception:
@@ -138,13 +152,13 @@ class RedisWeightsClient:
             time.sleep(15)
 
     def get_keys(self, pattern):
-        """使用 lua 获取 redis 中指定 pattern 的 keys"""
-        return self.r.eval('''local pattern = ARGV[1]\nreturn redis.call('KEYS', pattern)''', 0, pattern)
+        """获取 redis 中指定 pattern 的 keys"""
+        return self.r.keys(pattern)
 
     def clear_all(self):
         """删除该策略所有记录"""
-        self.r.delete(f"{self.strategy_name}:meta")
-        keys = self.get_keys(f'Weights:{self.strategy_name}*')
+        self.r.delete(f'{self.key_prefix}:META:{self.strategy_name}')
+        keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
         if keys is not None and len(keys) > 0:
             self.r.delete(*keys)
 
@@ -195,7 +209,7 @@ return cnt
 
     def get_symbols(self):
         """获取策略交易的品种列表"""
-        keys = self.get_keys(f'Weights:{self.strategy_name}*')
+        keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
         symbols = {x.split(":")[2] for x in keys}
         return list(symbols)
 
@@ -204,7 +218,7 @@ return cnt
         symbols = symbols if symbols else self.get_symbols()
         with self.r.pipeline() as pipe:
             for symbol in symbols:
-                pipe.hgetall(f"Weights:{self.strategy_name}:{symbol}:LAST")
+                pipe.hgetall(f'{self.key_prefix}:{self.strategy_name}:{symbol}:LAST')
             rows = pipe.execute()
 
         dfw = pd.DataFrame(rows)
@@ -216,7 +230,7 @@ return cnt
         """获取单个品种的持仓权重历史数据"""
         start_score = pd.to_datetime(sdt).strftime('%Y%m%d%H%M%S')
         end_score = pd.to_datetime(edt).strftime('%Y%m%d%H%M%S')
-        model_key = f'Weights:{self.strategy_name}:{symbol}'
+        model_key = f'{self.key_prefix}:{self.strategy_name}:{symbol}'
         key_list = self.r.zrangebyscore(model_key, start_score, end_score)
 
         if len(key_list) == 0:

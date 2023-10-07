@@ -7,7 +7,18 @@ describe: 绩效表现统计
 """
 import numpy as np
 import pandas as pd
-from typing import List
+
+
+def cal_break_even_point(seq) -> float:
+    """计算单笔收益序列的盈亏平衡点
+
+    :param seq: 单笔收益序列，数据样例：[0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01]
+    :return: 盈亏平衡点
+    """
+    if sum(seq) < 0:
+        return 1.0
+    seq = np.cumsum(sorted(seq))                # type: ignore
+    return (np.sum(seq < 0) + 1) / len(seq)     # type: ignore
 
 
 def subtract_fee(df, fee=1):
@@ -44,7 +55,8 @@ def daily_performance(daily_returns):
     daily_returns = np.array(daily_returns, dtype=np.float64)
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
-        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0, "年化波动率": 0, "非零覆盖": 0}
+        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
+                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0}
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
@@ -63,6 +75,7 @@ def daily_performance(daily_returns):
         "日胜率": round(win_pct, 4),
         "年化波动率": round(annual_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),
+        "盈亏平衡点": round(cal_break_even_point(daily_returns), 4),
     }
     return sta
 
@@ -131,18 +144,6 @@ def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True)
     if not exclude_zero:
         res['持仓覆盖'] = round(len(nv[(nv['edge'] != 0) | (nv['cost'] != 0)]) / len(nv), 4) if len(nv) > 0 else 0
     return res
-
-
-def cal_break_even_point(seq: List[float]) -> float:
-    """计算单笔收益序列的盈亏平衡点
-
-    :param seq: 单笔收益序列
-    :return: 盈亏平衡点
-    """
-    if sum(seq) < 0:
-        return 1.0
-    seq = np.cumsum(sorted(seq)) # type: ignore
-    return (np.sum(seq < 0) + 1) / len(seq) # type: ignore
 
 
 def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:

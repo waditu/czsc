@@ -7,35 +7,35 @@ describe: A股+期货的交易日历
 """
 import pandas as pd
 from pathlib import Path
+from datetime import datetime
 
 
 calendar = pd.read_feather(Path(__file__).parent / "china_calendar.feather")
 
 
-def is_trading_date(date):
+def is_trading_date(date=datetime.now()):
     """判断是否是交易日"""
     date = pd.to_datetime(date)
     is_open = calendar[calendar['cal_date'] == date].iloc[0]['is_open']
     return is_open == 1
 
 
-def next_trading_date(date, n=1):
+def next_trading_date(date=datetime.now(), n=1):
     """获取未来第N个交易日"""
     date = pd.to_datetime(date)
     df = calendar[calendar['cal_date'] > date]
     return df[df['is_open'] == 1].iloc[n - 1]['cal_date']
 
 
-def prev_trading_date(date, n=1):
+def prev_trading_date(date=datetime.now(), n=1):
     """获取过去第N个交易日"""
     date = pd.to_datetime(date)
     df = calendar[calendar['cal_date'] < date]
     return df[df['is_open'] == 1].iloc[-n]['cal_date']
 
 
-def get_trading_dates(sdt, edt):
+def get_trading_dates(sdt, edt=datetime.now()):
     """获取两个日期之间的所有交易日"""
-    sdt = pd.to_datetime(sdt)
-    edt = pd.to_datetime(edt)
+    sdt, edt = pd.to_datetime(sdt), pd.to_datetime(edt)
     df = calendar[(calendar['cal_date'] >= sdt) & (calendar['cal_date'] <= edt)]
     return df[df['is_open'] == 1]['cal_date'].tolist()

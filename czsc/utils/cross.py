@@ -190,15 +190,11 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
 
     :return: df, 包含预测分数和排序列
     """
+    from lightgbm import LGBMRanker
     from sklearn.model_selection import TimeSeriesSplit
-    try:
-        from lightgbm import LGBMRanker
-    except:
-        logger.warning("lightgbm not installed, please install it first! (pip install lightgbm -U)")
-        return df
-    
+
     assert "symbol" in df.columns, "df must have column 'symbol'"
-    assert "dt" in df.columns, f"df must have column 'dt'"
+    assert "dt" in df.columns, "df must have column 'dt'"
 
     if kwargs.get('copy', True):
         df = df.copy()
@@ -213,11 +209,11 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
 
     for train_index, test_index in tss.split(dfd):
         train_dts = dfd[train_index][:, 0]
-        test_dts= dfd[test_index][:, 0]
+        test_dts = dfd[test_index][:, 0]
 
         # 拆分训练集和测试集
         train, test = df[df['dt'].isin(train_dts)], df[df['dt'].isin(test_dts)]
-        X_train, X_test, y_train  = train[x_cols], test[x_cols], train[y_col]
+        X_train, X_test, y_train = train[x_cols], test[x_cols], train[y_col]
         query_train = train.groupby('dt')['symbol'].count().values
 
         # 训练模型 & 预测

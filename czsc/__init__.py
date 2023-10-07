@@ -42,6 +42,10 @@ from czsc.utils import (
     BarGenerator,
     freq_end_time,
     resample_bars,
+    is_trading_time,
+    get_intraday_times,
+    check_freq_and_market,
+
     dill_dump,
     dill_load,
     read_json,
@@ -81,6 +85,10 @@ from czsc.utils.calendar import (
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
+    show_correlation,
+    show_sectional_ic,
+    show_factor_returns,
+    show_factor_layering,
 )
 
 from czsc.utils.bi_info import (
@@ -88,11 +96,15 @@ from czsc.utils.bi_info import (
     symbols_bi_infos,
 )
 
+from czsc.utils.features import (
+    normalize_feature,
+)
 
-__version__ = "0.9.29"
+
+__version__ = "0.9.30"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230904"
+__date__ = "20230925"
 
 
 def welcome():
