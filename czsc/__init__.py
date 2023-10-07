@@ -101,10 +101,10 @@ from czsc.utils.features import (
 )
 
 
-__version__ = "0.9.30"
+__version__ = "0.9.31"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20230925"
+__date__ = "20231007"
 
 
 def welcome():
