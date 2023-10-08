@@ -196,7 +196,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    _, market = check_freq_and_market(df['dt'].apply(lambda x: x.strftime("%H:%M")).tolist())
+    _, market = check_freq_and_market(df['dt'].apply(lambda x: x.strftime("%H:%M")).tolist(), freq=kwargs.get('base_freq', None))
     df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time_V230921(x, target_freq, market))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
@@ -222,9 +222,12 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
 
 class BarGenerator:
 
-    def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000):
+    version = 'V231008'
+
+    def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000, market="默认"):
         self.symbol = None
         self.end_dt = None
+        self.market = market
         self.base_freq = base_freq
         self.max_count = max_count
         self.freqs = freqs
@@ -234,7 +237,8 @@ class BarGenerator:
         self.__validate_freqs()
 
     def __validate_freqs(self):
-        sorted_freqs = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+        from czsc.utils import sorted_freqs
+        # sorted_freqs = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
         i = sorted_freqs.index(self.base_freq)
         f = sorted_freqs[i:]
         for freq in self.freqs:
@@ -263,7 +267,8 @@ class BarGenerator:
         :param freq: 目标周期
         :return:
         """
-        freq_edt = freq_end_time(bar.dt, freq)
+        # freq_edt = freq_end_time(bar.dt, freq)
+        freq_edt = freq_end_time_V230921(bar.dt, freq, self.market)
 
         if not self.bars[freq.value]:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
@@ -295,7 +300,7 @@ class BarGenerator:
         self.end_dt = bar.dt
 
         if self.bars[base_freq] and self.bars[base_freq][-1].dt == bar.dt:
-            logger.warning(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; 输入K线为{bar}")
+            logger.warning(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; \n\n输入K线为{bar};\n\n 上一根K线为{self.bars[base_freq][-1]}")
             return
 
         for freq in self.bars.keys():
