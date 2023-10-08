@@ -44,12 +44,15 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     """检查时间序列是否为同一周期，是否为同一市场
 
     :param time_seq: 时间序列，如 ['11:00', '15:00', '23:00', '01:00', '02:30']
-    :param freq: K线周期，可选参数，使用该参数可以加快检查速度。
+    :param freq: 时间序列对应的K线周期，可选参数，使用该参数可以加快检查速度。
         可选值：1分钟、5分钟、15分钟、30分钟、60分钟、日线、周线、月线、季线、年线
     :return:
         - freq      K线周期
         - market    交易市场
     """
+    if freq in ['日线', '周线', '月线', '季线', '年线']:
+        return freq, "默认"
+
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
@@ -196,7 +199,13 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    _, market = check_freq_and_market(df['dt'].apply(lambda x: x.strftime("%H:%M")).tolist(), freq=kwargs.get('base_freq', None))
+    base_freq = kwargs.get('base_freq', None)
+    if base_freq in [Freq.D.value, Freq.W.value, Freq.M.value, Freq.S.value, Freq.Y.value]:
+        market = kwargs.get('market', '默认')
+    else:
+        uni_times = df['dt'].apply(lambda x: x.strftime("%H:%M")).unique().tolist()
+        _, market = check_freq_and_market(uni_times, freq=base_freq)
+
     df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time_V230921(x, target_freq, market))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',

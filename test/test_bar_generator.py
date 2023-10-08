@@ -288,7 +288,7 @@ def test_resample_bars():
     assert len(_d_bars) == 1000
 
     _f60_bars = resample_bars(df, Freq.F60, raw_bars=True)
-    assert len(_f60_bars) == 4995
+    assert len(_f60_bars) == 3996
 
     _f30_bars = resample_bars(df, Freq.F30, raw_bars=True, market='A股')
     assert len(_f30_bars) == 7991
