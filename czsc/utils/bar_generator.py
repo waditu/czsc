@@ -7,7 +7,7 @@ describe: 从任意周期K线开始合成更高周期K线的工具类
 """
 import pandas as pd
 from datetime import datetime, timedelta, date
-from typing import List, Union, AnyStr
+from typing import List, Union, AnyStr, Optional
 from czsc.objects import RawBar, Freq
 from pathlib import Path
 from loguru import logger
@@ -40,27 +40,35 @@ def get_intraday_times(freq='1分钟', market="A股"):
     return freq_market_times[f"{freq}_{market}"]
 
 
-def check_freq_and_market(time_seq: List[AnyStr]):
+def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None):
     """检查时间序列是否为同一周期，是否为同一市场
 
     :param time_seq: 时间序列，如 ['11:00', '15:00', '23:00', '01:00', '02:30']
+    :param freq: K线周期，可选参数，使用该参数可以加快检查速度。
+        可选值：1分钟、5分钟、15分钟、30分钟、60分钟、日线、周线、月线、季线、年线
     :return:
         - freq      K线周期
         - market    交易市场
     """
+    time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
+
     res = {}
     for key, tts in freq_market_times.items():
-        if set(tts) == set(time_seq):
-            freq, market = key.split("_")
-            return freq, market
+        if freq and not key.startswith(freq):
+            continue
 
-        if len(time_seq) < len(tts) * 0.9 or len(time_seq) > len(tts) * 1.1:
+        if set(time_seq) == set(tts[:len(time_seq)]):
+            freq_x, market = key.split("_")
+            return freq_x, market
+
+        # 原则上，交易时间序列必须包含交易时间段的 70% ~ 120%，否则认为不是同一周期
+        if len(time_seq) < len(tts) * 0.7 or len(time_seq) > len(tts) * 1.2:
             continue
 
         res[key] = len(set(time_seq).intersection(set(tts))) / len(tts)
-    freq, market = sorted(res.items(), key=lambda x: x[1], reverse=True)[0][0].split("_")
-    return freq, market
+    freq_x, market = sorted(res.items(), key=lambda x: x[1], reverse=True)[0][0].split("_")
+    return freq_x, market
 
 
 def freq_end_date(dt, freq: Union[Freq, AnyStr]):
@@ -188,7 +196,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    market = kwargs.get("market", "默认")
+    _, market = check_freq_and_market(df['dt'].apply(lambda x: x.strftime("%H:%M")).tolist())
     df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time_V230921(x, target_freq, market))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
@@ -287,7 +295,7 @@ class BarGenerator:
         self.end_dt = bar.dt
 
         if self.bars[base_freq] and self.bars[base_freq][-1].dt == bar.dt:
-            print(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}")
+            logger.warning(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; 输入K线为{bar}")
             return
 
         for freq in self.bars.keys():
