@@ -94,11 +94,8 @@ class CzscStrategyBase(ABC):
             freqs = self.sorted_freqs
 
         if bg is None:
-            if base_freq in ["日线", "周线", "月线", "季线", "年线"]:
-                market = "默认"
-            else:
-                uni_times = sorted(list({x.dt.strftime("%H:%M") for x in bars}))
-                _, market = check_freq_and_market(uni_times, freq=base_freq)
+            uni_times = sorted(list({x.dt.strftime("%H:%M") for x in bars}))
+            _, market = check_freq_and_market(uni_times, freq=base_freq)
 
             sdt = pd.to_datetime(kwargs.get("sdt", "20200101"))
             n = int(kwargs.get("n", 500))

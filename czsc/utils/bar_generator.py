@@ -114,7 +114,7 @@ def freq_end_date(dt, freq: Union[Freq, AnyStr]):
     return dt
 
 
-def freq_end_time_V230921(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> datetime:
+def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> datetime:
     """A股与期货市场精确的获取 dt 对应的K线周期结束时间
 
     :param dt: datetime
@@ -137,42 +137,6 @@ def freq_end_time_V230921(dt: datetime, freq: Union[Freq, AnyStr], market="A股"
     if not ("15:00" > hm > "09:00") and market == "期货":
         dt = next_trading_date(dt.strftime("%Y-%m-%d"), 1)
 
-    return freq_end_date(dt.date(), freq)
-
-
-def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr]) -> datetime:
-    """获取 dt 对应的K线周期结束时间
-
-    :param dt: datetime
-    :param freq: Freq
-    :return: datetime
-    """
-    if not isinstance(freq, Freq):
-        freq = Freq(freq)
-    dt = dt.replace(second=0, microsecond=0)
-
-    if freq in [Freq.F1, Freq.F5, Freq.F15, Freq.F30, Freq.F60]:
-        m = int(str(freq.value).strip("分钟"))
-        if m < 60:
-            if (dt.hour == 15 and dt.minute == 0) or (dt.hour == 11 and dt.minute == 30):
-                return dt
-
-            delta_m = dt.minute % m
-            if delta_m != 0:
-                dt += timedelta(minutes=m - delta_m)
-            return dt
-
-        else:
-            dt_span = {
-                60: ["01:00", "2:00", "3:00", '10:30', "11:30", "14:00", "15:00", "22:00", "23:00", "23:59"],
-            }
-            for v in dt_span[m]:
-                hour, minute = v.split(":")
-                edt = dt.replace(hour=int(hour), minute=int(minute))
-                if dt <= edt:
-                    return edt
-
-    # 处理 日、周、月、季、年 的结束时间
     return freq_end_date(dt.date(), freq)
 
 
@@ -200,13 +164,10 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
         target_freq = Freq(target_freq)
 
     base_freq = kwargs.get('base_freq', None)
-    if base_freq in [Freq.D.value, Freq.W.value, Freq.M.value, Freq.S.value, Freq.Y.value]:
-        market = kwargs.get('market', '默认')
-    else:
-        uni_times = df['dt'].apply(lambda x: x.strftime("%H:%M")).unique().tolist()
-        _, market = check_freq_and_market(uni_times, freq=base_freq)
+    uni_times = df['dt'].head(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist()
+    _, market = check_freq_and_market(uni_times, freq=base_freq)
 
-    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time_V230921(x, target_freq, market))
+    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq, market))
     dfk1 = df.groupby('freq_edt').agg(
         {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
          'low': 'min', 'vol': 'sum', 'amount': 'sum', 'freq_edt': 'last'})
@@ -276,8 +237,7 @@ class BarGenerator:
         :param freq: 目标周期
         :return:
         """
-        # freq_edt = freq_end_time(bar.dt, freq)
-        freq_edt = freq_end_time_V230921(bar.dt, freq, self.market)
+        freq_edt = freq_end_time(bar.dt, freq, self.market)
 
         if not self.bars[freq.value]:
             bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
