@@ -56,7 +56,6 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
-    res = {}
     for key, tts in freq_market_times.items():
         if freq and not key.startswith(freq):
             continue
@@ -65,13 +64,7 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
             freq_x, market = key.split("_")
             return freq_x, market
 
-        # 原则上，交易时间序列必须包含交易时间段的 70% ~ 120%，否则认为不是同一周期
-        if len(time_seq) < len(tts) * 0.7 or len(time_seq) > len(tts) * 1.2:
-            continue
-
-        res[key] = len(set(time_seq).intersection(set(tts))) / len(tts)
-    freq_x, market = sorted(res.items(), key=lambda x: x[1], reverse=True)[0][0].split("_")
-    return freq_x, market
+    return None, "默认"
 
 
 def freq_end_date(dt, freq: Union[Freq, AnyStr]):
@@ -135,7 +128,7 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
         return edt
 
     if not ("15:00" > hm > "09:00") and market == "期货":
-        dt = next_trading_date(dt.strftime("%Y-%m-%d"), 1)
+        dt = next_trading_date(dt, n=1)
 
     return freq_end_date(dt.date(), freq)
 
