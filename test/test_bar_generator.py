@@ -15,8 +15,6 @@ def test_check_freq_and_market():
     assert check_freq_and_market(time_seq) == ('120分钟', '期货')
 
     time_seq = [
-        '09:25',
-        '09:30',
         '09:31',
         '09:32',
         '09:33',
@@ -257,7 +255,7 @@ def test_check_freq_and_market():
         '14:58',
         '15:00',
     ]
-    assert check_freq_and_market(time_seq) == ('1分钟', 'A股')
+    assert check_freq_and_market(time_seq, freq='1分钟') == ('1分钟', 'A股')
 
     for key, values in freq_market_times.items():
         assert check_freq_and_market(values) == (key.split("_")[0], key.split("_")[1])

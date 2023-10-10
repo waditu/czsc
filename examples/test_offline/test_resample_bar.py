@@ -13,14 +13,16 @@ def test_read():
 
 def test_check_freq_and_market():
     from czsc.utils.bar_generator import check_freq_and_market
-    gruop_name = "期货主力"
-    # gruop_name = "中证500成分股"
+    # gruop_name = "期货主力"
+    gruop_name = "中证500成分股"
     files = Path(fr"D:\CZSC投研数据\{gruop_name}").glob("*.parquet")
     for file in files:
         df = pd.read_parquet(file)
         time_seq = sorted(list({x.strftime("%H:%M") for x in df['dt']}))
-        x_freq, market = check_freq_and_market(time_seq=time_seq)
+        x_freq, market = check_freq_and_market(time_seq=time_seq, freq='1分钟')
         print(file.stem, x_freq, market)
+        if market == "默认":
+            print(time_seq)
 
 
 def get_future_times():

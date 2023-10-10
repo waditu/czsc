@@ -53,6 +53,9 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     if freq in ['日线', '周线', '月线', '季线', '年线']:
         return freq, "默认"
 
+    if freq == '1分钟':
+        time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
+
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
@@ -127,8 +130,8 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
         edt = dt.replace(hour=int(h), minute=int(m))
         return edt
 
-    if not ("15:00" > hm > "09:00") and market == "期货":
-        dt = next_trading_date(dt, n=1)
+    # if not ("15:00" > hm > "09:00") and market == "期货":
+    #     dt = next_trading_date(dt, n=1)
 
     return freq_end_date(dt.date(), freq)
 

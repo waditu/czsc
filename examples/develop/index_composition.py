@@ -57,13 +57,15 @@ def index_composition_by_base_point(klines, weights=None, base_point=1000):
     """
     klines["dt"] = pd.to_datetime(klines["dt"])
 
-    data = []
-    for _, kline in klines.groupby("symbol"):
-        kline = kline.sort_values("dt", ascending=True).reset_index(drop=True)
-        kline["returns"] = kline["close"].pct_change()
-        kline["returns"] = kline["returns"].fillna(0)
-        data.append(kline)
-    klines = pd.concat(data, ignore_index=True)
+    if 'returns' not in klines.columns.tolist():
+        data = []
+        for _, kline in klines.groupby("symbol"):
+            kline = kline.sort_values("dt", ascending=True).reset_index(drop=True)
+            kline["returns"] = kline["close"].pct_change()
+            kline["returns"] = kline["returns"].fillna(0)
+            data.append(kline)
+        klines = pd.concat(data, ignore_index=True)
+
     returns = klines.pivot_table(index="dt", columns="symbol", values="returns")
 
     if weights is None:
@@ -93,6 +95,8 @@ def test_index_composition_by_base_point():
     for symbol in symbols:
         bars = get_raw_bars(symbol=symbol, freq="1分钟", sdt="20210104 09:31", edt="20210107 13:10")
         df = pd.DataFrame(bars)
+        df['returns'] = df['close'].pct_change()
+        df = df.dropna(subset=['returns'])
         df.drop(columns=["freq", "cache", 'id'], inplace=True)
         data.append(df)
     klines = pd.concat(data, ignore_index=True)
@@ -101,6 +105,12 @@ def test_index_composition_by_base_point():
     assert int(index1['price'].iloc[-1]) == 1036
 
     weights = pd.DataFrame({"dt": ['2021-01-03 10:10:00', '2021-01-04 10:54:00', '2021-01-05 12:10:00']})
+    for symbol in symbols:
+        weights[symbol] = [random.uniform(0.1, 0.3) for _ in range(3)]
+    index2 = index_composition_by_base_point(klines=klines.copy(), weights=weights)
+    assert int(index2['vol'].iloc[-1]) == 200930300
+
+    weights = pd.DataFrame({"dt": ['2020-01-03 10:10:00', '2021-01-04 10:54:00', '2021-01-05 12:10:00']})
     for symbol in symbols:
         weights[symbol] = [random.uniform(0.1, 0.3) for _ in range(3)]
     index2 = index_composition_by_base_point(klines=klines.copy(), weights=weights)
