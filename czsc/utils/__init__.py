@@ -23,7 +23,8 @@ from .signal_analyzer import SignalAnalyzer, SignalPerformance
 from .cache import home_path, get_dir_size, empty_cache_path
 
 
-sorted_freqs = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+sorted_freqs = ['Tick', '1分钟', '2分钟', '3分钟', '4分钟', '5分钟', '6分钟', '10分钟', '12分钟',
+                '15分钟', '20分钟', '30分钟', '60分钟', '120分钟', '日线', '周线', '月线', '季线', '年线']
 
 
 def x_round(x: Union[float, int], digit: int = 4) -> Union[float, int]:

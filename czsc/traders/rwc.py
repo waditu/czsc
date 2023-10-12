@@ -14,10 +14,13 @@ from loguru import logger
 from datetime import datetime
 
 
+logger.disable(__name__)
+
+
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V231006"
+    version = "V231012"
 
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
@@ -78,6 +81,23 @@ class RedisWeightsClient:
         key = f'{self.key_prefix}:META:{self.strategy_name}'
         return self.r.hgetall(key)
 
+    @property
+    def last_time(self):
+        """获取策略最近一次发布信号的时间"""
+        keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}:*:LAST')
+        dt = None
+        for key in keys:
+            dt_ = pd.to_datetime(str(self.r.hget(key, 'dt')))
+            dt = dt_ if not dt else max(dt, dt_)
+        return dt
+
+    def get_last_time(self, symbol):
+        """获取指定品种上策略最近一次发布信号的时间"""
+        key = f'{self.key_prefix}:{self.strategy_name}:{symbol}:LAST'
+        if not self.r.exists(key):
+            return None
+        return pd.to_datetime(str(self.r.hget(key, 'dt')))
+
     def publish(self, symbol, dt, weight, price=0, ref=None, overwrite=False):
         """发布单个策略持仓权重
 
@@ -91,6 +111,12 @@ class RedisWeightsClient:
         """
         if not isinstance(dt, datetime):
             dt = pd.to_datetime(dt)
+
+        if not overwrite:
+            last_dt = self.get_last_time(symbol)
+            if last_dt is not None and dt <= last_dt:
+                logger.warning(f"不允许重复写入，已过滤 {symbol} {dt} 的重复信号")
+                return 0
 
         udt = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         key = f'{self.key_prefix}:{self.strategy_name}:{symbol}:{dt.strftime("%Y%m%d%H%M%S")}'
@@ -114,6 +140,17 @@ class RedisWeightsClient:
             df['price'] = 0
         if 'ref' not in df.columns:
             df['ref'] = '{}'
+
+        if not overwrite:
+            raw_count = len(df)
+            _data = []
+            for symbol, dfg in df.groupby('symbol'):
+                last_dt = self.get_last_time(symbol)
+                if last_dt is not None:
+                    dfg = dfg[dfg['dt'] > last_dt]
+                _data.append(dfg)
+            df = pd.concat(_data, ignore_index=True)
+            logger.info(f"不允许重复写入，已过滤 {raw_count - len(df)} 条重复信号")
 
         keys, args = [], []
         for row in df[['symbol', 'dt', 'weight', 'price', 'ref']].to_numpy():

@@ -21,6 +21,7 @@ from czsc.objects import RawBar, List, Operate, Signal, Factor, Event, Position
 from czsc.traders.base import CzscTrader
 from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
 from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump, save_json, read_json
+from czsc.utils import check_freq_and_market
 
 
 class CzscStrategyBase(ABC):
@@ -93,9 +94,12 @@ class CzscStrategyBase(ABC):
             freqs = self.sorted_freqs
 
         if bg is None:
+            uni_times = sorted(list({x.dt.strftime("%H:%M") for x in bars}))
+            _, market = check_freq_and_market(uni_times, freq=base_freq)
+
             sdt = pd.to_datetime(kwargs.get("sdt", "20200101"))
             n = int(kwargs.get("n", 500))
-            bg = BarGenerator(base_freq, freqs=freqs)
+            bg = BarGenerator(base_freq, freqs=freqs, market=market)
 
             # 拆分基础周期K线，sdt 之前的用来初始化BarGenerator，随后的K线是 trader 初始化区间
             bars_init = [x for x in bars if x.dt <= sdt]
@@ -431,7 +435,7 @@ def create_single_ma_long(symbol, ma_name, is_stocks=False, **kwargs) -> Positio
     mo = int(kwargs.get("max_overlap", 5))
     freq = kwargs.get("freq", "15分钟")
     base_freq = kwargs.get("base_freq", freq)
-    
+
     opens = [
         {
             "operate": "开多",
