@@ -185,6 +185,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
 
     if df[x_col].nunique() > n:
         df[f'{x_col}分层'] = pd.qcut(df[x_col], q=n, labels=False, duplicates='drop')
+        df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(x+1).zfill(2)}层')
     else:
         # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
         x_rank = sorted(df[x_col].unique())
