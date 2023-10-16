@@ -1,4 +1,5 @@
 import czsc
+import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
@@ -8,30 +9,40 @@ from sklearn.linear_model import LinearRegression
 def show_daily_return(df, **kwargs):
     """用 streamlit 展示日收益"""
     assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
-    type_ = "持有日" if kwargs.get("none_zero", False) else "交易日"
-
     df = df.copy().fillna(0)
-    stats = []
-    for col in df.columns:
-        col_stats = czsc.daily_performance([x for x in df[col] if x != 0]) if type_ == '持有日' else czsc.daily_performance(df[col])
-        col_stats['日收益名称'] = col
-        stats.append(col_stats)
 
-    stats = pd.DataFrame(stats).set_index('日收益名称')
-    fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
-    stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', subset=fmt_cols)
+    def _stats(df_, type_='持有日'):
+        df_ = df_.copy()
+        stats = []
+        for col in df_.columns:
+            if type_ == '持有日':
+                col_stats = czsc.daily_performance([x for x in df_[col] if x != 0])
+            else:
+                assert type_ == '交易日', "type_ 参数必须是 持有日 或 交易日"
+                col_stats = czsc.daily_performance(df_[col])
+            col_stats['日收益名称'] = col
+            stats.append(col_stats)
+        stats = pd.DataFrame(stats).set_index('日收益名称')
+        fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
+        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', subset=fmt_cols)
+        return stats
 
-    df = df.cumsum()
-    fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
-    for col in kwargs.get("legend_only_cols", []):
-        fig.update_traces(visible="legendonly", selector=dict(name=col))
-
-    title = kwargs.get("title", "")
     with st.container():
+        title = kwargs.get("title", "")
         if title:
             st.subheader(title)
             st.divider()
-        st.dataframe(stats, use_container_width=True)
+
+        col1, col2 = st.columns([1, 1])
+        col1.write("交易日绩效指标")
+        col1.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+        col2.write("持有日绩效指标")
+        col2.dataframe(_stats(df, type_='持有日'), use_container_width=True)
+
+        df = df.cumsum()
+        fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
+        for col in kwargs.get("legend_only_cols", []):
+            fig.update_traces(visible="legendonly", selector=dict(name=col))
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -143,3 +154,63 @@ def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
         st.write(f"多头：{long}，空头：{short}")
         mrr['多空组合'] = (mrr[long] - mrr[short]) / 2
         show_daily_return(mrr[['多空组合']])
+
+
+def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
+    """使用 streamlit 绘制单个标的上的因子分层收益率图
+
+    :param df: 因子数据，必须包含 dt, x_col, y_col 列，其中 dt 为日期，x_col 为因子值，y_col 为收益率，数据样例：
+
+        ===================  ============  ============
+        dt                      intercept     n1b
+        ===================  ============  ============
+        2017-01-03 00:00:00   0             0.00716081
+        2017-01-04 00:00:00  -0.00154541    0.000250816
+        2017-01-05 00:00:00   0.000628884  -0.0062695
+        2017-01-06 00:00:00  -0.00681021    0.00334212
+        2017-01-09 00:00:00   0.00301077   -0.00182963
+        ===================  ============  ============
+
+    :param x_col: 因子列名
+    :param y_col: 收益列名
+    :param kwargs:
+
+        - n: 分层数量，默认为10
+
+    """
+    df = df.copy()
+    n = kwargs.get("n", 10)
+    if df[y_col].max() > 100:       # 如果收益率单位为BP, 转换为万分之一
+        df[y_col] = df[y_col] / 10000
+
+    if df[x_col].nunique() > n:
+        df[f'{x_col}分层'] = pd.qcut(df[x_col], q=n, labels=False, duplicates='drop')
+        df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(x+1).zfill(2)}层')
+    else:
+        # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
+        x_rank = sorted(df[x_col].unique())
+        x_rank = {x_rank[i]: f'第{str(i+1).zfill(2)}层' for i in range(len(x_rank))}
+        st.success(f"因子值分层对应关系：{x_rank}")
+        df[f'{x_col}分层'] = df[x_col].apply(lambda x: x_rank[x])
+
+    for i in range(n):
+        df[f'第{str(i+1).zfill(2)}层'] = np.where(df[f'{x_col}分层'] == f'第{str(i+1).zfill(2)}层', df[y_col], 0)
+
+    layering_cols = [f'第{str(i).zfill(2)}层' for i in range(1, n + 1)]
+    mrr = df[['dt'] + layering_cols].copy()
+    mrr.set_index('dt', inplace=True)
+
+    tabs = st.tabs(["分层收益率", "多空组合"])
+
+    with tabs[0]:
+        show_daily_return(mrr)
+
+    with tabs[1]:
+        col1, col2 = st.columns(2)
+        long = col1.multiselect("多头组合", layering_cols, default=["第02层"], key="symbol_factor_long")
+        short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="symbol_factor_short")
+        dfr = mrr.copy()
+        dfr['多头'] = dfr[long].mean(axis=1)
+        dfr['空头'] = -dfr[short].mean(axis=1)
+        dfr['多空'] = (dfr['多头'] + dfr['空头']) / 2
+        show_daily_return(dfr[['多头', '空头', '多空']])
