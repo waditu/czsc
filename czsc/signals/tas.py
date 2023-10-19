@@ -21,7 +21,7 @@ from deprecated import deprecated
 from czsc.analyze import CZSC
 from czsc.objects import Signal, Direction, BI, RawBar, FX, Mark, ZS
 from czsc.traders.base import CzscSignals
-from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
+from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal, single_linear
 from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
 
 
@@ -2789,7 +2789,7 @@ def tas_atr_V230630(c: CZSC, **kwargs) -> OrderedDict:
     **信号逻辑：**
 
     ATR与收盘价的比值衡量了价格振幅比率的大小，对这个值进行分层。
-    
+
     **信号列表：**
 
     - Signal('日线_D1ATR14_波动V230630_第7层_任意_任意_0')
@@ -2802,7 +2802,7 @@ def tas_atr_V230630(c: CZSC, **kwargs) -> OrderedDict:
     - Signal('日线_D1ATR14_波动V230630_第3层_任意_任意_0')
     - Signal('日线_D1ATR14_波动V230630_第2层_任意_任意_0')
     - Signal('日线_D1ATR14_波动V230630_第1层_任意_任意_0')
-    
+
     :param c:  czsc对象
     :param kwargs:
 
@@ -2860,15 +2860,15 @@ def tas_rumi_V230704(c: CZSC, **kwargs) -> OrderedDict:
     rumi_window = int(kwargs.get('rumi_window', 30))
     timeperiod1 = int(kwargs.get('timeperiod1', 3))
     timeperiod2 = int(kwargs.get('timeperiod2', 50))
-    
+
     assert rumi_window < timeperiod2, "rumi_window 必须小于 timeperiod2"
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}F{timeperiod1}S{timeperiod2}R{rumi_window}_BS辅助V230704".split('_')
     v1 = '其他'
-    
+
     if len(c.bars_raw) < di + timeperiod2:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-     
+
     key1 = update_ma_cache(c, ma_type='SMA', timeperiod=timeperiod1)
     key2 = update_ma_cache(c, ma_type='WMA', timeperiod=timeperiod2)
     bars = get_sub_elements(c.bars_raw, di=di, n=timeperiod2)
@@ -3204,14 +3204,14 @@ def tas_angle_V230802(c: CZSC, **kwargs) -> OrderedDict:
 
         -n：统计笔的数量
         -di：取第几笔
-    
+
     :return: 信号识别结果
     """
     di = int(kwargs.get('di', 1))
     n = int(kwargs.get('n', 9))
     th = int(kwargs.get('th', 50))
     assert 300 > th > 30, "th 取值范围为 30 ~ 300"
-    
+
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}N{n}T{th}_笔角度V230802".split('_')
     v1 = '其他'
@@ -3309,7 +3309,7 @@ def tas_macd_bc_V230804(c: CZSC, **kwargs) -> OrderedDict:
         od_dif = max([x.cache[cache_key]['dif'] for x in b1.fx_b.raw_bars + b3.fx_b.raw_bars])
         if 0 < b5_dif < od_dif:
             v1 = '空头'
-    
+
     if b5.direction == Direction.Down and b5.low < (dd + (gg - dd) / 4):
         b5_dif = min([x.cache[cache_key]['dif'] for x in b5.fx_b.raw_bars])
         od_dif = min([x.cache[cache_key]['dif'] for x in b1.fx_b.raw_bars + b3.fx_b.raw_bars])
@@ -3358,11 +3358,61 @@ def tas_macd_bc_ubi_V230804(c: CZSC, **kwargs) -> OrderedDict:
         od_dif = max([x.cache[cache_key]['dif'] for x in b2.fx_b.raw_bars + b4.fx_b.raw_bars])
         if 0 < b5_dif < od_dif:
             v1 = '空头'
-    
+
     if ubi['direction'] == Direction.Down and ubi['low'] < (dd + (gg - dd) / 4):
         b5_dif = min([x.cache[cache_key]['dif'] for x in ubi['raw_bars'][-5:]])
         od_dif = min([x.cache[cache_key]['dif'] for x in b2.fx_b.raw_bars + b4.fx_b.raw_bars])
         if 0 > b5_dif > od_dif:
             v1 = '多头'
 
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_slope_V231019(c: CZSC, **kwargs) -> OrderedDict:
+    """DIF趋势线斜率判断多空
+
+    参数模板："{freq}_D{di}DIF{n}斜率T{th}_BS辅助V231019"
+
+    **信号逻辑：**
+
+    取最近 N 根K线的DIF值计算斜率，然后取 N * 10 根K线的斜率值，计算斜率值的分位数，
+    如果分位数大于th，则看多，小于1-th，则看空。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1DIF10斜率T80_BS辅助V231019_看多_任意_任意_0')
+    - Signal('60分钟_D1DIF10斜率T80_BS辅助V231019_看空_任意_任意_0')
+
+    :param cat: CzscSignals对象
+    :param kwargs: 参数字典
+     :return: 返回信号结果
+    """
+    di = int(kwargs.get('di', 1))
+    n = int(kwargs.get('n', 10))
+    th = int(kwargs.get('th', 80))
+    assert th > 50 and th < 100, 'th 参数取值范围为 50 ~ 100'
+
+    freq = c.freq.value
+    cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
+    k1, k2, k3 = f"{freq}_D{di}DIF{n}斜率T{th}_BS辅助V231019".split('_')
+    v1 = '其他'
+    if len(c.bars_raw) < 50:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    cache_slope_key = f"tas_slope_V231019_{di}_{n}"
+    for i, bar in enumerate(c.bars_raw):
+        if i < n:
+            continue
+
+        if cache_slope_key not in bar.cache:
+            dif = [x.cache[cache_key]['dif'] for x in c.bars_raw[i - n: i]]
+            bar.cache[cache_slope_key] = single_linear(dif)['slope']
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=n * 10)
+    dif_slope = [x.cache.get(cache_slope_key, 0) for x in bars]
+    q = (dif_slope[-1] - min(dif_slope)) / (max(dif_slope) - min(dif_slope))
+    if q > th / 100:
+        v1 = '看多'
+    elif q < 1 - th / 100:
+        v1 = '看空'
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
