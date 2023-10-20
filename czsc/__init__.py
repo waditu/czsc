@@ -99,6 +99,7 @@ from czsc.utils.bi_info import (
 
 from czsc.utils.features import (
     normalize_feature,
+    normalize_ts_feature,
 )
 
 __version__ = "0.9.33"
