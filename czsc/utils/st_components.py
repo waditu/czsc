@@ -41,8 +41,16 @@ def show_daily_return(df, **kwargs):
 
         df = df.cumsum()
         fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
+        fig.update_xaxes(title='')
+
+        # 添加每年的开始第一个日期的竖线
+        for year in range(df.index.year.min(), df.index.year.max() + 1):
+            first_date = df[df.index.year == year].index.min()
+            fig.add_vline(x=first_date, line_dash='dash', line_color='red')
+
         for col in kwargs.get("legend_only_cols", []):
             fig.update_traces(visible="legendonly", selector=dict(name=col))
+
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -183,14 +191,16 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     if df[y_col].max() > 100:       # 如果收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
-    if df[x_col].nunique() > n:
-        czsc.normalize_ts_feature(df, x_col)
-    else:
-        # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
-        x_rank = sorted(df[x_col].unique())
-        x_rank = {x_rank[i]: f'第{str(i+1).zfill(2)}层' for i in range(len(x_rank))}
-        st.success(f"因子值分层对应关系：{x_rank}")
-        df[f'{x_col}分层'] = df[x_col].apply(lambda x: x_rank[x])
+    if f'{x_col}分层' not in df.columns:
+        # 如果因子分层列不存在，先计算因子分层
+        if df[x_col].nunique() > n:
+            czsc.normlize_ts_feature(df, x_col, n=n)
+        else:
+            # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
+            x_rank = sorted(df[x_col].unique())
+            x_rank = {x_rank[i]: f'第{str(i+1).zfill(2)}层' for i in range(len(x_rank))}
+            st.success(f"因子值分层对应关系：{x_rank}")
+            df[f'{x_col}分层'] = df[x_col].apply(lambda x: x_rank[x])
 
     for i in range(n):
         df[f'第{str(i+1).zfill(2)}层'] = np.where(df[f'{x_col}分层'] == f'第{str(i+1).zfill(2)}层', df[y_col], 0)
@@ -209,7 +219,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
         long = col1.multiselect("多头组合", layering_cols, default=["第02层"], key="symbol_factor_long")
         short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="symbol_factor_short")
         dfr = mrr.copy()
-        dfr['多头'] = dfr[long].mean(axis=1)
-        dfr['空头'] = -dfr[short].mean(axis=1)
-        dfr['多空'] = (dfr['多头'] + dfr['空头']) / 2
+        dfr['多头'] = dfr[long].sum(axis=1)
+        dfr['空头'] = -dfr[short].sum(axis=1)
+        dfr['多空'] = dfr['多头'] + dfr['空头']
         show_daily_return(dfr[['多头', '空头', '多空']])

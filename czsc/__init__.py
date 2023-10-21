@@ -90,6 +90,7 @@ from czsc.utils.st_components import (
     show_sectional_ic,
     show_factor_returns,
     show_factor_layering,
+    show_symbol_factor_layering,
 )
 
 from czsc.utils.bi_info import (
