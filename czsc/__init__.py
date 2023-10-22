@@ -90,6 +90,7 @@ from czsc.utils.st_components import (
     show_sectional_ic,
     show_factor_returns,
     show_factor_layering,
+    show_symbol_factor_layering,
 )
 
 from czsc.utils.bi_info import (
@@ -99,12 +100,13 @@ from czsc.utils.bi_info import (
 
 from czsc.utils.features import (
     normalize_feature,
+    normalize_ts_feature,
 )
 
-__version__ = "0.9.32"
+__version__ = "0.9.33"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231013"
+__date__ = "20231018"
 
 
 

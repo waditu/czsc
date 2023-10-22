@@ -205,6 +205,7 @@ from czsc.signals.tas import (
     tas_macd_bc_V230803,
     tas_macd_bc_V230804,
     tas_macd_bc_ubi_V230804,
+    tas_slope_V231019,
 )
 
 from czsc.signals.pos import (
