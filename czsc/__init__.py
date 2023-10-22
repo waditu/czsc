@@ -103,10 +103,10 @@ from czsc.utils.features import (
     normalize_ts_feature,
 )
 
-__version__ = "0.9.33"
+__version__ = "0.9.34"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231018"
+__date__ = "20231022"
 
 
 
