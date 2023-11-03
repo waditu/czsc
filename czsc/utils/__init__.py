@@ -23,6 +23,7 @@ from .signal_analyzer import SignalAnalyzer, SignalPerformance
 from .cache import home_path, get_dir_size, empty_cache_path
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
+from .oss import AliyunOSS
 
 
 sorted_freqs = ['Tick', '1分钟', '2分钟', '3分钟', '4分钟', '5分钟', '6分钟', '10分钟', '12分钟',

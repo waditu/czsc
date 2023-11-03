@@ -74,6 +74,7 @@ from czsc.utils import (
     print_df_sample,
     index_composition,
 
+    AliyunOSS,
     DataClient,
     set_url_token,
     get_url_token,
