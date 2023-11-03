@@ -8,9 +8,6 @@ from loguru import logger
 from functools import partial
 
 
-logger.disable(__name__)
-
-
 def set_url_token(token, url):
     """设置指定 URL 数据接口的凭证码，通常一台机器只需要设置一次即可
 
@@ -80,14 +77,15 @@ class DataClient:
         file_cache = self.cache_path / f"{hash_key}.pkl"
         if file_cache.exists():
             df = pd.read_pickle(file_cache)
-            logger.info(f"从缓存中获取数据，大小：{(file_cache.stat().st_size / 1048576):.2f}MB")
+            logger.info(f"缓存命中 | API：{api_name}；参数：{kwargs}；数据量：{df.shape}")
             return df
 
         res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
         if res:
             result = res.json()
             if result['code'] != 0:
-                raise Exception(result['msg'])
+                raise Exception(f"API: {api_name} - {kwargs} 数据获取失败: {result}")
+
             df = pd.DataFrame(result['data']['items'], columns=result['data']['fields'])
             df.to_pickle(file_cache)
         else:
