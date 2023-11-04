@@ -144,24 +144,25 @@ def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
     if df[y_col].max() > 100:       # 收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
-    def _layering(x):
-        return pd.qcut(x, q=n, labels=False, duplicates='drop')
-    df[f'{x_col}分层'] = df.groupby('dt')[x_col].transform(_layering)
+    df = czsc.feture_cross_layering(df, x_col, n=n)
 
     mr = df.groupby(["dt", f'{x_col}分层'])[y_col].mean().reset_index()
     mrr = mr.pivot(index='dt', columns=f'{x_col}分层', values=y_col).fillna(0)
-    mrr.columns = [f'第{str(i).zfill(2)}层' for i in range(1, n + 1)]
+    layering_cols = mrr.columns.to_list()
 
     tabs = st.tabs(["分层收益率", "多空组合"])
     with tabs[0]:
         show_daily_return(mrr)
 
     with tabs[1]:
-        long = kwargs.get("long", f"第{n}层")
-        short = kwargs.get("short", "第01层")
-        st.write(f"多头：{long}，空头：{short}")
-        mrr['多空组合'] = (mrr[long] - mrr[short]) / 2
-        show_daily_return(mrr[['多空组合']])
+        col1, col2 = st.columns(2)
+        long = col1.multiselect("多头组合", layering_cols, default=["第10层"], key="factor_long")
+        short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="factor_short")
+        dfr = mrr.copy()
+        dfr['多头'] = dfr[long].mean(axis=1)
+        dfr['空头'] = -dfr[short].mean(axis=1)
+        dfr['多空'] = (dfr['多头'] + dfr['空头']) / 2
+        show_daily_return(dfr[['多头', '空头', '多空']])
 
 
 def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
@@ -194,7 +195,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     if f'{x_col}分层' not in df.columns:
         # 如果因子分层列不存在，先计算因子分层
         if df[x_col].nunique() > n:
-            czsc.normlize_ts_feature(df, x_col, n=n)
+            czsc.normalize_ts_feature(df, x_col, n=n)
         else:
             # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
             x_rank = sorted(df[x_col].unique())
@@ -247,7 +248,8 @@ def show_weight_backtest(dfw, **kwargs):
     """
     fee = kwargs.get("fee", 2)
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
-        st.warning("数据中存在空值，请检查数据后再试")
+        st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
+        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
     from czsc.traders.weight_backtest import WeightBacktest
