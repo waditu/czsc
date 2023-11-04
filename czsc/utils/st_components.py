@@ -223,3 +223,50 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
         dfr['空头'] = -dfr[short].sum(axis=1)
         dfr['多空'] = dfr['多头'] + dfr['空头']
         show_daily_return(dfr[['多头', '空头', '多空']])
+
+
+@st.cache_data(ttl=3600 * 24)
+def show_weight_backtest(dfw, **kwargs):
+    """展示权重回测结果
+
+    :param dfw: 回测数据，任何字段都不允许有空值；数据样例：
+
+        ===================  ========  ========  =======
+        dt                   symbol      weight    price
+        ===================  ========  ========  =======
+        2019-01-02 09:01:00  DLi9001       0.5   961.695
+        2019-01-02 09:02:00  DLi9001       0.25  960.72
+        2019-01-02 09:03:00  DLi9001       0.25  962.669
+        2019-01-02 09:04:00  DLi9001       0.25  960.72
+        2019-01-02 09:05:00  DLi9001       0.25  961.695
+        ===================  ========  ========  =======
+
+    :param kwargs:
+
+        - fee: 单边手续费，单位为BP，默认为2BP
+    """
+    fee = kwargs.get("fee", 2)
+    if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
+        st.warning("数据中存在空值，请检查数据后再试")
+        st.stop()
+
+    from czsc.traders.weight_backtest import WeightBacktest
+
+    wb = WeightBacktest(dfw, fee=fee / 10000)
+    stat = wb.results['绩效评价']
+
+    st.divider()
+    c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+    c1.metric("盈亏平衡点", f"{stat['盈亏平衡点']:.2%}")
+    c2.metric("单笔收益", f"{stat['单笔收益']} BP")
+    c3.metric("交易胜率", f"{stat['交易胜率']:.2%}")
+    c4.metric("持仓K线数", f"{stat['持仓K线数']}")
+    c5.metric("最大回撤", f"{stat['最大回撤']:.2%}")
+    c6.metric("年化收益率", f"{stat['年化']:.2%}")
+    c7.metric("夏普比率", f"{stat['夏普']:.2f}")
+    c8.metric("卡玛比率", f"{stat['卡玛']:.2f}")
+    st.divider()
+
+    dret = wb.results['品种等权日收益']
+    dret.index = pd.to_datetime(dret.index)
+    show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
