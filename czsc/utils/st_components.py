@@ -148,21 +148,28 @@ def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
 
     mr = df.groupby(["dt", f'{x_col}分层'])[y_col].mean().reset_index()
     mrr = mr.pivot(index='dt', columns=f'{x_col}分层', values=y_col).fillna(0)
-    layering_cols = mrr.columns.to_list()
 
     tabs = st.tabs(["分层收益率", "多空组合"])
     with tabs[0]:
-        show_daily_return(mrr)
+        czsc.show_daily_return(mrr)
 
     with tabs[1]:
-        col1, col2 = st.columns(2)
-        long = col1.multiselect("多头组合", layering_cols, default=["第10层"], key="factor_long")
-        short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="factor_short")
+        layering_cols = mrr.columns.to_list()
+        with st.form(key="factor_form"):
+            col1, col2 = st.columns(2)
+            long = col1.multiselect("多头组合", layering_cols, default=[], key="factor_long")
+            short = col2.multiselect("空头组合", layering_cols, default=[], key="factor_short")
+            submit = st.form_submit_button("多空组合快速测试")
+
+        if not submit:
+            st.warning("请设置多空组合")
+            st.stop()
+
         dfr = mrr.copy()
         dfr['多头'] = dfr[long].mean(axis=1)
         dfr['空头'] = -dfr[short].mean(axis=1)
         dfr['多空'] = (dfr['多头'] + dfr['空头']) / 2
-        show_daily_return(dfr[['多头', '空头', '多空']])
+        czsc.show_daily_return(dfr[['多头', '空头', '多空']])
 
 
 def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
