@@ -83,3 +83,43 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
         df[f'{x_col}分层'] = df[f'{x_col}_qcut'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
 
     return df
+
+
+def feture_cross_layering(df, x_col, **kwargs):
+    """因子在时间截面上分层
+
+    :param df: 因子数据，数据样例：
+
+        ===================  ========  ===========  ==========  ==========
+        dt                   symbol       factor01    factor02    factor03
+        ===================  ========  ===========  ==========  ==========
+        2022-12-19 00:00:00  ZZUR9001  -0.0221211    0.034236    0.0793672
+        2022-12-20 00:00:00  ZZUR9001  -0.0278691    0.0275818   0.0735083
+        2022-12-21 00:00:00  ZZUR9001  -0.00617075   0.0512298   0.0990967
+        2022-12-22 00:00:00  ZZUR9001  -0.0222238    0.0320096   0.0792036
+        2022-12-23 00:00:00  ZZUR9001  -0.0375133    0.0129455   0.059491
+        ===================  ========  ===========  ==========  ==========
+
+    :param x_col: 因子列名
+    :param kwargs:
+
+        - n: 分层数量，默认为10
+
+    :return: df, 添加了 x_col分层 列
+    """
+    n = kwargs.get("n", 10)
+    assert 'dt' in df.columns, "因子数据必须包含 dt 列"
+    assert 'symbol' in df.columns, "因子数据必须包含 symbol 列"
+    assert x_col in df.columns, "因子数据必须包含 {} 列".format(x_col)
+    assert df['symbol'].nunique() > n, "标的数量必须大于分层数量"
+
+    if df[x_col].nunique() > n:
+        def _layering(x):
+            return pd.qcut(x, q=n, labels=False, duplicates='drop')
+        df[f'{x_col}分层'] = df.groupby('dt')[x_col].transform(_layering)
+    else:
+        sorted_x = sorted(df[x_col].unique())
+        df[f'{x_col}分层'] = df[x_col].apply(lambda x: sorted_x.index(x))
+    df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
+    df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
+    return df

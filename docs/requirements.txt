@@ -28,3 +28,4 @@ parse>=1.19.0
 lightgbm>=4.0.0
 streamlit
 redis
+oss2
