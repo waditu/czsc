@@ -137,7 +137,7 @@ class WeightBacktest:
 
     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/Pf1fw1woQi4iJikbKJmcYToznxb
     """
-    version = "V231005"
+    version = "V231104"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
@@ -169,9 +169,11 @@ class WeightBacktest:
         """
         self.kwargs = kwargs
         self.dfw = dfw.copy()
+        if self.dfw.isnull().sum().sum() > 0:
+            raise ValueError("dfw 中存在空值, 请先处理")
         self.digits = digits
         self.fee_rate = kwargs.get('fee_rate', 0.0002)
-        self.dfw['weight'] = self.dfw['weight'].round(digits)
+        self.dfw['weight'] = self.dfw['weight'].astype('float').round(digits)
         self.symbols = list(self.dfw['symbol'].unique().tolist())
         self.results = self.backtest()
 
