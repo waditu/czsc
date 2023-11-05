@@ -32,7 +32,7 @@ def get_url_token(url):
 
 
 class DataClient:
-    def __init__(self, token=None, url='http://api.tushare.pro', timeout=30, **kwargs):
+    def __init__(self, token=None, url='http://api.tushare.pro', timeout=120, **kwargs):
         """数据接口客户端，支持缓存，默认缓存路径为 ~/.quant_data_cache；兼容Tushare数据接口
 
         :param token: str API接口TOKEN，用于用户认证
@@ -47,10 +47,11 @@ class DataClient:
         self.__token = token or get_url_token(url)
         self.__http_url = url
         self.__timeout = timeout
+        self.__url_hash = hashlib.md5(str(url).encode('utf-8')).hexdigest()[:8]
         assert self.__token, "请设置czsc_token凭证码，如果没有请联系管理员申请"
         self.cache_path = Path(kwargs.get("cache_path", os.path.expanduser("~/.quant_data_cache")))
         self.cache_path.mkdir(exist_ok=True, parents=True)
-        logger.info(f"数据缓存路径：{self.cache_path}")
+        logger.info(f"数据URL: {url}  数据缓存路径：{self.cache_path}")
         if kwargs.get("clear_cache", False):
             self.clear_cache()
 
@@ -73,8 +74,9 @@ class DataClient:
             return pd.DataFrame()
 
         req_params = {'api_name': api_name, 'token': self.__token, 'params': kwargs, 'fields': fields}
-        hash_key = hashlib.md5(str(req_params).encode('utf-8')).hexdigest()
-        file_cache = self.cache_path / f"{hash_key}.pkl"
+        path = self.cache_path / f"{self.__url_hash}_{api_name}"
+        path.mkdir(exist_ok=True, parents=True)
+        file_cache = path / f"{hashlib.md5(str(req_params).encode('utf-8')).hexdigest()}.pkl"
         if file_cache.exists():
             df = pd.read_pickle(file_cache)
             logger.info(f"缓存命中 | API：{api_name}；参数：{kwargs}；数据量：{df.shape}")
