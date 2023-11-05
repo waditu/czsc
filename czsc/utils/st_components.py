@@ -261,7 +261,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     from czsc.traders.weight_backtest import WeightBacktest
 
-    wb = WeightBacktest(dfw, fee=fee / 10000)
+    wb = WeightBacktest(dfw, fee_rate=fee / 10000)
     stat = wb.results['绩效评价']
 
     st.divider()
