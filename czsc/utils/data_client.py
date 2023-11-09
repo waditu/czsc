@@ -1,4 +1,5 @@
 import os
+import shutil
 import hashlib
 import requests
 import pandas as pd
@@ -32,7 +33,9 @@ def get_url_token(url):
 
 
 class DataClient:
-    def __init__(self, token=None, url='http://api.tushare.pro', timeout=120, **kwargs):
+    __version__ = "V231109"
+
+    def __init__(self, token=None, url='http://api.tushare.pro', timeout=300, **kwargs):
         """数据接口客户端，支持缓存，默认缓存路径为 ~/.quant_data_cache；兼容Tushare数据接口
 
         :param token: str API接口TOKEN，用于用户认证
@@ -57,8 +60,7 @@ class DataClient:
 
     def clear_cache(self):
         """清空缓存"""
-        for file in self.cache_path.glob("*.pkl"):
-            file.unlink()
+        shutil.rmtree(self.cache_path)
         logger.info(f"{self.cache_path} 路径下的数据缓存已清空")
 
     def post_request(self, api_name, fields='', **kwargs):
@@ -67,17 +69,21 @@ class DataClient:
         :param api_name: str, 查询接口名称
         :param fields: str, 查询字段
         :param kwargs: dict, 查询参数
+
+            - ttl: int, 缓存有效期，单位秒，-1表示不过期
+
         :return: pd.DataFrame
         """
         stime = time()
         if api_name in ['__getstate__', '__setstate__']:
             return pd.DataFrame()
 
+        ttl = int(kwargs.pop("ttl", -1))
         req_params = {'api_name': api_name, 'token': self.__token, 'params': kwargs, 'fields': fields}
         path = self.cache_path / f"{self.__url_hash}_{api_name}"
         path.mkdir(exist_ok=True, parents=True)
         file_cache = path / f"{hashlib.md5(str(req_params).encode('utf-8')).hexdigest()}.pkl"
-        if file_cache.exists():
+        if file_cache.exists() and (ttl == -1 or time() - file_cache.stat().st_mtime < ttl):
             df = pd.read_pickle(file_cache)
             logger.info(f"缓存命中 | API：{api_name}；参数：{kwargs}；数据量：{df.shape}")
             return df

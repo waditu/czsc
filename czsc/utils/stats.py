@@ -61,11 +61,18 @@ def daily_performance(daily_returns):
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
     cum_returns = np.cumsum(daily_returns)
-    max_drawdown = np.max(np.maximum.accumulate(cum_returns) - cum_returns)
+    dd = np.maximum.accumulate(cum_returns) - cum_returns
+    max_drawdown = np.max(dd)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
     win_pct = len(daily_returns[daily_returns > 0]) / len(daily_returns)
     annual_volatility = np.std(daily_returns) * np.sqrt(252)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
+
+    # 计算最大新高时间
+    high_index = [i for i, x in enumerate(dd) if x == 0]
+    max_interval = 0
+    for i in range(len(high_index) - 1):
+        max_interval = max(max_interval, high_index[i + 1] - high_index[i])
 
     sta = {
         "年化": round(annual_returns, 4),
@@ -76,6 +83,7 @@ def daily_performance(daily_returns):
         "年化波动率": round(annual_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),
         "盈亏平衡点": round(cal_break_even_point(daily_returns), 4),
+        "最大新高时间": max_interval,
     }
     return sta
 

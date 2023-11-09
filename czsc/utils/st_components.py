@@ -24,7 +24,7 @@ def show_daily_return(df, **kwargs):
             stats.append(col_stats)
         stats = pd.DataFrame(stats).set_index('日收益名称')
         fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
-        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', subset=fmt_cols)
+        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
         return stats
 
     with st.container():
@@ -63,7 +63,7 @@ def show_correlation(df, cols=None, method='pearson', **kwargs):
     """
     cols = cols or df.columns.to_list()
     dfr = df[cols].corr(method=method)
-    dfr['total'] = dfr.sum(axis=1) - 1
+    dfr['average'] = (dfr.sum(axis=1) - 1) / (len(cols) - 1)
     dfr = dfr.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS')
     st.dataframe(dfr, use_container_width=kwargs.get("use_container_width", True))
 
@@ -254,6 +254,7 @@ def show_weight_backtest(dfw, **kwargs):
         - fee: 单边手续费，单位为BP，默认为2BP
     """
     fee = kwargs.get("fee", 2)
+    digits = kwargs.get("digits", 2)
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
@@ -261,7 +262,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     from czsc.traders.weight_backtest import WeightBacktest
 
-    wb = WeightBacktest(dfw, fee_rate=fee / 10000)
+    wb = WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
     stat = wb.results['绩效评价']
 
     st.divider()
