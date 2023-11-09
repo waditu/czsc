@@ -7,6 +7,7 @@ from time import time
 from pathlib import Path
 from loguru import logger
 from functools import partial
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 
 def set_url_token(token, url):
@@ -63,6 +64,7 @@ class DataClient:
         shutil.rmtree(self.cache_path)
         logger.info(f"{self.cache_path} 路径下的数据缓存已清空")
 
+    @retry(stop=stop_after_attempt(3), wait=wait_fixed(10), reraise=True)
     def post_request(self, api_name, fields='', **kwargs):
         """执行API数据查询
 
