@@ -56,7 +56,7 @@ def daily_performance(daily_returns):
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
         return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
-                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0}
+                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "最大新高时间": 0}
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
