@@ -24,7 +24,7 @@ def show_daily_return(df, **kwargs):
             stats.append(col_stats)
         stats = pd.DataFrame(stats).set_index('日收益名称')
         fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
-        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', subset=fmt_cols)
+        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
         return stats
 
     with st.container():
@@ -63,7 +63,7 @@ def show_correlation(df, cols=None, method='pearson', **kwargs):
     """
     cols = cols or df.columns.to_list()
     dfr = df[cols].corr(method=method)
-    dfr['total'] = dfr.sum(axis=1) - 1
+    dfr['average'] = (dfr.sum(axis=1) - 1) / (len(cols) - 1)
     dfr = dfr.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS')
     st.dataframe(dfr, use_container_width=kwargs.get("use_container_width", True))
 
@@ -144,24 +144,32 @@ def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
     if df[y_col].max() > 100:       # 收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
-    def _layering(x):
-        return pd.qcut(x, q=n, labels=False, duplicates='drop')
-    df[f'{x_col}分层'] = df.groupby('dt')[x_col].transform(_layering)
+    df = czsc.feture_cross_layering(df, x_col, n=n)
 
     mr = df.groupby(["dt", f'{x_col}分层'])[y_col].mean().reset_index()
     mrr = mr.pivot(index='dt', columns=f'{x_col}分层', values=y_col).fillna(0)
-    mrr.columns = [f'第{str(i).zfill(2)}层' for i in range(1, n + 1)]
 
     tabs = st.tabs(["分层收益率", "多空组合"])
     with tabs[0]:
-        show_daily_return(mrr)
+        czsc.show_daily_return(mrr)
 
     with tabs[1]:
-        long = kwargs.get("long", f"第{n}层")
-        short = kwargs.get("short", "第01层")
-        st.write(f"多头：{long}，空头：{short}")
-        mrr['多空组合'] = (mrr[long] - mrr[short]) / 2
-        show_daily_return(mrr[['多空组合']])
+        layering_cols = mrr.columns.to_list()
+        with st.form(key="factor_form"):
+            col1, col2 = st.columns(2)
+            long = col1.multiselect("多头组合", layering_cols, default=[], key="factor_long")
+            short = col2.multiselect("空头组合", layering_cols, default=[], key="factor_short")
+            submit = st.form_submit_button("多空组合快速测试")
+
+        if not submit:
+            st.warning("请设置多空组合")
+            st.stop()
+
+        dfr = mrr.copy()
+        dfr['多头'] = dfr[long].mean(axis=1)
+        dfr['空头'] = -dfr[short].mean(axis=1)
+        dfr['多空'] = (dfr['多头'] + dfr['空头']) / 2
+        czsc.show_daily_return(dfr[['多头', '空头', '多空']])
 
 
 def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
@@ -194,7 +202,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     if f'{x_col}分层' not in df.columns:
         # 如果因子分层列不存在，先计算因子分层
         if df[x_col].nunique() > n:
-            czsc.normlize_ts_feature(df, x_col, n=n)
+            czsc.normalize_ts_feature(df, x_col, n=n)
         else:
             # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
             x_rank = sorted(df[x_col].unique())
@@ -225,7 +233,6 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
         show_daily_return(dfr[['多头', '空头', '多空']])
 
 
-@st.cache_data(ttl=3600 * 24)
 def show_weight_backtest(dfw, **kwargs):
     """展示权重回测结果
 
@@ -246,13 +253,15 @@ def show_weight_backtest(dfw, **kwargs):
         - fee: 单边手续费，单位为BP，默认为2BP
     """
     fee = kwargs.get("fee", 2)
+    digits = kwargs.get("digits", 2)
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
-        st.warning("数据中存在空值，请检查数据后再试")
+        st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
+        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
     from czsc.traders.weight_backtest import WeightBacktest
 
-    wb = WeightBacktest(dfw, fee=fee / 10000)
+    wb = WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
     stat = wb.results['绩效评价']
 
     st.divider()
@@ -270,3 +279,4 @@ def show_weight_backtest(dfw, **kwargs):
     dret = wb.results['品种等权日收益']
     dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
+    return wb

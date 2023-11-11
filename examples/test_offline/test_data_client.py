@@ -5,8 +5,8 @@ import czsc
 
 def test_tushare_pro():
     # czsc.set_url_token("******", url="http://api.tushare.pro")
-    dc = czsc.DataClient(url="http://api.tushare.pro", cache_path="tushare_data")
-    df = dc.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
+    dc = czsc.DataClient(url="http://api.tushare.pro")
+    df = dc.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date', ttl=5)
     try:
         df = dc.stock_basic_1(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')
     except Exception as e:

@@ -20,7 +20,7 @@ logger.disable(__name__)
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V231014"
+    version = "V231111"
 
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
@@ -269,10 +269,17 @@ return cnt
         dfw['dt'] = pd.to_datetime(dfw['dt'])
         if ignore_zero:
             dfw = dfw[dfw['weight'] != 0].copy().reset_index(drop=True)
+        dfw = dfw.sort_values(['dt', 'symbol']).reset_index(drop=True)
         return dfw
 
     def get_hist_weights(self, symbol, sdt, edt) -> pd.DataFrame:
-        """获取单个品种的持仓权重历史数据"""
+        """获取单个品种的持仓权重历史数据
+
+        :param symbol: str, 品种代码
+        :param sdt: str, 开始时间, eg: 20210924 10:19:00
+        :param edt: str, 结束时间, eg: 20220924 10:19:00
+        :return: pd.DataFrame
+        """
         start_score = pd.to_datetime(sdt).strftime('%Y%m%d%H%M%S')
         end_score = pd.to_datetime(edt).strftime('%Y%m%d%H%M%S')
         model_key = f'{self.key_prefix}:{self.strategy_name}:{symbol}'
@@ -289,7 +296,7 @@ return cnt
 
         weights = []
         for i in range(len(key_list)):
-            dt = pd.to_datetime(key_list[i].split(":")[-1]) # type: ignore
+            dt = pd.to_datetime(key_list[i].split(":")[-1])
             weight, price, ref = rows[i]
             weight = weight if weight is None else float(weight)
             price = price if price is None else float(price)
@@ -298,5 +305,40 @@ return cnt
             except Exception:
                 ref = ref
             weights.append((self.strategy_name, symbol, dt, weight, price, ref))
+
         dfw = pd.DataFrame(weights, columns=['strategy_name', 'symbol', 'dt', 'weight', 'price', 'ref'])
+        dfw = dfw.sort_values('dt').reset_index(drop=True)
         return dfw
+
+    def get_all_weights(self, sdt=None, edt=None, ignore_zero=True) -> pd.DataFrame:
+        """获取所有权重数据
+
+        :param sdt: str, 开始时间, eg: 20210924 10:19:00
+        :param edt: str, 结束时间, eg: 20220924 10:19:00
+        :param ignore_zero: boolean, 是否忽略权重为0的品种
+        :return: pd.DataFrame
+        """
+        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}:*:*")
+        if keys is None or len(keys) == 0:                          # type: ignore
+            return pd.DataFrame()
+
+        keys = [x for x in keys if len(x.split(":")[-1]) == 14]     # type: ignore
+        with self.r.pipeline() as pipe:
+            for key in keys:
+                pipe.hgetall(key)
+            rows = pipe.execute()
+        df = pd.DataFrame(rows)
+        df['dt'] = pd.to_datetime(df['dt'])
+        df['weight'] = df['weight'].astype(float)
+        df = df.sort_values(['dt', 'symbol']).reset_index(drop=True)
+
+        df1 = pd.pivot_table(df, index='dt', columns='symbol', values='weight').sort_index().ffill().fillna(0)
+        df1 = pd.melt(df1.reset_index(), id_vars='dt', value_vars=df1.columns, value_name='weight')     # type: ignore
+        if ignore_zero:
+            df1 = df1[df1['weight'] != 0].reset_index(drop=True)
+        if sdt:
+            df1 = df1[df1['dt'] >= pd.to_datetime(sdt)].reset_index(drop=True)
+        if edt:
+            df1 = df1[df1['dt'] <= pd.to_datetime(edt)].reset_index(drop=True)
+        df1 = df1.sort_values(['dt', 'symbol']).reset_index(drop=True)
+        return df1
