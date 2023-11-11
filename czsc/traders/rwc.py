@@ -20,7 +20,7 @@ logger.disable(__name__)
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V231014"
+    version = "V231111"
 
     def __init__(self, strategy_name, redis_url, **kwargs):
         """
@@ -289,7 +289,7 @@ return cnt
 
         weights = []
         for i in range(len(key_list)):
-            dt = pd.to_datetime(key_list[i].split(":")[-1]) # type: ignore
+            dt = pd.to_datetime(key_list[i].split(":")[-1])
             weight, price, ref = rows[i]
             weight = weight if weight is None else float(weight)
             price = price if price is None else float(price)
@@ -300,3 +300,19 @@ return cnt
             weights.append((self.strategy_name, symbol, dt, weight, price, ref))
         dfw = pd.DataFrame(weights, columns=['strategy_name', 'symbol', 'dt', 'weight', 'price', 'ref'])
         return dfw
+
+    def get_all_weights(self):
+        """获取所有权重数据"""
+        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}*")
+        if keys is None or len(keys) == 0:                          # type: ignore
+            return pd.DataFrame()
+
+        keys = [x for x in keys if len(x.split(":")[-1]) == 14]     # type: ignore
+        with self.r.pipeline() as pipe:
+            for key in keys:
+                pipe.hgetall(key)
+            rows = pipe.execute()
+        df = pd.DataFrame(rows)
+        df['dt'] = pd.to_datetime(df['dt'])
+        df['weight'] = df['weight'].astype(float)
+        return df
