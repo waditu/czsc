@@ -233,7 +233,6 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
         show_daily_return(dfr[['多头', '空头', '多空']])
 
 
-@st.cache_data(ttl=3600 * 24)
 def show_weight_backtest(dfw, **kwargs):
     """展示权重回测结果
 
@@ -280,3 +279,4 @@ def show_weight_backtest(dfw, **kwargs):
     dret = wb.results['品种等权日收益']
     dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
+    return wb
