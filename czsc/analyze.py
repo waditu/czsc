@@ -19,7 +19,24 @@ logger.disable('czsc.analyze')
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
-    """去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线"""
+    """去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线
+
+    处理逻辑如下：
+
+    1. 首先，通过比较k1和k2的高点(high)的大小关系来确定direction的值。如果k1的高点小于k2的高点，
+       则设定direction为Up；如果k1的高点大于k2的高点，则设定direction为Down；如果k1和k2的高点相等，
+       则创建一个新的K线k4，与k3具有相同的属性，并返回False和k4。
+
+    2. 接下来，判断k2和k3之间是否存在包含关系。如果存在，则根据direction的值进行处理。
+        - 如果direction为Up，则选择k2和k3中的较大高点作为新K线k4的高点，较大低点作为低点，较大高点所在的时间戳(dt)作为k4的时间戳。
+        - 如果direction为Down，则选择k2和k3中的较小高点作为新K线k4的高点，较小低点作为低点，较小低点所在的时间戳(dt)作为k4的时间戳。
+        - 如果direction的值不是Up也不是Down，则抛出ValueError异常。
+
+    3. 根据上述处理得到的高点、低点、开盘价(open_)、收盘价(close)，计算新K线k4的成交量(vol)和成交金额(amount)，
+       并将k2中除了与k3时间戳相同的元素之外的其他元素与k3一起作为k4的元素列表(elements)。
+
+    4. 返回一个布尔值和新的K线k4。如果k2和k3之间存在包含关系，则返回True和k4；否则返回False和k4，其中k4与k3具有相同的属性。
+    """
     if k1.high < k2.high:
         direction = Direction.Up
     elif k1.high > k2.high:
