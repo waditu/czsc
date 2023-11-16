@@ -11,7 +11,7 @@ from czsc import traders
 from czsc import sensors
 from czsc import aphorism
 from czsc.analyze import CZSC
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
+from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
