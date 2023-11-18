@@ -3,11 +3,28 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/21 16:04
-describe: 交易价格敏感性分析相关的工具函数
+describe: 交易相关的工具函数
 """
 import pandas as pd
 from typing import List, Union
 from czsc.objects import RawBar
+
+
+def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0.03):
+    """创建无风险收益率序列
+
+    :param start_date: str, defaults to "20180101"
+        起始日期
+    :param end_date: str, defaults to "20210101"
+        截止日期
+    :param year_returns: float, defaults to 0.03
+        年化收益率
+    :return: pd.DataFrame
+    """
+    from czsc.utils.calendar import get_trading_dates
+    trade_dates = get_trading_dates(start_date, end_date)   # type: ignore
+    df = pd.DataFrame({"date": trade_dates, "returns": year_returns / 252})
+    return df
 
 
 def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwargs):
