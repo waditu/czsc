@@ -154,6 +154,11 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
         4   402854600  1.315272e+12
     :param target_freq: 目标周期
     :param raw_bars: 是否将转换后的K线序列转换为RawBar对象
+    :param kwargs:
+
+        - base_freq: 基础周期，如果不指定，则根据df中的dt列自动推断
+        - drop_unfinished: 是否删除最后一根未完成的K线
+
     :return: 转换后的K线序列
     """
     if not isinstance(target_freq, Freq):
@@ -180,11 +185,15 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
             row.update({'id': i, 'freq': target_freq})
             _bars.append(RawBar(**row))
 
-        if df['dt'].iloc[-1] < _bars[-1].dt:
+        if kwargs.get('drop_unfinished', True):
             # 清除最后一根未完成的K线
-            _bars.pop()
-
+            if df['dt'].iloc[-1] < _bars[-1].dt:
+                _bars.pop()
         return _bars
+        # if df['dt'].iloc[-1] < _bars[-1].dt:
+        #     # 清除最后一根未完成的K线
+        #     _bars.pop()
+        # return _bars
     else:
         return dfk1
 
