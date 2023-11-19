@@ -11,7 +11,7 @@ from czsc import traders
 from czsc import sensors
 from czsc import aphorism
 from czsc.analyze import CZSC
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position
+from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
@@ -60,6 +60,8 @@ from czsc.utils import (
     update_bbars,
     update_tbars,
     update_nbars,
+    risk_free_returns,
+
     CrossSectionalPerformance,
     cross_sectional_ranker,
     cross_sectional_ic,
@@ -110,10 +112,10 @@ from czsc.utils.features import (
     feture_cross_layering,
 )
 
-__version__ = "0.9.35"
+__version__ = "0.9.36"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231104"
+__date__ = "20231112"
 
 
 

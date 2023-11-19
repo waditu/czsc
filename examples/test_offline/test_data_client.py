@@ -13,5 +13,16 @@ def test_tushare_pro():
         print(e)
 
 
+def test_cooperation():
+    from czsc.connectors import cooperation as coo
+    symbols = coo.get_symbols(name='股票')
+    assert len(symbols) > 1000
+    futures = coo.get_symbols(name='期货主力')
+    assert len(futures) > 50
+    bars = coo.get_raw_bars(symbol='000001.SZ', freq='日线', sdt='20200101', edt='20231118', fq='后复权')
+    bars = coo.get_raw_bars(symbol='000001.SZ', freq='60分钟', sdt='20230101', edt='20231118', fq='后复权')
+    bars = coo.get_raw_bars(symbol='SFIC9001', freq='60分钟', sdt='20230101', edt='20231118', fq='后复权')
+
+
 if __name__ == '__main__':
     test_tushare_pro()
