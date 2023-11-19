@@ -72,9 +72,9 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
         temp_fast.append(fast[i])
         temp_slow.append(slow[i])
 
-        if i >= 2 and delta[i-1] <= 0 < delta[i]:
+        if i >= 2 and delta[i - 1] <= 0 < delta[i]:
             kind = "金叉"
-        elif i >= 2 and delta[i-1] >= 0 > delta[i]:
+        elif i >= 2 and delta[i - 1] >= 0 > delta[i]:
             kind = "死叉"
         else:
             continue
@@ -187,9 +187,9 @@ def fast_slow_cross(fast: [List, np.array], slow: [List, np.array]):
         temp_fast.append(fast[i])
         temp_slow.append(slow[i])
 
-        if i >= 2 and delta[i-1] <= 0 < delta[i]:
+        if i >= 2 and delta[i - 1] <= 0 < delta[i]:
             kind = "金叉"
-        elif i >= 2 and delta[i-1] >= 0 > delta[i]:
+        elif i >= 2 and delta[i - 1] >= 0 > delta[i]:
             kind = "死叉"
         else:
             continue
