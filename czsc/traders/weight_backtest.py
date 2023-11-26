@@ -8,9 +8,12 @@ describe: 按持仓权重回测
 import numpy as np
 import pandas as pd
 import plotly.express as px
+from tqdm import tqdm
 from loguru import logger
 from pathlib import Path
 from typing import Union, AnyStr, Callable
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor
 from czsc.traders.base import CzscTrader
 from czsc.utils.io import save_json
 from czsc.utils.stats import daily_performance, evaluate_pairs
@@ -89,12 +92,33 @@ def long_short_equity(factors, returns, hold_period=2, rank=5, **kwargs):
 def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'mean'):
     """获取 CzscTrader 中所有 positions 按照 method 方法集成之后的权重
 
+    函数计算逻辑：
+
+    1. 获取 trader 持仓信息并转换为DataFrame:
+
+        - 遍历交易者的每个持仓位置。
+        - 将每个位置的持仓信息转换为DataFrame，并合并到一个整体的DataFrame中。
+        - 将持仓列重命名为对应的位置名称。
+
+    2. 根据给定的方法计算权重:
+
+        - 如果方法是可调用对象，将持仓信息转换为字典，并传递给该方法进行计算。
+        - 如果方法是预定义字符串（"mean"、"max"、"min"、"vote"），根据相应的计算方式计算权重。
+
+    3. 返回包含日期、交易标的、权重和价格的DataFrame:
+
+        - 将计算得到的权重与其他相关列一起组成一个新的DataFrame。
+        - 将交易标的信息添加到新的DataFrame中。
+        - 返回包含日期、交易标的、权重和价格的DataFrame副本。
+
     :param trader: CzscTrader
-        缠论交易者
+        缠论交易员对象
     :param method: str or callable
+
         集成方法，可选值包括：'mean', 'max', 'min', 'vote'
         也可以传入自定义的函数，函数的输入为 dict，key 为 position.name，value 为 position.pos, 样例输入：
             {'多头策略A': 1, '多头策略B': 1, '空头策略A': -1}
+
     :param kwargs:
     :return: pd.DataFrame
         columns = ['dt', 'symbol', 'weight', 'price']
@@ -137,10 +161,21 @@ class WeightBacktest:
 
     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/Pf1fw1woQi4iJikbKJmcYToznxb
     """
-    version = "V231104"
+    version = "V231126"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
+
+        初始化函数逻辑：
+
+        1. 将传入的kwargs保存在实例变量self.kwargs中。
+        2. 复制传入的dfw到实例变量self.dfw。
+        3. 检查self.dfw中是否存在空值，如果存在则抛出ValueError异常，并提示"dfw 中存在空值，请先处理"。
+        4. 设置实例变量self.digits为传入的digits值。
+        5. 从kwargs中获取'fee_rate'参数的值，默认为0.0002，并将其保存在实例变量self.fee_rate中。
+        6. 将self.dfw中的'weight'列转换为浮点型，并保留self.digits位小数。
+        7. 提取self.dfw中的唯一交易标的符号，并将其保存在实例变量self.symbols中。
+        8. 执行backtest()方法进行回测，并将结果保存在实例变量self.results中。
 
         :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
 
@@ -164,7 +199,6 @@ class WeightBacktest:
         :param kwargs:
 
             - fee_rate: float，单边交易成本，包括手续费与冲击成本, 默认为 0.0002
-            - res_path: str，回测结果保存路径，默认为 "weight_backtest"
 
         """
         self.kwargs = kwargs
@@ -175,10 +209,21 @@ class WeightBacktest:
         self.fee_rate = kwargs.get('fee_rate', 0.0002)
         self.dfw['weight'] = self.dfw['weight'].astype('float').round(digits)
         self.symbols = list(self.dfw['symbol'].unique().tolist())
-        self.results = self.backtest()
+        self.results = self.backtest(n_jobs=kwargs.get('n_jobs', int(cpu_count() / 2)))
 
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
+
+        函数计算逻辑：
+
+        1. 从实例变量self.dfw中筛选出交易标的为symbol的数据，并复制到新的DataFrame dfs。
+        2. 计算每条数据的收益（edge）：权重乘以下一条数据的价格除以当前价格减1。
+        3. 计算每条数据的手续费（cost）：当前权重与前一条数据权重之差的绝对值乘以实例变量self.fee_rate。
+        4. 计算每条数据扣除手续费后的收益（edge_post_fee）：收益减去手续费。
+        5. 根据日期进行分组，并对每组进行求和操作，得到每日的总收益、总扣除手续费后的收益和总手续费。
+        6. 重置索引，并将交易标的符号添加到DataFrame中。
+        7. 重命名列名，将'edge_post_fee'列改为'return'，将'dt'列改为'date'。
+        8. 选择需要的列，并返回包含日期、交易标的、收益、扣除手续费后的收益和手续费的DataFrame。
 
         :param symbol: str，合约代码
         :return: pd.DataFrame，品种每日收益率，
@@ -214,7 +259,32 @@ class WeightBacktest:
         return daily
 
     def get_symbol_pairs(self, symbol):
-        """获取某个合约的开平交易记录"""
+        """获取某个合约的开平交易记录
+
+        函数计算逻辑：
+
+        1. 从实例变量self.dfw中筛选出交易标的为symbol的数据，并复制到新的DataFrame dfs。
+        2. 将权重乘以10的self.digits次方，并转换为整数类型，作为volume列的值。
+        3. 生成bar_id列，从1开始递增，与行数对应。
+        4. 创建一个空列表operates，用于存储开平仓交易记录。
+        5. 定义内部函数__add_operate，用于向operates列表中添加开平仓交易记录。
+           函数接受日期dt、bar_id、交易量volume、价格price和操作类型operate作为参数。
+           函数根据交易量的绝对值循环添加交易记录到operates列表中。
+        6. 将dfs转换为字典列表rows。
+        7. 处理第一个行记录。
+           - 如果volume大于0，则调用__add_operate函数添加"开多"操作的交易记录。
+           - 如果volume小于0，则调用__add_operate函数添加"开空"操作的交易记录。
+        8. 处理后续的行记录。
+           - 使用zip函数遍历rows[:-1]和rows[1:]，同时获取当前行row1和下一行row2。
+           - 根据volume的正负和变化情况，调用__add_operate函数添加对应的开平仓交易记录。
+        9. 创建空列表pairs和opens，用于存储交易对和开仓记录。
+        10. 遍历operates列表中的交易记录。
+            - 如果操作类型为"开多"或"开空"，将交易记录添加到opens列表中，并继续下一次循环。
+            - 如果操作类型为"平多"或"平空"，将对应的开仓记录从opens列表中弹出。
+              根据开仓和平仓的价格计算盈亏比例，并创建一个交易对字典，将其添加到pairs列表中。
+        11. 将pairs列表转换为DataFrame，并返回包含交易标的的开平仓交易记录的DataFrame。
+
+        """
         dfs = self.dfw[self.dfw['symbol'] == symbol].copy()
         dfs['volume'] = (dfs['weight'] * pow(10, self.digits)).astype(int)
         dfs['bar_id'] = list(range(1, len(dfs) + 1))
@@ -286,14 +356,41 @@ class WeightBacktest:
         df_pairs = pd.DataFrame(pairs)
         return df_pairs
 
-    def backtest(self):
-        """回测所有合约的收益率"""
+    def process_symbol(self, symbol):
+        """处理某个合约的回测数据"""
+        daily = self.get_symbol_daily(symbol)
+        pairs = self.get_symbol_pairs(symbol)
+        return symbol, {"daily": daily, "pairs": pairs}
+
+    def backtest(self, n_jobs=1):
+        """回测所有合约的收益率
+
+        函数计算逻辑：
+
+        1. 获取数据：遍历所有合约，调用get_symbol_daily方法获取每个合约的日收益，调用get_symbol_pairs方法获取每个合约的交易流水。
+
+        2. 数据处理：将每个合约的日收益合并为一个DataFrame，使用pd.pivot_table方法将数据重塑为以日期为索引、合约为列、
+            收益率为值的表格，并将缺失值填充为0。计算所有合约收益率的平均值，并将该列添加到DataFrame中。将结果存储在res字典中，
+            键为合约名，值为包含日行情数据和交易对数据的字典。
+
+        3. 绩效评价：计算回测结果的开始日期和结束日期，调用daily_performance方法评估总收益率的绩效指标。将每个合约的交易对数据
+            合并为一个DataFrame，调用evaluate_pairs方法评估交易对的绩效指标。将结果存储在stats字典中，并更新到绩效评价的字典中。
+
+        4. 返回结果：将合约的等权日收益数据和绩效评价结果存储在res字典中，并将该字典作为函数的返回结果。
+        """
+        n_jobs = min(n_jobs, cpu_count())
+        logger.info(f"n_jobs={n_jobs}，将使用 {n_jobs} 个进程进行回测")
+
         symbols = self.symbols
         res = {}
-        for symbol in symbols:
-            daily = self.get_symbol_daily(symbol)
-            pairs = self.get_symbol_pairs(symbol)
-            res[symbol] = {"daily": daily, "pairs": pairs}
+        if n_jobs <= 1:
+            for symbol in tqdm(sorted(symbols), desc="WBT进度"):
+                res[symbol] = self.process_symbol(symbol)[1]
+        else:
+            with ProcessPoolExecutor(n_jobs) as pool:
+                for symbol, res_symbol in tqdm(pool.map(self.process_symbol, sorted(symbols)),
+                                               desc="WBT进度", total=len(symbols)):
+                    res[symbol] = res_symbol
 
         dret = pd.concat([v['daily'] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index='date', columns='symbol', values='return').fillna(0)

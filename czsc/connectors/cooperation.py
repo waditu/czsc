@@ -8,6 +8,8 @@ describe: CZSC开源协作团队内部使用数据接口
 import os
 import czsc
 import pandas as pd
+from tqdm import tqdm
+from datetime import datetime
 from czsc import RawBar, Freq
 
 # 首次使用需要打开一个python终端按如下方式设置 token
@@ -105,3 +107,33 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         return czsc.resample_bars(df, target_freq=freq)
 
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
+
+
+def stocks_daily_klines(years=None, **kwargs):
+    """获取全市场A股的日线数据"""
+    adj = kwargs.get('adj', 'hfq')
+    if years is None:
+        years = ['2017', '2018', '2019', '2020', '2021', '2022', '2023']
+
+    res = []
+    for year in years:
+        ttl = 3600 * 6 if year == str(datetime.now().year) else -1
+        kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
+        res.append(kline)
+
+    dfk = pd.concat(res, ignore_index=True)
+    dfk['dt'] = pd.to_datetime(dfk['dt'])
+    dfk = dfk.sort_values(['code', 'dt'], ascending=True).reset_index(drop=True)
+    if kwargs.get('exclude_bj', True):
+        dfk = dfk[~dfk['code'].str.endswith(".BJ")].reset_index(drop=True)
+
+    nxb = kwargs.get('nxb', [1, 2, 5])
+    if nxb:
+        rows = []
+        for _, dfg in tqdm(dfk.groupby('code'), desc="计算NXB收益率", ncols=80, colour='green'):
+            czsc.update_nbars(dfg, numbers=nxb, move=1, price_col='open')
+            rows.append(dfg)
+        dfk = pd.concat(rows, ignore_index=True)
+
+    dfk = dfk.rename(columns={'code': 'symbol'})
+    return dfk

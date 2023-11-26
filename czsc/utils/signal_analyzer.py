@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/30 21:13
-describe: 
+describe:
 """
 import os
 import hashlib
@@ -136,7 +136,6 @@ class SignalAnalyzer:
         self.kwargs = kwargs
         self.task_hash = hashlib.sha256((str(signals_config) + str(symbols)).encode('utf-8')).hexdigest()[:8].upper()
 
-
     def generate_symbol_signals(self, symbol):
         from czsc.traders.sig_parse import get_signals_freqs
         from czsc.traders.base import generate_czsc_signals
@@ -155,12 +154,12 @@ class SignalAnalyzer:
                 if len(bars) < 100:
                     logger.error(f"{symbol} 信号生成失败：数据量不足")
                     return pd.DataFrame()
-                
+
                 sigs: pd.DataFrame = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True) # type: ignore
                 if sigs.empty:
                     logger.error(f"{symbol} 信号生成失败：数据量不足")
                     return pd.DataFrame()
-                
+
                 sigs.drop(['freq', 'cache'], axis=1, inplace=True)
                 update_nbars(sigs, price_col='open', move=1,
                              numbers=(1, 2, 3, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100))

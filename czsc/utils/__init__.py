@@ -13,7 +13,7 @@ from .corr import nmi_matrix, single_linear, cross_sectional_ic
 from .bar_generator import BarGenerator, freq_end_time, resample_bars
 from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market
 from .io import dill_dump, dill_load, read_json, save_json
-from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements
+from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
 from .plotly_plot import KlineChart
 from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, risk_free_returns

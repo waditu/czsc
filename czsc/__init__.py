@@ -112,11 +112,10 @@ from czsc.utils.features import (
     feture_cross_layering,
 )
 
-__version__ = "0.9.36"
+__version__ = "0.9.37"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231112"
-
+__date__ = "20231118"
 
 
 def welcome():

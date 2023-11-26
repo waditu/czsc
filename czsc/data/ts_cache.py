@@ -620,6 +620,3 @@ class TsDataCache:
         dfb['上市天数'] = (dfb['trade_date'] - pd.to_datetime(dfb['list_date'], errors='coerce')).apply(lambda x: x.days)
         dfb.to_feather(file_cache)
         return dfb
-
-
-

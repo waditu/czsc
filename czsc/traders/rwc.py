@@ -120,7 +120,7 @@ class RedisWeightsClient:
 
         if not overwrite:
             last_dt = self.get_last_times(symbol)
-            if last_dt is not None and dt <= last_dt:
+            if last_dt is not None and dt <= last_dt:   # type: ignore
                 logger.warning(f"不允许重复写入，已过滤 {symbol} {dt} 的重复信号")
                 return 0
 
@@ -213,8 +213,8 @@ class RedisWeightsClient:
         """删除该策略所有记录"""
         self.r.delete(f'{self.key_prefix}:META:{self.strategy_name}')
         keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
-        if keys is not None and len(keys) > 0:
-            self.r.delete(*keys)
+        if keys is not None and len(keys) > 0:  # type: ignore
+            self.r.delete(*keys)                # type: ignore
 
     @staticmethod
     def register_lua_publish(client):
@@ -264,7 +264,7 @@ return cnt
     def get_symbols(self):
         """获取策略交易的品种列表"""
         keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
-        symbols = {x.split(":")[2] for x in keys}
+        symbols = {x.split(":")[2] for x in keys}       # type: ignore
         return list(symbols)
 
     def get_last_weights(self, symbols=None, ignore_zero=True, lua=True):
