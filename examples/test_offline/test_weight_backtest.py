@@ -4,13 +4,14 @@ sys.path.insert(0, "..")
 import czsc
 import pandas as pd
 
-assert czsc.WeightBacktest.version == "V231005"
+assert czsc.WeightBacktest.version == "V231126"
 
 
 def run_by_weights():
     """从持仓权重样例数据中回测"""
-    dfw = pd.read_feather(r"C:\Users\zengb\Desktop\231005\weight_example.feather")
-    wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002)
+    dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
+    wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002, n_jobs=1)
+    # wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002)
 
     # ------------------------------------------------------------------------------------
     # 查看绩效评价
@@ -38,3 +39,7 @@ def run_by_weights():
     print(symbol_res)
 
     wb.report(res_path=r"C:\Users\zengb\Desktop\231005\weight_example")
+
+
+if __name__ == '__main__':
+    run_by_weights()

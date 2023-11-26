@@ -8,9 +8,12 @@ describe: 按持仓权重回测
 import numpy as np
 import pandas as pd
 import plotly.express as px
+from tqdm import tqdm
 from loguru import logger
 from pathlib import Path
 from typing import Union, AnyStr, Callable
+from multiprocessing import cpu_count
+from concurrent.futures import ProcessPoolExecutor
 from czsc.traders.base import CzscTrader
 from czsc.utils.io import save_json
 from czsc.utils.stats import daily_performance, evaluate_pairs
@@ -158,7 +161,7 @@ class WeightBacktest:
 
     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/Pf1fw1woQi4iJikbKJmcYToznxb
     """
-    version = "V231104"
+    version = "V231126"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
@@ -206,7 +209,7 @@ class WeightBacktest:
         self.fee_rate = kwargs.get('fee_rate', 0.0002)
         self.dfw['weight'] = self.dfw['weight'].astype('float').round(digits)
         self.symbols = list(self.dfw['symbol'].unique().tolist())
-        self.results = self.backtest()
+        self.results = self.backtest(n_jobs=kwargs.get('n_jobs', int(cpu_count() / 2)))
 
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
@@ -353,7 +356,13 @@ class WeightBacktest:
         df_pairs = pd.DataFrame(pairs)
         return df_pairs
 
-    def backtest(self):
+    def process_symbol(self, symbol):
+        """处理某个合约的回测数据"""
+        daily = self.get_symbol_daily(symbol)
+        pairs = self.get_symbol_pairs(symbol)
+        return symbol, {"daily": daily, "pairs": pairs}
+
+    def backtest(self, n_jobs=1):
         """回测所有合约的收益率
 
         函数计算逻辑：
@@ -369,12 +378,19 @@ class WeightBacktest:
 
         4. 返回结果：将合约的等权日收益数据和绩效评价结果存储在res字典中，并将该字典作为函数的返回结果。
         """
+        n_jobs = min(n_jobs, cpu_count())
+        logger.info(f"n_jobs={n_jobs}，将使用 {n_jobs} 个进程进行回测")
+
         symbols = self.symbols
         res = {}
-        for symbol in symbols:
-            daily = self.get_symbol_daily(symbol)
-            pairs = self.get_symbol_pairs(symbol)
-            res[symbol] = {"daily": daily, "pairs": pairs}
+        if n_jobs <= 1:
+            for symbol in tqdm(sorted(symbols), desc="WBT进度"):
+                res[symbol] = self.process_symbol(symbol)[1]
+        else:
+            with ProcessPoolExecutor(n_jobs) as pool:
+                for symbol, res_symbol in tqdm(pool.map(self.process_symbol, sorted(symbols)),
+                                               desc="WBT进度", total=len(symbols)):
+                    res[symbol] = res_symbol
 
         dret = pd.concat([v['daily'] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index='date', columns='symbol', values='return').fillna(0)
