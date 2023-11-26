@@ -75,7 +75,23 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
 
 
 def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
-    """查找分型"""
+    """查找分型
+
+    函数计算逻辑：
+
+    1. 如果第二个`NewBar`对象的最高价和最低价都高于第一个和第三个`NewBar`对象的对应价格，那么它被认为是顶分型（G）。
+       在这种情况下，函数会创建一个新的`FX`对象，其标记为`Mark.G`，并将其赋值给`fx`。
+
+    2. 如果第二个`NewBar`对象的最高价和最低价都低于第一个和第三个`NewBar`对象的对应价格，那么它被认为是底分型（D）。
+       在这种情况下，函数会创建一个新的`FX`对象，其标记为`Mark.D`，并将其赋值给`fx`。
+
+    3. 函数最后返回`fx`，如果没有找到分型，`fx`将为`None`。
+
+    :param k1: 第一个`NewBar`对象
+    :param k2: 第二个`NewBar`对象
+    :param k3: 第三个`NewBar`对象
+    :return: `FX`对象或`None`
+    """
     fx = None
     if k1.high < k2.high > k3.high and k1.low < k2.low > k3.low:
         fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high,
@@ -89,10 +105,24 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
 
 
 def check_fxs(bars: List[NewBar]) -> List[FX]:
-    """输入一串无包含关系K线，查找其中所有分型"""
+    """输入一串无包含关系K线，查找其中所有分型
+
+    函数的主要步骤：
+
+    1. 创建一个空列表`fxs`用于存储找到的分型。
+    2. 遍历`bars`列表中的每个元素（除了第一个和最后一个），并对每三个连续的`NewBar`对象调用`check_fx`函数。
+    3. 如果`check_fx`函数返回一个`FX`对象，检查它的标记是否与`fxs`列表中最后一个`FX`对象的标记相同。如果相同，记录一个错误日志。
+       如果不同，将这个`FX`对象添加到`fxs`列表中。
+    4. 最后返回`fxs`列表，它包含了`bars`列表中所有找到的分型。
+
+    这个函数的主要目的是找出`bars`列表中所有的顶分型和底分型，并确保它们是交替出现的。如果发现连续的两个分型标记相同，它会记录一个错误日志。
+
+    :param bars: 无包含关系K线列表
+    :return: 分型列表
+    """
     fxs = []
-    for i in range(1, len(bars)-1):
-        fx = check_fx(bars[i-1], bars[i], bars[i+1])
+    for i in range(1, len(bars) - 1):
+        fx = check_fx(bars[i - 1], bars[i], bars[i + 1])
         if isinstance(fx, FX):
             # 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
@@ -115,32 +145,20 @@ def check_bi(bars: List[NewBar], benchmark=None):
         return None, bars
 
     fx_a = fxs[0]
-    try:
-        if fxs[0].mark == Mark.D:
-            direction = Direction.Up
-            fxs_b = [x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt and x.fx > fx_a.fx]
-            if not fxs_b:
-                return None, bars
+    if fx_a.mark == Mark.D:
+        direction = Direction.Up
+        fxs_b = (x for x in fxs if x.mark == Mark.G and x.dt > fx_a.dt and x.fx > fx_a.fx)
+        fx_b = max(fxs_b, key=lambda fx: fx.high, default=None)
 
-            fx_b = fxs_b[0]
-            for fx in fxs_b[1:]:
-                if fx.high >= fx_b.high:
-                    fx_b = fx
+    elif fx_a.mark == Mark.G:
+        direction = Direction.Down
+        fxs_b = (x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt and x.fx < fx_a.fx)
+        fx_b = min(fxs_b, key=lambda fx: fx.low, default=None)
 
-        elif fxs[0].mark == Mark.G:
-            direction = Direction.Down
-            fxs_b = [x for x in fxs if x.mark == Mark.D and x.dt > fx_a.dt and x.fx < fx_a.fx]
-            if not fxs_b:
-                return None, bars
+    else:
+        raise ValueError
 
-            fx_b = fxs_b[0]
-            for fx in fxs_b[1:]:
-                if fx.low <= fx_b.low:
-                    fx_b = fx
-        else:
-            raise ValueError
-    except Exception as e:
-        logger.exception(f"笔识别错误: {e}")
+    if fx_b is None:
         return None, bars
 
     bars_a = [x for x in bars if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
