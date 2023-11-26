@@ -11,7 +11,6 @@ from typing import List, Union, AnyStr, Optional
 from czsc.objects import RawBar, Freq
 from pathlib import Path
 from loguru import logger
-from czsc.utils.calendar import next_trading_date
 
 
 mss = pd.read_feather(Path(__file__).parent / "minites_split.feather")
@@ -42,6 +41,14 @@ def get_intraday_times(freq='1分钟', market="A股"):
 
 def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None):
     """检查时间序列是否为同一周期，是否为同一市场
+
+    函数计算逻辑：
+
+    1. 如果`freq`在特定列表中，函数直接返回`freq`和"默认"作为市场类型。
+    2. 如果`freq`是'1分钟'，函数会添加额外的时间点到`time_seq`中。
+    3. 函数去除`time_seq`中的重复时间点，并确保其长度至少为2。
+    4. 函数遍历`freq_market_times`字典，寻找与`time_seq`匹配的项，并返回对应的`freq_x`和`market`。
+    5. 如果没有找到匹配的项，函数返回None和"默认"。
 
     :param time_seq: 时间序列，如 ['11:00', '15:00', '23:00', '01:00', '02:30']
     :param freq: 时间序列对应的K线周期，可选参数，使用该参数可以加快检查速度。
@@ -137,7 +144,16 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
 
 
 def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=True, **kwargs):
-    """将df中的K线序列转换为目标周期的K线序列
+    """将给定的K线数据重新采样为目标周期的K线数据
+
+    函数计算逻辑：
+
+    1. 确定目标周期`target_freq`的类型和市场类型。
+    2. 添加一个新列`freq_edt`，表示每个数据点对应的目标周期的结束时间。
+    3. 根据`freq_edt`对数据进行分组，并对每组数据进行聚合，得到目标周期的K线数据。
+    4. 重置索引，并选择需要的列。
+    5. 根据`raw_bars`参数，决定返回的数据类型：如果为True，转换为`RawBar`对象；如果为False，直接返回DataFrame。
+    6. 如果`drop_unfinished`参数为True，删除最后一根未完成的K线。
 
     :param df: 原始K线数据，必须包含以下列：symbol, dt, open, close, high, low, vol, amount。样例如下：
                symbol                  dt     open    close     high      low  \
@@ -190,10 +206,6 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
             if df['dt'].iloc[-1] < _bars[-1].dt:
                 _bars.pop()
         return _bars
-        # if df['dt'].iloc[-1] < _bars[-1].dt:
-        #     # 清除最后一根未完成的K线
-        #     _bars.pop()
-        # return _bars
     else:
         return dfk1
 
@@ -216,7 +228,9 @@ class BarGenerator:
 
     def __validate_freqs(self):
         from czsc.utils import sorted_freqs
-        # sorted_freqs = ['Tick', '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线']
+        if self.base_freq not in sorted_freqs:
+            raise ValueError(f'base_freq is not in sorted_freqs: {self.base_freq}')
+
         i = sorted_freqs.index(self.base_freq)
         f = sorted_freqs[i:]
         for freq in self.freqs:
@@ -226,9 +240,15 @@ class BarGenerator:
     def init_freq_bars(self, freq: str, bars: List[RawBar]):
         """初始化某个周期的K线序列
 
+        函数计算逻辑：
+
+        1. 首先，它断言`freq`必须是`self.bars`的键之一。如果`freq`不在`self.bars`的键中，代码会抛出一个断言错误。
+        2. 然后，它断言`self.bars[freq]`必须为空。如果`self.bars[freq]`不为空，代码会抛出一个断言错误，并显示一条错误消息。
+        3. 如果以上两个断言都通过，它会将`bars`赋值给`self.bars[freq]`，从而初始化指定频率的K线序列。
+        4. 最后，它会将`bars`列表中的最后一个`RawBar`对象的`symbol`属性赋值给`self.symbol`。
+
         :param freq: 周期名称
         :param bars: K线序列
-        :return:
         """
         assert freq in self.bars.keys()
         assert not self.bars[freq], f"self.bars['{freq}'] 不为空，不允许执行初始化"
@@ -241,9 +261,18 @@ class BarGenerator:
     def _update_freq(self, bar: RawBar, freq: Freq) -> None:
         """更新指定周期K线
 
+        函数计算逻辑：
+
+        1. 计算目标频率的结束时间`freq_edt`。
+        2. 检查`self.bars`中是否已经有目标频率的K线。如果没有，创建一个新的`RawBar`对象，并将其添加到`self.bars`中，然后返回。
+        3. 如果已经有目标频率的K线，获取最后一根K线`last`。
+        4. 检查`freq_edt`是否不等于最后一根K线的日期时间。如果不等于，创建一个新的`RawBar`对象，并将其添加到`self.bars`中。
+        5. 如果`freq_edt`等于最后一根K线的日期时间，创建一个新的`RawBar`对象，其开盘价为最后一根K线的开盘价，
+            收盘价为当前K线的收盘价，最高价为最后一根K线和当前K线的最高价中的最大值，最低价为最后一根K线和当前K线的最低价中的最小值，
+            成交量和成交金额为最后一根K线和当前K线的成交量和成交金额的和。然后用这个新的`RawBar`对象替换`self.bars`中的最后一根K线。
+
         :param bar: 基础周期已完成K线
         :param freq: 目标周期
-        :return:
         """
         freq_edt = freq_end_time(bar.dt, freq, self.market)
 
@@ -268,11 +297,21 @@ class BarGenerator:
     def update(self, bar: RawBar) -> None:
         """更新各周期K线
 
+        函数计算逻辑：
+
+        1. 首先，它获取基准频率`base_freq`，并断言`bar`的频率值等于`base_freq`。
+        2. 然后，它将`bar`的符号和日期时间设置为`self.symbol`和`self.end_dt`。
+        3. 接下来，它检查是否已经有一个与`bar`日期时间相同的K线存在于`self.bars[base_freq]`中。
+            如果存在，它会记录一个警告并返回，不进行任何更新。
+        4. 如果不存在重复的K线，它会遍历`self.bars`的所有键（即所有的频率），并对每个频率调用`self._update_freq`方法来更新该频率的K线。
+        5. 最后，它会限制在内存中的K线数量，确保每个频率的K线数量不超过`self.max_count`。
+
         :param bar: 必须是已经结束的Bar
-        :return:
+        :return: None
         """
         base_freq = self.base_freq
-        assert bar.freq.value == base_freq
+        if bar.freq.value != base_freq:
+            raise ValueError(f"Input bar frequency does not match base frequency. Expected {base_freq}, got {bar.freq.value}")
         self.symbol = bar.symbol
         self.end_dt = bar.dt
 
@@ -285,4 +324,5 @@ class BarGenerator:
 
         # 限制存在内存中的K限制数量
         for f, b in self.bars.items():
-            self.bars[f] = b[-self.max_count:]
+            if len(b) > self.max_count:
+                self.bars[f] = b[-self.max_count:]

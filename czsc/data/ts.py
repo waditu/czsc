@@ -79,6 +79,7 @@ except:
     print("Tushare Pro 初始化失败")
 
 
+@deprecated(reason="统一到 ts_connector 中", version='1.0.0')
 def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     """Tushare K线数据转换
 

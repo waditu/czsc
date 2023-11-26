@@ -13,12 +13,12 @@ from czsc.objects import RawBar
 def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0.03):
     """创建无风险收益率序列
 
-    :param start_date: str, defaults to "20180101"
-        起始日期
-    :param end_date: str, defaults to "20210101"
-        截止日期
-    :param year_returns: float, defaults to 0.03
-        年化收益率
+    创建一个 Pandas DataFrame，包含两列："date" 和 "returns"。"date" 列包含从 trade_dates 获取的所有交易日期，
+    "returns" 列包含无风险收益率序列，计算方法是将年化收益率（year_returns）除以 252（一年的交易日数量，假设为每周 5 天）
+
+    :param start_date: 起始日期
+    :param end_date: 截止日期
+    :param year_returns: 年化收益率
     :return: pd.DataFrame
     """
     from czsc.utils.calendar import get_trading_dates
@@ -29,6 +29,21 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
 
 def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwargs):
     """计算给定品种基础周期K线数据的交易价格
+
+    函数执行逻辑：
+
+    1. 首先，根据输入的 bars 参数类型（列表或 DataFrame），将其转换为 DataFrame 格式，并将其存储在变量 df 中。
+    2. 计算下一根K线的开盘价和收盘价，分别存储在新列 next_open 和 next_close 中。同时，将这两个新列名添加到 price_cols 列表中。
+    3. 计算 TWAP（时间加权平均价格）和 VWAP（成交量加权平均价格）。为此，函数使用了一个 for 循环，
+       遍历 t_seq 参数（默认值为 (5, 10, 15, 20, 30, 60)）。在每次循环中：
+
+        - 计算 TWAP：使用 rolling(t).mean().shift(-t) 方法计算时间窗口为 t 的滚动平均收盘价。
+        - 计算 VWAP：首先计算滚动窗口内的成交量之和（sum_vol_t）和成交量乘以收盘价之和（sum_vcp_t），然后用后者除以前者，并向下移动 t 个单位。
+        - 将 TWAP 和 VWAP 的列名添加到 price_cols 列表中。
+
+    4. 遍历 price_cols 列表中的每个列，将其中的 NaN 值替换为对应行的收盘价。
+    5. 从 DataFrame 中选择所需的列（包括基本的K线数据列和新计算的交易价格列），并使用 round(decimals) 方法保留指定的小数位数（默认为3）。
+    6. 返回处理后的 DataFrame。
 
     :param bars: 基础周期K线数据，一般是1分钟周期的K线
     :param decimals: 保留小数位数，默认值3
@@ -61,9 +76,16 @@ def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwarg
 
 
 def update_nbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30), move=0) -> None:
-    """在da数据上新增后面 n 根 bar 的累计收益
+    """在给定的 da 上计算并添加后面 n 根 bar 的累计收益列
 
     收益计量单位：BP；1倍涨幅 = 10000BP
+
+    函数的逻辑如下：
+
+    1. 首先，检查 price_col 是否在输入的 DataFrame（da）的列名中。如果不在，抛出 ValueError。
+    2. 确保 move 是一个非负整数。
+    3. 使用 for 循环遍历 numbers 列表中的每个整数 n, 对于每个整数 n，计算 n 根 bar 的累计收益。
+    4. 返回 None，表示这个函数会直接修改输入的 DataFrame（da），而不返回新的 DataFrame。
 
     :param da: 数据，DataFrame结构
     :param price_col: 价格列
@@ -81,7 +103,13 @@ def update_nbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30), move=0) -
 
 
 def update_bbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30)) -> None:
-    """在da数据上新增前面 n 根 bar 的累计收益
+    """在给定的 da 数据上计算并添加前面 n 根 bar 的累计收益列
+
+    函数的逻辑如下：
+
+    1. 首先，检查 price_col 是否在输入的 DataFrame（da）的列名中。如果不在，抛出 ValueError。
+    2. 使用 for 循环遍历 numbers 列表中的每个整数 n，对于每个整数 n，计算 n 根 bar 的累计收益。
+    3. 返回 None，表示这个函数会直接修改输入的 da，而不返回新的 DataFrame。
 
     :param da: K线数据，DataFrame结构
     :param price_col: 价格列
@@ -99,9 +127,18 @@ def update_bbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30)) -> None:
 def update_tbars(da: pd.DataFrame, event_col: str) -> None:
     """计算带 Event 方向信息的未来收益
 
+    函数的逻辑如下：
+
+    1. 从输入的 da的列名中提取所有以 'n' 开头，以 'b' 结尾的列名，这些列名表示未来 n 根 bar 的累计收益。将这些列名存储在 n_seq 列表中。
+    2. 使用 for 循环遍历 n_seq 列表中的每个整数 n。
+    3. 对于每个整数 n，计算带有 Event 方向信息的未来收益。
+        计算方法是：将前面 n 根 bar 的累计收益（列名 f'n{n}b'）与事件信号列（event_col）的值相乘。
+        将计算结果存储在一个新的列中，列名为 f't{n}b'。
+    4. 返回 None，表示这个函数会直接修改输入的 da，而不返回新的 DataFrame。
+
     :param da: K线数据，DataFrame结构
     :param event_col: 事件信号列名，含有 0, 1, -1 三种值，0 表示无事件，1 表示看多事件，-1 表示看空事件
-    :return:
+    :return: None
     """
     n_seq = [int(x.strip('nb')) for x in da.columns if x[0] == 'n' and x[-1] == 'b']
     for n in n_seq:
