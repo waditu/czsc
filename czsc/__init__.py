@@ -61,6 +61,7 @@ from czsc.utils import (
     update_tbars,
     update_nbars,
     risk_free_returns,
+    resample_to_daily,
 
     CrossSectionalPerformance,
     cross_sectional_ranker,
