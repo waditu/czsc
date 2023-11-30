@@ -54,6 +54,21 @@ def show_daily_return(df, **kwargs):
         st.plotly_chart(fig, use_container_width=True)
 
 
+def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwargs):
+    """展示指定列的月度累计收益"""
+    assert df.index.dtype == 'datetime64[ns]', "index 必须是 datetime 类型"
+    st.subheader(title, divider="rainbow")
+    monthly = df[[ret_col]].resample('M').sum()
+    monthly['year'] = monthly.index.year
+    monthly['month'] = monthly.index.month
+    monthly = monthly.pivot_table(index='year', columns='month', values=ret_col)
+    month_cols = [f"{x}月" for x in range(1, 13)]
+    monthly.columns = month_cols
+    monthly['年收益'] = monthly.sum(axis=1)
+    monthly = monthly.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=month_cols).format('{:.2%}', na_rep='-')
+    st.dataframe(monthly, use_container_width=True)
+
+
 def show_correlation(df, cols=None, method='pearson', **kwargs):
     """用 streamlit 展示相关性
 
