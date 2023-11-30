@@ -96,7 +96,7 @@ def daily_performance(daily_returns):
     dd = np.maximum.accumulate(cum_returns) - cum_returns
     max_drawdown = np.max(dd)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
-    win_pct = len(daily_returns[daily_returns > 0]) / len(daily_returns)
+    win_pct = len(daily_returns[daily_returns >= 0]) / len(daily_returns)
     annual_volatility = np.std(daily_returns) * np.sqrt(252)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
 
@@ -106,11 +106,20 @@ def daily_performance(daily_returns):
     for i in range(len(high_index) - 1):
         max_interval = max(max_interval, high_index[i + 1] - high_index[i])
 
+    def __min_max(x, min_val, max_val, digits=4):
+        if x < min_val:
+            x1 = min_val
+        elif x > max_val:
+            x1 = max_val
+        else:
+            x1 = x
+        return round(x1, digits)
+
     sta = {
         "年化": round(annual_returns, 4),
-        "夏普": round(sharpe_ratio, 2),
+        "夏普": __min_max(sharpe_ratio, -5, 5, 2),
         "最大回撤": round(max_drawdown, 4),
-        "卡玛": round(kama, 2),
+        "卡玛": __min_max(kama, -10, 10, 2),
         "日胜率": round(win_pct, 4),
         "年化波动率": round(annual_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),
