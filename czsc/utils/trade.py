@@ -143,3 +143,53 @@ def update_tbars(da: pd.DataFrame, event_col: str) -> None:
     n_seq = [int(x.strip('nb')) for x in da.columns if x[0] == 'n' and x[-1] == 'b']
     for n in n_seq:
         da[f't{n}b'] = da[f'n{n}b'] * da[event_col]
+
+
+def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True):
+    """将非日线数据转换为日线数据，以便进行日线级别的分析
+
+    函数执行逻辑：
+
+    1. 首先，函数接收一个数据框`df`，以及可选的开始日期`sdt`，结束日期`edt`，和一个布尔值`only_trade_date`。
+    2. 函数将`df`中的`dt`列转换为日期时间格式。如果没有提供`sdt`或`edt`，则使用`df`中的最小和最大日期作为开始和结束日期。
+    3. 创建一个日期序列。如果`only_trade_date`为真，则只包含交易日期；否则，包含`sdt`和`edt`之间的所有日期。
+    4. 使用`merge_asof`函数，找到每个日期在原始`df`中对应的最近一个日期。
+    5. 创建一个映射，将每个日期映射到原始`df`中的对应行。
+    6. 对于日期序列中的每个日期，复制映射中对应的数据行，并将日期设置为当前日期。
+    7. 最后，将所有复制的数据行合并成一个新的数据框，并返回。
+
+    :param df: 日线以上周期的数据，必须包含 dt 列
+    :param sdt: 开始日期
+    :param edt: 结束日期
+    :param only_trade_date: 是否只保留交易日数据
+    :return: pd.DataFrame
+    """
+    from czsc.utils.calendar import get_trading_dates
+
+    df['dt'] = pd.to_datetime(df['dt'])
+    sdt = df['dt'].min() if not sdt else pd.to_datetime(sdt)
+    edt = df['dt'].max() if not edt else pd.to_datetime(edt)
+
+    # 创建日期序列
+    if only_trade_date:
+        trade_dates = get_trading_dates(sdt=sdt, edt=edt)
+    else:
+        trade_dates = pd.date_range(sdt, edt, freq='D').tolist()
+    trade_dates = pd.DataFrame({'date': trade_dates})
+    trade_dates = trade_dates.sort_values('date', ascending=True).reset_index(drop=True)
+
+    # 通过 merge_asof 找到每个日期对应原始 df 中最近一个日期
+    vdt = pd.DataFrame({'dt': df['dt'].unique()})
+    trade_dates = pd.merge_asof(trade_dates, vdt, left_on='date', right_on='dt')
+    trade_dates = trade_dates.dropna(subset=['dt']).reset_index(drop=True)
+
+    dt_map = {dt: dfg for dt, dfg in df.groupby('dt')}
+    results = []
+    for row in trade_dates.to_dict('records'):
+        # 注意：这里必须进行 copy，否则默认浅拷贝导致数据异常
+        df_ = dt_map[row['dt']].copy()
+        df_['dt'] = row['date']
+        results.append(df_)
+
+    dfr = pd.concat(results, ignore_index=True)
+    return dfr

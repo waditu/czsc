@@ -16,7 +16,7 @@ from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
 from .plotly_plot import KlineChart
-from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, risk_free_returns
+from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, risk_free_returns, resample_to_daily
 from .cross import CrossSectionalPerformance, cross_sectional_ranker
 from .stats import daily_performance, net_value_stats, subtract_fee
 from .signal_analyzer import SignalAnalyzer, SignalPerformance
@@ -67,6 +67,17 @@ def get_py_namespace(file_py: str, keys: list = []) -> dict:
 def import_by_name(name):
     """通过字符串导入模块、类、函数
 
+    函数执行逻辑：
+
+    1. 检查 name 中是否包含点号（'.'）。如果没有，则直接使用内置的 import 函数来导入整个模块，并返回该模块对象。
+    2. 如果 name 包含点号，先处理一个相对路径。将 name 拆分为两部分：module_name 和 function_name。
+        使用 Python 内置的 rsplit 方法从右边开始分割，只取一次，这样可以确保我们将最后的一个点号前的部分作为 module_name，点号后面的部分作为 function_name。
+    3. 使用import函数导入指定的 module_name。
+        这里传入三个参数：globals() 和 locals() 分别代表当前全局和局部命名空间；
+        [function_name] 是一个列表，用于指定要导入的子模块或属性名。
+        这样做是为了避免一次性导入整个模块的所有内容，提高效率。
+    4.  使用 vars 函数获取模块的字典表示形式（即模块内所有的变量和函数），取出 function_name 对应的值，然后返回这个值。
+
     :param name: 模块名，如：'czsc.objects.Factor'
     :return: 模块对象
     """
@@ -89,11 +100,11 @@ def freqs_sorted(freqs):
     return _freqs_new
 
 
-def create_grid_params(prefix: str, detail=False, **kwargs) -> dict:
+def create_grid_params(prefix: str = "", multiply=3, **kwargs) -> dict:
     """创建 grid search 参数组合
 
     :param prefix: 参数组前缀
-    :param detail: 是否使用参数值构建参数组的名称
+    :param multiply: 参数组合的位数，如果为 0，则使用 # 分隔参数
     :param kwargs: 任意参数的候选序列，参数值推荐使用 iterable
     :return: 参数组合字典
 
@@ -111,8 +122,8 @@ def create_grid_params(prefix: str, detail=False, **kwargs) -> dict:
     >>>x = create_grid_params("test", x=2, y=('a', 'b'), detail=False)
     >>>print(x)
     Out[1]:
-        {'test@001': {'x': 2, 'y': 'a'},
-         'test@002': {'x': 2, 'y': 'b'}}
+        {'test001': {'x': 2, 'y': 'a'},
+         'test002': {'x': 2, 'y': 'b'}}
     """
     from sklearn.model_selection import ParameterGrid
 
@@ -126,13 +137,12 @@ def create_grid_params(prefix: str, detail=False, **kwargs) -> dict:
 
     params = {}
     for i, row in enumerate(ParameterGrid(params_grid), 1):
-        if detail:
+        if multiply == 0:
             key = "#".join([f"{k}={v}" for k, v in row.items()])
-            # params[f"{prefix}@{key}"] = row
         else:
-            key = str(i).zfill(3)
+            key = str(i).zfill(multiply)
 
-        row['version'] = f"{prefix}@{key}"
+        row['version'] = f"{prefix}{key}"
         params[f"{prefix}@{key}"] = row
     return params
 

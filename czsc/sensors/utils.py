@@ -138,6 +138,21 @@ def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3
 
     原理概述：在选股时，如果股票的概念板块与组合中的其他股票的概念板块有重合，那么这个股票的表现会更好。
 
+    函数计算逻辑:
+
+    1. 如果kwargs中存在'copy'键且对应值为True，则将holds进行复制。
+    2. 为holds添加'概念板块'列，该列的值是holds中'symbol'列对应的股票的概念板块列表，如果没有对应的概念板块则填充为空。
+    3. 添加'概念数量'列，该列的值是每个股票的概念板块数量。
+    4. 从holds中筛选出概念数量大于0的行，赋值给holds。
+    5. 创建空列表new_holds和空字典dt_key_concepts。
+    6. 对holds按照'dt'进行分组，遍历每个分组，计算板块效应。
+    a. 计算密集出现的概念，选取出现次数最多的前top_n个概念，赋值给key_concepts列表。
+    b. 将日期dt和对应的key_concepts存入dt_key_concepts字典。
+    c. 计算在密集概念中出现次数超过min_n的股票，将符合条件的股票添加到new_holds列表中。
+    7. 使用pd.concat将new_holds中的DataFrame进行合并，忽略索引，赋值给dfh。
+    8. 创建DataFrame dfk，其中包含日期(dt)和对应的强势概念(key_concepts)。
+    9. 返回dfh和dfk。
+
     :param holds: 组合股票池数据，样例：
 
             ===================  =========  ==========

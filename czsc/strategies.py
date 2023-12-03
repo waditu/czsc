@@ -79,19 +79,30 @@ class CzscStrategyBase(ABC):
     def init_bar_generator(self, bars: List[RawBar], **kwargs):
         """使用策略定义初始化一个 BarGenerator 对象
 
+        函数执行逻辑：
+
+        - 该方法的目的是使用策略定义初始化一个BarGenerator对象。BarGenerator是用于生成K线数据的类。
+        - 参数bars表示基础周期的K线数据，**kwargs用于接收额外的关键字参数。
+        - 首先，方法获取了基础K线的频率，并检查了是否已经有一个初始化好的BarGenerator对象传入。
+        - 然后，根据基础频率是否在排序后的频率列表中，确定要使用的频率列表。
+        - 如果没有传入BarGenerator对象，则根据传入的基础K线数据和其他参数创建一个新的BarGenerator对象，
+          并使用部分K线数据初始化它。余下的K线数据将用于trader的初始化区间。
+        - 如果传入了BarGenerator对象，则会做一些断言检查，确保传入的基础K线数据与已有的BarGenerator对象的基础周期一致，
+          并且BarGenerator的end_dt是datetime类型。然后，筛选出在BarGenerator的end_dt之后的K线数据。
+        - 最后，返回BarGenerator对象和余下的K线数据。
+
         :param bars: 基础周期K线
         :param kwargs:
+
             bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
             sdt  初始化开始日期
             n    初始化最小K线数量
+
         :return:
         """
         base_freq = str(bars[0].freq.value)
         bg: BarGenerator = kwargs.get("bg", None)
-        if base_freq in self.sorted_freqs:
-            freqs = self.sorted_freqs[1:]
-        else:
-            freqs = self.sorted_freqs
+        freqs = self.sorted_freqs[1:] if base_freq in self.sorted_freqs else self.sorted_freqs
 
         if bg is None:
             uni_times = sorted(list({x.dt.strftime("%H:%M") for x in bars}))
@@ -125,11 +136,20 @@ class CzscStrategyBase(ABC):
 
         **注意：** 这里会将所有持仓策略在 sdt 之后的交易信号计算出来并缓存在持仓策略实例内部，所以初始化的过程本身也是回测的过程。
 
+        函数执行逻辑：
+
+        - 首先，它通过调用init_bar_generator方法获取已经初始化好的BarGenerator对象和余下的K线数据。
+        - 然后，它创建一个CzscTrader对象，将BarGenerator对象、持仓策略的深拷贝、交易信号配置的深拷贝等参数传递给CzscTrader的构造函数。
+        - 接着，使用余下的K线数据对CzscTrader对象进行初始化，通过调用trader.on_bar(bar)方法处理每一根K线数据。
+        - 最后，返回初始化完成的CzscTrader对象。
+
         :param bars: 基础周期K线
         :param kwargs:
+
             bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
             sdt  初始化开始日期
             n    初始化最小K线数量
+
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
@@ -152,7 +172,7 @@ class CzscStrategyBase(ABC):
         sleep_time = kwargs.get("sleep_time", 0)
         sleep_step = kwargs.get("sleep_step", 1000)
 
-        trader = CzscTrader(positions=deepcopy(self.positions)) # type: ignore
+        trader = CzscTrader(positions=deepcopy(self.positions))     # type: ignore
         for i, sig in tqdm(enumerate(sigs), desc=f"回测 {self.symbol} {self.sorted_freqs}"):
             trader.on_sig(sig)
 
@@ -164,12 +184,28 @@ class CzscStrategyBase(ABC):
     def replay(self, bars: List[RawBar], res_path, **kwargs):
         """交易策略交易过程回放
 
+        函数执行逻辑：
+
+        - 该方法用于交易策略交易过程的回放。它接受基础周期的K线数据、结果目录以及额外的关键字参数作为输入。
+        - 首先，它检查refresh参数，如果为True，则使用shutil.rmtree删除已存在的结果目录。
+        - 然后，它检查结果目录是否已存在，并且是否允许覆盖。如果目录已存在且不允许覆盖，则记录一条警告信息并返回。
+        - 通过调用os.makedirs创建结果目录，确保目录的存在。
+        - 接着，调用init_bar_generator方法初始化BarGenerator对象，并进行相关的初始化操作。
+        - 创建一个CzscTrader对象，并将初始化好的BarGenerator对象、持仓策略的深拷贝、交易信号配置的深拷贝等参数传递给CzscTrader的构造函数。
+        - 为每个持仓策略创建相应的目录。
+        - 遍历K线数据，调用trader.on_bar(bar)方法处理每一根K线数据。
+        - 在每根K线数据处理完成后，检查每个持仓策略是否有操作，并且操作的时间是否与当前K线的时间一致。
+            如果有操作，则生成相应的HTML文件名，并调用trader.take_snapshot(file_html)方法生成交易快照。
+        - 最后，遍历每个持仓策略，记录其评估信息，包括多空合并表现、多头表现、空头表现等。
+
         :param bars: 基础周期K线
         :param res_path: 结果目录
         :param kwargs:
-            bg   已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
-            sdt  初始化开始日期
-            n    初始化最小K线数量
+
+            bg          已经初始化好的BarGenerator对象，如果传入了bg，则忽略sdt和n参数
+            sdt         初始化开始日期
+            n           初始化最小K线数量
+            refresh     是否刷新结果目录
         :return:
         """
         if kwargs.get("refresh", False):
@@ -294,7 +330,7 @@ class CzscStrategyBase(ABC):
         :return: None
         """
         os.makedirs(path, exist_ok=True)
-        for pos in self.positions: # type: ignore
+        for pos in self.positions:          # type: ignore
             pos_ = pos.dump()
             pos_.pop("symbol")
             hash_code = hashlib.md5(str(pos_).encode()).hexdigest()
@@ -321,6 +357,17 @@ class CzscStrategyBase(ABC):
 
 class CzscJsonStrategy(CzscStrategyBase):
     """仅传入Json配置的Positions就完成策略创建
+
+    执行逻辑:
+
+    1. 定义CzscJsonStrategy类，并继承自CzscStrategyBase。这个类可以通过仅传入Json配置的Positions来完成策略创建。
+    2. 类中定义了一个名为positions的属性，使用@property装饰器将其标记为只读属性。
+    3. 在positions属性的getter方法中，执行以下操作：
+        - 从self.kwargs字典中获取键为"files_position"的值，并将其赋值给变量files。
+            这里的self.kwargs可能是通过在实例化该类时传入的参数或其他方式设置的一个字典，其中包含了策略配置文件的路径列表。
+        - 使用self.kwargs.get方法获取键为"check_position"的值，并设置默认值为True，将其赋值给变量check。这个值用于确定是否对JSON持仓策略进行MD5校验。
+        - 调用self.load_positions(files, check)方法，并返回其结果。这个方法可能是从父类CzscStrategyBase中继承的方法，
+            用于从配置文件中加载持仓策略。将文件列表和校验标志作为参数传递给该方法，并返回加载的持仓策略列表。
 
     必须参数：
         files_position: 以 json 文件配置的策略，每个json文件对应一个持仓策略配置
