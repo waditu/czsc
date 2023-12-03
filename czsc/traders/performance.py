@@ -235,6 +235,32 @@ class PairsPerformance:
 def combine_holds_and_pairs(holds, pairs, results_path):
     """结合股票池和择时策略开平交易进行分析
 
+    函数计算逻辑:
+
+    1. 将holds和pairs数据进行处理和准备。
+        - 将holds复制到dfh变量。
+        - 将dfh的'成分日期'列转换为日期类型。
+        - 将dfh的'证券代码'列赋值给'标的代码'列。
+        - 将pairs复制到dfp变量。
+        - 将dfp的'开仓时间'列转换为日期类型，并将日期部分提取出来赋值给'开仓日期'列。
+
+    2. 合并数据并筛选交易对。
+        - 将dfp与dfh的[['开仓日期', '标的代码', '持仓权重']]列进行左连接，得到dfp_。
+        - 从dfp_中选择持仓权重大于0的交易对，赋值给df_pairs。
+        - 从dfp中选择开仓时间在df_pairs的开仓时间范围内的数据，赋值给dfp_sub。
+
+    3. 进行评价和分析。
+        - 使用dfp_sub创建PairsPerformance对象tp_old。
+        - 使用df_pairs创建PairsPerformance对象tp_new。
+
+    4. 创建结果目录并保存评价结果和交易数据。
+        - 使用os.makedirs创建结果目录。
+        - 将tp_old的统计结果保存为Excel文件，文件名为"原始交易评价.xlsx"。
+        - 将tp_new的统计结果保存为Excel文件，文件名为"组合过滤评价.xlsx"。
+        - 将df_pairs的数据保存为Feather文件，文件名为"组合过滤交易.feather"。
+
+    5. 返回tp_old和tp_new对象。
+
     :param holds: 组合股票池数据，样例：
                  成分日期    证券代码       n1b      持仓权重
             0  2020-01-02  000001.SZ  183.758194  0.001232
@@ -289,6 +315,20 @@ def combine_holds_and_pairs(holds, pairs, results_path):
 
 def combine_dates_and_pairs(dates: list, pairs: pd.DataFrame, results_path):
     """结合大盘日期择时和择时策略开平交易进行分析
+
+    函数计算逻辑:
+
+    1. 将dates转换为日期类型，并赋值给变量dates。
+    2. 将pairs复制到dfp变量。
+    3. 将dfp的'开仓时间'列转换为日期类型，并将日期部分提取出来赋值给'开仓日期'列。
+    4. 从dfp中选择开仓日期在dates中的数据，赋值给df_pairs。
+    5. 从dfp中选择开仓时间在df_pairs的开仓时间范围内的数据，赋值给dfp_sub。
+    6. 使用dfp_sub创建PairsPerformance对象tp_old。
+    7. 使用df_pairs创建PairsPerformance对象tp_new。
+    8. 打印原始交易的基本信息和平仓年度统计。
+    9. 打印组合过滤后的交易的基本信息和平仓年度统计。
+    10. 创建结果目录并保存评价结果和交易数据。
+    11. 返回tp_old和tp_new对象。
 
     :param dates: 大盘日期择时日期数据，数据样例 ['2020-01-02', ..., '2022-01-06']
     :param pairs: 择时策略开平交易数据，数据格式如下

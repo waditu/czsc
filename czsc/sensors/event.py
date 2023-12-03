@@ -91,6 +91,16 @@ class EventMatchSensor:
         self.csc = df
 
     def _get_signals_config(self):
+        """获取所有事件的信号配置，并将其合并为一个不包含重复项的列表。
+        该列表包含了所有事件所需的信号计算和解析规则，以便于后续的事件匹配过程。
+
+        1. 创建一个空列表 config，用于存储所有的信号配置。
+        2. 遍历 self.events 中的所有事件（Event 对象）。对于每个事件，调用其 get_signals_config 方法，
+            传入 signals_module 参数，并将返回值（即该事件的信号配置）添加到 config 列表中。
+        3. 通过 list comprehension 生成一个新的列表 config。对 config 列表中的每个字典 d
+            使用 tuple(d.items()) 转换为元组，然后将这些元组转换回 dict 并加入新列表中。
+        4. 返回处理后的 config 列表。
+        """
         config = []
         for event in self.events:
             _c = event.get_signals_config(signals_module=self.signals_module)
@@ -99,7 +109,28 @@ class EventMatchSensor:
         return config
 
     def _single_symbol(self, symbol):
-        """单个symbol的事件匹配"""
+        """单个symbol的事件匹配
+
+        对单个标的（symbol）进行事件匹配。它首先获取 K 线数据，然后生成 CZSC 信号，接着遍历每个事件并计算匹配情况，
+        最后整理数据框并返回。如果在过程中遇到问题，则记录错误并返回一个空 DataFrame。
+
+        函数执行逻辑：
+
+        1. 调用 self.read_bars 方法读取指定 symbol、频率（self.base_freq）、开始时间（self.bar_sdt）
+           和结束时间（self.edt）的 K 线数据，并将返回值赋给 bars。
+        2. 使用 generate_czsc_signals 函数生成 CZSC 信号。这里传入了 bars、复制后的
+           signals_config（以防止修改原始配置）、开始时间（self.sdt）以及 df=False（表示返回一个字典列表而非 DataFrame 对象）。
+        3. 将上一步生成的信号转换为 DataFrame 并保存到 sigs 变量中。
+        4. 创建一个新的 events 复制品（以防止修改原始事件列表），并创建一个空列表 new_cols，用于存储新添加的列名。
+        5. 遍历新的 events 列表，对于每个 event：
+            a. 获取 event 的名称 e_name。
+            b. 使用 apply 函数应用 is_match 方法来判断每行数据是否与该事件相匹配。
+                结果是一个布尔值和一个 float 值（表示匹配得分），它们分别被保存为 e_name 和 f'{e_name}_F' 列。
+            c. 将这两个新列名添加到 new_cols 列表中。
+        6. 在 sigs 数据框中添加一列 n1b，表示涨跌幅。
+        7. 最后，重新组织 sigs 数据框的列顺序，使其包含以下列：symbol、dt、open、close、high、low、vol、amount、n1b 以及所有新添加的列。
+
+        """
         try:
             bars = self.read_bars(symbol, freq=self.base_freq, sdt=self.bar_sdt, edt=self.edt, **self.kwargs)
             sigs = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=self.sdt, df=False)
@@ -138,6 +169,15 @@ class EventMatchSensor:
         """获取事件的截面匹配次数
 
         csc = cross section count，表示截面匹配次数
+
+        函数执行逻辑：
+
+        1. 创建一个 self.data 的副本 df。
+        2. 在 df 中筛选出 event_name 列等于 1 的行。
+        3. 使用 groupby 方法按 symbol 和 dt 对筛选后的数据进行分组，并计算 event_name 列的总和。
+            结果将形成一个新的 DataFrame，其中索引为 (symbol, dt) 组合，只有一个列 event_name，表示每个组合的匹配次数。
+        4. 再次使用 groupby 方法按 dt 对上一步的结果进行分组，并计算 event_name 列的总和。这次得到的新 DataFrame
+            只有一个列 event_name，表示在每个时间点所有标的的事件匹配总数。
 
         :param event_name: 事件名称
         :return: DataFrame

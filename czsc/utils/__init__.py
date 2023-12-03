@@ -67,6 +67,17 @@ def get_py_namespace(file_py: str, keys: list = []) -> dict:
 def import_by_name(name):
     """通过字符串导入模块、类、函数
 
+    函数执行逻辑：
+
+    1. 检查 name 中是否包含点号（'.'）。如果没有，则直接使用内置的 import 函数来导入整个模块，并返回该模块对象。
+    2. 如果 name 包含点号，先处理一个相对路径。将 name 拆分为两部分：module_name 和 function_name。
+        使用 Python 内置的 rsplit 方法从右边开始分割，只取一次，这样可以确保我们将最后的一个点号前的部分作为 module_name，点号后面的部分作为 function_name。
+    3. 使用import函数导入指定的 module_name。
+        这里传入三个参数：globals() 和 locals() 分别代表当前全局和局部命名空间；
+        [function_name] 是一个列表，用于指定要导入的子模块或属性名。
+        这样做是为了避免一次性导入整个模块的所有内容，提高效率。
+    4.  使用 vars 函数获取模块的字典表示形式（即模块内所有的变量和函数），取出 function_name 对应的值，然后返回这个值。
+
     :param name: 模块名，如：'czsc.objects.Factor'
     :return: 模块对象
     """
