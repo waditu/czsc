@@ -159,3 +159,50 @@ def feture_cross_layering(df, x_col, **kwargs):
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
     df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
     return df
+
+
+def rolling_rank(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
+    """计算序列的滚动排名
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col: str
+        待计算的列
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding 排名，否则计算 rolling 排名
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_rank' 作为新列名
+    :param kwargs:
+        min_periods: int
+            最小计算周期
+    """
+    min_periods = kwargs.get('min_periods', 1)
+    new_col = new_col if new_col else f'{col}_rank'
+    if n is None:
+        df[new_col] = df[col].expanding(min_periods=min_periods).rank()
+    else:
+        df[new_col] = df[col].rolling(window=n, min_periods=min_periods).rank()
+
+
+def rolling_norm(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
+    """计算序列的滚动归一化值
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col: str
+        待计算的列
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding ，否则计算 rolling
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_norm' 作为新列名
+    :param kwargs:
+        min_periods: int
+            最小计算周期
+    """
+    min_periods = kwargs.get('min_periods', 1)
+    new_col = new_col if new_col else f'{col}_norm'
+
+    if n is None:
+        df[new_col] = df[col].expanding(min_periods=min_periods).apply(lambda x: (x[-1] - x.mean()) / x.std(), raw=True)
+    else:
+        df[new_col] = df[col].rolling(window=n, min_periods=min_periods).apply(lambda x: (x[-1] - x.mean()) / x.std(), raw=True)
