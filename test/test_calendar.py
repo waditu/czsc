@@ -3,10 +3,16 @@ from czsc.utils.calendar import is_trading_date, next_trading_date, prev_trading
 
 
 def test_is_trading_date():
-    assert is_trading_date('2023-09-08') == True
-    assert is_trading_date('2023-09-09') == False
-    assert is_trading_date('2023-09-10') == False
-    assert is_trading_date('2023-09-10 12:00') == False
+    test_cases = [
+        ('2023-09-08', True),
+        ('2023-09-09', False),
+        ('2023-09-10', False),
+        ('2023-09-10 12:00', False),
+        ('2024-04-18', True),
+        ('2024-01-13', False)
+    ]
+    for date, expected_result in test_cases:
+        assert is_trading_date(date) == expected_result
 
 
 def test_next_trading_date():

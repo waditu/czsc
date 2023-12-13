@@ -13,6 +13,15 @@ from datetime import datetime
 calendar = pd.read_feather(Path(__file__).parent / "china_calendar.feather")
 
 
+def prepare_chain_calendar():
+    import tushare as ts
+    pro = ts.pro_api()
+    df = pro.trade_cal(exchange='', start_date='20100101', end_date='20301231')
+    df['cal_date'] = pd.to_datetime(df['cal_date'])
+    df = df.sort_values('cal_date').reset_index(drop=True)[['cal_date', 'is_open']]
+    df.to_feather(Path(__file__).parent / "china_calendar.feather")
+
+
 def is_trading_date(date=datetime.now()):
     """判断是否是交易日"""
     date = pd.to_datetime(pd.to_datetime(date).date())
