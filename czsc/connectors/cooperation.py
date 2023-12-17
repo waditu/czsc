@@ -4,6 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/11/15 20:45
 describe: CZSC开源协作团队内部使用数据接口
+
+接口说明：https://s0cqcxuy3p.feishu.cn/wiki/F3HGw9vDPisWtSkJr1ac5DEcnNh
 """
 import os
 import czsc

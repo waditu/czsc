@@ -29,6 +29,10 @@ def get_url_token(url):
     if file_token.exists():
         return open(file_token, 'r', encoding='utf-8').read()
     logger.warning(f"请设置 {url} 的访问凭证码，如果没有请联系管理员申请")
+    token = input(f"请输入 {url} 的访问凭证码（token）：")
+    if token:
+        set_url_token(token, url)
+        return token
     return None
 
 

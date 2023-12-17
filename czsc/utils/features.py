@@ -159,3 +159,112 @@ def feture_cross_layering(df, x_col, **kwargs):
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
     df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
     return df
+
+
+def rolling_rank(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
+    """计算序列的滚动排名
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col: str
+        待计算的列
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding 排名，否则计算 rolling 排名
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_rank' 作为新列名
+    :param kwargs:
+        min_periods: int
+            最小计算周期
+    """
+    min_periods = kwargs.get('min_periods', 2)
+    new_col = new_col if new_col else f'{col}_rank'
+    if n is None:
+        df[new_col] = df[col].expanding(min_periods=min_periods).rank()
+    else:
+        df[new_col] = df[col].rolling(window=n, min_periods=min_periods).rank()
+    df[new_col] = df[new_col].fillna(0)
+
+
+def rolling_norm(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
+    """计算序列的滚动归一化值
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col: str
+        待计算的列
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding ，否则计算 rolling
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_norm' 作为新列名
+    :param kwargs:
+        min_periods: int
+            最小计算周期
+    """
+    min_periods = kwargs.get('min_periods', 2)
+    new_col = new_col if new_col else f'{col}_norm'
+
+    if n is None:
+        df[new_col] = df[col].expanding(min_periods=min_periods).apply(lambda x: (x[-1] - x.mean()) / x.std(), raw=True)
+    else:
+        df[new_col] = df[col].rolling(window=n, min_periods=min_periods).apply(lambda x: (x[-1] - x.mean()) / x.std(), raw=True)
+    df[new_col] = df[new_col].fillna(0)
+
+
+def rolling_qcut(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
+    """计算序列的滚动分位数
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col: str
+        待计算的列
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding ，否则计算 rolling
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_qcut' 作为新列名
+    :param kwargs:
+
+        - min_periods: int 最小计算周期
+        - q: int 分位数数量
+    """
+    q = kwargs.get('q', 10)
+    min_periods = kwargs.get('min_periods', q)
+    new_col = new_col if new_col else f'{col}_qcut'
+
+    def __qcut_func(x):
+        return pd.qcut(x, q=q, labels=False, duplicates='drop')[-1]
+
+    if n is None:
+        df[new_col] = df[col].expanding(min_periods=min_periods).apply(__qcut_func, raw=True)
+    else:
+        df[new_col] = df[col].rolling(window=n, min_periods=min_periods).apply(__qcut_func, raw=True)
+    df[new_col] = df[new_col].fillna(-1)
+
+
+def find_most_similarity(vector: pd.Series, matrix: pd.DataFrame, n=10, metric='cosine', **kwargs):
+    """寻找向量在矩阵中最相似的n个向量
+
+    :param vector: 1维向量, Series结构
+    :param matrix: 2维矩阵, DataFrame结构, 每一列是一个向量，列名是向量的标记
+    :param n: int, 返回最相似的n个向量
+    :param metric: str, 计算相似度的方法，
+
+        - From scikit-learn: ['cityblock', 'cosine', 'euclidean', 'l1', 'l2',
+        'manhattan']. These metrics support sparse matrix
+        inputs.
+        ['nan_euclidean'] but it does not yet support sparse matrices.
+
+        - From scipy.spatial.distance: ['braycurtis', 'canberra', 'chebyshev',
+        'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis',
+        'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean',
+        'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule']
+        See the documentation for scipy.spatial.distance for details on these
+        metrics. These metrics do not support sparse matrix inputs.
+
+    :param kwargs: 其他参数
+    """
+    from sklearn.metrics.pairwise import pairwise_distances
+    metric = kwargs.get('metric', 'cosine')
+    sim = pairwise_distances(vector.values.reshape(1, -1), matrix.T, metric=metric).reshape(-1)
+    sim = pd.Series(sim, index=matrix.columns)
+    sim = sim.sort_values(ascending=False)[:n]
+    return sim

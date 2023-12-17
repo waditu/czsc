@@ -111,12 +111,16 @@ from czsc.utils.features import (
     normalize_feature,
     normalize_ts_feature,
     feture_cross_layering,
+    rolling_rank,
+    rolling_norm,
+    rolling_qcut,
+    find_most_similarity,
 )
 
-__version__ = "0.9.38"
+__version__ = "0.9.39"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231126"
+__date__ = "20231212"
 
 
 def welcome():
