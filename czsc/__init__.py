@@ -113,6 +113,8 @@ from czsc.utils.features import (
     feture_cross_layering,
     rolling_rank,
     rolling_norm,
+    rolling_qcut,
+    find_most_similarity,
 )
 
 __version__ = "0.9.39"

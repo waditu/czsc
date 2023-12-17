@@ -109,8 +109,9 @@ def show_sectional_ic(df, x_col, y_col, method='pearson', **kwargs):
     col4.dataframe(dfm.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS'),
                    use_container_width=True)
 
-    fig = px.histogram(df, x=x_col, marginal="box", title="因子数据分布图")
-    st.plotly_chart(fig, use_container_width=True)
+    if kwargs.get("show_factor_histgram", False):
+        fig = px.histogram(df, x=x_col, marginal="box", title="因子数据分布图")
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_factor_returns(df, x_col, y_col):
