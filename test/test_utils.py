@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2022/2/16 20:31
 describe: czsc.utils 单元测试
 """
+import sys
 import pytest
 import pandas as pd
 import numpy as np
@@ -183,6 +184,7 @@ def test_rolling_norm():
     assert all(-3 <= value <= 3 for value in df['col1_norm'].dropna())
 
 
+@pytest.mark.skipif(sys.version_info < (3, 8), reason="requires python3.8 or higher")
 def test_rolling_rank():
     from czsc.utils.features import rolling_rank
 
