@@ -117,10 +117,10 @@ from czsc.utils.features import (
     find_most_similarity,
 )
 
-__version__ = "0.9.39"
+__version__ = "0.9.40"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231212"
+__date__ = "20231218"
 
 
 def welcome():
