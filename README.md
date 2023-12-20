@@ -7,9 +7,9 @@
 [![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
 [![Documentation Status](https://readthedocs.org/projects/czsc/badge/?version=latest)](https://czsc.readthedocs.io/en/latest/?badge=latest)
 
-**[API文档](https://czsc.readthedocs.io/en/latest/modules.html)** | 
-**[项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)** | 
-**[投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh)** | 
+**[API文档](https://czsc.readthedocs.io/en/latest/modules.html)** |
+**[项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)** |
+**[投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh)** |
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)**
 
 >源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，原始博客中的内容不太完整，且没有评论，以下是网友整理的原文备份
@@ -36,7 +36,7 @@
 
 ## 安装使用
 
-**注意:** python 版本必须大于等于 3.7 
+**注意:** python 版本必须大于等于 3.7
 
 直接从github安装：
 ```
@@ -65,16 +65,6 @@ pip install czsc -U -i https://pypi.python.org/simple
 * 目前开发完成度不高，**API会有比较大的变动，谨慎升级版本**，暂时不准备写文档，没有能力看懂源码的，不建议现在使用。
 * 免责声明：项目开源仅用于技术交流！
 * 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
-
-
-## 使用案例
-
->案例中主要使用了 Tushare 的数据，开通相应的数据权限可以[点击联系](https://tushare.pro/document/2?doc_id=244)，备注：**CZSC用户**，1500元可以开通CZSC项目目前用到的全部数据权限。
->掘金终端主要用于交易策略的实盘跟踪，[点击了解](https://www.myquant.cn/)。
-
-* `examples/ts_plates_sensor.py` 同花顺概念板块轮动策略回测
-* `examples/ts_check_signal_acc.py` 验证信号计算的准确性，信号是否符合定义
-* `examples/ts_stocks_sensors.py` 日线选股策略回测
 
 
 ## 原文整理
