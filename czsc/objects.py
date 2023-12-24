@@ -649,31 +649,15 @@ class Event:
         4. 最后判断因子是否满足，顺序遍历因子列表，找到第一个满足的因子就退出，并返回 True 和该因子的名称，表示事件满足。
         5. 如果遍历完所有因子都没有找到满足的因子，则返回 False，表示事件不满足。
         """
-        # 首先判断 event 层面的信号是否得到满足
-        if self.signals_not:
-            # 满足任意一个，直接返回 False
-            for signal in self.signals_not:
-                if signal.is_match(s):
-                    return False, None
+        if self.signals_not and any(signal.is_match(s) for signal in self.signals_not):
+            return False, None
 
-        if self.signals_all:
-            # 任意一个不满足，直接返回 False
-            for signal in self.signals_all:
-                if not signal.is_match(s):
-                    return False, None
+        if self.signals_all and not all(signal.is_match(s) for signal in self.signals_all):
+            return False, None
 
-        if self.signals_any:
-            one_match = False
-            for signal in self.signals_any:
-                if signal.is_match(s):
-                    one_match = True
-                    break
-            # 一个都不满足，直接返回 False
-            if not one_match:
-                return False, None
+        if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
+            return False, None
 
-        # 判断因子是否满足，顺序遍历，找到第一个满足的因子就退出
-        # 因子放入事件中时，建议因子列表按关注度从高到低排序
         for factor in self.factors:
             if factor.is_match(s):
                 return True, factor.name
