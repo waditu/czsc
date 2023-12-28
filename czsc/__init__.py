@@ -114,6 +114,7 @@ from czsc.utils.features import (
     rolling_rank,
     rolling_norm,
     rolling_qcut,
+    rolling_compare,
     find_most_similarity,
 )
 
