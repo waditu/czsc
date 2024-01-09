@@ -133,13 +133,12 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
     hm = dt.strftime("%H:%M")
     key = f"{freq.value}_{market}"
     if freq.value.endswith("分钟"):
-        h, m = freq_edt_map[key][hm].split(":")
+        h, m = map(int, freq_edt_map[key][hm].split(":"))
+        edt = dt.replace(hour=h, minute=m)
 
-        if int(h)==0 and int(m)==0 and freq != Freq.F1 and hm != "00:00":
-            edt = dt.replace(hour=int(h), minute=int(m)) + timedelta(days=1)
-        else:
-            #虚拟货币的话，如果直接修改，会导致跨天的时候出错。
-            edt = dt.replace(hour=int(h), minute=int(m))
+        if h == m == 0 and freq != Freq.F1 and hm != "00:00":
+            edt += timedelta(days=1)
+
         return edt
 
     # if not ("15:00" > hm > "09:00") and market == "期货":
