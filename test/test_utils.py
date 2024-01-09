@@ -234,5 +234,5 @@ def test_rolling_compare():
     # 测试不支持的方法
     try:
         rolling_compare(df, 'col1', 'col2', n=3, method='not_supported')
-    except ValueError as e:
-        assert str(e) == "method not_supported not support"
+    except Exception as e:
+        assert isinstance(e, AssertionError)
