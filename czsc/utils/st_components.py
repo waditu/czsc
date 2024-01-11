@@ -7,7 +7,16 @@ from sklearn.linear_model import LinearRegression
 
 
 def show_daily_return(df, **kwargs):
-    """用 streamlit 展示日收益"""
+    """用 streamlit 展示日收益
+
+    :param df: pd.DataFrame，数据源
+    :param kwargs:
+
+        - title: str，标题
+        - stat_hold_days: bool，是否展示持有日绩效指标，默认为 True
+        - legend_only_cols: list，仅在图例中展示的列名
+
+    """
     assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     df = df.copy().fillna(0)
 
@@ -33,11 +42,15 @@ def show_daily_return(df, **kwargs):
             st.subheader(title)
             st.divider()
 
-        col1, col2 = st.columns([1, 1])
-        col1.write("交易日绩效指标")
-        col1.dataframe(_stats(df, type_='交易日'), use_container_width=True)
-        col2.write("持有日绩效指标")
-        col2.dataframe(_stats(df, type_='持有日'), use_container_width=True)
+        if kwargs.get("stat_hold_days", True):
+            col1, col2 = st.columns([1, 1])
+            col1.write("交易日绩效指标")
+            col1.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+            col2.write("持有日绩效指标")
+            col2.dataframe(_stats(df, type_='持有日'), use_container_width=True)
+        else:
+            st.write("绩效指标")
+            st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
 
         df = df.cumsum()
         fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
@@ -62,7 +75,7 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     monthly['year'] = monthly.index.year
     monthly['month'] = monthly.index.month
     monthly = monthly.pivot_table(index='year', columns='month', values=ret_col)
-    month_cols = [f"{x}月" for x in range(1, 13)]
+    month_cols = [f"{x}月" for x in monthly.columns]
     monthly.columns = month_cols
     monthly['年收益'] = monthly.sum(axis=1)
     monthly = monthly.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=month_cols).format('{:.2%}', na_rep='-')
