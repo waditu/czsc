@@ -288,9 +288,7 @@ def show_weight_backtest(dfw, **kwargs):
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    from czsc.traders.weight_backtest import WeightBacktest
-
-    wb = WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
+    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
     stat = wb.results['绩效评价']
 
     st.divider()
@@ -308,4 +306,10 @@ def show_weight_backtest(dfw, **kwargs):
     dret = wb.results['品种等权日收益']
     dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
+
+    if kwargs.get("show_daily_detail", False):
+        with st.expander("查看品种等权日收益详情", expanded=False):
+            df_ = wb.results['品种等权日收益'].copy()
+            st.dataframe(df_.style.background_gradient(cmap='RdYlGn_r').format("{:.2%}"), use_container_width=True)
+
     return wb
