@@ -344,12 +344,11 @@ return cnt
         dfw = dfw.sort_values('dt').reset_index(drop=True)
         return dfw
 
-    def get_all_weights(self, sdt=None, edt=None, ignore_zero=True) -> pd.DataFrame:
+    def get_all_weights(self, sdt=None, edt=None, **kwargs) -> pd.DataFrame:
         """获取所有权重数据
 
         :param sdt: str, 开始时间, eg: 20210924 10:19:00
         :param edt: str, 结束时间, eg: 20220924 10:19:00
-        :param ignore_zero: boolean, 是否忽略权重为0的品种
         :return: pd.DataFrame
         """
         lua_script = """
@@ -374,8 +373,7 @@ return cnt
 
         df1 = pd.pivot_table(df, index='dt', columns='symbol', values='weight').sort_index().ffill().fillna(0)
         df1 = pd.melt(df1.reset_index(), id_vars='dt', value_vars=df1.columns, value_name='weight')     # type: ignore
-        if ignore_zero:
-            df1 = df1[df1['weight'] != 0].reset_index(drop=True)
+
         if sdt:
             df1 = df1[df1['dt'] >= pd.to_datetime(sdt)].reset_index(drop=True)
         if edt:
