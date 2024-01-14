@@ -280,6 +280,9 @@ def show_weight_backtest(dfw, **kwargs):
     :param kwargs:
 
         - fee: 单边手续费，单位为BP，默认为2BP
+        - digits: 权重小数位数，默认为2
+        - show_daily_detail: bool，是否展示每日收益详情，默认为 False
+
     """
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
