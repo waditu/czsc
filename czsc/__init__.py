@@ -71,7 +71,10 @@ from czsc.utils import (
     daily_performance,
     net_value_stats,
     subtract_fee,
+
     home_path,
+    DiskCache,
+    disk_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,
@@ -119,10 +122,10 @@ from czsc.utils.features import (
     find_most_similarity,
 )
 
-__version__ = "0.9.40"
+__version__ = "0.9.41"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231218"
+__date__ = "20240114"
 
 
 def welcome():
