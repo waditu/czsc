@@ -58,7 +58,7 @@ class AliyunOSS:
                 logger.error(f"Upload {filepath} to {oss_key} failed: {result.status}, {result.request_id}")
                 return False
 
-    def download(self, oss_key: str, filepath: str) -> bool:
+    def download(self, oss_key: str, filepath: str, replace: bool = False) -> bool:
         """
         从OSS下载文件。
 
@@ -69,6 +69,10 @@ class AliyunOSS:
         path = os.path.dirname(filepath)
         if not os.path.exists(path):
             os.makedirs(path)
+
+        if not replace and os.path.exists(filepath):
+            logger.info(f"{filepath} exists in the local. Set replace=True to overwrite.")
+            return False
 
         result = self.bucket.get_object_to_file(oss_key, filepath)
         if result.status == 200:
@@ -150,7 +154,7 @@ class AliyunOSS:
             for filepath, oss_key in tqdm(zip(filepaths, oss_keys), total=len(filepaths), desc="Uploading"):
                 executor.submit(self.upload, filepath, oss_key, replace)
 
-    def batch_download(self, oss_keys: List[str], local_paths: List[str], threads: int = 5):
+    def batch_download(self, oss_keys: List[str], local_paths: List[str], replace: bool = False, threads: int = 5):
         """
         批量从OSS下载文件。
 
@@ -161,7 +165,7 @@ class AliyunOSS:
         assert len(oss_keys) == len(local_paths), "The length of oss_keys and local_paths must be the same."
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for oss_key, local_path in zip(oss_keys, local_paths):
-                executor.submit(self.download, oss_key, local_path)
+                executor.submit(self.download, oss_key, local_path, replace)
 
     def multipart_upload(self, filepath: str, oss_key: str):
         """

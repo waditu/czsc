@@ -8,6 +8,7 @@ describe: 因子（特征）处理
 import pandas as pd
 from loguru import logger
 from sklearn.preprocessing import scale
+from sklearn.linear_model import LinearRegression
 
 
 def normalize_feature(df, x_col, **kwargs):
@@ -238,6 +239,57 @@ def rolling_qcut(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     else:
         df[new_col] = df[col].rolling(window=n, min_periods=min_periods).apply(__qcut_func, raw=True)
     df[new_col] = df[new_col].fillna(-1)
+
+
+def rolling_compare(df, col1, col2, new_col=None, n=None, **kwargs):
+    """计算序列的滚动归一化值
+
+    :param df: pd.DataFrame
+        待计算的数据
+    :param col1: str
+        第一个列名
+    :param col2: str
+        第二个列名
+    :param n: int
+        滚动窗口大小, 默认为None, 表示计算 expanding ，否则计算 rolling
+    :param new_col: str
+        新列名，默认为 None, 表示使用 f'{col}_norm' 作为新列名
+    :param kwargs:
+        min_periods: int
+            最小计算周期
+    """
+    min_periods = kwargs.get('min_periods', 2)
+    new_col = new_col if new_col else f'compare_{col1}_{col2}'
+    method = kwargs.get('method', 'sub')
+    assert method in ['sub', 'divide', 'lr_intercept', 'lr_coef'], "method 必须为 sub, divide, lr_intercept, lr_coef 中的一种"
+
+    for i in range(len(df)):
+        dfi = df.loc[:i, [col1, col2]] if n is None else df.loc[i - n + 1:i, [col1, col2]]
+        dfi = dfi.copy()
+        if i < min_periods:
+            df.loc[i, new_col] = 0
+            continue
+
+        if method == 'sub':
+            df.loc[i, new_col] = dfi[col1].sub(dfi[col2]).mean()
+
+        elif method == 'divide':
+            df.loc[i, new_col] = dfi[col1].divide(dfi[col2]).mean()
+
+        elif method == 'lr_intercept':
+            x = dfi[col2].values.reshape(-1, 1)
+            y = dfi[col1].values.reshape(-1, 1)
+            reg = LinearRegression().fit(x, y)
+            df.loc[i, new_col] = reg.intercept_[0]
+
+        elif method == 'lr_coef':
+            x = dfi[col2].values.reshape(-1, 1)
+            y = dfi[col1].values.reshape(-1, 1)
+            reg = LinearRegression().fit(x, y)
+            df.loc[i, new_col] = reg.coef_[0][0]
+
+        else:
+            raise ValueError(f"method {method} not support")
 
 
 def find_most_similarity(vector: pd.Series, matrix: pd.DataFrame, n=10, metric='cosine', **kwargs):

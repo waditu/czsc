@@ -214,6 +214,7 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
     :return: 交易表现
     """
     from czsc.objects import cal_break_even_point
+    assert trade_dir in ["多头", "空头", "多空"], "trade_dir 参数错误，可选值 ['多头', '空头', '多空']"
 
     pairs = pairs.copy()
 
@@ -236,13 +237,8 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         "持仓K线数": 0,
     }
 
-    if len(pairs) == 0:
-        return p
-
     if trade_dir in ["多头", "空头"]:
         pairs = pairs[pairs["交易方向"] == trade_dir]
-    else:
-        assert trade_dir == "多空", "trade_dir 参数错误，可选值 ['多头', '空头', '多空']"
 
     if len(pairs) == 0:
         return p

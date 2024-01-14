@@ -94,6 +94,7 @@ from czsc.utils.calendar import (
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
+    show_monthly_return,
     show_correlation,
     show_sectional_ic,
     show_factor_returns,
@@ -114,13 +115,14 @@ from czsc.utils.features import (
     rolling_rank,
     rolling_norm,
     rolling_qcut,
+    rolling_compare,
     find_most_similarity,
 )
 
-__version__ = "0.9.39"
+__version__ = "0.9.40"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231212"
+__date__ = "20231218"
 
 
 def welcome():

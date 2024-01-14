@@ -204,3 +204,35 @@ def test_rolling_rank():
 
     # 检查新列的值
     assert all(0 <= value <= 100 for value in df['col1_rank'].dropna())
+
+
+def test_rolling_compare():
+    # 创建一个测试用的DataFrame
+    from czsc.utils.features import rolling_compare
+
+    df = pd.DataFrame({
+        'col1': np.arange(100),
+        'col2': np.arange(100, 0, -1)
+    })
+
+    # 测试 'sub' 方法
+    rolling_compare(df, 'col1', 'col2', new_col='compare_sub', n=3, method='sub')
+    assert 'compare_sub' in df.columns
+
+    # 测试 'divide' 方法
+    rolling_compare(df, 'col1', 'col2', new_col='compare_divide', n=3, method='divide')
+    assert 'compare_divide' in df.columns
+
+    # 测试 'lr_intercept' 方法
+    rolling_compare(df, 'col1', 'col2', new_col='compare_lr_intercept', n=3, method='lr_intercept')
+    assert 'compare_lr_intercept' in df.columns
+
+    # 测试 'lr_coef' 方法
+    rolling_compare(df, 'col1', 'col2', new_col='compare_lr_coef', n=3, method='lr_coef')
+    assert 'compare_lr_coef' in df.columns
+
+    # 测试不支持的方法
+    try:
+        rolling_compare(df, 'col1', 'col2', n=3, method='not_supported')
+    except Exception as e:
+        assert isinstance(e, AssertionError)

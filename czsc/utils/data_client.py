@@ -27,7 +27,9 @@ def get_url_token(url):
     hash_key = hashlib.md5(str(url).encode('utf-8')).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
     if file_token.exists():
+        logger.info(f"从 {file_token} 读取 {url} 的访问凭证码")
         return open(file_token, 'r', encoding='utf-8').read()
+
     logger.warning(f"请设置 {url} 的访问凭证码，如果没有请联系管理员申请")
     token = input(f"请输入 {url} 的访问凭证码（token）：")
     if token:
