@@ -17,8 +17,13 @@ def show_daily_return(df, **kwargs):
         - legend_only_cols: list，仅在图例中展示的列名
 
     """
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
     assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     df = df.copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
 
     def _stats(df_, type_='持有日'):
         df_ = df_.copy()
@@ -69,7 +74,14 @@ def show_daily_return(df, **kwargs):
 
 def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwargs):
     """展示指定列的月度累计收益"""
-    assert df.index.dtype == 'datetime64[ns]', "index 必须是 datetime 类型"
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df.copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+
     st.subheader(title, divider="rainbow")
     monthly = df[[ret_col]].resample('M').sum()
     monthly['year'] = monthly.index.year
@@ -78,7 +90,11 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     month_cols = [f"{x}月" for x in monthly.columns]
     monthly.columns = month_cols
     monthly['年收益'] = monthly.sum(axis=1)
-    monthly = monthly.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=month_cols).format('{:.2%}', na_rep='-')
+
+    monthly = monthly.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=month_cols)
+    monthly = monthly.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年收益'])
+    monthly = monthly.format('{:.2%}', na_rep='-')
+
     st.dataframe(monthly, use_container_width=True)
 
 
@@ -316,3 +332,63 @@ def show_weight_backtest(dfw, **kwargs):
             st.dataframe(df_.style.background_gradient(cmap='RdYlGn_r').format("{:.2%}"), use_container_width=True)
 
     return wb
+
+
+def show_splited_daily(df, ret_col, **kwargs):
+    """展示分段日收益表现
+
+    :param df: pd.DataFrame
+    :param ret_col: str, df 中的列名，指定收益列
+    :param kwargs:
+
+        sub_title: str, 子标题
+
+    """
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df.copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+
+    sub_title = kwargs.get("sub_title", "")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    last_dt = df.index[-1]
+    sdt_map = {
+        "过去1周": last_dt - pd.Timedelta(days=7),
+        "过去2周": last_dt - pd.Timedelta(days=14),
+        "过去1月": last_dt - pd.Timedelta(days=30),
+        "过去3月": last_dt - pd.Timedelta(days=90),
+        "过去6月": last_dt - pd.Timedelta(days=180),
+        "过去1年": last_dt - pd.Timedelta(days=365),
+        "今年以来": pd.to_datetime(f"{last_dt.year}-01-01"),
+    }
+
+    rows = []
+    for name, sdt in sdt_map.items():
+        df1 = df.loc[sdt:last_dt].copy()
+        row = czsc.daily_performance(df1[ret_col])
+        row['开始日期'] = sdt.strftime('%Y-%m-%d')
+        row['结束日期'] = last_dt.strftime('%Y-%m-%d')
+        row['收益名称'] = name
+        row['绝对收益'] = df1[ret_col].sum()
+        rows.append(row)
+    dfv = pd.DataFrame(rows).set_index('收益名称')
+    cols = ['开始日期', '结束日期', '绝对收益', '年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
+    dfv = dfv[cols].copy()
+
+    dfv = dfv.style.background_gradient(cmap='RdYlGn_r', subset=['绝对收益'])
+    dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['年化'])
+    dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['夏普'])
+    dfv = dfv.background_gradient(cmap='RdYlGn', subset=['最大回撤'])
+    dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['卡玛'])
+    dfv = dfv.background_gradient(cmap='RdYlGn', subset=['年化波动率'])
+    dfv = dfv.background_gradient(cmap='RdYlGn', subset=['盈亏平衡点'])
+    dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['日胜率'])
+    dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['非零覆盖'])
+    dfv = dfv.format({'盈亏平衡点': '{:.2f}', '年化波动率': '{:.2%}', '最大回撤': '{:.2%}', '卡玛': '{:.2f}', '年化': '{:.2%}',
+                      '夏普': '{:.2f}', '非零覆盖': '{:.2%}', '日胜率': '{:.2%}', '绝对收益': '{:.2%}'})
+    st.dataframe(dfv, use_container_width=True)
