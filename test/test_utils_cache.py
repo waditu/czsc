@@ -37,5 +37,6 @@ def test_disk_cache():
     result = run_func_y(5)
     files = os.listdir(temp_path)
     assert len(files) == 2
-    df = pd.read_excel(os.path.join(temp_path, files[1]))
+    file_xlsx = [x for x in files if x.endswith("xlsx")][0]
+    df = pd.read_excel(os.path.join(temp_path, file_xlsx))
     assert isinstance(df, pd.DataFrame)
