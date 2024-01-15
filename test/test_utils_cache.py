@@ -1,29 +1,30 @@
 import os
 import pandas as pd
-from czsc.utils.cache import disk_cache, home_path
+from czsc.utils.cache import disk_cache, home_path, empty_cache_path
 
+empty_cache_path()
 temp_path = os.path.join(home_path, "temp")
 
 # Create a simple function for testing
 @disk_cache(path=temp_path, suffix="pkl", ttl=100)
-def test_func(x):
+def run_func_x(x):
     return x * 2
 
 @disk_cache(path=temp_path, suffix="xlsx", ttl=100)
-def test_xlsx(x):
+def run_func_y(x):
     df = pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6], 'x': [x, x, x]})
     return df
 
 
 def test_disk_cache():
     # Call the function
-    result = test_func(5)
+    result = run_func_x(5)
 
     # Check if the output is correct
     assert result == 10
 
     # Call the function again with the same argument
-    result = test_func(5)
+    result = run_func_x(5)
 
     # Check if the output is still correct
     assert result == 10
@@ -33,7 +34,7 @@ def test_disk_cache():
     assert len(files) == 1
 
     # Call the function with a different argument
-    result = test_xlsx(5)
+    result = run_func_y(5)
     files = os.listdir(temp_path)
     assert len(files) == 2
     df = pd.read_excel(os.path.join(temp_path, files[1]))
