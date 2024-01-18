@@ -88,7 +88,7 @@ def daily_performance(daily_returns):
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
         return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
-                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "最大新高时间": 0}
+                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "新高间隔": 0, "新高占比": 0}
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
@@ -105,6 +105,9 @@ def daily_performance(daily_returns):
     max_interval = 0
     for i in range(len(high_index) - 1):
         max_interval = max(max_interval, high_index[i + 1] - high_index[i])
+
+    # 计算新高时间占比
+    high_pct = len(high_index) / len(dd)
 
     def __min_max(x, min_val, max_val, digits=4):
         if x < min_val:
@@ -124,7 +127,64 @@ def daily_performance(daily_returns):
         "年化波动率": round(annual_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),
         "盈亏平衡点": round(cal_break_even_point(daily_returns), 4),
-        "最大新高时间": max_interval,
+        "新高间隔": max_interval,
+        "新高占比": round(high_pct, 4),
+    }
+    return sta
+
+
+def weekly_performance(weekly_returns):
+    """采用单利计算周收益数据的各项指标
+
+    :param weekly_returns: 周收益率数据，样例：
+        [0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01]
+    :return: dict
+    """
+    weekly_returns = np.array(weekly_returns, dtype=np.float64)
+
+    if len(weekly_returns) == 0 or np.std(weekly_returns) == 0 or all(x == 0 for x in weekly_returns):
+        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "周胜率": 0,
+                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "新高间隔": 0, "新高占比": 0}
+
+    annual_returns = np.sum(weekly_returns) / len(weekly_returns) * 52
+    sharpe_ratio = np.mean(weekly_returns) / np.std(weekly_returns) * np.sqrt(52)
+    cum_returns = np.cumsum(weekly_returns)
+    dd = np.maximum.accumulate(cum_returns) - cum_returns
+    max_drawdown = np.max(dd)
+    kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
+    win_pct = len(weekly_returns[weekly_returns >= 0]) / len(weekly_returns)
+    annual_volatility = np.std(weekly_returns) * np.sqrt(52)
+    none_zero_cover = len(weekly_returns[weekly_returns != 0]) / len(weekly_returns)
+
+    # 计算最大新高间隔
+    high_index = [i for i, x in enumerate(dd) if x == 0]
+    max_interval = 0
+    for i in range(len(high_index) - 1):
+        max_interval = max(max_interval, high_index[i + 1] - high_index[i])
+
+    # 计算新高时间占比
+    high_pct = len(high_index) / len(dd)
+
+    def __min_max(x, min_val, max_val, digits=4):
+        if x < min_val:
+            x1 = min_val
+        elif x > max_val:
+            x1 = max_val
+        else:
+            x1 = x
+        return round(x1, digits)
+
+    sta = {
+        "年化": round(annual_returns, 4),
+        "夏普": __min_max(sharpe_ratio, -5, 5, 2),
+        "最大回撤": round(max_drawdown, 4),
+        "卡玛": __min_max(kama, -10, 10, 2),
+        "周胜率": round(win_pct, 4),
+        "年化波动率": round(annual_volatility, 4),
+        "非零覆盖": round(none_zero_cover, 4),
+        "盈亏平衡点": round(cal_break_even_point(weekly_returns), 4),
+        "新高间隔": max_interval,
+        "时间占比": round(high_pct, 4),
     }
     return sta
 

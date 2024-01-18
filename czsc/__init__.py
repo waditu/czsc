@@ -69,6 +69,7 @@ from czsc.utils import (
     SignalAnalyzer,
     SignalPerformance,
     daily_performance,
+    weekly_performance,
     net_value_stats,
     subtract_fee,
 
