@@ -29,3 +29,4 @@ lightgbm>=4.0.0
 streamlit
 redis
 oss2
+statsmodels

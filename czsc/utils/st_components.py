@@ -1,8 +1,11 @@
 import czsc
+import hashlib
 import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+import statsmodels.api as sm
+import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 
 
@@ -73,7 +76,13 @@ def show_daily_return(df, **kwargs):
 
 
 def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwargs):
-    """展示指定列的月度累计收益"""
+    """展示指定列的月度累计收益
+
+    :param df: pd.DataFrame，数据源
+    :param ret_col: str，收益列名
+    :param title: str，标题
+    :param kwargs:
+    """
     if not df.index.dtype == 'datetime64[ns]':
         df['dt'] = pd.to_datetime(df['dt'])
         df.set_index('dt', inplace=True)
@@ -82,7 +91,9 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     df = df.copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
 
-    st.subheader(title, divider="rainbow")
+    if title:
+        st.subheader(title, divider="rainbow")
+
     monthly = df[[ret_col]].resample('M').sum()
     monthly['year'] = monthly.index.year
     monthly['month'] = monthly.index.month
@@ -135,8 +146,10 @@ def show_sectional_ic(df, x_col, y_col, method='pearson', **kwargs):
     dfm = pd.pivot_table(dfm, index='year', columns='month', values='ic')
 
     col4.write("月度IC分析结果：")
-    col4.dataframe(dfm.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS'),
-                   use_container_width=True)
+    col4.dataframe(
+        dfm.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS'),
+        use_container_width=True,
+    )
 
     if kwargs.get("show_factor_histgram", False):
         fig = px.histogram(df, x=x_col, marginal="box", title="因子数据分布图")
@@ -186,7 +199,7 @@ def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
 
     """
     n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:       # 收益率单位为BP, 转换为万分之一
+    if df[y_col].max() > 100:  # 收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
     df = czsc.feture_cross_layering(df, x_col, n=n)
@@ -241,7 +254,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     """
     df = df.copy()
     n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:       # 如果收益率单位为BP, 转换为万分之一
+    if df[y_col].max() > 100:  # 如果收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
     if f'{x_col}分层' not in df.columns:
@@ -389,6 +402,134 @@ def show_splited_daily(df, ret_col, **kwargs):
     dfv = dfv.background_gradient(cmap='RdYlGn', subset=['盈亏平衡点'])
     dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['日胜率'])
     dfv = dfv.background_gradient(cmap='RdYlGn_r', subset=['非零覆盖'])
-    dfv = dfv.format({'盈亏平衡点': '{:.2f}', '年化波动率': '{:.2%}', '最大回撤': '{:.2%}', '卡玛': '{:.2f}', '年化': '{:.2%}',
-                      '夏普': '{:.2f}', '非零覆盖': '{:.2%}', '日胜率': '{:.2%}', '绝对收益': '{:.2%}'})
+    dfv = dfv.format(
+        {
+            '盈亏平衡点': '{:.2f}',
+            '年化波动率': '{:.2%}',
+            '最大回撤': '{:.2%}',
+            '卡玛': '{:.2f}',
+            '年化': '{:.2%}',
+            '夏普': '{:.2f}',
+            '非零覆盖': '{:.2%}',
+            '日胜率': '{:.2%}',
+            '绝对收益': '{:.2%}',
+        }
+    )
     st.dataframe(dfv, use_container_width=True)
+
+
+def show_ts_rolling_corr(df, col1, col2, **kwargs):
+    """时序上按 rolling 的方式计算相关系数
+
+    :param df: pd.DataFrame, 必须包含列 dt 和 col1, col2
+    :param col1: str, df 中的列名
+    :param col2: str, df 中的列名
+    :param kwargs:
+
+        - min_periods: int, 最小滑动窗口长度
+        - window: int, 滑动窗口长度，0 表示按 expanding 方式滑动
+        - corr_method: str, 相关系数计算方法，可选 pearson, kendall, spearman
+        - sub_title: str, 子标题
+    """
+    if col1 not in df.columns or col2 not in df.columns:
+        st.error(f"列 {col1} 或 {col2} 不存在，请重新输入")
+        return
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df['dt'] = pd.to_datetime(df['dt'])
+        df = df.set_index('dt')
+
+    df = df[[col1, col2]].copy()
+    if df.isnull().sum().sum() > 0:
+        st.dataframe(df[df.isnull().sum(axis=1) > 0])
+        st.error(f"列 {col1} 或 {col2} 中存在缺失值，请先处理缺失值")
+        return
+
+    sub_title = kwargs.get('sub_title', None)
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
+
+    min_periods = kwargs.get('min_periods', None)
+    window = kwargs.get('window', None)
+    corr_method = kwargs.get('corr_method', 'pearson')
+
+    if not window or window <= 0:
+        method = 'expanding'
+        corr_result = df[col1].expanding(min_periods=min_periods).corr(df[col2], pairwise=True)
+    else:
+        method = 'rolling'
+        corr_result = df[col1].rolling(window=window, min_periods=min_periods).corr(df[col2], pairwise=True)
+
+    corr_result = corr_result.dropna()
+    corr_result = corr_result.rename('corr')
+    line = go.Scatter(x=corr_result.index, y=corr_result, mode='lines', name='corr')
+    layout = go.Layout(
+        title=f'滑动（{method}）相关系数',
+        xaxis=dict(title=''),
+        yaxis=dict(title='corr'),
+        annotations=[
+            dict(
+                x=0.0,
+                y=1.05,
+                showarrow=False,
+                xref="paper",
+                yref="paper",
+                font=dict(size=12),
+                text=f"滑动窗口长度：{window}，最小滑动窗口长度：{min_periods}，相关系数计算方法：{corr_method}",
+            )
+        ],
+    )
+    fig = go.Figure(data=[line], layout=layout)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_ts_self_corr(df, col, **kwargs):
+    """展示时序上单因子的自相关性分析结果，贡献者：guo
+
+    :param df: pd.DataFrame, 必须包含列 dt 和 col
+    :param col: str, df 中的列名
+    """
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df['dt'] = pd.to_datetime(df['dt'])
+        df = df.set_index('dt')
+    df = df.sort_index(ascending=True)
+
+    if df[col].isnull().sum() > 0:
+        st.dataframe(df[df[col].isnull()])
+        st.error(f"列 {col} 中存在缺失值，请先处理缺失值")
+        return
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        sub_title = f"自相关系数分析（{col}）"
+        st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
+        c1, c2, c3 = st.columns([2, 2, 1])
+        nlags = int(c1.number_input('最大滞后阶数', value=20, min_value=1, max_value=100, step=1))
+        method = c2.selectbox('选择分析方法', ['acf', 'pacf'], index=0)
+
+        if method == 'acf':
+            acf_result, conf_int = sm.tsa.acf(df[[col]].copy(), nlags=nlags, alpha=0.05, missing='raise')
+        else:
+            acf_result, conf_int = sm.tsa.pacf(df[[col]].copy(), nlags=nlags, alpha=0.05)
+
+        bar = go.Bar(x=list(range(len(acf_result))), y=acf_result, name='自相关系数')
+        upper = go.Scatter(x=list(range(len(acf_result))), y=conf_int[:, 1], mode='lines', name='95%置信区间上界')
+        lower = go.Scatter(x=list(range(len(acf_result))), y=conf_int[:, 0], mode='lines', name='95%置信区间下界')
+        layout = go.Layout(title=method.upper(), xaxis=dict(title='滞后阶数'), yaxis=dict(title='自相关系数'))
+        fig = go.Figure(data=[bar, upper, lower], layout=layout)
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        sub_title = f"滞后N阶滑动相关性（{col}）"
+        st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
+        c1, c2, c3, c4 = st.columns(4)
+        min_periods = int(c1.number_input('最小滑动窗口长度', value=20, min_value=0, step=1))
+        window = int(c2.number_input('滑动窗口长度', value=0, step=1, help='0 表示按 expanding 方式滑动'))
+        corr_method = c3.selectbox('相关系数计算方法', ['pearson', 'kendall', 'spearman'])
+        n = int(c4.number_input('自相关滞后阶数', value=1, min_value=1, step=1))
+
+        df[f"{col}_lag{n}"] = df[col].shift(-n)
+        df.dropna(subset=[f"{col}_lag{n}"], inplace=True)
+
+        show_ts_rolling_corr(df, col, f"{col}_lag{n}", min_periods=min_periods, window=window, corr_method=corr_method)

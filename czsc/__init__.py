@@ -106,6 +106,8 @@ from czsc.utils.st_components import (
     show_factor_layering,
     show_symbol_factor_layering,
     show_weight_backtest,
+    show_ts_rolling_corr,
+    show_ts_self_corr,
 )
 
 from czsc.utils.bi_info import (
