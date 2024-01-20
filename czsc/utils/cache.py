@@ -60,13 +60,13 @@ class DiskCache:
         """
         file = self.path / f"{k}.{suffix}"
         if not file.exists():
-            logger.warning(f"文件不存在, {file}")
+            logger.info(f"文件不存在, {file}")
             return False
 
         if ttl > 0:
             create_time = file.stat().st_ctime
             if (time.time() - create_time) > ttl:
-                logger.warning(f"缓存文件已过期, {file}")
+                logger.info(f"缓存文件已过期, {file}")
                 return False
 
         return file.exists()
@@ -79,7 +79,7 @@ class DiskCache:
         :return: 缓存文件内容
         """
         file = self.path / f"{k}.{suffix}"
-        logger.debug(f"正在读取缓存记录，地址：{file}")
+        logger.info(f"正在读取缓存记录，地址：{file}")
         if not file.exists():
             logger.warning(f"文件不存在, {file}")
             return None
@@ -107,7 +107,7 @@ class DiskCache:
         """
         file = self.path / f"{k}.{suffix}"
         if file.exists():
-            logger.warning(f"缓存文件 {file} 将被覆盖")
+            logger.info(f"缓存文件 {file} 将被覆盖")
 
         if suffix == "pkl":
             dill.dump(v, open(file, 'wb'))
@@ -135,11 +135,11 @@ class DiskCache:
         else:
             raise ValueError(f"suffix {suffix} not supported")
 
-        logger.debug(f"已写入缓存文件：{file}")
+        logger.info(f"已写入缓存文件：{file}")
 
     def remove(self, k: str, suffix: str = "pkl"):
         file = self.path / f"{k}.{suffix}"
-        logger.debug(f"准备删除缓存文件：{file}")
+        logger.info(f"准备删除缓存文件：{file}")
         Path.unlink(file) if Path.exists(file) else None
 
 
@@ -154,7 +154,7 @@ def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
 
     def decorator(func):
         nonlocal path
-        _c = DiskCache(path=path)
+        _c = DiskCache(path=Path(path) / func.__name__)
 
         def cached_func(*args, **kwargs):
             hash_str = f"{func.__name__}{args}{kwargs}"
