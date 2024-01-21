@@ -69,9 +69,13 @@ from czsc.utils import (
     SignalAnalyzer,
     SignalPerformance,
     daily_performance,
+    weekly_performance,
     net_value_stats,
     subtract_fee,
+
     home_path,
+    DiskCache,
+    disk_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,
@@ -94,6 +98,7 @@ from czsc.utils.calendar import (
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
+    show_splited_daily,
     show_monthly_return,
     show_correlation,
     show_sectional_ic,
@@ -101,6 +106,8 @@ from czsc.utils.st_components import (
     show_factor_layering,
     show_symbol_factor_layering,
     show_weight_backtest,
+    show_ts_rolling_corr,
+    show_ts_self_corr,
 )
 
 from czsc.utils.bi_info import (
@@ -119,10 +126,10 @@ from czsc.utils.features import (
     find_most_similarity,
 )
 
-__version__ = "0.9.40"
+__version__ = "0.9.41"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20231218"
+__date__ = "20240114"
 
 
 def welcome():

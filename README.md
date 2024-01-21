@@ -19,7 +19,7 @@
 
 * 已经开始用czsc库进行量化研究的朋友，欢迎[加入飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf)，快点击加入吧！
 * [B站视频教程合集（持续更新...）](https://space.bilibili.com/243682308/channel/series)
-* [CZSC策略圈介绍](https://s0cqcxuy3p.feishu.cn/wiki/D12bwh4SriW1Lgk23HUchFKFnpe)
+* [CZSC小圈子](https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc)
 * [CZSC代码库QA](https://zbczsc.streamlit.app/)
 
 
@@ -33,7 +33,6 @@
 * 基于 Tushare 数据的择时、选股策略回测研究流程
 
 
-
 ## 安装使用
 
 **注意:** python 版本必须大于等于 3.7
@@ -41,6 +40,11 @@
 直接从github安装：
 ```
 pip install git@github.com:waditu/czsc.git -U
+```
+
+直接从github指定分支安装最新版：
+```
+pip install git+https://github.com/waditu/czsc.git@V0.9.41 -U
 ```
 
 从`pypi`安装：

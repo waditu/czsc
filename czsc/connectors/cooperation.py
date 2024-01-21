@@ -111,11 +111,13 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
 
 
-def stocks_daily_klines(years=None, **kwargs):
+@czsc.disk_cache(path=cache_path, ttl=-1)
+def stocks_daily_klines(sdt='20170101', edt="20240101", **kwargs):
     """获取全市场A股的日线数据"""
     adj = kwargs.get('adj', 'hfq')
-    if years is None:
-        years = ['2017', '2018', '2019', '2020', '2021', '2022', '2023']
+    sdt = pd.to_datetime(sdt).year
+    edt = pd.to_datetime(edt).year
+    years = [str(year) for year in range(sdt, edt + 1)]
 
     res = []
     for year in years:
