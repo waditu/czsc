@@ -40,8 +40,34 @@ def show_daily_return(df, **kwargs):
             col_stats['日收益名称'] = col
             stats.append(col_stats)
         stats = pd.DataFrame(stats).set_index('日收益名称')
-        fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
-        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
+        # fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点', '新高间隔', '新高占比']
+        # stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
+
+        stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年化'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['夏普'])
+        stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['最大回撤'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['卡玛'])
+        stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['年化波动率'])
+        stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['盈亏平衡点'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['日胜率'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['非零覆盖'])
+        stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['新高间隔'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['新高占比'])
+
+        stats = stats.format(
+            {
+                '盈亏平衡点': '{:.2f}',
+                '年化波动率': '{:.2%}',
+                '最大回撤': '{:.2%}',
+                '卡玛': '{:.2f}',
+                '年化': '{:.2%}',
+                '夏普': '{:.2f}',
+                '非零覆盖': '{:.2%}',
+                '日胜率': '{:.2%}',
+                '新高间隔': '{:.2f}',
+                '新高占比': '{:.2%}',
+            }
+        )
         return stats
 
     with st.container():
@@ -50,15 +76,12 @@ def show_daily_return(df, **kwargs):
             st.subheader(title)
             st.divider()
 
+        st.write("交易日绩效指标")
+        st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+
         if kwargs.get("stat_hold_days", True):
-            col1, col2 = st.columns([1, 1])
-            col1.write("交易日绩效指标")
-            col1.dataframe(_stats(df, type_='交易日'), use_container_width=True)
-            col2.write("持有日绩效指标")
-            col2.dataframe(_stats(df, type_='持有日'), use_container_width=True)
-        else:
-            st.write("绩效指标")
-            st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+            st.write("持有日绩效指标")
+            st.dataframe(_stats(df, type_='持有日'), use_container_width=True)
 
         df = df.cumsum()
         fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
@@ -339,10 +362,19 @@ def show_weight_backtest(dfw, **kwargs):
     dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
 
-    if kwargs.get("show_daily_detail", False):
-        with st.expander("查看品种等权日收益详情", expanded=False):
+    if kwargs.get("show_backtest_detail", False):
+        c1, c2 = st.columns([1, 1])
+        with c1.expander("品种等权日收益", expanded=False):
             df_ = wb.results['品种等权日收益'].copy()
             st.dataframe(df_.style.background_gradient(cmap='RdYlGn_r').format("{:.2%}"), use_container_width=True)
+
+        with c2.expander("查看开平交易对", expanded=False):
+            dfp = pd.concat([v['pairs'] for k, v in wb.results.items() if k in wb.symbols], ignore_index=True)
+            st.dataframe(dfp, use_container_width=True)
+
+    if kwargs.get("show_splited_daily", False):
+        with st.expander("品种等权日收益分段表现", expanded=False):
+            show_splited_daily(dret[['total']].copy(), ret_col='total')
 
     return wb
 
