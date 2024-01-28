@@ -301,7 +301,7 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     tabs = st.tabs(["分层收益率", "多空组合"])
 
     with tabs[0]:
-        show_daily_return(mrr)
+        show_daily_return(mrr, stat_hold_days=False)
 
     with tabs[1]:
         col1, col2 = st.columns(2)
