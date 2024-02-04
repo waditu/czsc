@@ -7,6 +7,7 @@ describe: 绩效表现统计
 """
 import numpy as np
 import pandas as pd
+from collections import Counter
 
 
 def cal_break_even_point(seq) -> float:
@@ -100,14 +101,11 @@ def daily_performance(daily_returns):
     annual_volatility = np.std(daily_returns) * np.sqrt(252)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
 
-    # 计算最大新高时间
-    high_index = [i for i, x in enumerate(dd) if x == 0]
-    max_interval = 0
-    for i in range(len(high_index) - 1):
-        max_interval = max(max_interval, high_index[i + 1] - high_index[i])
+    # 计算最大新高间隔
+    max_interval = Counter(np.maximum.accumulate(cum_returns).tolist()).most_common(1)[0][1]
 
     # 计算新高时间占比
-    high_pct = len(high_index) / len(dd)
+    high_pct = len([i for i, x in enumerate(dd) if x == 0]) / len(dd)
 
     def __min_max(x, min_val, max_val, digits=4):
         if x < min_val:
