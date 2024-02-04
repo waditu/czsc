@@ -360,7 +360,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     dret = wb.results['品种等权日收益']
     dret.index = pd.to_datetime(dret.index)
-    show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist())
+    show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist(), **kwargs)
 
     if kwargs.get("show_backtest_detail", False):
         c1, c2 = st.columns([1, 1])
