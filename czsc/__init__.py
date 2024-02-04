@@ -98,6 +98,7 @@ from czsc.utils.calendar import (
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
+    show_yearly_stats,
     show_splited_daily,
     show_monthly_return,
     show_correlation,

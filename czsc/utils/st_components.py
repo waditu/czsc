@@ -450,6 +450,64 @@ def show_splited_daily(df, ret_col, **kwargs):
     st.dataframe(dfv, use_container_width=True)
 
 
+def show_yearly_stats(df, ret_col, **kwargs):
+    """按年计算日收益表现
+
+    :param df: pd.DataFrame，数据源
+    :param ret_col: str，收益列名
+    :param kwargs:
+
+        - sub_title: str, 子标题
+    """
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df.copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+
+    df['年份'] = df.index.year
+
+    _stats = []
+    for year, df_ in df.groupby('年份'):
+        _yst = czsc.daily_performance(df_[ret_col].to_list())
+        _yst['年份'] = year
+        _stats.append(_yst)
+
+    stats = pd.DataFrame(_stats).set_index('年份')
+
+    stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年化'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['夏普'])
+    stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['最大回撤'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['卡玛'])
+    stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['年化波动率'])
+    stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['盈亏平衡点'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['日胜率'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['非零覆盖'])
+    stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['新高间隔'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['新高占比'])
+
+    stats = stats.format(
+        {
+            '盈亏平衡点': '{:.2f}',
+            '年化波动率': '{:.2%}',
+            '最大回撤': '{:.2%}',
+            '卡玛': '{:.2f}',
+            '年化': '{:.2%}',
+            '夏普': '{:.2f}',
+            '非零覆盖': '{:.2%}',
+            '日胜率': '{:.2%}',
+            '新高间隔': '{:.2f}',
+            '新高占比': '{:.2%}',
+        }
+    )
+
+    if kwargs.get('sub_title'):
+        st.subheader(kwargs.get('sub_title'), divider="rainbow")
+    st.dataframe(stats, use_container_width=True)
+
+
 def show_ts_rolling_corr(df, col1, col2, **kwargs):
     """时序上按 rolling 的方式计算相关系数
 
