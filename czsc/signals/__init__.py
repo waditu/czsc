@@ -163,6 +163,7 @@ from czsc.signals.tas import (
     tas_ma_round_V221206,
     tas_double_ma_V221203,
     tas_double_ma_V230511,
+    tas_double_ma_V240208,
     tas_ma_system_V230513,
 
     tas_boll_power_V221112,

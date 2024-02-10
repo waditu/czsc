@@ -160,7 +160,7 @@ def check_gap_info(bars: List[RawBar]):
     return gap_info
 
 
-def fast_slow_cross(fast: [List, np.array], slow: [List, np.array]):
+def fast_slow_cross(fast, slow):
     """计算 fast 和 slow 的交叉信息
 
     :param fast: 快线
