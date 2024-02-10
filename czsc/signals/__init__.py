@@ -108,6 +108,7 @@ from czsc.signals.bar import (
     bar_window_std_V230731,
     bar_window_ps_V230731,
     bar_window_ps_V230801,
+    bar_trend_V240209,
 )
 
 from czsc.signals.jcc import (
