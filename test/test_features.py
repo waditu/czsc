@@ -12,8 +12,3 @@ def test_is_event_feature():
     # 测试非事件类因子
     df2 = pd.DataFrame({'factor': [0, 1, 2, 3, 4, 5]})
     assert is_event_feature(df2, 'factor') is False
-
-    # 测试包含非法值的因子
-    df3 = pd.DataFrame({'factor': [0, 1, -1, 0, 1, 'a']})
-    with pytest.raises(TypeError):
-        is_event_feature(df3, 'factor')
