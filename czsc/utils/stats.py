@@ -88,7 +88,7 @@ def daily_performance(daily_returns):
     daily_returns = np.array(daily_returns, dtype=np.float64)
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
-        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
+        return {"绝对收益": 0, "年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
                 "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "新高间隔": 0, "新高占比": 0}
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
@@ -117,6 +117,7 @@ def daily_performance(daily_returns):
         return round(x1, digits)
 
     sta = {
+        "绝对收益": round(np.sum(daily_returns), 4),
         "年化": round(annual_returns, 4),
         "夏普": __min_max(sharpe_ratio, -5, 5, 2),
         "最大回撤": round(max_drawdown, 4),

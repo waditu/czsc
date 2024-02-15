@@ -44,6 +44,7 @@ def show_daily_return(df, **kwargs):
         # stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
 
         stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年化'])
+        stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['绝对收益'])
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['夏普'])
         stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['最大回撤'])
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['卡玛'])
@@ -63,6 +64,7 @@ def show_daily_return(df, **kwargs):
                 '年化': '{:.2%}',
                 '夏普': '{:.2f}',
                 '非零覆盖': '{:.2%}',
+                '绝对收益': '{:.2%}',
                 '日胜率': '{:.2%}',
                 '新高间隔': '{:.2f}',
                 '新高占比': '{:.2%}',
@@ -419,7 +421,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         row['开始日期'] = sdt.strftime('%Y-%m-%d')
         row['结束日期'] = last_dt.strftime('%Y-%m-%d')
         row['收益名称'] = name
-        row['绝对收益'] = df1[ret_col].sum()
+        # row['绝对收益'] = df1[ret_col].sum()
         rows.append(row)
     dfv = pd.DataFrame(rows).set_index('收益名称')
     cols = ['开始日期', '结束日期', '绝对收益', '年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点']
@@ -479,6 +481,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
     stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年化'])
     stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['夏普'])
+    stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['绝对收益'])
     stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['最大回撤'])
     stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['卡玛'])
     stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['年化波动率'])
@@ -497,6 +500,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
             '年化': '{:.2%}',
             '夏普': '{:.2f}',
             '非零覆盖': '{:.2%}',
+            '绝对收益': '{:.2%}',
             '日胜率': '{:.2%}',
             '新高间隔': '{:.2f}',
             '新高占比': '{:.2%}',
