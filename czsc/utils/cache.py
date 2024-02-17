@@ -8,9 +8,10 @@ create_dt: 2021/7/16 11:51
 import os
 import time
 import dill
+import json
 import shutil
 import hashlib
-import json
+import inspect
 import pandas as pd
 from pathlib import Path
 from loguru import logger
@@ -94,6 +95,10 @@ class DiskCache:
             res = pd.read_csv(file, encoding='utf-8')
         elif suffix == "xlsx":
             res = pd.read_excel(file)
+        elif suffix == "feather":
+            res = pd.read_feather(file)
+        elif suffix == "parquet":
+            res = pd.read_parquet(file)
         else:
             raise ValueError(f"suffix {suffix} not supported")
         return res
@@ -132,6 +137,16 @@ class DiskCache:
                 raise ValueError("suffix xlsx only support pd.DataFrame")
             v.to_excel(file, index=False)
 
+        elif suffix == "feather":
+            if not isinstance(v, pd.DataFrame):
+                raise ValueError("suffix feather only support pd.DataFrame")
+            v.to_feather(file)
+
+        elif suffix == "parquet":
+            if not isinstance(v, pd.DataFrame):
+                raise ValueError("suffix parquet only support pd.DataFrame")
+            v.to_parquet(file)
+
         else:
             raise ValueError(f"suffix {suffix} not supported")
 
@@ -150,15 +165,14 @@ def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
     :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
     :param ttl: 缓存文件有效期，单位：秒
     """
-    assert suffix in ["pkl", "json", "txt", "csv", "xlsx"], "suffix not supported"
-
     def decorator(func):
         nonlocal path
         _c = DiskCache(path=Path(path) / func.__name__)
 
         def cached_func(*args, **kwargs):
             hash_str = f"{func.__name__}{args}{kwargs}"
-            k = hashlib.md5(hash_str.encode('utf-8')).hexdigest().upper()[:8]
+            code_str = inspect.getsource(func)
+            k = hashlib.md5((code_str + hash_str).encode('utf-8')).hexdigest().upper()[:8]
             k = f"{k}_{func.__name__}"
 
             if _c.is_found(k, suffix=suffix, ttl=ttl):

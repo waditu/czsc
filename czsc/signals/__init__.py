@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
-describe: 信号系统，注意：这里仅仅只是提供一些写信号的例子，用来做策略是不太行的
+describe: 信号函数
 """
 # ======================================================================================================================
 # 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
@@ -108,6 +108,7 @@ from czsc.signals.bar import (
     bar_window_std_V230731,
     bar_window_ps_V230731,
     bar_window_ps_V230801,
+    bar_trend_V240209,
 )
 
 from czsc.signals.jcc import (
@@ -163,6 +164,7 @@ from czsc.signals.tas import (
     tas_ma_round_V221206,
     tas_double_ma_V221203,
     tas_double_ma_V230511,
+    tas_double_ma_V240208,
     tas_ma_system_V230513,
 
     tas_boll_power_V221112,

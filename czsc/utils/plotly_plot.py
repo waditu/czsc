@@ -182,7 +182,12 @@ class KlineChart:
         slowperiod = kwargs.get('slowperiod', 26)
         signalperiod = kwargs.get('signalperiod', 9)
         line_width = kwargs.get('line_width', 0.6)
-        diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+
+        if 'DIFF' in df.columns and 'DEA' in df.columns and 'MACD' in df.columns:
+            diff, dea, macd = df['DIFF'], df['DEA'], df['MACD']
+        else:
+            diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
         self.add_scatter_indicator(df['dt'], diff, name="DIFF", row=row,
                                    line_color='white', show_legend=False, line_width=line_width)

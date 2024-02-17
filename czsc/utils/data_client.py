@@ -53,6 +53,8 @@ class DataClient:
             - cache_path: str, 缓存路径
 
         """
+        from czsc.utils.cache import get_dir_size
+
         self.__token = token or get_url_token(url)
         self.__http_url = url
         self.__timeout = timeout
@@ -60,7 +62,8 @@ class DataClient:
         assert self.__token, "请设置czsc_token凭证码，如果没有请联系管理员申请"
         self.cache_path = Path(kwargs.get("cache_path", os.path.expanduser("~/.quant_data_cache")))
         self.cache_path.mkdir(exist_ok=True, parents=True)
-        logger.info(f"数据URL: {url}  数据缓存路径：{self.cache_path}")
+
+        logger.info(f"数据URL: {url} 数据缓存路径：{self.cache_path} 占用磁盘空间：{get_dir_size(self.cache_path) / 1024 / 1024:.2f} MB")
         if kwargs.get("clear_cache", False):
             self.clear_cache()
 
