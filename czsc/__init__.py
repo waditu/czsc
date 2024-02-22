@@ -131,10 +131,10 @@ from czsc.features.utils import (
     is_event_feature,
 )
 
-__version__ = "0.9.42"
+__version__ = "0.9.43"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240121"
+__date__ = "20240222"
 
 
 def welcome():
@@ -154,4 +154,4 @@ if envs.get_welcome():
 
 
 if get_dir_size(home_path) > pow(1024, 3):
-    print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path 可以直接清空缓存")
+    print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")
