@@ -19,7 +19,7 @@
 
 * 已经开始用czsc库进行量化研究的朋友，欢迎[加入飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf)，快点击加入吧！
 * [B站视频教程合集（持续更新...）](https://space.bilibili.com/243682308/channel/series)
-* [CZSC小圈子](https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc)
+* [CZSC小圈子（缠论、量化、专享案例）](https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc)
 * [CZSC代码库QA](https://zbczsc.streamlit.app/)
 
 

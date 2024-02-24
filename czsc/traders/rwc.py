@@ -380,3 +380,81 @@ return cnt
             df1 = df1[df1['dt'] <= pd.to_datetime(edt)].reset_index(drop=True)
         df1 = df1.sort_values(['dt', 'symbol']).reset_index(drop=True)
         return df1
+
+
+def get_strategy_mates(redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取Redis中的策略元数据
+
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 PY_SUB_REDIS 中读取
+
+            For example::
+
+                redis://[[username]:[password]]@localhost:6379/0
+                rediss://[[username]:[password]]@localhost:6379/0
+                unix://[username@]/path/to/socket.sock?db=0[&password=password]
+
+            Three URL schemes are supported:
+
+            - `redis://` creates a TCP socket connection. See more at:
+            <https://www.iana.org/assignments/uri-schemes/prov/redis>
+            - `rediss://` creates a SSL wrapped TCP socket connection. See more at:
+            <https://www.iana.org/assignments/uri-schemes/prov/rediss>
+            - ``unix://``: creates a Unix Domain Socket connection.
+
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+    :return: pd.DataFrame
+    """
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    rows = []
+    for key in r.keys(f"{key_prefix}:META:*"):
+        meta = r.hgetall(key)
+        meta['heartbeat_time'] = r.get(f"{meta['key_prefix']}:heartbeat:{meta['name']}")
+        rows.append(meta)
+    df = pd.DataFrame(rows)
+    df['update_time'] = pd.to_datetime(df['update_time'])
+    df['heartbeat_time'] = pd.to_datetime(df['heartbeat_time'])
+    r.close()
+    df = df.sort_values('name').reset_index(drop=True)
+    return df
+
+
+def get_heartbeat_time(strategy_name=None, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取策略的最近一次心跳时间
+
+    :param strategy_name: str, 策略名，默认为None, 即获取所有策略的心跳时间
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+
+            - heartbeat_prefix: str, 心跳key的前缀，默认为 heartbeat
+
+    :return: str, 最近一次心跳时间
+    """
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    if not strategy_name:
+        dfm = get_strategy_mates(redis_url=redis_url, connection_pool=connection_pool, key_prefix=key_prefix)
+        if len(dfm) == 0:
+            logger.warning(f"{key_prefix} 下没有策略元数据")
+            return None
+        strategy_names = dfm['name'].unique().tolist()
+    else:
+        strategy_names = [strategy_name]
+
+    heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+    res = {}
+    for sn in strategy_names:
+        res[sn] = pd.to_datetime(r.get(f'{key_prefix}:{heartbeat_prefix}:{sn}'))
+    return res
