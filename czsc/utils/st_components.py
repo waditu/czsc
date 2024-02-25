@@ -79,11 +79,12 @@ def show_daily_return(df, **kwargs):
             st.divider()
 
         st.write("交易日绩效指标")
+        # with st.expander("交易日绩效指标", expanded=True):
         st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
 
         if kwargs.get("stat_hold_days", True):
-            st.write("持有日绩效指标")
-            st.dataframe(_stats(df, type_='持有日'), use_container_width=True)
+            with st.expander("持有日绩效指标", expanded=False):
+                st.dataframe(_stats(df, type_='持有日'), use_container_width=True)
 
         df = df.cumsum()
         fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
@@ -412,6 +413,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         "过去6月": last_dt - pd.Timedelta(days=180),
         "过去1年": last_dt - pd.Timedelta(days=365),
         "今年以来": pd.to_datetime(f"{last_dt.year}-01-01"),
+        "成立以来": df.index[0],
     }
 
     rows = []
