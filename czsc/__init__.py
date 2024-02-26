@@ -74,6 +74,7 @@ from czsc.utils import (
     SignalPerformance,
     daily_performance,
     weekly_performance,
+    holds_performance,
     net_value_stats,
     subtract_fee,
 
