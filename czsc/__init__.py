@@ -29,7 +29,9 @@ from czsc.traders import (
     SignalsParser,
     get_signals_config,
     get_signals_freqs,
+
     WeightBacktest,
+    stoploss_by_direction,
     get_ensemble_weight,
     long_short_equity,
 
@@ -114,6 +116,7 @@ from czsc.utils.st_components import (
     show_weight_backtest,
     show_ts_rolling_corr,
     show_ts_self_corr,
+    show_stoploss_by_direction,
 )
 
 from czsc.utils.bi_info import (

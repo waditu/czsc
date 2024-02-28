@@ -18,6 +18,7 @@ def show_daily_return(df, **kwargs):
         - title: str，标题
         - stat_hold_days: bool，是否展示持有日绩效指标，默认为 True
         - legend_only_cols: list，仅在图例中展示的列名
+        - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
 
     """
     if not df.index.dtype == 'datetime64[ns]':
@@ -39,10 +40,8 @@ def show_daily_return(df, **kwargs):
                 col_stats = czsc.daily_performance(df_[col])
             col_stats['日收益名称'] = col
             stats.append(col_stats)
-        stats = pd.DataFrame(stats).set_index('日收益名称')
-        # fmt_cols = ['年化', '夏普', '最大回撤', '卡玛', '年化波动率', '非零覆盖', '日胜率', '盈亏平衡点', '新高间隔', '新高占比']
-        # stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=fmt_cols).format('{:.4f}')
 
+        stats = pd.DataFrame(stats).set_index('日收益名称')
         stats = stats.style.background_gradient(cmap='RdYlGn_r', axis=None, subset=['年化'])
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['绝对收益'])
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['夏普'])
@@ -54,7 +53,6 @@ def show_daily_return(df, **kwargs):
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['非零覆盖'])
         stats = stats.background_gradient(cmap='RdYlGn', axis=None, subset=['新高间隔'])
         stats = stats.background_gradient(cmap='RdYlGn_r', axis=None, subset=['新高占比'])
-
         stats = stats.format(
             {
                 '盈亏平衡点': '{:.2f}',
@@ -72,6 +70,8 @@ def show_daily_return(df, **kwargs):
         )
         return stats
 
+    use_st_table = kwargs.get("use_st_table", False)
+
     with st.container():
         title = kwargs.get("title", "")
         if title:
@@ -80,7 +80,10 @@ def show_daily_return(df, **kwargs):
 
         st.write("交易日绩效指标")
         # with st.expander("交易日绩效指标", expanded=True):
-        st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+        if use_st_table:
+            st.table(_stats(df, type_='交易日'))
+        else:
+            st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
 
         if kwargs.get("stat_hold_days", True):
             with st.expander("持有日绩效指标", expanded=False):
@@ -141,12 +144,21 @@ def show_correlation(df, cols=None, method='pearson', **kwargs):
     :param df: pd.DataFrame，数据源
     :param cols: list，分析相关性的字段
     :param method: str，计算相关性的方法，可选 pearson 和 spearman
+    :param kwargs:
+
+        - use_st_table: bool，是否使用 st.table 展示相关性，默认为 False
+        - use_container_width: bool，是否使用容器宽度，默认为 True
+
     """
     cols = cols or df.columns.to_list()
     dfr = df[cols].corr(method=method)
     dfr['average'] = (dfr.sum(axis=1) - 1) / (len(cols) - 1)
     dfr = dfr.style.background_gradient(cmap='RdYlGn_r', axis=None).format('{:.4f}', na_rep='MISS')
-    st.dataframe(dfr, use_container_width=kwargs.get("use_container_width", True))
+
+    if kwargs.get("use_st_table", False):
+        st.table(dfr)
+    else:
+        st.dataframe(dfr, use_container_width=kwargs.get("use_container_width", True))
 
 
 def show_sectional_ic(df, x_col, y_col, method='pearson', **kwargs):
@@ -629,3 +641,49 @@ def show_ts_self_corr(df, col, **kwargs):
         df.dropna(subset=[f"{col}_lag{n}"], inplace=True)
 
         show_ts_rolling_corr(df, col, f"{col}_lag{n}", min_periods=min_periods, window=window, corr_method=corr_method)
+
+
+def show_stoploss_by_direction(dfw, **kwargs):
+    """按方向止损分析的展示
+
+    :param dfw: pd.DataFrame, 包含权重数据
+    :param kwargs: dict, 其他参数
+
+        - stoploss: float, 止损比例
+        - show_detail: bool, 是否展示详细信息
+        - digits: int, 价格小数位数, 默认2
+        - fee_rate: float, 手续费率, 默认0.0002
+
+    :return: None
+    """
+    dfw = dfw.copy()
+    stoploss = kwargs.pop('stoploss', 0.08)
+    dfw1 = czsc.stoploss_by_direction(dfw, stoploss=stoploss)
+
+    # 找出逐笔止损点
+    rows = []
+    for symbol, dfg in dfw1.groupby('symbol'):
+        for order_id, dfg1 in dfg.groupby('order_id'):
+            if dfg1['is_stop'].any():
+                row = {
+                    'symbol': symbol,
+                    'order_id': order_id,
+                    '交易方向': '多头' if dfg1['weight'].iloc[0] > 0 else '空头',
+                    '开仓时间': dfg1['dt'].iloc[0],
+                    '平仓时间': dfg1['dt'].iloc[-1],
+                    '平仓收益': dfg1['hold_returns'].iloc[-1],
+                    '止损时间': dfg1[dfg1['is_stop']]['dt'].iloc[0],
+                    '止损收益': dfg1[dfg1['is_stop']]['hold_returns'].iloc[0],
+                }
+                rows.append(row)
+    dfr = pd.DataFrame(rows)
+    with st.expander("逐笔止损点", expanded=False):
+        st.dataframe(dfr, use_container_width=True)
+
+    if kwargs.pop("show_detail", False):
+        cols = ['dt', 'symbol', 'raw_weight', 'weight', 'price', 'hold_returns', 'min_hold_returns', 'returns', 'order_id', 'is_stop']
+        dfs = dfw1[dfw1['is_stop']][cols].copy()
+        with st.expander("止损点详情", expanded=False):
+            st.dataframe(dfs, use_container_width=True)
+
+    czsc.show_weight_backtest(dfw1[['dt', 'symbol', 'weight', 'price']].copy(), **kwargs)
