@@ -404,22 +404,7 @@ return cnt
 def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weights:META:*", **kwargs):
     """获取Redis中的策略元数据
 
-    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 PY_SUB_REDIS 中读取
-
-            For example::
-
-                redis://[[username]:[password]]@localhost:6379/0
-                rediss://[[username]:[password]]@localhost:6379/0
-                unix://[username@]/path/to/socket.sock?db=0[&password=password]
-
-            Three URL schemes are supported:
-
-            - `redis://` creates a TCP socket connection. See more at:
-            <https://www.iana.org/assignments/uri-schemes/prov/redis>
-            - `rediss://` creates a SSL wrapped TCP socket connection. See more at:
-            <https://www.iana.org/assignments/uri-schemes/prov/rediss>
-            - ``unix://``: creates a Unix Domain Socket connection.
-
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
     :param connection_pool: redis.ConnectionPool, redis连接池
     :param key_pattern: str, redis中key的pattern，默认为 Weights:META:*
     :param kwargs: dict, 其他参数
