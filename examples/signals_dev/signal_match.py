@@ -44,7 +44,7 @@ if __name__ == '__main__':
     conf = sp.parse(signals_seq)
     parsed_name = {x['name'] for x in conf}
     print(f"total signal functions: {len(sp.sig_name_map)}; parsed: {len(parsed_name)}")
-    # total signal functions: 197; parsed: 197
+    # total signal functions: 201; parsed: 201
 
     # 测试信号配置生成信号
     from czsc import generate_czsc_signals, get_signals_freqs, get_signals_config
