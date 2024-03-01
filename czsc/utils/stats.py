@@ -296,11 +296,13 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         "持仓K线数": 0,
     }
 
-    if trade_dir in ["多头", "空头"]:
-        pairs = pairs[pairs["交易方向"] == trade_dir]
-
     if len(pairs) == 0:
         return p
+
+    if trade_dir in ["多头", "空头"]:
+        pairs = pairs[pairs["交易方向"] == trade_dir]
+        if len(pairs) == 0:
+            return p
 
     pairs = pairs.to_dict(orient='records')
     p['交易次数'] = len(pairs)
