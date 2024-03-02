@@ -87,7 +87,9 @@ def get_symbols(name, **kwargs):
 
 def get_min_future_klines(code, sdt, edt, freq='1m'):
     """分段获取期货1分钟K线后合并"""
-    dates = pd.date_range(start=sdt, end=edt, freq='1M')
+    # dates = pd.date_range(start=sdt, end=edt, freq='1M')
+    dates = pd.date_range(start=sdt, end=edt, freq='30D')
+
     dates = [d.strftime('%Y%m%d') for d in dates] + [sdt, edt]
     dates = sorted(list(set(dates)))
 

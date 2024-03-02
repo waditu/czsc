@@ -61,7 +61,7 @@ class DiskCache:
         """
         file = self.path / f"{k}.{suffix}"
         if not file.exists():
-            logger.info(f"文件不存在, {file}")
+            logger.info(f"缓存文件不存在, {file}")
             return False
 
         if ttl > 0:
@@ -70,7 +70,8 @@ class DiskCache:
                 logger.info(f"缓存文件已过期, {file}")
                 return False
 
-        return file.exists()
+        logger.info(f"缓存文件已找到, {file}")
+        return True
 
     def get(self, k: str, suffix: str = "pkl") -> Any:
         """读取缓存文件

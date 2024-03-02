@@ -18,9 +18,9 @@ from datetime import datetime
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V231112"
+    version = "V240225"
 
-    def __init__(self, strategy_name, redis_url=None, send_heartbeat=True, **kwargs):
+    def __init__(self, strategy_name, redis_url=None, connection_pool=None, send_heartbeat=True, **kwargs):
         """
         :param strategy_name: str, 策略名
         :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
@@ -39,7 +39,11 @@ class RedisWeightsClient:
             <https://www.iana.org/assignments/uri-schemes/prov/rediss>
             - ``unix://``: creates a Unix Domain Socket connection.
 
-        :param send_heartbeat: boolean, 是否发送心跳
+        :param connection_pool: redis.BlockingConnectionPool, redis连接池，默认为None
+
+            如果传入了 redis_url，则会自动创建一个连接池，否则需要传入一个连接池；如果传入了连接池，则会忽略 redis_url。
+
+        :param send_heartbeat: boolean, 是否发送心跳，默认为True
 
             如果为True，会在后台启动一个线程，每15秒向redis发送一次心跳，用于检测策略是否存活。
             推荐在写入数据时设置为True，读取数据时设置为False，避免无用的心跳。
@@ -50,16 +54,25 @@ class RedisWeightsClient:
             - heartbeat_prefix: str, 心跳key的前缀，默认为 heartbeat
         """
         self.strategy_name = strategy_name
-        self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
         self.key_prefix = kwargs.get("key_prefix", "Weights")
 
-        thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
+        if connection_pool:
+            thread_safe_pool = connection_pool
+            self.redis_url = connection_pool.connection_kwargs.get("url")
+            logger.info(f"{strategy_name} {self.key_prefix}: 使用传入的 redis 连接池")
+        else:
+            self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+            thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
+            logger.info(f"{strategy_name} {self.key_prefix}: 使用 REDIS_URL 创建 redis 连接池")
+
+        assert isinstance(thread_safe_pool, redis.BlockingConnectionPool), "redis连接池创建失败"
+
         self.r = redis.Redis(connection_pool=thread_safe_pool)
         self.lua_publish = RedisWeightsClient.register_lua_publish(self.r)
+        self.heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
 
         if send_heartbeat:
-            self.heartbeat_client = redis.from_url(self.redis_url, decode_responses=True)
-            self.heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+            self.heartbeat_client = redis.Redis(connection_pool=thread_safe_pool)
             self.heartbeat_thread = threading.Thread(target=self.__heartbeat, daemon=True)
             self.heartbeat_thread.start()
 
@@ -86,6 +99,12 @@ class RedisWeightsClient:
         """获取策略元数据"""
         key = f'{self.key_prefix}:META:{self.strategy_name}'
         return self.r.hgetall(key)
+
+    @property
+    def heartbeat_time(self):
+        """获取策略的最近一次心跳时间"""
+        key = f'{self.key_prefix}:{self.heartbeat_prefix}:{self.strategy_name}'
+        return pd.to_datetime(self.r.get(key))
 
     def get_last_times(self, symbols=None):
         """获取所有品种上策略最近一次发布信号的时间
@@ -380,3 +399,84 @@ return cnt
             df1 = df1[df1['dt'] <= pd.to_datetime(edt)].reset_index(drop=True)
         df1 = df1.sort_values(['dt', 'symbol']).reset_index(drop=True)
         return df1
+
+
+def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weights:META:*", **kwargs):
+    """获取Redis中的策略元数据
+
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_pattern: str, redis中key的pattern，默认为 Weights:META:*
+    :param kwargs: dict, 其他参数
+    :return: pd.DataFrame
+    """
+    heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    rows = []
+    for key in r.keys(key_pattern):
+        meta = r.hgetall(key)
+        if not meta:
+            logger.warning(f"{key} 没有策略元数据")
+            continue
+
+        meta['heartbeat_time'] = r.get(f"{meta['key_prefix']}:{heartbeat_prefix}:{meta['name']}")
+        rows.append(meta)
+
+    if len(rows) == 0:
+        logger.warning(f"{key_pattern} 下没有策略元数据")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df['update_time'] = pd.to_datetime(df['update_time'])
+    df['heartbeat_time'] = pd.to_datetime(df['heartbeat_time'])
+    df = df.sort_values('name').reset_index(drop=True)
+
+    r.close()
+    return df
+
+
+def get_heartbeat_time(strategy_name=None, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取策略的最近一次心跳时间
+
+    :param strategy_name: str, 策略名，默认为None, 即获取所有策略的心跳时间
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+
+            - heartbeat_prefix: str, 心跳key的前缀，默认为 heartbeat
+
+    :return: str, 最近一次心跳时间
+    """
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    if not strategy_name:
+        dfm = get_strategy_mates(redis_url=redis_url, connection_pool=connection_pool, key_pattern=f"{key_prefix}:META:*")
+        if len(dfm) == 0:
+            logger.warning(f"{key_prefix} 下没有策略元数据")
+            return None
+        strategy_names = dfm['name'].unique().tolist()
+    else:
+        strategy_names = [strategy_name]
+
+    heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+    res = {}
+    for sn in strategy_names:
+        hdt = r.get(f'{key_prefix}:{heartbeat_prefix}:{sn}')
+        if hdt:
+            res[sn] = pd.to_datetime(hdt)
+        else:
+            res[sn] = None
+            logger.warning(f"{sn} 没有心跳时间")
+    r.close()
+    return res

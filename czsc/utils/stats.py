@@ -296,11 +296,13 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         "持仓K线数": 0,
     }
 
-    if trade_dir in ["多头", "空头"]:
-        pairs = pairs[pairs["交易方向"] == trade_dir]
-
     if len(pairs) == 0:
         return p
+
+    if trade_dir in ["多头", "空头"]:
+        pairs = pairs[pairs["交易方向"] == trade_dir]
+        if len(pairs) == 0:
+            return p
 
     pairs = pairs.to_dict(orient='records')
     p['交易次数'] = len(pairs)
@@ -327,3 +329,37 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         p["单笔盈亏比"] = round(p["单笔盈利"] / abs(p["单笔亏损"]), 4)
 
     return p
+
+
+def holds_performance(df, **kwargs):
+    """组合持仓权重表现
+
+    :param df: pd.DataFrame, columns=['dt', 'symbol', 'weight', 'n1b']
+        数据说明，dt: 交易时间，symbol: 标的代码，weight: 权重，n1b: 名义收益率
+        必须是每个时间点都有数据，如果某个时间点没有数据，可以增加一行数据，权重为0
+    :param kwargs:
+
+        - fee: float, 单边费率，BP
+        - digits: int, 保留小数位数
+
+    :return: pd.DataFrame, columns=['date', 'change', 'edge_pre_fee', 'cost', 'edge_post_fee']
+    """
+    fee = kwargs.get('fee', 15)
+    digits = kwargs.get('digits', 2)    # 保留小数位数
+
+    df = df.copy()
+    df['weight'] = df['weight'].round(digits)
+    df = df.sort_values(['dt', 'symbol']).reset_index(drop=True)
+
+    dft = pd.pivot_table(df, index='dt', columns='symbol', values='weight', aggfunc='sum').fillna(0)
+    df_turns = dft.diff().abs().sum(axis=1).reset_index()
+    df_turns.columns = ['date', 'change']
+    sdt = df['dt'].min()
+    df_turns.loc[(df_turns['date'] == sdt), 'change'] = df[df['dt'] == sdt]['weight'].sum()
+
+    df_edge = df.groupby('dt').apply(lambda x: (x['weight'] * x['n1b']).sum()).reset_index()
+    df_edge.columns = ['date', 'edge_pre_fee']
+    dfr = pd.merge(df_turns, df_edge, on='date', how='left')
+    dfr['cost'] = dfr['change'] * fee / 10000                       # 换手成本
+    dfr['edge_post_fee'] = dfr['edge_pre_fee'] - dfr['cost']        # 净收益
+    return dfr
