@@ -112,6 +112,7 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     :param title: str，标题
     :param kwargs:
     """
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == 'datetime64[ns]':
         df['dt'] = pd.to_datetime(df['dt'])
         df.set_index('dt', inplace=True)
@@ -123,7 +124,7 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     if title:
         st.subheader(title, divider="rainbow")
 
-    monthly = df[[ret_col]].resample('M').sum()
+    monthly = df[[ret_col]].resample('ME').sum()
     monthly['year'] = monthly.index.year
     monthly['month'] = monthly.index.month
     monthly = monthly.pivot_table(index='year', columns='month', values=ret_col)

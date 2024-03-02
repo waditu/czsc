@@ -389,9 +389,16 @@ return cnt
         df['dt'] = pd.to_datetime(df['dt'])
         df['weight'] = df['weight'].astype(float)
         df = df.sort_values(['dt', 'symbol']).reset_index(drop=True)
+        # df 中的columns：['symbol', 'weight', 'dt', 'update_time', 'price', 'ref']
 
         df1 = pd.pivot_table(df, index='dt', columns='symbol', values='weight').sort_index().ffill().fillna(0)
         df1 = pd.melt(df1.reset_index(), id_vars='dt', value_vars=df1.columns, value_name='weight')     # type: ignore
+
+        # 加上 df 中的 update_time 信息
+        df1 = df1.merge(df[['dt', 'symbol', 'update_time']], on=['dt', 'symbol'], how='left')
+        df1 = df1.sort_values(['symbol', 'dt']).reset_index(drop=True)
+        for _, dfg in df1.groupby('symbol'):
+            df1.loc[dfg.index, 'update_time'] = dfg['update_time'].ffill().bfill()
 
         if sdt:
             df1 = df1[df1['dt'] >= pd.to_datetime(sdt)].reset_index(drop=True)
