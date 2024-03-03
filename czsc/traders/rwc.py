@@ -94,6 +94,14 @@ class RedisWeightsClient:
                 'kwargs': json.dumps(kwargs)}
         self.r.hset(key, mapping=meta)
 
+    def update_last(self, **kwargs):
+        """设置策略最近一次更新时间，以及更新参数【可选】"""
+        key = f'{self.key_prefix}:LAST:{self.strategy_name}'
+        last = {'name': self.strategy_name,
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'kwargs': json.dumps(kwargs)}
+        self.r.hset(key, mapping=last)
+
     @property
     def metadata(self):
         """获取策略元数据"""
@@ -213,6 +221,8 @@ class RedisWeightsClient:
             logger.info(f"索引 {i}，即将发布 {len(tmp_keys)} 条权重信号")
             pub_cnt += self.lua_publish(keys=tmp_keys, args=tmp_args)
             logger.info(f"已完成 {pub_cnt} 次发布")
+
+        self.update_last()
         return pub_cnt
 
     def __heartbeat(self):
