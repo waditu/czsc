@@ -18,7 +18,7 @@ from datetime import datetime
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V240225"
+    version = "V240303"
 
     def __init__(self, strategy_name, redis_url=None, connection_pool=None, send_heartbeat=True, **kwargs):
         """
@@ -101,6 +101,7 @@ class RedisWeightsClient:
                 'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'kwargs': json.dumps(kwargs)}
         self.r.hset(key, mapping=last)
+        logger.info(f"更新 {key} 的 last 时间")
 
     @property
     def metadata(self):
