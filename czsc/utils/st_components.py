@@ -688,3 +688,57 @@ def show_stoploss_by_direction(dfw, **kwargs):
             st.dataframe(dfs, use_container_width=True)
 
     czsc.show_weight_backtest(dfw1[['dt', 'symbol', 'weight', 'price']].copy(), **kwargs)
+
+
+def show_cointegration(df, col1, col2, **kwargs):
+    """分析两个时间序列协整性，贡献者：珠峰
+
+    :param df: pd.DataFrame, 必须包含列 dt 和 col1, col2
+    :param col1: str, df 中的列名
+    :param col2: str, df 中的列名
+    :param kwargs: dict, 其他参数
+
+        - sub_header: str, default '', 子标题
+        - docs: bool, default False, 是否显示协整检验的原理与使用说明
+    """
+    from statsmodels.tsa.stattools import coint
+
+    if col1 not in df.columns or col2 not in df.columns:
+        st.error(f"列 {col1} 或 {col2} 不存在，请重新输入")
+        return
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df['dt'] = pd.to_datetime(df['dt'])
+        df = df.set_index('dt')
+
+    df = df[[col1, col2]].copy()
+    if df.isnull().sum().sum() > 0:
+        st.warning(f"列 {col1} 或 {col2} 中存在缺失值，请先处理缺失值！！！")
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        return
+
+    sub_header = kwargs.get('sub_header', '')
+    if sub_header:
+        st.subheader(sub_header, divider='rainbow')
+
+    if kwargs.get('docs', False):
+        with st.expander('协整检验原理与使用说明', expanded=False):
+            st.markdown("""
+            ##### 协整检验原理
+            简而言之：两个不平稳的时间序列，如果它们的线性组合是平稳的，那么它们就是协整的。
+            平稳的时间序列是指均值和方差不随时间变化的时间序列。而平稳的时间序列便可以用来进行统计分析。
+            举例：两只股票的收盘价满足协整关系，那么它们的线性组合就是平稳的，进而可以进行配对交易等。
+
+            ##### 协整检验使用说明
+            教条式地解释：协整检验p值的含义是两个时间序列**不协整**的概率。一般取临界值5%来判断是否协整，低于5%则可以认为两个时间序列协整。
+
+            协整检验原理与使用说明参考链接：[Cointegration](https://en.wikipedia.org/wiki/Cointegration)
+            """)
+
+    l1, l2, l3 = st.columns(3)
+    coint_t, pvalue, crit_value = coint(df[col1], df[col2])
+    l1.metric("协整检验统计量", str(round(coint_t, 3)), help="单位根检验的T统计量。")
+    l2.metric("协整检验P值（不协整的概率）", f"{pvalue:.2%}", help="两个时间序列不协整的概率，低于5%则可以认为两个时间序列协整。")
+    fig = px.line(df, x=df.index, y=[col1, col2])
+    fig.update_layout(title=f'{col1} 与 {col2} 的曲线图对比', xaxis_title='', yaxis_title='value')
+    st.plotly_chart(fig, use_container_width=True)
