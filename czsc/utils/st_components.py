@@ -78,12 +78,11 @@ def show_daily_return(df, **kwargs):
             st.subheader(title)
             st.divider()
 
-        st.write("交易日绩效指标")
-        # with st.expander("交易日绩效指标", expanded=True):
-        if use_st_table:
-            st.table(_stats(df, type_='交易日'))
-        else:
-            st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+        with st.expander("交易日绩效指标", expanded=True):
+            if use_st_table:
+                st.table(_stats(df, type_='交易日'))
+            else:
+                st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
 
         if kwargs.get("stat_hold_days", True):
             with st.expander("持有日绩效指标", expanded=False):
@@ -350,6 +349,9 @@ def show_weight_backtest(dfw, **kwargs):
         - fee: 单边手续费，单位为BP，默认为2BP
         - digits: 权重小数位数，默认为2
         - show_daily_detail: bool，是否展示每日收益详情，默认为 False
+        - show_backtest_detail: bool，是否展示回测详情，默认为 False
+        - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
+        - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
 
     """
     fee = kwargs.get("fee", 2)
@@ -391,6 +393,10 @@ def show_weight_backtest(dfw, **kwargs):
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
             show_splited_daily(dret[['total']].copy(), ret_col='total')
+
+    if kwargs.get("show_yearly_stats", False):
+        with st.expander("年度绩效指标", expanded=False):
+            show_yearly_stats(dret, ret_col='total')
 
     return wb
 
@@ -742,3 +748,62 @@ def show_cointegration(df, col1, col2, **kwargs):
     fig = px.line(df, x=df.index, y=[col1, col2])
     fig.update_layout(title=f'{col1} 与 {col2} 的曲线图对比', xaxis_title='', yaxis_title='value')
     st.plotly_chart(fig, use_container_width=True)
+
+
+def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
+    """展示样本内外表现对比"""
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df[[ret_col]].copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+
+    dfi = df[df.index < mid_dt].copy()
+    dfo = df[df.index >= mid_dt].copy()
+
+    stats_i = czsc.daily_performance(dfi[ret_col].to_list())
+    stats_i['标记'] = '样本内'
+    stats_i['开始日期'] = dfi.index[0].strftime("%Y-%m-%d")
+    stats_i['结束日期'] = dfi.index[-1].strftime("%Y-%m-%d")
+
+    stats_o = czsc.daily_performance(dfo[ret_col].to_list())
+    stats_o['标记'] = '样本外'
+    stats_o['开始日期'] = dfo.index[0].strftime("%Y-%m-%d")
+    stats_o['结束日期'] = dfo.index[-1].strftime("%Y-%m-%d")
+
+    df_stats = pd.DataFrame([stats_i, stats_o])
+    df_stats = df_stats[['标记', '开始日期', '结束日期', '年化', '最大回撤', '夏普', '卡玛', '日胜率',
+                         '年化波动率', '非零覆盖', '盈亏平衡点', '新高间隔', '新高占比']]
+
+    sub_title = kwargs.get("sub_title", "样本内外表现对比")
+    if sub_title:
+        st.subheader(sub_title, divider='rainbow')
+
+    df_stats = df_stats.style.background_gradient(cmap='RdYlGn_r', subset=['年化'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['夏普'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['最大回撤'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['卡玛'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['年化波动率'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['盈亏平衡点'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['日胜率'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['非零覆盖'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['新高间隔'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['新高占比'])
+    df_stats = df_stats.format(
+        {
+            '盈亏平衡点': '{:.2f}',
+            '年化波动率': '{:.2%}',
+            '最大回撤': '{:.2%}',
+            '卡玛': '{:.2f}',
+            '年化': '{:.2%}',
+            '夏普': '{:.2f}',
+            '非零覆盖': '{:.2%}',
+            '日胜率': '{:.2%}',
+            '新高间隔': '{:.2f}',
+            '新高占比': '{:.2%}',
+        }
+    )
+    st.dataframe(df_stats, use_container_width=True)

@@ -118,6 +118,7 @@ from czsc.utils.st_components import (
     show_ts_self_corr,
     show_stoploss_by_direction,
     show_cointegration,
+    show_out_in_compare,
 )
 
 from czsc.utils.bi_info import (
