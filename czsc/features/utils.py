@@ -1,4 +1,5 @@
 # 工具函数
+import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import minmax_scale, scale, maxabs_scale, robust_scale
@@ -181,6 +182,55 @@ def rolling_scale(df: pd.DataFrame, col: str, window=300, min_periods=100, new_c
         df[new_col] = df[col].rolling(window=window, min_periods=min_periods).apply(lambda x: minmax_scale(x, feature_range=(-1, 1))[-1])
     else:
         df[new_col] = df[col].rolling(window=window, min_periods=min_periods).apply(lambda x: scale_method(x)[-1])
+
+    df[new_col] = df[new_col].fillna(0)
+    return df
+
+
+def rolling_slope(df: pd.DataFrame, col: str, window=300, min_periods=100, new_col=None, **kwargs):
+    """计算序列的滚动斜率
+
+    大于0表示序列的斜率向上，小于0表示序列的斜率向下，绝对值越大表示斜率越陡峭
+
+    :param df: pd.DataFrame, 待计算的数据
+    :param col: str, 待计算的列
+    :param window: int, 滚动窗口大小, 默认为300
+    :param min_periods: int, 最小计算周期, 默认为100
+    :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_slope' 作为新列名
+    :param kwargs:
+
+        - min_periods: int, 最小计算周期
+        - method: str, 计算方法
+
+            - linear: 使用线性回归计算斜率
+            - std/mean: 使用序列的 std/mean 计算斜率
+            - snr: 使用序列的 snr 计算斜率
+    """
+    method = kwargs.get('method', 'linear')
+    new_col = new_col if new_col else f'{col}_slope_{method}'
+
+    if method == 'linear':
+        # 使用线性回归计算斜率
+        def __lr_slope(x):
+            return LinearRegression().fit(list(range(len(x))), x).coef_[0]
+        df[new_col] = df[col].rolling(window=window, min_periods=min_periods).apply(__lr_slope, raw=True)
+
+    elif method == 'std/mean':
+        # 用 window 内 std 的变化率除以 mean 的变化率，来衡量序列的斜率
+        # 如果 std/mean > 0, 则表示序列的斜率在变大，反之则表示序列的斜率在变小
+        df['temp_std'] = df[col].rolling(window=window, min_periods=min_periods).std().pct_change(window)
+        df['temp_mean'] = df[col].rolling(window=window, min_periods=min_periods).mean().pct_change(window)
+        df[new_col] = np.where(df['temp_mean'] != 0, df['temp_std'] / df['temp_mean'], 0)
+        # 加入变化率的正负号
+        df[new_col] = df[new_col] * np.sign(df[col].pct_change(window))
+        df.drop(['temp_std', 'temp_mean'], axis=1, inplace=True)
+
+    elif method == 'snr':
+        # 用 window 内的信噪比变化率来衡量序列的斜率
+        df[new_col] = df[col].diff(window) / df[col].diff().abs().rolling(window=window, min_periods=min_periods).sum()
+
+    else:
+        raise ValueError(f'Unknown method: {method}')
 
     df[new_col] = df[new_col].fillna(0)
     return df
