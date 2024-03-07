@@ -60,10 +60,11 @@ class RedisWeightsClient:
             thread_safe_pool = connection_pool
             self.redis_url = connection_pool.connection_kwargs.get("url")
             logger.info(f"{strategy_name} {self.key_prefix}: 使用传入的 redis 连接池")
+
         else:
             self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
             thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
-            logger.info(f"{strategy_name} {self.key_prefix}: 使用 REDIS_URL 创建 redis 连接池")
+            logger.info(f"{strategy_name} {self.key_prefix}: 使用环境变量 RWC_REDIS_URL 创建 redis 连接池")
 
         assert isinstance(thread_safe_pool, redis.BlockingConnectionPool), "redis连接池创建失败"
 
@@ -235,16 +236,30 @@ class RedisWeightsClient:
                 continue
             time.sleep(15)
 
-    def get_keys(self, pattern):
+    def get_keys(self, pattern) -> list:
         """获取 redis 中指定 pattern 的 keys"""
-        return self.r.keys(pattern)
+        k = self.r.keys(pattern)
+        return k if k else []    # type: ignore
 
-    def clear_all(self):
+    def clear_all(self, with_human=True):
         """删除该策略所有记录"""
-        self.r.delete(f'{self.key_prefix}:META:{self.strategy_name}')
         keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
-        if keys is not None and len(keys) > 0:  # type: ignore
-            self.r.delete(*keys)                # type: ignore
+        keys.append(f'{self.key_prefix}:META:{self.strategy_name}')
+        keys.append(f'{self.key_prefix}:LAST:{self.strategy_name}')
+        keys.append(f'{self.key_prefix}:{self.heartbeat_prefix}:{self.strategy_name}')
+
+        if len(keys) == 0:
+            logger.warning(f"{self.strategy_name} 没有记录")
+            return
+
+        if with_human:
+            human = input(f"{self.strategy_name} 即将删除 {len(keys)} 条记录，是否确认？(y/n):")
+            if human.lower() != 'y':
+                logger.warning(f"{self.strategy_name} 删除操作已取消")
+                return
+
+        self.r.delete(*keys)                # type: ignore
+        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录")
 
     @staticmethod
     def register_lua_publish(client):
@@ -419,6 +434,55 @@ return cnt
         return df1
 
 
+def clear_strategy(strategy_name, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """删除策略所有记录
+
+    :param strategy_name: str, 策略名
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+    """
+    with_human = kwargs.pop("with_human", True)
+    rwc = RedisWeightsClient(strategy_name, redis_url=redis_url, connection_pool=connection_pool,
+                             key_prefix=key_prefix, send_heartbeat=False, **kwargs)
+    rwc.clear_all(with_human)
+
+
+def get_strategy_weights(strategy_name, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取策略的持仓权重
+
+    :param strategy_name: str, 策略名
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+    :return: pd.DataFrame
+    """
+    rwc = RedisWeightsClient(strategy_name, redis_url=redis_url, connection_pool=connection_pool,
+                             key_prefix=key_prefix, **kwargs)
+    sdt = kwargs.get("sdt")
+    edt = kwargs.get("edt")
+    symbols = kwargs.get("symbols")
+    only_last = kwargs.get("only_last", False)
+
+    if only_last:
+        # 只保留每个品种最近一次权重
+        df = rwc.get_last_weights(ignore_zero=False)
+        return df
+
+    df = rwc.get_all_weights(sdt=sdt, edt=edt)
+    if symbols:
+        # 只保留指定品种的权重
+        not_in = [x for x in symbols if x not in df['symbol'].unique()]
+        if not_in:
+            logger.warning(f"{strategy_name} 中没有 {not_in} 的权重记录")
+
+        df = df[df['symbol'].isin(symbols)].reset_index(drop=True)
+
+    return df
+
+
 def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weights:META:*", **kwargs):
     """获取Redis中的策略元数据
 
@@ -437,13 +501,13 @@ def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weight
         r = redis.Redis.from_url(redis_url, decode_responses=True)
 
     rows = []
-    for key in r.keys(key_pattern):
+    for key in r.keys(key_pattern):     # type: ignore
         meta = r.hgetall(key)
         if not meta:
             logger.warning(f"{key} 没有策略元数据")
             continue
 
-        meta['heartbeat_time'] = r.get(f"{meta['key_prefix']}:{heartbeat_prefix}:{meta['name']}")
+        meta['heartbeat_time'] = r.get(f"{meta['key_prefix']}:{heartbeat_prefix}:{meta['name']}")  # type: ignore
         rows.append(meta)
 
     if len(rows) == 0:

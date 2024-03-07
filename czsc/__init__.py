@@ -38,6 +38,8 @@ from czsc.traders import (
     RedisWeightsClient,
     get_strategy_mates,
     get_heartbeat_time,
+    clear_strategy,
+    get_strategy_weights,
 
     OpensOptimize,
     ExitsOptimize,
@@ -139,6 +141,7 @@ from czsc.utils.features import (
 
 from czsc.features.utils import (
     is_event_feature,
+    rolling_corr,
 )
 
 __version__ = "0.9.44"
