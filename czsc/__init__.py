@@ -144,10 +144,10 @@ from czsc.features.utils import (
     rolling_corr,
 )
 
-__version__ = "0.9.44"
+__version__ = "0.9.45"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240302"
+__date__ = "20240308"
 
 
 def welcome():

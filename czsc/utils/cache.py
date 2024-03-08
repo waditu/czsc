@@ -171,12 +171,15 @@ def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
         _c = DiskCache(path=Path(path) / func.__name__)
 
         def cached_func(*args, **kwargs):
+            # 如果函数有 ttl 参数，则使用函数的 ttl 参数
+            ttl1 = kwargs.pop("ttl", ttl)
+
             hash_str = f"{func.__name__}{args}{kwargs}"
             code_str = inspect.getsource(func)
             k = hashlib.md5((code_str + hash_str).encode('utf-8')).hexdigest().upper()[:8]
             k = f"{k}_{func.__name__}"
 
-            if _c.is_found(k, suffix=suffix, ttl=ttl):
+            if _c.is_found(k, suffix=suffix, ttl=ttl1):
                 output = _c.get(k, suffix=suffix)
                 return output
 
