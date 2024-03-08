@@ -38,7 +38,7 @@ class SignalsParser:
 
         signals_module = import_by_name(signals_module)
         for name in dir(signals_module):
-            if "_" not in name:
+            if "_" not in name or name.startswith("__"):
                 continue
 
             try:

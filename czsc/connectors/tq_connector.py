@@ -11,6 +11,7 @@ describe: 对接天勤量化
 import czsc
 import pandas as pd
 from loguru import logger
+from typing import List, Union, Optional
 from datetime import date, datetime, timedelta
 from czsc import Freq, RawBar
 from tqsdk import ( # noqa
@@ -104,3 +105,96 @@ symbols = [
     "KQ.m@CFFEX.IM",
     "KQ.m@CFFEX.TS",
 ]
+
+
+future_name_map = {
+    'PG': 'LPG',
+    'EB': '苯乙烯',
+    'CS': '玉米淀粉',
+    'C': '玉米',
+    'V': 'PVC',
+    'J': '焦炭',
+    'BB': '胶合板',
+    'M': '豆粕',
+    'A': '豆一',
+    'PP': '聚丙烯',
+    'P': '棕榈油',
+    'FB': '纤维板',
+    'B': '豆二',
+    'JD': '鸡蛋',
+    'JM': '焦煤',
+    'L': '塑料',
+    'I': '铁矿石',
+    'Y': '豆油',
+    'RR': '粳米',
+    'EG': '乙二醇',
+    'LH': '生猪',
+    'CJ': '红枣',
+    'UR': '尿素',
+    'TA': 'PTA',
+    'OI': '菜油',
+    'MA': '甲醇',
+    'RS': '菜籽',
+    'ZC': '动力煤',
+    'LR': '晚籼稻',
+    'PM': '普麦',
+    'SR': '白糖',
+    'RI': '早籼稻',
+    'SF': '硅铁',
+    'WH': '强麦',
+    'JR': '粳稻',
+    'SM': '锰硅',
+    'FG': '玻璃',
+    'CF': '棉花',
+    'RM': '菜粕',
+    'PF': '短纤',
+    'AP': '苹果',
+    'CY': '棉纱',
+    'ER': '早籼稻',
+    'ME': '甲醇',
+    'RO': '菜油',
+    'TC': '动力煤',
+    'WS': '强麦',
+    'WT': '硬麦',
+    'SA': '纯碱',
+    'PK': '花生',
+    'SS': '不锈钢',
+    'AL': '沪铝',
+    'CU': '沪铜',
+    'ZN': '沪锌',
+    'AG': '白银',
+    'RB': '螺纹钢',
+    'SN': '沪锡',
+    'NI': '沪镍',
+    'WR': '线材',
+    'FU': '燃油',
+    'AU': '黄金',
+    'PB': '沪铅',
+    'RU': '橡胶',
+    'HC': '热轧卷板',
+    'BU': '沥青',
+    'SP': '纸浆',
+    'NR': '20号胶',
+    'SC': '原油',
+    'LU': '低硫燃料油',
+    'BC': '国际铜',
+    'SCTAS': '原油TAS指令',
+    'SI': '工业硅',
+}
+
+
+def is_trade_time(trade_time: Optional[str] = None):
+    """判断当前是否是交易时间"""
+    if trade_time is None:
+        trade_time = datetime.now().strftime("%H:%M:%S")
+
+    if trade_time > "09:00:00" and trade_time < "11:30:00":
+        return True
+
+    if trade_time > "13:00:00" and trade_time < "15:00:00":
+        return True
+
+    if trade_time > "21:00:00" and trade_time < "02:30:00":
+        return True
+
+    return False
