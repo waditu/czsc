@@ -198,3 +198,31 @@ def is_trade_time(trade_time: Optional[str] = None):
         return True
 
     return False
+
+
+def get_daily_backup(api: TqApi, **kwargs):
+    """获取每日账户中需要备份的信息"""
+    orders = api.get_order()
+    trades = api.get_trade()
+    position = api.get_position()
+    account = api.get_account()
+
+    order_ids = [x for x in list(orders.__dict__.keys()) if x not in ["_data", "_path", "_listener"]]
+    orders = pd.DataFrame([orders.__dict__[x] for x in order_ids])
+
+    trade_ids = [x for x in list(trades.__dict__.keys()) if x not in ["_data", "_path", "_listener"]]
+    trades = pd.DataFrame([trades.__dict__[x] for x in trade_ids])
+
+    position_ids = [x for x in list(position.__dict__.keys()) if x not in ["_data", "_path", "_listener"]]
+    positions = pd.DataFrame([position.__dict__[x] for x in position_ids])
+
+    account_ids = [x for x in list(account.__dict__.keys()) if x not in ["_data", "_path", "_listener", '_api']]
+    account = {x: account.__dict__[x] for x in account_ids}
+
+    backup = {
+        "orders": orders,
+        "trades": trades,
+        "positions": positions,
+        "account": account,
+    }
+    return backup
