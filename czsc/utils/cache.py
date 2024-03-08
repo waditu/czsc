@@ -55,7 +55,7 @@ class DiskCache:
         """判断缓存文件是否存在
 
         :param k: 缓存文件名
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         :param ttl: 缓存文件有效期，单位：秒，-1 表示永久有效
         :return: bool
         """
@@ -77,7 +77,7 @@ class DiskCache:
         """读取缓存文件
 
         :param k: 缓存文件名
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         :return: 缓存文件内容
         """
         file = self.path / f"{k}.{suffix}"
@@ -109,7 +109,7 @@ class DiskCache:
 
         :param k: 缓存文件名
         :param v: 缓存文件内容
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         """
         file = self.path / f"{k}.{suffix}"
         if file.exists():
@@ -163,7 +163,7 @@ def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
     """缓存装饰器，支持多种数据格式
 
     :param path: 缓存文件夹路径
-    :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+    :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
     :param ttl: 缓存文件有效期，单位：秒
     """
     def decorator(func):

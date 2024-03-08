@@ -7,6 +7,7 @@ describe: 因子（特征）处理
 """
 import pandas as pd
 from loguru import logger
+from deprecated import deprecated
 from sklearn.preprocessing import scale
 from sklearn.linear_model import LinearRegression
 
@@ -157,11 +158,13 @@ def feture_cross_layering(df, x_col, **kwargs):
     else:
         sorted_x = sorted(df[x_col].unique())
         df[f'{x_col}分层'] = df[x_col].apply(lambda x: sorted_x.index(x))
+
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
     df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
     return df
 
 
+@deprecated(version='1.0', reason="禁止使用 expanding，推荐用 czsc.features.utils.rolling_rank 替代")
 def rolling_rank(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     """计算序列的滚动排名
 
@@ -186,6 +189,7 @@ def rolling_rank(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     df[new_col] = df[new_col].fillna(0)
 
 
+@deprecated(version='1.0', reason="禁止使用 expanding，推荐用 czsc.features.utils.rolling_norm 替代")
 def rolling_norm(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     """计算序列的滚动归一化值
 
@@ -211,6 +215,7 @@ def rolling_norm(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     df[new_col] = df[new_col].fillna(0)
 
 
+@deprecated(version='1.0', reason="禁止使用 expanding，推荐用 czsc.features.utils.rolling_qcut 替代")
 def rolling_qcut(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     """计算序列的滚动分位数
 
@@ -241,6 +246,7 @@ def rolling_qcut(df: pd.DataFrame, col, n=None, new_col=None, **kwargs):
     df[new_col] = df[new_col].fillna(-1)
 
 
+@deprecated(version='1.0', reason="禁止使用 expanding，推荐用 czsc.features.utils.rolling_qcut 替代")
 def rolling_compare(df, col1, col2, new_col=None, n=None, **kwargs):
     """计算序列的滚动归一化值
 

@@ -122,6 +122,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     :return:
     """
     freq = czsc.Freq(freq)
+    raw_bars = kwargs.get('raw_bars', True)
 
     if "SH" in symbol or "SZ" in symbol:
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
@@ -137,7 +138,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
 
         df.rename(columns={'code': 'symbol'}, inplace=True)
         df['dt'] = pd.to_datetime(df['dt'])
-        return czsc.resample_bars(df, target_freq=freq)
+        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith("9001"):
         # https://s0cqcxuy3p.feishu.cn/wiki/WLGQwJLWQiWPCZkPV7Xc3L1engg
@@ -154,7 +155,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         df['amount'] = df['vol'] * df['close']
         df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
         df['dt'] = pd.to_datetime(df['dt'])
-        return czsc.resample_bars(df, target_freq=freq)
+        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith(".NH"):
         if freq != Freq.D:

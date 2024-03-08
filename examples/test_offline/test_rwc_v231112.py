@@ -53,6 +53,22 @@ def test_reader():
     dfa2 = rwc.get_all_weights(ignore_zero=False)
 
 
+def test_clear():
+    czsc.clear_strategy(connection_pool=connection_pool, key_prefix="WeightsA", strategy_name="STK004_100")
+    czsc.clear_strategy(connection_pool=connection_pool, key_prefix="WeightsB", strategy_name="STK007pro_3")
+
+
+def test_get_weights():
+    df = czsc.get_strategy_weights(strategy_name="STK004_100", connection_pool=connection_pool, key_prefix="WeightsA")
+
+    df = czsc.get_strategy_weights(strategy_name="STK004_100", key_prefix="WeightsA", sdt="20220101")
+    dfl = df.groupby("symbol").apply(lambda x: x.iloc[-1]).copy().reset_index(drop=True)
+    df = czsc.get_strategy_weights(strategy_name="STK004_100", key_prefix="WeightsA", sdt="20220101", symbols=['DLeb9001', 'DLeg9001'])
+
+    df = czsc.get_strategy_weights(strategy_name="STK004_100", key_prefix="WeightsA", only_last=True)
+    df = czsc.get_strategy_weights(strategy_name="STK004_100", key_prefix="WeightsA", only_last=True, connection_pool=connection_pool)
+
+
 def test_reader_by_url():
     # 读取redis中的数据：send_heartbeat 推荐设置为 False，否则导致心跳数据异常
     rwc = czsc.RedisWeightsClient('STK004_100', key_prefix='WeightsA', send_heartbeat=False)

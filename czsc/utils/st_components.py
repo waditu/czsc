@@ -78,12 +78,11 @@ def show_daily_return(df, **kwargs):
             st.subheader(title)
             st.divider()
 
-        st.write("交易日绩效指标")
-        # with st.expander("交易日绩效指标", expanded=True):
-        if use_st_table:
-            st.table(_stats(df, type_='交易日'))
-        else:
-            st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
+        with st.expander("交易日绩效指标", expanded=True):
+            if use_st_table:
+                st.table(_stats(df, type_='交易日'))
+            else:
+                st.dataframe(_stats(df, type_='交易日'), use_container_width=True)
 
         if kwargs.get("stat_hold_days", True):
             with st.expander("持有日绩效指标", expanded=False):
@@ -112,6 +111,7 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     :param title: str，标题
     :param kwargs:
     """
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == 'datetime64[ns]':
         df['dt'] = pd.to_datetime(df['dt'])
         df.set_index('dt', inplace=True)
@@ -123,7 +123,7 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     if title:
         st.subheader(title, divider="rainbow")
 
-    monthly = df[[ret_col]].resample('M').sum()
+    monthly = df[[ret_col]].resample('ME').sum()
     monthly['year'] = monthly.index.year
     monthly['month'] = monthly.index.month
     monthly = monthly.pivot_table(index='year', columns='month', values=ret_col)
@@ -349,6 +349,9 @@ def show_weight_backtest(dfw, **kwargs):
         - fee: 单边手续费，单位为BP，默认为2BP
         - digits: 权重小数位数，默认为2
         - show_daily_detail: bool，是否展示每日收益详情，默认为 False
+        - show_backtest_detail: bool，是否展示回测详情，默认为 False
+        - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
+        - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
 
     """
     fee = kwargs.get("fee", 2)
@@ -390,6 +393,10 @@ def show_weight_backtest(dfw, **kwargs):
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
             show_splited_daily(dret[['total']].copy(), ret_col='total')
+
+    if kwargs.get("show_yearly_stats", False):
+        with st.expander("年度绩效指标", expanded=False):
+            show_yearly_stats(dret, ret_col='total')
 
     return wb
 
@@ -687,3 +694,116 @@ def show_stoploss_by_direction(dfw, **kwargs):
             st.dataframe(dfs, use_container_width=True)
 
     czsc.show_weight_backtest(dfw1[['dt', 'symbol', 'weight', 'price']].copy(), **kwargs)
+
+
+def show_cointegration(df, col1, col2, **kwargs):
+    """分析两个时间序列协整性，贡献者：珠峰
+
+    :param df: pd.DataFrame, 必须包含列 dt 和 col1, col2
+    :param col1: str, df 中的列名
+    :param col2: str, df 中的列名
+    :param kwargs: dict, 其他参数
+
+        - sub_header: str, default '', 子标题
+        - docs: bool, default False, 是否显示协整检验的原理与使用说明
+    """
+    from statsmodels.tsa.stattools import coint
+
+    if col1 not in df.columns or col2 not in df.columns:
+        st.error(f"列 {col1} 或 {col2} 不存在，请重新输入")
+        return
+
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df['dt'] = pd.to_datetime(df['dt'])
+        df = df.set_index('dt')
+
+    df = df[[col1, col2]].copy()
+    if df.isnull().sum().sum() > 0:
+        st.warning(f"列 {col1} 或 {col2} 中存在缺失值，请先处理缺失值！！！")
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        return
+
+    sub_header = kwargs.get('sub_header', '')
+    if sub_header:
+        st.subheader(sub_header, divider='rainbow')
+
+    if kwargs.get('docs', False):
+        with st.expander('协整检验原理与使用说明', expanded=False):
+            st.markdown("""
+            ##### 协整检验原理
+            简而言之：两个不平稳的时间序列，如果它们的线性组合是平稳的，那么它们就是协整的。
+            平稳的时间序列是指均值和方差不随时间变化的时间序列。而平稳的时间序列便可以用来进行统计分析。
+            举例：两只股票的收盘价满足协整关系，那么它们的线性组合就是平稳的，进而可以进行配对交易等。
+
+            ##### 协整检验使用说明
+            教条式地解释：协整检验p值的含义是两个时间序列**不协整**的概率。一般取临界值5%来判断是否协整，低于5%则可以认为两个时间序列协整。
+
+            协整检验原理与使用说明参考链接：[Cointegration](https://en.wikipedia.org/wiki/Cointegration)
+            """)
+
+    l1, l2, l3 = st.columns(3)
+    coint_t, pvalue, crit_value = coint(df[col1], df[col2])
+    l1.metric("协整检验统计量", str(round(coint_t, 3)), help="单位根检验的T统计量。")
+    l2.metric("协整检验P值（不协整的概率）", f"{pvalue:.2%}", help="两个时间序列不协整的概率，低于5%则可以认为两个时间序列协整。")
+    fig = px.line(df, x=df.index, y=[col1, col2])
+    fig.update_layout(title=f'{col1} 与 {col2} 的曲线图对比', xaxis_title='', yaxis_title='value')
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
+    """展示样本内外表现对比"""
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df[[ret_col]].copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+
+    dfi = df[df.index < mid_dt].copy()
+    dfo = df[df.index >= mid_dt].copy()
+
+    stats_i = czsc.daily_performance(dfi[ret_col].to_list())
+    stats_i['标记'] = '样本内'
+    stats_i['开始日期'] = dfi.index[0].strftime("%Y-%m-%d")
+    stats_i['结束日期'] = dfi.index[-1].strftime("%Y-%m-%d")
+
+    stats_o = czsc.daily_performance(dfo[ret_col].to_list())
+    stats_o['标记'] = '样本外'
+    stats_o['开始日期'] = dfo.index[0].strftime("%Y-%m-%d")
+    stats_o['结束日期'] = dfo.index[-1].strftime("%Y-%m-%d")
+
+    df_stats = pd.DataFrame([stats_i, stats_o])
+    df_stats = df_stats[['标记', '开始日期', '结束日期', '年化', '最大回撤', '夏普', '卡玛', '日胜率',
+                         '年化波动率', '非零覆盖', '盈亏平衡点', '新高间隔', '新高占比']]
+
+    sub_title = kwargs.get("sub_title", "样本内外表现对比")
+    if sub_title:
+        st.subheader(sub_title, divider='rainbow')
+
+    df_stats = df_stats.style.background_gradient(cmap='RdYlGn_r', subset=['年化'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['夏普'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['最大回撤'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['卡玛'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['年化波动率'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['盈亏平衡点'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['日胜率'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['非零覆盖'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn', subset=['新高间隔'])
+    df_stats = df_stats.background_gradient(cmap='RdYlGn_r', subset=['新高占比'])
+    df_stats = df_stats.format(
+        {
+            '盈亏平衡点': '{:.2f}',
+            '年化波动率': '{:.2%}',
+            '最大回撤': '{:.2%}',
+            '卡玛': '{:.2f}',
+            '年化': '{:.2%}',
+            '夏普': '{:.2f}',
+            '非零覆盖': '{:.2%}',
+            '日胜率': '{:.2%}',
+            '新高间隔': '{:.2f}',
+            '新高占比': '{:.2%}',
+        }
+    )
+    st.dataframe(df_stats, use_container_width=True)

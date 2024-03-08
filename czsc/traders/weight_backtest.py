@@ -268,6 +268,16 @@ class WeightBacktest:
         default_n_jobs = min(cpu_count() // 2, len(self.symbols))
         self.results = self.backtest(n_jobs=kwargs.get('n_jobs', default_n_jobs))
 
+    @property
+    def stats(self):
+        """回测绩效评价"""
+        return self.results.get('绩效评价', {})
+
+    @property
+    def daily_return(self) -> pd.DataFrame:
+        """品种等权费后日收益率"""
+        return self.results.get('品种等权日收益', pd.DataFrame())
+
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
 
@@ -441,12 +451,12 @@ class WeightBacktest:
         symbols = self.symbols
         res = {}
         if n_jobs <= 1:
-            for symbol in tqdm(sorted(symbols), desc="WBT进度"):
+            for symbol in tqdm(sorted(symbols), desc="WBT进度", leave=False):
                 res[symbol] = self.process_symbol(symbol)[1]
         else:
             with ProcessPoolExecutor(n_jobs) as pool:
                 for symbol, res_symbol in tqdm(pool.map(self.process_symbol, sorted(symbols)),
-                                               desc="WBT进度", total=len(symbols)):
+                                               desc="WBT进度", total=len(symbols), leave=False):
                     res[symbol] = res_symbol
 
         dret = pd.concat([v['daily'] for k, v in res.items() if k in symbols], ignore_index=True)
