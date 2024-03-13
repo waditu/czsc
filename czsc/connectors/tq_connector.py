@@ -188,13 +188,16 @@ def is_trade_time(trade_time: Optional[str] = None):
     if trade_time is None:
         trade_time = datetime.now().strftime("%H:%M:%S")
 
-    if trade_time > "09:00:00" and trade_time < "11:30:00":
+    if trade_time >= "09:00:00" and trade_time <= "11:30:00":
         return True
 
-    if trade_time > "13:00:00" and trade_time < "15:00:00":
+    if trade_time >= "13:00:00" and trade_time <= "15:00:00":
         return True
 
-    if trade_time > "21:00:00" and trade_time < "02:30:00":
+    if trade_time >= "21:00:00" and trade_time <= "23:59:59":
+        return True
+
+    if trade_time >= "00:00:00" and trade_time <= "02:30:00":
         return True
 
     return False
