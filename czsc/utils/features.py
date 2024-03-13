@@ -104,13 +104,14 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
             raise ValueError("method 必须为 expanding 或 rolling")
 
         # 对于缺失值，获取原始值，然后进行分位数处理分层
-        na_x = df[df[f"{x_col}_qcut"].isna()][x_col].values
-        df.loc[df[f"{x_col}_qcut"].isna(), f"{x_col}_qcut"] = pd.qcut(na_x, q=n, labels=False, duplicates='drop', retbins=False)
-
+        # na_x = df[df[f"{x_col}_qcut"].isna()][x_col].values
+        # df.loc[df[f"{x_col}_qcut"].isna(), f"{x_col}_qcut"] = pd.qcut(na_x, q=n, labels=False, duplicates='drop', retbins=False)
+        df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
         if df[f'{x_col}_qcut'].isna().sum() > 0:
             logger.warning(f"因子 {x_col} 分层存在 {df[f'{x_col}_qcut'].isna().sum()} 个缺失值，已使用前值填充")
             df[f'{x_col}_qcut'] = df[f'{x_col}_qcut'].ffill()
 
+        # 第00层表示缺失值
         df[f'{x_col}分层'] = df[f'{x_col}_qcut'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
 
     return df
@@ -161,6 +162,7 @@ def feture_cross_layering(df, x_col, **kwargs):
         df[f'{x_col}分层'] = df[x_col].apply(lambda x: sorted_x.index(x))
 
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
+    # 第00层表示缺失值
     df[f'{x_col}分层'] = df[f'{x_col}分层'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
     return df
 
