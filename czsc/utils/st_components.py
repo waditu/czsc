@@ -352,6 +352,7 @@ def show_weight_backtest(dfw, **kwargs):
         - show_backtest_detail: bool，是否展示回测详情，默认为 False
         - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
         - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
+        - show_monthly_return: bool，是否展示月度累计收益，默认为 False
 
     """
     fee = kwargs.get("fee", 2)
@@ -397,6 +398,10 @@ def show_weight_backtest(dfw, **kwargs):
     if kwargs.get("show_yearly_stats", False):
         with st.expander("年度绩效指标", expanded=False):
             show_yearly_stats(dret, ret_col='total')
+
+    if kwargs.get("show_monthly_return", False):
+        with st.expander("月度累计收益", expanded=False):
+            show_monthly_return(dret, ret_col='total')
 
     return wb
 
