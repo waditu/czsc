@@ -71,8 +71,8 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
     """
     assert df[x_col].nunique() > n, "因子值的取值数量必须大于分层数量"
     assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
-    method = kwargs.get("method", "expanding")
-    window = kwargs.get("window", 300)
+    method = kwargs.get("method", "rolling")
+    window = kwargs.get("window", 1000)
     min_periods = kwargs.get("min_periods", 300)
 
     if f"{x_col}_norm" not in df.columns:
