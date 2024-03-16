@@ -87,9 +87,9 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
         else:
             raise ValueError("method 必须为 expanding 或 rolling")
 
-        # 对于缺失值，获取原始值，然后进行标准化
-        na_x = df[df[f"{x_col}_norm"].isna()][x_col].values
-        df.loc[df[f"{x_col}_norm"].isna(), f"{x_col}_norm"] = na_x - na_x.mean() / na_x.std()
+        # # 对于缺失值，获取原始值，然后进行标准化
+        # na_x = df[df[f"{x_col}_norm"].isna()][x_col].values
+        # df.loc[df[f"{x_col}_norm"].isna(), f"{x_col}_norm"] = na_x - na_x.mean() / na_x.std()
 
     if f"{x_col}_qcut" not in df.columns:
         if method == "expanding":
