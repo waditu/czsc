@@ -471,6 +471,10 @@ class WeightBacktest:
         pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
         stats.update(pairs_stats)
 
+        dfw = self.dfw.copy()
+        long_rate = dfw[dfw['weight'] > 0].shape[0] / dfw.shape[0]
+        stats.update({"多头占比": long_rate})
+
         res['绩效评价'] = stats
         return res
 

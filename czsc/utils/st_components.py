@@ -352,6 +352,7 @@ def show_weight_backtest(dfw, **kwargs):
         - show_backtest_detail: bool，是否展示回测详情，默认为 False
         - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
         - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
+        - show_monthly_return: bool，是否展示月度累计收益，默认为 False
 
     """
     fee = kwargs.get("fee", 2)
@@ -365,15 +366,17 @@ def show_weight_backtest(dfw, **kwargs):
     stat = wb.results['绩效评价']
 
     st.divider()
-    c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     c1.metric("盈亏平衡点", f"{stat['盈亏平衡点']:.2%}")
-    c2.metric("单笔收益", f"{stat['单笔收益']} BP")
+    c2.metric("单笔收益（BP）", f"{stat['单笔收益']}")
     c3.metric("交易胜率", f"{stat['交易胜率']:.2%}")
     c4.metric("持仓K线数", f"{stat['持仓K线数']}")
     c5.metric("最大回撤", f"{stat['最大回撤']:.2%}")
     c6.metric("年化收益率", f"{stat['年化']:.2%}")
     c7.metric("夏普比率", f"{stat['夏普']:.2f}")
     c8.metric("卡玛比率", f"{stat['卡玛']:.2f}")
+    c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
+    c10.metric("多头占比", f"{stat['多头占比']:.2%}")
     st.divider()
 
     dret = wb.results['品种等权日收益']
@@ -397,6 +400,10 @@ def show_weight_backtest(dfw, **kwargs):
     if kwargs.get("show_yearly_stats", False):
         with st.expander("年度绩效指标", expanded=False):
             show_yearly_stats(dret, ret_col='total')
+
+    if kwargs.get("show_monthly_return", False):
+        with st.expander("月度累计收益", expanded=False):
+            show_monthly_return(dret, ret_col='total')
 
     return wb
 
@@ -564,22 +571,16 @@ def show_ts_rolling_corr(df, col1, col2, **kwargs):
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
 
-    min_periods = kwargs.get('min_periods', None)
-    window = kwargs.get('window', None)
+    min_periods = kwargs.get('min_periods', 300)
+    window = kwargs.get('window', 2000)
     corr_method = kwargs.get('corr_method', 'pearson')
-
-    if not window or window <= 0:
-        method = 'expanding'
-        corr_result = df[col1].expanding(min_periods=min_periods).corr(df[col2], pairwise=True)
-    else:
-        method = 'rolling'
-        corr_result = df[col1].rolling(window=window, min_periods=min_periods).corr(df[col2], pairwise=True)
+    corr_result = df[col1].rolling(window=window, min_periods=min_periods).corr(df[col2], pairwise=True)
 
     corr_result = corr_result.dropna()
     corr_result = corr_result.rename('corr')
     line = go.Scatter(x=corr_result.index, y=corr_result, mode='lines', name='corr')
     layout = go.Layout(
-        title=f'滑动（{method}）相关系数',
+        title='滑动相关系数',
         xaxis=dict(title=''),
         yaxis=dict(title='corr'),
         annotations=[
