@@ -146,10 +146,10 @@ from czsc.features.utils import (
     rolling_slope,
 )
 
-__version__ = "0.9.45"
+__version__ = "0.9.46"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240308"
+__date__ = "20240318"
 
 
 def welcome():
