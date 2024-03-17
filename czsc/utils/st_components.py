@@ -571,22 +571,16 @@ def show_ts_rolling_corr(df, col1, col2, **kwargs):
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
 
-    min_periods = kwargs.get('min_periods', None)
-    window = kwargs.get('window', None)
+    min_periods = kwargs.get('min_periods', 300)
+    window = kwargs.get('window', 2000)
     corr_method = kwargs.get('corr_method', 'pearson')
-
-    if not window or window <= 0:
-        method = 'expanding'
-        corr_result = df[col1].expanding(min_periods=min_periods).corr(df[col2], pairwise=True)
-    else:
-        method = 'rolling'
-        corr_result = df[col1].rolling(window=window, min_periods=min_periods).corr(df[col2], pairwise=True)
+    corr_result = df[col1].rolling(window=window, min_periods=min_periods).corr(df[col2], pairwise=True)
 
     corr_result = corr_result.dropna()
     corr_result = corr_result.rename('corr')
     line = go.Scatter(x=corr_result.index, y=corr_result, mode='lines', name='corr')
     layout = go.Layout(
-        title=f'滑动（{method}）相关系数',
+        title='滑动相关系数',
         xaxis=dict(title=''),
         yaxis=dict(title='corr'),
         annotations=[

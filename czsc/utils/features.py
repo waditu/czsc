@@ -72,7 +72,7 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
     assert df[x_col].nunique() > n, "因子值的取值数量必须大于分层数量"
     assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
     method = kwargs.get("method", "rolling")
-    window = kwargs.get("window", 1000)
+    window = kwargs.get("window", 2000)
     min_periods = kwargs.get("min_periods", 300)
 
     if f"{x_col}_norm" not in df.columns:
@@ -89,7 +89,7 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
 
         # # 对于缺失值，获取原始值，然后进行标准化
         # na_x = df[df[f"{x_col}_norm"].isna()][x_col].values
-        # df.loc[df[f"{x_col}_norm"].isna(), f"{x_col}_norm"] = na_x - na_x.mean() / na_x.std()
+        df.loc[df[f"{x_col}_norm"].isna(), f"{x_col}_norm"] = 0
 
     if f"{x_col}_qcut" not in df.columns:
         if method == "expanding":
@@ -106,11 +106,11 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
         # 对于缺失值，获取原始值，然后进行分位数处理分层
         # na_x = df[df[f"{x_col}_qcut"].isna()][x_col].values
         # df.loc[df[f"{x_col}_qcut"].isna(), f"{x_col}_qcut"] = pd.qcut(na_x, q=n, labels=False, duplicates='drop', retbins=False)
-        df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
-        if df[f'{x_col}_qcut'].isna().sum() > 0:
-            logger.warning(f"因子 {x_col} 分层存在 {df[f'{x_col}_qcut'].isna().sum()} 个缺失值，已使用前值填充")
-            df[f'{x_col}_qcut'] = df[f'{x_col}_qcut'].ffill()
+        # if df[f'{x_col}_qcut'].isna().sum() > 0:
+        #     logger.warning(f"因子 {x_col} 分层存在 {df[f'{x_col}_qcut'].isna().sum()} 个缺失值，已使用前值填充")
+        #     df[f'{x_col}_qcut'] = df[f'{x_col}_qcut'].ffill()
 
+        df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
         # 第00层表示缺失值
         df[f'{x_col}分层'] = df[f'{x_col}_qcut'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')
 
