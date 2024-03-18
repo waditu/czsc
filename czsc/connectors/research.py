@@ -45,6 +45,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     :param kwargs:
     :return:
     """
+    raw_bars = kwargs.get('raw_bars', True)
     kwargs['fq'] = fq
     file = glob.glob(os.path.join(cache_path, "*", f"{symbol}.parquet"))[0]
     freq = czsc.Freq(freq)
@@ -54,5 +55,5 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     kline = kline[(kline['dt'] >= pd.to_datetime(sdt)) & (kline['dt'] <= pd.to_datetime(edt))]
     if kline.empty:
         return []
-    _bars = czsc.resample_bars(kline, freq, raw_bars=True, base_freq='1分钟')
+    _bars = czsc.resample_bars(kline, freq, raw_bars=raw_bars, base_freq='1分钟')
     return _bars
