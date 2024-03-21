@@ -1,5 +1,6 @@
 import czsc
 import hashlib
+import optuna
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -808,3 +809,25 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
         }
     )
     st.dataframe(df_stats, use_container_width=True)
+
+
+def show_optuna_study(study: optuna.Study, **kwargs):
+    # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
+    # https://zh-cn.optuna.org/reference/visualization.html
+    from czsc.utils.optuna import optuna_good_params
+
+    sub_title = kwargs.pop("sub_title", "Optuna Study Visualization")
+    if sub_title:
+        anchor = hashlib.md5(sub_title.encode("utf-8")).hexdigest().upper()[:6]
+        st.subheader(sub_title, divider="rainbow", anchor=anchor)
+
+    fig = optuna.visualization.plot_contour(study)
+    st.plotly_chart(fig, use_container_width=True)
+
+    fig = optuna.visualization.plot_slice(study)
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("最佳参数列表", expanded=False):
+        params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
+        st.dataframe(params, use_container_width=True)
+    return study

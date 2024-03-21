@@ -94,6 +94,9 @@ from czsc.utils import (
     DataClient,
     set_url_token,
     get_url_token,
+
+    optuna_study,
+    optuna_good_params,
 )
 
 # 交易日历工具
@@ -121,6 +124,7 @@ from czsc.utils.st_components import (
     show_stoploss_by_direction,
     show_cointegration,
     show_out_in_compare,
+    show_optuna_study,
 )
 
 from czsc.utils.bi_info import (
