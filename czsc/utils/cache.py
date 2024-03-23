@@ -159,7 +159,7 @@ class DiskCache:
         Path.unlink(file) if Path.exists(file) else None
 
 
-def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
+def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
     """缓存装饰器，支持多种数据格式
 
     :param path: 缓存文件夹路径
