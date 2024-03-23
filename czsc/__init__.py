@@ -148,6 +148,7 @@ from czsc.features.utils import (
     rolling_compare,
     rolling_scale,
     rolling_slope,
+    rolling_tanh,
 )
 
 __version__ = "0.9.46"
