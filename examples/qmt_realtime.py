@@ -49,6 +49,3 @@ gjm = {
 if __name__ == '__main__':
     manager = qmc.QmtTradeManager(**gjm)
     manager.run()
-
-
-

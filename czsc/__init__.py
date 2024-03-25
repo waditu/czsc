@@ -45,6 +45,8 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    format_standard_kline,
+
     KlineChart,
     WordWriter,
     BarGenerator,
@@ -149,6 +151,7 @@ from czsc.features.utils import (
     rolling_scale,
     rolling_slope,
     rolling_tanh,
+    feature_adjust,
 )
 
 __version__ = "0.9.46"
