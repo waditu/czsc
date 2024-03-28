@@ -204,7 +204,14 @@ def is_trade_time(trade_time: Optional[str] = None):
 
 
 def get_daily_backup(api: TqApi, **kwargs):
-    """获取每日账户中需要备份的信息"""
+    """获取每日账户中需要备份的信息
+
+    https://doc.shinnytech.com/tqsdk/latest/reference/tqsdk.objs.html?highlight=account#tqsdk.objs.Order
+    https://doc.shinnytech.com/tqsdk/latest/reference/tqsdk.objs.html?highlight=account#tqsdk.objs.Position
+    https://doc.shinnytech.com/tqsdk/latest/reference/tqsdk.objs.html?highlight=account#tqsdk.objs.Account
+
+    :param api: TqApi, 天勤API实例
+    """
     orders = api.get_order()
     trades = api.get_trade()
     position = api.get_position()
@@ -229,3 +236,61 @@ def get_daily_backup(api: TqApi, **kwargs):
         "account": account,
     }
     return backup
+
+
+def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
+    """调整账户组合
+
+    **注意：** 此函数会阻塞，直到调仓完成；使用前请仔细阅读 TargetPosTask 的源码和文档，确保了解其工作原理
+
+    :param api: TqApi, 天勤API实例
+    :param account: str, 天勤账户
+    :param portfolio: dict, 组合配置，key 为合约代码，value 为配置信息; 样例数据：
+
+        {
+            "KQ.m@CFFEX.T": {"target_volume": 10, "price": "PASSIVE", "offset_priority": "今昨,开"},
+            "KQ.m@CFFEX.TS": {"target_volume": 0, "price": "ACTIVE", "offset_priority": "今昨,开"},
+            "KQ.m@CFFEX.TF": {"target_volume": 30, "price": "PASSIVE", "offset_priority": "今昨,开"}
+        }
+
+    :param kwargs: dict, 其他参数
+    """
+    symbol_infos = {}
+    for symbol, conf in portfolio.items():
+        quote = api.get_quote(symbol)
+
+        lots = conf.get("target_volume", 0)
+        price = conf.get("price", "PASSIVE")
+        offset_priority = conf.get("offset_priority", "今昨,开")
+
+        # 踩坑记录：TargetPosTask 的 symbol 必须是合约代码
+        contract = quote.underlying_symbol if "@" in symbol else symbol
+        target_pos = TargetPosTask(api, contract, price=price, offset_priority=offset_priority, account=account)
+        target_pos.set_target_volume(int(lots))
+        symbol_infos[symbol] = {"quote": quote, "target_pos": target_pos, "lots": lots}
+
+    while True:
+        api.wait_update()
+
+        completed = []
+        for symbol, info in symbol_infos.items():
+            quote = info["quote"]
+            target_pos: TargetPosTask = info["target_pos"]
+            lots = info["lots"]
+            contract = quote.underlying_symbol if "@" in symbol else symbol
+
+            logger.info(f"调整仓位：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
+
+            if target_pos._pos.pos == lots:
+                completed.append(True)
+                logger.info(f"调仓完成：{quote.datetime} - {contract}; {lots}手")
+            else:
+                completed.append(False)
+
+        if all(completed):
+            break
+
+    if kwargs.get("close_api", True):
+        api.close()
+
+    return api
