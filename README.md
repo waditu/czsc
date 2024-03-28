@@ -58,7 +58,7 @@ pip install git@github.com:waditu/czsc.git -U
 
 直接从github指定分支安装最新版：
 ```
-pip install git+https://github.com/waditu/czsc.git@V0.9.41 -U
+pip install git+https://github.com/waditu/czsc.git@V0.9.46 -U
 ```
 
 从`pypi`安装：

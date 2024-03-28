@@ -363,3 +363,42 @@ def holds_performance(df, **kwargs):
     dfr['cost'] = dfr['change'] * fee / 10000                       # 换手成本
     dfr['edge_post_fee'] = dfr['edge_pre_fee'] - dfr['cost']        # 净收益
     return dfr
+
+
+def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:
+    """分析最大回撤，返回最大回撤的波峰、波谷、恢复日期、回撤天数、恢复天数
+
+    :param returns: pd.Series, 日收益率序列，index为日期
+    :param top: int, optional, 返回最大回撤的数量，默认10
+    :return: pd.DataFrame
+    """
+    returns = returns.copy()
+    df_cum = returns.cumsum()
+    underwater = df_cum - df_cum.cummax()
+
+    drawdowns = []
+    for _ in range(top):
+        valley = underwater.idxmin()  # end of the period
+        peak = underwater[:valley][underwater[:valley] == 0].index[-1]
+        try:
+            recovery = underwater[valley:][underwater[valley:] == 0].index[0]
+        except IndexError:
+            recovery = np.nan  # drawdown not recovered
+
+        # Slice out draw-down period
+        if not pd.isnull(recovery):
+            underwater.drop(underwater[peak:recovery].index[1:-1], inplace=True)
+        else:
+            # drawdown has not ended yet
+            underwater = underwater.loc[:peak]
+
+        drawdown = df_cum.loc[valley] - df_cum.loc[peak]
+
+        drawdowns.append((peak, valley, recovery, drawdown))
+        if (len(returns) == 0) or (len(underwater) == 0) or (np.min(underwater) == 0):
+            break
+
+    df_drawdowns = pd.DataFrame(drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤"])
+    df_drawdowns['回撤天数'] = (df_drawdowns['回撤结束'] - df_drawdowns['回撤开始']).dt.days
+    df_drawdowns['恢复天数'] = (df_drawdowns['回撤修复'] - df_drawdowns['回撤结束']).dt.days
+    return df_drawdowns

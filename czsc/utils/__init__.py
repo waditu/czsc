@@ -10,7 +10,7 @@ from . import echarts_plot
 from .echarts_plot import kline_pro, heat_map
 from .word_writer import WordWriter
 from .corr import nmi_matrix, single_linear, cross_sectional_ic
-from .bar_generator import BarGenerator, freq_end_time, resample_bars
+from .bar_generator import BarGenerator, freq_end_time, resample_bars, format_standard_kline
 from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market
 from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
@@ -18,12 +18,13 @@ from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_singl
 from .plotly_plot import KlineChart
 from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, risk_free_returns, resample_to_daily
 from .cross import CrossSectionalPerformance, cross_sectional_ranker
-from .stats import daily_performance, net_value_stats, subtract_fee, weekly_performance, holds_performance
+from .stats import daily_performance, net_value_stats, subtract_fee, weekly_performance, holds_performance, top_drawdowns
 from .signal_analyzer import SignalAnalyzer, SignalPerformance
 from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS
+from .optuna import optuna_study, optuna_good_params
 
 
 sorted_freqs = ['Tick', '1分钟', '2分钟', '3分钟', '4分钟', '5分钟', '6分钟', '10分钟', '12分钟',

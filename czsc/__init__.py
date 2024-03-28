@@ -45,6 +45,8 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    format_standard_kline,
+
     KlineChart,
     WordWriter,
     BarGenerator,
@@ -81,6 +83,7 @@ from czsc.utils import (
     holds_performance,
     net_value_stats,
     subtract_fee,
+    top_drawdowns,
 
     home_path,
     DiskCache,
@@ -94,6 +97,9 @@ from czsc.utils import (
     DataClient,
     set_url_token,
     get_url_token,
+
+    optuna_study,
+    optuna_good_params,
 )
 
 # 交易日历工具
@@ -121,6 +127,8 @@ from czsc.utils.st_components import (
     show_stoploss_by_direction,
     show_cointegration,
     show_out_in_compare,
+    show_optuna_study,
+    show_drawdowns,
 )
 
 from czsc.utils.bi_info import (
@@ -144,12 +152,14 @@ from czsc.features.utils import (
     rolling_compare,
     rolling_scale,
     rolling_slope,
+    rolling_tanh,
+    feature_adjust,
 )
 
-__version__ = "0.9.45"
+__version__ = "0.9.46"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240308"
+__date__ = "20240318"
 
 
 def welcome():

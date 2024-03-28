@@ -11,15 +11,8 @@ References:
 """
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn import metrics
 from tqdm import tqdm
 from typing import Union
-
-
-plt.rcParams['font.sans-serif'] = ['SimHei']    # 用来正常显示中文标签
-plt.rcParams['axes.unicode_minus'] = False      # 用来正常显示负号
 
 
 def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
@@ -29,6 +22,13 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
     :param heatmap: 是否绘制热力图
     :return:
     """
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    from sklearn import metrics
+
+    plt.rcParams['font.sans-serif'] = ['SimHei']    # 用来正常显示中文标签
+    plt.rcParams['axes.unicode_minus'] = False      # 用来正常显示负号
+
     cols = df.columns.to_list()
 
     m_dict = {}

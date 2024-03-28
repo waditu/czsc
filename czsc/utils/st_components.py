@@ -1,5 +1,6 @@
 import czsc
 import hashlib
+import optuna
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -15,7 +16,7 @@ def show_daily_return(df, **kwargs):
     :param df: pd.DataFrame，数据源
     :param kwargs:
 
-        - title: str，标题
+        - sub_title: str，标题
         - stat_hold_days: bool，是否展示持有日绩效指标，默认为 True
         - legend_only_cols: list，仅在图例中展示的列名
         - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
@@ -73,10 +74,9 @@ def show_daily_return(df, **kwargs):
     use_st_table = kwargs.get("use_st_table", False)
 
     with st.container():
-        title = kwargs.get("title", "")
-        if title:
-            st.subheader(title)
-            st.divider()
+        sub_title = kwargs.get("sub_title", "")
+        if sub_title:
+            st.subheader(sub_title, divider="rainbow")
 
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
@@ -641,7 +641,7 @@ def show_ts_self_corr(df, col, **kwargs):
         st.subheader(sub_title, divider="rainbow", anchor=hashlib.md5(sub_title.encode('utf-8')).hexdigest()[:8])
         c1, c2, c3, c4 = st.columns(4)
         min_periods = int(c1.number_input('最小滑动窗口长度', value=20, min_value=0, step=1))
-        window = int(c2.number_input('滑动窗口长度', value=0, step=1, help='0 表示按 expanding 方式滑动'))
+        window = int(c2.number_input('滑动窗口长度', value=200, step=1))
         corr_method = c3.selectbox('相关系数计算方法', ['pearson', 'kendall', 'spearman'])
         n = int(c4.number_input('自相关滞后阶数', value=1, min_value=1, step=1))
 
@@ -808,3 +808,67 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
         }
     )
     st.dataframe(df_stats, use_container_width=True)
+
+
+def show_optuna_study(study: optuna.Study, **kwargs):
+    # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
+    # https://zh-cn.optuna.org/reference/visualization.html
+    from czsc.utils.optuna import optuna_good_params
+
+    sub_title = kwargs.pop("sub_title", "Optuna Study Visualization")
+    if sub_title:
+        anchor = hashlib.md5(sub_title.encode("utf-8")).hexdigest().upper()[:6]
+        st.subheader(sub_title, divider="rainbow", anchor=anchor)
+
+    fig = optuna.visualization.plot_contour(study)
+    st.plotly_chart(fig, use_container_width=True)
+
+    fig = optuna.visualization.plot_slice(study)
+    st.plotly_chart(fig, use_container_width=True)
+
+    with st.expander("最佳参数列表", expanded=False):
+        params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
+        st.dataframe(params, use_container_width=True)
+    return study
+
+
+def show_drawdowns(df, ret_col, **kwargs):
+    """展示最大回撤分析
+
+    :param df: pd.DataFrame, columns: cells, index: dates
+    :param ret_col: str, 回报率列名称
+    :param kwargs:
+
+        - sub_title: str, optional, 子标题
+        - top: int, optional, 默认10, 返回最大回撤的数量
+
+    """
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
+    if not df.index.dtype == 'datetime64[ns]':
+        df['dt'] = pd.to_datetime(df['dt'])
+        df.set_index('dt', inplace=True)
+    assert df.index.dtype == 'datetime64[ns]', "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df[[ret_col]].copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+    df['cum_ret'] = df[ret_col].cumsum()
+    df['cum_max'] = df['cum_ret'].cummax()
+    df['drawdown'] = df['cum_ret'] - df['cum_max']
+
+    sub_title = kwargs.get('sub_title', "最大回撤分析")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    top = kwargs.get('top', 10)
+    if top is not None:
+        with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
+            dft = czsc.top_drawdowns(df[ret_col].copy(), top=10)
+            dft = dft.style.background_gradient(cmap='RdYlGn_r', subset=['净值回撤'])
+            dft = dft.background_gradient(cmap='RdYlGn', subset=['回撤天数', '恢复天数'])
+            dft = dft.format({'净值回撤': '{:.2%}', '回撤天数': '{:.0f}', '恢复天数': '{:.0f}'})
+            st.dataframe(dft, use_container_width=True)
+
+    drawdown = go.Scatter(x=df.index, y=df["drawdown"], fillcolor="red", fill='tozeroy', mode="lines", name="回测曲线")
+    fig = go.Figure(drawdown)
+    fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+    fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤曲线")
+    st.plotly_chart(fig, use_container_width=True)
