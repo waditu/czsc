@@ -37,3 +37,37 @@ def test_rolling_tanh():
     result_df = rolling_tanh(df, 'col1', new_col='col1_tanh3', window=100, min_periods=50)
     assert 'col1_tanh3' in result_df.columns
     assert result_df['col1_tanh3'].between(-1, 1).all()
+
+
+def test_normalize_corr():
+    from czsc.features.utils import normalize_corr
+
+    np.random.seed(123)
+    # Create a fake DataFrame
+    df = pd.DataFrame({
+        'dt': pd.date_range(start='1/1/2021', periods=3000),
+        'symbol': ['AAPL'] * 3000,
+        'price': np.random.rand(3000),
+        'factor': np.random.rand(3000),
+    })
+
+    df['n1b'] = df['price'].shift(-1) / df['price'] - 1
+    raw_corr = df['n1b'].corr(df['factor'])
+
+    # Call the function with the fake DataFrame
+    result = normalize_corr(df, fcol='factor', copy=True, mode='rolling', window=600)
+    corr1 = result['n1b'].corr(result['factor'])
+    assert result.shape == df.shape and np.sign(corr1) == -np.sign(raw_corr)
+
+    # Call the function with the fake DataFrame
+    result = normalize_corr(df, fcol='factor', copy=True, mode='rolling', window=300)
+    corr1 = result['n1b'].corr(result['factor'])
+    assert result.shape == df.shape and np.sign(corr1) == np.sign(raw_corr)
+
+    result = normalize_corr(df, fcol='factor', copy=True, mode='rolling', window=2000)
+    corr1 = result['n1b'].corr(result['factor'])
+    assert result.shape == df.shape and np.sign(corr1) == -np.sign(raw_corr)
+
+    result = normalize_corr(df, fcol='factor', copy=True, mode='simple')
+    corr2 = result['n1b'].corr(result['factor'])
+    assert result.shape == df.shape and corr2 == -raw_corr

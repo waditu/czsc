@@ -762,6 +762,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     df = df[[ret_col]].copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
 
+    mid_dt = pd.to_datetime(mid_dt)
     dfi = df[df.index < mid_dt].copy()
     dfo = df[df.index >= mid_dt].copy()
 
@@ -807,7 +808,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
             '新高占比': '{:.2%}',
         }
     )
-    st.dataframe(df_stats, use_container_width=True)
+    st.dataframe(df_stats, use_container_width=True, hide_index=True)
 
 
 def show_optuna_study(study: optuna.Study, **kwargs):

@@ -82,6 +82,11 @@ def get_symbols(name, **kwargs):
         kline = dc.future_klines(trade_date="20231101")
         return kline['code'].unique().tolist()
 
+    if name.upper() == "ALL":
+        symbols = get_symbols("股票") + get_symbols("ETF")
+        symbols += get_symbols("A股指数") + get_symbols("南华指数") + get_symbols("期货主力")
+        return symbols
+
     raise ValueError(f"{name} 分组无法识别，获取标的列表失败！")
 
 
