@@ -88,6 +88,7 @@ from czsc.utils import (
     home_path,
     DiskCache,
     disk_cache,
+    clear_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,

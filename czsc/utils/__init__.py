@@ -20,7 +20,7 @@ from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, ri
 from .cross import CrossSectionalPerformance, cross_sectional_ranker
 from .stats import daily_performance, net_value_stats, subtract_fee, weekly_performance, holds_performance, top_drawdowns
 from .signal_analyzer import SignalAnalyzer, SignalPerformance
-from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache
+from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS

@@ -124,7 +124,10 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     :param edt: 结束时间
     :param fq: 除权类型，可选值：'前复权', '后复权', '不复权'
     :param kwargs:
-    :return:
+    :return: RawBar 对象列表 or DataFrame
+
+    >>> from czsc.connectors import cooperation as coo
+    >>> df = coo.get_raw_bars(symbol="000001.SH#INDEX", freq="日线", sdt="2001-01-01", edt="2021-12-31", fq='后复权', raw_bars=False)
     """
     freq = czsc.Freq(freq)
     raw_bars = kwargs.get('raw_bars', True)
