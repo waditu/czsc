@@ -68,6 +68,7 @@ class DiskCache:
             create_time = file.stat().st_ctime
             if (time.time() - create_time) > ttl:
                 logger.info(f"缓存文件已过期, {file}")
+                os.remove(file)
                 return False
 
         logger.info(f"缓存文件已找到, {file}")

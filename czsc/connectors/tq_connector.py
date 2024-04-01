@@ -281,9 +281,9 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
             logger.info(f"调整仓位：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
 
-            if target_pos._pos.pos == lots:
+            if target_pos._pos.pos == lots or target_pos.is_finished():
                 completed.append(True)
-                logger.info(f"调仓完成：{quote.datetime} - {contract}; {lots}手")
+                logger.info(f"调仓完成：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
             else:
                 completed.append(False)
 

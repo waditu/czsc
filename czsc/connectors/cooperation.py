@@ -93,7 +93,7 @@ def get_symbols(name, **kwargs):
 def get_min_future_klines(code, sdt, edt, freq='1m'):
     """分段获取期货1分钟K线后合并"""
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
-    dates = pd.date_range(start=sdt, end=edt, freq='30D')
+    dates = pd.date_range(start=sdt, end=edt, freq='120D')
 
     dates = [d.strftime('%Y%m%d') for d in dates] + [sdt, edt]
     dates = sorted(list(set(dates)))
@@ -109,8 +109,19 @@ def get_min_future_klines(code, sdt, edt, freq='1m'):
     df = pd.concat(rows, ignore_index=True)
     df.rename(columns={'code': 'symbol'}, inplace=True)
     df['dt'] = pd.to_datetime(df['dt'])
-
     df = df.drop_duplicates(subset=['dt', 'symbol'], keep='last')
+
+    if code in ['SFIC9001', 'SFIF9001', 'SFIH9001']:
+        # 股指：仅保留 09:31 - 11:30, 13:01 - 15:00
+        dt1 = datetime.strptime("09:31:00", "%H:%M:%S")
+        dt2 = datetime.strptime("11:30:00", "%H:%M:%S")
+        c1 = (df['dt'].dt.time >= dt1.time()) & (df['dt'].dt.time <= dt2.time())
+
+        dt3 = datetime.strptime("13:01:00", "%H:%M:%S")
+        dt4 = datetime.strptime("15:00:00", "%H:%M:%S")
+        c2 = (df['dt'].dt.time >= dt3.time()) & (df['dt'].dt.time <= dt4.time())
+
+        df = df[c1 | c2].copy().reset_index(drop=True)
     return df
 
 
@@ -141,12 +152,15 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         if freq.value.endswith('分钟'):
             df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='min', adj=adj, asset=asset[0].lower(), v=2)
             df = df[~df['dt'].str.endswith("09:30:00")].reset_index(drop=True)
+            df.rename(columns={'code': 'symbol'}, inplace=True)
+            df['dt'] = pd.to_datetime(df['dt'])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
+
         else:
             df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='day', adj=adj, asset=asset[0].lower(), v=2)
-
-        df.rename(columns={'code': 'symbol'}, inplace=True)
-        df['dt'] = pd.to_datetime(df['dt'])
-        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
+            df.rename(columns={'code': 'symbol'}, inplace=True)
+            df['dt'] = pd.to_datetime(df['dt'])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith("9001"):
         # https://s0cqcxuy3p.feishu.cn/wiki/WLGQwJLWQiWPCZkPV7Xc3L1engg
@@ -156,14 +170,18 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         freq_rd = '1m' if freq.value.endswith('分钟') else '1d'
         if freq.value.endswith('分钟'):
             df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq='1m')
+            df['amount'] = df['vol'] * df['close']
+            df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
+            df['dt'] = pd.to_datetime(df['dt'])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
+
         else:
             df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd)
             df.rename(columns={'code': 'symbol'}, inplace=True)
-
-        df['amount'] = df['vol'] * df['close']
-        df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
-        df['dt'] = pd.to_datetime(df['dt'])
-        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
+            df['amount'] = df['vol'] * df['close']
+            df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
+            df['dt'] = pd.to_datetime(df['dt'])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith(".NH"):
         if freq != Freq.D:

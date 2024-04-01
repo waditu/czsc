@@ -80,8 +80,9 @@ class RedisWeightsClient:
     def set_metadata(self, base_freq, description, author, outsample_sdt, **kwargs):
         """设置策略元数据"""
         key = f'{self.key_prefix}:META:{self.strategy_name}'
+        overwrite = kwargs.pop('overwrite', False)
         if self.r.exists(key):
-            if not kwargs.pop('overwrite', False):
+            if not overwrite:
                 logger.warning(f'已存在 {self.strategy_name} 的元数据，如需覆盖请设置 overwrite=True')
                 return
             else:
