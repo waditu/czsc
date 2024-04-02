@@ -100,7 +100,8 @@ def get_min_future_klines(code, sdt, edt, freq='1m'):
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
-        df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq)
+        ttl = 3 if pd.to_datetime(edt_).date() == datetime.now().date() else -1
+        df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl)
         if df.empty:
             continue
         logger.info(f"{code}获取K线范围：{df['dt'].min()} - {df['dt'].max()}")
@@ -142,6 +143,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     """
     freq = czsc.Freq(freq)
     raw_bars = kwargs.get('raw_bars', True)
+    ttl = kwargs.get('ttl', -1)
 
     if "SH" in symbol or "SZ" in symbol:
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
@@ -150,14 +152,14 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         code, asset = symbol.split("#")
 
         if freq.value.endswith('分钟'):
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='min', adj=adj, asset=asset[0].lower(), v=2)
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='min', adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
             df = df[~df['dt'].str.endswith("09:30:00")].reset_index(drop=True)
             df.rename(columns={'code': 'symbol'}, inplace=True)
             df['dt'] = pd.to_datetime(df['dt'])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
 
         else:
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='day', adj=adj, asset=asset[0].lower(), v=2)
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='day', adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
             df.rename(columns={'code': 'symbol'}, inplace=True)
             df['dt'] = pd.to_datetime(df['dt'])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
@@ -176,7 +178,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
 
         else:
-            df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd)
+            df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd, ttl=ttl)
             df.rename(columns={'code': 'symbol'}, inplace=True)
             df['amount'] = df['vol'] * df['close']
             df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
@@ -186,7 +188,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     if symbol.endswith(".NH"):
         if freq != Freq.D:
             raise ValueError("南华指数只支持日线数据")
-        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt)
+        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl)
 
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
 
