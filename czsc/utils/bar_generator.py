@@ -81,39 +81,25 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
         - freq      K线周期
         - market    交易市场
     """
-    if not freq or freq in ['日线', '周线', '月线', '季线', '年线']:
+    if freq in ['日线', '周线', '月线', '季线', '年线']:
         return freq, "默认"
 
-    # if freq == '1分钟':
-    #     time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
+    if freq == '1分钟':
+        time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
 
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
-    a_sdt = freq_market_times[f"{freq}_A股"][0]
-    f_sdt = freq_market_times[f"{freq}_期货"][0]
+    for key, tts in freq_market_times.items():
+        if freq and not key.startswith(freq):
+            continue
 
-    # 判断是不是有 dt 落在 10:15 - 10:30 之间
-    # match = [x for x in time_seq if "10:15" < x < "10:30"]
+        sub_tts = [x for x in tts if x >= min(time_seq) and x <= max(time_seq)]
+        if set(time_seq) == set(sub_tts):
+            freq_x, market = key.split("_")
+            return freq_x, market
 
-    if time_seq[0] >= a_sdt and time_seq[-1] <= "15:00":
-        market = "A股"
-    elif time_seq[0] >= f_sdt and time_seq[-1] in ["15:00", "23:00", "23:30", "02:30"]:
-        market = "期货"
-    else:
-        market = "默认"
-
-    return freq, market
-
-    # for key, tts in freq_market_times.items():
-    #     if freq and not key.startswith(freq):
-    #         continue
-
-    #     if set(time_seq) == set(tts[:len(time_seq)]):
-    #         freq_x, market = key.split("_")
-    #         return freq_x, market
-
-    # return None, "默认"
+    return None, "默认"
 
 
 def freq_end_date(dt, freq: Union[Freq, AnyStr]):
