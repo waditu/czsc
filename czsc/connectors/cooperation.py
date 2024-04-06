@@ -56,30 +56,30 @@ def get_symbols(name, **kwargs):
     :return:
     """
     if name == "股票":
-        df = dc.stock_basic(nobj=1, status=1)
+        df = dc.stock_basic(nobj=1, status=1, ttl=3600 * 6)
         symbols = [f"{row['code']}#STOCK" for _, row in df.iterrows()]
         return symbols
 
     if name == "ETF":
-        df = dc.etf_basic(v=2, fields='code,name')
-        dfk = dc.pro_bar(trade_date="2023-11-17", asset="e", v=2)
+        df = dc.etf_basic(v=2, fields='code,name', ttl=3600 * 6)
+        dfk = dc.pro_bar(trade_date="2024-04-02", asset="e", v=2)
         df = df[df['code'].isin(dfk['code'])].reset_index(drop=True)
         symbols = [f"{row['code']}#ETF" for _, row in df.iterrows()]
         return symbols
 
     if name == "A股指数":
         # 指数 https://s0cqcxuy3p.feishu.cn/wiki/KuSAweAAhicvsGk9VPTc1ZWKnAd
-        df = dc.index_basic(v=2, market='SSE,SZSE')
+        df = dc.index_basic(v=2, market='SSE,SZSE', ttl=3600 * 6)
         symbols = [f"{row['code']}#INDEX" for _, row in df.iterrows()]
         return symbols
 
     if name == "南华指数":
-        df = dc.index_basic(v=2, market='NH')
+        df = dc.index_basic(v=2, market='NH', ttl=3600 * 6)
         symbols = [row['code'] for _, row in df.iterrows()]
         return symbols
 
     if name == "期货主力":
-        kline = dc.future_klines(trade_date="20231101")
+        kline = dc.future_klines(trade_date="20240402", ttl=3600 * 6)
         return kline['code'].unique().tolist()
 
     if name.upper() == "ALL":
