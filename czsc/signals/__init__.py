@@ -264,3 +264,11 @@ from czsc.signals.zdy import (
     zdy_dif_V230528,
     pressure_support_V240222,
 )
+
+
+from czsc.signals.xls import (
+    xl_bar_position_V240328,
+    xl_bar_trend_V240329,
+    xl_bar_trend_V240330,
+    xl_bar_trend_V240331,
+)

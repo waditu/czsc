@@ -6,7 +6,7 @@ create_dt: 2022/10/31 22:17
 describe: jcc 是 Japanese Candlestick Charting 的缩写，日本蜡烛图技术
 """
 import numpy as np
-from typing import List, Any
+from typing import List
 from collections import OrderedDict
 from czsc import CZSC
 from czsc.objects import Signal, RawBar, Direction
