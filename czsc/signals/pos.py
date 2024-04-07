@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/4/14 19:27
-describe: 
+describe:
 """
 from czsc.analyze import CZSC
 from collections import OrderedDict
@@ -139,7 +139,7 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     多头止损逻辑如下，反之为空头止损逻辑：
 
-    1. 从多头开仓点开始，在给定对的K线周期 freq1 上向前找 N 个K线，记为 F1
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上向前找 N 个K线，记为 F1
     2. 将这 N 个K线的最低点，记为 L1，如果最新价跌破 L1，则止损
 
     **信号列表：**
@@ -149,10 +149,12 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     :param cat: CzscTrader对象
     :param kwargs: 参数字典
+
         - pos_name: str，开仓信号的名称
         - freq1: str，给定的K线周期
         - n: int，向前找的K线个数，默认为 3
-    :return:
+
+    :return: OrderedDict
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
@@ -305,7 +307,7 @@ def pos_profit_loss_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
     - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_多头止损_任意_任意_0')
     - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_多头达标_任意_任意_0')
     - Signal('日线通道突破_60分钟YKB20N3_盈亏比判断V230624_空头达标_任意_任意_0')
-    
+
     :param cat: CzscTrader对象
     :param kwargs: 参数字典
 
@@ -456,5 +458,3 @@ def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
             v1 = '空头保本'
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
