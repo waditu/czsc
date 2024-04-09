@@ -100,7 +100,7 @@ def get_min_future_klines(code, sdt, edt, freq='1m'):
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
-        ttl = 3 if pd.to_datetime(edt_).date() == datetime.now().date() else -1
+        ttl = 60 if pd.to_datetime(edt_).date() == datetime.now().date() else -1
         df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl)
         if df.empty:
             continue
