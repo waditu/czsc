@@ -875,8 +875,16 @@ def show_drawdowns(df, ret_col, **kwargs):
             dft = dft.format({'净值回撤': '{:.2%}', '回撤天数': '{:.0f}', '恢复天数': '{:.0f}'})
             st.dataframe(dft, use_container_width=True)
 
+    # 画图: 净值回撤
     drawdown = go.Scatter(x=df.index, y=df["drawdown"], fillcolor="red", fill='tozeroy', mode="lines", name="回测曲线")
     fig = go.Figure(drawdown)
+
+    # 增加 10% 分位数线，30% 分位数线，50% 分位数线，同时增加文本标记
+    for q in [0.1, 0.3, 0.5]:
+        y1 = df["drawdown"].quantile(q)
+        fig.add_hline(y=y1, line_dash="dot", line_color="green", line_width=2)
+        fig.add_annotation(x=df.index[-1], y=y1, text=f"{q:.1%} (DD: {y1:.2%})", showarrow=False, yshift=10)
+
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
     fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤曲线")
     # 限制 绘制高度
