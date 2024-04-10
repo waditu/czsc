@@ -183,26 +183,6 @@ future_name_map = {
 }
 
 
-def is_trade_time(trade_time: Optional[str] = None):
-    """判断当前是否是交易时间"""
-    if trade_time is None:
-        trade_time = datetime.now().strftime("%H:%M:%S")
-
-    if trade_time >= "09:00:00" and trade_time <= "11:30:00":
-        return True
-
-    if trade_time >= "13:00:00" and trade_time <= "15:00:00":
-        return True
-
-    if trade_time >= "21:00:00" and trade_time <= "23:59:59":
-        return True
-
-    if trade_time >= "00:00:00" and trade_time <= "02:30:00":
-        return True
-
-    return False
-
-
 def get_daily_backup(api: TqApi, **kwargs):
     """获取每日账户中需要备份的信息
 
@@ -238,6 +218,18 @@ def get_daily_backup(api: TqApi, **kwargs):
     return backup
 
 
+def is_trade_time(quote):
+    """判断当前是否是交易时间"""
+    trade_time = pd.Timestamp.now().strftime("%H:%M:%S")
+    times = quote["trading_time"]['day'] + quote["trading_time"]['night']
+
+    for sdt, edt in times:
+        if trade_time >= sdt and trade_time <= edt:
+            logger.info(f"当前时间：{trade_time}，交易时间：{sdt} - {edt}")
+            return True
+    return False
+
+
 def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
     """调整账户组合
 
@@ -255,11 +247,21 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
     :param kwargs: dict, 其他参数
     """
+    timeout = kwargs.get("timeout", 600)
+    start_time = datetime.now()
+
     symbol_infos = {}
     for symbol, conf in portfolio.items():
         quote = api.get_quote(symbol)
+        if not is_trade_time(quote):
+            logger.warning(f"{symbol} 当前时间不是交易时间，跳过调仓")
+            continue
 
-        lots = conf.get("target_volume", 0)
+        lots = conf.get("target_volume", None)
+        if lots is None:
+            logger.warning(f"{symbol} 目标手数为 None，跳过调仓")
+            continue
+
         price = conf.get("price", "PASSIVE")
         offset_priority = conf.get("offset_priority", "今昨,开")
 
@@ -281,16 +283,17 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
             logger.info(f"调整仓位：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
 
-            if target_pos._pos.pos == lots:
+            if target_pos._pos.pos == lots or target_pos.is_finished():
                 completed.append(True)
-                logger.info(f"调仓完成：{quote.datetime} - {contract}; {lots}手")
+                logger.info(f"调仓完成：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
             else:
                 completed.append(False)
 
         if all(completed):
             break
 
-    if kwargs.get("close_api", True):
-        api.close()
+        if (datetime.now() - start_time).seconds > timeout:
+            logger.error(f"调仓超时，已运行 {timeout} 秒")
+            break
 
     return api

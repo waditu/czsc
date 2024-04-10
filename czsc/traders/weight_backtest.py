@@ -205,7 +205,9 @@ def stoploss_by_direction(dfw, stoploss=0.03, **kwargs):
 
         # 止损：同一个订单下，min_hold_returns < -stoploss时，后续weight置为0
         dfg['is_stop'] = (dfg['min_hold_returns'] < -stoploss) & (dfg['order_id'] == dfg['order_id'].shift(1))
-        dfg['weight'] = np.where((dfg['is_stop'].shift(1)) & (dfg['order_id'] == dfg['order_id'].shift(1)), 0, dfg['weight'])
+        c1 = dfg['is_stop'].shift(1) & (dfg['order_id'] == dfg['order_id'].shift(1))
+        dfg.loc[c1, 'weight'] = 0
+        dfg['weight'] = np.where(c1, 0, dfg['weight'])
         rows.append(dfg.copy())
 
     dfw1 = pd.concat(rows, ignore_index=True)
@@ -229,7 +231,7 @@ class WeightBacktest:
         3. 检查self.dfw中是否存在空值，如果存在则抛出ValueError异常，并提示"dfw 中存在空值，请先处理"。
         4. 设置实例变量self.digits为传入的digits值。
         5. 从kwargs中获取'fee_rate'参数的值，默认为0.0002，并将其保存在实例变量self.fee_rate中。
-        6. 将self.dfw中的'weight'列转换为浮点型，并保留self.digits位小数。
+        6. 将self.dfw中的 weight 列转换为浮点型，并保留self.digits位小数。
         7. 提取self.dfw中的唯一交易标的符号，并将其保存在实例变量self.symbols中。
         8. 执行backtest()方法进行回测，并将结果保存在实例变量self.results中。
 
@@ -361,8 +363,8 @@ class WeightBacktest:
 
         def __add_operate(dt, bar_id, volume, price, operate):
             for _ in range(abs(volume)):
-                op = {'bar_id': bar_id, "dt": dt, "price": price, "operate": operate}
-                operates.append(op)
+                _op = {'bar_id': bar_id, "dt": dt, "price": price, "operate": operate}
+                operates.append(_op)
 
         rows = dfs.to_dict(orient='records')
 
@@ -388,12 +390,12 @@ class WeightBacktest:
                 elif row2['volume'] < row1['volume']:
                     __add_operate(row2['dt'], row2['bar_id'], row2['volume'] - row1['volume'], row2['price'], operate='开空')
 
-            elif row1['volume'] >= 0 and row2['volume'] <= 0:
+            elif row1['volume'] >= 0 >= row2['volume']:
                 # 多头转换成空头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平多')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开空')
 
-            elif row1['volume'] <= 0 and row2['volume'] >= 0:
+            elif row1['volume'] <= 0 <= row2['volume']:
                 # 空头转换成多头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平空')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开多')

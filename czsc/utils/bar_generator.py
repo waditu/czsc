@@ -84,18 +84,20 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     if freq in ['日线', '周线', '月线', '季线', '年线']:
         return freq, "默认"
 
-    if freq == '1分钟':
-        time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
-
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
     for key, tts in freq_market_times.items():
         if freq and not key.startswith(freq):
             continue
+        freq_x, market = key.split("_")
 
-        if set(time_seq) == set(tts[:len(time_seq)]):
-            freq_x, market = key.split("_")
+        if freq_x == '1分钟':
+            time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
+
+        sub_tts = [x for x in tts if x >= min(time_seq) and x <= max(time_seq)]
+        if set(time_seq) == set(sub_tts):
+            # print(f"check_freq_and_market: {freq_x} - {market}")
             return freq_x, market
 
     return None, "默认"
@@ -210,7 +212,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
 
     base_freq = kwargs.get('base_freq', None)
     if target_freq.value.endswith("分钟"):
-        uni_times = df['dt'].head(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist()
+        uni_times = sorted(df['dt'].tail(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist())
         _, market = check_freq_and_market(uni_times, freq=base_freq)
     else:
         market = "默认"

@@ -44,7 +44,7 @@ class DiskCache:
     def __init__(self, path=None):
         self.path = home_path / "disk_cache" if path is None else Path(path)
         if self.path.is_file():
-            raise Exception("path has exist")
+            raise Exception("path must be a directory, not a file")
 
         self.path.mkdir(parents=True, exist_ok=True)
 
@@ -68,6 +68,7 @@ class DiskCache:
             create_time = file.stat().st_ctime
             if (time.time() - create_time) > ttl:
                 logger.info(f"缓存文件已过期, {file}")
+                os.remove(file)
                 return False
 
         logger.info(f"缓存文件已找到, {file}")
@@ -162,7 +163,7 @@ class DiskCache:
 def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
     """缓存装饰器，支持多种数据格式
 
-    :param path: 缓存文件夹路径
+    :param path: 缓存文件夹父路径，默认为 home_path，每个函数的缓存文件夹为 path/func_name
     :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
     :param ttl: 缓存文件有效期，单位：秒
     """
@@ -191,3 +192,26 @@ def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
         return cached_func
 
     return decorator
+
+
+def clear_cache(path=home_path, subs=None, recreate=False):
+    """清空缓存文件夹
+
+    :param path: 缓存文件夹路径
+    :param subs: 需要清空的子文件夹名称，如果为 None，则清空整个文件夹
+    :param recreate: 是否重新创建文件夹, True 时会重新创建文件夹, False 时不会重新创建文件夹
+    """
+    path = Path(path)
+    if subs is None:
+        shutil.rmtree(path)
+        path.mkdir(parents=True, exist_ok=False)
+        logger.info(f"已清空缓存文件夹：{path}")
+        return
+
+    for sub in subs:
+        fpath = path / sub
+        if fpath.exists():
+            shutil.rmtree(fpath)
+            if recreate:
+                fpath.mkdir(parents=True, exist_ok=True)
+            logger.info(f"已清空缓存文件夹：{fpath}")

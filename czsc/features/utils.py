@@ -256,6 +256,52 @@ def rolling_slope(df: pd.DataFrame, col: str, window=300, min_periods=100, new_c
     return df
 
 
+def normalize_corr(df: pd.DataFrame, fcol, ycol=None, **kwargs):
+    """标准化因子与收益相关性为正数
+
+    方法说明：对因子进行滚动相关系数计算，因子乘以滚动相关系数的符号
+
+    **注意：**
+
+    1. simple 模式下，计算过程有一定的未来信息泄露，在回测中使用时需要注意
+    2. rolling 模式下，计算过程依赖 window 参数，有可能调整后相关性为负数
+
+    :param df: pd.DataFrame, 必须包含 dt、symbol、price 列，以及因子列
+    :param fcol: str 因子列名
+    :param kwargs: dict
+
+        - window: int, 滚动窗口大小
+        - min_periods: int, 最小计算周期
+        - mode: str, 计算方法, rolling 表示使用滚动调整相关系数，simple 表示使用镜像反转相关系数
+        - copy: bool, 是否复制 df
+
+    :return: pd.DataFrame
+    """
+    window = kwargs.get("window", 1000)
+    min_periods = kwargs.get("min_periods", 5)
+    mode = kwargs.get("mode", "rolling")
+    if kwargs.get("copy", False):
+        df = df.copy()
+
+    df = df.sort_values(['symbol', 'dt'], ascending=True).reset_index(drop=True)
+    for symbol, dfg in df.groupby("symbol"):
+        dfg['ycol'] = dfg['price'].pct_change().shift(-1)
+
+        if mode.lower() == "rolling":
+            dfg['corr_sign'] = np.sign(dfg[fcol].rolling(window=window, min_periods=min_periods).corr(dfg['ycol']))
+            dfg[fcol] = (dfg['corr_sign'].shift(3) * dfg[fcol]).fillna(0)
+
+        elif mode.lower() == "simple":
+            corr_sign = np.sign(dfg[fcol].corr(dfg['ycol']))
+            dfg[fcol] = corr_sign * dfg[fcol]
+
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
+
+        df.loc[df['symbol'] == symbol, fcol] = dfg[fcol]
+    return df
+
+
 def feature_adjust_V230101(df: pd.DataFrame, fcol, **kwargs):
     """特征调整函数：对特征进行调整，使其符合持仓权重的定义
 
@@ -312,6 +358,7 @@ def feature_adjust(df: pd.DataFrame, fcol, method, **kwargs):
     :param fcol: str, 因子列名
     :param method: str, 调整方法
 
+        - KEEP: 直接使用原始因子值作为权重
         - V230101: 对因子进行滚动相关系数计算，然后对因子值用 maxabs_scale 进行归一化，最后乘以滚动相关系数的符号
         - V240323: 对因子进行滚动相关系数计算，然后对因子值用 scale + tanh 进行归一化，最后乘以滚动相关系数的符号
 
@@ -322,6 +369,10 @@ def feature_adjust(df: pd.DataFrame, fcol, method, **kwargs):
 
     :return: pd.DataFrame, 新增 weight 列
     """
+    if method == "KEEP":
+        df["weight"] = df[fcol]
+        return df
+
     if method == "V230101":
         return feature_adjust_V230101(df, fcol, **kwargs)
     elif method == "V240323":

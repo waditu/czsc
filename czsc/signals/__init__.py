@@ -5,12 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
 describe: 信号函数
 """
-# ======================================================================================================================
-# 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
-# 1. 前缀3个字符区分信号类别
-# 2. 后缀 V221107 之类的标识同一个信号函数的不同版本
-# ======================================================================================================================
-
 from czsc.signals.cxt import (
     cxt_fx_power_V221107,
     cxt_first_buy_V221126,
@@ -208,6 +202,7 @@ from czsc.signals.tas import (
     tas_macd_bc_V230804,
     tas_macd_bc_ubi_V230804,
     tas_slope_V231019,
+    tas_macd_bc_V240307,
 )
 
 from czsc.signals.pos import (
@@ -262,4 +257,12 @@ from czsc.signals.zdy import (
     zdy_dif_V230527,
     zdy_dif_V230528,
     pressure_support_V240222,
+)
+
+
+from czsc.signals.xls import (
+    xl_bar_position_V240328,
+    xl_bar_trend_V240329,
+    xl_bar_trend_V240330,
+    xl_bar_trend_V240331,
 )

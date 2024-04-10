@@ -17,8 +17,7 @@ def czsc():
 
 
 @czsc.command()
-def aphorism():
+def a():
     """随机输出一条缠中说禅良言警句"""
     from czsc.aphorism import print_one
-
     print_one()

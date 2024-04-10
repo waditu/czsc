@@ -80,8 +80,9 @@ class RedisWeightsClient:
     def set_metadata(self, base_freq, description, author, outsample_sdt, **kwargs):
         """设置策略元数据"""
         key = f'{self.key_prefix}:META:{self.strategy_name}'
+        overwrite = kwargs.pop('overwrite', False)
         if self.r.exists(key):
-            if not kwargs.pop('overwrite', False):
+            if not overwrite:
                 logger.warning(f'已存在 {self.strategy_name} 的元数据，如需覆盖请设置 overwrite=True')
                 return
             else:
@@ -457,23 +458,30 @@ def get_strategy_weights(strategy_name, redis_url=None, connection_pool=None, ke
     :param connection_pool: redis.ConnectionPool, redis连接池
     :param key_prefix: str, redis中key的前缀，默认为 Weights
     :param kwargs: dict, 其他参数
+
+        - symbols : list, 品种列表, 默认为None, 即获取所有品种的权重
+        - sdt : str, 开始时间, eg: 20210924 10:19:00
+        - edt : str, 结束时间, eg: 20220924 10:19:00
+        - only_last : boolean, 是否只保留每个品种最近一次权重，默认为False
+
     :return: pd.DataFrame
     """
+    kwargs.pop("send_heartbeat", None)
     rwc = RedisWeightsClient(strategy_name, redis_url=redis_url, connection_pool=connection_pool,
-                             key_prefix=key_prefix, **kwargs)
+                             key_prefix=key_prefix, send_heartbeat=False, **kwargs)
     sdt = kwargs.get("sdt")
     edt = kwargs.get("edt")
     symbols = kwargs.get("symbols")
     only_last = kwargs.get("only_last", False)
 
     if only_last:
-        # 只保留每个品种最近一次权重
+        # 保留每个品种最近一次权重
         df = rwc.get_last_weights(ignore_zero=False)
         return df
 
     df = rwc.get_all_weights(sdt=sdt, edt=edt)
     if symbols:
-        # 只保留指定品种的权重
+        # 保留指定品种的权重
         not_in = [x for x in symbols if x not in df['symbol'].unique()]
         if not_in:
             logger.warning(f"{strategy_name} 中没有 {not_in} 的权重记录")

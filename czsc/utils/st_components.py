@@ -20,6 +20,7 @@ def show_daily_return(df, **kwargs):
         - stat_hold_days: bool，是否展示持有日绩效指标，默认为 True
         - legend_only_cols: list，仅在图例中展示的列名
         - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
+        - plot_cumsum: bool，是否展示日收益累计曲线，默认为 True
 
     """
     if not df.index.dtype == 'datetime64[ns]':
@@ -88,19 +89,21 @@ def show_daily_return(df, **kwargs):
             with st.expander("持有日绩效指标", expanded=False):
                 st.dataframe(_stats(df, type_='持有日'), use_container_width=True)
 
-        df = df.cumsum()
-        fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
-        fig.update_xaxes(title='')
+        if kwargs.get("plot_cumsum", True):
+            df = df.cumsum()
+            fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
+            fig.update_xaxes(title='')
 
-        # 添加每年的开始第一个日期的竖线
-        for year in range(df.index.year.min(), df.index.year.max() + 1):
-            first_date = df[df.index.year == year].index.min()
-            fig.add_vline(x=first_date, line_dash='dash', line_color='red')
+            # 添加每年的开始第一个日期的竖线
+            for year in range(df.index.year.min(), df.index.year.max() + 1):
+                first_date = df[df.index.year == year].index.min()
+                fig.add_vline(x=first_date, line_dash='dash', line_color='red')
 
-        for col in kwargs.get("legend_only_cols", []):
-            fig.update_traces(visible="legendonly", selector=dict(name=col))
-
-        st.plotly_chart(fig, use_container_width=True)
+            for col in kwargs.get("legend_only_cols", []):
+                fig.update_traces(visible="legendonly", selector=dict(name=col))
+            # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+            fig.update_layout(margin=dict(l=0, r=0, b=0))
+            st.plotly_chart(fig, use_container_width=True)
 
 
 def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwargs):
@@ -348,6 +351,7 @@ def show_weight_backtest(dfw, **kwargs):
 
         - fee: 单边手续费，单位为BP，默认为2BP
         - digits: 权重小数位数，默认为2
+        - show_drawdowns: bool，是否展示最大回撤，默认为 False
         - show_daily_detail: bool，是否展示每日收益详情，默认为 False
         - show_backtest_detail: bool，是否展示回测详情，默认为 False
         - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
@@ -379,9 +383,12 @@ def show_weight_backtest(dfw, **kwargs):
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
     st.divider()
 
-    dret = wb.results['品种等权日收益']
+    dret = wb.results['品种等权日收益'].copy()
     dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw['symbol'].unique().tolist(), **kwargs)
+
+    if kwargs.get("show_drawdowns", False):
+        show_drawdowns(dret, ret_col='total', sub_title="")
 
     if kwargs.get("show_backtest_detail", False):
         c1, c2 = st.columns([1, 1])
@@ -762,6 +769,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     df = df[[ret_col]].copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
 
+    mid_dt = pd.to_datetime(mid_dt)
     dfi = df[df.index < mid_dt].copy()
     dfo = df[df.index >= mid_dt].copy()
 
@@ -807,7 +815,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
             '新高占比': '{:.2%}',
         }
     )
-    st.dataframe(df_stats, use_container_width=True)
+    st.dataframe(df_stats, use_container_width=True, hide_index=True)
 
 
 def show_optuna_study(study: optuna.Study, **kwargs):
@@ -867,8 +875,18 @@ def show_drawdowns(df, ret_col, **kwargs):
             dft = dft.format({'净值回撤': '{:.2%}', '回撤天数': '{:.0f}', '恢复天数': '{:.0f}'})
             st.dataframe(dft, use_container_width=True)
 
+    # 画图: 净值回撤
     drawdown = go.Scatter(x=df.index, y=df["drawdown"], fillcolor="red", fill='tozeroy', mode="lines", name="回测曲线")
     fig = go.Figure(drawdown)
+
+    # 增加 10% 分位数线，30% 分位数线，50% 分位数线，同时增加文本标记
+    for q in [0.1, 0.3, 0.5]:
+        y1 = df["drawdown"].quantile(q)
+        fig.add_hline(y=y1, line_dash="dot", line_color="green", line_width=2)
+        fig.add_annotation(x=df.index[-1], y=y1, text=f"{q:.1%} (DD: {y1:.2%})", showarrow=False, yshift=10)
+
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
     fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤曲线")
+    # 限制 绘制高度
+    fig.update_layout(height=300)
     st.plotly_chart(fig, use_container_width=True)

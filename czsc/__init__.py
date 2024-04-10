@@ -88,6 +88,7 @@ from czsc.utils import (
     home_path,
     DiskCache,
     disk_cache,
+    clear_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,
@@ -154,12 +155,13 @@ from czsc.features.utils import (
     rolling_slope,
     rolling_tanh,
     feature_adjust,
+    normalize_corr,
 )
 
-__version__ = "0.9.46"
+__version__ = "0.9.47"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240318"
+__date__ = "20240328"
 
 
 def welcome():
