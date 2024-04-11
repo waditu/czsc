@@ -106,7 +106,7 @@ def show_daily_return(df, **kwargs):
             st.plotly_chart(fig, use_container_width=True)
 
 
-def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwargs):
+def show_monthly_return(df, ret_col='total', sub_title="月度累计收益", **kwargs):
     """展示指定列的月度累计收益
 
     :param df: pd.DataFrame，数据源
@@ -123,8 +123,8 @@ def show_monthly_return(df, ret_col='total', title="月度累计收益", **kwarg
     df = df.copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
 
-    if title:
-        st.subheader(title, divider="rainbow")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
 
     monthly = df[[ret_col]].resample('ME').sum()
     monthly['year'] = monthly.index.year
@@ -410,7 +410,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if kwargs.get("show_monthly_return", False):
         with st.expander("月度累计收益", expanded=False):
-            show_monthly_return(dret, ret_col='total')
+            show_monthly_return(dret, ret_col='total', sub_title="")
 
     return wb
 
