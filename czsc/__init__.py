@@ -158,10 +158,10 @@ from czsc.features.utils import (
     normalize_corr,
 )
 
-__version__ = "0.9.47"
+__version__ = "0.9.48"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240328"
+__date__ = "20240410"
 
 
 def welcome():
