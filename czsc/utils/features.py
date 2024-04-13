@@ -41,75 +41,29 @@ def normalize_feature(df, x_col, **kwargs):
 def normalize_ts_feature(df, x_col, n=10, **kwargs):
     """对时间序列数据进行归一化处理
 
-    函数计算逻辑：
-
-    1. 首先，进行一系列的断言检查，确保因子值的取值数量大于分层数量，并且因子列没有缺失值。
-    2. 从kwargs参数中获取分层方法method的值，默认为"expanding"，以及min_periods的值，默认为300。
-    3. 如果在DataFrame的列中不存在x_col_norm列，则进行以下操作：
-        - 如果分层方法是"expanding"，则使用expanding函数对因子列进行处理，计算每个时间点的标准化值，公式为(当前值 - 平均值) / 标准差。
-        - 如果分层方法是"rolling"，则使用rolling函数对因子列进行处理，计算每个窗口的标准化值，窗口大小为min_periods，公式同上。
-        - 如果分层方法不是上述两种情况，则抛出错误。
-        - 对于缺失值，获取原始值，然后进行标准化。
-
-    4. 如果在DataFrame的列中不存在x_col_qcut列，则进行以下操作：
-        - 如果分层方法是"expanding"，则使用expanding函数对因子列进行处理，计算每个时间点的分位数，将其转化为分位数的标签（0到n-1）。
-        - 如果分层方法是"rolling"，则使用rolling函数对因子列进行处理，计算每个窗口的分位数，窗口大小为min_periods。
-        - 如果分层方法不是上述两种情况，则抛出错误。
-        - 使用分位数后的值填充原始值中的缺失值。
-        - 对于缺失值，获取原始值，然后进行分位数处理分层。
-        - 创建一个新的列x_col分层，根据分位数的标签值，将其转化为"第xx层"的字符串形式。
-
-    :param df: 因子数据，必须包含 dt, x_col 列，其中 dt 为日期，x_col 为因子值，数据样例：
+    :param df: 因子数据，必须包含 dt, x_col 列，其中 dt 为日期，x_col 为因子值
     :param x_col: 因子列名
     :param n: 分层数量，默认为10
     :param kwargs:
 
-        - method: 分层方法，expanding 或 rolling，默认为 expanding
-        - min_periods: expanding 时的最小样本数量，默认为300
+        - window: 窗口大小，默认为2000
+        - min_periods: 最小样本数量，默认为300
 
     :return: df, 添加了 x_col_norm, x_col_qcut, x_col分层 列
     """
-    assert df[x_col].nunique() > n, "因子值的取值数量必须大于分层数量"
+    assert df[x_col].nunique() > n * 2, "因子值的取值数量必须大于分层数量"
     assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
-    method = kwargs.get("method", "rolling")
     window = kwargs.get("window", 2000)
     min_periods = kwargs.get("min_periods", 300)
 
     if f"{x_col}_norm" not in df.columns:
-        if method == "expanding":
-            df[f"{x_col}_norm"] = df[x_col].expanding(min_periods=min_periods).apply(
-                lambda x: (x.iloc[-1] - x.mean()) / x.std(), raw=False)
-
-        elif method == "rolling":
-            df[f"{x_col}_norm"] = df[x_col].rolling(min_periods=min_periods, window=window).apply(
-                lambda x: (x.iloc[-1] - x.mean()) / x.std(), raw=False)
-
-        else:
-            raise ValueError("method 必须为 expanding 或 rolling")
-
-        # # 对于缺失值，获取原始值，然后进行标准化
-        # na_x = df[df[f"{x_col}_norm"].isna()][x_col].values
+        df[f"{x_col}_norm"] = df[x_col].rolling(min_periods=min_periods, window=window).apply(
+            lambda x: (x.iloc[-1] - x.mean()) / x.std(), raw=False)
         df.loc[df[f"{x_col}_norm"].isna(), f"{x_col}_norm"] = 0
 
     if f"{x_col}_qcut" not in df.columns:
-        if method == "expanding":
-            df[f'{x_col}_qcut'] = df[x_col].expanding(min_periods=min_periods).apply(
-                lambda x: pd.qcut(x, q=n, labels=False, duplicates='drop', retbins=False).values[-1], raw=False)
-
-        elif method == "rolling":
-            df[f'{x_col}_qcut'] = df[x_col].rolling(min_periods=min_periods, window=min_periods).apply(
-                lambda x: pd.qcut(x, q=n, labels=False, duplicates='drop', retbins=False).values[-1], raw=False)
-
-        else:
-            raise ValueError("method 必须为 expanding 或 rolling")
-
-        # 对于缺失值，获取原始值，然后进行分位数处理分层
-        # na_x = df[df[f"{x_col}_qcut"].isna()][x_col].values
-        # df.loc[df[f"{x_col}_qcut"].isna(), f"{x_col}_qcut"] = pd.qcut(na_x, q=n, labels=False, duplicates='drop', retbins=False)
-        # if df[f'{x_col}_qcut'].isna().sum() > 0:
-        #     logger.warning(f"因子 {x_col} 分层存在 {df[f'{x_col}_qcut'].isna().sum()} 个缺失值，已使用前值填充")
-        #     df[f'{x_col}_qcut'] = df[f'{x_col}_qcut'].ffill()
-
+        df[f'{x_col}_qcut'] = df[x_col].rolling(min_periods=min_periods, window=min_periods).apply(
+            lambda x: pd.qcut(x, q=n, labels=False, duplicates='drop', retbins=False).values[-1], raw=False)
         df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
         # 第00层表示缺失值
         df[f'{x_col}分层'] = df[f'{x_col}_qcut'].apply(lambda x: f'第{str(int(x+1)).zfill(2)}层')

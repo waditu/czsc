@@ -227,7 +227,7 @@ def show_factor_returns(df, x_col, y_col):
 
 
 def show_factor_layering(df, x_col, y_col='n1b', **kwargs):
-    """使用 streamlit 绘制因子分层收益率图
+    """使用 streamlit 绘制因子截面分层收益率图
 
     :param df: 因子数据
     :param x_col: 因子列名
@@ -297,17 +297,11 @@ def show_symbol_factor_layering(df, x_col, y_col='n1b', **kwargs):
     n = kwargs.get("n", 10)
     if df[y_col].max() > 100:  # 如果收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
+    if df[x_col].nunique() < n * 2:
+        st.error(f"因子值数量小于{n*2}，无法进行分层")
 
     if f'{x_col}分层' not in df.columns:
-        # 如果因子分层列不存在，先计算因子分层
-        if df[x_col].nunique() > n:
-            czsc.normalize_ts_feature(df, x_col, n=n)
-        else:
-            # 如果因子值的取值数量小于分层数量，直接使用因子独立值排序作为分层
-            x_rank = sorted(df[x_col].unique())
-            x_rank = {x_rank[i]: f'第{str(i+1).zfill(2)}层' for i in range(len(x_rank))}
-            st.success(f"因子值分层对应关系：{x_rank}")
-            df[f'{x_col}分层'] = df[x_col].apply(lambda x: x_rank[x])
+        czsc.normalize_ts_feature(df, x_col, n=n)
 
     for i in range(n):
         df[f'第{str(i+1).zfill(2)}层'] = np.where(df[f'{x_col}分层'] == f'第{str(i+1).zfill(2)}层', df[y_col], 0)
@@ -876,7 +870,9 @@ def show_drawdowns(df, ret_col, **kwargs):
             st.dataframe(dft, use_container_width=True)
 
     # 画图: 净值回撤
-    drawdown = go.Scatter(x=df.index, y=df["drawdown"], fillcolor="red", fill='tozeroy', mode="lines", name="回测曲线")
+    # 颜色表：https://www.codeeeee.com/color/rgb.html
+    drawdown = go.Scatter(x=df.index, y=df["drawdown"], fillcolor="salmon", line=dict(color="salmon"),
+                          fill='tozeroy', mode="lines", name="回测曲线")
     fig = go.Figure(drawdown)
 
     # 增加 10% 分位数线，30% 分位数线，50% 分位数线，同时增加文本标记
