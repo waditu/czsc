@@ -138,7 +138,6 @@ from czsc.signals.tas import (
     update_cci_cache,
     update_atr_cache,
     update_sar_cache,
-
     tas_macd_base_V221028,
     tas_macd_change_V221105,
     tas_macd_direct_V221106,
@@ -151,7 +150,6 @@ from czsc.signals.tas import (
     tas_macd_bs1_V230313,
     tas_macd_bs1_V230312,
     tas_macd_base_V230320,
-
     tas_ma_base_V221101,
     tas_ma_base_V221203,
     tas_ma_base_V230313,
@@ -160,26 +158,20 @@ from czsc.signals.tas import (
     tas_double_ma_V230511,
     tas_double_ma_V240208,
     tas_ma_system_V230513,
-
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
     tas_boll_vt_V230212,
     tas_boll_cc_V230312,
-
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
-
     # tas_double_rsi_V221203,
     tas_rsi_base_V230227,
-
     tas_first_bs_V230217,
     tas_second_bs_V230228,
     tas_second_bs_V230303,
-
     tas_hlma_V230301,
     tas_cci_base_V230402,
     tas_kdj_evc_V230401,
-
     tas_atr_break_V230424,
     tas_sar_base_V230425,
     tas_macd_bs1_V230411,
@@ -191,7 +183,6 @@ from czsc.signals.tas import (
     tas_atr_V230630,
     tas_accelerate_V230531,
     tas_angle_V230802,
-
     tas_rumi_V230704,
     tas_macd_dist_V230408,
     tas_macd_dist_V230409,
@@ -265,4 +256,6 @@ from czsc.signals.xls import (
     xl_bar_trend_V240329,
     xl_bar_trend_V240330,
     xl_bar_trend_V240331,
+    xl_bar_basis_V240411,
+    xl_bar_basis_V240412,
 )
