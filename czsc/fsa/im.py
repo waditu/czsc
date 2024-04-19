@@ -17,7 +17,7 @@ class IM(FeishuApiBase):
     def __init__(self, app_id, app_secret):
         super().__init__(app_id, app_secret)
 
-    def get_user_id(self, payload, user_id_type='open_id'):
+    def get_user_id(self, payload, user_id_type="open_id"):
         """获取用户ID
 
         https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/contact-v3/user/batch_get_id
@@ -27,10 +27,10 @@ class IM(FeishuApiBase):
         :return:
         """
         url = f"https://open.feishu.cn/open-apis/contact/v3/users/batch_get_id?user_id_type={user_id_type}"
-        res = request('POST', url, headers=self.get_headers(), payload=payload)
+        res = request("POST", url, headers=self.get_headers(), payload=payload)
         return res
 
-    def upload_im_file(self, file_path, file_type='stream'):
+    def upload_im_file(self, file_path, file_type="stream"):
         """上传文件，文件大小不得超过30M，且不允许上传空文件
 
         https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/file/create
@@ -47,13 +47,13 @@ class IM(FeishuApiBase):
         :return: file_key
         """
         url = "https://open.feishu.cn/open-apis/im/v1/files"
-        form = {'file_name': os.path.basename(file_path), 'file_type': file_type, 'file': (open(file_path, 'rb'))}
+        form = {"file_name": os.path.basename(file_path), "file_type": file_type, "file": (open(file_path, "rb"))}
         multi_form = MultipartEncoder(form)
-        headers = {'Authorization': f'Bearer {self.get_access_token()}', 'Content-Type': multi_form.content_type}
+        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
         response = requests.request("POST", url, headers=headers, data=multi_form)
-        return response.json()['data']['file_key']
+        return response.json()["data"]["file_key"]
 
-    def upload_im_image(self, image_path, image_type='message'):
+    def upload_im_image(self, image_path, image_type="message"):
         """上传图片接口
 
         支持上传 JPEG、PNG、WEBP、GIF、TIFF、BMP、ICO格式图片，图片大小不得超过10M，且不支持上传大小为0的图片。
@@ -66,25 +66,25 @@ class IM(FeishuApiBase):
         :return: image_key
         """
         url = "https://open.feishu.cn/open-apis/im/v1/images"
-        form = {'image_type': image_type, 'image': (open(image_path, 'rb'))}
+        form = {"image_type": image_type, "image": (open(image_path, "rb"))}
         multi_form = MultipartEncoder(form)
-        headers = {'Authorization': f'Bearer {self.get_access_token()}', 'Content-Type': multi_form.content_type}
+        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
         response = requests.request("POST", url, headers=headers, data=multi_form)
-        return response.json()['data']['image_key']
+        return response.json()["data"]["image_key"]
 
-    def send(self, payload, receive_id_type='open_id'):
+    def send(self, payload, receive_id_type="open_id"):
         """发送消息
 
         API介绍：https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/message/create
         请求体构建: https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/im-v1/message/create_json
         """
-        if isinstance(payload['content'], dict):
-            payload['content'] = json.dumps(payload['content'])
+        if isinstance(payload["content"], dict):
+            payload["content"] = json.dumps(payload["content"])
         url = f"https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type={receive_id_type}"
-        res = request('POST', url, headers=self.get_headers(), payload=payload)
+        res = request("POST", url, headers=self.get_headers(), payload=payload)
         return res
 
-    def send_text(self, text, receive_id, receive_id_type='open_id'):
+    def send_text(self, text, receive_id, receive_id_type="open_id"):
         """发送文本消息
 
         :param text: 文本内容
@@ -95,7 +95,22 @@ class IM(FeishuApiBase):
         payload = {"receive_id": receive_id, "content": {"text": text}, "msg_type": "text"}
         return self.send(payload, receive_id_type)
 
-    def send_image(self, image_path, receive_id, receive_id_type='open_id'):
+    def send_card(self, card, receive_id, receive_id_type="open_id"):
+        """发送卡片消息
+
+        卡片搭建工具：https://open.feishu.cn/cardkit
+        https://open.feishu.cn/document/uAjLw4CM/ukzMukzMukzM/feishu-cards/send-feishu-card
+
+        :param card: 卡片内容
+            参考 https://open.feishu.cn/document/server-docs/im-v1/message-content-description/create_json#11e75d0
+        :param receive_id: 接收者ID
+        :param receive_id_type: ID类型
+        :return:
+        """
+        payload = {"receive_id": receive_id, "content": card, "msg_type": "interactive"}
+        return self.send(payload, receive_id_type)
+
+    def send_image(self, image_path, receive_id, receive_id_type="open_id"):
         """发送图片
 
         :param image_path: 图片路径
@@ -103,11 +118,11 @@ class IM(FeishuApiBase):
         :param receive_id_type: ID类型
         :return:
         """
-        image_key = self.upload_im_image(image_path, image_type='message')
+        image_key = self.upload_im_image(image_path, image_type="message")
         payload = {"receive_id": receive_id, "content": {"image_key": image_key}, "msg_type": "image"}
         return self.send(payload, receive_id_type)
 
-    def send_file(self, file_path, receive_id, receive_id_type='open_id'):
+    def send_file(self, file_path, receive_id, receive_id_type="open_id"):
         """发送文件
 
         :param file_path: 图片路径
@@ -115,6 +130,6 @@ class IM(FeishuApiBase):
         :param receive_id_type: ID类型
         :return:
         """
-        file_key = self.upload_im_file(file_path, file_type='stream')
+        file_key = self.upload_im_file(file_path, file_type="stream")
         payload = {"receive_id": receive_id, "content": {"file_key": file_key}, "msg_type": "file"}
         return self.send(payload, receive_id_type)

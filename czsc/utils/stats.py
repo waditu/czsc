@@ -18,8 +18,8 @@ def cal_break_even_point(seq) -> float:
     """
     if sum(seq) < 0:
         return 1.0
-    seq = np.cumsum(sorted(seq))                # type: ignore
-    return (np.sum(seq < 0) + 1) / len(seq)     # type: ignore
+    seq = np.cumsum(sorted(seq))  # type: ignore
+    return (np.sum(seq < 0) + 1) / len(seq)  # type: ignore
 
 
 def subtract_fee(df, fee=1):
@@ -42,23 +42,23 @@ def subtract_fee(df, fee=1):
     :param fee: 手续费，单位：BP
     :return: 修改后的DataFrame
     """
-    assert 'dt' in df.columns, 'dt 列必须存在'
-    assert 'pos' in df.columns, 'pos 列必须存在'
-    assert all(x in [0, 1, -1] for x in df['pos'].unique()), "pos 列的值必须是 0, 1, -1 中的一个"
+    assert "dt" in df.columns, "dt 列必须存在"
+    assert "pos" in df.columns, "pos 列必须存在"
+    assert all(x in [0, 1, -1] for x in df["pos"].unique()), "pos 列的值必须是 0, 1, -1 中的一个"
 
-    if 'n1b' not in df.columns:
-        assert 'price' in df.columns, '当n1b列不存在时，price 列必须存在'
-        df['n1b'] = (df['price'].shift(-1) / df['price'] - 1) * 10000
+    if "n1b" not in df.columns:
+        assert "price" in df.columns, "当n1b列不存在时，price 列必须存在"
+        df["n1b"] = (df["price"].shift(-1) / df["price"] - 1) * 10000
 
-    df['date'] = df['dt'].dt.date
-    df['edge_pre_fee'] = df['pos'] * df['n1b']
-    df['edge_post_fee'] = df['pos'] * df['n1b']
+    df["date"] = df["dt"].dt.date
+    df["edge_pre_fee"] = df["pos"] * df["n1b"]
+    df["edge_post_fee"] = df["pos"] * df["n1b"]
 
     # 扣费规则, 开仓扣费在第一个持仓K线上，平仓扣费在最后一个持仓K线上
-    open_pos = (df['pos'].shift() != df['pos']) & (df['pos'] != 0)
-    exit_pos = (df['pos'].shift(-1) != df['pos']) & (df['pos'] != 0)
-    df.loc[open_pos, 'edge_post_fee'] = df.loc[open_pos, 'edge_post_fee'] - fee
-    df.loc[exit_pos, 'edge_post_fee'] = df.loc[exit_pos, 'edge_post_fee'] - fee
+    open_pos = (df["pos"].shift() != df["pos"]) & (df["pos"] != 0)
+    exit_pos = (df["pos"].shift(-1) != df["pos"]) & (df["pos"] != 0)
+    df.loc[open_pos, "edge_post_fee"] = df.loc[open_pos, "edge_post_fee"] - fee
+    df.loc[exit_pos, "edge_post_fee"] = df.loc[exit_pos, "edge_post_fee"] - fee
     return df
 
 
@@ -88,8 +88,19 @@ def daily_performance(daily_returns):
     daily_returns = np.array(daily_returns, dtype=np.float64)
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
-        return {"绝对收益": 0, "年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "日胜率": 0,
-                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "新高间隔": 0, "新高占比": 0}
+        return {
+            "绝对收益": 0,
+            "年化": 0,
+            "夏普": 0,
+            "最大回撤": 0,
+            "卡玛": 0,
+            "日胜率": 0,
+            "年化波动率": 0,
+            "非零覆盖": 0,
+            "盈亏平衡点": 0,
+            "新高间隔": 0,
+            "新高占比": 0,
+        }
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
     sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
@@ -132,6 +143,36 @@ def daily_performance(daily_returns):
     return sta
 
 
+def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods=100, **kwargs):
+    """计算滚动日收益
+
+    :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col]
+    :param ret_col: str, 收益列名
+    :param window: int, 滚动窗口, 自然天数
+    :param min_periods: int, 最小样本数
+    :param kwargs:
+    """
+    if not df.index.dtype == "datetime64[ns]":
+        df["dt"] = pd.to_datetime(df["dt"])
+        df.set_index("dt", inplace=True)
+    assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+
+    df = df[[ret_col]].copy().fillna(0)
+    df.sort_index(inplace=True, ascending=True)
+    dts = sorted(df.index.to_list())
+    res = []
+    for edt in dts[min_periods:]:
+        sdt = edt - pd.Timedelta(days=window)
+        dfg = df[(df.index >= sdt) & (df.index <= edt)].copy()
+        s = daily_performance(dfg[ret_col].to_list())
+        s["sdt"] = sdt
+        s["edt"] = edt
+        res.append(s)
+
+    dfr = pd.DataFrame(res)
+    return dfr
+
+
 def weekly_performance(weekly_returns):
     """采用单利计算周收益数据的各项指标
 
@@ -142,8 +183,18 @@ def weekly_performance(weekly_returns):
     weekly_returns = np.array(weekly_returns, dtype=np.float64)
 
     if len(weekly_returns) == 0 or np.std(weekly_returns) == 0 or all(x == 0 for x in weekly_returns):
-        return {"年化": 0, "夏普": 0, "最大回撤": 0, "卡玛": 0, "周胜率": 0,
-                "年化波动率": 0, "非零覆盖": 0, "盈亏平衡点": 0, "新高间隔": 0, "新高占比": 0}
+        return {
+            "年化": 0,
+            "夏普": 0,
+            "最大回撤": 0,
+            "卡玛": 0,
+            "周胜率": 0,
+            "年化波动率": 0,
+            "非零覆盖": 0,
+            "盈亏平衡点": 0,
+            "新高间隔": 0,
+            "新高占比": 0,
+        }
 
     annual_returns = np.sum(weekly_returns) / len(weekly_returns) * 52
     sharpe_ratio = np.mean(weekly_returns) / np.std(weekly_returns) * np.sqrt(52)
@@ -210,24 +261,24 @@ def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True)
     :return:
     """
     nv = nv.copy(deep=True)
-    nv['dt'] = pd.to_datetime(nv['dt'])
+    nv["dt"] = pd.to_datetime(nv["dt"])
 
     if sub_cost:
-        assert 'cost' in nv.columns, "成本列cost不存在"
-        nv['edge'] = nv['edge'] - nv['cost']
+        assert "cost" in nv.columns, "成本列cost不存在"
+        nv["edge"] = nv["edge"] - nv["cost"]
     else:
-        if 'cost' not in nv.columns:
-            nv['cost'] = 0
+        if "cost" not in nv.columns:
+            nv["cost"] = 0
 
     if exclude_zero:
-        nv = nv[(nv['edge'] != 0) | (nv['cost'] != 0)]
+        nv = nv[(nv["edge"] != 0) | (nv["cost"] != 0)]
 
     # 按日期聚合
-    nv['date'] = nv['dt'].apply(lambda x: x.date())
-    df_nav = nv.groupby('date')['edge'].sum() / 10000
+    nv["date"] = nv["dt"].apply(lambda x: x.date())
+    df_nav = nv.groupby("date")["edge"].sum() / 10000
     df_nav = df_nav.cumsum()
 
-    if all(x == 0 for x in nv['edge']):
+    if all(x == 0 for x in nv["edge"]):
         # 处理没有持仓记录的情况
         sharp = 0
         y_ret = 0
@@ -246,11 +297,16 @@ def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True)
         calmar = y_ret / mdd if mdd != 0 else 1
 
     prefix = "有持仓时间" if exclude_zero else ""
-    res = {"夏普": round(sharp, 2), "卡玛": round(calmar, 2), "年化": round(y_ret, 4), "最大回撤": round(mdd, 4)}
+    res = {
+        "夏普": round(sharp, 2),
+        "卡玛": round(calmar, 2),
+        "年化": round(y_ret, 4),
+        "最大回撤": round(mdd, 4),
+    }
     res = {f"{prefix}{k}": v for k, v in res.items()}
 
     if not exclude_zero:
-        res['持仓覆盖'] = round(len(nv[(nv['edge'] != 0) | (nv['cost'] != 0)]) / len(nv), 4) if len(nv) > 0 else 0
+        res["持仓覆盖"] = round(len(nv[(nv["edge"] != 0) | (nv["cost"] != 0)]) / len(nv), 4) if len(nv) > 0 else 0
     return res
 
 
@@ -273,7 +329,12 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
     :return: 交易表现
     """
     from czsc.objects import cal_break_even_point
-    assert trade_dir in ["多头", "空头", "多空"], "trade_dir 参数错误，可选值 ['多头', '空头', '多空']"
+
+    assert trade_dir in [
+        "多头",
+        "空头",
+        "多空",
+    ], "trade_dir 参数错误，可选值 ['多头', '空头', '多空']"
 
     pairs = pairs.copy()
 
@@ -304,9 +365,9 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         if len(pairs) == 0:
             return p
 
-    pairs = pairs.to_dict(orient='records')
-    p['交易次数'] = len(pairs)
-    p["盈亏平衡点"] = round(cal_break_even_point([x['盈亏比例'] for x in pairs]), 4)
+    pairs = pairs.to_dict(orient="records")
+    p["交易次数"] = len(pairs)
+    p["盈亏平衡点"] = round(cal_break_even_point([x["盈亏比例"] for x in pairs]), 4)
     p["累计收益"] = round(sum([x["盈亏比例"] for x in pairs]), 2)
     p["单笔收益"] = round(p["累计收益"] / p["交易次数"], 2)
     p["持仓天数"] = round(sum([x["持仓天数"] for x in pairs]) / len(pairs), 2)
@@ -344,24 +405,24 @@ def holds_performance(df, **kwargs):
 
     :return: pd.DataFrame, columns=['date', 'change', 'edge_pre_fee', 'cost', 'edge_post_fee']
     """
-    fee = kwargs.get('fee', 15)
-    digits = kwargs.get('digits', 2)    # 保留小数位数
+    fee = kwargs.get("fee", 15)
+    digits = kwargs.get("digits", 2)  # 保留小数位数
 
     df = df.copy()
-    df['weight'] = df['weight'].round(digits)
-    df = df.sort_values(['dt', 'symbol']).reset_index(drop=True)
+    df["weight"] = df["weight"].round(digits)
+    df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
 
-    dft = pd.pivot_table(df, index='dt', columns='symbol', values='weight', aggfunc='sum').fillna(0)
+    dft = pd.pivot_table(df, index="dt", columns="symbol", values="weight", aggfunc="sum").fillna(0)
     df_turns = dft.diff().abs().sum(axis=1).reset_index()
-    df_turns.columns = ['date', 'change']
-    sdt = df['dt'].min()
-    df_turns.loc[(df_turns['date'] == sdt), 'change'] = df[df['dt'] == sdt]['weight'].sum()
+    df_turns.columns = ["date", "change"]
+    sdt = df["dt"].min()
+    df_turns.loc[(df_turns["date"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].sum()
 
-    df_edge = df.groupby('dt').apply(lambda x: (x['weight'] * x['n1b']).sum()).reset_index()
-    df_edge.columns = ['date', 'edge_pre_fee']
-    dfr = pd.merge(df_turns, df_edge, on='date', how='left')
-    dfr['cost'] = dfr['change'] * fee / 10000                       # 换手成本
-    dfr['edge_post_fee'] = dfr['edge_pre_fee'] - dfr['cost']        # 净收益
+    df_edge = df.groupby("dt").apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
+    df_edge.columns = ["date", "edge_pre_fee"]
+    dfr = pd.merge(df_turns, df_edge, on="date", how="left")
+    dfr["cost"] = dfr["change"] * fee / 10000  # 换手成本
+    dfr["edge_post_fee"] = dfr["edge_pre_fee"] - dfr["cost"]  # 净收益
     return dfr
 
 
@@ -399,6 +460,7 @@ def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:
             break
 
     df_drawdowns = pd.DataFrame(drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤"])
-    df_drawdowns['回撤天数'] = (df_drawdowns['回撤结束'] - df_drawdowns['回撤开始']).dt.days
-    df_drawdowns['恢复天数'] = (df_drawdowns['回撤修复'] - df_drawdowns['回撤结束']).dt.days
+    df_drawdowns["回撤天数"] = (df_drawdowns["回撤结束"] - df_drawdowns["回撤开始"]).dt.days
+    df_drawdowns["恢复天数"] = (df_drawdowns["回撤修复"] - df_drawdowns["回撤结束"]).dt.days
+    df_drawdowns["新高间隔"] = df_drawdowns["回撤天数"] + df_drawdowns["恢复天数"]
     return df_drawdowns

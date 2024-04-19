@@ -79,6 +79,7 @@ from czsc.utils import (
     SignalAnalyzer,
     SignalPerformance,
     daily_performance,
+    rolling_daily_performance,
     weekly_performance,
     holds_performance,
     net_value_stats,
@@ -130,6 +131,7 @@ from czsc.utils.st_components import (
     show_out_in_compare,
     show_optuna_study,
     show_drawdowns,
+    show_rolling_daily_performance,
 )
 
 from czsc.utils.bi_info import (
@@ -158,10 +160,10 @@ from czsc.features.utils import (
     normalize_corr,
 )
 
-__version__ = "0.9.47"
+__version__ = "0.9.48"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240328"
+__date__ = "20240410"
 
 
 def welcome():
