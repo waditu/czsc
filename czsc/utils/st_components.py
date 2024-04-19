@@ -939,7 +939,6 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
     st.plotly_chart(fig, use_container_width=True)
 
 
-@st.experimental_fragment
 def show_rolling_daily_performance(df, ret_col, **kwargs):
     """展示滚动统计数据
 
