@@ -455,12 +455,15 @@ def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:
 
         drawdown = df_cum.loc[valley] - df_cum.loc[peak]
 
-        drawdowns.append((peak, valley, recovery, drawdown))
+        drawdown_days = (valley - peak).days
+        recovery_days = (recovery - valley).days if not pd.isnull(recovery) else np.nan
+        new_high_days = drawdown_days + recovery_days if not pd.isnull(recovery) else np.nan
+
+        drawdowns.append((peak, valley, recovery, drawdown, drawdown_days, recovery_days, new_high_days))
         if (len(returns) == 0) or (len(underwater) == 0) or (np.min(underwater) == 0):
             break
 
-    df_drawdowns = pd.DataFrame(drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤"])
-    df_drawdowns["回撤天数"] = (df_drawdowns["回撤结束"] - df_drawdowns["回撤开始"]).dt.days
-    df_drawdowns["恢复天数"] = (df_drawdowns["回撤修复"] - df_drawdowns["回撤结束"]).dt.days
-    df_drawdowns["新高间隔"] = df_drawdowns["回撤天数"] + df_drawdowns["恢复天数"]
+    df_drawdowns = pd.DataFrame(
+        drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤", "回撤天数", "恢复天数", "新高间隔"]
+    )
     return df_drawdowns
