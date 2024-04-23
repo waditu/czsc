@@ -14,7 +14,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
-from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
+from czsc.sensors.feature import FixedNumberSelector
 from czsc.traders import (
     CzscTrader,
     CzscSignals,
