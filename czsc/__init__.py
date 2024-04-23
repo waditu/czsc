@@ -69,7 +69,7 @@ from czsc.utils import (
     cal_trade_price,
     update_bbars,
     update_tbars,
-    update_nbars,
+    update_nxb,
     risk_free_returns,
     resample_to_daily,
 
