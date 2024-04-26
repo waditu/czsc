@@ -45,6 +45,8 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    overlap,
+
     format_standard_kline,
 
     KlineChart,
