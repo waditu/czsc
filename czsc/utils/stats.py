@@ -467,3 +467,30 @@ def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:
         drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤", "回撤天数", "恢复天数", "新高间隔"]
     )
     return df_drawdowns
+
+
+def psi(df: pd.DataFrame, factor, segment, **kwargs):
+    """PSI 群体稳定性指标，反映数据在不同分箱中的分布变化
+
+    PSI = ∑(实际占比 - 基准占比) * ln(实际占比 / 基准占比)
+
+    参考：https://zhuanlan.zhihu.com/p/79682292  风控模型—群体稳定性指标(PSI)深入理解应用
+
+    :param df: 数据, 必须包含 dt 和 col 列
+    :param factor: 完成分箱的因子
+    :param segment: 分布稳定性观察分段
+    :param kwargs:
+    :return: pd.DataFrame
+    """
+    dfg = df.groupby([factor, segment], observed=False).size().unstack().fillna(0).apply(lambda x: x / x.sum(), axis=0)
+    dfg["总体分布"] = df.groupby(factor).size().values / len(df)
+    base_col = "总体分布"
+
+    cols = [x for x in dfg.columns if x != base_col]
+    for rate_col in cols:
+        dfg[f"{rate_col}_PSI"] = (dfg[rate_col] - dfg[base_col]) * np.log((dfg[rate_col] / dfg[base_col]))
+
+    psi_cols = [x for x in dfg.columns if x.endswith("_PSI")]
+    dfg["PSI"] = dfg[psi_cols].mean(axis=1)
+    dfg.loc["总计"] = dfg.sum(axis=0)
+    return dfg

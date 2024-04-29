@@ -26,6 +26,7 @@ from .stats import (
     holds_performance,
     top_drawdowns,
     rolling_daily_performance,
+    psi,
 )
 from .signal_analyzer import SignalAnalyzer, SignalPerformance
 from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache
