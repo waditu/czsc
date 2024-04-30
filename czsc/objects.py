@@ -512,8 +512,13 @@ class Factor:
             raise ValueError("signals_all 不能为空")
         _fatcor = self.dump()
         _fatcor.pop("name")
-        sha256 = hashlib.sha256(str(_fatcor).encode("utf-8")).hexdigest().upper()[:8]
-        self.name = f"{self.name}#{sha256}" if self.name else sha256
+        sha256 = hashlib.sha256(str(_fatcor).encode("utf-8")).hexdigest().upper()[:4]
+
+        if self.name:
+            self.name = self.name.split("#")[0] + f"#{sha256}"
+        else:
+            self.name = f"#{sha256}"
+        # self.name = f"{self.name}#{sha256}" if self.name else sha256
 
     @property
     def unique_signals(self) -> List[str]:
@@ -608,9 +613,11 @@ class Event:
             raise ValueError("factors 不能为空")
         _event = self.dump()
         _event.pop("name")
-        sha256 = hashlib.sha256(str(_event).encode("utf-8")).hexdigest().upper()[:8]
+
+        sha256 = hashlib.sha256(str(_event).encode("utf-8")).hexdigest().upper()[:4]
         if self.name:
-            self.name = f"{self.name}#{sha256}"
+            self.name = self.name.split("#")[0] + f"#{sha256}"
+            # self.name = f"{self.name}#{sha256}"
         else:
             self.name = f"{self.operate.value}#{sha256}"
         self.sha256 = sha256
