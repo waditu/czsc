@@ -477,8 +477,8 @@ def psi(df: pd.DataFrame, factor, segment, **kwargs):
     参考：https://zhuanlan.zhihu.com/p/79682292  风控模型—群体稳定性指标(PSI)深入理解应用
 
     :param df: 数据, 必须包含 dt 和 col 列
-    :param factor: 完成分箱的因子
-    :param segment: 分布稳定性观察分段
+    :param factor: 分组因子
+    :param segment: 样本分组
     :param kwargs:
     :return: pd.DataFrame
     """
@@ -488,8 +488,11 @@ def psi(df: pd.DataFrame, factor, segment, **kwargs):
 
     cols = [x for x in dfg.columns if x != base_col]
     for rate_col in cols:
-        dfg[f"{rate_col}_PSI"] = (dfg[rate_col] - dfg[base_col]) * np.log((dfg[rate_col] / dfg[base_col]))
-
+        dfg[f"{rate_col}_PSI"] = np.where(
+            (dfg[base_col] != 0) & (dfg[rate_col] != 0),
+            (dfg[rate_col] - dfg[base_col]) * np.log((dfg[rate_col] / dfg[base_col])),
+            dfg[rate_col] - dfg[base_col],
+        )
     psi_cols = [x for x in dfg.columns if x.endswith("_PSI")]
     dfg["PSI"] = dfg[psi_cols].mean(axis=1)
     dfg.loc["总计"] = dfg.sum(axis=0)

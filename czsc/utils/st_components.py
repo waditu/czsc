@@ -996,7 +996,10 @@ def show_event_return(df, factor, **kwargs):
 
     c1, c2, c3 = st.columns([1, 1, 1])
     agg_method = c1.selectbox(
-        "聚合方法", ["平均收益率", "收益中位数", "盈亏比", "交易胜率"], index=0, key=f"agg_method_{factor}"
+        "聚合方法",
+        ["平均收益率", "收益中位数", "最小收益率", "盈亏比", "交易胜率"],
+        index=0,
+        key=f"agg_method_{factor}",
     )
     sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
     edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
@@ -1012,6 +1015,9 @@ def show_event_return(df, factor, **kwargs):
 
     if agg_method == "收益中位数":
         agg_method = lambda x: np.median(x)
+
+    if agg_method == "最小收益率":
+        agg_method = lambda x: np.min(x)
 
     if agg_method == "盈亏比":
         agg_method = lambda x: np.mean([y for y in x if y > 0]) / abs(np.mean([y for y in x if y < 0]))
@@ -1047,3 +1053,27 @@ def show_event_return(df, factor, **kwargs):
             symbol = st.selectbox("选择品种", df["symbol"].unique().tolist(), index=0, key=f"ms1_{agg_method}")
             dfx = __markout(df[df["symbol"] == symbol].copy(), ["symbol", factor, "overlap"])
             st.dataframe(dfx, use_container_width=True)
+
+
+def show_psi(df, factor, segment, **kwargs):
+    """PSI分布稳定性
+
+    :param df: pd.DataFrame, 数据源
+    :param factor: str, 分组因子
+    :param segment: str, 分段字段
+    :param kwargs:
+
+        - sub_title: str, 子标题
+    """
+    sub_title = kwargs.get("sub_title", "PSI分布稳定性")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
+
+    dfi = czsc.psi(df, factor, segment)
+    segs = df[segment].unique().tolist()
+    segs_psi = [x for x in dfi.columns if x.endswith("_PSI")]
+    dfi = dfi.style.background_gradient(cmap="RdYlGn_r", subset=segs_psi, axis=None)
+    dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=segs, axis=None)
+    dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=["PSI"], axis=None)
+    dfi = dfi.format("{:.2%}", na_rep="MISS")
+    st.table(dfi)
