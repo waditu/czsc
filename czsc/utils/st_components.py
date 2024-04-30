@@ -969,3 +969,81 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普"))
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
     st.plotly_chart(fig, use_container_width=True)
+
+
+def show_event_return(df, factor, **kwargs):
+    """分析事件因子的收益率特征
+
+    :param df: pd.DataFrame, 数据源
+    :param factor: str, 事件因子名称
+    :param kwargs: dict, 其他参数
+
+        - sub_title: str, 子标题
+        - max_overlap: int, 事件最大重叠次数
+
+    """
+    sub_title = kwargs.get("sub_title", "事件收益率特征")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    if df[factor].nunique() > 20:
+        st.warning(f"因子分布过于离散，无法进行分析，请检查！！！因子独立值数量：{df[factor].nunique()}")
+        return
+
+    df = df.copy()
+    df[factor] = df[factor].astype(str)
+    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=kwargs.get("max_overlap", 5))
+
+    c1, c2, c3 = st.columns([1, 1, 1])
+    agg_method = c1.selectbox(
+        "聚合方法", ["平均收益率", "收益中位数", "盈亏比", "交易胜率"], index=0, key=f"agg_method_{factor}"
+    )
+    sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
+    edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
+    df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
+
+    st.write(
+        f"时间范围：{df['dt'].min().strftime('%Y%m%d')} ~ {df['dt'].max().strftime('%Y%m%d')}；聚合方法：{agg_method}"
+    )
+    nb_cols = [x for x in df.columns.to_list() if x.startswith("n") and x.endswith("b")]
+
+    if agg_method == "平均收益率":
+        agg_method = lambda x: np.mean(x)
+
+    if agg_method == "收益中位数":
+        agg_method = lambda x: np.median(x)
+
+    if agg_method == "盈亏比":
+        agg_method = lambda x: np.mean([y for y in x if y > 0]) / abs(np.mean([y for y in x if y < 0]))
+
+    if agg_method == "交易胜率":
+        agg_method = lambda x: len([y for y in x if y > 0]) / len(x)
+
+    def __markout(dfm, cols):
+        if isinstance(cols, str):
+            cols = [cols]
+        dfy = dfm.groupby(cols).agg({x: agg_method for x in nb_cols}).reset_index()
+        dfy["出现次数"] = dfm.groupby(cols).size().values
+        dfy["覆盖率"] = dfm.groupby(cols).size().values / len(dfm)
+        dfy = dfy[cols + ["出现次数", "覆盖率"] + nb_cols]
+        dfy = dfy.style.background_gradient(cmap="RdYlGn_r", subset=nb_cols, axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["出现次数"], axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["覆盖率"], axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["overlap"], axis=None)
+
+        format_ = {x: "{:.3%}" for x in nb_cols}
+        format_["出现次数"] = "{:.0f}"
+        format_["覆盖率"] = "{:.2%}"
+        format_["overlap"] = "{:.0f}"
+
+        dfy = dfy.format(format_, na_rep="MISS")
+        return dfy
+
+    dfy1 = __markout(df.copy(), [factor, "overlap"])
+    st.dataframe(dfy1, use_container_width=True)
+
+    if len(df["symbol"].unique()) > 1:
+        with st.expander("查看品种详细数据", expanded=False):
+            symbol = st.selectbox("选择品种", df["symbol"].unique().tolist(), index=0, key=f"ms1_{agg_method}")
+            dfx = __markout(df[df["symbol"] == symbol].copy(), ["symbol", factor, "overlap"])
+            st.dataframe(dfx, use_container_width=True)
