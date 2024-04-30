@@ -26,7 +26,7 @@ jobs:
     - name: Install libxml2 and libxslt
       run: |
         sudo apt-get update
-        sudo apt-get install -y libxml2-dev libxslt1-dev
+        sudo apt-get install -y libxml2-dev libxslt-dev python-dev
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
