@@ -42,33 +42,33 @@ def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     ma_type = kwargs.get("ma_type", "SMA").upper()
     timeperiod = int(kwargs.get("timeperiod", 5))
     k1, k2, k3 = f"{pos_name}_{freq1}#{ma_type}#{timeperiod}_持有状态V230414".split("_")
-    v1, v2 = '其他', '其他'
+    v1, v2 = "其他", "其他"
     key = update_ma_cache(cat.kas[freq1], ma_type=ma_type, timeperiod=timeperiod)
     # 如果没有持仓策略，则不产生信号
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
 
     # 多头止损逻辑
-    if op['op'] == Operate.LO:
-        bars = [x for x in c.bars_raw[-100:] if x.dt > op['dt']]
+    if op["op"] == Operate.LO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
         for x in bars:
             if x.close > x.cache[key]:
-                v1, v2 = '多头', '升破均线'
+                v1, v2 = "多头", "升破均线"
                 break
 
     # 空头止损逻辑
-    if op['op'] == Operate.SO:
-        bars = [x for x in c.bars_raw[-100:] if x.dt > op['dt']]
+    if op["op"] == Operate.SO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
         for x in bars:
             if x.close < x.cache[key]:
-                v1, v2 = '空头', '跌破均线'
+                v1, v2 = "空头", "跌破均线"
                 break
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -84,7 +84,7 @@ def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     多头止损逻辑如下，反之为空头止损逻辑：
 
     1. 从多头开仓点开始，在给定对的K线周期 freq1 上向前找 N 个底分型，记为 F1
-    2. 将这 N 个底分型的最低点，记为 L1，如果 L1 的价格低于开仓点的价格，则止损
+    2. 将这 N 个底分型的最低点，记为 L1，如果最新价低于 L1，则止损
 
     **信号列表：**
 
@@ -100,32 +100,32 @@ def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
-    n = int(kwargs.get('n', 3))
+    n = int(kwargs.get("n", 3))
     k1, k2, k3 = f"{freq1}_{pos_name}N{n}_止损V230414".split("_")
-    v1 = '其他'
+    v1 = "其他"
 
     # 如果没有持仓策略，则不产生信号
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
 
     # 多头止损逻辑
-    if op['op'] == Operate.LO:
-        fxs = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op['dt']][-n:]
+    if op["op"] == Operate.LO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op["dt"]][-n:]
         if cat.latest_price < min([x.low for x in fxs]):
-            v1 = '多头止损'
+            v1 = "多头止损"
 
     # 空头止损逻辑
-    if op['op'] == Operate.SO:
-        fxs = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op['dt']][-n:]
+    if op["op"] == Operate.SO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op["dt"]][-n:]
         if cat.latest_price > max([x.high for x in fxs]):
-            v1 = '空头止损'
+            v1 = "空头止损"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -158,32 +158,32 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
-    n = int(kwargs.get('n', 3))
+    n = int(kwargs.get("n", 3))
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}K_止损V2305224".split("_")
-    v1 = '其他'
+    v1 = "其他"
     assert 20 >= n >= 1, "参数 n 取值范围为 1~20"
     # 如果没有持仓策略，则不产生信号
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos_ = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos_.operates) == 0 or pos_.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c: CZSC = cat.kas[freq1]
     op = pos_.operates[-1]
 
     # 多头止损逻辑
-    if op['op'] == Operate.LO:
-        bars = [x for x in c.bars_raw[-100:] if x.dt < op['dt']][-n:]
+    if op["op"] == Operate.LO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt < op["dt"]][-n:]
         if cat.latest_price < min([x.low for x in bars]):
-            v1 = '多头止损'
+            v1 = "多头止损"
 
     # 空头止损逻辑
-    if op['op'] == Operate.SO:
-        bars = [x for x in c.bars_raw[-100:] if x.dt < op['dt']][-n:]
+    if op["op"] == Operate.SO:
+        bars = [x for x in c.bars_raw[-100:] if x.dt < op["dt"]][-n:]
         if cat.latest_price > max([x.high for x in bars]):
-            v1 = '空头止损'
+            v1 = "空头止损"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -213,31 +213,31 @@ def pos_holds_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
-    n = int(kwargs.get('n', 5))
-    m = int(kwargs.get('m', 100))
+    n = int(kwargs.get("n", 5))
+    m = int(kwargs.get("m", 100))
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}_趋势判断V230414".split("_")
-    v1 = '其他'
+    v1 = "其他"
     # 如果没有持仓策略，则不产生信号
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
-    bars = [x for x in c.bars_raw[-100:] if x.dt > op['dt']]
+    bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
     if len(bars) < n:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    if op['op'] == Operate.LO:
-        zdf = (bars[-1].close - op['price']) / op['price'] * 10000
-        v1 = '多头存疑' if zdf < m else '多头良好'
+    if op["op"] == Operate.LO:
+        zdf = (bars[-1].close - op["price"]) / op["price"] * 10000
+        v1 = "多头存疑" if zdf < m else "多头良好"
 
-    if op['op'] == Operate.SO:
-        zdf = (op['price'] - bars[-1].close) / op['price'] * 10000
-        v1 = '空头存疑' if zdf < m else '空头良好'
+    if op["op"] == Operate.SO:
+        zdf = (op["price"] - bars[-1].close) / op["price"] * 10000
+        v1 = "空头存疑" if zdf < m else "空头良好"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -264,30 +264,30 @@ def pos_fix_exit_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
     :return:
     """
     pos_name = kwargs["pos_name"]
-    th = int(kwargs.get('th', 300))
+    th = int(kwargs.get("th", 300))
     k1, k2, k3 = f"{pos_name}_固定{th}BP止盈止损_出场V230624".split("_")
-    v1 = '其他'
+    v1 = "其他"
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos_ = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos_.operates) == 0 or pos_.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     op = pos_.operates[-1]
-    op_price = op['price']
+    op_price = op["price"]
 
-    if op['op'] == Operate.LO:
+    if op["op"] == Operate.LO:
         if cat.latest_price < op_price * (1 - th / 10000):
-            v1 = '多头止损'
+            v1 = "多头止损"
         if cat.latest_price > op_price * (1 + th / 10000):
-            v1 = '多头止盈'
+            v1 = "多头止盈"
 
-    if op['op'] == Operate.SO:
+    if op["op"] == Operate.SO:
         if cat.latest_price > op_price * (1 + th / 10000):
-            v1 = '空头止损'
+            v1 = "空头止损"
         if cat.latest_price < op_price * (1 - th / 10000):
-            v1 = '空头止盈'
+            v1 = "空头止盈"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -320,41 +320,41 @@ def pos_profit_loss_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
-    ykb = int(kwargs.get('ykb', 20))
-    n = int(kwargs.get('n', 3))
+    ykb = int(kwargs.get("ykb", 20))
+    n = int(kwargs.get("n", 3))
     k1, k2, k3 = f"{pos_name}_{freq1}YKB{ykb}N{n}_盈亏比判断V230624".split("_")
-    v1 = '其他'
+    v1 = "其他"
     # 如果没有持仓策略，则不产生信号
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
     last_close = c.bars_raw[-1].close
 
-    if op['op'] == Operate.LO:
-        fxs = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op['dt']][-n:]
+    if op["op"] == Operate.LO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op["dt"]][-n:]
         stop_price = min([x.low for x in fxs])
-        ykb_ = ((last_close - op['price']) / (op['price'] - stop_price)) * 10
+        ykb_ = ((last_close - op["price"]) / (op["price"] - stop_price)) * 10
         if ykb_ > ykb:
-            v1 = '多头达标'
+            v1 = "多头达标"
         else:
             if last_close < stop_price:
-                v1 = '多头止损'
+                v1 = "多头止损"
 
-    if op['op'] == Operate.SO:
-        fxs = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op['dt']][-n:]
+    if op["op"] == Operate.SO:
+        fxs = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op["dt"]][-n:]
         stop_price = max([x.high for x in fxs])
-        ykb_ = ((last_close - op['price']) / (op['price'] - stop_price)) * 10
+        ykb_ = ((last_close - op["price"]) / (op["price"] - stop_price)) * 10
         if ykb_ > ykb:
-            v1 = '空头达标'
+            v1 = "空头达标"
         else:
             if last_close > stop_price:
-                v1 = '空头止损'
+                v1 = "空头止损"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -386,15 +386,15 @@ def pos_status_V230808(cat: CzscTrader, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     pos = cat.get_position(pos_name)
-    v1 = '持币'
+    v1 = "持币"
     if len(pos.operates) == 0:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     op = pos.operates[-1]
-    if op['op'] == Operate.LO:
-        v1 = '持多'
-    if op['op'] == Operate.SO:
-        v1 = '持空'
+    if op["op"] == Operate.LO:
+        v1 = "持多"
+    if op["op"] == Operate.SO:
+        v1 = "持空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
@@ -427,34 +427,34 @@ def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
     """
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
-    n = int(kwargs.get('n', 5))
-    m = int(kwargs.get('m', 50))
-    t = int(kwargs.get('t', 10))
+    n = int(kwargs.get("n", 5))
+    m = int(kwargs.get("m", 50))
+    t = int(kwargs.get("t", 10))
     assert m > t > 0, "参数 m 必须大于 t"
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}T{t}_BS辅助V230807".split("_")
-    v1 = '其他'
+    v1 = "其他"
     # 如果没有持仓策略，则不产生信号
     if not cat.kas or not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
-    bars = [x for x in c.bars_raw[-100:] if x.dt > op['dt']]
+    bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
     if len(bars) < n:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    if op['op'] == Operate.LO:
-        zdf = (bars[-1].close - op['price']) / op['price'] * 10000
+    if op["op"] == Operate.LO:
+        zdf = (bars[-1].close - op["price"]) / op["price"] * 10000
         if t < zdf < m:
-            v1 = '多头保本'
+            v1 = "多头保本"
 
-    if op['op'] == Operate.SO:
-        zdf = (op['price'] - bars[-1].close) / op['price'] * 10000
+    if op["op"] == Operate.SO:
+        zdf = (op["price"] - bars[-1].close) / op["price"] * 10000
         if t < zdf < m:
-            v1 = '空头保本'
+            v1 = "空头保本"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

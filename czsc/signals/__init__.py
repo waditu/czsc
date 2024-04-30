@@ -104,6 +104,7 @@ from czsc.signals.bar import (
     bar_window_ps_V230801,
     bar_trend_V240209,
     bar_plr_V240427,
+    bar_accelerate_V240428,
 )
 
 from czsc.signals.jcc import (

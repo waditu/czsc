@@ -550,6 +550,68 @@ def bar_accelerate_V221118(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
+    """辨别加速走势
+
+    参数模板："{freq}_D{di}W{w}T{t}_加速V240428"
+
+    **信号逻辑：**
+
+    以上涨加速为例，计算过程如下：
+    1. 给定窗口大小 w，rolling 计算 w 个周期的 diff 绝对值；
+    2. 如果当前 diff 绝对值大于 最近300个周期的 diff 绝对值的 75% 分位数，且当前 diff 大于 0，判定为上涨加速；
+    3. 窗口内至少要有 T 根倍量上涨的 K 线。
+
+    **信号列表：**
+
+    - Signal('日线_D1W21T2_加速V240428_上涨_任意_任意_0')
+    - Signal('日线_D1W21T2_加速V240428_下跌_任意_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 21))
+    t = int(kwargs.get("t", 2))
+    freq = c.freq.value
+
+    # rolling 计算 w 个周期的 diff
+    cache_key = f"diff_{w}"
+    for i in range(w, len(c.bars_raw)):
+        if cache_key not in c.bars_raw[i].cache:
+            c.bars_raw[i].cache[cache_key] = c.bars_raw[i].close - c.bars_raw[i - w].close
+
+    k1, k2, k3 = f"{freq}_D{di}W{w}T{t}_加速V240428".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < w + 100 + di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    diff_abs = [abs(x.cache[cache_key]) for x in c.bars_raw[-300:] if cache_key in x.cache]
+    th = np.percentile(diff_abs, 75)
+    last_diff = c.bars_raw[-1].cache[cache_key]
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+
+    if abs(last_diff) > th and last_diff > 0:
+        # 窗口内至少要有 T 根倍量上涨的 K 线
+        cnt = 0
+        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+            if bar2.close > bar2.open and bar2.vol > bar1.vol * 2:
+                cnt += 1
+        if cnt >= t:
+            v1 = "上涨"
+
+    if abs(last_diff) > th and last_diff < 0:
+        # 窗口内至少要有 T 根倍量下跌的 K 线
+        cnt = 0
+        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+            if bar2.close < bar2.open and bar2.vol > bar1.vol * 2:
+                cnt += 1
+        if cnt >= t:
+            v1 = "下跌"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def bar_zdf_V221203(c: CZSC, **kwargs) -> OrderedDict:
     """单根K线的涨跌幅区间
 
