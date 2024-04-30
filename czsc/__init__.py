@@ -135,6 +135,7 @@ from czsc.utils.st_components import (
     show_optuna_study,
     show_drawdowns,
     show_rolling_daily_performance,
+    show_event_return,
 )
 
 from czsc.utils.bi_info import (

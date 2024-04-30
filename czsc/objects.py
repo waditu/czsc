@@ -913,63 +913,6 @@ class Position:
 
         return pairs
 
-    @deprecated(version="1.0.0", reason="请使用 czsc.utils.stats.evaluate_pairs")
-    def evaluate_pairs(self, trade_dir: str = "多空") -> dict:
-        """评估交易表现
-
-        :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
-        :return: 交易表现
-        """
-        if trade_dir == "多空":
-            pairs = self.pairs
-        else:
-            pairs = [x for x in self.pairs if x["交易方向"] == trade_dir]
-        p = {
-            "交易标的": self.symbol,
-            "策略标记": self.name,
-            "交易方向": trade_dir,
-            "交易次数": len(pairs),
-            "累计收益": 0,
-            "单笔收益": 0,
-            "盈利次数": 0,
-            "累计盈利": 0,
-            "单笔盈利": 0,
-            "亏损次数": 0,
-            "累计亏损": 0,
-            "单笔亏损": 0,
-            "胜率": 0,
-            "累计盈亏比": 0,
-            "单笔盈亏比": 0,
-            "盈亏平衡点": 1,
-        }
-
-        if len(pairs) == 0:
-            return p
-
-        p["盈亏平衡点"] = round(cal_break_even_point([x["盈亏比例"] for x in pairs]), 4)
-        p["累计收益"] = round(sum([x["盈亏比例"] for x in pairs]), 2)
-        p["单笔收益"] = round(p["累计收益"] / p["交易次数"], 2)
-        p["平均持仓天数"] = round(sum([x["持仓天数"] for x in pairs]) / len(pairs), 2)
-        p["平均持仓K线数"] = round(sum([x["持仓K线数"] for x in pairs]) / len(pairs), 2)
-
-        win_ = [x for x in pairs if x["盈亏比例"] >= 0]
-        if len(win_) > 0:
-            p["盈利次数"] = len(win_)
-            p["累计盈利"] = sum([x["盈亏比例"] for x in win_])
-            p["单笔盈利"] = round(p["累计盈利"] / p["盈利次数"], 4)
-            p["胜率"] = round(p["盈利次数"] / p["交易次数"], 4)
-
-        loss_ = [x for x in pairs if x["盈亏比例"] < 0]
-        if len(loss_) > 0:
-            p["亏损次数"] = len(loss_)
-            p["累计亏损"] = sum([x["盈亏比例"] for x in loss_])
-            p["单笔亏损"] = round(p["累计亏损"] / p["亏损次数"], 4)
-
-            p["累计盈亏比"] = round(p["累计盈利"] / abs(p["累计亏损"]), 4)
-            p["单笔盈亏比"] = round(p["单笔盈利"] / abs(p["单笔亏损"]), 4)
-
-        return p
-
     def evaluate_holds(self, trade_dir: str = "多空") -> dict:
         """按持仓信号评估交易表现
 
