@@ -458,3 +458,70 @@ def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
             v1 = "空头保本"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """保本单：开仓后最大盈利超过H个BP，且当前收益低于最大盈利的T%，平仓保本
+
+    参数模板："{pos_name}_{freq1}H{h}T{t}N{n}_保本V240428"
+
+    **信号逻辑：**
+
+    以多头保本单为例，计算过程如下：
+
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上计算开仓后的最大盈利，记为 Y1；
+    2. 计算当前收益，记为 Y2；
+    3. 如果Y1 大于H，且 Y2 < Y1 * (1 - T / 100)，则平仓保本。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_60分钟H100T20N5_保本V240428_空头保本_任意_任意_0')
+    - Signal('日线三买多头N1_60分钟H100T20N5_保本V240428_多头保本_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - h: int，最大盈利，单位BP，默认为 100
+        - t: int，最大盈利的T%，默认为 20
+        - n: int，最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    h = int(kwargs.get("h", 100))  # 最大盈利，单位BP
+    t = int(kwargs.get("t", 20))
+    n = int(kwargs.get("n", 5))  # 最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    k1, k2, k3 = f"{pos_name}_{freq1}H{h}T{t}N{n}_保本V240428".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not cat.kas or not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+    bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
+    if len(bars) < n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if op["op"] == Operate.LO:
+        y1 = (max([x.close for x in bars]) - op["price"]) / op["price"] * 10000
+        y2 = (bars[-1].close - op["price"]) / op["price"] * 10000
+        if y1 > h and y2 < y1 * (1 - t / 100):
+            v1 = "多头保本"
+
+    if op["op"] == Operate.SO:
+        y1 = (op["price"] - min([x.close for x in bars])) / op["price"] * 10000
+        y2 = (op["price"] - bars[-1].close) / op["price"] * 10000
+        if y1 > h and y2 < y1 * (1 - t / 100):
+            v1 = "空头保本"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

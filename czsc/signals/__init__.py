@@ -207,6 +207,7 @@ from czsc.signals.pos import (
     pos_profit_loss_V230624,
     pos_status_V230808,
     pos_holds_V230807,
+    pos_holds_V240428,
 )
 
 
