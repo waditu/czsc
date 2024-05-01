@@ -471,7 +471,7 @@ def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     1. 从多头开仓点开始，在给定的K线周期 freq1 上计算开仓后的最大盈利，记为 Y1；
     2. 计算当前收益，记为 Y2；
-    3. 如果Y1 大于H，且 Y2 < Y1 * (1 - T / 100)，则平仓保本。
+    3. 如果Y1 大于H，且 Y2 < Y1 * T / 100，则平仓保本。
 
     **信号列表：**
 
@@ -492,7 +492,7 @@ def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
     h = int(kwargs.get("h", 100))  # 最大盈利，单位BP
-    t = int(kwargs.get("t", 20))
+    t = int(kwargs.get("t", 20))  # 最大盈利的T%
     n = int(kwargs.get("n", 5))  # 最少持有K线数量，默认为 5，表示5根K线之后开始判断
 
     k1, k2, k3 = f"{pos_name}_{freq1}H{h}T{t}N{n}_保本V240428".split("_")
@@ -515,13 +515,158 @@ def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     if op["op"] == Operate.LO:
         y1 = (max([x.close for x in bars]) - op["price"]) / op["price"] * 10000
         y2 = (bars[-1].close - op["price"]) / op["price"] * 10000
-        if y1 > h and y2 < y1 * (1 - t / 100):
+        if y1 > h and y2 < y1 * t / 100:
             v1 = "多头保本"
 
     if op["op"] == Operate.SO:
         y1 = (op["price"] - min([x.close for x in bars])) / op["price"] * 10000
         y2 = (op["price"] - bars[-1].close) / op["price"] * 10000
-        if y1 > h and y2 < y1 * (1 - t / 100):
+        if y1 > h and y2 < y1 * t / 100:
             v1 = "空头保本"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_stop_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """止损单，持有N根K线后，多头跌破前低或空头升破前高，平仓
+
+    参数模板："{pos_name}_{freq1}T{t}N{n}_止损V240428"
+
+    **信号逻辑：**
+
+    以多头止损为例，计算过程如下：
+
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上计算开仓 N 根K线后的最新价 close；
+    2. 计算开仓前的 unique_price 列表，获取低于开仓价的列表，降序排列后的第 t 个价位作为止损价 Y；
+    3. 如果 close < Y，则止损平仓。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_60分钟T5N5_止损V240428_空头止损_任意_任意_0')
+    - Signal('日线三买多头N1_60分钟T5N5_止损V240428_多头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - t: int，止损多少跳，默认为 20
+        - n: int，最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    t = int(kwargs.get("t", 20))  # 止损多少跳
+    n = int(kwargs.get("n", 5))  # 最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    k1, k2, k3 = f"{pos_name}_{freq1}T{t}N{n}_止损V240428".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not cat.kas or not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+    right_bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
+
+    if len(right_bars) < n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    left_bars = [x for x in c.bars_raw if x.dt < op["dt"]]
+    unique_prices = [p for x in left_bars for p in [x.high, x.low, x.close, x.open]]
+    unique_prices = sorted(list(set(unique_prices)))
+
+    if op["op"] == Operate.LO:
+        low_prices = sorted([x for x in unique_prices if x < op["price"]], reverse=True)
+        if not low_prices:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+        y = low_prices[-t] if len(low_prices) > t else low_prices[0]
+        if right_bars[-1].close < y:
+            v1 = "多头止损"
+
+    if op["op"] == Operate.SO:
+        high_prices = sorted([x for x in unique_prices if x > op["price"]])
+        if not high_prices:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+        y = high_prices[t] if len(high_prices) > t else high_prices[-1]
+        if right_bars[-1].close > y:
+            v1 = "空头止损"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_take_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """止盈单，持有N根K线后，多头持仓期间出现T根倍量阳线或空头持仓期间出现T根倍量阴线，平仓
+
+    参数模板："{pos_name}_{freq1}T{t}N{n}_止盈V240428"
+
+    **信号逻辑：**
+
+    以多头为例，计算过程如下：
+
+    1. 从多头开仓点后N根K线开始，寻找倍量阳线，计算数量为 C；
+    2. 如果 C >= T，则止盈平仓。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_60分钟T5N5_止盈V240428_空头止盈_任意_任意_0')
+    - Signal('日线三买多头N1_60分钟T5N5_止盈V240428_多头止盈_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - t: int，倍量K线数量止盈，默认为 3
+        - n: int，最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    t = int(kwargs.get("t", 3))  # 倍量K线数量止盈
+    n = int(kwargs.get("n", 5))  # 最少持有K线数量，默认为 5，表示5根K线之后开始判断
+
+    k1, k2, k3 = f"{pos_name}_{freq1}T{t}N{n}_止盈V240428".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not cat.kas or not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+    bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
+
+    if len(bars) < n:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if op["op"] == Operate.LO:
+        c1 = 0
+        for i in range(1, len(bars)):
+            if bars[i].close > bars[i].open and bars[i].vol > bars[i - 1].vol * 2:
+                c1 += 1
+        if c1 >= t:
+            v1 = "多头止盈"
+
+    if op["op"] == Operate.SO:
+        c2 = 0
+        for i in range(1, len(bars)):
+            if bars[i].close < bars[i].open and bars[i].vol > bars[i - 1].vol * 2:
+                c2 += 1
+        if c2 >= t:
+            v1 = "空头止盈"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

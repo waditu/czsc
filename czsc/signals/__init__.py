@@ -210,6 +210,8 @@ from czsc.signals.pos import (
     pos_status_V230808,
     pos_holds_V230807,
     pos_holds_V240428,
+    pos_stop_V240428,
+    pos_take_V240428,
 )
 
 
