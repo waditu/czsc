@@ -991,10 +991,8 @@ def show_event_return(df, factor, **kwargs):
         return
 
     df = df.copy()
-    df[factor] = df[factor].astype(str)
-    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=kwargs.get("max_overlap", 5))
 
-    c1, c2, c3 = st.columns([1, 1, 1])
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
     agg_method = c1.selectbox(
         "聚合方法",
         ["平均收益率", "收益中位数", "最小收益率", "盈亏比", "交易胜率"],
@@ -1003,6 +1001,10 @@ def show_event_return(df, factor, **kwargs):
     )
     sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
     edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
+    max_overlap = c4.number_input("最大重叠次数", value=5, min_value=1, max_value=20)
+
+    df[factor] = df[factor].astype(str)
+    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
     df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
 
     st.write(
