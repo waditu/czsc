@@ -105,6 +105,8 @@ from czsc.signals.bar import (
     bar_trend_V240209,
     bar_plr_V240427,
     bar_accelerate_V240428,
+    bar_polyfit_V240428,
+    bar_break_V240428,
 )
 
 from czsc.signals.jcc import (
