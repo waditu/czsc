@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from czsc.analyze import CZSC
 from czsc.objects import Direction, ZS
+from czsc.connectors import qmt_connector as qmt
 from czsc.signals.tas import update_macd_cache
 from czsc.utils import create_single_signal, get_sub_elements
 
@@ -58,8 +59,8 @@ def check():
     from czsc.connectors import research
     from czsc.traders.base import check_signals_acc
 
-    symbols = research.get_symbols('A股主要指数')
-    bars = research.get_raw_bars(symbols[0], '15分钟', '20181101', '20210101', fq='前复权')
+    symbols = ['688188.SH']
+    bars = qmt.get_raw_bars(symbols[0], '15分钟', '20181101', '20210101', fq='前复权')
 
     signals_config = [{'name': tas_macd_bc_ubi_V230804, 'freq': "60分钟"}]
     check_signals_acc(bars, signals_config=signals_config, height='780px', delta_days=5)  # type: ignore
