@@ -344,6 +344,7 @@ class CZSC:
         kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
         kline.add_vol(df, row=2)
         kline.add_macd(df, row=3)
+        kline.add_dkx(df)#添加多空线指标进入K线绘图
 
         if len(bi_list) > 0:
             bi1 = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list]

@@ -260,3 +260,8 @@ from czsc.signals.zdy import (
     zdy_dif_V230527,
     zdy_dif_V230528,
 )
+
+from czsc.signals.dkx import (
+    dkx_base_V240427,
+    dkx_direction_V220428,
+)

@@ -10,7 +10,7 @@ from pyecharts.commons.utils import JsCode
 from typing import List
 import numpy as np
 from czsc.objects import Operate
-from .ta import SMA, MACD
+from .ta import SMA, MACD,DKX
 
 
 def heat_map(data: List[dict],
@@ -116,8 +116,8 @@ def kline_pro(kline: List[dict],
 
     axis_pointer_opts = opts.AxisPointerOpts(is_show=True, link=[{"xAxisIndex": "all"}])
 
-    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2], range_start=80, range_end=100)
-    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2], pos_top="96%",
+    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0, 1, 2, 3], range_start=80, range_end=100)
+    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0, 1, 2, 3], pos_top="96%",
                                   pos_bottom="0%", range_start=80, range_end=100)
 
     yaxis_opts = opts.AxisOpts(is_scale=True, min_="dataMin", max_="dataMax",
@@ -160,6 +160,10 @@ def kline_pro(kline: List[dict],
         vol.append(bar)
 
     close = np.array([x['close'] for x in kline], dtype=np.double)
+    low = np.array([x['low'] for x in kline], dtype=np.double)
+    open = np.array([x['open'] for x in kline], dtype=np.double)
+    high = np.array([x['high'] for x in kline], dtype=np.double)
+
     diff, dea, macd = MACD(close)
     macd_bar = []
     for i, v in enumerate(macd.tolist()):
@@ -167,9 +171,18 @@ def kline_pro(kline: List[dict],
         bar = opts.BarItem(name=i, value=round(v, 4), itemstyle_opts=item_style,
                            label_opts=label_not_show_opts)
         macd_bar.append(bar)
-
+    
     diff = diff.round(4)
     dea = dea.round(4)
+
+    dkx,madkx,dex = DKX(close,low,open,high)
+    dex_bar = []
+    for i, v in enumerate(dex.tolist()):
+        item_style = red_item_style if v > 0 else green_item_style
+        bar = opts.BarItem(name=i, value=round(v, 4), itemstyle_opts=item_style,
+                           label_opts=label_not_show_opts)
+        dex_bar.append(bar)
+
 
     # K 线主图
     # ------------------------------------------------------------------------------------------------------------------
@@ -296,7 +309,7 @@ def kline_pro(kline: List[dict],
 
     chart_ma.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
     chart_k = chart_k.overlap(chart_ma)
-
+    
     # 缠论结果
     # ------------------------------------------------------------------------------------------------------------------
     if fx:
@@ -344,7 +357,7 @@ def kline_pro(kline: List[dict],
     chart_vol.set_global_opts(
         xaxis_opts=opts.AxisOpts(
             type_="category",
-            grid_index=1,
+            grid_index=3,
             boundary_gap=False,
             axislabel_opts=opts.LabelOpts(is_show=True, font_size=8, color="#9b9da9"),
         ),
@@ -383,14 +396,53 @@ def kline_pro(kline: List[dict],
 
     chart_macd = chart_macd.overlap(line)
 
-    grid0_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="12%", height="58%")
-    grid1_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="74%", height="8%")
-    grid2_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="86%", height="10%")
+    # 绘制多空线图
+    # ------------------------------------------------------------------------------------------------------------------
+    chart_dkx = Line()
+    chart_dkx.add_xaxis(xaxis_data=dts)
+    dkx_keys = dict()
+    dkx_keys["DKX"] = dkx
+    dkx_keys["MADKX"] = madkx
+    for i, (name, value) in enumerate(dkx_keys.items()):
+        chart_dkx.add_yaxis(series_name=name, y_axis=value, is_smooth=True,
+                           symbol_size=0, label_opts=label_not_show_opts,
+                           linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1))
+
+    chart_dkx.set_global_opts(xaxis_opts=grid0_xaxis_opts, legend_opts=legend_not_show_opts)
+    chart_k = chart_k.overlap(chart_dkx)
+
+    # 绘制多空线DEX的子图
+    # ------------------------------------------------------------------------------------------------------------------
+    chart_dex = Bar()
+    chart_dex.add_xaxis(dts)
+    chart_dex.add_yaxis(series_name="DEX", y_axis= dex_bar , bar_width='60%')
+    chart_dex.set_global_opts(
+        xaxis_opts=opts.AxisOpts(
+            type_="category",
+            grid_index=1,
+            axislabel_opts=opts.LabelOpts(is_show=False),
+            splitline_opts=opts.SplitLineOpts(is_show=False),
+        ),
+        yaxis_opts=opts.AxisOpts(
+            grid_index=1,
+            axisline_opts=opts.AxisLineOpts(is_on_zero=False),
+            axistick_opts=opts.AxisTickOpts(is_show=False),
+            splitline_opts=opts.SplitLineOpts(is_show=False),
+            axislabel_opts=opts.LabelOpts(is_show=True, color="#c7c7c6"),
+        ),
+        legend_opts=opts.LegendOpts(is_show=False),
+    )
+    
+    grid0_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="12%", height="54%")
+    grid1_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="68%", height="4%")
+    grid2_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="75%", height="10%")
+    grid3_opts = opts.GridOpts(pos_left="0%", pos_right="1%", pos_top="85%", height="6%")
 
     grid_chart = Grid(init_opts)
     grid_chart.add(chart_k, grid_opts=grid0_opts)
-    grid_chart.add(chart_vol, grid_opts=grid1_opts)
+    grid_chart.add(chart_vol, grid_opts=grid3_opts)
     grid_chart.add(chart_macd, grid_opts=grid2_opts)
+    grid_chart.add(chart_dex, grid_opts=grid1_opts)
     return grid_chart
 
 

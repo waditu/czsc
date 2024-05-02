@@ -4,8 +4,6 @@
 describe: 基于DKX多线指标的信号函数集合
 dkx = ‘多空线’
 """
-
-
 import inspect
 import pandas as pd
 import numpy as np
@@ -15,7 +13,6 @@ import czsc.utils as utils
 from czsc.analyze import CZSC
 from datetime import date, timedelta
 
-
 from collections import OrderedDict
 from deprecated import deprecated
 from czsc.analyze import CZSC
@@ -24,19 +21,19 @@ from czsc.traders.base import CzscSignals
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal, single_linear
 from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
 
-
-
 import os
 from collections import OrderedDict
 from czsc.data.ts_cache import TsDataCache
 from czsc.traders.base import CzscTrader, check_signals_acc
 
+from czsc.utils.ta import DKX
 
 
 def update_dkx_cache(c: CZSC, **kwargs):
     """
     计算DKX指标，分别为DKX，MAKDX、DEX，以字典形式写入Bar的cache中，以便用以生成基于DKX的型号使用。
     数据格式如下；
+
     {'DKX': {'DKX': 299.46192857142853, 'MADKX': 293.16664761904764, 'DEX': 6.295280952380892}}
 
     :param c: CZSC对象
@@ -50,25 +47,14 @@ def update_dkx_cache(c: CZSC, **kwargs):
     low = np.array([x.low for x in c.bars_raw])
     open = np.array([x.open for x in c.bars_raw])
     high = np.array([x.high for x in c.bars_raw])
-    mid = (3 * close + low + open + high) / 6
-    dkx = [np.nan] * 20
-    for n in range(20, len(mid)):
-        dkx_value = (20*mid[n]+19*mid[n-1]+18*mid[n-2]+17*mid[n-3]+16*mid[n-4]+15*mid[n-5]
-                +14*mid[n-6]+13*mid[n-7]+12*mid[n-8]+11*mid[n-9]+10*mid[n-10]+9*mid[n-11]
-                +8*mid[n-12]+7*mid[n-13]+6*mid[n-14]+5*mid[n-15]+4*mid[n-16]
-                +3*mid[n-17]+2*mid[n-18]+mid[n-20])/210
-        dkx.append(dkx_value)
-    df = pd.DataFrame(dkx,columns=['DKX'])
-    # 计算MADKX和DEX值
-    df['MADKX'] = df['DKX'].rolling(window=10).mean().bfill()
-    df['DEX'] = df['DKX'] - df['MADKX']
-    
+    dkx, madkx, dex = DKX(close,low,open,high)
     for i in range(len(close)):
         _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
         dkx_i = dkx[i] if not np.isnan(dkx[i]) else None
-        _c.update({cache_key: {'DKX':df['DKX'][i],'MADKX':df['MADKX'][i],'DEX':df['DEX'][i]}})
+        _c.update({cache_key: {'DKX':dkx_i,'MADKX':madkx[i],'DEX':dex[i]}})
         c.bars_raw[i].cache = _c
     return cache_key
+
 
 def dkx_base_V240427(c: CZSC, **kwargs) -> OrderedDict:
     """DKX|DEX多空和方向信号
@@ -110,8 +96,8 @@ def dkx_base_V240427(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1,v2=v2)
     
 
+
 '''
-验证程序
 
 if __name__ == "__main__":
     # 获取股票代码为 '000001.SZ' 的 K 线数据
@@ -139,9 +125,9 @@ if __name__ == "__main__":
     #sc = CZSC(df_kline)
     #print(sc.fx_list[--30])
     #print(df_k)
-
-
 '''
+
+
 '''使用标准信号检测方法检测'''
 
 
@@ -154,5 +140,4 @@ if __name__ == '__main__':
 
     # 也可以指定信号的K线周期，比如只检查日线信号
     # check_signals_acc(bars, get_signals, freqs=['日线'])
-
 

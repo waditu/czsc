@@ -100,7 +100,7 @@ def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type='fro
                                   end_time=end_time, fill_data=kwargs.get("fill_data", False))
 
     df = pd.DataFrame({key: value.values[0] for key, value in data.items()})
-    df['time'] = pd.to_datetime(df['time'], unit='ms') + pd.to_timedelta('8H')
+    df['time'] = pd.to_datetime(df['time'], unit='ms') + pd.to_timedelta('8h')
     df.reset_index(inplace=True, drop=True)
     df['symbol'] = symbol
     df = df.dropna()

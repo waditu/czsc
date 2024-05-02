@@ -510,7 +510,7 @@ class CzscTrader(CzscSignals):
 
         return None
 
-    def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
+    def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "880px"):
         """获取快照
 
         :param file_html: 交易快照保存的 html 文件名

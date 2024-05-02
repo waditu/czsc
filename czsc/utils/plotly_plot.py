@@ -12,7 +12,7 @@ import pandas as pd
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from czsc.utils.cache import home_path
-from czsc.utils.ta import MACD
+from czsc.utils.ta import MACD,DKX
 
 
 class KlineChart:
@@ -351,3 +351,30 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
+
+    def add_dkx(self, kline: pd.DataFrame, **kwargs):
+        """绘制DKX图
+
+        函数执行逻辑：
+
+        1. 首先，复制输入的 kline 数据框到 df。
+        2. 使用 ta 库的 DK 函数计算 DKX 值（dkx,madkx）。
+        3. 调用 add_scatter_indicator 方法将 dkx 和 madkx 绘制为折线图。传递以下参数：
+            - x: 日期时间数据
+            - y: dkx 或 madkx 数据
+            - name: 图例名称，分别为 "DKX" 和 "MADKX"
+            - row: 指定要添加指标的子图行数，默认值为 3
+            - line_color: 线的颜色，分别为 'blue' 和 'green'
+            - show_legend: 是否显示图例，默认值为 False
+            - line_width: 线宽，默认值为 0.6
+        """
+        df = kline.copy()
+        line_width = kwargs.get('line_width', 0.6)
+        row = kwargs.get('row', 1)
+        dkx, madkx, dex = DKX(df['close'],df['low'],df['open'],df['high'])
+        dkx_colors = np.where(dex > 0, self.color_red, self.color_green)
+        self.add_scatter_indicator(df['dt'],dkx, name="DKX", row=row,line_color='blue', show_legend=True, line_width=line_width)
+        self.add_scatter_indicator(df['dt'],madkx, name="MADKX", row=row,line_color='green', show_legend=True, line_width=line_width)
+        #self.add_bar_indicator(df['dt'], dex, name="DEX", row=row, color=dkx_colors, show_legend=False)
+
+        
