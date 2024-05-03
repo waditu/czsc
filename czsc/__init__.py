@@ -137,6 +137,8 @@ from czsc.utils.st_components import (
     show_rolling_daily_performance,
     show_event_return,
     show_psi,
+    show_strategies_symbol,
+    show_strategies_dailys,
 )
 
 from czsc.utils.bi_info import (
