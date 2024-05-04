@@ -201,7 +201,10 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     if symbol.endswith(".NH"):
         if freq != Freq.D:
             raise ValueError("南华指数只支持日线数据")
-        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl)
+        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl, v=2)
+        df.rename(columns={"code": "symbol", "volume": "vol"}, inplace=True)
+        df["dt"] = pd.to_datetime(df["dt"])
+        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
 
