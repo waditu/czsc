@@ -455,12 +455,45 @@ def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:
 
         drawdown = df_cum.loc[valley] - df_cum.loc[peak]
 
-        drawdowns.append((peak, valley, recovery, drawdown))
+        drawdown_days = (valley - peak).days
+        recovery_days = (recovery - valley).days if not pd.isnull(recovery) else np.nan
+        new_high_days = drawdown_days + recovery_days if not pd.isnull(recovery) else np.nan
+
+        drawdowns.append((peak, valley, recovery, drawdown, drawdown_days, recovery_days, new_high_days))
         if (len(returns) == 0) or (len(underwater) == 0) or (np.min(underwater) == 0):
             break
 
-    df_drawdowns = pd.DataFrame(drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤"])
-    df_drawdowns["回撤天数"] = (df_drawdowns["回撤结束"] - df_drawdowns["回撤开始"]).dt.days
-    df_drawdowns["恢复天数"] = (df_drawdowns["回撤修复"] - df_drawdowns["回撤结束"]).dt.days
-    df_drawdowns["新高间隔"] = df_drawdowns["回撤天数"] + df_drawdowns["恢复天数"]
+    df_drawdowns = pd.DataFrame(
+        drawdowns, columns=["回撤开始", "回撤结束", "回撤修复", "净值回撤", "回撤天数", "恢复天数", "新高间隔"]
+    )
     return df_drawdowns
+
+
+def psi(df: pd.DataFrame, factor, segment, **kwargs):
+    """PSI 群体稳定性指标，反映数据在不同分箱中的分布变化
+
+    PSI = ∑(实际占比 - 基准占比) * ln(实际占比 / 基准占比)
+
+    参考：https://zhuanlan.zhihu.com/p/79682292  风控模型—群体稳定性指标(PSI)深入理解应用
+
+    :param df: 数据, 必须包含 dt 和 col 列
+    :param factor: 分组因子
+    :param segment: 样本分组
+    :param kwargs:
+    :return: pd.DataFrame
+    """
+    dfg = df.groupby([factor, segment], observed=False).size().unstack().fillna(0).apply(lambda x: x / x.sum(), axis=0)
+    dfg["总体分布"] = df.groupby(factor).size().values / len(df)
+    base_col = "总体分布"
+
+    cols = [x for x in dfg.columns if x != base_col]
+    for rate_col in cols:
+        dfg[f"{rate_col}_PSI"] = np.where(
+            (dfg[base_col] != 0) & (dfg[rate_col] != 0),
+            (dfg[rate_col] - dfg[base_col]) * np.log((dfg[rate_col] / dfg[base_col])),
+            dfg[rate_col] - dfg[base_col],
+        )
+    psi_cols = [x for x in dfg.columns if x.endswith("_PSI")]
+    dfg["PSI"] = dfg[psi_cols].mean(axis=1)
+    dfg.loc["总计"] = dfg.sum(axis=0)
+    return dfg

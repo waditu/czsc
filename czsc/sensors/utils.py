@@ -9,11 +9,12 @@ import numpy as np
 from tqdm import tqdm
 from collections import Counter
 from typing import List
+from deprecated import deprecated
 from sklearn.preprocessing import KBinsDiscretizer
 from ..data import TsDataCache
 
 
-def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strategy='quantile'):
+def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode="ordinal", strategy="quantile"):
     """使用 KBinsDiscretizer 对连续变量在时间截面上进行离散化
 
     :param df: 数据对象
@@ -24,12 +25,12 @@ def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strateg
     :param strategy: 参见 KBinsDiscretizer 文档
     :return:
     """
-    assert col in df.columns, f'{col} not in {df.columns}'
-    assert 'dt' in df.columns
+    assert col in df.columns, f"{col} not in {df.columns}"
+    assert "dt" in df.columns
 
-    new_col = f'{col}_bins{n_bins}'
+    new_col = f"{col}_bins{n_bins}"
     results = []
-    for dt, dfg in tqdm(df.groupby('dt'), desc=f"{col}_bins{n_bins}"):
+    for dt, dfg in tqdm(df.groupby("dt"), desc=f"{col}_bins{n_bins}"):
         kb = KBinsDiscretizer(n_bins=n_bins, encode=encode, strategy=strategy)
         # 加1，使分组从1开始
         dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel() + 1
@@ -38,7 +39,7 @@ def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode='ordinal', strateg
     return df
 
 
-def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None, indices=None):
+def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq="D", file_xlsx=None, indices=None):
     """获取基准指数的Beta
 
     :param dc: 数据缓存对象
@@ -50,7 +51,7 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
     :return:
     """
     if not indices:
-        indices = ['000001.SH', '000016.SH', '000905.SH', '000300.SH', '399001.SZ', '399006.SZ']
+        indices = ["000001.SH", "000016.SH", "000905.SH", "000300.SH", "399001.SZ", "399006.SZ"]
 
     beta = {}
     p = []
@@ -58,11 +59,11 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
         df = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq=freq, asset="I", raw_bar=False)
         beta[ts_code] = df
         df = df.fillna(0)
-        start_i, end_i, mdd = max_draw_down(df['n1b'].to_list())
-        start_dt = df.iloc[start_i]['trade_date']
-        end_dt = df.iloc[end_i]['trade_date']
+        start_i, end_i, mdd = max_draw_down(df["n1b"].to_list())
+        start_dt = df.iloc[start_i]["trade_date"]
+        end_dt = df.iloc[end_i]["trade_date"]
         row = {
-            '标的': ts_code,
+            "标的": ts_code,
             "开始日期": sdt,
             "结束日期": edt,
             "最大回撤": mdd,
@@ -72,7 +73,7 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
             "交易胜率": round(len(df[df.n1b > 0]) / len(df), 4),
             "累计收益": round(df.n1b.sum(), 4),
         }
-        cols = [x for x in df.columns if x[0] == 'n' and x[-1] == 'b']
+        cols = [x for x in df.columns if x[0] == "n" and x[-1] == "b"]
         row.update({x: round(df[x].mean(), 4) for x in cols})
         p.append(row)
 
@@ -84,7 +85,7 @@ def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq='D', file_xlsx=None
             df_.to_excel(f, index=False, sheet_name=name)
         f.close()
     else:
-        beta['dfp'] = dfp
+        beta["dfp"] = dfp
         return beta
 
 
@@ -122,14 +123,14 @@ def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
             4  000829.SZ  2020-01-02  0.0099
     :return: 组合换手率
     """
-    dft = pd.pivot_table(df_holds, index='成分日期', columns='证券代码', values='持仓权重', aggfunc='sum')
+    dft = pd.pivot_table(df_holds, index="成分日期", columns="证券代码", values="持仓权重", aggfunc="sum")
     dft = dft.fillna(0)
     df_turns = dft.diff().abs().sum(axis=1).reset_index()
-    df_turns.columns = ['date', 'change']
+    df_turns.columns = ["date", "change"]
 
     # 由于是 diff 计算，第一个时刻的仓位变化被忽视了，修改一下
-    sdt = df_holds['成分日期'].min()
-    df_turns.loc[(df_turns['date'] == sdt), 'change'] = df_holds[df_holds['成分日期'] == sdt]['持仓权重'].sum()
+    sdt = df_holds["成分日期"].min()
+    df_turns.loc[(df_turns["date"] == sdt), "change"] = df_holds[df_holds["成分日期"] == sdt]["持仓权重"].sum()
     return df_turns, round(df_turns.change.sum() / 2, 4)
 
 
@@ -174,25 +175,25 @@ def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3
     :param min_n: 单股票至少要有 n 个概念在 top_n 中
     :return: 过滤后的选股结果，每个时间点的 top_n 概念
     """
-    if kwargs.get('copy', True):
+    if kwargs.get("copy", True):
         holds = holds.copy()
 
-    holds['概念板块'] = holds['symbol'].map(concepts).fillna('')
-    holds['概念数量'] = holds['概念板块'].apply(len)
-    holds = holds[holds['概念数量'] > 0]
+    holds["概念板块"] = holds["symbol"].map(concepts).fillna("")
+    holds["概念数量"] = holds["概念板块"].apply(len)
+    holds = holds[holds["概念数量"] > 0]
 
     new_holds = []
     dt_key_concepts = {}
-    for dt, dfg in tqdm(holds.groupby('dt'), desc='计算板块效应'):
+    for dt, dfg in tqdm(holds.groupby("dt"), desc="计算板块效应"):
         # 计算密集出现的概念
-        key_concepts = [k for k, v in Counter([x for y in dfg['概念板块'] for x in y]).most_common(top_n)]
+        key_concepts = [k for k, v in Counter([x for y in dfg["概念板块"] for x in y]).most_common(top_n)]
         dt_key_concepts[dt] = key_concepts
 
         # 计算在密集概念中出现次数超过min_n的股票
-        dfg['强势概念'] = dfg['概念板块'].apply(lambda x: ','.join(set(x) & set(key_concepts)))
-        sel = dfg[dfg['强势概念'].apply(lambda x: len(x.split(',')) >= min_n)]
+        dfg["强势概念"] = dfg["概念板块"].apply(lambda x: ",".join(set(x) & set(key_concepts)))
+        sel = dfg[dfg["强势概念"].apply(lambda x: len(x.split(",")) >= min_n)]
         new_holds.append(sel)
 
     dfh = pd.concat(new_holds, ignore_index=True)
-    dfk = pd.DataFrame([{"dt": k, '强势概念': v} for k, v in dt_key_concepts.items()])
+    dfk = pd.DataFrame([{"dt": k, "强势概念": v} for k, v in dt_key_concepts.items()])
     return dfh, dfk

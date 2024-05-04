@@ -5,7 +5,7 @@ name: Python package
 
 on:
   push:
-    branches: [ master, V0.9.48 ]
+    branches: [ master, V0.9.49 ]
   pull_request:
     branches: [ master ]
 
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11']
 
     steps:
     - uses: actions/checkout@v2
@@ -23,9 +23,14 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install libxml2 and libxslt
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxml2-dev libxslt-dev
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install lxml==4.9.2
         pip install -r requirements.txt
     - name: Lint with flake8
       run: |

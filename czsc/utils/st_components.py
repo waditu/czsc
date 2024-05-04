@@ -969,3 +969,247 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普"))
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
     st.plotly_chart(fig, use_container_width=True)
+
+
+def show_event_return(df, factor, **kwargs):
+    """分析事件因子的收益率特征
+
+    :param df: pd.DataFrame, 数据源
+    :param factor: str, 事件因子名称
+    :param kwargs: dict, 其他参数
+
+        - sub_title: str, 子标题
+        - max_overlap: int, 事件最大重叠次数
+
+    """
+    sub_title = kwargs.get("sub_title", "事件收益率特征")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    if df[factor].nunique() > 20:
+        st.warning(f"因子分布过于离散，无法进行分析，请检查！！！因子独立值数量：{df[factor].nunique()}")
+        return
+
+    df = df.copy()
+
+    c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+    agg_method = c1.selectbox(
+        "聚合方法",
+        ["平均收益率", "收益中位数", "最小收益率", "盈亏比", "交易胜率"],
+        index=0,
+        key=f"agg_method_{factor}",
+    )
+    sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
+    edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
+    max_overlap = c4.number_input("最大重叠次数", value=5, min_value=1, max_value=20)
+
+    df[factor] = df[factor].astype(str)
+    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
+    df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
+
+    st.write(
+        f"时间范围：{df['dt'].min().strftime('%Y%m%d')} ~ {df['dt'].max().strftime('%Y%m%d')}；聚合方法：{agg_method}"
+    )
+    nb_cols = [x for x in df.columns.to_list() if x.startswith("n") and x.endswith("b")]
+
+    if agg_method == "平均收益率":
+        agg_method = lambda x: np.mean(x)
+
+    if agg_method == "收益中位数":
+        agg_method = lambda x: np.median(x)
+
+    if agg_method == "最小收益率":
+        agg_method = lambda x: np.min(x)
+
+    if agg_method == "盈亏比":
+        agg_method = lambda x: np.mean([y for y in x if y > 0]) / abs(np.mean([y for y in x if y < 0]))
+
+    if agg_method == "交易胜率":
+        agg_method = lambda x: len([y for y in x if y > 0]) / len(x)
+
+    def __markout(dfm, cols):
+        if isinstance(cols, str):
+            cols = [cols]
+        dfy = dfm.groupby(cols).agg({x: agg_method for x in nb_cols}).reset_index()
+        dfy["出现次数"] = dfm.groupby(cols).size().values
+        dfy["覆盖率"] = dfm.groupby(cols).size().values / len(dfm)
+        dfy = dfy[cols + ["出现次数", "覆盖率"] + nb_cols]
+        dfy = dfy.style.background_gradient(cmap="RdYlGn_r", subset=nb_cols, axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["出现次数"], axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["覆盖率"], axis=None)
+        dfy = dfy.background_gradient(cmap="RdYlGn_r", subset=["overlap"], axis=None)
+
+        format_ = {x: "{:.3%}" for x in nb_cols}
+        format_["出现次数"] = "{:.0f}"
+        format_["覆盖率"] = "{:.2%}"
+        format_["overlap"] = "{:.0f}"
+
+        dfy = dfy.format(format_, na_rep="MISS")
+        return dfy
+
+    dfy1 = __markout(df.copy(), [factor, "overlap"])
+    st.dataframe(dfy1, use_container_width=True)
+
+    if len(df["symbol"].unique()) > 1:
+        with st.expander("查看品种详细数据", expanded=False):
+            symbol = st.selectbox("选择品种", df["symbol"].unique().tolist(), index=0, key=f"ms1_{agg_method}")
+            dfx = __markout(df[df["symbol"] == symbol].copy(), ["symbol", factor, "overlap"])
+            st.dataframe(dfx, use_container_width=True)
+
+
+def show_psi(df, factor, segment, **kwargs):
+    """PSI分布稳定性
+
+    :param df: pd.DataFrame, 数据源
+    :param factor: str, 分组因子
+    :param segment: str, 分段字段
+    :param kwargs:
+
+        - sub_title: str, 子标题
+    """
+    sub_title = kwargs.get("sub_title", "PSI分布稳定性")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
+
+    dfi = czsc.psi(df, factor, segment)
+    segs = df[segment].unique().tolist()
+    segs_psi = [x for x in dfi.columns if x.endswith("_PSI")]
+    dfi = dfi.style.background_gradient(cmap="RdYlGn_r", subset=segs_psi, axis=None)
+    dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=segs, axis=None)
+    dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=["PSI"], axis=None)
+    dfi = dfi.format("{:.2%}", na_rep="MISS")
+    st.table(dfi)
+
+
+def show_strategies_dailys(df, **kwargs):
+    """展示多策略多品种日收益率数据：按策略等权日收益
+
+    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
+
+            ===================  ==========  ========  ============
+            dt                   strategy    symbol    returns
+            ===================  ==========  ========  ============
+            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
+            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
+            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
+            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
+            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
+            ===================  ==========  ========  ============
+
+    :param kwargs:
+
+        - sub_title: str, 子标题
+    """
+    sub_title = kwargs.get("sub_title", "按策略等权日收益")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    strategies = sorted(df["strategy"].unique().tolist())
+    strategies = st.multiselect("选择策略", strategies, default=strategies)
+    # st.write(f"策略：{strategies}")
+    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
+
+    symbols = sorted(df["symbol"].unique().tolist())
+    symbols = st.multiselect("选择品种", symbols, default=symbols)
+    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
+
+    with st.expander("每个品种的策略覆盖情况", expanded=False):
+        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
+        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
+        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
+
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
+    df["dt"] = pd.to_datetime(df["dt"])
+
+    df1 = (
+        df.groupby(["dt", "strategy"])
+        .apply(lambda x: x["returns"].mean(), include_groups=False)
+        .to_frame("returns")
+        .reset_index()
+    )
+    df1 = df1.pivot(index="dt", columns="strategy", values="returns").fillna(0)
+    df1["等权组合"] = df1.mean(axis=1)
+    czsc.show_daily_return(df1, stat_hold_days=False, legend_only_cols=strategies)
+
+    st.write("策略最近表现")
+    czsc.show_splited_daily(df1, ret_col="等权组合", sub_title="")
+
+    st.write("年度绩效统计")
+    czsc.show_yearly_stats(df1.copy(), ret_col="等权组合", sub_title="")
+
+    st.write("策略相关性")
+    czsc.show_correlation(df1)
+
+    st.write("月度收益率")
+    czsc.show_monthly_return(df1.copy(), ret_col="等权组合", sub_title="")
+
+    mid_dt = kwargs.get("mid_dt")
+    if mid_dt:
+        st.write("样本内外对比")
+        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
+        czsc.show_out_in_compare(df1.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
+
+
+def show_strategies_symbol(df, **kwargs):
+    """展示多策略多品种日收益率数据：按品种等权日收益
+
+    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
+
+            ===================  ==========  ========  ============
+            dt                   strategy    symbol    returns
+            ===================  ==========  ========  ============
+            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
+            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
+            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
+            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
+            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
+            ===================  ==========  ========  ============
+
+    :param kwargs:
+    """
+    sub_title = kwargs.get("sub_title", "按品种等权日收益")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    strategies = sorted(df["strategy"].unique().tolist())
+    strategies = st.multiselect("选择策略", strategies, default=strategies, key="strategies_symbol")
+    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
+    symbols = sorted(df["symbol"].unique().tolist())
+    symbols = st.multiselect("选择品种", symbols, default=symbols, key="strategies_symbol_x")
+    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
+
+    with st.expander("每个品种的策略覆盖情况", expanded=False):
+        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
+        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
+        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
+
+    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
+    df["dt"] = pd.to_datetime(df["dt"])
+
+    df2 = (
+        df.groupby(["dt", "symbol"])
+        .apply(lambda x: x["returns"].mean(), include_groups=False)
+        .to_frame("returns")
+        .reset_index()
+    )
+    df2 = df2.pivot(index="dt", columns="symbol", values="returns").fillna(0)
+    df2["等权组合"] = df2.mean(axis=1)
+    show_daily_return(df2, stat_hold_days=False, legend_only_cols=symbols)
+
+    st.write("策略最近表现")
+    show_splited_daily(df2, ret_col="等权组合", sub_title="")
+
+    st.write("年度绩效统计")
+    show_yearly_stats(df2.copy(), ret_col="等权组合", sub_title="")
+
+    st.write("品种相关性")
+    show_correlation(df2)
+
+    st.write("月度收益率")
+    show_monthly_return(df2.copy(), ret_col="等权组合", sub_title="")
+
+    mid_dt = kwargs.get("mid_dt")
+    if mid_dt:
+        st.write("样本内外对比")
+        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
+        show_out_in_compare(df2.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)

@@ -45,7 +45,7 @@ def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
     """
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D0停顿分型_BE辅助V230406".split("_")
-    v1 = '其他'
+    v1 = "其他"
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 6 or len(c.bars_ubi) < 4:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -62,23 +62,23 @@ def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
     min_close = min([x.close for x in last_bars])
 
     if last_bi.direction == Direction.Down and max_close > last_high:
-        v1 = '看多'
+        v1 = "看多"
     elif last_bi.direction == Direction.Up and min_close < last_low:
-        v1 = '看空'
+        v1 = "看空"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     # 笔内部再次查找停顿分型
     v2 = "任意"
-    if v1 == '看多' and len(last_bi.fxs) >= 4:
+    if v1 == "看多" and len(last_bi.fxs) >= 4:
         for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
             if (
                 fx1.mark == Mark.D
                 and fx2.mark == Mark.G
                 and max([x.close for x in fx2.raw_bars]) > fx1.elements[-1].high
             ):
-                v2 = '内部底停顿'
+                v2 = "内部底停顿"
 
     if v1 == "看空" and len(last_bi.fxs) >= 4:
         for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
@@ -87,18 +87,18 @@ def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
                 and fx2.mark == Mark.D
                 and min([x.close for x in fx2.raw_bars]) < fx1.elements[-1].low
             ):
-                v2 = '内部顶停顿'
+                v2 = "内部顶停顿"
 
     # 价格回到笔结束分型内部
     v3 = "任意"
-    if v1 == '看多':
+    if v1 == "看多":
         assert last_bi.fx_b.mark == Mark.D
         if last_bar.close < last_bi.fx_b.high:
-            v3 = '底分区间'
-    if v1 == '看空':
+            v3 = "底分区间"
+    if v1 == "看空":
         assert last_bi.fx_b.mark == Mark.G
         if last_bar.close > last_bi.fx_b.low:
-            v3 = '顶分区间'
+            v3 = "顶分区间"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
@@ -126,7 +126,7 @@ def zdy_bi_end_V230407(c: CZSC, **kwargs) -> OrderedDict:
     """
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D0停顿分型_BE辅助V230407".split("_")
-    v1 = '其他'
+    v1 = "其他"
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 6 or len(c.bars_ubi) < 4:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -144,26 +144,26 @@ def zdy_bi_end_V230407(c: CZSC, **kwargs) -> OrderedDict:
     if last_bi.direction == Direction.Down and last_bars[-1].close > last_high:
         _temp = [i for i, x in enumerate(last_bars) if x.close > last_high]
         if len(_temp) == 1 or (len(_temp) > 1 and _temp[-1] - _temp[0] == len(_temp) - 1):
-            v1 = '看多'
+            v1 = "看多"
 
     elif last_bi.direction == Direction.Up and last_bars[-1].close < last_low:
         _temp = [i for i, x in enumerate(last_bars) if x.close < last_low]
         if len(_temp) == 1 or (len(_temp) > 1 and _temp[-1] - _temp[0] == len(_temp) - 1):
-            v1 = '看空'
+            v1 = "看空"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     # 笔内部再次查找停顿分型
     v2 = "任意"
-    if v1 == '看多' and len(last_bi.fxs) >= 4:
+    if v1 == "看多" and len(last_bi.fxs) >= 4:
         for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
             if (
                 fx1.mark == Mark.D
                 and fx2.mark == Mark.G
                 and max([x.close for x in fx2.raw_bars]) > fx1.elements[-1].high
             ):
-                v2 = '内部底停顿'
+                v2 = "内部底停顿"
 
     if v1 == "看空" and len(last_bi.fxs) >= 4:
         for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
@@ -172,7 +172,7 @@ def zdy_bi_end_V230407(c: CZSC, **kwargs) -> OrderedDict:
                 and fx2.mark == Mark.D
                 and min([x.close for x in fx2.raw_bars]) < fx1.elements[-1].low
             ):
-                v2 = '内部顶停顿'
+                v2 = "内部顶停顿"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -212,7 +212,7 @@ def zdy_vibrate_V230406(cat: CzscTrader, freq1, freq2, **kwargs) -> OrderedDict:
     :return:
     """
     k1, k2, k3 = f"中枢震荡_{freq1}#{freq2}_BS辅助V230406".split("_")
-    v1 = '其他'
+    v1 = "其他"
     assert sorted_freqs.index(freq1) < sorted_freqs.index(freq2), "freq1 必须小于 freq2"
     c1: CZSC = cat.kas[freq1]
     c2: CZSC = cat.kas[freq2]
@@ -241,12 +241,12 @@ def zdy_vibrate_V230406(cat: CzscTrader, freq1, freq2, **kwargs) -> OrderedDict:
         and c1_bar.close > c1_bar.open
         and c1_bar.close > c1_lbi.fx_b.raw_bars[-1].high
     ):
-        temp = '底分停顿'
+        temp = "底分停顿"
 
     elif (
         c1_lbi.direction == Direction.Up and c1_bar.close < c1_bar.open and c1_bar.close < c1_lbi.fx_b.raw_bars[-1].low
     ):
-        temp = '顶分停顿'
+        temp = "顶分停顿"
 
     else:
         # 次级别分型没有停顿，不做
@@ -254,17 +254,17 @@ def zdy_vibrate_V230406(cat: CzscTrader, freq1, freq2, **kwargs) -> OrderedDict:
 
     # 判断中枢震荡买卖点
     c2_bar = c2.bars_raw[-1]
-    if temp == '顶分停顿' and c2_bar.cache[cache_key]['macd'] < 0:
+    if temp == "顶分停顿" and c2_bar.cache[cache_key]["macd"] < 0:
         P = c1_bar.close
         H = c1_lbi.high
         if H >= zg and (H - zg) < (zg - zd) and (H - P) * 3 < (zg - zd):
-            v1 = '看空'
+            v1 = "看空"
 
-    if temp == '底分停顿' and c2_bar.cache[cache_key]['macd'] > 0:
+    if temp == "底分停顿" and c2_bar.cache[cache_key]["macd"] > 0:
         P = c1_bar.close
         L = c1_lbi.low
         if L <= zd and (zd - L) < (zg - zd) and (P - L) * 3 < (zg - zd):
-            v1 = '看多'
+            v1 = "看多"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -294,71 +294,71 @@ def zdy_stop_loss_V230406(cat: CzscTrader, **kwargs) -> OrderedDict:
     freq1 = kwargs["freq1"]  # 笔的观察周期
     first_stop = int(kwargs.get("first_stop", 300))  # 进场点止损设置
     k1, k2, k3 = f"{freq1}_{pos_name}F{first_stop}_止损V230406".split("_")
-    v1, v2 = '其他', '其他'
-    if hasattr(cat, 'positions') is False:
+    v1, v2 = "其他", "其他"
+    if hasattr(cat, "positions") is False:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
     d3bi = c.bi_list[-3]
-    bis = [x for x in c.bi_list if x.fx_b.dt >= op['dt']]
+    bis = [x for x in c.bi_list if x.fx_b.dt >= op["dt"]]
     last_bar = c.bars_raw[-1]
 
     # 多头止损逻辑
-    if op['op'] == Operate.LO:
-        open_base_fx = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op['dt']][-1]
+    if op["op"] == Operate.LO:
+        open_base_fx = [x for x in c.fx_list if x.mark == Mark.D and x.dt < op["dt"]][-1]
         assert open_base_fx.mark == Mark.D, "开仓前最后一个分型必须是底分型"
         if last_bar.close < open_base_fx.low:
-            v1 = '多头止损'
-            v2 = '跌破分型低点'
+            v1 = "多头止损"
+            v2 = "跌破分型低点"
 
-        if (last_bar.close / op['price'] - 1) * 10000 <= -first_stop:
-            v1 = '多头止损'
-            v2 = '进场点止损'
+        if (last_bar.close / op["price"] - 1) * 10000 <= -first_stop:
+            v1 = "多头止损"
+            v2 = "进场点止损"
 
         if (
             len(bis) > 0
             and bis[-1].direction == Direction.Up
             and bis[-1].high > d3bi.high
-            and last_bar.close < op['price']
+            and last_bar.close < op["price"]
         ):
             assert bis[-1].direction == Direction.Up
-            v1 = '多头止损'
-            v2 = '跌破成本价'
+            v1 = "多头止损"
+            v2 = "跌破成本价"
 
         if len(bis) > 1 and bis[-1].direction == Direction.Up and last_bar.close < bis[-2].fx_b.low:
-            v1 = '多头止损'
-            v2 = '跌破上个向下笔底'
+            v1 = "多头止损"
+            v2 = "跌破上个向下笔底"
 
     # 空头止损逻辑
-    if op['op'] == Operate.SO:
-        open_base_fx = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op['dt']][-1]
+    if op["op"] == Operate.SO:
+        open_base_fx = [x for x in c.fx_list if x.mark == Mark.G and x.dt < op["dt"]][-1]
         assert open_base_fx.mark == Mark.G, "开仓前最后一个分型必须是底分型"
         if last_bar.close > open_base_fx.high:
-            v1 = '空头止损'
-            v2 = '升破分型高点'
+            v1 = "空头止损"
+            v2 = "升破分型高点"
 
-        if (1 - last_bar.close / op['price']) * 10000 <= -first_stop:
-            v1 = '空头止损'
-            v2 = '进场点止损'
+        if (1 - last_bar.close / op["price"]) * 10000 <= -first_stop:
+            v1 = "空头止损"
+            v2 = "进场点止损"
 
         if (
             len(bis) > 0
             and bis[-1].direction == Direction.Down
             and bis[-1].low < d3bi.low
-            and last_bar.close > op['price']
+            and last_bar.close > op["price"]
         ):
             assert d3bi.direction == Direction.Down
-            v1 = '空头止损'
-            v2 = '升破成本价'
+            v1 = "空头止损"
+            v2 = "升破成本价"
 
         if len(bis) > 1 and bis[-1].direction == Direction.Down and last_bar.close > bis[-2].fx_b.high:
-            v1 = '空头止损'
-            v2 = '升破上个向上笔顶'
+            v1 = "空头止损"
+            v2 = "升破上个向上笔顶"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -385,29 +385,29 @@ def zdy_take_profit_V230406(cat: CzscTrader, **kwargs) -> OrderedDict:
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]  # 笔的观察周期
     k1, k2, k3 = f"{freq1}_{pos_name}_止盈V230406".split("_")
-    v1, v2 = '其他', '其他'
+    v1, v2 = "其他", "其他"
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     op = pos.operates[-1]
     c = cat.kas[freq1]
-    bis = [x for x in c.bi_list if x.fx_b.dt >= op['dt']]
+    bis = [x for x in c.bi_list if x.fx_b.dt >= op["dt"]]
 
     # 多头止盈逻辑
-    if op['op'] == Operate.LO:
+    if op["op"] == Operate.LO:
         if len(bis) > 1 and bis[-1].direction == Direction.Up and bis[-1].high < bis[-2].high:
-            v1 = '多头止盈'
-            v2 = '向上笔不创新高'
+            v1 = "多头止盈"
+            v2 = "向上笔不创新高"
 
     # 空头止盈逻辑
-    if op['op'] == Operate.SO:
+    if op["op"] == Operate.SO:
         if len(bis) > 1 and bis[-1].direction == Direction.Down and bis[-1].low > bis[-2].low:
-            v1 = '空头止盈'
-            v2 = '向下笔不创新低'
+            v1 = "空头止盈"
+            v2 = "向下笔不创新低"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -433,33 +433,33 @@ def zdy_take_profit_V230407(cat: CzscTrader, **kwargs) -> OrderedDict:
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]  # 笔的观察周期
     k1, k2, k3 = f"{freq1}_{pos_name}_止盈V230407".split("_")
-    v1, v2 = '其他', '其他'
+    v1, v2 = "其他", "其他"
     if not hasattr(cat, "positions"):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]['op'] in [Operate.SE, Operate.LE]:
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     op = pos.operates[-1]
     c = cat.kas[freq1]
-    bis = [x for x in c.bi_list if x.fx_b.dt >= op['dt']]
+    bis = [x for x in c.bi_list if x.fx_b.dt >= op["dt"]]
     d2bi = c.bi_list[-2]
 
     if len(bis) <= 0 or bis[-1].length < 1.5 * d2bi.length:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     # 多头止盈逻辑
-    if op['op'] == Operate.LO and bis[-1].direction == Direction.Up and bis[-1].high < d2bi.high:
+    if op["op"] == Operate.LO and bis[-1].direction == Direction.Up and bis[-1].high < d2bi.high:
         assert d2bi.direction == Direction.Down
-        v1 = '多头止盈'
-        v2 = '向上笔不创新高'
+        v1 = "多头止盈"
+        v2 = "向上笔不创新高"
 
     # 空头止盈逻辑
-    if op['op'] == Operate.SO and bis[-1].direction == Direction.Down and bis[-1].low > d2bi.low:
+    if op["op"] == Operate.SO and bis[-1].direction == Direction.Down and bis[-1].low > d2bi.low:
         assert d2bi.direction == Direction.Up
-        v1 = '空头止盈'
-        v2 = '向下笔不创新低'
+        v1 = "空头止盈"
+        v2 = "向下笔不创新低"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -492,10 +492,10 @@ def zdy_zs_V230423(c: CZSC, **kwargs):
 
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}中枢形态_BS辅助V230423".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}中枢形态_BS辅助V230423".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 7 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -552,11 +552,11 @@ def zdy_macd_bc_V230422(c: CZSC, **kwargs):
     :return: 信号字典
     """
     cache_key = update_macd_cache(c, fastperiod=26, slowperiod=12, signalperiod=9)
-    di = int(kwargs.get('di', 1))
-    th = int(kwargs.get('th', 50))
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 50))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}T{th}MACD面积背驰_BS辅助V230422".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}T{th}MACD面积背驰_BS辅助V230422".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 7 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -571,21 +571,21 @@ def zdy_macd_bc_V230422(c: CZSC, **kwargs):
             continue
 
         bi1, bi2 = bis[0], bis[-1]
-        bi1_macd = [x.cache[cache_key]['macd'] for x in bi1.raw_bars[1:-1]]
-        bi2_macd = [x.cache[cache_key]['macd'] for x in bi2.raw_bars[1:-1]]
-        bi1_dif = bi1.raw_bars[-2].cache[cache_key]['dif']
-        bi2_dif = bi2.raw_bars[-2].cache[cache_key]['dif']
+        bi1_macd = [x.cache[cache_key]["macd"] for x in bi1.raw_bars[1:-1]]
+        bi2_macd = [x.cache[cache_key]["macd"] for x in bi2.raw_bars[1:-1]]
+        bi1_dif = bi1.raw_bars[-2].cache[cache_key]["dif"]
+        bi2_dif = bi2.raw_bars[-2].cache[cache_key]["dif"]
 
         zs_fxb_raw = [y for x in zs.bis for y in x.fx_b.raw_bars]
 
         if bi1.direction == Direction.Up:
             bi1_area = sum([x for x in bi1_macd if x > 0])
             bi2_area = sum([x for x in bi2_macd if x > 0])
-            dif_zero = min([x.cache[cache_key]['dif'] for x in zs_fxb_raw])
+            dif_zero = min([x.cache[cache_key]["dif"] for x in zs_fxb_raw])
         else:
             bi1_area = sum([x for x in bi1_macd if x < 0])
             bi2_area = sum([x for x in bi2_macd if x < 0])
-            dif_zero = max([x.cache[cache_key]['dif'] for x in zs_fxb_raw])
+            dif_zero = max([x.cache[cache_key]["dif"] for x in zs_fxb_raw])
 
         if bi2_area > bi1_area * th / 100:  # 如果面积背驰不成立，往下进行
             continue
@@ -643,11 +643,11 @@ def zdy_macd_bs1_V230422(c: CZSC, **kwargs):
     :return: 信号字典
     """
     cache_key = update_macd_cache(c, fastperiod=26, slowperiod=12, signalperiod=9)
-    di = int(kwargs.get('di', 1))
-    th = int(kwargs.get('th', 50))
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 50))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}T{th}MACD_BS1辅助V230422".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}T{th}MACD_BS1辅助V230422".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 7 or len(c.bars_ubi) > 9:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -662,20 +662,20 @@ def zdy_macd_bs1_V230422(c: CZSC, **kwargs):
             continue
 
         bi1, bi2 = bis[0], bis[-1]
-        bi1_area = sum([abs(x.cache[cache_key]['macd']) for x in bi1.raw_bars[1:-1]])
-        bi2_area = sum([abs(x.cache[cache_key]['macd']) for x in bi2.raw_bars[1:-1]])
-        bi1_dif = bi1.raw_bars[-2].cache[cache_key]['dif']
-        bi2_dif = bi2.raw_bars[-2].cache[cache_key]['dif']
-        bi2_start_dif = bi2.raw_bars[1].cache[cache_key]['dif']
+        bi1_area = sum([abs(x.cache[cache_key]["macd"]) for x in bi1.raw_bars[1:-1]])
+        bi2_area = sum([abs(x.cache[cache_key]["macd"]) for x in bi2.raw_bars[1:-1]])
+        bi1_dif = bi1.raw_bars[-2].cache[cache_key]["dif"]
+        bi2_dif = bi2.raw_bars[-2].cache[cache_key]["dif"]
+        bi2_start_dif = bi2.raw_bars[1].cache[cache_key]["dif"]
 
         if bi1.direction == Direction.Up:
             # 计算 zs 中向上笔的 dif 最大值
             up_bis = [x for x in zs.bis if x.direction == Direction.Up]
-            zs_dif = max([y.cache[cache_key]['dif'] for x in up_bis for y in x.fx_b.raw_bars])
+            zs_dif = max([y.cache[cache_key]["dif"] for x in up_bis for y in x.fx_b.raw_bars])
         else:
             # 计算 zs 中向下笔的 dif 最小值
             down_bis = [x for x in zs.bis if x.direction == Direction.Down]
-            zs_dif = min([y.cache[cache_key]['dif'] for x in down_bis for y in x.fx_b.raw_bars])
+            zs_dif = min([y.cache[cache_key]["dif"] for x in down_bis for y in x.fx_b.raw_bars])
 
         if bi2_area > bi1_area * th / 100:  # 如果面积背驰不成立，往下进行
             continue
@@ -726,10 +726,10 @@ def zdy_zs_space_V230421(c: CZSC, **kwargs):
         - di: 倒数第 di 根 K 线
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}中枢空间_BS辅助V230421".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}中枢空间_BS辅助V230421".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 7 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -786,27 +786,27 @@ def zdy_macd_dif_V230516(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
     :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
     cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
-    k1, k2, k3 = f"{freq}_D{di}DIF走平_BS辅助V230516".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_D{di}DIF走平_BS辅助V230516".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bars_raw) < 12 + di:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=10)
     # macd = bars[-1].cache[cache_key]['macd'] * 2
-    dif = [x.cache[cache_key]['dif'] for x in bars]
+    dif = [x.cache[cache_key]["dif"] for x in bars]
 
     dif_th = sum([abs(x - y) for x, y in zip(dif, dif[1:])]) / len(dif) * 0.2
     if dif[-1] - dif[-2] > -dif_th:
-        v1 = '看多'
-        min_macd = min([x.cache[cache_key]['macd'] for x in bars])
+        v1 = "看多"
+        min_macd = min([x.cache[cache_key]["macd"] for x in bars])
         v2 = "绿柱远离" if dif[-1] < min_macd * 2.5 else "柱子否定"
 
     if dif[-1] - dif[-2] < dif_th:
-        v1 = '看空'
-        max_macd = max([x.cache[cache_key]['macd'] for x in bars])
+        v1 = "看空"
+        max_macd = max([x.cache[cache_key]["macd"] for x in bars])
         v2 = "红柱远离" if dif[-1] > max_macd * 2.5 else "柱子否定"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -837,48 +837,48 @@ def zdy_macd_dif_V230517(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
     :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
     cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
-    k1, k2, k3 = f"{freq}_D{di}MACD开仓_BS辅助V230517".split('_')
+    k1, k2, k3 = f"{freq}_D{di}MACD开仓_BS辅助V230517".split("_")
     if len(c.bars_raw) < 50:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     bars = get_sub_elements(c.bars_raw, di=di, n=20)
-    macd = [x.cache[cache_key]['macd'] for x in bars]
-    dif = [x.cache[cache_key]['dif'] for x in bars]
+    macd = [x.cache[cache_key]["macd"] for x in bars]
+    dif = [x.cache[cache_key]["dif"] for x in bars]
 
     if dif[-1] > 0:
-        v1 = '看多'
+        v1 = "看多"
         v2 = None
         if all([x < 0 for x in dif[:-1]]):
-            v2 = 'DIF破零轴'
+            v2 = "DIF破零轴"
 
         if macd[-1] > 0 and macd[-2] < 0:
-            v2 = 'MACD金叉'
+            v2 = "MACD金叉"
 
         if macd[-5] > macd[-4] > macd[-3] > macd[-2] < macd[-1] and macd[-2] > 0:
-            v2 = 'MACD飞吻'
+            v2 = "MACD飞吻"
 
         if v2:
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     if dif[-1] < 0:
-        v1 = '看空'
+        v1 = "看空"
         v2 = None
         if all([x > 0 for x in dif[:-1]]):
-            v2 = 'DIF破零轴'
+            v2 = "DIF破零轴"
 
         if macd[-1] < 0 and macd[-2] > 0:
-            v2 = 'MACD死叉'
+            v2 = "MACD死叉"
 
         if macd[-5] < macd[-4] < macd[-3] < macd[-2] > macd[-1] and macd[-2] < 0:
-            v2 = 'MACD飞吻'
+            v2 = "MACD飞吻"
 
         if v2:
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
 
 def zdy_macd_V230518(c: CZSC, **kwargs) -> OrderedDict:
@@ -916,17 +916,17 @@ def zdy_macd_V230518(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
      :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 9))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 9))
     freq = c.freq.value
     cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
-    k1, k2, k3 = f"{freq}_D{di}MACD交叉N{n}_BS辅助V230518".split('_')
+    k1, k2, k3 = f"{freq}_D{di}MACD交叉N{n}_BS辅助V230518".split("_")
     if len(c.bars_raw) < 50:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     bars = get_sub_elements(c.bars_raw, di=di, n=n + 1)
-    macd = [x.cache[cache_key]['macd'] for x in bars]
-    v1 = '金叉' if macd[-1] > 0 else '死叉'
+    macd = [x.cache[cache_key]["macd"] for x in bars]
+    v1 = "金叉" if macd[-1] > 0 else "死叉"
 
     count = 0
     for m in macd[::-1]:
@@ -960,23 +960,23 @@ def zdy_macd_V230519(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
     :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 3))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 3))
     freq = c.freq.value
     cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
-    k1, k2, k3 = f"{freq}_D{di}N{n}MACD缩柱_BS辅助V230519".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}N{n}MACD缩柱_BS辅助V230519".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 50:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=n)
-    macd = [x.cache[cache_key]['macd'] for x in bars]
+    macd = [x.cache[cache_key]["macd"] for x in bars]
 
     if all([x > 0 for x in macd]) and all([macd[i] < macd[i - 1] for i in range(1, n)]):
-        v1 = '多头连续缩柱'
+        v1 = "多头连续缩柱"
 
     if all([x < 0 for x in macd]) and all([macd[i] > macd[i - 1] for i in range(1, n)]):
-        v1 = '空头连续缩柱'
+        v1 = "空头连续缩柱"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1002,28 +1002,28 @@ def zdy_macd_dif_iqr_V230521(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 参数字典
     :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
     cache_key = update_macd_cache(c, fastperiod=12, slowperiod=26, signalperiod=9)
-    k1, k2, k3 = f"{freq}_D{di}DIF走平IQR_BS辅助V230521".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_D{di}DIF走平IQR_BS辅助V230521".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bars_raw) < 50:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
-    macd = bars[-1].cache[cache_key]['macd'] * 2
-    dif = [x.cache[cache_key]['dif'] for x in bars]
+    macd = bars[-1].cache[cache_key]["macd"] * 2
+    dif = [x.cache[cache_key]["dif"] for x in bars]
 
     # 计算四分位距
     Q3, Q1 = np.percentile(dif, [75, 25])
     IQR = Q3 - Q1
 
     if max(dif[-3:]) - min(dif[-3:]) < IQR and macd < 0:
-        v1 = '看多'
+        v1 = "看多"
         v2 = "绿柱远离" if dif[-1] < macd else "柱子否定"
 
     if max(dif[-3:]) - min(dif[-3:]) < IQR and macd > 0:
-        v1 = '看空'
+        v1 = "看空"
         v2 = "红柱远离" if dif[-1] > macd else "柱子否定"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -1054,7 +1054,7 @@ def zdy_macd_V230527(c: CZSC, **kwargs) -> OrderedDict:
     assert key in ["DIF", "DEA", "MACD"]
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_{key}远离W{w}N{n}T{t}_BS辅助V230527".split("_")
-    v1 = '其他'
+    v1 = "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1094,22 +1094,22 @@ def zdy_dif_V230527(c: CZSC, **kwargs) -> OrderedDict:
     t = int(kwargs.get("t", 30))  # 远离零轴的阈值，越大越远离零轴；30表示3倍
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_N{n}T{t}_DIF远离V230527".split("_")
-    v1 = '其他'
+    v1 = "其他"
     if len(c.bars_raw) < 30 + n * 8:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=1, n=n * 8)
-    max_abs_dif_bar = max(bars[-n:], key=lambda x: abs(x.cache[cache_key]['dif']))
-    max_abs_dif = max_abs_dif_bar.cache[cache_key]['dif']
+    max_abs_dif_bar = max(bars[-n:], key=lambda x: abs(x.cache[cache_key]["dif"]))
+    max_abs_dif = max_abs_dif_bar.cache[cache_key]["dif"]
 
     if max_abs_dif > 0:
-        macd_seq = [x.cache[cache_key]['macd'] for x in bars if x.cache[cache_key]['macd'] > 0]
+        macd_seq = [x.cache[cache_key]["macd"] for x in bars if x.cache[cache_key]["macd"] > 0]
         if len(macd_seq) > n and abs(max_abs_dif) > max(macd_seq) * t / 10:
-            v1 = '多头远离'
+            v1 = "多头远离"
     elif max_abs_dif < 0:
-        macd_seq = [abs(x.cache[cache_key]['macd']) for x in bars if x.cache[cache_key]['macd'] < 0]
+        macd_seq = [abs(x.cache[cache_key]["macd"]) for x in bars if x.cache[cache_key]["macd"] < 0]
         if len(macd_seq) > n and abs(max_abs_dif) > max(macd_seq) * t / 10:
-            v1 = '空头远离'
+            v1 = "空头远离"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1136,7 +1136,7 @@ def zdy_dif_V230528(c: CZSC, **kwargs) -> OrderedDict:
     t = int(kwargs.get("t", 80))  # 峰谷排序的分位数
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_N{n}T{t}_DIF远离V230528".split("_")
-    v1 = '其他'
+    v1 = "其他"
 
     def _find_peaks_valleys(data):
         """在给定的一维数据中找到所有的峰值和谷值。
@@ -1163,7 +1163,7 @@ def zdy_dif_V230528(c: CZSC, **kwargs) -> OrderedDict:
 
         return peaks, valleys
 
-    dif_values = [x.cache[cache_key]['dif'] for x in c.bars_raw[-1000:]]
+    dif_values = [x.cache[cache_key]["dif"] for x in c.bars_raw[-1000:]]
     peaks, valleys = _find_peaks_valleys(dif_values)
 
     if len(peaks) < n or len(valleys) < n:
@@ -1173,10 +1173,10 @@ def zdy_dif_V230528(c: CZSC, **kwargs) -> OrderedDict:
     valleys_n = np.percentile(list(valleys.values()), 100 - t)
 
     if max(peaks.keys()) > max(valleys.keys()) and peaks[max(peaks.keys())] > peaks_n and dif_values[-1] > 0:
-        v1 = '多头远离'
+        v1 = "多头远离"
 
     if max(valleys.keys()) > max(peaks.keys()) and valleys[max(valleys.keys())] < valleys_n and dif_values[-1] < 0:
-        v1 = '空头远离'
+        v1 = "空头远离"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1184,7 +1184,7 @@ def zdy_dif_V230528(c: CZSC, **kwargs) -> OrderedDict:
 def pressure_support_V240222(c: CZSC, **kwargs) -> OrderedDict:
     """支撑压力线辅助V240222
 
-    参数模板："{freq}_D{di}高低点验证_支撑压力V240222"
+    参数模板："{freq}_D{di}W{w}高低点验证_支撑压力V240222"
 
     **信号逻辑：**
 
@@ -1196,20 +1196,20 @@ def pressure_support_V240222(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('60分钟_D1高低点验证_支撑压力V240222_压力位_任意_任意_0')
-    - Signal('60分钟_D1高低点验证_支撑压力V240222_支撑位_任意_任意_0')
+    - Signal('60分钟_D1W20高低点验证_支撑压力V240222_支撑位_任意_任意_0')
+    - Signal('60分钟_D1W20高低点验证_支撑压力V240222_压力位_任意_任意_0')
 
     :param c: CZSC对象
     :param kwargs: 无
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 1))
-    w = int(kwargs.get('w', 20))
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 20))
     assert w > 10, "参数 w 必须大于10"
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}高低点验证_支撑压力V240222".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}W{w}高低点验证_支撑压力V240222".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < w + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1228,11 +1228,118 @@ def pressure_support_V240222(c: CZSC, **kwargs) -> OrderedDict:
     left_high = max([x.high for x in left_bars])
     right_high = max([x.high for x in right_bars])
     if max_high == max(left_high, right_high) and max_high - min(left_high, right_high) < gap:
-        v1 = '压力位'
+        v1 = "压力位"
 
     left_low = min([x.low for x in left_bars])
     right_low = min([x.low for x in right_bars])
     if min_low == min(left_low, right_low) and max(left_low, right_low) - min_low < gap:
-        v1 = '支撑位'
+        v1 = "支撑位"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pressure_support_V240402(c: CZSC, **kwargs) -> OrderedDict:
+    """支撑压力线辅助V240402
+
+    参数模板："{freq}_D{di}W{w}_支撑压力V240402"
+
+    **信号逻辑：**
+
+    对于给定K线，判断是否存在支撑压力线，判断逻辑如下：
+
+    1. 当前收盘价落在5个以上的分型高低点区间内；
+    2. 当前收盘价在最近20根K线的最高价附近，认为是压力位；反之，认为是支撑位
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W60_支撑压力V240402_压力位_任意_任意_0')
+    - Signal('60分钟_D1W60_支撑压力V240402_支撑位_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 60))
+    assert w > 10, "参数 w 必须大于10"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}_支撑压力V240402".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < w + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    fxs = c.fx_list[-50:]
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+    gap = np.std([abs(x.high - x.low) for x in bars])
+    max_high = max([x.high for x in bars])
+    min_low = min([x.low for x in bars])
+
+    # 当前收盘价落在5个以上的分型高低点
+    near_fx = [fx for fx in fxs if fx.low <= bars[-1].close <= fx.high]
+    if len(near_fx) < 5 or max_high - min_low < gap * 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    hl_gap = max_high - min_low
+    if bars[-1].close > max_high - hl_gap * 0.2:
+        v1 = "压力位"
+
+    if bars[-1].close < min_low + hl_gap * 0.3:
+        v1 = "支撑位"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pressure_support_V240406(c: CZSC, **kwargs) -> OrderedDict:
+    """支撑压力线辅助V240406
+
+    参数模板："{freq}_D{di}W{w}_支撑压力V240406"
+
+    **信号逻辑：**
+
+    对于给定K线，判断是否存在支撑压力线，判断逻辑如下：
+
+    1. 当前收盘价在最近20根K线的最高价附近，认为是压力位；反之，认为是支撑位
+    2. 辅助判断：窗口内最高价附近有3个以上的分型
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W60_支撑压力V240406_压力位_任意_任意_0')
+    - Signal('60分钟_D1W60_支撑压力V240406_支撑位_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 60))
+    assert w > 10, "参数 w 必须大于10"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}_支撑压力V240406".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < w + 10:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    fxs = c.fx_list[-50:]
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+    gap = np.std([abs(x.high - x.low) for x in bars])
+    max_high = max([x.high for x in bars])
+    min_low = min([x.low for x in bars])
+
+    if max_high - min_low < gap * 3:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # 当前收盘价 +- 0.5倍波动率范围内有5个以上的分型高低点
+    near_high_fx = [fx for fx in fxs if fx.low < max_high < fx.high]
+    near_low_fx = [fx for fx in fxs if fx.low < min_low < fx.high]
+
+    hl_gap = max_high - min_low
+
+    if len(near_high_fx) >= 3 and bars[-1].close > max_high - hl_gap * 0.2:
+        v1 = "压力位"
+
+    if len(near_low_fx) >= 3 and bars[-1].close < min_low + hl_gap * 0.3:
+        v1 = "支撑位"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

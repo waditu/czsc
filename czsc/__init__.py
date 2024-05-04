@@ -14,7 +14,7 @@ from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
-from czsc.sensors.feature import FixedNumberSelector, FeatureAnalyzeBase
+from czsc.sensors.feature import FixedNumberSelector
 from czsc.traders import (
     CzscTrader,
     CzscSignals,
@@ -45,6 +45,8 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    overlap,
+
     format_standard_kline,
 
     KlineChart,
@@ -69,7 +71,7 @@ from czsc.utils import (
     cal_trade_price,
     update_bbars,
     update_tbars,
-    update_nbars,
+    update_nxb,
     risk_free_returns,
     resample_to_daily,
 
@@ -85,6 +87,7 @@ from czsc.utils import (
     net_value_stats,
     subtract_fee,
     top_drawdowns,
+    psi,
 
     home_path,
     DiskCache,
@@ -132,6 +135,10 @@ from czsc.utils.st_components import (
     show_optuna_study,
     show_drawdowns,
     show_rolling_daily_performance,
+    show_event_return,
+    show_psi,
+    show_strategies_symbol,
+    show_strategies_dailys,
 )
 
 from czsc.utils.bi_info import (
@@ -160,10 +167,19 @@ from czsc.features.utils import (
     normalize_corr,
 )
 
-__version__ = "0.9.48"
+
+from czsc.utils.kline_quality import (
+    check_high_low,
+    check_price_gap,
+    check_abnormal_volume,
+    check_zero_volume,
+)
+
+
+__version__ = "0.9.49"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240410"
+__date__ = "20240419"
 
 
 def welcome():

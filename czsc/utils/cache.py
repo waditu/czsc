@@ -15,10 +15,10 @@ import inspect
 import pandas as pd
 from pathlib import Path
 from loguru import logger
-from typing import Any
+from typing import Any, Union, AnyStr
 
 
-home_path = Path(os.environ.get("CZSC_HOME", os.path.join(os.path.expanduser("~"), '.czsc')))
+home_path = Path(os.environ.get("CZSC_HOME", os.path.join(os.path.expanduser("~"), ".czsc")))
 home_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -88,13 +88,13 @@ class DiskCache:
             return None
 
         if suffix == "pkl":
-            res = dill.load(open(file, 'rb'))
+            res = dill.load(open(file, "rb"))
         elif suffix == "json":
-            res = json.load(open(file, 'r', encoding='utf-8'))
+            res = json.load(open(file, "r", encoding="utf-8"))
         elif suffix == "txt":
-            res = file.read_text(encoding='utf-8')
+            res = file.read_text(encoding="utf-8")
         elif suffix == "csv":
-            res = pd.read_csv(file, encoding='utf-8')
+            res = pd.read_csv(file, encoding="utf-8")
         elif suffix == "xlsx":
             res = pd.read_excel(file)
         elif suffix == "feather":
@@ -117,24 +117,24 @@ class DiskCache:
             logger.info(f"缓存文件 {file} 将被覆盖")
 
         if suffix == "pkl":
-            dill.dump(v, open(file, 'wb'))
+            dill.dump(v, open(file, "wb"))
 
         elif suffix == "json":
             if not isinstance(v, dict):
                 raise ValueError("suffix json only support dict")
-            json.dump(v, open(file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            json.dump(v, open(file, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
         elif suffix == "txt":
             if not isinstance(v, str):
                 raise ValueError("suffix txt only support str")
-            file.write_text(v, encoding='utf-8')
+            file.write_text(v, encoding="utf-8")
 
         elif suffix == "csv":
             if not isinstance(v, pd.DataFrame):
                 raise ValueError("suffix csv only support pd.DataFrame")
-            v.to_csv(file, index=False, encoding='utf-8')
+            v.to_csv(file, index=False, encoding="utf-8")
 
-        elif suffix == 'xlsx':
+        elif suffix == "xlsx":
             if not isinstance(v, pd.DataFrame):
                 raise ValueError("suffix xlsx only support pd.DataFrame")
             v.to_excel(file, index=False)
@@ -160,13 +160,14 @@ class DiskCache:
         Path.unlink(file) if Path.exists(file) else None
 
 
-def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
+def disk_cache(path: Union[AnyStr, Path] = home_path, suffix: str = "pkl", ttl: int = -1):
     """缓存装饰器，支持多种数据格式
 
     :param path: 缓存文件夹父路径，默认为 home_path，每个函数的缓存文件夹为 path/func_name
     :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
     :param ttl: 缓存文件有效期，单位：秒
     """
+
     def decorator(func):
         nonlocal path
         _c = DiskCache(path=Path(path) / func.__name__)
@@ -177,7 +178,7 @@ def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
 
             hash_str = f"{func.__name__}{args}{kwargs}"
             code_str = inspect.getsource(func)
-            k = hashlib.md5((code_str + hash_str).encode('utf-8')).hexdigest().upper()[:8]
+            k = hashlib.md5((code_str + hash_str).encode("utf-8")).hexdigest().upper()[:8]
             k = f"{k}_{func.__name__}"
 
             if _c.is_found(k, suffix=suffix, ttl=ttl1):
@@ -194,7 +195,7 @@ def disk_cache(path: str = home_path, suffix: str = "pkl", ttl: int = -1):
     return decorator
 
 
-def clear_cache(path=home_path, subs=None, recreate=False):
+def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False):
     """清空缓存文件夹
 
     :param path: 缓存文件夹路径

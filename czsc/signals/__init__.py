@@ -103,6 +103,10 @@ from czsc.signals.bar import (
     bar_window_ps_V230731,
     bar_window_ps_V230801,
     bar_trend_V240209,
+    bar_plr_V240427,
+    bar_accelerate_V240428,
+    bar_polyfit_V240428,
+    bar_break_V240428,
 )
 
 from czsc.signals.jcc import (
@@ -205,6 +209,9 @@ from czsc.signals.pos import (
     pos_profit_loss_V230624,
     pos_status_V230808,
     pos_holds_V230807,
+    pos_holds_V240428,
+    pos_stop_V240428,
+    pos_take_V240428,
 )
 
 
@@ -248,6 +255,8 @@ from czsc.signals.zdy import (
     zdy_dif_V230527,
     zdy_dif_V230528,
     pressure_support_V240222,
+    pressure_support_V240402,
+    pressure_support_V240406,
 )
 
 

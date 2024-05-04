@@ -19,7 +19,7 @@ from czsc import RawBar, Freq
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
-dc = czsc.DataClient(url='http://zbczsc.com:9106', cache_path=cache_path)
+dc = czsc.DataClient(url="http://zbczsc.com:9106", cache_path=cache_path)
 
 
 def format_kline(kline: pd.DataFrame, freq: Freq):
@@ -41,9 +41,18 @@ def format_kline(kline: pd.DataFrame, freq: Freq):
     """
     bars = []
     for i, row in kline.iterrows():
-        bar = RawBar(symbol=row['code'], id=i, freq=freq, dt=row['dt'],
-                     open=row['open'], close=row['close'], high=row['high'],
-                     low=row['low'], vol=row['vol'], amount=row['amount'])
+        bar = RawBar(
+            symbol=row["code"],
+            id=i,
+            freq=freq,
+            dt=row["dt"],
+            open=row["open"],
+            close=row["close"],
+            high=row["high"],
+            low=row["low"],
+            vol=row["vol"],
+            amount=row["amount"],
+        )
         bars.append(bar)
     return bars
 
@@ -61,26 +70,26 @@ def get_symbols(name, **kwargs):
         return symbols
 
     if name == "ETF":
-        df = dc.etf_basic(v=2, fields='code,name', ttl=3600 * 6)
+        df = dc.etf_basic(v=2, fields="code,name", ttl=3600 * 6)
         dfk = dc.pro_bar(trade_date="2024-04-02", asset="e", v=2)
-        df = df[df['code'].isin(dfk['code'])].reset_index(drop=True)
+        df = df[df["code"].isin(dfk["code"])].reset_index(drop=True)
         symbols = [f"{row['code']}#ETF" for _, row in df.iterrows()]
         return symbols
 
     if name == "A股指数":
         # 指数 https://s0cqcxuy3p.feishu.cn/wiki/KuSAweAAhicvsGk9VPTc1ZWKnAd
-        df = dc.index_basic(v=2, market='SSE,SZSE', ttl=3600 * 6)
+        df = dc.index_basic(v=2, market="SSE,SZSE", ttl=3600 * 6)
         symbols = [f"{row['code']}#INDEX" for _, row in df.iterrows()]
         return symbols
 
     if name == "南华指数":
-        df = dc.index_basic(v=2, market='NH', ttl=3600 * 6)
-        symbols = [row['code'] for _, row in df.iterrows()]
+        df = dc.index_basic(v=2, market="NH", ttl=3600 * 6)
+        symbols = [row["code"] for _, row in df.iterrows()]
         return symbols
 
     if name == "期货主力":
         kline = dc.future_klines(trade_date="20240402", ttl=3600 * 6)
-        return kline['code'].unique().tolist()
+        return kline["code"].unique().tolist()
 
     if name.upper() == "ALL":
         symbols = get_symbols("股票") + get_symbols("ETF")
@@ -90,12 +99,12 @@ def get_symbols(name, **kwargs):
     raise ValueError(f"{name} 分组无法识别，获取标的列表失败！")
 
 
-def get_min_future_klines(code, sdt, edt, freq='1m'):
+def get_min_future_klines(code, sdt, edt, freq="1m"):
     """分段获取期货1分钟K线后合并"""
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
-    dates = pd.date_range(start=sdt, end=edt, freq='120D')
+    dates = pd.date_range(start=sdt, end=edt, freq="120D")
 
-    dates = [d.strftime('%Y%m%d') for d in dates] + [sdt, edt]
+    dates = [d.strftime("%Y%m%d") for d in dates] + [sdt, edt]
     dates = sorted(list(set(dates)))
 
     rows = []
@@ -108,25 +117,25 @@ def get_min_future_klines(code, sdt, edt, freq='1m'):
         rows.append(df)
 
     df = pd.concat(rows, ignore_index=True)
-    df.rename(columns={'code': 'symbol'}, inplace=True)
-    df['dt'] = pd.to_datetime(df['dt'])
-    df = df.drop_duplicates(subset=['dt', 'symbol'], keep='last')
+    df.rename(columns={"code": "symbol"}, inplace=True)
+    df["dt"] = pd.to_datetime(df["dt"])
+    df = df.drop_duplicates(subset=["dt", "symbol"], keep="last")
 
-    if code in ['SFIC9001', 'SFIF9001', 'SFIH9001']:
+    if code in ["SFIC9001", "SFIF9001", "SFIH9001"]:
         # 股指：仅保留 09:31 - 11:30, 13:01 - 15:00
         dt1 = datetime.strptime("09:31:00", "%H:%M:%S")
         dt2 = datetime.strptime("11:30:00", "%H:%M:%S")
-        c1 = (df['dt'].dt.time >= dt1.time()) & (df['dt'].dt.time <= dt2.time())
+        c1 = (df["dt"].dt.time >= dt1.time()) & (df["dt"].dt.time <= dt2.time())
 
         dt3 = datetime.strptime("13:01:00", "%H:%M:%S")
         dt4 = datetime.strptime("15:00:00", "%H:%M:%S")
-        c2 = (df['dt'].dt.time >= dt3.time()) & (df['dt'].dt.time <= dt4.time())
+        c2 = (df["dt"].dt.time >= dt3.time()) & (df["dt"].dt.time <= dt4.time())
 
         df = df[c1 | c2].copy().reset_index(drop=True)
     return df
 
 
-def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     """获取 CZSC 库定义的标准 RawBar 对象列表
 
     :param symbol: 标的代码
@@ -142,8 +151,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     >>> df = coo.get_raw_bars(symbol="000001.SH#INDEX", freq="日线", sdt="2001-01-01", edt="2021-12-31", fq='后复权', raw_bars=False)
     """
     freq = czsc.Freq(freq)
-    raw_bars = kwargs.get('raw_bars', True)
-    ttl = kwargs.get('ttl', -1)
+    raw_bars = kwargs.get("raw_bars", True)
+    ttl = kwargs.get("ttl", -1)
 
     if "SH" in symbol or "SZ" in symbol:
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
@@ -151,17 +160,17 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
 
         code, asset = symbol.split("#")
 
-        if freq.value.endswith('分钟'):
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='min', adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
-            df = df[~df['dt'].str.endswith("09:30:00")].reset_index(drop=True)
-            df.rename(columns={'code': 'symbol'}, inplace=True)
-            df['dt'] = pd.to_datetime(df['dt'])
-            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
+        if freq.value.endswith("分钟"):
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="min", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df = df[~df["dt"].str.endswith("09:30:00")].reset_index(drop=True)
+            df.rename(columns={"code": "symbol"}, inplace=True)
+            df["dt"] = pd.to_datetime(df["dt"])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
 
         else:
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq='day', adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
-            df.rename(columns={'code': 'symbol'}, inplace=True)
-            df['dt'] = pd.to_datetime(df['dt'])
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="day", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df.rename(columns={"code": "symbol"}, inplace=True)
+            df["dt"] = pd.to_datetime(df["dt"])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith("9001"):
@@ -169,34 +178,41 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
         if fq == "前复权":
             logger.warning("期货主力合约暂时不支持前复权，已自动切换为后复权")
 
-        freq_rd = '1m' if freq.value.endswith('分钟') else '1d'
-        if freq.value.endswith('分钟'):
-            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq='1m')
-            df['amount'] = df['vol'] * df['close']
-            df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
-            df['dt'] = pd.to_datetime(df['dt'])
-            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq='1分钟')
+        freq_rd = "1m" if freq.value.endswith("分钟") else "1d"
+        if freq.value.endswith("分钟"):
+            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m")
+            if "amount" not in df.columns:
+                df["amount"] = df["vol"] * df["close"]
+
+            df = df[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]].copy().reset_index(drop=True)
+            df["dt"] = pd.to_datetime(df["dt"])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
 
         else:
             df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd, ttl=ttl)
-            df.rename(columns={'code': 'symbol'}, inplace=True)
-            df['amount'] = df['vol'] * df['close']
-            df = df[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']].copy().reset_index(drop=True)
-            df['dt'] = pd.to_datetime(df['dt'])
+            df.rename(columns={"code": "symbol"}, inplace=True)
+            if "amount" not in df.columns:
+                df["amount"] = df["vol"] * df["close"]
+
+            df = df[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]].copy().reset_index(drop=True)
+            df["dt"] = pd.to_datetime(df["dt"])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     if symbol.endswith(".NH"):
         if freq != Freq.D:
             raise ValueError("南华指数只支持日线数据")
-        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl)
+        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl, v=2)
+        df.rename(columns={"code": "symbol", "volume": "vol"}, inplace=True)
+        df["dt"] = pd.to_datetime(df["dt"])
+        return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
 
 
 @czsc.disk_cache(path=cache_path, ttl=-1)
-def stocks_daily_klines(sdt='20170101', edt="20240101", **kwargs):
+def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     """获取全市场A股的日线数据"""
-    adj = kwargs.get('adj', 'hfq')
+    adj = kwargs.get("adj", "hfq")
     sdt = pd.to_datetime(sdt).year
     edt = pd.to_datetime(edt).year
     years = [str(year) for year in range(sdt, edt + 1)]
@@ -208,18 +224,18 @@ def stocks_daily_klines(sdt='20170101', edt="20240101", **kwargs):
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
-    dfk['dt'] = pd.to_datetime(dfk['dt'])
-    dfk = dfk.sort_values(['code', 'dt'], ascending=True).reset_index(drop=True)
-    if kwargs.get('exclude_bj', True):
-        dfk = dfk[~dfk['code'].str.endswith(".BJ")].reset_index(drop=True)
+    dfk["dt"] = pd.to_datetime(dfk["dt"])
+    dfk = dfk.sort_values(["code", "dt"], ascending=True).reset_index(drop=True)
+    if kwargs.get("exclude_bj", True):
+        dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)
 
-    nxb = kwargs.get('nxb', [1, 2, 5])
+    nxb = kwargs.get("nxb", [1, 2, 5])
     if nxb:
         rows = []
-        for _, dfg in tqdm(dfk.groupby('code'), desc="计算NXB收益率", ncols=80, colour='green'):
-            czsc.update_nbars(dfg, numbers=nxb, move=1, price_col='open')
+        for _, dfg in tqdm(dfk.groupby("code"), desc="计算NXB收益率", ncols=80, colour="green"):
+            czsc.update_nbars(dfg, numbers=nxb, move=1, price_col="open")
             rows.append(dfg)
         dfk = pd.concat(rows, ignore_index=True)
 
-    dfk = dfk.rename(columns={'code': 'symbol'})
+    dfk = dfk.rename(columns={"code": "symbol"})
     return dfk

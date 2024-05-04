@@ -7,13 +7,15 @@ describe:
 """
 import pandas as pd
 import matplotlib.pyplot as plt
+from deprecated import deprecated
 
 
-plt.style.use('ggplot')
-plt.rcParams['font.sans-serif'] = ['SimHei']
-plt.rcParams['axes.unicode_minus'] = False
+plt.style.use("ggplot")
+plt.rcParams["font.sans-serif"] = ["SimHei"]
+plt.rcParams["axes.unicode_minus"] = False
 
 
+@deprecated(version="1.0.0", reason="不再使用，后面统一采用 plotly 绘图")
 def plot_net_value(df: pd.DataFrame, file_png: str = None, figsize=(9, 5), title=None):
     """绘制含净值曲线
 
@@ -35,9 +37,9 @@ def plot_net_value(df: pd.DataFrame, file_png: str = None, figsize=(9, 5), title
     :return:
     """
     df = df.copy()
-    if '累计净值' not in df.columns:
-        df['累计净值'] = df['截面收益'].cumsum()
-        df['动态回撤'] = ((df['累计净值'] + 10000) / (df['累计净值'] + 10000).cummax() - 1) * 10000 + 10000
+    if "累计净值" not in df.columns:
+        df["累计净值"] = df["截面收益"].cumsum()
+        df["动态回撤"] = ((df["累计净值"] + 10000) / (df["累计净值"] + 10000).cummax() - 1) * 10000 + 10000
 
     plt.close()
     fig, ax1 = plt.subplots(figsize=figsize)
@@ -45,26 +47,27 @@ def plot_net_value(df: pd.DataFrame, file_png: str = None, figsize=(9, 5), title
     ax2 = ax1.twinx()
     if title:
         plt.title(title)
-    x = pd.to_datetime(df['dt'])
-    ax1.plot(x, df['累计净值'], "r-", alpha=0.4, label='累计净值')
-    ax1.bar(x, df['截面收益'], width=0.2, alpha=0.4, color='g', label='截面收益')
+    x = pd.to_datetime(df["dt"])
+    ax1.plot(x, df["累计净值"], "r-", alpha=0.4, label="累计净值")
+    ax1.bar(x, df["截面收益"], width=0.2, alpha=0.4, color="g", label="截面收益")
 
-    ax2.plot(x, df['动态回撤'], "b-", alpha=0.4, label='动态回撤')
-    ax2.grid(axis="y", ls='--')
+    ax2.plot(x, df["动态回撤"], "b-", alpha=0.4, label="动态回撤")
+    ax2.grid(axis="y", ls="--")
 
     ax1.set_ylabel("净值（单位: BP）")
     ax2.set_ylabel("回撤（单位: BP）")
 
     fig.legend(loc="upper left")
     if file_png:
-        plt.savefig(file_png, bbox_inches='tight', dpi=100)
+        plt.savefig(file_png, bbox_inches="tight", dpi=100)
     else:
         plt.show()
 
     return fig
 
 
-def plot_bins_return(dfv, bins_col='ma_score_bins10', file_png="bins.png"):
+@deprecated(version="1.0.0", reason="不再使用，后面统一采用 plotly 绘图")
+def plot_bins_return(dfv, bins_col="ma_score_bins10", file_png="bins.png"):
     """绘制 bins_col 的分层收益曲线
 
     :param dfv: 日频分层数据，数据样例如下，dt、n1b、bins_col 是必须的列
@@ -78,43 +81,43 @@ def plot_bins_return(dfv, bins_col='ma_score_bins10', file_png="bins.png"):
     :param file_png: 绘图结果文件
     :return:
     """
-    dfv['dt'] = pd.to_datetime(dfv['dt'])
-    nv = dfv.groupby('dt')[['n1b']].mean()
-    nv.rename({'n1b': 'base'}, axis=1, inplace=True)
+    dfv["dt"] = pd.to_datetime(dfv["dt"])
+    nv = dfv.groupby("dt")[["n1b"]].mean()
+    nv.rename({"n1b": "base"}, axis=1, inplace=True)
     nv.reset_index(drop=False, inplace=True)
 
     # 绘制收益曲线
     plt.close()
     n = dfv[bins_col].nunique()
-    fig = plt.figure(figsize=(13, 4*n))
+    fig = plt.figure(figsize=(13, 4 * n))
     axes = fig.subplots(n, 1, sharex=True)
 
     for i, v in enumerate(sorted(dfv[bins_col].unique())):
         dfg = dfv[dfv[bins_col] == v]
         _nv = nv.copy(deep=True)
-        n1b = dfg.groupby('dt')[['n1b']].mean().reset_index(drop=False)
-        _nv = _nv.merge(n1b, on=['dt'], how='left')
+        n1b = dfg.groupby("dt")[["n1b"]].mean().reset_index(drop=False)
+        _nv = _nv.merge(n1b, on=["dt"], how="left")
         _nv = _nv.fillna(0)
 
-        _nv['nv1'] = _nv['n1b'].cumsum()
-        _nv['nv2'] = _nv['base'].cumsum()
-        _nv['nv3'] = _nv['nv1'] - _nv['nv2']
-        event = f'{bins_col}_{v}'
+        _nv["nv1"] = _nv["n1b"].cumsum()
+        _nv["nv2"] = _nv["base"].cumsum()
+        _nv["nv3"] = _nv["nv1"] - _nv["nv2"]
+        event = f"{bins_col}_{v}"
 
-        mean_counts = round(dfg.groupby('dt')['n1b'].count().mean(), 2)
+        mean_counts = round(dfg.groupby("dt")["n1b"].count().mean(), 2)
 
         ax = axes[i]
         ax.set_title(f"{event}，平均持仓数={mean_counts}")
-        x = _nv['dt']
-        ax.plot(x, _nv['nv3'], "r-", alpha=0.4)
-        ax.plot(x, _nv['nv2'], "b-", alpha=0.4)
-        ax.plot(x, _nv['nv1'], "g-", alpha=0.4)
-        ax.legend(['超额收益', "基准收益", '组合收益'], loc='upper left')
+        x = _nv["dt"]
+        ax.plot(x, _nv["nv3"], "r-", alpha=0.4)
+        ax.plot(x, _nv["nv2"], "b-", alpha=0.4)
+        ax.plot(x, _nv["nv1"], "g-", alpha=0.4)
+        ax.legend(["超额收益", "基准收益", "组合收益"], loc="upper left")
         ax.set_ylabel("净值（单位: BP）")
         plt.xticks(rotation=45)
 
     plt.tight_layout()
     if file_png:
-        plt.savefig(file_png, bbox_inches='tight', dpi=100)
+        plt.savefig(file_png, bbox_inches="tight", dpi=100)
         plt.close()
     return fig
