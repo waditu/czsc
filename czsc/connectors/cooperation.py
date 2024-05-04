@@ -15,11 +15,11 @@ from loguru import logger
 from datetime import datetime
 from czsc import RawBar, Freq
 
-# 首次使用需要打开一个python终端按如下方式设置 token
+# 首次使用需要打开一个python终端按如下方式设置 token或者在环境变量中设置 CZSC_TOKEN
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
-dc = czsc.DataClient(url="http://zbczsc.com:9106", cache_path=cache_path)
+dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
 
 
 def format_kline(kline: pd.DataFrame, freq: Freq):
