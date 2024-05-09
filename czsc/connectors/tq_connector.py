@@ -186,6 +186,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 
         - tq_user: str, 天勤账户
         - tq_pass: str, 天勤密码
+        - raw_bars: bool, 是否返回 RawBar 对象列表，默认为 True
 
     :return: RawBar 对象列表 or DataFrame
     """
@@ -208,7 +209,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     df = df[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]].copy()
 
     df = df[(df["dt"] >= pd.to_datetime(sdt)) & (df["dt"] <= pd.to_datetime(edt))].reset_index(drop=True)
-    return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
+    return czsc.resample_bars(df, target_freq=freq, raw_bars=kwargs.get("raw_bars", True))
 
 
 def get_daily_backup(api: TqApi, **kwargs):
