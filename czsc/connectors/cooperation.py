@@ -101,6 +101,8 @@ def get_symbols(name, **kwargs):
 
 def get_min_future_klines(code, sdt, edt, freq="1m"):
     """分段获取期货1分钟K线后合并"""
+    sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
+    edt = pd.to_datetime(edt).strftime("%Y%m%d")
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
     dates = pd.date_range(start=sdt, end=edt, freq="120D")
 
@@ -153,6 +155,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     freq = czsc.Freq(freq)
     raw_bars = kwargs.get("raw_bars", True)
     ttl = kwargs.get("ttl", -1)
+    sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
+    edt = pd.to_datetime(edt).strftime("%Y%m%d")
 
     if "SH" in symbol or "SZ" in symbol:
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
