@@ -156,6 +156,64 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = 'm
     return dfp[['dt', 'symbol', 'weight', 'price']].copy()
 
 
+def stoploss_by_direction(dfw, stoploss=0.03, **kwargs):
+    """按持仓方向进行止损
+
+    :param dfw: pd.DataFrame, columns = ['dt', 'symbol', 'weight', 'price'], 持仓权重数据，其中
+
+        dt      为K线结束时间，必须是连续的交易时间序列，不允许有时间断层
+        symbol  为合约代码，
+        weight  为K线结束时间对应的持仓权重，品种之间的权重是独立的，不会互相影响
+        price   为结束时间对应的交易价格，可以是当前K线的收盘价，或者下一根K线的开盘价，或者未来N根K线的TWAP、VWAP等
+
+        数据样例如下：
+        ===================  ========  ========  =======
+        dt                   symbol      weight    price
+        ===================  ========  ========  =======
+        2019-01-02 09:01:00  DLi9001       0.5   961.695
+        2019-01-02 09:02:00  DLi9001       0.25  960.72
+        2019-01-02 09:03:00  DLi9001       0.25  962.669
+        2019-01-02 09:04:00  DLi9001       0.25  960.72
+        2019-01-02 09:05:00  DLi9001       0.25  961.695
+        ===================  ========  ========  =======
+
+    :param stoploss: 止损比例
+    :param kwargs: 其他参数
+    :return: pd.DataFrame，
+        columns = ['dt', 'symbol', 'weight', 'raw_weight', 'price', 'returns',
+                   'hold_returns', 'min_hold_returns', 'order_id', 'is_stop']
+    """
+    dfw = dfw.copy()
+    dfw['direction'] = np.sign(dfw['weight'])
+    dfw['raw_weight'] = dfw['weight'].copy()
+    assert stoploss > 0, "止损比例必须大于0"
+
+    rows = []
+    for _, dfg in dfw.groupby('symbol'):
+        assert isinstance(dfg, pd.DataFrame)
+        assert dfg['dt'].is_monotonic_increasing, "dt 必须是递增的时间序列"
+        dfg = dfg.sort_values('dt', ascending=True)
+
+        # 按交易方向设置订单号
+        dfg['order_id'] = dfg.groupby((dfg['direction'] != dfg['direction'].shift()).cumsum()).ngroup()
+
+        # 按持仓权重计算收益
+        dfg['n1b'] = dfg['price'].shift(-1) / dfg['price'] - 1
+        dfg['returns'] = dfg['n1b'] * dfg['weight']
+        dfg['hold_returns'] = dfg['returns'].groupby(dfg['order_id']).cumsum()
+        dfg['min_hold_returns'] = dfg.groupby('order_id')['hold_returns'].cummin()
+
+        # 止损：同一个订单下，min_hold_returns < -stoploss时，后续weight置为0
+        dfg['is_stop'] = (dfg['min_hold_returns'] < -stoploss) & (dfg['order_id'] == dfg['order_id'].shift(1))
+        c1 = dfg['is_stop'].shift(1) & (dfg['order_id'] == dfg['order_id'].shift(1))
+        dfg.loc[c1, 'weight'] = 0
+        dfg['weight'] = np.where(c1, 0, dfg['weight'])
+        rows.append(dfg.copy())
+
+    dfw1 = pd.concat(rows, ignore_index=True)
+    return dfw1
+
+
 class WeightBacktest:
     """持仓权重回测
 
@@ -173,7 +231,7 @@ class WeightBacktest:
         3. 检查self.dfw中是否存在空值，如果存在则抛出ValueError异常，并提示"dfw 中存在空值，请先处理"。
         4. 设置实例变量self.digits为传入的digits值。
         5. 从kwargs中获取'fee_rate'参数的值，默认为0.0002，并将其保存在实例变量self.fee_rate中。
-        6. 将self.dfw中的'weight'列转换为浮点型，并保留self.digits位小数。
+        6. 将self.dfw中的 weight 列转换为浮点型，并保留self.digits位小数。
         7. 提取self.dfw中的唯一交易标的符号，并将其保存在实例变量self.symbols中。
         8. 执行backtest()方法进行回测，并将结果保存在实例变量self.results中。
 
@@ -211,6 +269,16 @@ class WeightBacktest:
         self.symbols = list(self.dfw['symbol'].unique().tolist())
         default_n_jobs = min(cpu_count() // 2, len(self.symbols))
         self.results = self.backtest(n_jobs=kwargs.get('n_jobs', default_n_jobs))
+
+    @property
+    def stats(self):
+        """回测绩效评价"""
+        return self.results.get('绩效评价', {})
+
+    @property
+    def daily_return(self) -> pd.DataFrame:
+        """品种等权费后日收益率"""
+        return self.results.get('品种等权日收益', pd.DataFrame())
 
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
@@ -295,8 +363,8 @@ class WeightBacktest:
 
         def __add_operate(dt, bar_id, volume, price, operate):
             for _ in range(abs(volume)):
-                op = {'bar_id': bar_id, "dt": dt, "price": price, "operate": operate}
-                operates.append(op)
+                _op = {'bar_id': bar_id, "dt": dt, "price": price, "operate": operate}
+                operates.append(_op)
 
         rows = dfs.to_dict(orient='records')
 
@@ -322,12 +390,12 @@ class WeightBacktest:
                 elif row2['volume'] < row1['volume']:
                     __add_operate(row2['dt'], row2['bar_id'], row2['volume'] - row1['volume'], row2['price'], operate='开空')
 
-            elif row1['volume'] >= 0 and row2['volume'] <= 0:
+            elif row1['volume'] >= 0 >= row2['volume']:
                 # 多头转换成空头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平多')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开空')
 
-            elif row1['volume'] <= 0 and row2['volume'] >= 0:
+            elif row1['volume'] <= 0 <= row2['volume']:
                 # 空头转换成多头对应的操作
                 __add_operate(row2['dt'], row2['bar_id'], row1['volume'], row2['price'], operate='平空')
                 __add_operate(row2['dt'], row2['bar_id'], row2['volume'], row2['price'], operate='开多')
@@ -385,12 +453,12 @@ class WeightBacktest:
         symbols = self.symbols
         res = {}
         if n_jobs <= 1:
-            for symbol in tqdm(sorted(symbols), desc="WBT进度"):
+            for symbol in tqdm(sorted(symbols), desc="WBT进度", leave=False):
                 res[symbol] = self.process_symbol(symbol)[1]
         else:
             with ProcessPoolExecutor(n_jobs) as pool:
                 for symbol, res_symbol in tqdm(pool.map(self.process_symbol, sorted(symbols)),
-                                               desc="WBT进度", total=len(symbols)):
+                                               desc="WBT进度", total=len(symbols), leave=False):
                     res[symbol] = res_symbol
 
         dret = pd.concat([v['daily'] for k, v in res.items() if k in symbols], ignore_index=True)
@@ -404,6 +472,10 @@ class WeightBacktest:
         pairs_stats = evaluate_pairs(dfp)
         pairs_stats = {k: v for k, v in pairs_stats.items() if k in ['单笔收益', '持仓K线数', '交易胜率', '持仓天数']}
         stats.update(pairs_stats)
+
+        dfw = self.dfw.copy()
+        long_rate = dfw[dfw['weight'] > 0].shape[0] / dfw.shape[0]
+        stats.update({"多头占比": long_rate})
 
         res['绩效评价'] = stats
         return res

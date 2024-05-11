@@ -22,7 +22,8 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
     :return: pd.DataFrame
     """
     from czsc.utils.calendar import get_trading_dates
-    trade_dates = get_trading_dates(start_date, end_date)   # type: ignore
+
+    trade_dates = get_trading_dates(start_date, end_date)  # type: ignore
     df = pd.DataFrame({"date": trade_dates, "returns": year_returns / 252})
     return df
 
@@ -52,57 +53,65 @@ def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwarg
     df = pd.DataFrame(bars) if isinstance(bars, list) else bars
 
     # 下根K线开盘、收盘
-    df['next_open'] = df['open'].shift(-1)
-    df['next_close'] = df['close'].shift(-1)
-    price_cols = ['next_open', 'next_close']
+    df["next_open"] = df["open"].shift(-1)
+    df["next_close"] = df["close"].shift(-1)
+    price_cols = ["next_open", "next_close"]
 
     # TWAP / VWAP 价格
-    df['vol_close_prod'] = df['vol'] * df['close']
-    for t in kwargs.get('t_seq', (5, 10, 15, 20, 30, 60)):
-        df[f"TWAP{t}"] = df['close'].rolling(t).mean().shift(-t)
-        df[f"sum_vol_{t}"] = df['vol'].rolling(t).sum()
-        df[f"sum_vcp_{t}"] = df['vol_close_prod'].rolling(t).sum()
+    df["vol_close_prod"] = df["vol"] * df["close"]
+    for t in kwargs.get("t_seq", (5, 10, 15, 20, 30, 60)):
+        df[f"TWAP{t}"] = df["close"].rolling(t).mean().shift(-t)
+        df[f"sum_vol_{t}"] = df["vol"].rolling(t).sum()
+        df[f"sum_vcp_{t}"] = df["vol_close_prod"].rolling(t).sum()
         df[f"VWAP{t}"] = (df[f"sum_vcp_{t}"] / df[f"sum_vol_{t}"]).shift(-t)
         price_cols.extend([f"TWAP{t}", f"VWAP{t}"])
         df.drop(columns=[f"sum_vol_{t}", f"sum_vcp_{t}"], inplace=True)
 
-    df.drop(columns=['vol_close_prod'], inplace=True)
+    df.drop(columns=["vol_close_prod"], inplace=True)
     # 用当前K线的收盘价填充交易价中的 nan 值
     for price_col in price_cols:
-        df.loc[df[price_col].isnull(), price_col] = df[df[price_col].isnull()]['close']
+        df.loc[df[price_col].isnull(), price_col] = df[df[price_col].isnull()]["close"]
 
     df[price_cols] = df[price_cols].round(decimals)
     return df
 
 
-def update_nbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30), move=0) -> None:
-    """在给定的 da 上计算并添加后面 n 根 bar 的累计收益列
+def update_nxb(df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    """在给定的 df 上计算并添加后面 n 根 bar 的累计收益列
 
     收益计量单位：BP；1倍涨幅 = 10000BP
 
-    函数的逻辑如下：
+    :param df: 数据，DataFrame结构，必须包含 dt, symbol, price 列
+    :param kwargs: 参数字典
 
-    1. 首先，检查 price_col 是否在输入的 DataFrame（da）的列名中。如果不在，抛出 ValueError。
-    2. 确保 move 是一个非负整数。
-    3. 使用 for 循环遍历 numbers 列表中的每个整数 n, 对于每个整数 n，计算 n 根 bar 的累计收益。
-    4. 返回 None，表示这个函数会直接修改输入的 DataFrame（da），而不返回新的 DataFrame。
+        - nseq: 考察的bar的数目的列表，默认为 (1, 2, 3, 5, 8, 10, 13)
+        - bp: 是否将收益转换为BP，默认为 False
 
-    :param da: 数据，DataFrame结构
-    :param price_col: 价格列
-    :param numbers: 考察的bar的数目的列表
-    :param move: 收益计算是否要整体移位，move必须是非负整数
-        一般是当前bar的close计算收益，也可以考虑是下根bar的open。这个时候 move=1。
-    :return nbars_cols: 后面n根bar的bp值列名
+    :return: pd.DataFrame
     """
-    if price_col not in da.columns:
-        raise ValueError(f"price_col {price_col} not in da.columns")
+    if kwargs.copy():
+        df = df.copy()
 
-    assert move >= 0
-    for n in numbers:
-        da[f"n{n}b"] = (da[price_col].shift(-n - move) / da[price_col].shift(-move) - 1) * 10000.0
+    assert "dt" in df.columns, "必须包含 dt 列，标记K线结束时刻"
+    assert "symbol" in df.columns, "必须包含 symbol 列，标记K线所属的品种"
+    assert "price" in df.columns, "必须包含 price 列，标记K线结束时刻的可交易价格"
+
+    df["dt"] = pd.to_datetime(df["dt"])
+    df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
+
+    nseq = kwargs.get("nseq", (1, 2, 3, 5, 8, 10, 13))
+    for symbol, dfg in df.groupby("symbol"):
+
+        for n in nseq:
+            dfg[f"n{n}b"] = dfg["price"].shift(-n) / dfg["price"] - 1
+            df.loc[dfg.index, f"n{n}b"] = dfg[f"n{n}b"].fillna(0)
+
+            if kwargs.get("bp", False) is True:
+                df[f"n{n}b"] = df[f"n{n}b"] * 10000
+    return df
 
 
-def update_bbars(da, price_col='close', numbers=(1, 2, 5, 10, 20, 30)) -> None:
+def update_bbars(da, price_col="close", numbers=(1, 2, 5, 10, 20, 30)) -> None:
     """在给定的 da 数据上计算并添加前面 n 根 bar 的累计收益列
 
     函数的逻辑如下：
@@ -140,9 +149,9 @@ def update_tbars(da: pd.DataFrame, event_col: str) -> None:
     :param event_col: 事件信号列名，含有 0, 1, -1 三种值，0 表示无事件，1 表示看多事件，-1 表示看空事件
     :return: None
     """
-    n_seq = [int(x.strip('nb')) for x in da.columns if x[0] == 'n' and x[-1] == 'b']
+    n_seq = [int(x.strip("nb")) for x in da.columns if x[0] == "n" and x[-1] == "b"]
     for n in n_seq:
-        da[f't{n}b'] = da[f'n{n}b'] * da[event_col]
+        da[f"t{n}b"] = da[f"n{n}b"] * da[event_col]
 
 
 def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True):
@@ -166,29 +175,29 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     """
     from czsc.utils.calendar import get_trading_dates
 
-    df['dt'] = pd.to_datetime(df['dt'])
-    sdt = df['dt'].min() if not sdt else pd.to_datetime(sdt)
-    edt = df['dt'].max() if not edt else pd.to_datetime(edt)
+    df["dt"] = pd.to_datetime(df["dt"])
+    sdt = df["dt"].min() if not sdt else pd.to_datetime(sdt)
+    edt = df["dt"].max() if not edt else pd.to_datetime(edt)
 
     # 创建日期序列
     if only_trade_date:
         trade_dates = get_trading_dates(sdt=sdt, edt=edt)
     else:
-        trade_dates = pd.date_range(sdt, edt, freq='D').tolist()
-    trade_dates = pd.DataFrame({'date': trade_dates})
-    trade_dates = trade_dates.sort_values('date', ascending=True).reset_index(drop=True)
+        trade_dates = pd.date_range(sdt, edt, freq="D").tolist()
+    trade_dates = pd.DataFrame({"date": trade_dates})
+    trade_dates = trade_dates.sort_values("date", ascending=True).reset_index(drop=True)
 
     # 通过 merge_asof 找到每个日期对应原始 df 中最近一个日期
-    vdt = pd.DataFrame({'dt': df['dt'].unique()})
-    trade_dates = pd.merge_asof(trade_dates, vdt, left_on='date', right_on='dt')
-    trade_dates = trade_dates.dropna(subset=['dt']).reset_index(drop=True)
+    vdt = pd.DataFrame({"dt": df["dt"].unique()})
+    trade_dates = pd.merge_asof(trade_dates, vdt, left_on="date", right_on="dt")
+    trade_dates = trade_dates.dropna(subset=["dt"]).reset_index(drop=True)
 
-    dt_map = {dt: dfg for dt, dfg in df.groupby('dt')}
+    dt_map = {dt: dfg for dt, dfg in df.groupby("dt")}
     results = []
-    for row in trade_dates.to_dict('records'):
+    for row in trade_dates.to_dict("records"):
         # 注意：这里必须进行 copy，否则默认浅拷贝导致数据异常
-        df_ = dt_map[row['dt']].copy()
-        df_['dt'] = row['date']
+        df_ = dt_map[row["dt"]].copy()
+        df_["dt"] = row["date"]
         results.append(df_)
 
     dfr = pd.concat(results, ignore_index=True)

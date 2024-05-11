@@ -19,8 +19,22 @@
 
 * 已经开始用czsc库进行量化研究的朋友，欢迎[加入飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf)，快点击加入吧！
 * [B站视频教程合集（持续更新...）](https://space.bilibili.com/243682308/channel/series)
-* [CZSC小圈子](https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc)
 * [CZSC代码库QA](https://zbczsc.streamlit.app/)
+
+
+## 知识星球
+
+* [CZSC小圈子（缠论、量化、专享案例）](https://s0cqcxuy3p.feishu.cn/wiki/wikcnwXSk9mWnki1b6URPhLA2Hc)
+
+* 链接：https://wx.zsxq.com/dweb2/index/group/88851448582512
+* 加入：https://t.zsxq.com/0aMSAqcgO
+* 费用：100元
+
+> **知识星球【CZSC小圈子】的定位是什么？**
+> - 为仔细研读过禅师原文并且愿意使用 CZSC 库进行量化投研的朋友提供一个深入交流的平台。
+> - 寻找一群有能力、有兴趣、有主见的朋友共同进行量化策略研究讨论交流。
+> - 对于刚接触缠论和量化交易的新朋友，给出一些力所能及的帮助（可以在圈子中提问，必回复）。
+> - 2024年，小圈子将提供一些专享内容，主要是使用 czsc 构建量化策略的优质案例。
 
 
 ## 项目贡献
@@ -44,7 +58,7 @@ pip install git@github.com:waditu/czsc.git -U
 
 直接从github指定分支安装最新版：
 ```
-pip install git+https://github.com/waditu/czsc.git@V0.9.41 -U
+pip install git+https://github.com/waditu/czsc.git@V0.9.46 -U
 ```
 
 从`pypi`安装：

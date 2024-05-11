@@ -5,12 +5,6 @@ email: zeng_bin8888@163.com
 create_dt: 2021/11/21 17:48
 describe: 信号函数
 """
-# ======================================================================================================================
-# 以下是 0.9.1 开始的新标准下实现的信号函数，规范定义：
-# 1. 前缀3个字符区分信号类别
-# 2. 后缀 V221107 之类的标识同一个信号函数的不同版本
-# ======================================================================================================================
-
 from czsc.signals.cxt import (
     cxt_fx_power_V221107,
     cxt_first_buy_V221126,
@@ -109,6 +103,10 @@ from czsc.signals.bar import (
     bar_window_ps_V230731,
     bar_window_ps_V230801,
     bar_trend_V240209,
+    bar_plr_V240427,
+    bar_accelerate_V240428,
+    bar_polyfit_V240428,
+    bar_break_V240428,
 )
 
 from czsc.signals.jcc import (
@@ -144,7 +142,6 @@ from czsc.signals.tas import (
     update_cci_cache,
     update_atr_cache,
     update_sar_cache,
-
     tas_macd_base_V221028,
     tas_macd_change_V221105,
     tas_macd_direct_V221106,
@@ -157,7 +154,6 @@ from czsc.signals.tas import (
     tas_macd_bs1_V230313,
     tas_macd_bs1_V230312,
     tas_macd_base_V230320,
-
     tas_ma_base_V221101,
     tas_ma_base_V221203,
     tas_ma_base_V230313,
@@ -166,26 +162,20 @@ from czsc.signals.tas import (
     tas_double_ma_V230511,
     tas_double_ma_V240208,
     tas_ma_system_V230513,
-
     tas_boll_power_V221112,
     tas_boll_bc_V221118,
     tas_boll_vt_V230212,
     tas_boll_cc_V230312,
-
     tas_kdj_base_V221101,
     tas_kdj_evc_V221201,
-
     # tas_double_rsi_V221203,
     tas_rsi_base_V230227,
-
     tas_first_bs_V230217,
     tas_second_bs_V230228,
     tas_second_bs_V230303,
-
     tas_hlma_V230301,
     tas_cci_base_V230402,
     tas_kdj_evc_V230401,
-
     tas_atr_break_V230424,
     tas_sar_base_V230425,
     tas_macd_bs1_V230411,
@@ -197,7 +187,6 @@ from czsc.signals.tas import (
     tas_atr_V230630,
     tas_accelerate_V230531,
     tas_angle_V230802,
-
     tas_rumi_V230704,
     tas_macd_dist_V230408,
     tas_macd_dist_V230409,
@@ -208,6 +197,7 @@ from czsc.signals.tas import (
     tas_macd_bc_V230804,
     tas_macd_bc_ubi_V230804,
     tas_slope_V231019,
+    tas_macd_bc_V240307,
 )
 
 from czsc.signals.pos import (
@@ -219,6 +209,9 @@ from czsc.signals.pos import (
     pos_profit_loss_V230624,
     pos_status_V230808,
     pos_holds_V230807,
+    pos_holds_V240428,
+    pos_stop_V240428,
+    pos_take_V240428,
 )
 
 
@@ -261,4 +254,17 @@ from czsc.signals.zdy import (
     zdy_macd_V230527,
     zdy_dif_V230527,
     zdy_dif_V230528,
+    pressure_support_V240222,
+    pressure_support_V240402,
+    pressure_support_V240406,
+)
+
+
+from czsc.signals.xls import (
+    xl_bar_position_V240328,
+    xl_bar_trend_V240329,
+    xl_bar_trend_V240330,
+    xl_bar_trend_V240331,
+    xl_bar_basis_V240411,
+    xl_bar_basis_V240412,
 )

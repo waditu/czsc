@@ -18,9 +18,9 @@ from datetime import datetime
 class RedisWeightsClient:
     """策略持仓权重收发客户端"""
 
-    version = "V231112"
+    version = "V240303"
 
-    def __init__(self, strategy_name, redis_url=None, send_heartbeat=True, **kwargs):
+    def __init__(self, strategy_name, redis_url=None, connection_pool=None, send_heartbeat=True, **kwargs):
         """
         :param strategy_name: str, 策略名
         :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
@@ -39,7 +39,11 @@ class RedisWeightsClient:
             <https://www.iana.org/assignments/uri-schemes/prov/rediss>
             - ``unix://``: creates a Unix Domain Socket connection.
 
-        :param send_heartbeat: boolean, 是否发送心跳
+        :param connection_pool: redis.BlockingConnectionPool, redis连接池，默认为None
+
+            如果传入了 redis_url，则会自动创建一个连接池，否则需要传入一个连接池；如果传入了连接池，则会忽略 redis_url。
+
+        :param send_heartbeat: boolean, 是否发送心跳，默认为True
 
             如果为True，会在后台启动一个线程，每15秒向redis发送一次心跳，用于检测策略是否存活。
             推荐在写入数据时设置为True，读取数据时设置为False，避免无用的心跳。
@@ -50,24 +54,35 @@ class RedisWeightsClient:
             - heartbeat_prefix: str, 心跳key的前缀，默认为 heartbeat
         """
         self.strategy_name = strategy_name
-        self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
         self.key_prefix = kwargs.get("key_prefix", "Weights")
 
-        thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
+        if connection_pool:
+            thread_safe_pool = connection_pool
+            self.redis_url = connection_pool.connection_kwargs.get("url")
+            logger.info(f"{strategy_name} {self.key_prefix}: 使用传入的 redis 连接池")
+
+        else:
+            self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+            thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
+            logger.info(f"{strategy_name} {self.key_prefix}: 使用环境变量 RWC_REDIS_URL 创建 redis 连接池")
+
+        assert isinstance(thread_safe_pool, redis.BlockingConnectionPool), "redis连接池创建失败"
+
         self.r = redis.Redis(connection_pool=thread_safe_pool)
         self.lua_publish = RedisWeightsClient.register_lua_publish(self.r)
+        self.heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
 
         if send_heartbeat:
-            self.heartbeat_client = redis.from_url(self.redis_url, decode_responses=True)
-            self.heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+            self.heartbeat_client = redis.Redis(connection_pool=thread_safe_pool)
             self.heartbeat_thread = threading.Thread(target=self.__heartbeat, daemon=True)
             self.heartbeat_thread.start()
 
     def set_metadata(self, base_freq, description, author, outsample_sdt, **kwargs):
         """设置策略元数据"""
         key = f'{self.key_prefix}:META:{self.strategy_name}'
+        overwrite = kwargs.pop('overwrite', False)
         if self.r.exists(key):
-            if not kwargs.pop('overwrite', False):
+            if not overwrite:
                 logger.warning(f'已存在 {self.strategy_name} 的元数据，如需覆盖请设置 overwrite=True')
                 return
             else:
@@ -81,11 +96,26 @@ class RedisWeightsClient:
                 'kwargs': json.dumps(kwargs)}
         self.r.hset(key, mapping=meta)
 
+    def update_last(self, **kwargs):
+        """设置策略最近一次更新时间，以及更新参数【可选】"""
+        key = f'{self.key_prefix}:LAST:{self.strategy_name}'
+        last = {'name': self.strategy_name,
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'kwargs': json.dumps(kwargs)}
+        self.r.hset(key, mapping=last)
+        logger.info(f"更新 {key} 的 last 时间")
+
     @property
     def metadata(self):
         """获取策略元数据"""
         key = f'{self.key_prefix}:META:{self.strategy_name}'
         return self.r.hgetall(key)
+
+    @property
+    def heartbeat_time(self):
+        """获取策略的最近一次心跳时间"""
+        key = f'{self.key_prefix}:{self.heartbeat_prefix}:{self.strategy_name}'
+        return pd.to_datetime(self.r.get(key))
 
     def get_last_times(self, symbols=None):
         """获取所有品种上策略最近一次发布信号的时间
@@ -194,6 +224,8 @@ class RedisWeightsClient:
             logger.info(f"索引 {i}，即将发布 {len(tmp_keys)} 条权重信号")
             pub_cnt += self.lua_publish(keys=tmp_keys, args=tmp_args)
             logger.info(f"已完成 {pub_cnt} 次发布")
+
+        self.update_last()
         return pub_cnt
 
     def __heartbeat(self):
@@ -205,16 +237,30 @@ class RedisWeightsClient:
                 continue
             time.sleep(15)
 
-    def get_keys(self, pattern):
+    def get_keys(self, pattern) -> list:
         """获取 redis 中指定 pattern 的 keys"""
-        return self.r.keys(pattern)
+        k = self.r.keys(pattern)
+        return k if k else []    # type: ignore
 
-    def clear_all(self):
+    def clear_all(self, with_human=True):
         """删除该策略所有记录"""
-        self.r.delete(f'{self.key_prefix}:META:{self.strategy_name}')
         keys = self.get_keys(f'{self.key_prefix}:{self.strategy_name}*')
-        if keys is not None and len(keys) > 0:  # type: ignore
-            self.r.delete(*keys)                # type: ignore
+        keys.append(f'{self.key_prefix}:META:{self.strategy_name}')
+        keys.append(f'{self.key_prefix}:LAST:{self.strategy_name}')
+        keys.append(f'{self.key_prefix}:{self.heartbeat_prefix}:{self.strategy_name}')
+
+        if len(keys) == 0:
+            logger.warning(f"{self.strategy_name} 没有记录")
+            return
+
+        if with_human:
+            human = input(f"{self.strategy_name} 即将删除 {len(keys)} 条记录，是否确认？(y/n):")
+            if human.lower() != 'y':
+                logger.warning(f"{self.strategy_name} 删除操作已取消")
+                return
+
+        self.r.delete(*keys)                # type: ignore
+        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录")
 
     @staticmethod
     def register_lua_publish(client):
@@ -370,9 +416,16 @@ return cnt
         df['dt'] = pd.to_datetime(df['dt'])
         df['weight'] = df['weight'].astype(float)
         df = df.sort_values(['dt', 'symbol']).reset_index(drop=True)
+        # df 中的columns：['symbol', 'weight', 'dt', 'update_time', 'price', 'ref']
 
         df1 = pd.pivot_table(df, index='dt', columns='symbol', values='weight').sort_index().ffill().fillna(0)
         df1 = pd.melt(df1.reset_index(), id_vars='dt', value_vars=df1.columns, value_name='weight')     # type: ignore
+
+        # 加上 df 中的 update_time 信息
+        df1 = df1.merge(df[['dt', 'symbol', 'update_time']], on=['dt', 'symbol'], how='left')
+        df1 = df1.sort_values(['symbol', 'dt']).reset_index(drop=True)
+        for _, dfg in df1.groupby('symbol'):
+            df1.loc[dfg.index, 'update_time'] = dfg['update_time'].ffill().bfill()
 
         if sdt:
             df1 = df1[df1['dt'] >= pd.to_datetime(sdt)].reset_index(drop=True)
@@ -380,3 +433,140 @@ return cnt
             df1 = df1[df1['dt'] <= pd.to_datetime(edt)].reset_index(drop=True)
         df1 = df1.sort_values(['dt', 'symbol']).reset_index(drop=True)
         return df1
+
+
+def clear_strategy(strategy_name, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """删除策略所有记录
+
+    :param strategy_name: str, 策略名
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+    """
+    with_human = kwargs.pop("with_human", True)
+    rwc = RedisWeightsClient(strategy_name, redis_url=redis_url, connection_pool=connection_pool,
+                             key_prefix=key_prefix, send_heartbeat=False, **kwargs)
+    rwc.clear_all(with_human)
+
+
+def get_strategy_weights(strategy_name, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取策略的持仓权重
+
+    :param strategy_name: str, 策略名
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+
+        - symbols : list, 品种列表, 默认为None, 即获取所有品种的权重
+        - sdt : str, 开始时间, eg: 20210924 10:19:00
+        - edt : str, 结束时间, eg: 20220924 10:19:00
+        - only_last : boolean, 是否只保留每个品种最近一次权重，默认为False
+
+    :return: pd.DataFrame
+    """
+    kwargs.pop("send_heartbeat", None)
+    rwc = RedisWeightsClient(strategy_name, redis_url=redis_url, connection_pool=connection_pool,
+                             key_prefix=key_prefix, send_heartbeat=False, **kwargs)
+    sdt = kwargs.get("sdt")
+    edt = kwargs.get("edt")
+    symbols = kwargs.get("symbols")
+    only_last = kwargs.get("only_last", False)
+
+    if only_last:
+        # 保留每个品种最近一次权重
+        df = rwc.get_last_weights(ignore_zero=False)
+        return df
+
+    df = rwc.get_all_weights(sdt=sdt, edt=edt)
+    if symbols:
+        # 保留指定品种的权重
+        not_in = [x for x in symbols if x not in df['symbol'].unique()]
+        if not_in:
+            logger.warning(f"{strategy_name} 中没有 {not_in} 的权重记录")
+
+        df = df[df['symbol'].isin(symbols)].reset_index(drop=True)
+
+    return df
+
+
+def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weights:META:*", **kwargs):
+    """获取Redis中的策略元数据
+
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_pattern: str, redis中key的pattern，默认为 Weights:META:*
+    :param kwargs: dict, 其他参数
+    :return: pd.DataFrame
+    """
+    heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    rows = []
+    for key in r.keys(key_pattern):     # type: ignore
+        meta = r.hgetall(key)
+        if not meta:
+            logger.warning(f"{key} 没有策略元数据")
+            continue
+
+        meta['heartbeat_time'] = r.get(f"{meta['key_prefix']}:{heartbeat_prefix}:{meta['name']}")  # type: ignore
+        rows.append(meta)
+
+    if len(rows) == 0:
+        logger.warning(f"{key_pattern} 下没有策略元数据")
+        return pd.DataFrame()
+
+    df = pd.DataFrame(rows)
+    df['update_time'] = pd.to_datetime(df['update_time'])
+    df['heartbeat_time'] = pd.to_datetime(df['heartbeat_time'])
+    df = df.sort_values('name').reset_index(drop=True)
+
+    r.close()
+    return df
+
+
+def get_heartbeat_time(strategy_name=None, redis_url=None, connection_pool=None, key_prefix="Weights", **kwargs):
+    """获取策略的最近一次心跳时间
+
+    :param strategy_name: str, 策略名，默认为None, 即获取所有策略的心跳时间
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :param kwargs: dict, 其他参数
+
+            - heartbeat_prefix: str, 心跳key的前缀，默认为 heartbeat
+
+    :return: str, 最近一次心跳时间
+    """
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    if not strategy_name:
+        dfm = get_strategy_mates(redis_url=redis_url, connection_pool=connection_pool, key_pattern=f"{key_prefix}:META:*")
+        if len(dfm) == 0:
+            logger.warning(f"{key_prefix} 下没有策略元数据")
+            return None
+        strategy_names = dfm['name'].unique().tolist()
+    else:
+        strategy_names = [strategy_name]
+
+    heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
+    res = {}
+    for sn in strategy_names:
+        hdt = r.get(f'{key_prefix}:{heartbeat_prefix}:{sn}')
+        if hdt:
+            res[sn] = pd.to_datetime(hdt)
+        else:
+            res[sn] = None
+            logger.warning(f"{sn} 没有心跳时间")
+    r.close()
+    return res

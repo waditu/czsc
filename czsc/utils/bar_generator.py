@@ -39,6 +39,30 @@ def get_intraday_times(freq='1分钟', market="A股"):
     return freq_market_times[f"{freq}_{market}"]
 
 
+def format_standard_kline(df: pd.DataFrame, freq: str):
+    """格式化标准K线数据为 CZSC 标准数据结构 RawBar 列表
+
+    :param df: 标准K线数据，DataFrame结构
+
+        ===================  =========  ======  =======  ======  =====  ===========  ===========
+        dt                   symbol       open    close    high    low          vol       amount
+        ===================  =========  ======  =======  ======  =====  ===========  ===========
+        2023-11-17 00:00:00  689009.SH   33.52    33.41   33.69  33.38  1.97575e+06  6.61661e+07
+        2023-11-20 00:00:00  689009.SH   33.4     32.91   33.45  32.25  5.15016e+06  1.68867e+08
+        ===================  =========  ======  =======  ======  =====  ===========  ===========
+
+    :param freq: K线级别
+    :return: list of RawBar
+    """
+    # from czsc.objects import RawBar, Freq
+    bars = []
+    for i, row in df.iterrows():
+        bar = RawBar(id=i, symbol=row['symbol'], dt=row['dt'], open=row['open'], close=row['close'],
+                     high=row['high'], low=row['low'], vol=row['vol'], amount=row['amount'], freq=Freq(freq))
+        bars.append(bar)
+    return bars
+
+
 def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None):
     """检查时间序列是否为同一周期，是否为同一市场
 
@@ -60,18 +84,20 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     if freq in ['日线', '周线', '月线', '季线', '年线']:
         return freq, "默认"
 
-    if freq == '1分钟':
-        time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
-
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
     for key, tts in freq_market_times.items():
         if freq and not key.startswith(freq):
             continue
+        freq_x, market = key.split("_")
 
-        if set(time_seq) == set(tts[:len(time_seq)]):
-            freq_x, market = key.split("_")
+        if freq_x == '1分钟':
+            time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
+
+        sub_tts = [x for x in tts if x >= min(time_seq) and x <= max(time_seq)]
+        if set(time_seq) == set(sub_tts):
+            # print(f"check_freq_and_market: {freq_x} - {market}")
             return freq_x, market
 
     return None, "默认"
@@ -186,7 +212,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
 
     base_freq = kwargs.get('base_freq', None)
     if target_freq.value.endswith("分钟"):
-        uni_times = df['dt'].head(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist()
+        uni_times = sorted(df['dt'].tail(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist())
         _, market = check_freq_and_market(uni_times, freq=base_freq)
     else:
         market = "默认"

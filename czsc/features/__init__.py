@@ -25,3 +25,7 @@ from .vpf import (
     VPF003,
     VPF004,
 )
+
+from .tas import (
+    CCF
+)

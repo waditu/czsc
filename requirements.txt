@@ -24,3 +24,4 @@ streamlit
 redis
 oss2
 statsmodels
+optuna

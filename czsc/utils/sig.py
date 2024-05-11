@@ -6,6 +6,7 @@ create_dt: 2022/10/27 23:23
 describe: 用于信号计算函数的各种辅助工具函数
 """
 import numpy as np
+from deprecated import deprecated
 from collections import Counter, OrderedDict
 from typing import List, Any, Dict, Union, Tuple
 from czsc.enum import Direction
@@ -15,9 +16,9 @@ from czsc.objects import BI, RawBar, ZS, Signal
 def create_single_signal(**kwargs) -> OrderedDict:
     """创建单个信号"""
     s = OrderedDict()
-    k1, k2, k3 = kwargs.get('k1', '任意'), kwargs.get('k2', '任意'), kwargs.get('k3', '任意')
-    v1, v2, v3 = kwargs.get('v1', '任意'), kwargs.get('v2', '任意'), kwargs.get('v3', '任意')
-    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=kwargs.get('score', 0))
+    k1, k2, k3 = kwargs.get("k1", "任意"), kwargs.get("k2", "任意"), kwargs.get("k3", "任意")
+    v1, v2, v3 = kwargs.get("v1", "任意"), kwargs.get("v2", "任意"), kwargs.get("v3", "任意")
+    v = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3, score=kwargs.get("score", 0))
     s[v.key] = v.value
     return s
 
@@ -79,12 +80,22 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
         else:
             continue
 
-        cross_info.append({'位置': i, "类型": kind, "快线": fast[i], "慢线": slow[i],
-                           "距离": last_i, '距今': length - i,
-                           "面积": round(last_v, 4), '价差': round(v, 4),
-                           "快线高点": max(temp_fast), "快线低点": min(temp_fast),
-                           "慢线高点": max(temp_slow), "慢线低点": min(temp_slow),
-                           })
+        cross_info.append(
+            {
+                "位置": i,
+                "类型": kind,
+                "快线": fast[i],
+                "慢线": slow[i],
+                "距离": last_i,
+                "距今": length - i,
+                "面积": round(last_v, 4),
+                "价差": round(v, 4),
+                "快线高点": max(temp_fast),
+                "快线低点": min(temp_fast),
+                "慢线高点": max(temp_slow),
+                "慢线低点": min(temp_slow),
+            }
+        )
         last_i = 0
         last_v = 0
         temp_fast = []
@@ -93,6 +104,7 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
     return cross_info
 
 
+@deprecated(version="1.0.0", reason="分析方法不太合理，不再使用")
 def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None) -> Dict:
     """检查 bars 中的支撑、压力信息
 
@@ -111,7 +123,7 @@ def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None) -> Dic
 
     lines = sorted([x for x, v in Counter(price_seq).most_common() if v >= 5])
     q_seq = q_seq if q_seq else [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    key_price = [np.quantile(lines, i, method='nearest') for i in q_seq]
+    key_price = [np.quantile(lines, i, method="nearest") for i in q_seq]
     kp_low = [x for x in key_price if x <= bars[-1].close]
     kp_high = [x for x in key_price if x >= bars[-1].close]
 
@@ -138,21 +150,35 @@ def check_gap_info(bars: List[RawBar]):
         return gap_info
 
     for i in range(1, len(bars)):
-        bar1, bar2 = bars[i-1], bars[i]
+        bar1, bar2 = bars[i - 1], bars[i]
         right = bars[i:]
 
         gap = None
         if bar1.high < bar2.low:
             delta = round(bar2.low / bar1.high - 1, 4)
             cover = "已补" if min(x.low for x in right) < bar1.high else "未补"
-            gap = {"kind": "向上缺口", 'cover': cover, 'sdt': bar1.dt, 'edt': bar2.dt,
-                   'high': bar2.low, 'low': bar1.high, 'delta': delta}
+            gap = {
+                "kind": "向上缺口",
+                "cover": cover,
+                "sdt": bar1.dt,
+                "edt": bar2.dt,
+                "high": bar2.low,
+                "low": bar1.high,
+                "delta": delta,
+            }
 
         if bar1.low > bar2.high:
             delta = round(bar1.low / bar2.high - 1, 4)
             cover = "已补" if max(x.high for x in right) > bar1.low else "未补"
-            gap = {"kind": "向下缺口", 'cover': cover, 'sdt': bar1.dt, 'edt': bar2.dt,
-                   'high': bar1.low, 'low': bar2.high, 'delta': delta}
+            gap = {
+                "kind": "向下缺口",
+                "cover": cover,
+                "sdt": bar1.dt,
+                "edt": bar2.dt,
+                "high": bar1.low,
+                "low": bar2.high,
+                "delta": delta,
+            }
 
         if gap:
             gap_info.append(gap)
@@ -194,12 +220,22 @@ def fast_slow_cross(fast, slow):
         else:
             continue
 
-        cross_info.append({'位置': i, "类型": kind, "快线": fast[i], "慢线": slow[i],
-                           "距离": last_i, '距今': length - i,
-                           "面积": round(last_v, 4), '价差': round(v, 4),
-                           "快线高点": max(temp_fast), "快线低点": min(temp_fast),
-                           "慢线高点": max(temp_slow), "慢线低点": min(temp_slow),
-                           })
+        cross_info.append(
+            {
+                "位置": i,
+                "类型": kind,
+                "快线": fast[i],
+                "慢线": slow[i],
+                "距离": last_i,
+                "距今": length - i,
+                "面积": round(last_v, 4),
+                "价差": round(v, 4),
+                "快线高点": max(temp_fast),
+                "快线低点": min(temp_fast),
+                "慢线高点": max(temp_slow),
+                "慢线低点": min(temp_slow),
+            }
+        )
         last_i = 0
         last_v = 0
         temp_fast = []
@@ -261,7 +297,7 @@ def get_sub_elements(elements: List[Any], di: int = 1, n: int = 10) -> List[Any]
     if di == 1:
         se = elements[-n:]
     else:
-        se = elements[-n - di + 1: -di + 1]
+        se = elements[-n - di + 1 : -di + 1]
     return se
 
 
@@ -272,9 +308,11 @@ def is_bis_down(bis: List[BI]):
 
     assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
 
-    if bis[-1].direction == Direction.Down \
-            and bis[0].high == max([x.high for x in bis]) \
-            and bis[-1].low == min([x.low for x in bis]):
+    if (
+        bis[-1].direction == Direction.Down
+        and bis[0].high == max([x.high for x in bis])
+        and bis[-1].low == min([x.low for x in bis])
+    ):
         return True
     else:
         return False
@@ -287,9 +325,11 @@ def is_bis_up(bis: List[BI]):
 
     assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
 
-    if bis[-1].direction == Direction.Up \
-            and bis[-1].high == max([x.high for x in bis]) \
-            and bis[0].low == min([x.low for x in bis]):
+    if (
+        bis[-1].direction == Direction.Up
+        and bis[-1].high == max([x.high for x in bis])
+        and bis[0].low == min([x.low for x in bis])
+    ):
         return True
     else:
         return False
@@ -315,8 +355,9 @@ def get_zs_seq(bis: List[BI]) -> List[ZS]:
             zs.bis.append(bi)
             zs_list[-1] = zs
         else:
-            if (bi.direction == Direction.Up and bi.high < zs.zd) \
-                    or (bi.direction == Direction.Down and bi.low > zs.zg):
+            if (bi.direction == Direction.Up and bi.high < zs.zd) or (
+                bi.direction == Direction.Down and bi.low > zs.zg
+            ):
                 zs_list.append(ZS(bis=[bi]))
             else:
                 zs.bis.append(bi)
@@ -331,7 +372,7 @@ def cross_zero_axis(n1: Union[List, np.ndarray], n2: Union[List, np.ndarray]) ->
     :param n2: 数列2
     :return: 交叉点所在的索引位置
     """
-    assert len(n1) == len(n2), '输入两个数列长度不等'
+    assert len(n1) == len(n2), "输入两个数列长度不等"
     axis_0 = np.zeros(len(n1))
 
     n1 = np.flip(n1)
@@ -358,29 +399,29 @@ def cal_cross_num(cross: List, distance: int = 1) -> tuple:
     elif len(cross) == 1:
         cross_ = cross
     elif len(cross) == 2:
-        if cross[-1]['距离'] < distance:
+        if cross[-1]["距离"] < distance:
             cross_ = []
         else:
             cross_ = cross
     else:
-        if cross[-1]['距离'] < distance:
+        if cross[-1]["距离"] < distance:
             last_cross = cross[-1]
             del cross[-2]
-            re_cross = [i for i in cross if i['距离'] >= distance]
+            re_cross = [i for i in cross if i["距离"] >= distance]
             re_cross.append(last_cross)
         else:
-            re_cross = [i for i in cross if i['距离'] >= distance]
+            re_cross = [i for i in cross if i["距离"] >= distance]
         cross_ = []
         for i in range(0, len(re_cross)):
-            if len(cross_) >= 1 and re_cross[i]['类型'] == re_cross[i - 1]['类型']:
+            if len(cross_) >= 1 and re_cross[i]["类型"] == re_cross[i - 1]["类型"]:
                 # 不将上一个元素加入cross_
                 del cross_[-1]
                 cross_.append(re_cross[i])
             else:
                 cross_.append(re_cross[i])
 
-    jc = len([x for x in cross_ if x['类型'] == '金叉'])
-    sc = len([x for x in cross_ if x['类型'] == '死叉'])
+    jc = len([x for x in cross_ if x["类型"] == "金叉"])
+    sc = len([x for x in cross_ if x["类型"] == "死叉"])
 
     return jc, sc
 

@@ -49,6 +49,38 @@ def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
     return bars
 
 
+def moneyflow_hsgt(start_date, end_date):
+    """获取沪深港通资金流向数据
+
+    https://tushare.pro/document/2?doc_id=47
+
+    :param start_date: str, 开始日期, 格式为 "YYYYMMDD"
+    :param end_date: str, 结束日期, 格式为 "YYYYMMDD"
+    :return: DataFrame, 包含沪深港通资金流向数据
+    """
+    sdt = pd.to_datetime(start_date)
+    edt = pd.to_datetime(end_date)
+    dts = pd.date_range(sdt, edt, freq='YE').to_list() + [sdt, edt]
+    dts = sorted(list(set(dts)))
+
+    rows = []
+    for dt1, dt2 in zip(dts[:-1], dts[1:]):
+        ttl = -1 if dt2 != edt else 0
+        df1 = dc.moneyflow_hsgt(start_date=dt1.strftime("%Y%m%d"), end_date=dt2.strftime("%Y%m%d"),
+                                fields='trade_date, ggt_ss, ggt_sz, hgt, sgt, north_money, south_money', ttl=ttl)
+        df1 = df1.fillna(0)
+        if not df1.empty:
+            rows.append(df1)
+
+    df = pd.concat(rows, axis=0, ignore_index=True)
+    df['dt'] = pd.to_datetime(df['trade_date'])
+    df.sort_values('dt', inplace=True)
+    df.drop_duplicates(subset=['dt'], keep='last', inplace=True)
+    df = df.drop(['trade_date'], axis=1).reset_index(drop=True)
+    df.fillna(0, inplace=True)
+    return df
+
+
 def get_symbols(step="all"):
     """获取标的代码"""
     stocks = dc.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,area,industry,list_date')

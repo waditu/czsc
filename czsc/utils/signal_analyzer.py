@@ -11,10 +11,12 @@ import pandas as pd
 from copy import deepcopy
 from tqdm import tqdm
 from loguru import logger
+from deprecated import deprecated
 from typing import List, AnyStr
 from concurrent.futures import ProcessPoolExecutor
 
 
+@deprecated(version="1.0.0", reason="分析方法不太合理，不再使用")
 class SignalPerformance:
     """信号表现分析"""
 
@@ -27,16 +29,16 @@ class SignalPerformance:
         base_cols = [x for x in dfs.columns if len(x.split("_")) != 3]
         dfs = dfs[base_cols + keys].copy()
 
-        if 'year' not in dfs.columns:
-            y = dfs['dt'].apply(lambda x: x.year)
-            dfs['year'] = y.values
+        if "year" not in dfs.columns:
+            y = dfs["dt"].apply(lambda x: x.year)
+            dfs["year"] = y.values
 
         self.dfs = dfs
         self.keys = keys
-        self.b_cols = [x for x in dfs.columns if x[0] == 'b' and x[-1] == 'b']
-        self.n_cols = [x for x in dfs.columns if x[0] == 'n' and x[-1] == 'b']
+        self.b_cols = [x for x in dfs.columns if x[0] == "b" and x[-1] == "b"]
+        self.n_cols = [x for x in dfs.columns if x[0] == "n" and x[-1] == "b"]
 
-    def __return_performance(self, dfs: pd.DataFrame, mode: str = '1b') -> pd.DataFrame:
+    def __return_performance(self, dfs: pd.DataFrame, mode: str = "1b") -> pd.DataFrame:
         """分析信号组合的分类能力，也就是信号出现前后的收益情况
 
         :param dfs: 信号数据表，
@@ -48,19 +50,23 @@ class SignalPerformance:
         :return:
         """
         mode = mode.lower()
-        assert mode in ['0b', '0n', '1b', '1n']
+        assert mode in ["0b", "0n", "1b", "1n"]
         keys = self.keys
         len_dfs = len(dfs)
-        cols = self.b_cols if mode.endswith('b') else self.n_cols
+        cols = self.b_cols if mode.endswith("b") else self.n_cols
 
-        sdt = dfs['dt'].min().strftime("%Y%m%d")
-        edt = dfs['dt'].max().strftime("%Y%m%d")
+        sdt = dfs["dt"].min().strftime("%Y%m%d")
+        edt = dfs["dt"].max().strftime("%Y%m%d")
 
         def __static(_df, _name):
-            _res = {"name": _name, "date_span": f"{sdt} ~ {edt}",
-                    "count": len(_df), "cover": round(len(_df) / len_dfs, 4)}
-            if mode.startswith('0'):
-                _r = _df.groupby('dt')[cols].mean().mean().to_dict()
+            _res = {
+                "name": _name,
+                "date_span": f"{sdt} ~ {edt}",
+                "count": len(_df),
+                "cover": round(len(_df) / len_dfs, 4),
+            }
+            if mode.startswith("0"):
+                _r = _df.groupby("dt")[cols].mean().mean().to_dict()
             else:
                 _r = _df[cols].mean().to_dict()
             _res.update(_r)
@@ -81,7 +87,7 @@ class SignalPerformance:
         dfr[cols] = dfr[cols].round(2)
         return dfr
 
-    def analyze(self, mode='0b') -> pd.DataFrame:
+    def analyze(self, mode="0b") -> pd.DataFrame:
         """分析信号出现前后的收益情况
 
         :param mode: 分析模式，
@@ -93,7 +99,7 @@ class SignalPerformance:
         """
         dfr = self.__return_performance(self.dfs, mode)
         results = [dfr]
-        for year, df_ in self.dfs.groupby('year'):
+        for year, df_ in self.dfs.groupby("year"):
             dfr_ = self.__return_performance(df_, mode)
             results.append(dfr_)
         dfr = pd.concat(results, ignore_index=True)
@@ -101,8 +107,8 @@ class SignalPerformance:
 
     def report(self, file_xlsx=None):
         res = {
-            '向后看截面': self.analyze('0n'),
-            '向后看时序': self.analyze('1n'),
+            "向后看截面": self.analyze("0n"),
+            "向后看时序": self.analyze("1n"),
         }
         if file_xlsx:
             writer = pd.ExcelWriter(file_xlsx)
@@ -112,6 +118,7 @@ class SignalPerformance:
         return res
 
 
+@deprecated(version="1.0.0", reason="分析方法不太合理，不再使用")
 class SignalAnalyzer:
     def __init__(self, symbols, read_bars, signals_config, results_path, **kwargs):
         """信号分析
@@ -125,16 +132,16 @@ class SignalAnalyzer:
             - edt: 信号生成的结束时间
             - bar_sdt: 读取K线的开始时间
         """
-        self.version = 'V230520'
+        self.version = "V230520"
         self.symbols = symbols
         self.read_bars = read_bars
         self.signals_config = signals_config
         self.results_path = results_path
         os.makedirs(self.results_path, exist_ok=True)
-        self.signals_path = os.path.join(self.results_path, 'signals')
+        self.signals_path = os.path.join(self.results_path, "signals")
         os.makedirs(self.signals_path, exist_ok=True)
         self.kwargs = kwargs
-        self.task_hash = hashlib.sha256((str(signals_config) + str(symbols)).encode('utf-8')).hexdigest()[:8].upper()
+        self.task_hash = hashlib.sha256((str(signals_config) + str(symbols)).encode("utf-8")).hexdigest()[:8].upper()
 
     def generate_symbol_signals(self, symbol):
         from czsc.traders.sig_parse import get_signals_freqs
@@ -147,22 +154,23 @@ class SignalAnalyzer:
                 sigs = pd.read_parquet(file_cache)
             else:
                 freqs = get_signals_freqs(deepcopy(self.signals_config))
-                sdt = self.kwargs.get('sdt', '20170101')
-                edt = self.kwargs.get('edt', '20220101')
-                bar_sdt = self.kwargs.get('bar_sdt', '20150101')
-                bars = self.read_bars(symbol, freqs[0], bar_sdt, edt, fq='后复权')
+                sdt = self.kwargs.get("sdt", "20170101")
+                edt = self.kwargs.get("edt", "20220101")
+                bar_sdt = self.kwargs.get("bar_sdt", "20150101")
+                bars = self.read_bars(symbol, freqs[0], bar_sdt, edt, fq="后复权")
                 if len(bars) < 100:
                     logger.error(f"{symbol} 信号生成失败：数据量不足")
                     return pd.DataFrame()
 
-                sigs: pd.DataFrame = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True) # type: ignore
+                sigs: pd.DataFrame = generate_czsc_signals(bars, deepcopy(self.signals_config), sdt=sdt, df=True)  # type: ignore
                 if sigs.empty:
                     logger.error(f"{symbol} 信号生成失败：数据量不足")
                     return pd.DataFrame()
 
-                sigs.drop(['freq', 'cache'], axis=1, inplace=True)
-                update_nbars(sigs, price_col='open', move=1,
-                             numbers=(1, 2, 3, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100))
+                sigs.drop(["freq", "cache"], axis=1, inplace=True)
+                update_nbars(
+                    sigs, price_col="open", move=1, numbers=(1, 2, 3, 5, 8, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+                )
                 sigs.to_parquet(file_cache)
             return sigs
         except Exception as e:
@@ -177,21 +185,21 @@ class SignalAnalyzer:
         :param dfp: 信号表现分析结果
         :return: 表现好的信号
         """
-        n_cols = [x for x in dfp.columns if x.startswith('n') and x.endswith('b')]
+        n_cols = [x for x in dfp.columns if x.startswith("n") and x.endswith("b")]
         # 价值描述：1）与基准的差值越大越好；2）与基准的差值越大，且胜率越高越好
         rows = []
-        for _, dfg in dfp.groupby('date_span'):
-            base = dfg[dfg['name'] == '基准'].iloc[0].to_dict()
-            olds = dfg[dfg['name'] != '基准'].to_dict(orient='records')
+        for _, dfg in dfp.groupby("date_span"):
+            base = dfg[dfg["name"] == "基准"].iloc[0].to_dict()
+            olds = dfg[dfg["name"] != "基准"].to_dict(orient="records")
             sum_base = sum([base[x] for x in n_cols])
 
             for row in olds:
-                if '其他' in row['name']:
+                if "其他" in row["name"]:
                     continue
 
                 delta = [row[x] - base[x] for x in n_cols]
                 win_rate = sum([1 if x > 0 else 0 for x in delta]) / len(delta)
-                row['delta_win_rate'] = win_rate
+                row["delta_win_rate"] = win_rate
                 sum_delta = sum(delta)
                 if abs(sum_delta) / sum_base < 0.1:
                     continue
@@ -220,19 +228,19 @@ class SignalAnalyzer:
         dfs = pd.concat(symbols_sig, ignore_index=True)
 
         sig_keys = [x for x in dfs.columns if len(x.split("_")) == 3]
-        sps = {'向后看截面': [], '向后看时序': []}
+        sps = {"向后看截面": [], "向后看时序": []}
 
-        raw_results_path = os.path.join(results_path, 'raw_results')
+        raw_results_path = os.path.join(results_path, "raw_results")
         os.makedirs(raw_results_path, exist_ok=True)
         for key in tqdm(sig_keys, desc="分析信号表现"):
             sp = SignalPerformance(dfs, keys=[key])
-            res = sp.report(os.path.join(raw_results_path, f'{key}.xlsx'))
+            res = sp.report(os.path.join(raw_results_path, f"{key}.xlsx"))
             for k, v in res.items():
                 sps[k].append(v)
 
         for k, v in sps.items():
             dfp = pd.concat(v, ignore_index=True)
-            dfp.drop_duplicates(subset=['name', 'date_span'], inplace=True, ignore_index=True)
-            dfp.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_汇总.xlsx'), index=False)
+            dfp.drop_duplicates(subset=["name", "date_span"], inplace=True, ignore_index=True)
+            dfp.to_excel(os.path.join(results_path, f"{self.task_hash}_{k}_汇总.xlsx"), index=False)
             dfp_valuable = self.find_valuable_signals(dfp)
-            dfp_valuable.to_excel(os.path.join(results_path, f'{self.task_hash}_{k}_有价值信号.xlsx'), index=False)
+            dfp_valuable.to_excel(os.path.join(results_path, f"{self.task_hash}_{k}_有价值信号.xlsx"), index=False)

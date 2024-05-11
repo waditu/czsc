@@ -12,7 +12,7 @@ kline = read_1min()
 
 def test_check_freq_and_market():
     time_seq = ['11:00', '15:00', '23:00', '01:00', '02:30']
-    assert check_freq_and_market(time_seq) == ('120分钟', '期货')
+    assert check_freq_and_market(time_seq, freq='120分钟') == ('120分钟', '期货')
 
     time_seq = [
         '09:31',
@@ -257,8 +257,9 @@ def test_check_freq_and_market():
     ]
     assert check_freq_and_market(time_seq, freq='1分钟') == ('1分钟', 'A股')
 
-    for key, values in freq_market_times.items():
-        assert check_freq_and_market(values) == (key.split("_")[0], key.split("_")[1])
+    for key, time_seq in freq_market_times.items():
+        freq, market = key.split("_")
+        assert check_freq_and_market(time_seq, freq) == (freq, market)
 
 
 def test_freq_end_time():

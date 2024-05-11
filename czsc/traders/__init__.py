@@ -14,6 +14,6 @@ from czsc.traders.performance import (
 )
 from czsc.traders.dummy import DummyBacktest
 from czsc.traders.sig_parse import SignalsParser, get_signals_config, get_signals_freqs
-from czsc.traders.weight_backtest import WeightBacktest, get_ensemble_weight, long_short_equity
-from czsc.traders.rwc import RedisWeightsClient
+from czsc.traders.weight_backtest import WeightBacktest, get_ensemble_weight, long_short_equity, stoploss_by_direction
+from czsc.traders.rwc import RedisWeightsClient, get_strategy_mates, get_heartbeat_time, clear_strategy, get_strategy_weights
 from czsc.traders.optimize import OpensOptimize, ExitsOptimize

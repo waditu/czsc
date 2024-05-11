@@ -10,24 +10,54 @@ from . import echarts_plot
 from .echarts_plot import kline_pro, heat_map
 from .word_writer import WordWriter
 from .corr import nmi_matrix, single_linear, cross_sectional_ic
-from .bar_generator import BarGenerator, freq_end_time, resample_bars
+from .bar_generator import BarGenerator, freq_end_time, resample_bars, format_standard_kline
 from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market
 from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_pressure_support, check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
 from .plotly_plot import KlineChart
-from .trade import cal_trade_price, update_nbars, update_bbars, update_tbars, risk_free_returns, resample_to_daily
+from .trade import cal_trade_price, update_nxb, update_bbars, update_tbars, risk_free_returns, resample_to_daily
 from .cross import CrossSectionalPerformance, cross_sectional_ranker
-from .stats import daily_performance, net_value_stats, subtract_fee, weekly_performance
+from .stats import (
+    daily_performance,
+    net_value_stats,
+    subtract_fee,
+    weekly_performance,
+    holds_performance,
+    top_drawdowns,
+    rolling_daily_performance,
+    psi,
+)
 from .signal_analyzer import SignalAnalyzer, SignalPerformance
-from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache
+from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS
+from .optuna import optuna_study, optuna_good_params
+from .events import overlap
 
 
-sorted_freqs = ['Tick', '1分钟', '2分钟', '3分钟', '4分钟', '5分钟', '6分钟', '10分钟', '12分钟',
-                '15分钟', '20分钟', '30分钟', '60分钟', '120分钟', '日线', '周线', '月线', '季线', '年线']
+sorted_freqs = [
+    "Tick",
+    "1分钟",
+    "2分钟",
+    "3分钟",
+    "4分钟",
+    "5分钟",
+    "6分钟",
+    "10分钟",
+    "12分钟",
+    "15分钟",
+    "20分钟",
+    "30分钟",
+    "60分钟",
+    "120分钟",
+    "日线",
+    "周线",
+    "月线",
+    "季线",
+    "年线",
+]
 
 
 def x_round(x: Union[float, int], digit: int = 4) -> Union[float, int]:
@@ -55,9 +85,9 @@ def get_py_namespace(file_py: str, keys: list = []) -> dict:
     :param keys: 指定需要的对象名称
     :return: namespace
     """
-    text = open(file_py, 'r', encoding='utf-8').read()
-    code = compile(text, file_py, 'exec')
-    namespace = {"file_py": file_py, 'file_name': os.path.basename(file_py).split('.')[0]}
+    text = open(file_py, "r", encoding="utf-8").read()
+    code = compile(text, file_py, "exec")
+    namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
     exec(code, namespace)
     if keys:
         namespace = {k: v for k, v in namespace.items() if k in keys}
@@ -81,11 +111,11 @@ def import_by_name(name):
     :param name: 模块名，如：'czsc.objects.Factor'
     :return: 模块对象
     """
-    if '.' not in name:
+    if "." not in name:
         return __import__(name)
 
     # 从右边开始分割，分割成模块名和函数名
-    module_name, function_name = name.rsplit('.', 1)
+    module_name, function_name = name.rsplit(".", 1)
     module = __import__(module_name, globals(), locals(), [function_name])
     return vars(module)[function_name]
 
@@ -142,11 +172,12 @@ def create_grid_params(prefix: str = "", multiply=3, **kwargs) -> dict:
         else:
             key = str(i).zfill(multiply)
 
-        row['version'] = f"{prefix}{key}"
+        row["version"] = f"{prefix}{key}"
         params[f"{prefix}@{key}"] = row
     return params
 
 
 def print_df_sample(df, n=5):
     from tabulate import tabulate
-    print(tabulate(df.head(n).values, headers=df.columns, tablefmt='rst'))
+
+    print(tabulate(df.head(n).values, headers=df.columns, tablefmt="rst"))

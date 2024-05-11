@@ -15,10 +15,10 @@ import inspect
 import pandas as pd
 from pathlib import Path
 from loguru import logger
-from typing import Any
+from typing import Any, Union, AnyStr
 
 
-home_path = Path(os.environ.get("CZSC_HOME", os.path.join(os.path.expanduser("~"), '.czsc')))
+home_path = Path(os.environ.get("CZSC_HOME", os.path.join(os.path.expanduser("~"), ".czsc")))
 home_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -44,7 +44,7 @@ class DiskCache:
     def __init__(self, path=None):
         self.path = home_path / "disk_cache" if path is None else Path(path)
         if self.path.is_file():
-            raise Exception("path has exist")
+            raise Exception("path must be a directory, not a file")
 
         self.path.mkdir(parents=True, exist_ok=True)
 
@@ -55,28 +55,30 @@ class DiskCache:
         """判断缓存文件是否存在
 
         :param k: 缓存文件名
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         :param ttl: 缓存文件有效期，单位：秒，-1 表示永久有效
         :return: bool
         """
         file = self.path / f"{k}.{suffix}"
         if not file.exists():
-            logger.info(f"文件不存在, {file}")
+            logger.info(f"缓存文件不存在, {file}")
             return False
 
         if ttl > 0:
             create_time = file.stat().st_ctime
             if (time.time() - create_time) > ttl:
                 logger.info(f"缓存文件已过期, {file}")
+                os.remove(file)
                 return False
 
-        return file.exists()
+        logger.info(f"缓存文件已找到, {file}")
+        return True
 
     def get(self, k: str, suffix: str = "pkl") -> Any:
         """读取缓存文件
 
         :param k: 缓存文件名
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         :return: 缓存文件内容
         """
         file = self.path / f"{k}.{suffix}"
@@ -86,13 +88,13 @@ class DiskCache:
             return None
 
         if suffix == "pkl":
-            res = dill.load(open(file, 'rb'))
+            res = dill.load(open(file, "rb"))
         elif suffix == "json":
-            res = json.load(open(file, 'r', encoding='utf-8'))
+            res = json.load(open(file, "r", encoding="utf-8"))
         elif suffix == "txt":
-            res = file.read_text(encoding='utf-8')
+            res = file.read_text(encoding="utf-8")
         elif suffix == "csv":
-            res = pd.read_csv(file, encoding='utf-8')
+            res = pd.read_csv(file, encoding="utf-8")
         elif suffix == "xlsx":
             res = pd.read_excel(file)
         elif suffix == "feather":
@@ -108,31 +110,31 @@ class DiskCache:
 
         :param k: 缓存文件名
         :param v: 缓存文件内容
-        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+        :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
         """
         file = self.path / f"{k}.{suffix}"
         if file.exists():
             logger.info(f"缓存文件 {file} 将被覆盖")
 
         if suffix == "pkl":
-            dill.dump(v, open(file, 'wb'))
+            dill.dump(v, open(file, "wb"))
 
         elif suffix == "json":
             if not isinstance(v, dict):
                 raise ValueError("suffix json only support dict")
-            json.dump(v, open(file, 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+            json.dump(v, open(file, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
 
         elif suffix == "txt":
             if not isinstance(v, str):
                 raise ValueError("suffix txt only support str")
-            file.write_text(v, encoding='utf-8')
+            file.write_text(v, encoding="utf-8")
 
         elif suffix == "csv":
             if not isinstance(v, pd.DataFrame):
                 raise ValueError("suffix csv only support pd.DataFrame")
-            v.to_csv(file, index=False, encoding='utf-8')
+            v.to_csv(file, index=False, encoding="utf-8")
 
-        elif suffix == 'xlsx':
+        elif suffix == "xlsx":
             if not isinstance(v, pd.DataFrame):
                 raise ValueError("suffix xlsx only support pd.DataFrame")
             v.to_excel(file, index=False)
@@ -158,24 +160,28 @@ class DiskCache:
         Path.unlink(file) if Path.exists(file) else None
 
 
-def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
+def disk_cache(path: Union[AnyStr, Path] = home_path, suffix: str = "pkl", ttl: int = -1):
     """缓存装饰器，支持多种数据格式
 
-    :param path: 缓存文件夹路径
-    :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx
+    :param path: 缓存文件夹父路径，默认为 home_path，每个函数的缓存文件夹为 path/func_name
+    :param suffix: 缓存文件后缀，支持 pkl, json, txt, csv, xlsx, feather, parquet
     :param ttl: 缓存文件有效期，单位：秒
     """
+
     def decorator(func):
         nonlocal path
         _c = DiskCache(path=Path(path) / func.__name__)
 
         def cached_func(*args, **kwargs):
+            # 如果函数有 ttl 参数，则使用函数的 ttl 参数
+            ttl1 = kwargs.pop("ttl", ttl)
+
             hash_str = f"{func.__name__}{args}{kwargs}"
             code_str = inspect.getsource(func)
-            k = hashlib.md5((code_str + hash_str).encode('utf-8')).hexdigest().upper()[:8]
+            k = hashlib.md5((code_str + hash_str).encode("utf-8")).hexdigest().upper()[:8]
             k = f"{k}_{func.__name__}"
 
-            if _c.is_found(k, suffix=suffix, ttl=ttl):
+            if _c.is_found(k, suffix=suffix, ttl=ttl1):
                 output = _c.get(k, suffix=suffix)
                 return output
 
@@ -187,3 +193,26 @@ def disk_cache(path: str, suffix: str = "pkl", ttl: int = -1):
         return cached_func
 
     return decorator
+
+
+def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False):
+    """清空缓存文件夹
+
+    :param path: 缓存文件夹路径
+    :param subs: 需要清空的子文件夹名称，如果为 None，则清空整个文件夹
+    :param recreate: 是否重新创建文件夹, True 时会重新创建文件夹, False 时不会重新创建文件夹
+    """
+    path = Path(path)
+    if subs is None:
+        shutil.rmtree(path)
+        path.mkdir(parents=True, exist_ok=False)
+        logger.info(f"已清空缓存文件夹：{path}")
+        return
+
+    for sub in subs:
+        fpath = path / sub
+        if fpath.exists():
+            shutil.rmtree(fpath)
+            if recreate:
+                fpath.mkdir(parents=True, exist_ok=True)
+            logger.info(f"已清空缓存文件夹：{fpath}")

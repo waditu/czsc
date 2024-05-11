@@ -47,14 +47,14 @@ def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 5))
     assert n <= 20, "n 的取值范围为 1~20，分层数量不宜太多"
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}单K趋势N{n}_BS辅助V230506".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}单K趋势N{n}_BS辅助V230506".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 100 + di:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
     factors = [(x.close / x.open - 1) / x.vol for x in bars]
-    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    q = pd.cut(factors, n, labels=list(range(1, n + 1)), precision=5, duplicates="drop")[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{q}层")
 
 
@@ -90,37 +90,37 @@ def bar_triple_V230506(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}三K加速_裸K形态V230506".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}三K加速_裸K形态V230506".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     b3, b2, b1 = get_sub_elements(c.bars_raw, di=di, n=3)
 
     if b1.close > b1.open and b2.close > b2.open and b3.close > b3.open:
-        v1 = '三连涨'
+        v1 = "三连涨"
         if b1.high > b2.high > b3.high and b1.low > b2.low > b3.low:
             v1 = "新高涨"
 
     if b1.close < b1.open and b2.close < b2.open and b3.close < b3.open:
-        v1 = '三连跌'
+        v1 = "三连跌"
         if b1.high < b2.high < b3.high and b1.low < b2.low < b3.low:
             v1 = "新低跌"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if b1.vol > b2.vol > b3.vol:
-        v2 = '依次放量'
+        v2 = "依次放量"
     elif b1.vol < b2.vol < b3.vol:
-        v2 = '依次缩量'
+        v2 = "依次缩量"
     else:
-        v2 = '量柱无序'
+        v2 = "量柱无序"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
-def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
+def bar_end_V221211(c: CZSC, freq1="60分钟", **kwargs) -> OrderedDict:
     """判断分钟 K 线是否结束
 
     参数模板："{freq}_{freq1}结束_BS辅助221211"
@@ -142,7 +142,7 @@ def bar_end_V221211(c: CZSC, freq1='60分钟', **kwargs) -> OrderedDict:
     :return: s
     """
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_{freq1}结束_BS辅助221211".split('_')
+    k1, k2, k3 = f"{freq}_{freq1}结束_BS辅助221211".split("_")
     assert "分钟" in freq1
 
     c1_dt = freq_end_time(c.bars_raw[-1].dt, freq1)
@@ -282,7 +282,7 @@ def bar_fang_liang_break_V221216(c: CZSC, **kwargs) -> OrderedDict:
     ma_type = kwargs.get("ma_type", "SMA").upper()
     timeperiod = int(kwargs.get("timeperiod", 233))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}#{ma_type}#{timeperiod}_突破V221216".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}#{ma_type}#{timeperiod}_突破V221216".split("_")
 
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
 
@@ -360,7 +360,7 @@ def bar_mean_amount_V221112(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-@deprecated(version='1.0.0', reason="计算耗时，逻辑不严谨")
+@deprecated(version="1.0.0", reason="计算耗时，逻辑不严谨")
 def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
     """倒数第 di 根 K 线穿越支撑、压力位的数量【慎用，非常耗时】
 
@@ -387,7 +387,7 @@ def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
     k1, k2, k3 = str(c.freq.value), f"D{di}K", f"N{num}"
 
     if len(c.bars_raw) < 300 + di:
-        v1 = '其他'
+        v1 = "其他"
 
     else:
         bars = get_sub_elements(c.bars_raw, di=di, n=600)
@@ -395,7 +395,7 @@ def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
         last = bars[-1]
 
         cnt = 0
-        for x in pres['关键位']:
+        for x in pres["关键位"]:
             if last.close > x > last.open:
                 assert cnt >= 0
                 cnt += 1
@@ -443,7 +443,7 @@ def bar_section_momentum_V221112(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 10))
     th = int(kwargs.get("th", 100))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}K{n}B_阈值{th}BP".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K{n}B_阈值{th}BP".split("_")
 
     if len(c.bars_raw) < di + n:
         v1 = v2 = v3 = "其他"
@@ -484,7 +484,7 @@ def bar_accelerate_V221110(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     window = int(kwargs.get("window", 10))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}W{window}_加速V221110".split('_')
+    k1, k2, k3 = f"{freq}_D{di}W{window}_加速V221110".split("_")
 
     v1 = "其他"
     if len(c.bars_raw) > di + window + 10:
@@ -550,6 +550,68 @@ def bar_accelerate_V221118(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
+    """辨别加速走势
+
+    参数模板："{freq}_D{di}W{w}T{t}_加速V240428"
+
+    **信号逻辑：**
+
+    以上涨加速为例，计算过程如下：
+    1. 给定窗口大小 w，rolling 计算 w 个周期的 diff 绝对值；
+    2. 如果当前 diff 绝对值大于 最近300个周期的 diff 绝对值的 75% 分位数，且当前 diff 大于 0，判定为上涨加速；
+    3. 窗口内至少要有 T 根倍量上涨的 K 线。
+
+    **信号列表：**
+
+    - Signal('日线_D1W21T2_加速V240428_上涨_任意_任意_0')
+    - Signal('日线_D1W21T2_加速V240428_下跌_任意_任意_0')
+
+    :param c: CZSC对象
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 21))
+    t = int(kwargs.get("t", 2))
+    freq = c.freq.value
+
+    # rolling 计算 w 个周期的 diff
+    cache_key = f"diff_{w}"
+    for i in range(w, len(c.bars_raw)):
+        if cache_key not in c.bars_raw[i].cache:
+            c.bars_raw[i].cache[cache_key] = c.bars_raw[i].close - c.bars_raw[i - w].close
+
+    k1, k2, k3 = f"{freq}_D{di}W{w}T{t}_加速V240428".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < w + 100 + di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    diff_abs = [abs(x.cache[cache_key]) for x in c.bars_raw[-300:] if cache_key in x.cache]
+    th = np.percentile(diff_abs, 75)
+    last_diff = c.bars_raw[-1].cache[cache_key]
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+
+    if abs(last_diff) > th and last_diff > 0:
+        # 窗口内至少要有 T 根倍量上涨的 K 线
+        cnt = 0
+        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+            if bar2.close > bar2.open and bar2.vol > bar1.vol * 2:
+                cnt += 1
+        if cnt >= t:
+            v1 = "上涨"
+
+    if abs(last_diff) > th and last_diff < 0:
+        # 窗口内至少要有 T 根倍量下跌的 K 线
+        cnt = 0
+        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+            if bar2.close < bar2.open and bar2.vol > bar1.vol * 2:
+                cnt += 1
+        if cnt >= t:
+            v1 = "下跌"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def bar_zdf_V221203(c: CZSC, **kwargs) -> OrderedDict:
     """单根K线的涨跌幅区间
 
@@ -572,12 +634,12 @@ def bar_zdf_V221203(c: CZSC, **kwargs) -> OrderedDict:
     t1, t2 = span
     assert t2 > t1 > 0
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}{mode}_{t1}至{t2}".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}{mode}_{t1}至{t2}".split("_")
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     if mode == "ZF":
         edge = (bars[-1].close / bars[-2].close - 1) * 10000
     else:
-        assert mode == 'DF'
+        assert mode == "DF"
         edge = (1 - bars[-1].close / bars[-2].close) * 10000
 
     v1 = "满足" if t2 >= edge >= t1 else "其他"
@@ -603,12 +665,12 @@ def bar_fake_break_V230204(c: CZSC, **kwargs) -> OrderedDict:
     :param di: 从最新的第几个 bar 开始计算
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 20))
-    m = int(kwargs.get('m', 5))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
+    m = int(kwargs.get("m", 5))
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
 
-    v1 = '其他'
+    v1 = "其他"
     last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
 
     def __is_overlap(_bars):
@@ -626,7 +688,7 @@ def bar_fake_break_V230204(c: CZSC, **kwargs) -> OrderedDict:
     dd = 0
     gg = 0
     for i in range(m, n - m):
-        _overlap, dd, gg = __is_overlap(last_bars[-i - m:-i])
+        _overlap, dd, gg = __is_overlap(last_bars[-i - m : -i])
         if _overlap:
             right_bars = last_bars[-i:]
             break
@@ -727,9 +789,9 @@ def bar_amount_acc_V230214(c: CZSC, **kwargs) -> OrderedDict:
         t: 总成交额阈值
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 2))
-    n = int(kwargs.get('n', 5))
-    t = int(kwargs.get('t', 10))
+    di = int(kwargs.get("di", 2))
+    n = int(kwargs.get("n", 5))
+    t = int(kwargs.get("t", 10))
     k1, k2, k3, v1 = f"{c.freq.value}", f"D{di}N{n}", f"累计超{t}千万", "其他"
     if len(c.bars_raw) <= di + n + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -761,10 +823,10 @@ def bar_big_solid_V230215(c: CZSC, **kwargs):
     :param n: 窗口大小
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 20))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}_MID".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}_MID".split("_")
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
 
     # 找到窗口内最大实体K线
@@ -772,8 +834,8 @@ def bar_big_solid_V230215(c: CZSC, **kwargs):
     max_solid_bar = _bars[max_i]
     max_solid_mid = min(max_solid_bar.open, max_solid_bar.close) + 0.5 * max_solid_bar.solid
 
-    v1 = '看多' if c.bars_raw[-1].close > max_solid_mid else '看空'
-    v2 = '大阳' if max_solid_bar.close > max_solid_bar.open else '大阴'
+    v1 = "看多" if c.bars_raw[-1].close > max_solid_mid else "看空"
+    v2 = "大阳" if max_solid_bar.close > max_solid_bar.open else "大阴"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
 
@@ -797,10 +859,10 @@ def bar_vol_bs1_V230224(c: CZSC, **kwargs):
     :param n: 窗口大小
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 20))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 20))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}量价_BS1辅助".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}N{n}量价_BS1辅助".split("_")
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     mean_vol = np.mean([x.amount for x in _bars])
 
@@ -811,11 +873,11 @@ def bar_vol_bs1_V230224(c: CZSC, **kwargs):
     long_c2 = _bars[-1].amount < mean_vol * 0.7
 
     if short_c1 and short_c2:
-        v1 = '看空'
+        v1 = "看空"
     elif long_c1 and long_c2:
-        v1 = '看多'
+        v1 = "看多"
     else:
-        v1 = '其他'
+        v1 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -840,8 +902,8 @@ def bar_reversal_V230227(c: CZSC, **kwargs) -> OrderedDict:
     :param avg_bp: 平均单根K线的涨跌幅，用于判断是否是反转
     :return:
     """
-    di = int(kwargs.get('di', 1))
-    avg_bp = int(kwargs.get('avg_bp', 300))
+    di = int(kwargs.get("di", 1))
+    avg_bp = int(kwargs.get("avg_bp", 300))
 
     k1, k2, k3 = str(c.freq.value), f"D{di}A{avg_bp}", "反转V230227"
     v1 = "其他"
@@ -952,15 +1014,15 @@ def bar_time_V230327(c: CZSC, **kwargs):
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_日内时间_分段V230327".split("_")
     v1 = "其他"
-    assert c.freq.value in ['30分钟', '60分钟'], "bar_time_V230327 仅支持30分钟和60分钟的K线"
+    assert c.freq.value in ["30分钟", "60分钟"], "bar_time_V230327 仅支持30分钟和60分钟的K线"
     if len(c.bars_raw) < 100:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    cache_key = 'bar_time_V230327#time_spans'
+    cache_key = "bar_time_V230327#time_spans"
     time_spans = c.cache.get(cache_key, None)
     if time_spans is None:
         bars = c.bars_raw[-100:]
-        time_spans = sorted(list(set([x.dt.strftime('%H:%M') for x in bars])))
+        time_spans = sorted(list(set([x.dt.strftime("%H:%M") for x in bars])))
         c.cache[cache_key] = time_spans
 
     v1 = f"第{time_spans.index(c.bars_raw[-1].dt.strftime('%H:%M')) + 1}段"
@@ -995,7 +1057,7 @@ def bar_weekday_V230328(c: CZSC, **kwargs):
     if len(c.bars_raw) < 20:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    weekday_map = {0: '周一', 1: '周二', 2: '周三', 3: '周四', 4: '周五', 5: '周六', 6: '周日'}
+    weekday_map = {0: "周一", 1: "周二", 2: "周三", 3: "周四", 4: "周五", 5: "周六", 6: "周日"}
     v1 = weekday_map[c.bars_raw[-1].dt.weekday()]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1027,9 +1089,9 @@ def bar_r_breaker_V230326(c: CZSC, **kwargs):
     :return: 信号字典
     """
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_RBreaker_BS辅助V230326".split('_')
+    k1, k2, k3 = f"{freq}_RBreaker_BS辅助V230326".split("_")
     if len(c.bars_raw) < 3:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     # 计算六个价位
     H, C, L = c.bars_raw[-2].high, c.bars_raw[-2].close, c.bars_raw[-2].low
@@ -1044,20 +1106,20 @@ def bar_r_breaker_V230326(c: CZSC, **kwargs):
     # 根据价格位置判断信号
     current_bar = c.bars_raw[-1]
     if current_bar.close > break_buy:
-        v1 = '做多'
-        v2 = '趋势'
+        v1 = "做多"
+        v2 = "趋势"
     elif current_bar.close < break_sell:
-        v1 = '做空'
-        v2 = '趋势'
+        v1 = "做空"
+        v2 = "趋势"
     elif current_bar.high > see_sell and current_bar.close < verse_sell:
-        v1 = '做空'
-        v2 = '反转'
+        v1 = "做空"
+        v2 = "反转"
     elif current_bar.low < see_buy and current_bar.close > verse_buy:
-        v1 = '做多'
-        v2 = '反转'
+        v1 = "做多"
+        v2 = "反转"
     else:
-        v1 = '其他'
-        v2 = '其他'
+        v1 = "其他"
+        v2 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -1086,17 +1148,17 @@ def bar_dual_thrust_V230403(c: CZSC, **kwargs):
         - K2: 参数，根据经验优化
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    N = int(kwargs.get('N', 5))
-    K1 = int(kwargs.get('K1', 20))
-    K2 = int(kwargs.get('K2', 20))
+    di = int(kwargs.get("di", 1))
+    N = int(kwargs.get("N", 5))
+    K1 = int(kwargs.get("K1", 20))
+    K2 = int(kwargs.get("K2", 20))
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}通道突破#{N}#{K1}#{K2}_BS辅助V230403".split('_')
+    k1, k2, k3 = f"{freq}_D{di}通道突破#{N}#{K1}#{K2}_BS辅助V230403".split("_")
     if len(c.bars_raw) < 3:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1='其他')
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
-    bars = get_sub_elements(c.bars_raw, di=di+1, n=N+1)
+    bars = get_sub_elements(c.bars_raw, di=di + 1, n=N + 1)
     HH = max([i.high for i in bars])
     HC = max([i.close for i in bars])
     LC = min([i.close for i in bars])
@@ -1104,16 +1166,16 @@ def bar_dual_thrust_V230403(c: CZSC, **kwargs):
     Range = max(HH - LC, HC - LL)
 
     current_bar = c.bars_raw[-di]
-    buy_line = current_bar.open + Range * K1 / 100    # 上轨
-    sell_line = current_bar.open - Range * K2 / 100   # 下轨
+    buy_line = current_bar.open + Range * K1 / 100  # 上轨
+    sell_line = current_bar.open - Range * K2 / 100  # 下轨
 
     # 根据价格位置判断信号
     if current_bar.close > buy_line:
-        v1 = '看多'
+        v1 = "看多"
     elif current_bar.close < sell_line:
-        v1 = '看空'
+        v1 = "看空"
     else:
-        v1 = '其他'
+        v1 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1141,9 +1203,9 @@ def bar_zt_count_V230504(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     window = int(kwargs.get("window", 5))
     freq = c.freq.value
-    assert freq in ['日线']
-    k1, k2, k3 = f"{freq}_D{di}W{window}涨停计数_裸K形态V230504".split('_')
-    v1 = '其他'
+    assert freq in ["日线"]
+    k1, k2, k3 = f"{freq}_D{di}W{window}涨停计数_裸K形态V230504".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 7 + di + window:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1190,7 +1252,7 @@ def bar_channel_V230508(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 20))
     m = int(kwargs.get("m", 600))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}M{m}_通道V230507".split('_')
+    k1, k2, k3 = f"{freq}_D{di}M{m}_通道V230507".split("_")
     v1 = "其他"
 
     if len(c.bars_raw) < di + 10:
@@ -1208,13 +1270,13 @@ def bar_channel_V230508(c: CZSC, **kwargs) -> OrderedDict:
     max_high = max(x.high for x in bars)
     min_low = min(x.low for x in bars)
 
-    if not (res_high['r2'] > 0.8 and res_low['r2'] > 0.8):
+    if not (res_high["r2"] > 0.8 and res_low["r2"] > 0.8):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    if res_high['slope'] > 0 and res_low['slope'] > 0 and high_right == max_high:
+    if res_high["slope"] > 0 and res_low["slope"] > 0 and high_right == max_high:
         v1 = "看多"
 
-    if res_high['slope'] < 0 and res_low['slope'] < 0 and low_right == min_low:
+    if res_high["slope"] < 0 and res_low["slope"] < 0 and low_right == min_low:
         v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1245,9 +1307,9 @@ def bar_tnr_V230630(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    timeperiod = int(kwargs.get('timeperiod', 14))
-    k = int(kwargs.get('k', 3))
+    di = int(kwargs.get("di", 1))
+    timeperiod = int(kwargs.get("timeperiod", 14))
+    k = int(kwargs.get("k", 3))
     freq = c.freq.value
 
     # 更新缓存
@@ -1258,11 +1320,11 @@ def bar_tnr_V230630(c: CZSC, **kwargs) -> OrderedDict:
         if i < timeperiod:
             bar.cache[cache_key] = 0
         else:
-            _bars = c.bars_raw[max(0, i - timeperiod):i + 1]
+            _bars = c.bars_raw[max(0, i - timeperiod) : i + 1]
             sum_abs = sum([abs(_bars[j].close - _bars[j - 1].close) for j in range(1, len(_bars))])
             bar.cache[cache_key] = 0 if sum_abs == 0 else abs(_bars[-1].close - _bars[0].close) / sum_abs
 
-    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}K{k}_趋势V230630".split('_')
+    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}K{k}_趋势V230630".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + timeperiod + 8:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1305,8 +1367,8 @@ def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
-    timeperiod = int(kwargs.get('timeperiod', 14))
+    di = int(kwargs.get("di", 1))
+    timeperiod = int(kwargs.get("timeperiod", 14))
     freq = c.freq.value
 
     # 更新缓存
@@ -1317,18 +1379,18 @@ def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
         if i < timeperiod:
             bar.cache[cache_key] = 0
         else:
-            _bars = c.bars_raw[max(0, i - timeperiod):i + 1]
+            _bars = c.bars_raw[max(0, i - timeperiod) : i + 1]
             sum_abs = sum([abs(_bars[j].close - _bars[j - 1].close) for j in range(1, len(_bars))])
             bar.cache[cache_key] = 0 if sum_abs == 0 else abs(_bars[-1].close - _bars[0].close) / sum_abs
 
-    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}_趋势V230629".split('_')
+    k1, k2, k3 = f"{freq}_D{di}TNR{timeperiod}_趋势V230629".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + timeperiod + 8:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
     tnr = [bar.cache[cache_key] for bar in bars]
-    lev = pd.qcut(tnr, 10, labels=False, duplicates='drop')[-1]
+    lev = pd.qcut(tnr, 10, labels=False, duplicates="drop")[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
 
 
@@ -1356,7 +1418,7 @@ def bar_shuang_fei_V230507(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}双飞_短线V230507".split('_')
+    k1, k2, k3 = f"{freq}_D{di}双飞_短线V230507".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1389,10 +1451,10 @@ def bar_limit_down_V230525(c: CZSC, **kwargs) -> OrderedDict:
     :return: 返回信号结果
     """
     freq = c.freq.value
-    assert freq == '日线', "该信号只能用于日线级别，仅适用于A股"
+    assert freq == "日线", "该信号只能用于日线级别，仅适用于A股"
 
-    k1, k2, k3 = f"{freq}_跌停后无下影线长实体阳线_短线V230525".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_跌停后无下影线长实体阳线_短线V230525".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1400,7 +1462,7 @@ def bar_limit_down_V230525(c: CZSC, **kwargs) -> OrderedDict:
     b2_condition = b2.low == b2.close < b1.close and b2.close / b1.close < 0.95
     b3_condition = b3.low == b3.open and b3.close > b3.open and b3.solid > b3.upper * 2 and b3.close / b3.open > 1.07
     if b2_condition and b3_condition and b3.low < b2.low:
-        v1 = '满足'
+        v1 = "满足"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1521,23 +1583,22 @@ def bar_window_std_V230731(c: CZSC, **kwargs) -> OrderedDict:
     for i, bar in enumerate(c.bars_raw):
         if cache_key in bar.cache:
             continue
-        bar.cache[cache_key] = 0 if i < 5 else np.std([x.close for x in c.bars_raw[max(i-20, 0):i]])
+        bar.cache[cache_key] = 0 if i < 5 else np.std([x.close for x in c.bars_raw[max(i - 20, 0) : i]])
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}W{w}M{m}N{n}_窗口波动V230731".split('_')
+    k1, k2, k3 = f"{freq}_D{di}W{w}M{m}N{n}_窗口波动V230731".split("_")
     v1 = "其他"
 
     if len(c.bars_raw) < di + m + w:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     stds = [x.cache[cache_key] for x in get_sub_elements(c.bars_raw, di=di, n=m)]
-    layer = pd.qcut(stds, n, labels=False, duplicates='drop')
+    layer = pd.qcut(stds, n, labels=False, duplicates="drop")
     max_layer = max(layer[-w:]) + 1
     min_layer = min(layer[-w:]) + 1
 
     v1, v2 = f"高波N{max_layer}", f"低波N{min_layer}"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
-
 
 
 def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
@@ -1579,7 +1640,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
     assert w < m, "参数 w 必须小于 m"
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_W{w}M{m}N{n}L{l}_支撑压力位V230731".split('_')
+    k1, k2, k3 = f"{freq}_W{w}M{m}N{n}L{l}_支撑压力位V230731".split("_")
     if len(c.bi_list) < n + 2:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
@@ -1592,7 +1653,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
         bar.cache[cache_key_pct] = (bar.close - L_line) / (H_line - L_line)
 
     fenweis = [x.cache[cache_key_pct] for x in get_sub_elements(c.bars_raw, n=m)]
-    layer = pd.qcut(fenweis, l, labels=False, duplicates='drop')
+    layer = pd.qcut(fenweis, l, labels=False, duplicates="drop")
     max_layer = max(layer[-w:]) + 1
     min_layer = min(layer[-w:]) + 1
 
@@ -1637,13 +1698,13 @@ def bar_window_ps_V230801(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 8))
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_N{n}W{w}_支撑压力位V230801".split('_')
+    k1, k2, k3 = f"{freq}_N{n}W{w}_支撑压力位V230801".split("_")
     ubi = c.ubi
     if len(c.bi_list) < n + 2 or not ubi:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
-    H_line = max([x.high for x in c.bi_list[-n:]] + [ubi['high']])
-    L_line = min([x.low for x in c.bi_list[-n:]] + [ubi['low']])
+    H_line = max([x.high for x in c.bi_list[-n:]] + [ubi["high"]])
+    L_line = min([x.low for x in c.bi_list[-n:]] + [ubi["low"]])
 
     pcts = [int(max((x.close - L_line) / (H_line - L_line), 0) * 10) for x in c.bars_raw[-w:]]
     v1, v2, v3 = f"最大N{max(pcts)}", f"最小N{min(pcts)}", f"当前N{pcts[-1]}"
@@ -1676,26 +1737,26 @@ def bar_trend_V240209(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 1))
-    N = int(kwargs.get('N', 60))
+    di = int(kwargs.get("di", 1))
+    N = int(kwargs.get("N", 60))
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{N}趋势跟踪_BS辅助V240209".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}N{N}趋势跟踪_BS辅助V240209".split("_")
+    v1 = "其他"
     cache_key = update_macd_cache(c)
     bars = get_sub_elements(c.bars_raw, di=di, n=N)
     max_bar = max(bars, key=lambda x: x.high)
     min_bar = min(bars, key=lambda x: x.low)
-    dif_std = np.std([x.cache[cache_key]['dif'] for x in bars])
-    macd_std = np.std([x.cache[cache_key]['macd'] for x in bars])
+    dif_std = np.std([x.cache[cache_key]["dif"] for x in bars])
+    macd_std = np.std([x.cache[cache_key]["macd"] for x in bars])
 
     if min_bar.dt < max_bar.dt:
         right_bars = [x for x in c.bars_raw if x.dt >= max_bar.dt]
         right_min_bar = min(right_bars, key=lambda x: x.low)
         c1 = 30 > right_min_bar.id - max_bar.id > 5
-        c2 = abs(right_bars[-1].cache[cache_key]['dif']) < dif_std        # type: ignore
+        c2 = abs(right_bars[-1].cache[cache_key]["dif"]) < dif_std  # type: ignore
         c3 = right_min_bar.low > min_bar.low
-        c4 = abs(right_bars[-1].cache[cache_key]['macd']) < macd_std     # type: ignore
+        c4 = abs(right_bars[-1].cache[cache_key]["macd"]) < macd_std  # type: ignore
 
         if c1 and c2 and c3 and c4:
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1="多头")
@@ -1704,11 +1765,195 @@ def bar_trend_V240209(c: CZSC, **kwargs) -> OrderedDict:
         right_bars = [x for x in c.bars_raw if x.dt >= min_bar.dt]
         right_max_bar = max(right_bars, key=lambda x: x.high)
         c1 = 30 > right_max_bar.id - min_bar.id > 5
-        c2 = abs(right_bars[-1].cache[cache_key]['dif']) < dif_std        # type: ignore
+        c2 = abs(right_bars[-1].cache[cache_key]["dif"]) < dif_std  # type: ignore
         c3 = right_max_bar.high < max_bar.high
-        c4 = abs(right_bars[-1].cache[cache_key]['macd']) < macd_std      # type: ignore
+        c4 = abs(right_bars[-1].cache[cache_key]["macd"]) < macd_std  # type: ignore
 
         if c1 and c2 and c3 and c4:
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1="空头")
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_plr_V240427(c: CZSC, **kwargs) -> OrderedDict:
+    """盈亏比计算
+
+    plr 是 Profit Loss Ratio 的缩写，即盈亏比。盈亏比是一个用于衡量投资者在投资活动中获得的盈利与损失之间的比率的指标。
+
+    参数模板："{freq}_D{di}W{w}T{t}M{m}_盈亏比V240427"
+
+    **信号逻辑：**
+
+    以多头的阴亏比为例，计算过程如下：
+    1. 找到最近的一个最低点，记为 L；
+    2. 在最低点 L 之前的K线中，找到第一个最高点，记为 H；
+    3. 计算 H 到 L 之间的盈亏比，记为 plr；
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W60T20M多头_盈亏比V240427_不满足_任意_任意_0')
+    - Signal('60分钟_D1W60T20M多头_盈亏比V240427_满足_任意_任意_0')
+    - Signal('60分钟_D1W60T20M空头_盈亏比V240427_不满足_任意_任意_0')
+    - Signal('60分钟_D1W60T20M空头_盈亏比V240427_满足_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: int, default 1, 周期偏移量
+        - w: int, default 60, 计算盈亏比的K线数量
+        - t: int, default 20, 盈亏比阈值，plr > t / 10 时满足信号条件
+        - m: str, default "多头", 信号方向，"多头" 或 "空头"
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 60))
+    t = int(kwargs.get("t", 20))
+    m = str(kwargs.get("m", "多头"))
+
+    assert m in ["多头", "空头"], "参数 m 必须是 多头 或 空头"
+    assert di > 0, "参数 di 必须大于 0"
+    assert w >= 10, "参数 w 必须大于等于 10"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}T{t}M{m}_盈亏比V240427".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 7 + w:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+
+    if m == "多头":
+        low_bar = min(bars, key=lambda x: x.low)
+        if bars.index(low_bar) == 0:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+        high_bar = max(bars[: bars.index(low_bar)], key=lambda x: x.high)
+        profit = high_bar.high - bars[-1].close
+        loss = bars[-1].close - low_bar.low
+        plr = profit / loss if loss > 0 else 0
+        v1 = "满足" if plr > t / 10 else "不满足"
+
+    if m == "空头":
+        high_bar = max(bars, key=lambda x: x.high)
+        if bars.index(high_bar) == 0:
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+        low_bar = min(bars[: bars.index(high_bar)], key=lambda x: x.low)
+        profit = bars[-1].close - low_bar.low
+        loss = high_bar.high - bars[-1].close
+        plr = profit / loss if loss > 0 else 0
+        v1 = "满足" if plr > t / 10 else "不满足"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_polyfit_V240428(c: CZSC, **kwargs) -> OrderedDict:
+    """一阶、二阶多项式拟合
+
+    参考资料：
+    1. [基于低阶多项式拟合的日内趋势策略](https://zhuanlan.zhihu.com/p/391605615)
+    2. 罗军，广发证券，2011，《基于低阶多项式拟合的股指期货趋势交易(LPTT)策略》
+
+    参数模板："{freq}_D{di}W{w}_分类V240428"
+
+    **信号逻辑：**
+
+    若对一阶线性函数求一阶导数，也就是平常所说的斜率，若导数dy/dt>0，说明价格正处于上升趋势；若导数dy/dt<0，则为下跌趋势。
+    若对二阶线性函数求二阶导数，若二阶导数d2y/dt2>0，价格曲线为凹（开口向上）；若二阶导数d2y/dt2<0，价格曲线为凸（开口向下）。
+
+    做个类比，价格曲线就像汽车行走的距离轨迹，对距离（位移）求一阶导数就是速度，速度大于0说明朝正方向开，小于0说明朝反方向开。
+    求二阶导数就是加速度，假设此时汽车为正向行驶，加速度大于0说明在汽车速度还在增加的状态当中，在不断加速，反之则是处在减速的过程当中。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W20_分类V240428_加速上涨_任意_任意_0')
+    - Signal('60分钟_D1W20_分类V240428_减速上涨_任意_任意_0')
+    - Signal('60分钟_D1W20_分类V240428_加速下跌_任意_任意_0')
+    - Signal('60分钟_D1W20_分类V240428_减速下跌_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: int, default 1, 周期偏移量
+        - w: int, default 60, 计算多项式拟合的K线数量
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 20))
+
+    assert di > 0, "参数 di 必须大于 0"
+    assert w >= 10, "参数 w 必须大于等于 10"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}_分类V240428".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 7 + w:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+    close = np.array([x.close for x in bars])
+    p1 = np.polyfit(np.arange(len(close)), close, 1)[0]
+    p2 = np.polyfit(np.arange(len(close)), close, 2)[0]
+
+    if p1 > 0 and p2 > 0:
+        v1 = "加速上涨"
+    elif p1 < 0 and p2 < 0:
+        v1 = "加速下跌"
+    elif p1 > 0 > p2:
+        v1 = "减速上涨"
+    elif p1 < 0 < p2:
+        v1 = "减速下跌"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_break_V240428(c: CZSC, **kwargs) -> OrderedDict:
+    """极值突破
+
+    参考资料：
+    1. [后浪“拍死”前浪的日内波动极值策略](https://zhuanlan.zhihu.com/p/390025811)
+    2. 罗军，广发证券，2011，《基于日内波动极值的股指期货趋势跟随系统》
+
+    参数模板："{freq}_D{di}W{w}_事件V240428"
+
+    **信号逻辑：**
+
+    以60分钟级别为例，计算过程如下：
+    1. 获取w根K线的最高价和最低价，分别记为H和L；
+    2. 当前K线的收盘价，记为C；大于H时，触发收盘新高信号；小于L时，触发收盘新低信号。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W20_事件V240428_收盘新低_任意_任意_0')
+    - Signal('60分钟_D1W20_事件V240428_收盘新高_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: int, default 1, 周期偏移量
+        - w: int, default 60, 计算多项式拟合的K线数量
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 20))
+
+    assert di > 0, "参数 di 必须大于 0"
+    assert w >= 10, "参数 w 必须大于等于 10"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}_事件V240428".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 7 + w:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=di, n=w)
+
+    if bars[-1].close > max([x.high for x in bars[:-1]]):
+        v1 = "收盘新高"
+    elif bars[-1].close < min([x.low for x in bars[:-1]]):
+        v1 = "收盘新低"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
