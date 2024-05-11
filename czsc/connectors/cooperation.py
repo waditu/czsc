@@ -104,14 +104,17 @@ def get_min_future_klines(code, sdt, edt, freq="1m"):
     sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
     edt = pd.to_datetime(edt).strftime("%Y%m%d")
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
-    dates = pd.date_range(start=sdt, end=edt, freq="120D")
+    dates = pd.date_range(start="20000101", end="20300101", freq="365D")
 
-    dates = [d.strftime("%Y%m%d") for d in dates] + [sdt, edt]
+    dates = [d.strftime("%Y%m%d") for d in dates]
     dates = sorted(list(set(dates)))
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
-        ttl = 60 if pd.to_datetime(edt_).date() == datetime.now().date() else -1
+        if pd.to_datetime(sdt_).date() >= datetime.now().date():
+            break
+
+        ttl = 60 if pd.to_datetime(edt_).date() >= datetime.now().date() else -1
         df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl)
         if df.empty:
             continue
