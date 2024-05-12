@@ -99,7 +99,7 @@ def get_symbols(name, **kwargs):
     raise ValueError(f"{name} 分组无法识别，获取标的列表失败！")
 
 
-def get_min_future_klines(code, sdt, edt, freq="1m"):
+def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
     """分段获取期货1分钟K线后合并"""
     sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
     edt = pd.to_datetime(edt).strftime("%Y%m%d")
@@ -114,7 +114,7 @@ def get_min_future_klines(code, sdt, edt, freq="1m"):
         if pd.to_datetime(sdt_).date() >= datetime.now().date():
             break
 
-        ttl = 60 if pd.to_datetime(edt_).date() >= datetime.now().date() else -1
+        ttl = kwargs.get("ttl", 60 * 60) if pd.to_datetime(edt_).date() >= datetime.now().date() else -1
         df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl)
         if df.empty:
             continue
@@ -187,7 +187,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 
         freq_rd = "1m" if freq.value.endswith("分钟") else "1d"
         if freq.value.endswith("分钟"):
-            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m")
+            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m", ttl=ttl)
             if "amount" not in df.columns:
                 df["amount"] = df["vol"] * df["close"]
 
