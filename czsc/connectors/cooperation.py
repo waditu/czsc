@@ -15,11 +15,11 @@ from loguru import logger
 from datetime import datetime
 from czsc import RawBar, Freq
 
-# 首次使用需要打开一个python终端按如下方式设置 token
+# 首次使用需要打开一个python终端按如下方式设置 token或者在环境变量中设置 CZSC_TOKEN
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
-dc = czsc.DataClient(url="http://zbczsc.com:9106", cache_path=cache_path)
+dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
 
 
 def format_kline(kline: pd.DataFrame, freq: Freq):
@@ -99,17 +99,22 @@ def get_symbols(name, **kwargs):
     raise ValueError(f"{name} 分组无法识别，获取标的列表失败！")
 
 
-def get_min_future_klines(code, sdt, edt, freq="1m"):
+def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
     """分段获取期货1分钟K线后合并"""
+    sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
+    edt = pd.to_datetime(edt).strftime("%Y%m%d")
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
-    dates = pd.date_range(start=sdt, end=edt, freq="120D")
+    dates = pd.date_range(start="20000101", end="20300101", freq="365D")
 
-    dates = [d.strftime("%Y%m%d") for d in dates] + [sdt, edt]
+    dates = [d.strftime("%Y%m%d") for d in dates]
     dates = sorted(list(set(dates)))
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
-        ttl = 60 if pd.to_datetime(edt_).date() == datetime.now().date() else -1
+        if pd.to_datetime(sdt_).date() >= datetime.now().date():
+            break
+
+        ttl = kwargs.get("ttl", 60 * 60) if pd.to_datetime(edt_).date() >= datetime.now().date() else -1
         df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl)
         if df.empty:
             continue
@@ -153,6 +158,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     freq = czsc.Freq(freq)
     raw_bars = kwargs.get("raw_bars", True)
     ttl = kwargs.get("ttl", -1)
+    sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
+    edt = pd.to_datetime(edt).strftime("%Y%m%d")
 
     if "SH" in symbol or "SZ" in symbol:
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
@@ -180,7 +187,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 
         freq_rd = "1m" if freq.value.endswith("分钟") else "1d"
         if freq.value.endswith("分钟"):
-            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m")
+            df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m", ttl=ttl)
             if "amount" not in df.columns:
                 df["amount"] = df["vol"] * df["close"]
 

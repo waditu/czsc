@@ -177,10 +177,13 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     col1, col2, col3, col4 = st.columns([1, 1, 1, 5])
     col1.metric("IC均值", res["IC均值"])
     col1.metric("IC标准差", res["IC标准差"])
+    col1.metric("累计IC回归R2", res["累计IC回归R2"])
     col2.metric("ICIR", res["ICIR"])
     col2.metric("IC胜率", res["IC胜率"])
+    col2.metric("累计IC回归斜率", res["累计IC回归斜率"])
     col3.metric("IC绝对值>2%占比", res["IC绝对值>2%占比"])
     col3.metric("品种数量", df["symbol"].nunique())
+    col3.metric("交易日数量", df["dt"].nunique())
 
     dfc[["year", "month"]] = dfc.dt.apply(lambda x: pd.Series([x.year, x.month]))
     dfm = dfc.groupby(["year", "month"]).agg({"ic": "mean"}).reset_index()

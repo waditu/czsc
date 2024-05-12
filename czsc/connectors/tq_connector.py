@@ -14,23 +14,7 @@ from loguru import logger
 from typing import List, Union, Optional
 from datetime import date, datetime, timedelta
 from czsc import Freq, RawBar
-from tqsdk import ( # noqa
-    TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq
-)
-
-
-def format_kline(df, freq=Freq.F1):
-    """对分钟K线进行格式化"""
-    freq = Freq(freq)
-    rows = df.to_dict('records')
-    raw_bars = []
-    for i, row in enumerate(rows):
-        bar = RawBar(symbol=row['symbol'], id=i, freq=freq,
-                     dt=datetime.fromtimestamp(row["datetime"] / 1e9) + timedelta(minutes=1),
-                     open=row['open'], close=row['close'], high=row['high'],
-                     low=row['low'], vol=row['volume'], amount=row['volume'] * row['close'])
-        raw_bars.append(bar)
-    return raw_bars
+from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq  # noqa
 
 
 # https://doc.shinnytech.com/tqsdk/latest/usage/mddatas.html 代码规则
@@ -108,79 +92,124 @@ symbols = [
 
 
 future_name_map = {
-    'PG': 'LPG',
-    'EB': '苯乙烯',
-    'CS': '玉米淀粉',
-    'C': '玉米',
-    'V': 'PVC',
-    'J': '焦炭',
-    'BB': '胶合板',
-    'M': '豆粕',
-    'A': '豆一',
-    'PP': '聚丙烯',
-    'P': '棕榈油',
-    'FB': '纤维板',
-    'B': '豆二',
-    'JD': '鸡蛋',
-    'JM': '焦煤',
-    'L': '塑料',
-    'I': '铁矿石',
-    'Y': '豆油',
-    'RR': '粳米',
-    'EG': '乙二醇',
-    'LH': '生猪',
-    'CJ': '红枣',
-    'UR': '尿素',
-    'TA': 'PTA',
-    'OI': '菜油',
-    'MA': '甲醇',
-    'RS': '菜籽',
-    'ZC': '动力煤',
-    'LR': '晚籼稻',
-    'PM': '普麦',
-    'SR': '白糖',
-    'RI': '早籼稻',
-    'SF': '硅铁',
-    'WH': '强麦',
-    'JR': '粳稻',
-    'SM': '锰硅',
-    'FG': '玻璃',
-    'CF': '棉花',
-    'RM': '菜粕',
-    'PF': '短纤',
-    'AP': '苹果',
-    'CY': '棉纱',
-    'ER': '早籼稻',
-    'ME': '甲醇',
-    'RO': '菜油',
-    'TC': '动力煤',
-    'WS': '强麦',
-    'WT': '硬麦',
-    'SA': '纯碱',
-    'PK': '花生',
-    'SS': '不锈钢',
-    'AL': '沪铝',
-    'CU': '沪铜',
-    'ZN': '沪锌',
-    'AG': '白银',
-    'RB': '螺纹钢',
-    'SN': '沪锡',
-    'NI': '沪镍',
-    'WR': '线材',
-    'FU': '燃油',
-    'AU': '黄金',
-    'PB': '沪铅',
-    'RU': '橡胶',
-    'HC': '热轧卷板',
-    'BU': '沥青',
-    'SP': '纸浆',
-    'NR': '20号胶',
-    'SC': '原油',
-    'LU': '低硫燃料油',
-    'BC': '国际铜',
-    'SCTAS': '原油TAS指令',
-    'SI': '工业硅',
+    "PG": "LPG",
+    "EB": "苯乙烯",
+    "CS": "玉米淀粉",
+    "C": "玉米",
+    "V": "PVC",
+    "J": "焦炭",
+    "BB": "胶合板",
+    "M": "豆粕",
+    "A": "豆一",
+    "PP": "聚丙烯",
+    "P": "棕榈油",
+    "FB": "纤维板",
+    "B": "豆二",
+    "JD": "鸡蛋",
+    "JM": "焦煤",
+    "L": "塑料",
+    "I": "铁矿石",
+    "Y": "豆油",
+    "RR": "粳米",
+    "EG": "乙二醇",
+    "LH": "生猪",
+    "CJ": "红枣",
+    "UR": "尿素",
+    "TA": "PTA",
+    "OI": "菜油",
+    "MA": "甲醇",
+    "RS": "菜籽",
+    "ZC": "动力煤",
+    "LR": "晚籼稻",
+    "PM": "普麦",
+    "SR": "白糖",
+    "RI": "早籼稻",
+    "SF": "硅铁",
+    "WH": "强麦",
+    "JR": "粳稻",
+    "SM": "锰硅",
+    "FG": "玻璃",
+    "CF": "棉花",
+    "RM": "菜粕",
+    "PF": "短纤",
+    "AP": "苹果",
+    "CY": "棉纱",
+    "ER": "早籼稻",
+    "ME": "甲醇",
+    "RO": "菜油",
+    "TC": "动力煤",
+    "WS": "强麦",
+    "WT": "硬麦",
+    "SA": "纯碱",
+    "PK": "花生",
+    "SS": "不锈钢",
+    "AL": "沪铝",
+    "CU": "沪铜",
+    "ZN": "沪锌",
+    "AG": "白银",
+    "RB": "螺纹钢",
+    "SN": "沪锡",
+    "NI": "沪镍",
+    "WR": "线材",
+    "FU": "燃油",
+    "AU": "黄金",
+    "PB": "沪铅",
+    "RU": "橡胶",
+    "HC": "热轧卷板",
+    "BU": "沥青",
+    "SP": "纸浆",
+    "NR": "20号胶",
+    "SC": "原油",
+    "LU": "低硫燃料油",
+    "BC": "国际铜",
+    "SCTAS": "原油TAS指令",
+    "SI": "工业硅",
 }
+
+
+def get_symbols(**kwargs):
+    return symbols
+
+
+def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
+    """获取 CZSC 库定义的标准 RawBar 对象列表
+
+    **注意：** 免费账户只能获取 8000 根K线数据，如果需要更多数据，请购买天勤账户
+
+    :param symbol: 标的代码
+    :param freq: 周期，支持 Freq 对象，或者字符串，如
+            '1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线', '季线', '年线'
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param fq: 除权类型，可选值：'前复权', '后复权', '不复权'
+    :param kwargs:
+
+        - tq_user: str, 天勤账户
+        - tq_pass: str, 天勤密码
+        - raw_bars: bool, 是否返回 RawBar 对象列表，默认为 True
+
+    :return: RawBar 对象列表 or DataFrame
+    """
+    freq = czsc.Freq(freq)
+
+    api = TqApi(auth=TqAuth(user_name=kwargs["tq_user"], password=kwargs["tq_pass"]), web_gui=False)
+    if freq.value == "日线":
+        duration_seconds = 86400
+    else:
+        assert "分钟" in freq.value, f"未知的周期：{freq.value}"
+        duration_seconds = int(freq.value.replace("分钟", "")) * 60
+
+    fq_map = {"前复权": "F", "后复权": "B", "不复权": None}
+
+    df = api.get_kline_serial(symbol, duration_seconds=duration_seconds, data_length=8000, adj_type=fq_map[fq])
+    df["dt"] = pd.to_datetime(df["datetime"], unit="ns", utc=True).dt.tz_convert("Asia/Shanghai").dt.tz_localize(None)
+    df["dt"] = df["dt"] + timedelta(seconds=duration_seconds)
+    df.rename(columns={"volume": "vol"}, inplace=True)
+    df["amount"] = df["vol"] * df["close"]
+    df = df[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]].copy()
+
+    df = df[(df["dt"] >= pd.to_datetime(sdt)) & (df["dt"] <= pd.to_datetime(edt))].reset_index(drop=True)
+    return czsc.resample_bars(df, target_freq=freq, raw_bars=kwargs.get("raw_bars", True))
 
 
 def get_daily_backup(api: TqApi, **kwargs):
@@ -206,7 +235,7 @@ def get_daily_backup(api: TqApi, **kwargs):
     position_ids = [x for x in list(position.__dict__.keys()) if x not in ["_data", "_path", "_listener"]]
     positions = pd.DataFrame([position.__dict__[x] for x in position_ids])
 
-    account_ids = [x for x in list(account.__dict__.keys()) if x not in ["_data", "_path", "_listener", '_api']]
+    account_ids = [x for x in list(account.__dict__.keys()) if x not in ["_data", "_path", "_listener", "_api"]]
     account = {x: account.__dict__[x] for x in account_ids}
 
     backup = {
@@ -221,7 +250,7 @@ def get_daily_backup(api: TqApi, **kwargs):
 def is_trade_time(quote):
     """判断当前是否是交易时间"""
     trade_time = pd.Timestamp.now().strftime("%H:%M:%S")
-    times = quote["trading_time"]['day'] + quote["trading_time"]['night']
+    times = quote["trading_time"]["day"] + quote["trading_time"]["night"]
 
     for sdt, edt in times:
         if trade_time >= sdt and trade_time <= edt:
@@ -281,11 +310,15 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
             lots = info["lots"]
             contract = quote.underlying_symbol if "@" in symbol else symbol
 
-            logger.info(f"调整仓位：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
+            logger.info(
+                f"调整仓位：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手"
+            )
 
             if target_pos._pos.pos == lots or target_pos.is_finished():
                 completed.append(True)
-                logger.info(f"调仓完成：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手")
+                logger.info(
+                    f"调仓完成：{quote.datetime} - {contract}; 目标持仓：{lots}手; 当前持仓：{target_pos._pos.pos}手"
+                )
             else:
                 completed.append(False)
 
