@@ -5,7 +5,9 @@ email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:37
 describe: 
 """
+
 import requests
+import pandas as pd
 from loguru import logger
 from czsc.fsa.base import request, FeishuApiBase
 from czsc.fsa.spreed_sheets import SpreadSheets, SingleSheet
@@ -137,3 +139,45 @@ def push_message(msg: str, msg_type: str = "text", receive_id_type: str = "open_
                 logger.error(f"不支持的消息类型：{msg_type}")
         except Exception as e:
             logger.error(f"推送消息失败：{e}")
+
+
+def update_spreadsheet(df: pd.DataFrame, spreadsheet_token: str, sheet_id: str, **kwargs) -> int:
+    """使用飞书机器人更新电子表格
+
+    获取 spreadsheet_token - https://open.feishu.cn/document/server-docs/docs/faq  第7节
+
+    获取 sheet_id - https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/query?appId=cli_a3077015cc39500e
+
+    :param df: datafream内容
+    :param spreadsheet_token: 表格对应的token，url获取
+    :param sheet_id:  工作表的id
+    :param kwargs:
+        feishu_app_id: 飞书APP的app_id
+        feishu_app_secret: 飞书APP的app_secret
+    :return:
+    """
+    fsf = SpreadSheets(app_id=kwargs['feishu_app_id'], app_secret=kwargs['feishu_app_secret'])
+
+    data = {
+            "valueRanges": [
+                {
+                    "range": f"{sheet_id}!A1:Z1",
+                    "values": [list(df)]
+                }, {
+                    "range": f"{sheet_id}!A2:Z5000",
+                    "values": df.values.tolist()
+                }
+            ]
+    }
+    try:
+        fsf.delete_values(spreadsheet_token, sheet_id)
+        b = fsf.update_values(spreadsheet_token, data)
+        if b and b['code'] == 0:
+            logger.success("更新飞书表格成功")
+            return 1
+        else:
+            logger.error(b)
+            return 0
+    except Exception:
+        logger.exception("更新飞书表格失败")
+        return 0
