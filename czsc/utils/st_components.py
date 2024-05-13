@@ -171,6 +171,9 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     :param x_col: str，因子列名
     :param y_col: str，收益列名
     :param method: str，计算IC的方法，可选 pearson 和 spearman
+    :param kwargs:
+        - show_cumsum_ic: bool，是否展示累计IC曲线，默认为 True
+        - show_factor_histgram: bool，是否展示因子数据分布图，默认为 False
     """
     dfc, res = czsc.cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
 
@@ -197,6 +200,21 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
 
     if kwargs.get("show_factor_histgram", False):
         fig = px.histogram(df, x=x_col, marginal="box", title="因子数据分布图")
+        st.plotly_chart(fig, use_container_width=True)
+
+    if kwargs.get("show_cumsum_ic", True):
+        dfc["ic_cumsum"] = dfc["ic"].cumsum()
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=dfc["dt"], y=dfc["ic"], mode="lines", name="IC", yaxis="y"))
+        fig.add_trace(
+            go.Scatter(x=dfc["dt"], y=dfc["ic_cumsum"], mode="lines", name="累计IC", yaxis="y2", line=dict(color="red"))
+        )
+        fig.update_layout(
+            yaxis=dict(title="IC"),
+            yaxis2=dict(title="累计IC", overlaying="y", side="right"),
+            title="截面IC曲线",
+            margin=dict(l=0, r=0, b=0),
+        )
         st.plotly_chart(fig, use_container_width=True)
 
 
