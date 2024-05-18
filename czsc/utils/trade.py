@@ -89,7 +89,7 @@ def update_nxb(df: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
     :return: pd.DataFrame
     """
-    if kwargs.copy():
+    if kwargs.get("copy", False):
         df = df.copy()
 
     assert "dt" in df.columns, "必须包含 dt 列，标记K线结束时刻"

@@ -60,7 +60,7 @@ def format_kline(kline: pd.DataFrame, freq: Freq):
 def get_symbols(name, **kwargs):
     """获取指定分组下的所有标的代码
 
-    :param name: 分组名称，可选值：'A股指数', 'ETF', '股票', '期货主力'
+    :param name: 分组名称，可选值：'A股指数', 'ETF', '股票', '期货主力', '南华指数'
     :param kwargs:
     :return:
     """
@@ -228,6 +228,8 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     for year in years:
         ttl = 3600 * 6 if year == str(datetime.now().year) else -1
         kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
+        kline["price"] = kline["open"].shift(-1)
+        kline["price"] = kline["price"].fillna(kline["close"])
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
@@ -236,13 +238,8 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     if kwargs.get("exclude_bj", True):
         dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)
 
-    nxb = kwargs.get("nxb", [1, 2, 5])
-    if nxb:
-        rows = []
-        for _, dfg in tqdm(dfk.groupby("code"), desc="计算NXB收益率", ncols=80, colour="green"):
-            czsc.update_nbars(dfg, numbers=nxb, move=1, price_col="open")
-            rows.append(dfg)
-        dfk = pd.concat(rows, ignore_index=True)
-
     dfk = dfk.rename(columns={"code": "symbol"})
+    nxb = kwargs.get("nxb", [1, 2, 5, 10, 20, 30, 60])
+    if nxb:
+        dfk = czsc.update_nxb(dfk, nseq=nxb)
     return dfk
