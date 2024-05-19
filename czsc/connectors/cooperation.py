@@ -57,6 +57,14 @@ def format_kline(kline: pd.DataFrame, freq: Freq):
     return bars
 
 
+def get_groups():
+    """获取投研共享数据的分组信息
+
+    :return: 分组信息
+    """
+    return ["A股指数", "ETF", "股票", "期货主力", "南华指数"]
+
+
 def get_symbols(name, **kwargs):
     """获取指定分组下的所有标的代码
 
