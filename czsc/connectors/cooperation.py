@@ -145,6 +145,8 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
         c2 = (df["dt"].dt.time >= dt3.time()) & (df["dt"].dt.time <= dt4.time())
 
         df = df[c1 | c2].copy().reset_index(drop=True)
+
+    df = df[(df["dt"] >= pd.to_datetime(sdt)) & (df["dt"] <= pd.to_datetime(edt))].copy().reset_index(drop=True)
     return df
 
 

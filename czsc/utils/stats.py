@@ -7,6 +7,7 @@ describe: 绩效表现统计
 """
 import numpy as np
 import pandas as pd
+from deprecated import deprecated
 from collections import Counter
 
 
@@ -62,7 +63,7 @@ def subtract_fee(df, fee=1):
     return df
 
 
-def daily_performance(daily_returns):
+def daily_performance(daily_returns, **kwargs):
     """采用单利计算日收益数据的各项指标
 
     函数计算逻辑：
@@ -83,9 +84,12 @@ def daily_performance(daily_returns):
 
     :param daily_returns: 日收益率数据，样例：
         [0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01]
+    :param kwargs: 其他参数
+        - yearly_days: int, 252, 一年的交易日数
     :return: dict
     """
     daily_returns = np.array(daily_returns, dtype=np.float64)
+    yearly_days = kwargs.get("yearly_days", 252)
 
     if len(daily_returns) == 0 or np.std(daily_returns) == 0 or all(x == 0 for x in daily_returns):
         return {
@@ -102,14 +106,14 @@ def daily_performance(daily_returns):
             "新高占比": 0,
         }
 
-    annual_returns = np.sum(daily_returns) / len(daily_returns) * 252
-    sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(252)
+    annual_returns = np.sum(daily_returns) / len(daily_returns) * yearly_days
+    sharpe_ratio = np.mean(daily_returns) / np.std(daily_returns) * np.sqrt(yearly_days)
     cum_returns = np.cumsum(daily_returns)
     dd = np.maximum.accumulate(cum_returns) - cum_returns
     max_drawdown = np.max(dd)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
     win_pct = len(daily_returns[daily_returns >= 0]) / len(daily_returns)
-    annual_volatility = np.std(daily_returns) * np.sqrt(252)
+    annual_volatility = np.std(daily_returns) * np.sqrt(yearly_days)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
 
     # 计算最大新高间隔
@@ -150,7 +154,9 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
     :param ret_col: str, 收益列名
     :param window: int, 滚动窗口, 自然天数
     :param min_periods: int, 最小样本数
-    :param kwargs:
+    :param kwargs: 其他参数
+
+        - yearly_days: int, 252, 一年的交易日数
     """
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -164,7 +170,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
     for edt in dts[min_periods:]:
         sdt = edt - pd.Timedelta(days=window)
         dfg = df[(df.index >= sdt) & (df.index <= edt)].copy()
-        s = daily_performance(dfg[ret_col].to_list())
+        s = daily_performance(dfg[ret_col].to_list(), yearly_days=kwargs.get("yearly_days", 252))
         s["sdt"] = sdt
         s["edt"] = edt
         res.append(s)
@@ -173,6 +179,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
     return dfr
 
 
+@deprecated(version="1.0.0", reason="请使用 daily_performance；调整 yearly_days 参数 52 即可")
 def weekly_performance(weekly_returns):
     """采用单利计算周收益数据的各项指标
 
@@ -239,6 +246,7 @@ def weekly_performance(weekly_returns):
     return sta
 
 
+@deprecated(version="1.0.0", reason="请使用 daily_performance；调整 yearly_days 参数 12 即可")
 def net_value_stats(nv: pd.DataFrame, exclude_zero: bool = False, sub_cost=True) -> dict:
     """统计净值曲线的年化收益、夏普等
 
