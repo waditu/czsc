@@ -22,41 +22,6 @@ cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cach
 dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
 
 
-def format_kline(kline: pd.DataFrame, freq: Freq):
-    """格式化K线数据
-
-    :param kline: K线数据，格式如下：
-
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-        dt          code         open    close    high    low          vol       amount
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-        2022-01-04  600520.SH   20.54    21.12   21.17  20.33  2.1724e+06   1.94007e+07
-        2022-01-05  600520.SH   21.17    20.73   21.29  20.52  1.8835e+06   1.67258e+07
-        2022-01-06  600520.SH   20.56    21.17   21.57  18.69  3.4227e+06   3.11461e+07
-        2022-01-07  600520.SH   21.5     20.61   21.5   20.61  2.51741e+06  2.24819e+07
-        2022-01-10  600520.SH   20.4     21.69   21.69  20.4   4.80894e+06  4.39598e+07
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-
-    :return: 格式化后的K线数据
-    """
-    bars = []
-    for i, row in kline.iterrows():
-        bar = RawBar(
-            symbol=row["code"],
-            id=i,
-            freq=freq,
-            dt=row["dt"],
-            open=row["open"],
-            close=row["close"],
-            high=row["high"],
-            low=row["low"],
-            vol=row["vol"],
-            amount=row["amount"],
-        )
-        bars.append(bar)
-    return bars
-
-
 def get_groups():
     """获取投研共享数据的分组信息
 
