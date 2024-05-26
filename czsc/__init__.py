@@ -139,6 +139,7 @@ from czsc.utils.st_components import (
     show_psi,
     show_strategies_symbol,
     show_strategies_dailys,
+    show_holds_backtest,
 )
 
 from czsc.utils.bi_info import (

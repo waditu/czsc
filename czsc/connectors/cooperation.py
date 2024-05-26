@@ -84,6 +84,9 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
+        if edt_ < sdt:
+            continue
+
         if pd.to_datetime(sdt_).date() >= datetime.now().date():
             break
 

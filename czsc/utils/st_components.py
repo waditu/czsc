@@ -54,6 +54,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
         stats = stats.format(
             {
@@ -67,6 +68,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
                 "绝对收益": "{:.2%}",
                 "日胜率": "{:.2%}",
                 "新高间隔": "{:.2f}",
+                "回撤风险": "{:.2f}",
                 "新高占比": "{:.2%}",
             }
         )
@@ -189,8 +191,11 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     col3.metric("交易日数量", df["dt"].nunique())
 
     dfc[["year", "month"]] = dfc.dt.apply(lambda x: pd.Series([x.year, x.month]))
+    dfc["month"] = dfc["month"].apply(lambda x: f"{x:02d}月")
     dfm = dfc.groupby(["year", "month"]).agg({"ic": "mean"}).reset_index()
     dfm = pd.pivot_table(dfm, index="year", columns="month", values="ic")
+    # 在 dfm 上增加一列，用于计算每年的平均IC
+    dfm["年度"] = dfc.groupby("year").agg({"ic": "mean"})
 
     col4.write("月度IC分析结果：")
     col4.dataframe(
@@ -551,6 +556,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
 
     stats = stats.format(
@@ -565,6 +571,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
             "绝对收益": "{:.2%}",
             "日胜率": "{:.2%}",
             "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
             "新高占比": "{:.2%}",
         }
     )
@@ -843,6 +850,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
             "盈亏平衡点",
             "新高间隔",
             "新高占比",
+            "回撤风险",
         ]
     ]
 
@@ -859,6 +867,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     df_stats = df_stats.background_gradient(cmap="RdYlGn_r", subset=["日胜率"])
     df_stats = df_stats.background_gradient(cmap="RdYlGn_r", subset=["非零覆盖"])
     df_stats = df_stats.background_gradient(cmap="RdYlGn", subset=["新高间隔"])
+    df_stats = df_stats.background_gradient(cmap="RdYlGn", subset=["回撤风险"])
     df_stats = df_stats.background_gradient(cmap="RdYlGn_r", subset=["新高占比"])
     df_stats = df_stats.format(
         {
@@ -871,6 +880,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
             "非零覆盖": "{:.2%}",
             "日胜率": "{:.2%}",
             "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
             "新高占比": "{:.2%}",
         }
     )
@@ -1234,3 +1244,63 @@ def show_strategies_symbol(df, **kwargs):
         st.write("样本内外对比")
         mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
         show_out_in_compare(df2.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
+
+
+def show_holds_backtest(df, **kwargs):
+    """分析持仓组合的回测结果
+
+    :param df: 回测数据，任何字段都不允许有空值；建议 weight 列在截面的和为 1；数据样例：
+
+        ===================  ========  ========  =======
+        dt                   symbol      weight    n1b
+        ===================  ========  ========  =======
+        2019-01-02 09:01:00  DLi9001       0.5   961.695
+        2019-01-02 09:02:00  DLi9001       0.25  960.72
+        2019-01-02 09:03:00  DLi9001       0.25  962.669
+        2019-01-02 09:04:00  DLi9001       0.25  960.72
+        2019-01-02 09:05:00  DLi9001       0.25  961.695
+        ===================  ========  ========  =======
+
+    :param kwargs:
+
+        - fee: 单边手续费，单位为BP，默认为2BP
+        - digits: 权重小数位数，默认为2
+        - show_drawdowns: 是否展示最大回撤分析，默认为True
+        - show_splited_daily: 是否展示分段收益表现，默认为False
+        - show_yearly_stats: 是否展示年度绩效指标，默认为True
+        - show_monthly_return: 是否展示月度累计收益，默认为True
+
+    """
+    fee = kwargs.get("fee", 2)
+    digits = kwargs.get("digits", 2)
+    if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
+        st.warning("show_holds_backtest :: 数据中存在空值，请检查数据后再试；空值数据如下：")
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.stop()
+
+    # 计算每日收益、交易成本、净收益
+    sdt = df["dt"].min().strftime("%Y-%m-%d")
+    edt = df["dt"].max().strftime("%Y-%m-%d")
+    dfr = czsc.holds_performance(df, fee=fee, digits=digits)
+    st.write(f"回测时间：{sdt} ~ {edt}; 单边年换手率：{dfr['change'].mean() * 252:.2f} 倍; 单边费率：{fee}BP")
+    daily = dfr[["date", "edge_post_fee"]].copy()
+    daily.columns = ["dt", "return"]
+    daily["dt"] = pd.to_datetime(daily["dt"])
+    daily = daily.sort_values("dt").reset_index(drop=True)
+
+    czsc.show_daily_return(daily, stat_hold_days=False)
+    if kwargs.get("show_drawdowns", True):
+        st.write("最大回撤分析")
+        czsc.show_drawdowns(daily, ret_col="return", sub_title="")
+
+    if kwargs.get("show_splited_daily", False):
+        st.write("分段收益表现")
+        czsc.show_splited_daily(daily, ret_col="return")
+
+    if kwargs.get("show_yearly_stats", True):
+        st.write("年度绩效指标")
+        czsc.show_yearly_stats(daily, ret_col="return", sub_title="")
+
+    if kwargs.get("show_monthly_return", True):
+        st.write("月度累计收益")
+        czsc.show_monthly_return(daily, ret_col="return", sub_title="")

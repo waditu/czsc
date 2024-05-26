@@ -79,6 +79,7 @@ def daily_performance(daily_returns, **kwargs):
         - 日胜率 = 大于零的日收益率的个数 / 日收益率的总个数
         - 年化波动率 = 日收益率的标准差 * 标准差的根号252
         - 非零覆盖 = 非零的日收益率个数 / 日收益率的总个数
+        - 回撤风险 = 最大回撤 / 年化波动率；一般认为 1 以下为低风险，1-2 为中风险，2 以上为高风险
 
     4. 将所有指标的值存储在一个字典中，其中键为指标名称，值为相应的计算结果。
 
@@ -104,6 +105,7 @@ def daily_performance(daily_returns, **kwargs):
             "盈亏平衡点": 0,
             "新高间隔": 0,
             "新高占比": 0,
+            "回撤风险": 0,
         }
 
     annual_returns = np.sum(daily_returns) / len(daily_returns) * yearly_days
@@ -143,6 +145,7 @@ def daily_performance(daily_returns, **kwargs):
         "盈亏平衡点": round(cal_break_even_point(daily_returns), 4),
         "新高间隔": max_interval,
         "新高占比": round(high_pct, 4),
+        "回撤风险": round(max_drawdown / annual_volatility, 4),
     }
     return sta
 
