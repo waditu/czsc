@@ -11,6 +11,7 @@ import pandas as pd
 from czsc import Freq, RawBar
 from typing import List
 from tqdm import tqdm
+from loguru import logger
 
 # 首次使用需要打开一个python终端按如下方式设置 token
 # czsc.set_url_token(token='your token', url='http://api.tushare.pro')
