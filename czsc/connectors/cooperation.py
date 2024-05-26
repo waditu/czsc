@@ -5,7 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2023/11/15 20:45
 describe: CZSC开源协作团队内部使用数据接口
 
-接口说明：https://s0cqcxuy3p.feishu.cn/wiki/F3HGw9vDPisWtSkJr1ac5DEcnNh
+接口说明：https://s0cqcxuy3p.feishu.cn/wiki/StQbwOrWdiJPpikET9EcrRVEnrd
 """
 import os
 import czsc
@@ -22,45 +22,18 @@ cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cach
 dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
 
 
-def format_kline(kline: pd.DataFrame, freq: Freq):
-    """格式化K线数据
+def get_groups():
+    """获取投研共享数据的分组信息
 
-    :param kline: K线数据，格式如下：
-
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-        dt          code         open    close    high    low          vol       amount
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-        2022-01-04  600520.SH   20.54    21.12   21.17  20.33  2.1724e+06   1.94007e+07
-        2022-01-05  600520.SH   21.17    20.73   21.29  20.52  1.8835e+06   1.67258e+07
-        2022-01-06  600520.SH   20.56    21.17   21.57  18.69  3.4227e+06   3.11461e+07
-        2022-01-07  600520.SH   21.5     20.61   21.5   20.61  2.51741e+06  2.24819e+07
-        2022-01-10  600520.SH   20.4     21.69   21.69  20.4   4.80894e+06  4.39598e+07
-        ==========  =========  ======  =======  ======  =====  ===========  ===========
-
-    :return: 格式化后的K线数据
+    :return: 分组信息
     """
-    bars = []
-    for i, row in kline.iterrows():
-        bar = RawBar(
-            symbol=row["code"],
-            id=i,
-            freq=freq,
-            dt=row["dt"],
-            open=row["open"],
-            close=row["close"],
-            high=row["high"],
-            low=row["low"],
-            vol=row["vol"],
-            amount=row["amount"],
-        )
-        bars.append(bar)
-    return bars
+    return ["A股指数", "ETF", "股票", "期货主力", "南华指数"]
 
 
 def get_symbols(name, **kwargs):
     """获取指定分组下的所有标的代码
 
-    :param name: 分组名称，可选值：'A股指数', 'ETF', '股票', '期货主力'
+    :param name: 分组名称，可选值：'A股指数', 'ETF', '股票', '期货主力', '南华指数'
     :param kwargs:
     :return:
     """
@@ -111,6 +84,9 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
 
     rows = []
     for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
+        if edt_ < sdt:
+            continue
+
         if pd.to_datetime(sdt_).date() >= datetime.now().date():
             break
 
@@ -137,6 +113,8 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
         c2 = (df["dt"].dt.time >= dt3.time()) & (df["dt"].dt.time <= dt4.time())
 
         df = df[c1 | c2].copy().reset_index(drop=True)
+
+    df = df[(df["dt"] >= pd.to_datetime(sdt)) & (df["dt"] <= pd.to_datetime(edt))].copy().reset_index(drop=True)
     return df
 
 
@@ -228,6 +206,8 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     for year in years:
         ttl = 3600 * 6 if year == str(datetime.now().year) else -1
         kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
+        kline["price"] = kline["open"].shift(-1)
+        kline["price"] = kline["price"].fillna(kline["close"])
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
@@ -236,13 +216,8 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     if kwargs.get("exclude_bj", True):
         dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)
 
-    nxb = kwargs.get("nxb", [1, 2, 5])
-    if nxb:
-        rows = []
-        for _, dfg in tqdm(dfk.groupby("code"), desc="计算NXB收益率", ncols=80, colour="green"):
-            czsc.update_nbars(dfg, numbers=nxb, move=1, price_col="open")
-            rows.append(dfg)
-        dfk = pd.concat(rows, ignore_index=True)
-
     dfk = dfk.rename(columns={"code": "symbol"})
+    nxb = kwargs.get("nxb", [1, 2, 5, 10, 20, 30, 60])
+    if nxb:
+        dfk = czsc.update_nxb(dfk, nseq=nxb)
     return dfk

@@ -40,15 +40,17 @@ def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs:
     :return: 信号识别结果
     """
-    bi_init_length = int(kwargs.get('bi_init_length', 9))  # 笔的初始延伸长度，即笔的延伸长度小于该值时，笔的状态为转折，否则为中继
-    k1, k2, k3 = f"{c.freq.value}_D0BL{bi_init_length}_V230228".split('_')
-    v1 = '其他'
+    bi_init_length = int(
+        kwargs.get("bi_init_length", 9)
+    )  # 笔的初始延伸长度，即笔的延伸长度小于该值时，笔的状态为转折，否则为中继
+    k1, k2, k3 = f"{c.freq.value}_D0BL{bi_init_length}_V230228".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     last_bi = c.bi_list[-1]
     assert last_bi.direction in [Direction.Up, Direction.Down]
-    v1 = '向上' if last_bi.direction == Direction.Down else '向下'
+    v1 = "向上" if last_bi.direction == Direction.Down else "向下"
     v2 = "中继" if len(c.bars_ubi) >= bi_init_length else "转折"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -78,7 +80,7 @@ def cxt_fx_power_V221107(c: CZSC, **kwargs) -> OrderedDict:
     :param di: 倒数第di个分型
     :return:
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}F_分型强弱".split("_")
     last_fx: FX = c.fx_list[-di]
     v1 = f"{last_fx.power_str}{last_fx.mark.value[0]}"
@@ -108,14 +110,14 @@ def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
         - di: 倒数第di个笔
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
 
     def __check_first_buy(bis: List[BI]):
         """检查 bis 是否是一买的结束
 
         :param bis: 笔序列，按时间升序
         """
-        res = {"match": False, "v1": "一买", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        res = {"match": False, "v1": "一买", "v2": f"{len(bis)}笔", "v3": "任意"}
         if len(bis) % 2 != 1 or bis[-1].direction == Direction.Up or bis[0].direction != bis[-1].direction:
             return res
 
@@ -128,7 +130,7 @@ def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
             if i == 0:
                 key_bis.append(bis[i])
             else:
-                b1, _, b3 = bis[i - 2:i + 1]
+                b1, _, b3 = bis[i - 2 : i + 1]
                 if b3.low < b1.low:
                     key_bis.append(b3)
 
@@ -138,11 +140,11 @@ def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
         bc_length = bis[-1].length < max(bis[-3].length, np.mean([x.length for x in key_bis]))
 
         if bc_price and (bc_volume or bc_length):
-            res['match'] = True
+            res["match"] = True
         return res
 
     k1, k2, k3 = c.freq.value, f"D{di}B", "BUY1"
-    v1, v2, v3 = "其他", '任意', '任意'
+    v1, v2, v3 = "其他", "任意", "任意"
 
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
@@ -150,8 +152,8 @@ def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict:
             continue
 
         _res = __check_first_buy(_bis)
-        if _res['match']:
-            v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
+        if _res["match"]:
+            v1, v2, v3 = _res["v1"], _res["v2"], _res["v3"]
             break
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
@@ -178,14 +180,14 @@ def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict:
     :param di: CZSC 对象
     :return: 信号字典
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
 
     def __check_first_sell(bis: List[BI]):
         """检查 bis 是否是一卖的结束
 
         :param bis: 笔序列，按时间升序
         """
-        res = {"match": False, "v1": "一卖", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        res = {"match": False, "v1": "一卖", "v2": f"{len(bis)}笔", "v3": "任意"}
         if len(bis) % 2 != 1 or bis[-1].direction == Direction.Down:
             return res
 
@@ -204,7 +206,7 @@ def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict:
             if i == 0:
                 key_bis.append(bis[i])
             else:
-                b1, _, b3 = bis[i - 2:i + 1]
+                b1, _, b3 = bis[i - 2 : i + 1]
                 if b3.high > b1.high:
                     key_bis.append(b3)
 
@@ -214,11 +216,11 @@ def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict:
         bc_length = bis[-1].length < max(bis[-3].length, np.mean([x.length for x in key_bis]))
 
         if bc_price and (bc_volume or bc_length):
-            res['match'] = True
+            res["match"] = True
         return res
 
     k1, k2, k3 = c.freq.value, f"D{di}B", "SELL1"
-    v1, v2, v3 = "其他", '任意', '任意'
+    v1, v2, v3 = "其他", "任意", "任意"
 
     for n in (21, 19, 17, 15, 13, 11, 9, 7, 5):
         _bis = get_sub_elements(c.bi_list, di=di, n=n)
@@ -226,14 +228,14 @@ def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict:
             continue
 
         _res = __check_first_sell(_bis)
-        if _res['match']:
-            v1, v2, v3 = _res['v1'], _res['v2'], _res['v3']
+        if _res["match"]:
+            v1, v2, v3 = _res["v1"], _res["v2"], _res["v3"]
             break
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60分钟', **kwargs) -> OrderedDict:
+def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1="日线", freq2="60分钟", **kwargs) -> OrderedDict:
     """大小级别中枢共振，类二买共振；贡献者：琅盎
 
     参数模板："{freq1}_{freq2}_中枢共振V221221"
@@ -254,7 +256,7 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
     :param freq2: 小级别周期
     :return: 信号识别结果
     """
-    k1, k2, k3 = f"{freq1}_{freq2}_中枢共振V221221".split('_')
+    k1, k2, k3 = f"{freq1}_{freq2}_中枢共振V221221".split("_")
 
     if not cat.kas or freq1 not in cat.kas or freq2 not in cat.kas:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
@@ -271,8 +273,12 @@ def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1='日线', freq2='60�
             return False
 
     v1 = "其他"
-    if len(max_freq.bi_list) >= 5 and __is_zs(max_freq.bi_list[-3:]) and len(min_freq.bi_list) >= 5 and __is_zs(
-            min_freq.bi_list[-3:]):
+    if (
+        len(max_freq.bi_list) >= 5
+        and __is_zs(max_freq.bi_list[-3:])
+        and len(min_freq.bi_list) >= 5
+        and __is_zs(min_freq.bi_list[-3:])
+    ):
 
         big_zs = ZS(bis=max_freq.bi_list[-3:])
         small_zs = ZS(bis=min_freq.bi_list[-3:])
@@ -314,10 +320,10 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs:
     :return: 信号识别结果
     """
-    max_overlap = int(kwargs.get('max_overlap', 3))
-    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_BE辅助V230222".split('_')
-    v1 = '其他'
-    v2 = '其他'
+    max_overlap = int(kwargs.get("max_overlap", 3))
+    k1, k2, k3 = f"{c.freq.value}_D1MO{max_overlap}_BE辅助V230222".split("_")
+    v1 = "其他"
+    v2 = "其他"
 
     if not c.ubi_fxs or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -335,26 +341,26 @@ def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict:
     if (fxs[-1].elements[-1].dt == c.bars_ubi[-1].dt) or (c.bars_raw[-1].id - fxs[-1].raw_bars[-1].id <= max_overlap):
         if fxs[-1].mark == Mark.G:
             up = [x for x in fxs if x.mark == Mark.G]
-            high_max = float('-inf')
+            high_max = float("-inf")
             cnt = 0
             for fx in up:
                 if fx.high > high_max:
                     cnt += 1
                     high_max = fx.high
             if fxs[-1].high == high_max:
-                v1 = '新高'
+                v1 = "新高"
                 v2 = cnt
 
         else:
             down = [x for x in fxs if x.mark == Mark.D]
-            low_min = float('inf')
+            low_min = float("inf")
             cnt = 0
             for fx in down:
                 if fx.low < low_min:
                     cnt += 1
                     low_min = fx.low
             if fxs[-1].low == low_min:
-                v1 = '新低'
+                v1 = "新低"
                 v2 = cnt
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{v2}次")
@@ -378,8 +384,8 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
     :param c: CZSC 对象
     :return: 信号字典
     """
-    k1, k2, k3 = f"{c.freq.value}_D1_BE辅助V230224".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{c.freq.value}_D1_BE辅助V230224".split("_")
+    v1 = "其他"
     if len(c.bi_list) <= 3 or len(c.bars_ubi) >= 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -393,10 +399,10 @@ def cxt_bi_end_V230224(c: CZSC, **kwargs):
     bar2 = fx_bars[np.argmax([x.high for x in fx_bars])]
 
     if bar1.upper > bar1.lower * 2 and fx_vol_mean > bi_vol_mean * 2:
-        v1 = '看空'
+        v1 = "看空"
 
     if 2 * bar2.upper < bar2.lower and fx_vol_mean < bi_vol_mean * 0.618:
-        v1 = '看多'
+        v1 = "看多"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -424,10 +430,10 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
         - di: 倒数第几笔
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}_三买辅助V230228".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_D{di}_三买辅助V230228".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bi_list) < di + 11:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -437,7 +443,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
         :param bis: 笔序列，按时间升序
         :return:
         """
-        res = {"match": False, "v1": "三买", "v2": f"{len(bis)}笔", 'v3': "任意"}
+        res = {"match": False, "v1": "三买", "v2": f"{len(bis)}笔", "v3": "任意"}
         if bis[-1].direction == Direction.Up or bis[0].direction == bis[-1].direction:
             return res
 
@@ -447,7 +453,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
             if i == 0:
                 key_bis.append(bis[i])
             else:
-                b1, _, b3 = bis[i - 2:i + 1]
+                b1, _, b3 = bis[i - 2 : i + 1]
                 if b3.high > b1.high:
                     key_bis.append(b3)
         if len(key_bis) < 2:
@@ -457,7 +463,7 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
         tb_price = bis[-1].low < min([x.low for x in bis]) + 1.618 * np.mean([x.power_price for x in key_bis])
 
         if tb_break and tb_price:
-            res['match'] = True
+            res["match"] = True
         return res
 
     for n in (13, 11, 9, 7, 5):
@@ -466,9 +472,9 @@ def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict:
             continue
 
         _res = check_third_buy(_bis)
-        if _res['match']:
-            v1 = _res['v1']
-            v2 = _res['v2']
+        if _res["match"]:
+            v1 = _res["v1"]
+            v2 = _res["v2"]
             break
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -493,7 +499,7 @@ def cxt_double_zs_V230311(c: CZSC, **kwargs):
     :param di: 倒数第 di 笔
     :return: s
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     k1, k2, k3 = f"{c.freq.value}_D{di}双中枢_BS1辅助V230311".split("_")
     v1 = "其他"
 
@@ -539,7 +545,7 @@ def cxt_second_bs_V230320(c: CZSC, **kwargs) -> OrderedDict:
     timeperiod = int(kwargs.get("timeperiod", 21))
     ma_type = kwargs.get("ma_type", "SMA").upper()
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS2辅助V230320".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS2辅助V230320".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 6:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -563,7 +569,7 @@ def cxt_second_bs_V230320(c: CZSC, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
-@deprecated(version='1.0.0', reason="即将删除，请使用 cxt_third_bs_V230319")
+@deprecated(version="1.0.0", reason="即将删除，请使用 cxt_third_bs_V230319")
 def cxt_third_bs_V230318(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点
 
@@ -586,8 +592,8 @@ def cxt_third_bs_V230318(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 34))
-    ma_type = kwargs.get("ma_type", 'SMA').upper()
-    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230318".split('_')
+    ma_type = kwargs.get("ma_type", "SMA").upper()
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230318".split("_")
     v1 = "其他"
 
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
@@ -642,9 +648,9 @@ def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     timeperiod = int(kwargs.get("timeperiod", 34))
-    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    ma_type = kwargs.get("ma_type", "SMA").upper()
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230319".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}#{ma_type}#{timeperiod}_BS3辅助V230319".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 6:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -666,7 +672,7 @@ def cxt_third_bs_V230319(c: CZSC, **kwargs) -> OrderedDict:
     if b5.direction == Direction.Up and b5.high < zs_zd:
         v1 = "三卖"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if ma_5 > ma_3 > ma_1:
@@ -708,9 +714,9 @@ def cxt_bi_end_V230104(c: CZSC, **kwargs) -> OrderedDict:
     """
     th = int(kwargs.pop("th", 50))
     timeperiod = int(kwargs.get("timeperiod", 5))
-    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    ma_type = kwargs.get("ma_type", "SMA").upper()
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230104".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230104".split("_")
     v1 = "其他"
     if len(c.bi_list) < 3:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -759,9 +765,9 @@ def cxt_bi_end_V230105(c: CZSC, **kwargs) -> OrderedDict:
     """
     th = int(kwargs.get("th", 50))
     timeperiod = int(kwargs.get("timeperiod", 5))
-    ma_type = kwargs.get("ma_type", 'SMA').upper()
+    ma_type = kwargs.get("ma_type", "SMA").upper()
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
-    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230105".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D0{ma_type}#{timeperiod}T{th}_BE辅助V230105".split("_")
     v1 = "其他"
     if len(c.bi_list) < 3 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -807,7 +813,7 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
     fastperiod = int(kwargs.get("fastperiod", 12))
     slowperiod = int(kwargs.get("slowperiod", 26))
     signalperiod = int(kwargs.get("signalperiod", 9))
-    k1, k2, k3 = f"{c.freq.value}_D0MACD{fastperiod}#{slowperiod}#{signalperiod}_BE辅助V230312".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D0MACD{fastperiod}#{slowperiod}#{signalperiod}_BE辅助V230312".split("_")
     v1 = "其他"
 
     cache_key = update_macd_cache(c, **kwargs)
@@ -816,8 +822,8 @@ def cxt_bi_end_V230312(c: CZSC, **kwargs):
 
     last_bi: BI = c.bi_list[-1]
     last_fx: FX = last_bi.fx_b
-    macd1 = last_fx.raw_bars[-1].cache[cache_key]['macd']
-    macd2 = last_fx.raw_bars[0].cache[cache_key]['macd']
+    macd1 = last_fx.raw_bars[-1].cache[cache_key]["macd"]
+    macd2 = last_fx.raw_bars[0].cache[cache_key]["macd"]
 
     if last_bi.direction == Direction.Down and macd1 > macd2:
         v1 = "看多"
@@ -1121,18 +1127,18 @@ def cxt_bi_zdf_V230601(c: CZSC, **kwargs) -> OrderedDict:
         - n: 取截止dik的前n根K线
     :return: 返回信号结果
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 5))
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}_分层V230601".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_D{di}N{n}_分层V230601".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bi_list) < 10 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bis = get_sub_elements(c.bi_list, di=di, n=50)
     v1 = bis[-1].direction.value
     powers = [x.power for x in bis]
-    v2 = pd.qcut(powers, n, labels=False, duplicates='drop')[-1]
+    v2 = pd.qcut(powers, n, labels=False, duplicates="drop")[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{v2 + 1}层")
 
 
@@ -1176,7 +1182,7 @@ def cxt_bi_end_V230618(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     max_overlap = int(kwargs.get("max_overlap", 3))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}MO{max_overlap}_BE辅助V230618".split('_')
+    k1, k2, k3 = f"{freq}_D{di}MO{max_overlap}_BE辅助V230618".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 6 or len(c.bars_ubi) > 3 + max_overlap - 1:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1230,7 +1236,7 @@ def cxt_bi_end_V230618(c: CZSC, **kwargs) -> OrderedDict:
 
     bi = c.bi_list[-di]
     zs_count = __cal_zs_number(bi.raw_bars)
-    v1 = '看多' if bi.direction == Direction.Down else '看空'
+    v1 = "看多" if bi.direction == Direction.Down else "看空"
     # 为了增加稳定性，要确保笔内有小中枢，并且要确保笔内有至少2个分型存在，保证从上往下的分型12的长度比分型34的长度大，来确认背驰
     if len(bi.fxs) >= 4 and zs_count >= 1 and (bi.fxs[-4].fx - bi.fxs[-3].fx) - (bi.fxs[-2].fx - bi.fxs[-1].fx) > 0:
         v2 = f"{zs_count}小中枢"
@@ -1273,7 +1279,7 @@ def cxt_three_bi_V230618(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}三笔_形态V230618".split('_')
+    k1, k2, k3 = f"{freq}_D{di}三笔_形态V230618".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 6 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1285,28 +1291,28 @@ def cxt_three_bi_V230618(c: CZSC, **kwargs) -> OrderedDict:
     # 识别向下形态
     if bi3.direction == Direction.Down:
         if bi3.low > bi1.high:
-            v1 = '向下不重合'
+            v1 = "向下不重合"
         elif bi2.low < bi3.low < bi1.high < bi2.high:
-            v1 = '向下奔走型'
+            v1 = "向下奔走型"
         elif bi1.high > bi3.high and bi1.low < bi3.low:
-            v1 = '向下收敛'
+            v1 = "向下收敛"
         elif bi1.high < bi3.high and bi1.low > bi3.low:
-            v1 = '向下扩张'
+            v1 = "向下扩张"
         elif bi3.low < bi1.low and bi3.high < bi1.high:
-            v1 = '向下盘背' if bi3.power < bi1.power else '向下无背'
+            v1 = "向下盘背" if bi3.power < bi1.power else "向下无背"
 
     # 识别向上形态
     elif bi3.direction == Direction.Up:
         if bi3.high < bi1.low:
-            v1 = '向上不重合'
+            v1 = "向上不重合"
         elif bi2.low < bi1.low < bi3.high < bi2.high:
-            v1 = '向上奔走型'
+            v1 = "向上奔走型"
         elif bi1.high > bi3.high and bi1.low < bi3.low:
-            v1 = '向上收敛'
+            v1 = "向上收敛"
         elif bi1.high < bi3.high and bi1.low > bi3.low:
-            v1 = '向上扩张'
+            v1 = "向上扩张"
         elif bi3.low > bi1.low and bi3.high > bi1.high:
-            v1 = '向上盘背' if bi3.power < bi1.power else '向上无背'
+            v1 = "向上盘背" if bi3.power < bi1.power else "向上无背"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1340,7 +1346,7 @@ def cxt_five_bi_V230619(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}五笔_形态V230619".split('_')
+    k1, k2, k3 = f"{freq}_D{di}五笔_形态V230619".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 6 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1358,41 +1364,57 @@ def cxt_five_bi_V230619(c: CZSC, **kwargs) -> OrderedDict:
         # aAb式底背驰
         if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and max_high == bi1.high and bi5.power < bi1.power:
             if (min_low == bi3.low and bi5.low < bi1.low) or (min_low == bi5.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式底背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式底背驰")
 
         # 类趋势底背驰
         if max_high == bi1.high and min_low == bi5.low and bi4.high < bi2.low and bi5.power < max(bi3.power, bi1.power):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势底背驰')
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势底背驰")
 
         # 上颈线突破
-        if (min_low == bi1.low and bi5.high > min(bi1.high, bi2.high) > bi5.low > bi1.low) \
-                or (min_low == bi3.low and bi5.high > bi3.high > bi5.low > bi3.low):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='上颈线突破')
+        if (min_low == bi1.low and bi5.high > min(bi1.high, bi2.high) > bi5.low > bi1.low) or (
+            min_low == bi3.low and bi5.high > bi3.high > bi5.low > bi3.low
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="上颈线突破")
 
         # 五笔三买，要求bi5.high是最高点
-        if max_high == bi5.high > bi5.low > max(bi1.high, bi3.high) \
-                > min(bi1.high, bi3.high) > max(bi1.low, bi3.low) > min_low:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买')
+        if (
+            max_high
+            == bi5.high
+            > bi5.low
+            > max(bi1.high, bi3.high)
+            > min(bi1.high, bi3.high)
+            > max(bi1.low, bi3.low)
+            > min_low
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三买")
 
     if direction == Direction.Up:
         # aAb式顶背驰
         if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and min_low == bi1.low and bi5.power < bi1.power:
             if (max_high == bi3.high and bi5.high > bi1.high) or (max_high == bi5.high):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式顶背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式顶背驰")
 
         # 类趋势顶背驰
         if min_low == bi1.low and max_high == bi5.high and bi5.power < max(bi1.power, bi3.power) and bi4.low > bi2.high:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势顶背驰')
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势顶背驰")
 
         # 下颈线突破
-        if (max_high == bi1.high and bi5.low < max(bi1.low, bi2.low) < bi5.high < max_high) \
-                or (max_high == bi3.high and bi5.low < bi3.low < bi5.high < max_high):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='下颈线突破')
+        if (max_high == bi1.high and bi5.low < max(bi1.low, bi2.low) < bi5.high < max_high) or (
+            max_high == bi3.high and bi5.low < bi3.low < bi5.high < max_high
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="下颈线突破")
 
         # 五笔三卖，要求bi5.low是最低点
-        if min_low == bi5.low < bi5.high < min(bi1.low, bi3.low) \
-                < max(bi1.low, bi3.low) < min(bi1.high, bi3.high) < max_high:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三卖')
+        if (
+            min_low
+            == bi5.low
+            < bi5.high
+            < min(bi1.low, bi3.low)
+            < max(bi1.low, bi3.low)
+            < min(bi1.high, bi3.high)
+            < max_high
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三卖")
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1429,7 +1451,7 @@ def cxt_seven_bi_V230620(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}七笔_形态V230620".split('_')
+    k1, k2, k3 = f"{freq}_D{di}七笔_形态V230620".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 10 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1445,64 +1467,76 @@ def cxt_seven_bi_V230620(c: CZSC, **kwargs) -> OrderedDict:
         if bi1.high == max_high and bi7.low == min_low:
             # aAbcd式底背驰
             if min(bi2.high, bi4.high) > max(bi2.low, bi4.low) > bi6.high and bi7.power < bi5.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式底背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbcd式底背驰")
 
             # abcAd式底背驰
             if bi2.low > min(bi4.high, bi6.high) > max(bi4.low, bi6.low) and bi7.power < (bi1.high - bi3.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='abcAd式底背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="abcAd式底背驰")
 
             # aAb式底背驰
             if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) and bi7.power < bi1.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式底背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式底背驰")
 
             # 类趋势底背驰
             if bi2.low > bi4.high and bi4.low > bi6.high and bi7.power < max(bi5.power, bi3.power, bi1.power):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势底背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势底背驰")
 
         # 向上中枢完成
-        if bi4.low == min_low and min(bi1.high, bi3.high) > max(bi1.low, bi3.low) \
-                and min(bi5.high, bi7.high) > max(bi5.low, bi7.low) \
-                and max(bi4.high, bi6.high) > min(bi3.high, bi4.high):
+        if (
+            bi4.low == min_low
+            and min(bi1.high, bi3.high) > max(bi1.low, bi3.low)
+            and min(bi5.high, bi7.high) > max(bi5.low, bi7.low)
+            and max(bi4.high, bi6.high) > min(bi3.high, bi4.high)
+        ):
             if max(bi1.low, bi3.low) < max(bi5.high, bi7.high):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='向上中枢完成')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="向上中枢完成")
 
         # 七笔三买：1~3构成中枢，最低点在1~3，最高点在5~7，5~7的最低点大于1~3的最高点
-        if min(bi1.low, bi3.low) == min_low and max(bi5.high, bi7.high) == max_high \
-                and min(bi5.low, bi7.low) > max(bi1.high, bi3.high) \
-                and min(bi1.high, bi3.high) > max(bi1.low, bi3.low):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买')
+        if (
+            min(bi1.low, bi3.low) == min_low
+            and max(bi5.high, bi7.high) == max_high
+            and min(bi5.low, bi7.low) > max(bi1.high, bi3.high)
+            and min(bi1.high, bi3.high) > max(bi1.low, bi3.low)
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三买")
 
     if direction == Direction.Up:
         # 顶背驰
         if bi1.low == min_low and bi7.high == max_high:
             # aAbcd式顶背驰
             if bi6.low > min(bi2.high, bi4.high) > max(bi2.low, bi4.low) and bi7.power < bi5.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式顶背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbcd式顶背驰")
 
             # abcAd式顶背驰
             if min(bi4.high, bi6.high) > max(bi4.low, bi6.low) > bi2.high and bi7.power < (bi3.high - bi1.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='abcAd式顶背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="abcAd式顶背驰")
 
             # aAb式顶背驰
             if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) and bi7.power < bi1.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式顶背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式顶背驰")
 
             # 类趋势顶背驰
             if bi2.high < bi4.low and bi4.high < bi6.low and bi7.power < max(bi5.power, bi3.power, bi1.power):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势顶背驰')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势顶背驰")
 
         # 向下中枢完成
-        if bi4.high == max_high and min(bi1.high, bi3.high) > max(bi1.low, bi3.low) \
-                and min(bi5.high, bi7.high) > max(bi5.low, bi7.low) \
-                and min(bi4.low, bi6.low) < max(bi3.low, bi4.low):
+        if (
+            bi4.high == max_high
+            and min(bi1.high, bi3.high) > max(bi1.low, bi3.low)
+            and min(bi5.high, bi7.high) > max(bi5.low, bi7.low)
+            and min(bi4.low, bi6.low) < max(bi3.low, bi4.low)
+        ):
             if min(bi1.high, bi3.high) > min(bi5.low, bi7.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='向下中枢完成')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="向下中枢完成")
 
         # 七笔三卖：1~3构成中枢，最高点在1~3，最低点在5~7，5~7的最高点小于1~3的最低点
-        if min(bi5.low, bi7.low) == min_low and max(bi1.high, bi3.high) == max_high \
-                and max(bi7.high, bi5.high) < min(bi1.low, bi3.low) \
-                and min(bi1.high, bi3.high) > max(bi1.low, bi3.low):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三卖')
+        if (
+            min(bi5.low, bi7.low) == min_low
+            and max(bi1.high, bi3.high) == max_high
+            and max(bi7.high, bi5.high) < min(bi1.low, bi3.low)
+            and min(bi1.high, bi3.high) > max(bi1.low, bi3.low)
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三卖")
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1538,7 +1572,7 @@ def cxt_nine_bi_V230621(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}九笔_形态V230621".split('_')
+    k1, k2, k3 = f"{freq}_D{di}九笔_形态V230621".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 13 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1553,48 +1587,70 @@ def cxt_nine_bi_V230621(c: CZSC, **kwargs) -> OrderedDict:
     if direction == Direction.Down:
         if min_low == bi9.low and max_high == bi1.high:
             # aAb式类一买
-            if min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low) \
-                    and bi9.power < bi1.power and bi3.low >= bi1.low and bi7.high <= bi9.high:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式类一买')
+            if (
+                min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low)
+                and bi9.power < bi1.power
+                and bi3.low >= bi1.low
+                and bi7.high <= bi9.high
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式类一买")
 
             # aAbcd式类一买
-            if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) > bi8.high \
-                    and bi9.power < bi7.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式类一买')
+            if min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) > bi8.high and bi9.power < bi7.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbcd式类一买")
 
             # ABC式类一买
-            if bi3.low < bi1.low and bi7.high > bi9.high \
-                    and min(bi4.high, bi6.high) > max(bi4.low, bi6.low) \
-                    and (bi1.high - bi3.low) > (bi7.high - bi9.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='ABC式类一买')
+            if (
+                bi3.low < bi1.low
+                and bi7.high > bi9.high
+                and min(bi4.high, bi6.high) > max(bi4.low, bi6.low)
+                and (bi1.high - bi3.low) > (bi7.high - bi9.low)
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="ABC式类一买")
 
             # 类趋势一买
-            if bi8.high < bi6.low < bi6.high < bi4.low < bi4.high < bi2.low \
-                    and bi9.power < max([bi1.power, bi3.power, bi5.power, bi7.power]):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势一买')
+            if bi8.high < bi6.low < bi6.high < bi4.low < bi4.high < bi2.low and bi9.power < max(
+                [bi1.power, bi3.power, bi5.power, bi7.power]
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势一买")
 
         # aAbBc式类一买（2~4构成中枢A，6~8构成中枢B，9背驰）
-        if max_high == max(bi1.high, bi3.high) and min_low == bi9.low \
-                and min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                and min(bi2.low, bi4.low) > max(bi6.high, bi8.high) \
-                and min(bi6.high, bi8.high) > max(bi6.low, bi8.low) \
-                and bi9.power < bi5.power:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbBc式类一买')
+        if (
+            max_high == max(bi1.high, bi3.high)
+            and min_low == bi9.low
+            and min(bi2.high, bi4.high) > max(bi2.low, bi4.low)
+            and min(bi2.low, bi4.low) > max(bi6.high, bi8.high)
+            and min(bi6.high, bi8.high) > max(bi6.low, bi8.low)
+            and bi9.power < bi5.power
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbBc式类一买")
 
         # 类三买（1357构成中枢，最低点在3或5）
-        if max_high == bi9.high > bi9.low \
-                > max([x.high for x in [bi1, bi3, bi5, bi7]]) \
-                > min([x.high for x in [bi1, bi3, bi5, bi7]]) \
-                > max([x.low for x in [bi1, bi3, bi5, bi7]]) \
-                > min([x.low for x in [bi3, bi5]]) == min_low:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买A')
+        if (
+            max_high
+            == bi9.high
+            > bi9.low
+            > max([x.high for x in [bi1, bi3, bi5, bi7]])
+            > min([x.high for x in [bi1, bi3, bi5, bi7]])
+            > max([x.low for x in [bi1, bi3, bi5, bi7]])
+            > min([x.low for x in [bi3, bi5]])
+            == min_low
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三买A")
 
         # 类三买（357构成中枢，8的力度小于2，9回调不跌破GG构成三买）
-        if bi8.power < bi2.power and max_high == bi9.high > bi9.low \
-                > max([x.high for x in [bi3, bi5, bi7]]) \
-                > min([x.high for x in [bi3, bi5, bi7]]) \
-                > max([x.low for x in [bi3, bi5, bi7]]) > bi1.low == min_low:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买B')
+        if (
+            bi8.power < bi2.power
+            and max_high
+            == bi9.high
+            > bi9.low
+            > max([x.high for x in [bi3, bi5, bi7]])
+            > min([x.high for x in [bi3, bi5, bi7]])
+            > max([x.low for x in [bi3, bi5, bi7]])
+            > bi1.low
+            == min_low
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三买B")
 
         if min_low == bi5.low and max_high == bi1.high and bi4.high < bi2.low:  # 前五笔构成向下类趋势
             zd = max([x.low for x in [bi5, bi7]])
@@ -1602,46 +1658,58 @@ def cxt_nine_bi_V230621(c: CZSC, **kwargs) -> OrderedDict:
             gg = max([x.high for x in [bi5, bi7]])
             if zg > zd and bi8.high > gg:  # 567构成中枢，且8的高点大于gg
                 if bi9.low > zg:
-                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='ZG三买')
+                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1="ZG三买")
 
                 # 类二买
                 if bi9.high > gg > zg > bi9.low > zd:
-                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类二买')
+                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类二买")
 
     if direction == Direction.Up:
         if max_high == bi9.high and min_low == bi1.low:
             # aAbBc式类一卖
-            if bi6.low > min(bi2.high, bi4.high) > max(bi2.low, bi4.low) \
-                    and min(bi6.high, bi8.high) > max(bi6.low, bi8.low) \
-                    and max(bi2.high, bi4.high) < min(bi6.low, bi8.low) \
-                    and bi9.power < bi5.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbBc式类一卖')
+            if (
+                bi6.low > min(bi2.high, bi4.high) > max(bi2.low, bi4.low)
+                and min(bi6.high, bi8.high) > max(bi6.low, bi8.low)
+                and max(bi2.high, bi4.high) < min(bi6.low, bi8.low)
+                and bi9.power < bi5.power
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbBc式类一卖")
 
             # aAb式类一卖
-            if min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low) \
-                    and bi9.power < bi1.power and bi3.high <= bi1.high and bi7.low >= bi9.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAb式类一卖')
+            if (
+                min(bi2.high, bi4.high, bi6.high, bi8.high) > max(bi2.low, bi4.low, bi6.low, bi8.low)
+                and bi9.power < bi1.power
+                and bi3.high <= bi1.high
+                and bi7.low >= bi9.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAb式类一卖")
 
             # aAbcd式类一卖
-            if bi8.low > min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) \
-                    and bi9.power < bi7.power:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='aAbcd式类一卖')
+            if bi8.low > min(bi2.high, bi4.high, bi6.high) > max(bi2.low, bi4.low, bi6.low) and bi9.power < bi7.power:
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="aAbcd式类一卖")
 
             # ABC式类一卖
-            if bi3.high > bi1.high and bi7.low < bi9.low \
-                    and min(bi4.high, bi6.high) > max(bi4.low, bi6.low) \
-                    and (bi3.high - bi1.low) > (bi9.high - bi7.low):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='ABC式类一卖')
+            if (
+                bi3.high > bi1.high
+                and bi7.low < bi9.low
+                and min(bi4.high, bi6.high) > max(bi4.low, bi6.low)
+                and (bi3.high - bi1.low) > (bi9.high - bi7.low)
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="ABC式类一卖")
 
             # 类趋势一卖
-            if bi8.low > bi6.high > bi6.low > bi4.high > bi4.low > bi2.high \
-                    and bi9.power < max([bi1.power, bi3.power, bi5.power, bi7.power]):
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类趋势一卖')
+            if bi8.low > bi6.high > bi6.low > bi4.high > bi4.low > bi2.high and bi9.power < max(
+                [bi1.power, bi3.power, bi5.power, bi7.power]
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类趋势一卖")
 
         # 九笔三卖
-        if max_high == bi1.high and min_low == bi9.low \
-                and bi9.high < max([x.low for x in [bi3, bi5, bi7]]) < min([x.high for x in [bi3, bi5, bi7]]):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三卖A')
+        if (
+            max_high == bi1.high
+            and min_low == bi9.low
+            and bi9.high < max([x.low for x in [bi3, bi5, bi7]]) < min([x.high for x in [bi3, bi5, bi7]])
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三卖A")
 
         if min_low == bi1.low and max_high == bi5.high and bi2.high < bi4.low:  # 前五笔构成向上类趋势
             zd = max([x.low for x in [bi5, bi7]])
@@ -1649,11 +1717,11 @@ def cxt_nine_bi_V230621(c: CZSC, **kwargs) -> OrderedDict:
             dd = min([x.low for x in [bi5, bi7]])
             if zg > zd and bi8.low < dd:  # 567构成中枢，且8的低点小于dd
                 if bi9.high < zd:
-                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='ZD三卖')
+                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1="ZD三卖")
 
                 # 类二卖
                 if dd < zd <= bi9.high < zg:
-                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类二卖')
+                    return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类二卖")
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1683,7 +1751,7 @@ def cxt_eleven_bi_V230622(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}十一笔_形态V230622".split('_')
+    k1, k2, k3 = f"{freq}_D{di}十一笔_形态V230622".split("_")
     v1 = "其他"
     if len(c.bi_list) < di + 16 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1698,71 +1766,117 @@ def cxt_eleven_bi_V230622(c: CZSC, **kwargs) -> OrderedDict:
     if direction == Direction.Down:
         if min_low == bi11.low and max_high == bi1.high:
             # ABC式类一买，A5B3C3
-            if bi5.low == min([x.low for x in [bi1, bi3, bi5]]) \
-                    and bi9.low > bi11.low and bi9.high > bi11.high \
-                    and bi8.high > bi6.low and bi1.high - bi5.low > bi9.high - bi11.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A5B3C3式类一买')
+            if (
+                bi5.low == min([x.low for x in [bi1, bi3, bi5]])
+                and bi9.low > bi11.low
+                and bi9.high > bi11.high
+                and bi8.high > bi6.low
+                and bi1.high - bi5.low > bi9.high - bi11.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A5B3C3式类一买")
 
             # ABC式类一买，A3B3C5
-            if bi1.high > bi3.high and bi1.low > bi3.low \
-                    and bi7.high == max([x.high for x in [bi7, bi9, bi11]]) \
-                    and bi6.high > bi4.low and bi1.high - bi3.low > bi7.high - bi11.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A3B3C5式类一买')
+            if (
+                bi1.high > bi3.high
+                and bi1.low > bi3.low
+                and bi7.high == max([x.high for x in [bi7, bi9, bi11]])
+                and bi6.high > bi4.low
+                and bi1.high - bi3.low > bi7.high - bi11.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A3B3C5式类一买")
 
             # ABC式类一买，A3B5C3
-            if bi1.low > bi3.low and min(bi4.high, bi6.high, bi8.high) > max(bi4.low, bi6.low, bi8.low) \
-                    and bi9.high > bi11.high and bi1.high - bi3.low > bi9.high - bi11.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A3B5C3式类一买')
+            if (
+                bi1.low > bi3.low
+                and min(bi4.high, bi6.high, bi8.high) > max(bi4.low, bi6.low, bi8.low)
+                and bi9.high > bi11.high
+                and bi1.high - bi3.low > bi9.high - bi11.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A3B5C3式类一买")
 
             # a1Ab式类一买，a1（1~7构成的类趋势）
             if bi2.low > bi4.high > bi4.low > bi6.high > bi5.low > bi7.low and bi10.high > bi8.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='a1Ab式类一买')
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="a1Ab式类一买")
 
         # 类二买（1~7构成盘整背驰，246构成下跌中枢，9/11构成上涨中枢，且上涨中枢GG大于下跌中枢ZG）
-        if bi7.power < bi1.power and min_low == bi7.low < max([x.low for x in [bi2, bi4, bi6]]) \
-                < min([x.high for x in [bi2, bi4, bi6]]) < max([x.high for x in [bi9, bi11]]) < bi1.high == max_high \
-                and bi11.low > min([x.low for x in [bi2, bi4, bi6]]) \
-                and min([x.high for x in [bi9, bi11]]) > max([x.low for x in [bi9, bi11]]):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类二买')
+        if (
+            bi7.power < bi1.power
+            and min_low
+            == bi7.low
+            < max([x.low for x in [bi2, bi4, bi6]])
+            < min([x.high for x in [bi2, bi4, bi6]])
+            < max([x.high for x in [bi9, bi11]])
+            < bi1.high
+            == max_high
+            and bi11.low > min([x.low for x in [bi2, bi4, bi6]])
+            and min([x.high for x in [bi9, bi11]]) > max([x.low for x in [bi9, bi11]])
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类二买")
 
         # 类二买（1~7为区间极值，9~11构成上涨中枢，上涨中枢GG大于4~6的最大值，上涨中枢DD大于4~6的最小值）
-        if max_high == bi1.high and min_low == bi7.low \
-                and min(bi9.high, bi11.high) > max(bi9.low, bi11.low) \
-                and max(bi11.high, bi9.high) > max(bi4.high, bi6.high) \
-                and min(bi9.low, bi11.low) > min(bi4.low, bi6.low):
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类二买')
+        if (
+            max_high == bi1.high
+            and min_low == bi7.low
+            and min(bi9.high, bi11.high) > max(bi9.low, bi11.low)
+            and max(bi11.high, bi9.high) > max(bi4.high, bi6.high)
+            and min(bi9.low, bi11.low) > min(bi4.low, bi6.low)
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类二买")
 
         # 类三买（1~9构成大级别中枢，10离开，11回调不跌破GG）
         gg = max([x.high for x in [bi1, bi2, bi3]])
         zg = min([x.high for x in [bi1, bi2, bi3]])
         zd = max([x.low for x in [bi1, bi2, bi3]])
         dd = min([x.low for x in [bi1, bi2, bi3]])
-        if max_high == bi11.high and bi11.low > zg > zd \
-                and gg > bi5.low and gg > bi7.low and gg > bi9.low \
-                and dd < bi5.high and dd < bi7.high and dd < bi9.high:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类三买')
+        if (
+            max_high == bi11.high
+            and bi11.low > zg > zd
+            and gg > bi5.low
+            and gg > bi7.low
+            and gg > bi9.low
+            and dd < bi5.high
+            and dd < bi7.high
+            and dd < bi9.high
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类三买")
 
     if direction == Direction.Up:
         if max_high == bi11.high and min_low == bi1.low:
             # ABC式类一卖，A5B3C3
-            if bi5.high == max([bi1.high, bi3.high, bi5.high]) and bi9.low < bi11.low and bi9.high < bi11.high \
-                    and bi8.low < bi6.high and bi11.high - bi9.low < bi5.high - bi1.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A5B3C3式类一卖')
+            if (
+                bi5.high == max([bi1.high, bi3.high, bi5.high])
+                and bi9.low < bi11.low
+                and bi9.high < bi11.high
+                and bi8.low < bi6.high
+                and bi11.high - bi9.low < bi5.high - bi1.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A5B3C3式类一卖")
 
             # ABC式类一卖，A3B3C5
-            if bi7.low == min([bi11.low, bi9.low, bi7.low]) and bi1.high < bi3.high and bi1.low < bi3.low \
-                    and bi6.low < bi4.high and bi11.high - bi7.low < bi3.high - bi1.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A3B3C5式类一卖')
+            if (
+                bi7.low == min([bi11.low, bi9.low, bi7.low])
+                and bi1.high < bi3.high
+                and bi1.low < bi3.low
+                and bi6.low < bi4.high
+                and bi11.high - bi7.low < bi3.high - bi1.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A3B3C5式类一卖")
 
             # ABC式类一卖，A3B5C3
-            if bi1.high < bi3.high and min(bi4.high, bi6.high, bi8.high) > max(bi4.low, bi6.low, bi8.low) \
-                    and bi9.low < bi11.low and bi3.high - bi1.low > bi11.high - bi9.low:
-                return create_single_signal(k1=k1, k2=k2, k3=k3, v1='A3B5C3式类一卖')
+            if (
+                bi1.high < bi3.high
+                and min(bi4.high, bi6.high, bi8.high) > max(bi4.low, bi6.low, bi8.low)
+                and bi9.low < bi11.low
+                and bi3.high - bi1.low > bi11.high - bi9.low
+            ):
+                return create_single_signal(k1=k1, k2=k2, k3=k3, v1="A3B5C3式类一卖")
 
         # 类二卖：1~9构成类趋势，11不创新高
-        if max_high == bi9.high > bi8.low > bi6.high > bi6.low > bi4.high > bi4.low > bi2.high > bi1.low == min_low \
-                and bi11.high < bi9.high:
-            return create_single_signal(k1=k1, k2=k2, k3=k3, v1='类二卖')
+        if (
+            max_high == bi9.high > bi8.low > bi6.high > bi6.low > bi4.high > bi4.low > bi2.high > bi1.low == min_low
+            and bi11.high < bi9.high
+        ):
+            return create_single_signal(k1=k1, k2=k2, k3=k3, v1="类二卖")
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1797,11 +1911,11 @@ def cxt_range_oscillation_V230620(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 1))
-    th = int(kwargs.get('th', 2))  # 振幅阈值，2 表示 2%，即 2% 以内的振幅都认为是震荡
+    di = int(kwargs.get("di", 1))
+    th = int(kwargs.get("th", 2))  # 振幅阈值，2 表示 2%，即 2% 以内的振幅都认为是震荡
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}TH{th}_区间震荡V230620".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_D{di}TH{th}_区间震荡V230620".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bi_list) < di + 11:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -1857,11 +1971,11 @@ def cxt_intraday_V230701(cat: CzscSignals, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 2))
     freq1 = kwargs.get("freq1", "30分钟")
     freq2 = kwargs.get("freq2", "日线")
-    assert freq1 == '30分钟', 'freq1必须为30分钟'
-    assert freq2 == '日线', 'freq2必须为日线'
+    assert freq1 == "30分钟", "freq1必须为30分钟"
+    assert freq2 == "日线", "freq2必须为日线"
 
     assert 21 > di > 0, "di必须为大于0小于21的整数，暂不支持当日走势分类"
-    k1, k2, k3 = f"{freq1}#{freq2}_D{di}日_走势分类V230701".split('_')
+    k1, k2, k3 = f"{freq1}#{freq2}_D{di}日_走势分类V230701".split("_")
     v1 = "其他"
     if not cat.kas or freq1 not in cat.kas.keys() or freq2 not in cat.kas.keys():
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1889,11 +2003,11 @@ def cxt_intraday_V230701(cat: CzscSignals, **kwargs) -> OrderedDict:
         zs1, zs2 = zs_list[0], zs_list[-1]
         zs1_high, zs1_low = max([x.high for x in zs1]), min([x.low for x in zs1])
         zs2_high, zs2_low = max([x.high for x in zs2]), min([x.low for x in zs2])
-        if _dir == "上涨" and zs1_high < zs2_low: # type: ignore
+        if _dir == "上涨" and zs1_high < zs2_low:  # type: ignore
             v1 = f"双中枢{_dir}"
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-        if _dir == "下跌" and zs1_low > zs2_high: # type: ignore
+        if _dir == "下跌" and zs1_low > zs2_high:  # type: ignore
             v1 = f"双中枢{_dir}"
             return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -1938,14 +2052,14 @@ def cxt_ubi_end_V230816(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_UBI_BE辅助V230816".split('_')
-    v1, v2 = '其他','其他'
+    k1, k2, k3 = f"{freq}_UBI_BE辅助V230816".split("_")
+    v1, v2 = "其他", "其他"
     ubi = c.ubi
-    if not ubi or len(ubi['fxs']) <= 2 or len(c.bars_ubi) <= 5:
+    if not ubi or len(ubi["fxs"]) <= 2 or len(c.bars_ubi) <= 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
-    fxs = ubi['fxs']
-    if ubi['direction'] == Direction.Up:
+    fxs = ubi["fxs"]
+    if ubi["direction"] == Direction.Up:
         fxs = [x for x in fxs if x.mark == Mark.G]
         cnt = 1
         cur_hfx = fxs[0]
@@ -1954,11 +2068,11 @@ def cxt_ubi_end_V230816(c: CZSC, **kwargs) -> OrderedDict:
                 cnt += 1
                 cur_hfx = fx
 
-        if ubi['raw_bars'][-1].high > cur_hfx.high:
-            v1 = '新高'
+        if ubi["raw_bars"][-1].high > cur_hfx.high:
+            v1 = "新高"
             v2 = f"第{cnt + 1}次"
 
-    if ubi['direction'] == Direction.Down:
+    if ubi["direction"] == Direction.Down:
         fxs = [x for x in fxs if x.mark == Mark.D]
         cnt = 1
         cur_lfx = fxs[0]
@@ -1967,8 +2081,8 @@ def cxt_ubi_end_V230816(c: CZSC, **kwargs) -> OrderedDict:
                 cnt += 1
                 cur_lfx = fx
 
-        if ubi['raw_bars'][-1].low < cur_lfx.low:
-            v1 = '新低'
+        if ubi["raw_bars"][-1].low < cur_lfx.low:
+            v1 = "新低"
             v2 = f"第{cnt + 1}次"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -1993,16 +2107,16 @@ def cxt_bi_end_V230815(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_快速突破_BE辅助V230815".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_快速突破_BE辅助V230815".split("_")
+    v1 = "其他"
     if len(c.bi_list) < 5 or len(c.bars_ubi) >= 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bi, last_bar = c.bi_list[-1], c.bars_ubi[-1]
     if bi.direction == Direction.Up and last_bar.low < bi.low:
-        v1 = '向下'
+        v1 = "向下"
     if bi.direction == Direction.Down and last_bar.high > bi.high:
-        v1 = '向上'
+        v1 = "向上"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
@@ -2029,19 +2143,19 @@ def cxt_bi_stop_V230815(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号识别结果
     """
-    th = int(kwargs.get('th', 50))
+    th = int(kwargs.get("th", 50))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_距离{th}BP_止损V230815".split('_')
-    v1, v2 = '其他', '其他'
+    k1, k2, k3 = f"{freq}_距离{th}BP_止损V230815".split("_")
+    v1, v2 = "其他", "其他"
     if len(c.bi_list) < 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bi, last_bar = c.bi_list[-1], c.bars_ubi[-1]
     if bi.direction == Direction.Up:
-        v1 = '向下'
+        v1 = "向下"
         v2 = "阈值内" if last_bar.close > bi.high * (1 - th / 10000) else "阈值外"
     if bi.direction == Direction.Down:
-        v1 = '向上'
+        v1 = "向上"
         v2 = "阈值内" if last_bar.close < bi.low * (1 + th / 10000) else "阈值外"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -2072,12 +2186,12 @@ def cxt_bi_trend_V230824(c: CZSC, **kwargs) -> OrderedDict:
 
     :return: 信号识别结果
     """
-    di = int(kwargs.get('di', 1))
-    n = int(kwargs.get('n', 4))
-    th = int(kwargs.get('th', 2))  # 振幅阈值，2 表示 2%，即 2% 以内的振幅都认为是震荡
+    di = int(kwargs.get("di", 1))
+    n = int(kwargs.get("n", 4))
+    th = int(kwargs.get("th", 2))  # 振幅阈值，2 表示 2%，即 2% 以内的振幅都认为是震荡
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}TH{th}_形态V230824".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}N{n}TH{th}_形态V230824".split("_")
+    v1 = "其他"
     if len(c.bi_list) < di + n + 2:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -2126,7 +2240,7 @@ def cxt_bi_trend_V230913(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 4))
     n = int(kwargs.get("n", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}笔趋势_高低点辅助判断V230913".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}笔趋势_高低点辅助判断V230913".split("_")
     v1 = "其他"
     if len(c.bi_list) <= di + 2 or len(c.bars_ubi) <= n + 1:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -2135,7 +2249,9 @@ def cxt_bi_trend_V230913(c: CZSC, **kwargs) -> OrderedDict:
     up_trend_time = np.array([x.edt.timestamp() for x in c.bi_list if x.direction == Direction.Up][-di:]).reshape(-1, 1)
 
     down_trend_price = np.array([x.low for x in c.bi_list if x.direction == Direction.Down][-di:])
-    down_trend_time = np.array([x.edt.timestamp() for x in c.bi_list if x.direction == Direction.Down][-di:]).reshape(-1, 1)
+    down_trend_time = np.array([x.edt.timestamp() for x in c.bi_list if x.direction == Direction.Down][-di:]).reshape(
+        -1, 1
+    )
 
     model_up = LinearRegression()
     model_down = LinearRegression()
@@ -2149,32 +2265,91 @@ def cxt_bi_trend_V230913(c: CZSC, **kwargs) -> OrderedDict:
 
     if pre_up_price <= pre_down_price:
         v1 = "观望"
-        v2 = '趋势线交叉'
+        v2 = "趋势线交叉"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     if len(c.bars_ubi) >= 5:
         v1 = "观望"
-        v2 = '末笔延伸'
+        v2 = "末笔延伸"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     if c.bars_raw[-n].close >= pre_up_price:
-        v1 = '上升趋势'
-        v2 = '超强'
+        v1 = "上升趋势"
+        v2 = "超强"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     elif pre_mid_price < c.bars_raw[-n].close < pre_up_price:
-        v1 = '上升趋势'
-        v2 = '强'
+        v1 = "上升趋势"
+        v2 = "强"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     elif pre_down_price < c.bars_raw[-n].close < pre_mid_price:
-        v1 = '下降趋势'
-        v2 = '强'
+        v1 = "下降趋势"
+        v2 = "强"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     elif c.bars_raw[-n].close <= pre_down_price:
-        v1 = '下降趋势'
-        v2 = '超强'
+        v1 = "下降趋势"
+        v2 = "超强"
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
+    """中枢视角下的并列二买
+
+    参数模板："{freq}_D{di}W{w}T{t}_第二买卖点V240524"
+
+    **信号逻辑：**
+
+    1. 取最近 15 笔；
+    2. 如果当前笔是向下笔，且向下笔的底分型区间与前面的15笔中存在 t 个以上的分型区间重合，则认为是并列二买；
+
+    **信号列表：**
+
+    - Signal('60分钟_D1W15T2_第二买卖点V240524_二买_任意_任意_0')
+    - Signal('60分钟_D1W15T2_第二买卖点V240524_二卖_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    w = int(kwargs.get("w", 15))  # 中枢窗口
+    t = int(kwargs.get("t", 2))  # 重合次数
+    assert w > 5, "参数 w 必须大于5"
+    assert t >= 2, "参数 t 必须大于等于2"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}W{w}T{t}_第二买卖点V240524".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < w + di + 5:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=di, n=w)
+    last: BI = bis[-1]
+    last_fx_high = last.fx_b.high
+    last_fx_low = last.fx_b.low
+
+    if last.direction.value == "向下" and last.length >= 7:
+        zs_count = 0
+        for bi in bis[:-1]:
+            # bi 的结束分型区间与 last 的分型区间有重合
+            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+                zs_count += 1
+
+        if zs_count >= t:
+            v1 = "二买"
+
+    if last.direction.value == "向上" and last.length >= 7:
+        zs_count = 0
+        for bi in bis[:-1]:
+            # bi 的结束分型区间与 last 的分型区间有重合
+            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+                zs_count += 1
+
+        if zs_count >= t:
+            v1 = "二卖"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

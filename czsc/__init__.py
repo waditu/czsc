@@ -139,6 +139,7 @@ from czsc.utils.st_components import (
     show_psi,
     show_strategies_symbol,
     show_strategies_dailys,
+    show_holds_backtest,
 )
 
 from czsc.utils.bi_info import (
@@ -176,10 +177,10 @@ from czsc.utils.kline_quality import (
 )
 
 
-__version__ = "0.9.50"
+__version__ = "0.9.51"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240504"
+__date__ = "20240512"
 
 
 def welcome():

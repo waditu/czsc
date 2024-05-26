@@ -108,6 +108,7 @@ def test_daily_performance():
         "盈亏平衡点": 0,
         "新高间隔": 0,
         "新高占比": 0,
+        "回撤风险": 0,
     }
 
     # Test case 2: daily returns with zero standard deviation
@@ -124,6 +125,7 @@ def test_daily_performance():
         "盈亏平衡点": 0,
         "新高间隔": 0,
         "新高占比": 0,
+        "回撤风险": 0,
     }
 
     # Test case 3: daily returns with all zeros
@@ -140,6 +142,7 @@ def test_daily_performance():
         "盈亏平衡点": 0,
         "新高间隔": 0,
         "新高占比": 0,
+        "回撤风险": 0,
     }
 
     # Test case 4: normal daily returns
@@ -157,8 +160,10 @@ def test_daily_performance():
         "盈亏平衡点": 0.7,
         "新高间隔": 5,
         "新高占比": 0.6,
+        "回撤风险": 0.082,
     }
 
+    # Test case 5: normal daily returns with different input type
     result = daily_performance([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
     assert result == {
         "绝对收益": 0.08,
@@ -172,6 +177,7 @@ def test_daily_performance():
         "盈亏平衡点": 0.7,
         "新高间隔": 5,
         "新高占比": 0.6,
+        "回撤风险": 0.082,
     }
 
 
