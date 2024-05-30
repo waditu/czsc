@@ -331,6 +331,29 @@ class SpreadSheets(FeishuApiBase):
         cols = values.pop(0)
         return pd.DataFrame(values, columns=cols)
 
+    def get_condition_formats(self, token, sheet_id):
+        """获取表格条件格式
+        https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-get
+
+        :return:
+        """
+        url = f"{self.host}/open-apis/sheets/v2/spreadsheets/{token}/condition_formats?sheet_ids={sheet_id}"
+        return request("GET", url, self.get_headers())
+
+    def set_condition_formats(self, token, data):
+        """设置表格条件格式
+        https://open.feishu.cn/document/server-docs/docs/sheets-v3/conditionformat/condition-format-set
+        """
+        url = f"{self.host}/open-apis/sheets/v2/spreadsheets/{token}/condition_formats/batch_create"
+        return request("POST", url, self.get_headers(), data)
+
+    def set_styles_batch(self, token,data):
+        """批量设置表格普通样式
+        https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/batch-set-cell-style
+        """
+        url = f"{self.host}/open-apis/sheets/v2/spreadsheets/{token}/styles_batch_update"
+        return request("PUT", url, self.get_headers(), data)
+
 
 class SingleSheet(SpreadSheets):
     """飞书表格中单个工作表的操作，继承自 SpreadSheets"""
@@ -380,3 +403,4 @@ class SingleSheet(SpreadSheets):
         删除电子表格的所有数据
         """
         super().delete_values(self.token, self.sheet_id)
+

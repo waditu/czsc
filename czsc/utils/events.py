@@ -20,6 +20,28 @@ def overlap(df: pd.DataFrame, col: str, **kwargs):
         - new_col: str, 计算结果的列名，默认为 f"{col}_overlap"
         - max_overlap: int, 最大允许连续出现次数，默认为 10
 
+    :return: pd.DataFrame
+
+    Example:
+    =======================
+    >>> df = pd.DataFrame({"dt": pd.date_range("2022-01-01", periods=10, freq="D"),
+    >>>                   "symbol": "000001",
+    >>>                   "close": [1, 1, 2, 2, 2, 3, 3, 3, 3, 3]})
+    >>> df = overlap(df, "close")
+    >>> print(df)
+    =======================
+    输出：
+                  dt  symbol  close  close_overlap
+        0 2022-01-01  000001      1            1.0
+        1 2022-01-02  000001      1            2.0
+        2 2022-01-03  000001      2            1.0
+        3 2022-01-04  000001      2            2.0
+        4 2022-01-05  000001      2            3.0
+        5 2022-01-06  000001      3            1.0
+        6 2022-01-07  000001      3            2.0
+        7 2022-01-08  000001      3            3.0
+        8 2022-01-09  000001      3            4.0
+        9 2022-01-10  000001      3            5.0
     """
     if kwargs.get("copy", True) is True:
         df = df.copy()
