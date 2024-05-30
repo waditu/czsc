@@ -11,6 +11,8 @@ import os
 import czsc
 import glob
 import pandas as pd
+from datetime import datetime
+
 
 # 投研共享数据的本地缓存路径，需要根据实际情况修改
 cache_path = os.environ.get("czsc_research_cache", r"D:\CZSC投研数据")
@@ -65,5 +67,20 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     kline = kline[(kline["dt"] >= pd.to_datetime(sdt)) & (kline["dt"] <= pd.to_datetime(edt))]
     if kline.empty:
         return []
-    _bars = czsc.resample_bars(kline, freq, raw_bars=raw_bars, base_freq="1分钟")
+
+    df = kline.copy()
+    if symbol in ["SFIC9001", "SFIF9001", "SFIH9001"]:
+        # 股指：仅保留 09:31 - 11:30, 13:01 - 15:00
+        # 历史遗留问题，股指有一段时间，收盘时间是 15:15
+        dt1 = datetime.strptime("09:31:00", "%H:%M:%S")
+        dt2 = datetime.strptime("11:30:00", "%H:%M:%S")
+        c1 = (df["dt"].dt.time >= dt1.time()) & (df["dt"].dt.time <= dt2.time())
+
+        dt3 = datetime.strptime("13:01:00", "%H:%M:%S")
+        dt4 = datetime.strptime("15:00:00", "%H:%M:%S")
+        c2 = (df["dt"].dt.time >= dt3.time()) & (df["dt"].dt.time <= dt4.time())
+
+        df = df[c1 | c2].copy().reset_index(drop=True)
+
+    _bars = czsc.resample_bars(df, freq, raw_bars=raw_bars, base_freq="1分钟")
     return _bars
