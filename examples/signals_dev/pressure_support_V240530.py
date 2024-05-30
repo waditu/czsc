@@ -19,8 +19,8 @@ def pressure_support_V240530(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('60分钟_D1W60_支撑压力V240406_压力位_任意_任意_0')
-    - Signal('60分钟_D1W60_支撑压力V240406_支撑位_任意_任意_0')
+    - Signal('60分钟_D1W20N5_支撑压力V240530_支撑位_任意_任意_0')
+    - Signal('60分钟_D1W20N5_支撑压力V240530_压力位_任意_任意_0')
 
     :param c: CZSC对象
     :param kwargs: 无

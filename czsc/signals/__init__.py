@@ -258,6 +258,7 @@ from czsc.signals.zdy import (
     pressure_support_V240222,
     pressure_support_V240402,
     pressure_support_V240406,
+    pressure_support_V240530,
 )
 
 
