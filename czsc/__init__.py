@@ -168,6 +168,7 @@ from czsc.features.utils import (
     normalize_corr,
     feature_to_weight,
     feature_returns,
+    feature_sectional_corr,
 )
 
 
