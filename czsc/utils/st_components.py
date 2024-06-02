@@ -252,49 +252,30 @@ def show_factor_returns(df, x_col, y_col):
     col2.plotly_chart(fig, use_container_width=True)
 
 
-def show_factor_layering(df, x_col, y_col="n1b", **kwargs):
-    """使用 streamlit 绘制因子截面分层收益率图
+def show_factor_layering(df, factor, target="n1b", **kwargs):
+    """使用 streamlit 绘制因子分层收益率图
 
     :param df: 因子数据
-    :param x_col: 因子列名
-    :param y_col: 收益列名
+    :param factor: 因子列名
+    :param target: 收益列名
     :param kwargs:
 
         - n: 分层数量，默认为10
-        - long: 多头组合，例如 "第10层"
-        - short: 空头组合，例如 "第01层"
+        - bp: 收益率单位是否为万分之一，默认为 True
 
     """
     n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:  # 收益率单位为BP, 转换为万分之一
+    if kwargs.get("bp", True):  # 收益率单位为BP, 转换为万分之一
         df[y_col] = df[y_col] / 10000
 
-    df = czsc.feture_cross_layering(df, x_col, n=n)
+    df = czsc.feture_cross_layering(df, factor, n=n)
 
-    mr = df.groupby(["dt", f"{x_col}分层"])[y_col].mean().reset_index()
-    mrr = mr.pivot(index="dt", columns=f"{x_col}分层", values=y_col).fillna(0)
+    mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
+    mrr = mr.pivot(index="dt", columns=f"{factor}分层", values=target).fillna(0)
+    if "第00层" in mrr.columns:
+        mrr.drop(columns=["第00层"], inplace=True)
 
-    tabs = st.tabs(["分层收益率", "多空组合"])
-    with tabs[0]:
-        czsc.show_daily_return(mrr)
-
-    with tabs[1]:
-        layering_cols = mrr.columns.to_list()
-        with st.form(key="factor_form"):
-            col1, col2 = st.columns(2)
-            long = col1.multiselect("多头组合", layering_cols, default=[], key="factor_long")
-            short = col2.multiselect("空头组合", layering_cols, default=[], key="factor_short")
-            submit = st.form_submit_button("多空组合快速测试")
-
-        if not submit:
-            st.warning("请设置多空组合")
-            st.stop()
-
-        dfr = mrr.copy()
-        dfr["多头"] = dfr[long].mean(axis=1)
-        dfr["空头"] = -dfr[short].mean(axis=1)
-        dfr["多空"] = (dfr["多头"] + dfr["空头"]) / 2
-        czsc.show_daily_return(dfr[["多头", "空头", "多空"]])
+    czsc.show_daily_return(mrr, stat_hold_days=False)
 
 
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
