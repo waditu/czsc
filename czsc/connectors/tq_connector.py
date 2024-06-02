@@ -39,7 +39,7 @@ def format_kline(df, freq=Freq.F1):
     return raw_bars
 
 
-def create_symbol_trader(api: tq.TqApi, symbol, **kwargs):
+def create_symbol_trader(api: TqApi, symbol, **kwargs):
     """创建一个品种的 CzscTrader, 回测与实盘场景同样适用
 
     :param api: TqApi, 天勤API实例
@@ -62,7 +62,7 @@ def create_symbol_trader(api: tq.TqApi, symbol, **kwargs):
     else:
         sdt = (pd.Timestamp.now() - pd.Timedelta(days=1)).date()
     trader = tactic.init_trader(raw_bars, sdt=sdt)
-    target_pos = tq.TargetPosTask(api, quote.underlying_symbol)
+    target_pos = TargetPosTask(api, quote.underlying_symbol)
 
     meta = {
         "symbol": symbol,

@@ -144,6 +144,8 @@ from czsc.utils.st_components import (
     show_strategies_symbol,
     show_strategies_dailys,
     show_holds_backtest,
+    show_symbols_corr,
+    show_feature_returns,
 )
 
 from czsc.utils.bi_info import (
