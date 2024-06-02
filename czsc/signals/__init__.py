@@ -213,6 +213,7 @@ from czsc.signals.pos import (
     pos_holds_V240428,
     pos_stop_V240428,
     pos_take_V240428,
+    pos_stop_V240331,
 )
 
 
@@ -258,6 +259,7 @@ from czsc.signals.zdy import (
     pressure_support_V240222,
     pressure_support_V240402,
     pressure_support_V240406,
+    pressure_support_V240530,
 )
 
 

@@ -17,6 +17,64 @@ from czsc import Freq, RawBar
 from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq  # noqa
 
 
+def format_kline(df, freq=Freq.F1):
+    """对分钟K线进行格式化"""
+    freq = Freq(freq)
+    rows = df.to_dict("records")
+    raw_bars = []
+    for i, row in enumerate(rows):
+        bar = RawBar(
+            symbol=row["symbol"],
+            id=i,
+            freq=freq,
+            dt=datetime.fromtimestamp(row["datetime"] / 1e9) + timedelta(minutes=1),
+            open=row["open"],
+            close=row["close"],
+            high=row["high"],
+            low=row["low"],
+            vol=row["volume"],
+            amount=row["volume"] * row["close"],
+        )
+        raw_bars.append(bar)
+    return raw_bars
+
+
+def create_symbol_trader(api: TqApi, symbol, **kwargs):
+    """创建一个品种的 CzscTrader, 回测与实盘场景同样适用
+
+    :param api: TqApi, 天勤API实例
+    :param symbol: str, 合约代码，要求符合天勤的规范
+    :param kwargs: dict, 其他参数
+
+        - sdt: str, 开始日期
+        - files_position: list[str], 策略配置文件路径
+        - adj_type: str, 复权类型，可选值：'F', 'B', 'N'，默认为 'F'，前复权
+
+    """
+    adj_type = kwargs.get("adj_type", "F")
+    files_position = kwargs.get("files_position")
+    tactic = czsc.CzscJsonStrategy(symbol=symbol, files_position=files_position)
+    kline = api.get_kline_serial(symbol, int(tactic.base_freq.strip("分钟")) * 60, data_length=10000, adj_type=adj_type)
+    quote = api.get_quote(symbol)
+    raw_bars = format_kline(kline, freq=tactic.base_freq)
+    if kwargs.get("sdt"):
+        sdt = pd.to_datetime(kwargs.get("sdt")).date()
+    else:
+        sdt = (pd.Timestamp.now() - pd.Timedelta(days=1)).date()
+    trader = tactic.init_trader(raw_bars, sdt=sdt)
+    target_pos = TargetPosTask(api, quote.underlying_symbol)
+
+    meta = {
+        "symbol": symbol,
+        "kline": kline,
+        "quote": quote,
+        "trader": trader,
+        "base_freq": tactic.base_freq,
+        "target_pos": target_pos,
+    }
+    return meta
+
+
 # https://doc.shinnytech.com/tqsdk/latest/usage/mddatas.html 代码规则
 symbols = [
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/SHFE

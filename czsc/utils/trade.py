@@ -157,6 +157,10 @@ def update_tbars(da: pd.DataFrame, event_col: str) -> None:
 def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True):
     """将非日线数据转换为日线数据，以便进行日线级别的分析
 
+    使用场景：
+
+    1. 将周频选股结果转换为日线级别，以便进行日线级别的分析
+
     函数执行逻辑：
 
     1. 首先，函数接收一个数据框`df`，以及可选的开始日期`sdt`，结束日期`edt`，和一个布尔值`only_trade_date`。
@@ -202,3 +206,38 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
 
     dfr = pd.concat(results, ignore_index=True)
     return dfr
+
+
+def adjust_holding_weights(df, hold_periods=1, **kwargs):
+    """根据 hold_periods 调整截面数据的 weight 列，固定间隔调仓
+
+    使用场景：
+
+    1. 截面选品种，固定持仓周期为 hold_periods，每隔 hold_periods 个周期调整一次仓位
+
+    :param df: pd.DataFrame, 截面数据, 至少包含 dt, symbol, weight, n1b 列
+
+        **注意：** df 中必须有原始交易中每个时刻的持仓数据，不要求时间等间隔拆分，但是 n1b 要能代表两个交易时刻之间的收益率
+
+    :param hold_periods: int, 固定持仓周期，大于等于1；1 表示每个交易周期调整一次仓位
+    :return: pd.DataFrame
+    """
+    assert hold_periods >= 1, "hold_periods 必须大于等于1"
+    if hold_periods == 1:
+        return df.copy()
+
+    df = df.copy()
+
+    # 每隔 hold_periods 个交易日调整一次仓位，获取调整期的时间列表 adjust_dts
+    dts = sorted(df["dt"].unique().tolist())
+    adjust_dts = dts[::hold_periods]
+
+    # 在 adjust_dts 上获取每个品种的权重，并且在 dts 上进行前向填充
+    dfs = pd.pivot_table(df, index="dt", columns="symbol", values="weight").fillna(0)
+    dfs = dfs[dfs.index.isin(adjust_dts)]
+    dfs = dfs.reindex(dts, method="ffill").fillna(0).reset_index()
+
+    # 从原始数据中获取 n1b 列，然后将 weight 列与 n1b 列进行合并
+    dfw1 = pd.melt(dfs, id_vars="dt", value_vars=dfs.columns.to_list(), var_name="symbol", value_name="weight")
+    dfw1 = pd.merge(df[["dt", "symbol", "n1b"]], dfw1, on=["dt", "symbol"], how="left")
+    return dfw1

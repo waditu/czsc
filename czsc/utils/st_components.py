@@ -7,6 +7,7 @@ import streamlit as st
 import plotly.express as px
 import statsmodels.api as sm
 import plotly.graph_objects as go
+from deprecated import deprecated
 from sklearn.linear_model import LinearRegression
 
 
@@ -223,6 +224,7 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
         st.plotly_chart(fig, use_container_width=True)
 
 
+@deprecated("请使用 czsc.show_feature_returns")
 def show_factor_returns(df, x_col, y_col):
     """使用 streamlit 展示因子收益率
 
@@ -252,49 +254,68 @@ def show_factor_returns(df, x_col, y_col):
     col2.plotly_chart(fig, use_container_width=True)
 
 
-def show_factor_layering(df, x_col, y_col="n1b", **kwargs):
-    """使用 streamlit 绘制因子截面分层收益率图
+def show_feature_returns(df, factor, target="n1b", **kwargs):
+    """使用 streamlit 展示因子收益率
+
+    :param df: pd.DataFrame, 必须包含 dt、symbol、factor, target 列
+    :param factor: str, 因子列名
+    :param target: str, 预测目标收益率列名
+    :param kwargs:
+
+        - fit_intercept: bool, 是否拟合截距，默认为 False
+        - fig_title: str, 图表标题，默认为 "因子收益率分析"
+
+    """
+    assert "dt" in df.columns, "时间列必须为 dt"
+    assert "symbol" in df.columns, "标的列必须为 symbol"
+    assert factor in df.columns, f"因子列 {factor} 不存在"
+    assert target in df.columns, f"目标列 {target} 不存在"
+
+    fit_intercept = kwargs.get("fit_intercept", False)
+
+    dft = czsc.feature_returns(df, factor, target, fit_intercept=fit_intercept)
+    dft.columns = ["dt", "因子收益率"]
+    dft["累计收益率"] = dft["因子收益率"].cumsum()
+
+    fig_title = kwargs.get("fig_title", "因子截面收益率分析")
+
+    # 将因子逐K收益率 和 因子累计收益率 分左右轴，绘制在一张图上
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=dft["dt"], y=dft["因子收益率"], name="因子收益率", yaxis="y"))
+    fig.add_trace(
+        go.Scatter(
+            x=dft["dt"], y=dft["累计收益率"], mode="lines", name="累计收益率", yaxis="y2", line=dict(color="red")
+        )
+    )
+    fig.update_layout(
+        yaxis=dict(title="因子收益率"),
+        yaxis2=dict(title="累计收益率", overlaying="y", side="right"),
+        title=fig_title,
+        margin=dict(l=0, r=0, b=0),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def show_factor_layering(df, factor, target="n1b", **kwargs):
+    """使用 streamlit 绘制因子分层收益率图
 
     :param df: 因子数据
-    :param x_col: 因子列名
-    :param y_col: 收益列名
+    :param factor: 因子列名
+    :param target: 收益列名
     :param kwargs:
 
         - n: 分层数量，默认为10
-        - long: 多头组合，例如 "第10层"
-        - short: 空头组合，例如 "第01层"
 
     """
     n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:  # 收益率单位为BP, 转换为万分之一
-        df[y_col] = df[y_col] / 10000
+    df = czsc.feture_cross_layering(df, factor, n=n)
 
-    df = czsc.feture_cross_layering(df, x_col, n=n)
+    mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
+    mrr = mr.pivot(index="dt", columns=f"{factor}分层", values=target).fillna(0)
+    if "第00层" in mrr.columns:
+        mrr.drop(columns=["第00层"], inplace=True)
 
-    mr = df.groupby(["dt", f"{x_col}分层"])[y_col].mean().reset_index()
-    mrr = mr.pivot(index="dt", columns=f"{x_col}分层", values=y_col).fillna(0)
-
-    tabs = st.tabs(["分层收益率", "多空组合"])
-    with tabs[0]:
-        czsc.show_daily_return(mrr)
-
-    with tabs[1]:
-        layering_cols = mrr.columns.to_list()
-        with st.form(key="factor_form"):
-            col1, col2 = st.columns(2)
-            long = col1.multiselect("多头组合", layering_cols, default=[], key="factor_long")
-            short = col2.multiselect("空头组合", layering_cols, default=[], key="factor_short")
-            submit = st.form_submit_button("多空组合快速测试")
-
-        if not submit:
-            st.warning("请设置多空组合")
-            st.stop()
-
-        dfr = mrr.copy()
-        dfr["多头"] = dfr[long].mean(axis=1)
-        dfr["空头"] = -dfr[short].mean(axis=1)
-        dfr["多空"] = (dfr["多头"] + dfr["空头"]) / 2
-        czsc.show_daily_return(dfr[["多头", "空头", "多空"]])
+    czsc.show_daily_return(mrr, stat_hold_days=False)
 
 
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
@@ -1304,3 +1325,27 @@ def show_holds_backtest(df, **kwargs):
     if kwargs.get("show_monthly_return", True):
         st.write("月度累计收益")
         czsc.show_monthly_return(daily, ret_col="return", sub_title="")
+
+
+def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
+    """展示品种相关性分析
+
+    :param df: pd.DataFrame, 数据源，columns=['dt', 'symbol', factor, target]
+    :param factor: str, 因子名称
+    :param target: str, 目标列名称
+    :param method: str, 相关性计算方法，默认为 pearson
+    :param kwargs:
+
+        - fig_title: str, 图表标题
+    """
+    dfc = df.copy().sort_values(["dt", "symbol"]).reset_index(drop=True)
+    dfr = (
+        dfc.groupby("symbol")
+        .apply(lambda x: x[factor].corr(x[target], method=method), include_groups=False)
+        .reset_index()
+    )
+    dfr.columns = ["symbol", "corr"]
+    dfr = dfr.sort_values("corr", ascending=False)
+    fig_title = kwargs.get("fig_title", f"{factor} 在品种上的相关性分布")
+    fig = px.bar(dfr, x="symbol", y="corr", title=fig_title, orientation="v")
+    st.plotly_chart(fig, use_container_width=True)

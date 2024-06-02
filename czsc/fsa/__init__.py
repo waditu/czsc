@@ -61,11 +61,13 @@ def push_card(card: str, key: str) -> None:
     """
     api_send = f"https://open.feishu.cn/open-apis/bot/v2/hook/{key}"
     data = {"msg_type": "interactive", "card": card}
+    response = requests.post(url=api_send, json=data)
+
     try:
-        response = requests.post(url=api_send, json=data)
         assert response.json()["StatusMessage"] == "success"
     except Exception as e:
         logger.error(f"推送消息失败: {e}")
+        logger.error(response.json())
 
 
 def read_feishu_sheet(spread_sheet_token: str, sheet_id: str = None, **kwargs):
@@ -156,23 +158,18 @@ def update_spreadsheet(df: pd.DataFrame, spreadsheet_token: str, sheet_id: str, 
         feishu_app_secret: 飞书APP的app_secret
     :return:
     """
-    fsf = SpreadSheets(app_id=kwargs['feishu_app_id'], app_secret=kwargs['feishu_app_secret'])
+    fsf = SpreadSheets(app_id=kwargs["feishu_app_id"], app_secret=kwargs["feishu_app_secret"])
 
     data = {
-            "valueRanges": [
-                {
-                    "range": f"{sheet_id}!A1:Z1",
-                    "values": [list(df)]
-                }, {
-                    "range": f"{sheet_id}!A2:Z5000",
-                    "values": df.values.tolist()
-                }
-            ]
+        "valueRanges": [
+            {"range": f"{sheet_id}!A1:Z1", "values": [list(df)]},
+            {"range": f"{sheet_id}!A2:Z5000", "values": df.values.tolist()},
+        ]
     }
     try:
         fsf.delete_values(spreadsheet_token, sheet_id)
         b = fsf.update_values(spreadsheet_token, data)
-        if b and b['code'] == 0:
+        if b and b["code"] == 0:
             logger.success("更新飞书表格成功")
             return 1
         else:

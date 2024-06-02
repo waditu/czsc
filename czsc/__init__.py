@@ -115,6 +115,10 @@ from czsc.utils.calendar import (
     get_trading_dates,
 )
 
+from czsc.utils.trade import (
+    adjust_holding_weights,
+)
+
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
@@ -140,6 +144,8 @@ from czsc.utils.st_components import (
     show_strategies_symbol,
     show_strategies_dailys,
     show_holds_backtest,
+    show_symbols_corr,
+    show_feature_returns,
 )
 
 from czsc.utils.bi_info import (
@@ -166,6 +172,9 @@ from czsc.features.utils import (
     rolling_tanh,
     feature_adjust,
     normalize_corr,
+    feature_to_weight,
+    feature_returns,
+    feature_sectional_corr,
 )
 
 
@@ -177,10 +186,10 @@ from czsc.utils.kline_quality import (
 )
 
 
-__version__ = "0.9.51"
+__version__ = "0.9.52"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240512"
+__date__ = "20240526"
 
 
 def welcome():
