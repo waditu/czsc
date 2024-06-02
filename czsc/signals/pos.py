@@ -670,3 +670,68 @@ def pos_take_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
             v1 = "空头止盈"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_stop_V240331(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """根据最近N根K线的最高最低价止损，追踪止损，贡献者：谢磊
+
+    参数模板："{pos_name}_{freq1}#{n}_止损V240331"
+
+    **信号逻辑：**
+
+    以多头止损为例，计算过程如下：
+
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上获取最近 N 根K线，记为 bars；
+    2. 计算 bars 中的最低价，记为 ll；
+    3. 如果当前价格 low < ll，则多头止损。
+
+    空头止损逻辑同理。
+
+    **信号列表：**
+
+    - Signal('SMA5多头_15分钟#10_止损V240331_多头止损_任意_任意_0')
+    - Signal('SMA5空头_15分钟#10_止损V240331_空头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，观察的K线数量，默认为 10，表示观察前10根K线
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    n = int(kwargs.get("n", 10))
+    freq1 = kwargs["freq1"]
+    k1, k2, k3 = f"{pos_name}_{freq1}#{n}_止损V240331".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # pos_ = [x for x in cat.positions if x.name == pos_name][0]
+    pos_ = cat.get_position(pos_name)
+    # 如果 pos 没有操作记录，或者最后一次操作是平仓，则不产生信号
+    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c: CZSC = cat.kas[freq1]
+    op = pos_.operates[-1]
+    bars = get_sub_elements(c.bars_raw, di=1, n=n + 1)
+    _bar = bars[-1]
+
+    # 多头止损逻辑：当前价格低于前n根K线的最低价
+    if op["op"] == Operate.LO:
+        ll = min([x.low for x in bars[:-1]])
+        if _bar.low < ll and _bar.id > op["bid"]:
+            v1 = "多头止损"
+
+    # 空头止损逻辑：当前价格高于前n根K线的最高价
+    if op["op"] == Operate.SO:
+        hh = max([x.high for x in bars[:-1]])
+        if _bar.high > hh and _bar.id > op["bid"]:
+            v1 = "空头止损"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
