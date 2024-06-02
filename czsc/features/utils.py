@@ -473,13 +473,15 @@ def feature_sectional_corr(df, factor, target="n1b", method="pearson", **kwargs)
     """计算因子特征截面相关性（IC）
 
     :param df：数据，DateFrame格式
-    :param x_col：X列
-    :param y_col：Y列，一般采用下期收益，也就是 n1b
+    :param factor：因子列名，一般采用F#开头的列
+    :param target：目标列名，一般为n1b
     :param method：{'pearson', 'kendall', 'spearman'} or callable
+
             * pearson : standard correlation coefficient
             * kendall : Kendall Tau correlation coefficient
             * spearman : Spearman rank correlation
             * callable: callable with input two 1d ndarrays and returning a float
+
     :return：df，res: 前者是每日相关系数结果，后者是每日相关系数的统计结果
     """
     from czsc.utils import single_linear
@@ -506,7 +508,6 @@ def feature_sectional_corr(df, factor, target="n1b", method="pearson", **kwargs)
         "IC标准差": 0,
         "ICIR": 0,
         "IC胜率": 0,
-        "IC绝对值>2%占比": 0,
         "累计IC回归R2": 0,
         "累计IC回归斜率": 0,
     }
@@ -524,8 +525,6 @@ def feature_sectional_corr(df, factor, target="n1b", method="pearson", **kwargs)
         res["IC胜率"] = round(len(dft[dft["ic"] > 0]) / len(dft), 4)
     else:
         res["IC胜率"] = round(len(dft[dft["ic"] < 0]) / len(dft), 4)
-
-    res["IC绝对值>2%占比"] = round(len(dft[dft["ic"].abs() > 0.02]) / len(dft), 4)
 
     lr_ = single_linear(y=dft["ic"].cumsum().to_list())
     res.update({"累计IC回归R2": lr_["r2"], "累计IC回归斜率": lr_["slope"]})
