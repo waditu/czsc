@@ -115,6 +115,10 @@ from czsc.utils.calendar import (
     get_trading_dates,
 )
 
+from czsc.utils.trade import (
+    adjust_holding_weights,
+)
+
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
