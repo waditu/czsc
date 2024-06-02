@@ -432,6 +432,8 @@ def feature_to_weight(df, factor, positive, **kwargs):
     df["weight"] = df["weight"].fillna(0)
     if not positive:
         df["weight"] = -df["weight"]
+
+    df.drop(["upper", "lower", "norm"], axis=1, inplace=True)
     return df
 
 
