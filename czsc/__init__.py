@@ -166,6 +166,8 @@ from czsc.features.utils import (
     rolling_tanh,
     feature_adjust,
     normalize_corr,
+    feature_to_weight,
+    feature_returns,
 )
 
 
