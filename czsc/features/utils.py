@@ -482,6 +482,8 @@ def feature_sectional_corr(df, factor, target="n1b", method="pearson", **kwargs)
             * callable: callable with input two 1d ndarrays and returning a float
     :return：df，res: 前者是每日相关系数结果，后者是每日相关系数的统计结果
     """
+    from czsc.utils import single_linear
+
     df = df.copy()
     corr = []
     for dt, dfg in df.groupby("dt"):
