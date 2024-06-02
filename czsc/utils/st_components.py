@@ -261,13 +261,9 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     :param kwargs:
 
         - n: 分层数量，默认为10
-        - bp: 收益率单位是否为万分之一，默认为 True
 
     """
     n = kwargs.get("n", 10)
-    if kwargs.get("bp", True):  # 收益率单位为BP, 转换为万分之一
-        df[y_col] = df[y_col] / 10000
-
     df = czsc.feture_cross_layering(df, factor, n=n)
 
     mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
