@@ -200,7 +200,6 @@ def welcome():
         f"CZSC环境变量："
         f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
         f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
-        f"czsc_bi_change_th = {envs.get_bi_change_th()}"
     )
 
 

@@ -2353,3 +2353,148 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
             v1 = "二卖"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_overlap_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """K线收盘价与最近9笔的顶底分型重合次数
+
+    参数模板："{freq}_顶底重合_支撑压力V240526"
+
+    **信号逻辑：**
+
+    1. 取最近 15 笔；
+    2. 如果当前笔是向下笔，且向下笔的底分型区间与前面的15笔中存在 t 个以上的分型区间重合，则认为是并列二买；
+
+    **信号列表：**
+
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合2次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合3次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合2次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合3次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合2次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合2次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合4次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合4次_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_顶底重合_支撑压力V240526".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=9)
+    last_bar = c.bars_raw[-1]
+    # 找出向上笔的顶分型
+    fxg = [x.fx_b for x in bis if x.direction == Direction.Up]
+    fxd = [x.fx_b for x in bis if x.direction == Direction.Down]
+
+    # 与 fxg 的重合次数
+    overlap_count_g = sum([1 for fx in fxg if fx.low <= last_bar.close <= fx.high])
+    overlap_count_d = sum([1 for fx in fxd if fx.low <= last_bar.close <= fx.high])
+    v1 = f"顶重合{overlap_count_g}次"
+    v2 = f"底重合{overlap_count_d}次"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_decision_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """根据最后一根K线与最后一笔的分型区间，构建交易决策区域
+
+    参数模板："{freq}_分型区域N{n}_决策区域V240526"
+
+    **信号逻辑：**
+
+    1. 取最近一根K线和最后一笔的结束分型
+    2. 取100根K线，计算 unique price 序列
+    3. 如果当前K线的收盘价在结束分型的 N 个 unique price 之间，认为是一个交易决策区域
+
+    **信号列表：**
+
+    - Signal('60分钟_分型区域N9_决策区域V240526_开多_任意_任意_0')
+    - Signal('60分钟_分型区域N9_决策区域V240526_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 9))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_分型区域N{n}_决策区域V240526".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 120:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=100)
+    prices = [x.close for x in bars] + [x.high for x in bars] + [x.low for x in bars] + [x.open for x in bars]
+    prices = list(set(prices))
+
+    bi = c.bi_list[-1]
+    bar = c.bars_raw[-1]
+    if bi.direction == Direction.Up:
+        in_prices = [x for x in prices if bar.close <= x <= bi.fx_b.high]
+        if len(in_prices) <= n:
+            v1 = "开空"
+
+    elif bi.direction == Direction.Down:
+        in_prices = [x for x in prices if bi.fx_b.low <= x <= bar.close]
+        if len(in_prices) <= n:
+            v1 = "开多"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """快速走势之后的减速反弹，形成第反弹买点
+
+    参数模板："{freq}_趋势跟随_BS辅助V240526"
+
+    **信号逻辑：**
+
+    1. 取最近 7 笔；
+    2. 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号；
+    3. 如果倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间，形成买点；
+    4. 如果倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间，形成卖点。
+
+    **信号列表：**
+
+    - Signal('15分钟_趋势跟随_BS辅助V240526_买点_任意_任意_0')
+    - Signal('15分钟_趋势跟随_BS辅助V240526_卖点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_趋势跟随_BS辅助V240526".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=7)
+    b2, b1 = bis[-2:]
+    power_price_seq = [x.power_price for x in bis]
+    power_volume_seq = [x.power_volume for x in bis]
+
+    # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的价格、量比最大值小于前 7 笔的最大值，不考虑信号
+    if b2.SNR < 0.7 or b2.power_price < np.max(power_price_seq) or b2.power_volume < np.max(power_volume_seq):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if b2.direction == Direction.Up and b1.direction == Direction.Down:
+        # 买点：倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间
+        if 0.1 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
+            v1 = "买点"
+
+    if b2.direction == Direction.Down and b1.direction == Direction.Up:
+        # 卖点：倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间
+        if 0.3 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
+            v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
