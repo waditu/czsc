@@ -39,6 +39,23 @@ def format_kline(df, freq=Freq.F1):
     return raw_bars
 
 
+def is_trading_end():
+    """判断交易时间是否结束"""
+    now = pd.Timestamp.now().strftime("%H:%M")
+
+    if "08:30" <= now <= "16:35":
+        if now >= "15:16":
+            # 日盘交易结束
+            return True
+
+    if "00:30" <= now <= "04:00":
+        if now >= "02:31":
+            # 夜盘交易结束
+            return True
+
+    return False
+
+
 def create_symbol_trader(api: TqApi, symbol, **kwargs):
     """创建一个品种的 CzscTrader, 回测与实盘场景同样适用
 
@@ -50,19 +67,41 @@ def create_symbol_trader(api: TqApi, symbol, **kwargs):
         - files_position: list[str], 策略配置文件路径
         - adj_type: str, 复权类型，可选值：'F', 'B', 'N'，默认为 'F'，前复权
 
+        - price (str / Callable): [可选]下单方式, 默认为 "ACTIVE"
+            * "ACTIVE"：对价下单，在持仓调整过程中，若下单方向为买，对价为卖一价；若下单方向为卖，对价为买一价。
+            * "PASSIVE"：排队价下单，在持仓调整过程中，若下单方向为买，对价为买一价；若下单方向为卖，对价为卖一价，该种方式可能会造成较多撤单.
+            * Callable[[str], Union[float, int]]: 函数参数为下单方向，函数返回值是下单价格。如果返回 nan，程序会抛错。
+
+        - offset_priority (str): [可选]开平仓顺序，昨=平昨仓，今=平今仓，开=开仓，逗号=等待之前操作完成
+
+                               对于下单指令区分平今/昨的交易所(如上期所)，按照今/昨仓的数量计算是否能平今/昨仓
+                               对于下单指令不区分平今/昨的交易所(如中金所)，按照“先平当日新开仓，再平历史仓”的规则计算是否能平今/昨仓，如果这些交易所设置为"昨开"在有当日新开仓和历史仓仓的情况下，会自动跳过平昨仓进入到下一步
+
+                               * "今昨,开" 表示先平今仓，再平昨仓，等待平仓完成后开仓，对于没有单向大边的品种避免了开仓保证金不足
+                               * "今昨开" 表示先平今仓，再平昨仓，并开仓，所有指令同时发出，适合有单向大边的品种
+                               * "昨开" 表示先平昨仓，再开仓，禁止平今仓，适合股指这样平今手续费较高的品种
+                               * "开" 表示只开仓，不平仓，适合需要进行锁仓操作的品种
+
     """
     adj_type = kwargs.get("adj_type", "F")
     files_position = kwargs.get("files_position")
+    price = kwargs.get("price", "PASSIVE")
+    offset_priority = kwargs.get("offset_priority", "今昨,开")
+
     tactic = czsc.CzscJsonStrategy(symbol=symbol, files_position=files_position)
     kline = api.get_kline_serial(symbol, int(tactic.base_freq.strip("分钟")) * 60, data_length=10000, adj_type=adj_type)
     quote = api.get_quote(symbol)
     raw_bars = format_kline(kline, freq=tactic.base_freq)
+
+    # tqsdk 的一个特性：返回的K线中，默认最后一根K线是刚开始的K线，对应0成交；这里过滤掉这种K线
+    raw_bars = [x for x in raw_bars if x.vol > 0]
+
     if kwargs.get("sdt"):
         sdt = pd.to_datetime(kwargs.get("sdt")).date()
     else:
         sdt = (pd.Timestamp.now() - pd.Timedelta(days=1)).date()
     trader = tactic.init_trader(raw_bars, sdt=sdt)
-    target_pos = TargetPosTask(api, quote.underlying_symbol)
+    target_pos = TargetPosTask(api, quote.underlying_symbol, price=price, offset_priority=offset_priority)
 
     meta = {
         "symbol": symbol,

@@ -108,6 +108,8 @@ from czsc.signals.bar import (
     bar_accelerate_V240428,
     bar_polyfit_V240428,
     bar_break_V240428,
+    bar_classify_V240606,
+    bar_classify_V240607,
 )
 
 from czsc.signals.jcc import (

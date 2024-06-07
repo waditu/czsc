@@ -1957,3 +1957,98 @@ def bar_break_V240428(c: CZSC, **kwargs) -> OrderedDict:
         v1 = "收盘新低"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_classify_V240606(c: CZSC, **kwargs) -> OrderedDict:
+    """单根K线收盘位置分类
+
+    飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/P79fwVE19i7vw4keDuac4tFRnMf
+
+    参数模板："{freq}_D{di}收盘位置_分类V240606"
+
+    **信号逻辑：**
+
+    1. 高收盘蜡烛是指收盘价在蜡烛范围的上三分之一内的蜡烛。
+    2. 中间收盘价是指收盘价在蜡烛范围的中间三分之一以内。
+    3. 中间收盘价是指收盘价在蜡烛范围的中间三分之一以内。
+
+    **信号列表：**
+
+    - Signal('60分钟_D1收盘位置_分类V240606_低位_任意_任意_0')
+    - Signal('60分钟_D1收盘位置_分类V240606_中间_任意_任意_0')
+    - Signal('60分钟_D1收盘位置_分类V240606_高位_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: int, default 1, 周期偏移量
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    assert di > 0, "参数 di 必须大于 0"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}收盘位置_分类V240606".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 7 + di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bar = c.bars_raw[-di]
+    close, high, low = bar.close, bar.high, bar.low
+    gap_unit = (high - low) / 3
+    if close > (high - gap_unit):
+        v1 = "高位"
+    elif close < (low + gap_unit):
+        v1 = "低位"
+    else:
+        v1 = "中间"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def bar_classify_V240607(c: CZSC, **kwargs) -> OrderedDict:
+    """两根K线收盘位置分类
+
+    飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/PNY8wB59xicCtVkTacvcrcQgnOh
+
+    参数模板："{freq}_D{di}K2收盘位置_分类V240607"
+
+    **信号逻辑：**
+
+    1. 看多：第二根K线收盘价在第一根K线的最高价上方
+    2. 看空：第二根K线收盘价在第一根K线的最低价下方
+    3. 中性：其他情况
+
+    **信号列表：**
+
+    - Signal('60分钟_D1K2收盘位置_分类V240607_看空_任意_任意_0')
+    - Signal('60分钟_D1K2收盘位置_分类V240607_中性_任意_任意_0')
+    - Signal('60分钟_D1K2收盘位置_分类V240607_看多_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - di: int, default 1, 周期偏移量
+
+    :return: 信号识别结果
+    """
+    di = int(kwargs.get("di", 1))
+    assert di > 0, "参数 di 必须大于 0"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_D{di}K2收盘位置_分类V240607".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 7 + di:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bar1, bar2 = get_sub_elements(c.bars_raw, di=di, n=2)
+    h, l, c = bar1.high, bar1.low, bar2.close
+    if c > h:
+        v1 = "看多"
+    elif c < l:
+        v1 = "看空"
+    else:
+        v1 = "中性"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
