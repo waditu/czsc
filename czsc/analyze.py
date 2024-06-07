@@ -48,26 +48,31 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
 
     # 判断 k2 和 k3 之间是否存在包含关系，有则处理
     if (k2.high <= k3.high and k2.low >= k3.low) or (k2.high >= k3.high and k2.low <= k3.low):
+
         if direction == Direction.Up:
             high = max(k2.high, k3.high)
             low = max(k2.low, k3.low)
             dt = k2.dt if k2.high > k3.high else k3.dt
+
         elif direction == Direction.Down:
             high = min(k2.high, k3.high)
             low = min(k2.low, k3.low)
             dt = k2.dt if k2.low < k3.low else k3.dt
+
         else:
             raise ValueError
 
         open_, close = (high, low) if k3.open > k3.close else (low, high)
         vol = k2.vol + k3.vol
         amount = k2.amount + k3.amount
+
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
         # 临时解决方案是直接限定len(k2.elements)<=100
         elements = [x for x in k2.elements[:100] if x.dt != k3.dt] + [k3]
         k4 = NewBar(symbol=k3.symbol, id=k2.id, freq=k2.freq, dt=dt, open=open_,
                     close=close, high=high, low=low, vol=vol, amount=amount, elements=elements)
         return True, k4
+
     else:
         k4 = NewBar(symbol=k3.symbol, id=k3.id, freq=k3.freq, dt=k3.dt, open=k3.open,
                     close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, amount=k3.amount, elements=[k3])
@@ -132,11 +137,10 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
     return fxs
 
 
-def check_bi(bars: List[NewBar], benchmark=None):
+def check_bi(bars: List[NewBar], **kwargs):
     """输入一串无包含关系K线，查找其中的一笔
 
     :param bars: 无包含关系K线列表
-    :param benchmark: 当下笔能量的比较基准
     :return:
     """
     min_bi_len = envs.get_min_bi_len()
@@ -167,14 +171,8 @@ def check_bi(bars: List[NewBar], benchmark=None):
     # 判断fx_a和fx_b价格区间是否存在包含关系
     ab_include = (fx_a.high > fx_b.high and fx_a.low < fx_b.low) or (fx_a.high < fx_b.high and fx_a.low > fx_b.low)
 
-    # 判断当前笔的涨跌幅是否超过benchmark的一定比例
-    if benchmark and abs(fx_a.fx - fx_b.fx) > benchmark * envs.get_bi_change_th():
-        power_enough = True
-    else:
-        power_enough = False
-
-    # 成笔的条件：1）顶底分型之间没有包含关系；2）笔长度大于等于min_bi_len 或 当前笔的涨跌幅已经够大
-    if (not ab_include) and (len(bars_a) >= min_bi_len or power_enough):
+    # 成笔的条件：1）顶底分型之间没有包含关系；2）笔长度大于等于min_bi_len
+    if (not ab_include) and (len(bars_a) >= min_bi_len):
         fxs_ = [x for x in fxs if fx_a.elements[0].dt <= x.dt <= fx_b.elements[2].dt]
         bi = BI(symbol=fx_a.symbol, fx_a=fx_a, fx_b=fx_b, fxs=fxs_, direction=direction, bars=bars_a)
         return bi, bars_b
@@ -241,13 +239,7 @@ class CZSC:
         if self.verbose and len(bars_ubi) > 100:
             logger.info(f"{self.symbol} - {self.freq} - {bars_ubi[-1].dt} 未完成笔延伸数量: {len(bars_ubi)}")
 
-        if envs.get_bi_change_th() > 0.5 and len(self.bi_list) >= 5:
-            price_seq = [x.power_price for x in self.bi_list[-5:]]
-            benchmark = min(self.bi_list[-1].power_price, sum(price_seq) / len(price_seq))
-        else:
-            benchmark = None
-
-        bi, bars_ubi_ = check_bi(bars_ubi, benchmark)
+        bi, bars_ubi_ = check_bi(bars_ubi)
         self.bars_ubi = bars_ubi_
         if isinstance(bi, BI):
             self.bi_list.append(bi)
