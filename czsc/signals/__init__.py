@@ -44,6 +44,7 @@ from czsc.signals.cxt import (
     cxt_overlap_V240526,
     cxt_decision_V240526,
     cxt_bs_V240526,
+    cxt_bs_V240527,
 )
 
 
