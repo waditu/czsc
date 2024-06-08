@@ -38,13 +38,18 @@ def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
     b1 = bis[-1]
     power_price_seq = [x.power_price for x in bis]
     power_volume_seq = [x.power_volume for x in bis]
+    slope_seq = [abs(x.slope) for x in bis]
 
-    # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的价格、量比最大值小于前 7 笔的最大值，不考虑信号
-    if b1.SNR < 0.7 or b1.power_price < np.max(power_price_seq) or b1.power_volume < np.max(power_volume_seq):
+    # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号
+    if b1.SNR < 0.7 or (b1.power_price < np.max(power_price_seq)
+                        and b1.power_volume < np.max(power_volume_seq)
+                        and b1.slope < np.max(slope_seq)):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     ubi = c.ubi
-    if ubi['bars'] and len(ubi['bars']) < 7:
+    if not ubi:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    if len(ubi['raw_bars']) < 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     ubi_power_price = ubi['high_bar'].high - ubi['low_bar'].low
@@ -55,11 +60,10 @@ def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
 
     if b1.direction == Direction.Down:
         # 卖点：倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间
-        if 0.3 * b1.power_price < ubi_power_price < 0.7 * b1.power_price:
+        if 0.2 * b1.power_price < ubi_power_price < 0.7 * b1.power_price:
             v1 = "卖点"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
 
 def check():
     from czsc.connectors import research

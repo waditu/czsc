@@ -36,9 +36,12 @@ def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
     b2, b1 = bis[-2:]
     power_price_seq = [x.power_price for x in bis]
     power_volume_seq = [x.power_volume for x in bis]
+    slope_seq = [abs(x.slope) for x in bis]
 
     # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的价格、量比最大值小于前 7 笔的最大值，不考虑信号
-    if b2.SNR < 0.7 or b2.power_price < np.max(power_price_seq) or b2.power_volume < np.max(power_volume_seq):
+    if b2.SNR < 0.7 or (b2.power_price < np.max(power_price_seq)
+                        and b2.power_volume < np.max(power_volume_seq)
+                        and b2.slope < np.max(slope_seq)):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if b2.direction == Direction.Up and b1.direction == Direction.Down:
@@ -48,7 +51,7 @@ def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
 
     if b2.direction == Direction.Down and b1.direction == Direction.Up:
         # 卖点：倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间
-        if 0.3 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
+        if 0.2 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
             v1 = "卖点"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
