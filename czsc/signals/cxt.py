@@ -1965,7 +1965,7 @@ def cxt_intraday_V230701(cat: CzscSignals, **kwargs) -> OrderedDict:
     - Signal('30分钟#日线_D2日_走势分类V230701_转折平衡市_任意_任意_0')
     - Signal('30分钟#日线_D2日_走势分类V230701_双中枢上涨_任意_任意_0')
 
-    :param c: CZSC对象
+    :param cat: CzscSignals
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 2))
