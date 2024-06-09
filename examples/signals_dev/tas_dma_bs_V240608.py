@@ -50,17 +50,19 @@ def tas_dma_bs_V240608(c: CZSC, **kwargs) -> OrderedDict:
 
     bar1, bar2 = bars[-2], bars[-1]
     ma1_value, ma2_value = bar2.cache[ma1], bar2.cache[ma2]
+    lower_prices = [x for x in unique_prices if x < ma2_value]
+    upper_prices = [x for x in unique_prices if x > ma2_value]
 
-    if ma1_value > ma2_value and bar2.cache[ma2] > bar1.cache[ma2]:
+    if upper_prices and ma1_value > ma2_value and bar2.cache[ma2] > bar1.cache[ma2]:
         # ma2_round_high 是 ma2_value 上方的第 n 个价格
-        ma2_round_high = [x for x in unique_prices if x > ma2_value][n]
+        ma2_round_high = upper_prices[n] if len(upper_prices) > n else upper_prices[-1]
         # 买点：1）上一根K线的最低价小于 ma2_round_high；2）当前K线的最高价大于 ma2_round_high，且收盘价小于 ma2_round_high
         if bar1.low < ma2_round_high < bar2.high and bar2.close < ma2_round_high:
             v1 = '买点'
 
-    elif ma1_value < ma2_value and bar2.cache[ma2] < bar1.cache[ma2]:
+    elif lower_prices and ma1_value < ma2_value and bar2.cache[ma2] < bar1.cache[ma2]:
         # ma2_round_low 是 ma2_value 下方的第 n 个价格
-        ma2_round_low = [x for x in unique_prices if x < ma2_value][-n]
+        ma2_round_low = lower_prices[-n] if len(lower_prices) > n else lower_prices[0]
         # 卖点：1）上一根K线的最高价大于 ma2_round_low；2）当前K线的收盘价大于 ma2_round_low，且收盘价大于 ma2_round_low
         if bar1.high > ma2_round_low > bar2.low and bar2.close > ma2_round_low:
             v1 = '卖点'
