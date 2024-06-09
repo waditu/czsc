@@ -212,6 +212,7 @@ from czsc.signals.pos import (
     pos_fx_stop_V230414,
     pos_ma_V230414,
     pos_holds_V230414,
+    pos_holds_V240608,
     pos_bar_stop_V230524,
     pos_fix_exit_V230624,
     pos_profit_loss_V230624,

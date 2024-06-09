@@ -527,6 +527,79 @@ def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
+def pos_holds_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """保本单：多头开仓后，最低价跌破前低，当前价在成本价上方N个价位，平仓保本；空头反之。
+
+    参数模板："{pos_name}_{freq1}W{w}N{n}_保本V240608"
+
+    **信号逻辑：**
+
+    以多头保本单为例，计算过程如下：
+
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上计算开仓前 W 个K线的最低价，记为 L1；
+    2. 计算开仓后的最低价，记为 L2；
+    3. 如果 L2 < L1，且当前价比开仓价高 N 个价位，则平仓保本。
+
+    **信号列表：**
+
+    - Signal('日线三买多头N1_60分钟W20N2_保本V240608_空头保本_任意_任意_0')
+    - Signal('日线三买多头N1_60分钟W20N2_保本V240608_多头保本_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - w: int，开仓前W根K线，默认为 20
+        - n: int，成本价上方N个价位，默认为 2
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    w = int(kwargs.get("w", 20))  # 开仓前W根K线
+    n = int(kwargs.get("n", 2))  # 成本价上方N个价位
+
+    k1, k2, k3 = f"{pos_name}_{freq1}W{w}N{n}_保本V240608".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not cat.kas or not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+
+    # 开仓前W根K线
+    w_bars = [x for x in c.bars_raw[-200:] if x.dt < op["dt"]][-w:]
+    # 开仓后的K线
+    a_bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
+    unique_prices = [p for x in w_bars for p in [x.high, x.low, x.close, x.open]]
+    unique_prices = sorted(list(set(unique_prices)))
+
+    if op["op"] == Operate.LO:
+        w_low = min([x.low for x in w_bars])  # 开仓前最低价
+        a_low = min([x.low for x in a_bars])  # 开仓后最低价
+        up_prices = [x for x in unique_prices if x > op["price"]]  # 成本价上方的价位
+        # 如果开仓后的最低价低于开仓前的最低价，且当前价比开仓价高 N 个价位，则平仓保本
+        if len(up_prices) > n and a_low > w_low and cat.latest_price > up_prices[n]:
+            v1 = "多头保本"
+
+    if op["op"] == Operate.SO:
+        w_high = max([x.high for x in w_bars])  # 开仓前最高价
+        a_high = max([x.high for x in a_bars])  # 开仓后最高价
+        down_prices = [x for x in unique_prices if x < op["price"]]  # 成本价下方的价位
+        # 如果开仓后的最高价高于开仓前的最高价，且当前价比开仓价低 N 个价位，则平仓保本
+        if len(down_prices) > n and a_high < w_high and cat.latest_price < down_prices[-n]:
+            v1 = "空头保本"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
 def pos_stop_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     """止损单，持有N根K线后，多头跌破前低或空头升破前高，平仓
 
