@@ -2485,9 +2485,11 @@ def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
     slope_seq = [abs(x.slope) for x in bis]
 
     # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的价格、量比最大值小于前 7 笔的最大值，不考虑信号
-    if b2.SNR < 0.7 or (b2.power_price < np.max(power_price_seq)
-                        and b2.power_volume < np.max(power_volume_seq)
-                        and b2.slope < np.max(slope_seq)):
+    if b2.SNR < 0.7 or (
+        b2.power_price < np.max(power_price_seq)
+        and b2.power_volume < np.max(power_volume_seq)
+        and b2.slope < np.max(slope_seq)
+    ):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if b2.direction == Direction.Up and b1.direction == Direction.Down:
@@ -2501,6 +2503,7 @@ def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
             v1 = "卖点"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
 
 def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
     """快速走势之后的减速反弹，形成第反弹买点
@@ -2538,18 +2541,20 @@ def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
     slope_seq = [abs(x.slope) for x in bis]
 
     # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号
-    if b1.SNR < 0.7 or (b1.power_price < np.max(power_price_seq)
-                        and b1.power_volume < np.max(power_volume_seq)
-                        and b1.slope < np.max(slope_seq)):
+    if b1.SNR < 0.7 or (
+        b1.power_price < np.max(power_price_seq)
+        and b1.power_volume < np.max(power_volume_seq)
+        and b1.slope < np.max(slope_seq)
+    ):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     ubi = c.ubi
     if not ubi:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    if len(ubi['raw_bars']) < 7:
+    if len(ubi["raw_bars"]) < 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    ubi_power_price = ubi['high_bar'].high - ubi['low_bar'].low
+    ubi_power_price = ubi["high_bar"].high - ubi["low_bar"].low
     if b1.direction == Direction.Up:
         # 买点：倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间
         if 0.1 * b1.power_price < ubi_power_price < 0.7 * b1.power_price:
@@ -2562,3 +2567,68 @@ def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
+
+def cxt_overlap_V240612(c: CZSC, **kwargs) -> OrderedDict:
+    """顺畅笔的顶底分型构建支撑压力位
+
+    参数模板："{freq}_SNR顺畅N{n}_支撑压力V240612"
+
+    **信号逻辑：**
+
+    前面N笔中走势最顺畅的笔，顶底分型是重要支撑压力位，可以作为决策点。
+
+    1. 取最近 N 笔，找出SNR最大的笔 B1；
+    2. 如果当前笔是向下笔，且向下笔的底分型区间与B1的顶/底分型区间有重合，那么认为当前位置是支撑位；
+
+    **信号列表：**
+
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 9))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_SNR顺畅N{n}_支撑压力V240612".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=3, n=9)
+    bis = [x for x in bis if len(x.raw_bars) >= 9]
+    if len(bis) == 0:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    max_snr_bi = max(bis, key=lambda x: x.SNR)
+    last_bi = c.bi_list[-1]
+
+    if max_snr_bi.direction == Direction.Down:
+        fxg = max_snr_bi.fx_a
+        fxd = max_snr_bi.fx_b
+    else:
+        fxg = max_snr_bi.fx_b
+        fxd = max_snr_bi.fx_a
+
+    def is_price_overlap(h1, l1, h2, l2):
+        """判断两个价格区间是否有重合"""
+        return True if max(l1, l2) < min(h1, h2) else False
+
+    v2 = "任意"
+    if last_bi.direction == Direction.Down:
+        if is_price_overlap(fxg.high, fxg.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "支撑"
+            v2 = "顺畅笔顶分型"
+        if is_price_overlap(fxd.high, fxd.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "支撑"
+            v2 = "顺畅笔底分型"
+
+    if last_bi.direction == Direction.Up:
+        if is_price_overlap(fxg.high, fxg.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "压力"
+            v2 = "顺畅笔顶分型"
+
+        if is_price_overlap(fxd.high, fxd.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "压力"
+            v2 = "顺畅笔底分型"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)

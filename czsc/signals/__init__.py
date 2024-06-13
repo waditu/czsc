@@ -45,6 +45,7 @@ from czsc.signals.cxt import (
     cxt_decision_V240526,
     cxt_bs_V240526,
     cxt_bs_V240527,
+    cxt_overlap_V240612,
 )
 
 
@@ -206,6 +207,7 @@ from czsc.signals.tas import (
     tas_slope_V231019,
     tas_macd_bc_V240307,
     tas_dma_bs_V240608,
+    tas_dif_zero_V240612,
 )
 
 from czsc.signals.pos import (
@@ -222,6 +224,7 @@ from czsc.signals.pos import (
     pos_stop_V240428,
     pos_take_V240428,
     pos_stop_V240331,
+    pos_stop_V240608,
 )
 
 
