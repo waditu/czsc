@@ -2582,6 +2582,10 @@ def cxt_overlap_V240612(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_支撑_顺畅笔底分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_压力_顺畅笔底分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_支撑_顺畅笔顶分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_压力_顺畅笔顶分型_任意_0')
 
     :param c: CZSC对象
     :param kwargs: 无
