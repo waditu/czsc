@@ -2591,20 +2591,21 @@ def cxt_overlap_V240612(c: CZSC, **kwargs) -> OrderedDict:
     :param kwargs: 无
     :return: 信号识别结果
     """
-    n = int(kwargs.get("n", 9))
+    n = int(kwargs.get("n", 7))
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_SNR顺畅N{n}_支撑压力V240612".split("_")
     v1 = "其他"
     if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bis = get_sub_elements(c.bi_list, di=3, n=9)
+    bis = get_sub_elements(c.bi_list, di=3, n=n)
     bis = [x for x in bis if len(x.raw_bars) >= 9]
     if len(bis) == 0:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     max_snr_bi = max(bis, key=lambda x: x.SNR)
-    last_bi = c.bi_list[-1]
+    if max_snr_bi.SNR < 0.7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if max_snr_bi.direction == Direction.Down:
         fxg = max_snr_bi.fx_a
@@ -2617,6 +2618,7 @@ def cxt_overlap_V240612(c: CZSC, **kwargs) -> OrderedDict:
         """判断两个价格区间是否有重合"""
         return True if max(l1, l2) < min(h1, h2) else False
 
+    last_bi = c.bi_list[-1]
     v2 = "任意"
     if last_bi.direction == Direction.Down:
         if is_price_overlap(fxg.high, fxg.low, last_bi.fx_b.high, last_bi.fx_b.low):
