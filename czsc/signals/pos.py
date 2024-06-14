@@ -581,7 +581,7 @@ def pos_holds_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     unique_prices = [p for x in c.bars_raw[-200:] for p in [x.high, x.low, x.close, x.open]]
     unique_prices = sorted(list(set(unique_prices)))
 
-    if op["op"] == Operate.LO:
+    if op["op"] == Operate.LO and w_bars:
         w_low = min([x.low for x in w_bars])  # 开仓前最低价
         a_low = min([x.low for x in a_bars])  # 开仓后最低价
         up_prices = [x for x in unique_prices if x > op["price"]]  # 成本价上方的价位
@@ -589,7 +589,7 @@ def pos_holds_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
         if len(up_prices) > n and a_low < w_low and cat.latest_price > up_prices[n]:
             v1 = "多头保本"
 
-    if op["op"] == Operate.SO:
+    if op["op"] == Operate.SO and w_bars:
         w_high = max([x.high for x in w_bars])  # 开仓前最高价
         a_high = max([x.high for x in a_bars])  # 开仓后最高价
         down_prices = [x for x in unique_prices if x < op["price"]]  # 成本价下方的价位
@@ -860,13 +860,13 @@ def pos_stop_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     op = pos.operates[-1]
 
     # 开仓前W根K线
-    w_bars = [x for x in c.bars_raw[-200:] if x.dt < op["dt"]][-w:]
+    w_bars = [x for x in c.bars_raw if x.dt < op["dt"]][-w:]
     # 开仓后的K线
     a_bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
     unique_prices = [p for x in c.bars_raw[-200:] for p in [x.high, x.low, x.close, x.open]]
     unique_prices = sorted(list(set(unique_prices)))  # 去重并按升序排列
 
-    if op["op"] == Operate.LO:
+    if op["op"] == Operate.LO and w_bars:
         w_low = min([x.low for x in w_bars])  # 开仓前最低价
         a_low = min([x.low for x in a_bars])  # 开仓后最低价
         w_low_prices = [x for x in unique_prices if x < w_low]  # 开仓前最低价下方的价位，升序排列
@@ -874,7 +874,7 @@ def pos_stop_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
         if len(w_low_prices) > n and a_low < w_low_prices[-n]:
             v1 = "多头止损"
 
-    if op["op"] == Operate.SO:
+    if op["op"] == Operate.SO and w_bars:
         w_high = max([x.high for x in w_bars])
         a_high = max([x.high for x in a_bars])
         w_high_prices = [x for x in unique_prices if x > w_high]

@@ -209,6 +209,7 @@ from czsc.signals.tas import (
     tas_macd_bc_V240307,
     tas_dma_bs_V240608,
     tas_dif_zero_V240612,
+    tas_dif_zero_V240614,
 )
 
 from czsc.signals.pos import (
