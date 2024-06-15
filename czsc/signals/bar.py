@@ -559,6 +559,7 @@ def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
     **信号逻辑：**
 
     以上涨加速为例，计算过程如下：
+
     1. 给定窗口大小 w，rolling 计算 w 个周期的 diff 绝对值；
     2. 如果当前 diff 绝对值大于 最近300个周期的 diff 绝对值的 75% 分位数，且当前 diff 大于 0，判定为上涨加速；
     3. 窗口内至少要有 T 根倍量上涨的 K 线。
@@ -569,11 +570,17 @@ def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
     - Signal('日线_D1W21T2_加速V240428_下跌_任意_任意_0')
 
     :param c: CZSC对象
+    :param kwargs:
+
+        - di: 区间结束K线位置，倒数
+        - w: 窗口大小
+        - t: 倍量上涨的K线数量
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
     w = int(kwargs.get("w", 21))
-    t = int(kwargs.get("t", 2))
+    t = int(kwargs.get("t", 1))
     freq = c.freq.value
 
     # rolling 计算 w 个周期的 diff
