@@ -2316,7 +2316,7 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
-    w = int(kwargs.get("w", 15))  # 中枢窗口
+    w = int(kwargs.get("w", 9))  # 中枢窗口
     t = int(kwargs.get("t", 2))  # 重合次数
     assert w > 5, "参数 w 必须大于5"
     assert t >= 2, "参数 t 必须大于等于2"
@@ -2324,19 +2324,20 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}W{w}T{t}_第二买卖点V240524".split("_")
     v1 = "其他"
-    if len(c.bi_list) < w + di + 5:
+    if len(c.bi_list) < w + di + 5 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bis = get_sub_elements(c.bi_list, di=di, n=w)
     last: BI = bis[-1]
     last_fx_high = last.fx_b.high
     last_fx_low = last.fx_b.low
+    fxs = [x.fx_b for x in bis[:-1] if x.length >= 7]
 
     if last.direction.value == "向下" and last.length >= 7:
         zs_count = 0
-        for bi in bis[:-1]:
+        for fx in fxs:
             # bi 的结束分型区间与 last 的分型区间有重合
-            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+            if max(fx.low, last_fx_low) < min(fx.high, last_fx_high):
                 zs_count += 1
 
         if zs_count >= t:
@@ -2344,9 +2345,9 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
 
     if last.direction.value == "向上" and last.length >= 7:
         zs_count = 0
-        for bi in bis[:-1]:
+        for fx in fxs:
             # bi 的结束分型区间与 last 的分型区间有重合
-            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+            if max(fx.low, last_fx_low) < min(fx.high, last_fx_high):
                 zs_count += 1
 
         if zs_count >= t:
@@ -2691,6 +2692,88 @@ def cxt_decision_V240612(c: CZSC, **kwargs) -> OrderedDict:
         v1 = "开多"
 
     if last_bar.close > high_range and last_bar.high != max_high:
+        v1 = "开空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_decision_V240613(c: CZSC, **kwargs) -> OrderedDict:
+    """取最近N笔，如果当前笔向下未新低，且累计成交量最大，开多；如果当前笔向上未新高，且累计成交量最大，开空
+
+    参数模板："{freq}_放量笔N{n}BS2_决策区域V240613"
+
+    **信号逻辑：**
+
+    取最近N笔，如果当前笔向下未新低，且累计成交量最大，开多；如果当前笔向上未新高，且累计成交量最大，开空
+
+    相比于 cxt_decision_V240614，区别就是有没有新高新低的判断
+
+    **信号列表：**
+
+    - Signal('15分钟_放量笔N4BS2_决策区域V240613_开多_任意_任意_0')
+    - Signal('15分钟_放量笔N4BS2_决策区域V240613_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 4))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_放量笔N{n}BS2_决策区域V240613".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=n)
+    bis_vol = [x.power_volume for x in bis]
+    if bis[-1].power_volume != max(bis_vol):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bis[-1].direction == Direction.Down and bis[-1].low != min([x.low for x in bis]):
+        v1 = "开多"
+
+    if bis[-1].direction == Direction.Up and bis[-1].high != max([x.high for x in bis]):
+        v1 = "开空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_decision_V240614(c: CZSC, **kwargs) -> OrderedDict:
+    """取最近N笔，如果当前笔向下创出新低，且累计成交量最大，开多；如果当前笔向上创出新高，且累计成交量最大，开空
+
+    参数模板："{freq}_放量笔N{n}_决策区域V240614"
+
+    **信号逻辑：**
+
+    取最近N笔，如果当前笔向下创出新低，且累计成交量最大，开多；如果当前笔向上创出新高，且累计成交量最大，开空
+
+    **信号列表：**
+
+    - Signal('15分钟_放量笔N4_决策区域V240614_开多_任意_任意_0')
+    - Signal('15分钟_放量笔N4_决策区域V240614_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 4))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_放量笔N{n}_决策区域V240614".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=n)
+    bis_vol = [x.power_volume for x in bis]
+    if bis[-1].power_volume != max(bis_vol):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bis[-1].direction == Direction.Down and bis[-1].low == min([x.low for x in bis]):
+        v1 = "开多"
+
+    if bis[-1].direction == Direction.Up and bis[-1].high == max([x.high for x in bis]):
         v1 = "开空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

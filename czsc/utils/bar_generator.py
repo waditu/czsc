@@ -13,9 +13,9 @@ from pathlib import Path
 from loguru import logger
 
 
-mss = pd.read_feather(Path(__file__).parent / "minites_split.feather")
+mss = pd.read_feather(Path(__file__).parent / "minutes_split.feather")
 freq_market_times, freq_edt_map = {}, {}
-for _m, dfg in mss.groupby('market'):
+for _m, dfg in mss.groupby("market"):
     for _f in [x for x in mss.columns if x.endswith("分钟")]:
         freq_market_times[f"{_f}_{_m}"] = list(dfg[_f].unique())
         freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
@@ -28,13 +28,13 @@ def is_trading_time(dt: datetime = datetime.now(), market="A股"):
     return True if hm in times else False
 
 
-def get_intraday_times(freq='1分钟', market="A股"):
+def get_intraday_times(freq="1分钟", market="A股"):
     """获取指定市场的交易时间段
 
     :param market: 市场名称，可选值：A股、期货、默认
     :return: 交易时间段列表
     """
-    assert market in ['A股', '期货', '默认'], "market 参数必须为 A股 或 期货 或 默认"
+    assert market in ["A股", "期货", "默认"], "market 参数必须为 A股 或 期货 或 默认"
     assert freq.endswith("分钟"), "freq 参数必须为分钟级别的K线周期"
     return freq_market_times[f"{freq}_{market}"]
 
@@ -57,8 +57,18 @@ def format_standard_kline(df: pd.DataFrame, freq: str):
     # from czsc.objects import RawBar, Freq
     bars = []
     for i, row in df.iterrows():
-        bar = RawBar(id=i, symbol=row['symbol'], dt=row['dt'], open=row['open'], close=row['close'],
-                     high=row['high'], low=row['low'], vol=row['vol'], amount=row['amount'], freq=Freq(freq))
+        bar = RawBar(
+            id=i,
+            symbol=row["symbol"],
+            dt=row["dt"],
+            open=row["open"],
+            close=row["close"],
+            high=row["high"],
+            low=row["low"],
+            vol=row["vol"],
+            amount=row["amount"],
+            freq=Freq(freq),
+        )
         bars.append(bar)
     return bars
 
@@ -81,7 +91,7 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
         - freq      K线周期
         - market    交易市场
     """
-    if freq in ['日线', '周线', '月线', '季线', '年线']:
+    if freq in ["日线", "周线", "月线", "季线", "年线"]:
         return freq, "默认"
 
     time_seq = sorted(list(set(time_seq)))
@@ -92,8 +102,8 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
             continue
         freq_x, market = key.split("_")
 
-        if freq_x == '1分钟':
-            time_seq.extend(['14:57', '14:58', '14:59', '15:00'])
+        if freq_x == "1分钟":
+            time_seq.extend(["14:57", "14:58", "14:59", "15:00"])
 
         sub_tts = [x for x in tts if x >= min(time_seq) and x <= max(time_seq)]
         if set(time_seq) == set(sub_tts):
@@ -118,28 +128,29 @@ def freq_end_date(dt, freq: Union[Freq, AnyStr]):
         return dt + timedelta(days=5 - dt.isoweekday())
 
     if freq == Freq.Y:
-        return datetime(year=dt.year, month=12, day=31)
+        edt = dt.replace(month=12, day=31)
+        return edt
 
     if freq == Freq.M:
         if dt.month == 12:
-            edt = datetime(year=dt.year, month=12, day=31)
+            edt = dt.replace(year=dt.year + 1, month=1, day=1)
         else:
-            edt = datetime(year=dt.year, month=dt.month + 1, day=1) - timedelta(days=1)
-        return edt
+            edt = dt.replace(month=dt.month + 1, day=1)
+        return edt - timedelta(days=1)
 
     if freq == Freq.S:
         dt_m = dt.month
         if dt_m in [1, 2, 3]:
-            edt = datetime(year=dt.year, month=4, day=1) - timedelta(days=1)
+            edt = dt.replace(month=4, day=1)
         elif dt_m in [4, 5, 6]:
-            edt = datetime(year=dt.year, month=7, day=1) - timedelta(days=1)
+            edt = dt.replace(month=7, day=1)
         elif dt_m in [7, 8, 9]:
-            edt = datetime(year=dt.year, month=10, day=1) - timedelta(days=1)
+            edt = dt.replace(month=10, day=1)
         else:
-            edt = datetime(year=dt.year, month=12, day=31)
-        return edt
+            edt = dt.replace(year=dt.year + 1, month=1, day=1)
+        return edt - timedelta(days=1)
 
-    logger.warning(f'error: {dt} - {freq}')
+    logger.warning(f"error: {dt} - {freq}")
     return dt
 
 
@@ -148,9 +159,10 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
 
     :param dt: datetime
     :param freq: Freq
+    :param market: str, A股 或 期货 或 默认
     :return: datetime
     """
-    assert market in ['A股', '期货', '默认'], "market 参数必须为 A股 或 期货 或 默认"
+    assert market in ["A股", "期货", "默认"], "market 参数必须为 A股 或 期货 或 默认"
     if not isinstance(freq, Freq):
         freq = Freq(freq)
     if dt.second > 0 or dt.microsecond > 0:
@@ -210,30 +222,40 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    base_freq = kwargs.get('base_freq', None)
+    base_freq = kwargs.get("base_freq", None)
     if target_freq.value.endswith("分钟"):
-        uni_times = sorted(df['dt'].tail(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist())
+        uni_times = sorted(df["dt"].tail(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist())
         _, market = check_freq_and_market(uni_times, freq=base_freq)
     else:
         market = "默认"
 
-    df['freq_edt'] = df['dt'].apply(lambda x: freq_end_time(x, target_freq, market))
-    dfk1 = df.groupby('freq_edt').agg(
-        {'symbol': 'first', 'dt': 'last', 'open': 'first', 'close': 'last', 'high': 'max',
-         'low': 'min', 'vol': 'sum', 'amount': 'sum', 'freq_edt': 'last'})
+    df["freq_edt"] = df["dt"].apply(lambda x: freq_end_time(x, target_freq, market))
+    dfk1 = df.groupby("freq_edt").agg(
+        {
+            "symbol": "first",
+            "dt": "last",
+            "open": "first",
+            "close": "last",
+            "high": "max",
+            "low": "min",
+            "vol": "sum",
+            "amount": "sum",
+            "freq_edt": "last",
+        }
+    )
     dfk1.reset_index(drop=True, inplace=True)
-    dfk1['dt'] = dfk1['freq_edt']
-    dfk1 = dfk1[['symbol', 'dt', 'open', 'close', 'high', 'low', 'vol', 'amount']]
+    dfk1["dt"] = dfk1["freq_edt"]
+    dfk1 = dfk1[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]]
 
     if raw_bars:
         _bars = []
         for i, row in enumerate(dfk1.to_dict("records"), 1):
-            row.update({'id': i, 'freq': target_freq})
+            row.update({"id": i, "freq": target_freq})
             _bars.append(RawBar(**row))
 
-        if kwargs.get('drop_unfinished', True):
+        if kwargs.get("drop_unfinished", True):
             # 清除最后一根未完成的K线
-            if df['dt'].iloc[-1] < _bars[-1].dt:
+            if df["dt"].iloc[-1] < _bars[-1].dt:
                 _bars.pop()
         return _bars
     else:
@@ -242,7 +264,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
 
 class BarGenerator:
 
-    version = 'V231008'
+    version = "V231008"
 
     def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000, market="默认"):
         self.symbol = None
@@ -258,14 +280,15 @@ class BarGenerator:
 
     def __validate_freqs(self):
         from czsc.utils import sorted_freqs
+
         if self.base_freq not in sorted_freqs:
-            raise ValueError(f'base_freq is not in sorted_freqs: {self.base_freq}')
+            raise ValueError(f"base_freq is not in sorted_freqs: {self.base_freq}")
 
         i = sorted_freqs.index(self.base_freq)
         f = sorted_freqs[i:]
         for freq in self.freqs:
             if freq not in f:
-                raise ValueError(f'freqs中包含不支持的周期：{freq}')
+                raise ValueError(f"freqs中包含不支持的周期：{freq}")
 
     def init_freq_bars(self, freq: str, bars: List[RawBar]):
         """初始化某个周期的K线序列
@@ -307,21 +330,50 @@ class BarGenerator:
         freq_edt = freq_end_time(bar.dt, freq, self.market)
 
         if not self.bars[freq.value]:
-            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=0, open=bar.open,
-                          close=bar.close, high=bar.high, low=bar.low, vol=bar.vol, amount=bar.amount)
+            bar_ = RawBar(
+                symbol=bar.symbol,
+                freq=freq,
+                dt=freq_edt,
+                id=0,
+                open=bar.open,
+                close=bar.close,
+                high=bar.high,
+                low=bar.low,
+                vol=bar.vol,
+                amount=bar.amount,
+            )
             self.bars[freq.value].append(bar_)
             return
 
         last: RawBar = self.bars[freq.value][-1]
         if freq_edt != self.bars[freq.value][-1].dt:
-            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id + 1, open=bar.open,
-                          close=bar.close, high=bar.high, low=bar.low, vol=bar.vol, amount=bar.amount)
+            bar_ = RawBar(
+                symbol=bar.symbol,
+                freq=freq,
+                dt=freq_edt,
+                id=last.id + 1,
+                open=bar.open,
+                close=bar.close,
+                high=bar.high,
+                low=bar.low,
+                vol=bar.vol,
+                amount=bar.amount,
+            )
             self.bars[freq.value].append(bar_)
 
         else:
-            bar_ = RawBar(symbol=bar.symbol, freq=freq, dt=freq_edt, id=last.id,
-                          open=last.open, close=bar.close, high=max(last.high, bar.high),
-                          low=min(last.low, bar.low), vol=last.vol + bar.vol, amount=last.amount + bar.amount)
+            bar_ = RawBar(
+                symbol=bar.symbol,
+                freq=freq,
+                dt=freq_edt,
+                id=last.id,
+                open=last.open,
+                close=bar.close,
+                high=max(last.high, bar.high),
+                low=min(last.low, bar.low),
+                vol=last.vol + bar.vol,
+                amount=last.amount + bar.amount,
+            )
             self.bars[freq.value][-1] = bar_
 
     def update(self, bar: RawBar) -> None:
@@ -341,12 +393,16 @@ class BarGenerator:
         """
         base_freq = self.base_freq
         if bar.freq.value != base_freq:
-            raise ValueError(f"Input bar frequency does not match base frequency. Expected {base_freq}, got {bar.freq.value}")
+            raise ValueError(
+                f"Input bar frequency does not match base frequency. Expected {base_freq}, got {bar.freq.value}"
+            )
         self.symbol = bar.symbol
         self.end_dt = bar.dt
 
         if self.bars[base_freq] and self.bars[base_freq][-1].dt == bar.dt:
-            logger.warning(f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; \n\n输入K线为{bar};\n\n 上一根K线为{self.bars[base_freq][-1]}")
+            logger.warning(
+                f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; \n\n输入K线为{bar};\n\n 上一根K线为{self.bars[base_freq][-1]}"
+            )
             return
 
         for freq in self.bars.keys():
@@ -355,4 +411,4 @@ class BarGenerator:
         # 限制存在内存中的K限制数量
         for f, b in self.bars.items():
             if len(b) > self.max_count:
-                self.bars[f] = b[-self.max_count:]
+                self.bars[f] = b[-self.max_count :]

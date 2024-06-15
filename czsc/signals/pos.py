@@ -882,3 +882,62 @@ def pos_stop_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
             v1 = "空头止损"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def pos_stop_V240614(cat: CzscTrader, **kwargs) -> OrderedDict:
+    """止损：多头开仓后，有超过N根K线的最低价在成本价下方，提示止损；空头反之。
+
+    参数模板："{pos_name}_{freq1}N{n}_止损V240614"
+
+    **信号逻辑：**
+
+    以多头止损为例，计算过程如下：
+
+    1. 从多头开仓点开始，在给定的K线周期 freq1 上获取开仓后的所有K线，记为 bars；
+    2. 计算 bars 中的最低价小于开仓价的数量，记为 C；
+    3. 如果 C >= N，则提示多头止损信号。
+
+    空头止损逻辑同理。
+
+    **信号列表：**
+
+    - Signal('SMA5多头_15分钟N10_止损V240614_多头止损_任意_任意_0')
+    - Signal('SMA5空头_15分钟N10_止损V240614_空头止损_任意_任意_0')
+
+    :param cat: CzscTrader对象
+    :param kwargs: 参数字典
+
+        - pos_name: str，开仓信号的名称
+        - freq1: str，给定的K线周期
+        - n: int，最低价下方N个价位，默认为 10
+
+    :return: OrderedDict
+    """
+    pos_name = kwargs["pos_name"]
+    freq1 = kwargs["freq1"]
+    n = int(kwargs.get("n", 10))  # N根K线
+
+    k1, k2, k3 = f"{pos_name}_{freq1}N{n}_止损V240614".split("_")
+    v1 = "其他"
+
+    # 如果没有持仓策略，则不产生信号
+    if not cat.kas or not hasattr(cat, "positions"):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    pos = [x for x in cat.positions if x.name == pos_name][0]
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    c = cat.kas[freq1]
+    op = pos.operates[-1]
+
+    # 开仓后的K线
+    a_bars = [x for x in c.bars_raw if x.dt >= op["dt"]]
+
+    if op["op"] == Operate.LO and len([x for x in a_bars if x.low < op["price"]]) >= n:
+        v1 = "多头止损"
+
+    if op["op"] == Operate.SO and len([x for x in a_bars if x.high > op["price"]]) >= n:
+        v1 = "空头止损"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

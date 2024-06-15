@@ -47,6 +47,8 @@ from czsc.signals.cxt import (
     cxt_bs_V240527,
     cxt_overlap_V240612,
     cxt_decision_V240612,
+    cxt_decision_V240614,
+    cxt_decision_V240613,
 )
 
 
@@ -116,6 +118,7 @@ from czsc.signals.bar import (
     bar_break_V240428,
     bar_classify_V240606,
     bar_classify_V240607,
+    bar_decision_V240608,
 )
 
 from czsc.signals.jcc import (
@@ -227,6 +230,7 @@ from czsc.signals.pos import (
     pos_take_V240428,
     pos_stop_V240331,
     pos_stop_V240608,
+    pos_stop_V240614,
 )
 
 
