@@ -186,10 +186,10 @@ from czsc.utils.kline_quality import (
 )
 
 
-__version__ = "0.9.53"
+__version__ = "0.9.54"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240607"
+__date__ = "20240616"
 
 
 def welcome():
