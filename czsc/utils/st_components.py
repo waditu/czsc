@@ -114,7 +114,7 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
 
     :param df: pd.DataFrame，数据源
     :param ret_col: str，收益列名
-    :param title: str，标题
+    :param sub_title: str，标题
     :param kwargs:
     """
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
@@ -137,11 +137,21 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     monthly.columns = month_cols
     monthly["年收益"] = monthly.sum(axis=1)
 
+    # 计算月度胜率和月度盈亏比
+    win_rate = monthly.apply(lambda x: (x > 0).sum() / len(x), axis=0)
+    ykb = monthly.apply(lambda x: x[x > 0].sum() / -x[x < 0].sum() if min(x) < 0 else 10, axis=0)
+    mean_ret = monthly.mean(axis=0)
+    dfy = pd.DataFrame([win_rate, ykb, mean_ret], index=["胜率", "盈亏比", "平均收益"])
+
     monthly = monthly.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=month_cols)
     monthly = monthly.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年收益"])
     monthly = monthly.format("{:.2%}", na_rep="-")
-
     st.dataframe(monthly, use_container_width=True)
+    dfy = dfy.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.2%}", na_rep="-")
+    st.dataframe(dfy, use_container_width=True)
+    st.caption(
+        "注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10"
+    )
 
 
 def show_correlation(df, cols=None, method="pearson", **kwargs):
@@ -211,7 +221,7 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     if kwargs.get("show_cumsum_ic", True):
         dfc["ic_cumsum"] = dfc["ic"].cumsum()
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=dfc["dt"], y=dfc["ic"], mode="lines", name="IC", yaxis="y"))
+        fig.add_trace(go.Bar(x=dfc["dt"], y=dfc["ic"], name="IC", yaxis="y"))
         fig.add_trace(
             go.Scatter(x=dfc["dt"], y=dfc["ic_cumsum"], mode="lines", name="累计IC", yaxis="y2", line=dict(color="red"))
         )
@@ -1035,6 +1045,8 @@ def show_event_return(df, factor, **kwargs):
 
     """
     sub_title = kwargs.get("sub_title", "事件收益率特征")
+    default_max_overlap = kwargs.get("max_overlap", 2)
+
     if sub_title:
         st.subheader(sub_title, divider="rainbow")
 
@@ -1053,7 +1065,7 @@ def show_event_return(df, factor, **kwargs):
     )
     sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
     edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
-    max_overlap = c4.number_input("最大重叠次数", value=5, min_value=1, max_value=20)
+    max_overlap = c4.number_input("最大重叠次数", value=default_max_overlap, min_value=1, max_value=20)
 
     df[factor] = df[factor].astype(str)
     df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)

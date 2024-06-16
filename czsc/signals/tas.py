@@ -3554,3 +3554,224 @@ def tas_macd_bc_V240307(c: CZSC, **kwargs) -> OrderedDict:
             v2 = f"第{n - ds[-1] - 1}次"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def tas_dma_bs_V240608(c: CZSC, **kwargs) -> OrderedDict:
+    """双均线多头排列下的回调买点
+
+    参数模板："{freq}_N{n}双均线{t1}#{t2}顺势_BS辅助V240608"
+
+    **信号逻辑：**
+
+    参考链接：https://mp.weixin.qq.com/s/hR6wl3UrWvmLm1j5EABVyA
+
+    买点的定位以均线为主，要求如下。
+    1，做多的情况下5日均线和10日均线必须多头排列，做空的情况下5日均线和10日均线必须空头排列。
+    2，以做多为例，做空反过来就是：日线价格回调到到5日均线或者10日均线。
+
+    **信号列表：**
+
+    - Signal('60分钟_N5双均线5#13顺势_BS辅助V240608_买点_任意_任意_0')
+    - Signal('60分钟_N5双均线5#13顺势_BS辅助V240608_卖点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+
+        - n: int, 默认5，取最近均线附近n个价格
+        - t1: int, 默认5，均线1的周期
+        - t2: int, 默认10，均线2的周期
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 5))
+    t1 = int(kwargs.get("t1", 5))
+    t2 = int(kwargs.get("t2", 10))
+
+    assert t1 < t2, "均线1的周期必须小于均线2的周期"
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_N{n}双均线{t1}#{t2}顺势_BS辅助V240608".split("_")
+    v1 = "其他"
+    ma1 = update_ma_cache(c, timeperiod=t1)
+    ma2 = update_ma_cache(c, timeperiod=t2)
+    if len(c.bars_raw) < 110:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = c.bars_raw[-100:]
+    unique_prices = [x.close for x in bars] + [x.high for x in bars] + [x.low for x in bars] + [x.open for x in bars]
+    unique_prices = sorted(list(set(unique_prices)))
+
+    bar1, bar2 = bars[-2], bars[-1]
+    ma1_value, ma2_value = bar2.cache[ma1], bar2.cache[ma2]
+    lower_prices = [x for x in unique_prices if x < ma2_value]
+    upper_prices = [x for x in unique_prices if x > ma2_value]
+
+    if upper_prices and ma1_value > ma2_value and bar2.cache[ma2] > bar1.cache[ma2]:
+        # ma2_round_high 是 ma2_value 上方的第 n 个价格
+        ma2_round_high = upper_prices[n] if len(upper_prices) > n else upper_prices[-1]
+        # 买点：1）上一根K线的最低价小于 ma2_round_high；2）当前K线的最高价大于 ma2_round_high，且收盘价小于 ma2_round_high
+        if bar1.low < ma2_round_high < bar2.high and bar2.close < ma2_round_high:
+            v1 = "买点"
+
+    elif lower_prices and ma1_value < ma2_value and bar2.cache[ma2] < bar1.cache[ma2]:
+        # ma2_round_low 是 ma2_value 下方的第 n 个价格
+        ma2_round_low = lower_prices[-n] if len(lower_prices) > n else lower_prices[0]
+        # 卖点：1）上一根K线的最高价大于 ma2_round_low；2）当前K线的收盘价大于 ma2_round_low，且收盘价大于 ma2_round_low
+        if bar1.high > ma2_round_low > bar2.low and bar2.close > ma2_round_low:
+            v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+# def tas_dif_zero_V240612(c: CZSC, **kwargs) -> OrderedDict:
+#     """DIFF 远离零轴后靠近零轴，形成买卖点
+#
+#     参数模板："{freq}_DIF靠近零轴T{t}_BS辅助V240612"
+#
+#     **信号逻辑：**
+#
+#     买点的定位以DIF为主，要求如下。
+#     1，取最近一个向下笔的底分型中的DIFF的最小值
+#     2. 如果这个最小值在零轴的一个0.5倍标准差范围，那么就认为这个最小值是一个有效的买点
+#
+#     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/R9Y5w1w3Qi1jsHkzSyLcjoVWnld
+#
+#     **信号列表：**
+#
+#     - Signal('60分钟_DIF靠近零轴T50_BS辅助V240612_买点_任意_任意_0')
+#     - Signal('60分钟_DIF靠近零轴T50_BS辅助V240612_卖点_任意_任意_0')
+#
+#     :param c: CZSC对象
+#     :param kwargs: 无
+#
+#         - t: DIF波动率的倍数，除以100，默认为50
+#
+#     :return: 信号识别结果
+#     """
+#     t = int(kwargs.get("t", 50))  # 波动率的倍数，除以100
+#
+#     freq = c.freq.value
+#     k1, k2, k3 = f"{freq}_DIF靠近零轴T{t}_BS辅助V240612".split("_")
+#     v1 = "其他"
+#     key = update_macd_cache(c)
+#     if len(c.bars_raw) < 110 or len(c.bars_ubi) > 7:
+#         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+#
+#     bi = c.bi_list[-1]
+#     if len(bi.raw_bars) < 7:
+#         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+#
+#     diffs = [x.cache[key]["dif"] for x in bi.raw_bars]
+#     delta = np.std(diffs) * t / 100
+#
+#     if bi.direction == Direction.Down and delta > np.min(diffs) > -delta:
+#         v1 = "买点"
+#
+#     if bi.direction == Direction.Up and -delta < np.max(diffs) < delta:
+#         v1 = "卖点"
+#
+#     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_dif_zero_V240612(c: CZSC, **kwargs) -> OrderedDict:
+    """DIFF 远离零轴后靠近零轴，形成买卖点
+
+    参数模板："{freq}_DIF靠近零轴T{t}_BS辅助V240612"
+
+    **信号逻辑：**
+
+    买点的定位以DIF为主，要求如下。
+    1，取最近一个向下笔的底分型中的DIFF的最小值
+    2. 如果这个最小值在零轴的一个0.5倍标准差范围，那么就认为这个最小值是一个有效的买点
+
+    飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/R9Y5w1w3Qi1jsHkzSyLcjoVWnld
+
+    **信号列表：**
+
+    - Signal('60分钟_DIF靠近零轴T50_BS辅助V240612_买点_任意_任意_0')
+    - Signal('60分钟_DIF靠近零轴T50_BS辅助V240612_卖点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+
+        - t: DIF波动率的倍数，除以100，默认为50
+
+    :return: 信号识别结果
+    """
+    t = int(kwargs.get("t", 50))  # 波动率的倍数，除以100
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_DIF靠近零轴T{t}_BS辅助V240612".split("_")
+    v1 = "其他"
+    key = update_macd_cache(c)
+    if len(c.bars_raw) < 110 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bi = c.bi_list[-1]
+    if len(bi.raw_bars) < 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    diffs = [x.cache[key]["dif"] for x in bi.raw_bars]
+    delta = np.std(diffs) * t / 100
+    max_diff = max(diffs)
+    min_diff = min(diffs)
+    abs_mean_diff = abs(np.mean(diffs))
+    std_diff = np.std(diffs)
+
+    if bi.direction == Direction.Down and delta > diffs[-1] > -delta and max_diff > abs_mean_diff + std_diff:
+        v1 = "买点"
+
+    if bi.direction == Direction.Up and -delta < diffs[-1] < delta and min_diff < -(abs_mean_diff + std_diff):
+        v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def tas_dif_zero_V240614(c: CZSC, **kwargs) -> OrderedDict:
+    """DIFF 远离零轴后靠近零轴，形成买卖点
+
+    参数模板："{freq}_DIF靠近零轴W{w}T{t}_BS辅助V240614"
+
+    **信号逻辑：**
+
+    买点的定位以DIF为主，要求如下。
+
+    1，取最近 w 根K线，获取 diffs 序列
+    2. 如果所有 diff 都大于 0，且最近一个 diff 在 0.5倍标准差范围内，且最大值大于均值加标准差，则认为是买点
+
+    **信号列表：**
+
+    - Signal('60分钟_DIF靠近零轴W20T50_BS辅助V240614_卖点_任意_任意_0')
+    - Signal('60分钟_DIF靠近零轴W20T50_BS辅助V240614_买点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+
+        - t: DIF波动率的倍数，除以100，默认为50
+
+    :return: 信号识别结果
+    """
+    w = int(kwargs.get("w", 20))  # K线数量
+    t = int(kwargs.get("t", 50))  # 波动率的倍数，除以100
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_DIF靠近零轴W{w}T{t}_BS辅助V240614".split("_")
+    v1 = "其他"
+    key = update_macd_cache(c)
+    if len(c.bars_raw) < 110:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = c.bars_raw[-w:]
+    diffs = [x.cache[key]["dif"] for x in bars]
+    delta = np.std(diffs) * t / 100
+    max_diff = max(diffs)
+    min_diff = min(diffs)
+    abs_mean_diff = abs(np.mean(diffs))
+    std_diff = np.std(diffs)
+
+    if all(x > 0 for x in diffs) and delta > diffs[-1] > -delta and max_diff > abs_mean_diff + std_diff:
+        v1 = "买点"
+
+    if all(x < 0 for x in diffs) and -delta < diffs[-1] < delta and min_diff < -(abs_mean_diff + std_diff):
+        v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -7,6 +7,7 @@ describe: 常用对象结构
 """
 import math
 import hashlib
+import numpy as np
 import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -295,6 +296,33 @@ class BI:
         return c
 
     @property
+    def SNR(self):
+        """笔内部的信噪比"""
+        bars = self.raw_bars
+        total_change = abs(bars[-1].close - bars[0].open)
+        diff_abs_change = sum([abs(x.close - x.open) for x in bars])
+        return total_change / diff_abs_change
+
+    @property
+    def slope(self):
+        """笔内部高低点之间的斜率"""
+        bars = self.raw_bars
+        c = [x.close for x in bars]
+        slope = np.polyfit(range(len(c)), c, 1)[0]
+        return slope
+
+    @property
+    def acceleration(self):
+        """笔内部价格的加速度
+
+        负号表示开口向下；正号表示开口向上。数值越大，表示加速度越大。
+        """
+        bars = self.raw_bars
+        c = [x.close for x in bars]
+        acc = np.polyfit(range(len(c)), c, 2)[0]
+        return acc
+
+    @property
     def length(self):
         """笔的无包含关系K线数量"""
         return len(self.bars)
@@ -307,10 +335,11 @@ class BI:
 
     @property
     def raw_bars(self):
-        """构成笔的原始K线序列"""
+        """构成笔的原始K线序列，不包含首尾分型的首根K线"""
 
         def __default():
             value = []
+            # 去掉首尾分型的第一根K线
             for bar in self.bars[1:-1]:
                 value.extend(bar.raw_bars)
             return value

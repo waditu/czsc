@@ -1965,7 +1965,7 @@ def cxt_intraday_V230701(cat: CzscSignals, **kwargs) -> OrderedDict:
     - Signal('30分钟#日线_D2日_走势分类V230701_转折平衡市_任意_任意_0')
     - Signal('30分钟#日线_D2日_走势分类V230701_双中枢上涨_任意_任意_0')
 
-    :param c: CZSC对象
+    :param cat: CzscSignals
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 2))
@@ -2316,7 +2316,7 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
-    w = int(kwargs.get("w", 15))  # 中枢窗口
+    w = int(kwargs.get("w", 9))  # 中枢窗口
     t = int(kwargs.get("t", 2))  # 重合次数
     assert w > 5, "参数 w 必须大于5"
     assert t >= 2, "参数 t 必须大于等于2"
@@ -2324,19 +2324,20 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
     freq = c.freq.value
     k1, k2, k3 = f"{freq}_D{di}W{w}T{t}_第二买卖点V240524".split("_")
     v1 = "其他"
-    if len(c.bi_list) < w + di + 5:
+    if len(c.bi_list) < w + di + 5 or len(c.bars_ubi) > 7:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bis = get_sub_elements(c.bi_list, di=di, n=w)
     last: BI = bis[-1]
     last_fx_high = last.fx_b.high
     last_fx_low = last.fx_b.low
+    fxs = [x.fx_b for x in bis[:-1] if x.length >= 7]
 
     if last.direction.value == "向下" and last.length >= 7:
         zs_count = 0
-        for bi in bis[:-1]:
+        for fx in fxs:
             # bi 的结束分型区间与 last 的分型区间有重合
-            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+            if max(fx.low, last_fx_low) < min(fx.high, last_fx_high):
                 zs_count += 1
 
         if zs_count >= t:
@@ -2344,12 +2345,435 @@ def cxt_second_bs_V240524(c: CZSC, **kwargs) -> OrderedDict:
 
     if last.direction.value == "向上" and last.length >= 7:
         zs_count = 0
-        for bi in bis[:-1]:
+        for fx in fxs:
             # bi 的结束分型区间与 last 的分型区间有重合
-            if bi.length >= 7 and max(bi.fx_b.low, last_fx_low) < min(bi.fx_b.high, last_fx_high):
+            if max(fx.low, last_fx_low) < min(fx.high, last_fx_high):
                 zs_count += 1
 
         if zs_count >= t:
             v1 = "二卖"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_overlap_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """K线收盘价与最近9笔的顶底分型重合次数
+
+    参数模板："{freq}_顶底重合_支撑压力V240526"
+
+    **信号逻辑：**
+
+    1. 取最近 15 笔；
+    2. 如果当前笔是向下笔，且向下笔的底分型区间与前面的15笔中存在 t 个以上的分型区间重合，则认为是并列二买；
+
+    **信号列表：**
+
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合2次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合3次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合2次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合3次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合2次_底重合1次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合1次_底重合2次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合4次_底重合0次_任意_0')
+    - Signal('60分钟_顶底重合_支撑压力V240526_顶重合0次_底重合4次_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_顶底重合_支撑压力V240526".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=9)
+    last_bar = c.bars_raw[-1]
+    # 找出向上笔的顶分型
+    fxg = [x.fx_b for x in bis if x.direction == Direction.Up]
+    fxd = [x.fx_b for x in bis if x.direction == Direction.Down]
+
+    # 与 fxg 的重合次数
+    overlap_count_g = sum([1 for fx in fxg if fx.low <= last_bar.close <= fx.high])
+    overlap_count_d = sum([1 for fx in fxd if fx.low <= last_bar.close <= fx.high])
+    v1 = f"顶重合{overlap_count_g}次"
+    v2 = f"底重合{overlap_count_d}次"
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_decision_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """根据最后一根K线与最后一笔的分型区间，构建交易决策区域
+
+    参数模板："{freq}_分型区域N{n}_决策区域V240526"
+
+    **信号逻辑：**
+
+    1. 取最近一根K线和最后一笔的结束分型
+    2. 取100根K线，计算 unique price 序列
+    3. 如果当前K线的收盘价在结束分型的 N 个 unique price 之间，认为是一个交易决策区域
+
+    **信号列表：**
+
+    - Signal('60分钟_分型区域N9_决策区域V240526_开多_任意_任意_0')
+    - Signal('60分钟_分型区域N9_决策区域V240526_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 9))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_分型区域N{n}_决策区域V240526".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 120:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=100)
+    prices = [x.close for x in bars] + [x.high for x in bars] + [x.low for x in bars] + [x.open for x in bars]
+    prices = list(set(prices))
+
+    bi = c.bi_list[-1]
+    bar = c.bars_raw[-1]
+    if bi.direction == Direction.Up:
+        in_prices = [x for x in prices if bar.close <= x <= bi.fx_b.high]
+        if len(in_prices) <= n:
+            v1 = "开空"
+
+    elif bi.direction == Direction.Down:
+        in_prices = [x for x in prices if bi.fx_b.low <= x <= bar.close]
+        if len(in_prices) <= n:
+            v1 = "开多"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bs_V240526(c: CZSC, **kwargs) -> OrderedDict:
+    """快速走势之后的减速反弹，形成第反弹买点
+
+    参数模板："{freq}_趋势跟随_BS辅助V240526"
+
+    **信号逻辑：**
+
+    1. 取最近 7 笔；
+    2. 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号；
+    3. 如果倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间，形成买点；
+    4. 如果倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间，形成卖点。
+
+    **信号列表：**
+
+    - Signal('15分钟_趋势跟随_BS辅助V240526_买点_任意_任意_0')
+    - Signal('15分钟_趋势跟随_BS辅助V240526_卖点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_趋势跟随_BS辅助V240526".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=7)
+    b2, b1 = bis[-2:]
+    power_price_seq = [x.power_price for x in bis]
+    power_volume_seq = [x.power_volume for x in bis]
+    slope_seq = [abs(x.slope) for x in bis]
+
+    # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的价格、量比最大值小于前 7 笔的最大值，不考虑信号
+    if b2.SNR < 0.7 or (
+        b2.power_price < np.max(power_price_seq)
+        and b2.power_volume < np.max(power_volume_seq)
+        and b2.slope < np.max(slope_seq)
+    ):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if b2.direction == Direction.Up and b1.direction == Direction.Down:
+        # 买点：倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间
+        if 0.1 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
+            v1 = "买点"
+
+    if b2.direction == Direction.Down and b1.direction == Direction.Up:
+        # 卖点：倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间
+        if 0.2 * b2.power_price < b1.power_price < 0.7 * b2.power_price:
+            v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_bs_V240527(c: CZSC, **kwargs) -> OrderedDict:
+    """快速走势之后的减速反弹，形成第反弹买点
+
+    参数模板："{freq}_趋势跟随_BS辅助V240527"
+
+    **信号逻辑：**
+
+    与 cxt_bs_V240526 逻辑相同，只不过，这里在未完成笔上产生信号
+
+    1. 取最近 7 笔；
+    2. 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号；
+    3. 如果倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间，形成买点；
+    4. 如果倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间，形成卖点。
+
+    **信号列表：**
+
+    - Signal('15分钟_趋势跟随_BS辅助V240527_买点_任意_任意_0')
+    - Signal('15分钟_趋势跟随_BS辅助V240527_卖点_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_趋势跟随_BS辅助V240527".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < 11:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=7)
+    b1 = bis[-1]
+    power_price_seq = [x.power_price for x in bis]
+    power_volume_seq = [x.power_volume for x in bis]
+    slope_seq = [abs(x.slope) for x in bis]
+
+    # 如果倒数第二笔的 SNR 小于 0.7，或者倒数第二笔的力度小于前 7 笔的最大值，不考虑信号
+    if b1.SNR < 0.7 or (
+        b1.power_price < np.max(power_price_seq)
+        and b1.power_volume < np.max(power_volume_seq)
+        and b1.slope < np.max(slope_seq)
+    ):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ubi = c.ubi
+    if not ubi:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    if len(ubi["raw_bars"]) < 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    ubi_power_price = ubi["high_bar"].high - ubi["low_bar"].low
+    if b1.direction == Direction.Up:
+        # 买点：倒数第二笔是向上笔，倒数第一笔是向下笔，且倒数第一笔的力度在倒数第二笔的 10% ~ 70% 之间
+        if 0.1 * b1.power_price < ubi_power_price < 0.7 * b1.power_price:
+            v1 = "买点"
+
+    if b1.direction == Direction.Down:
+        # 卖点：倒数第二笔是向下笔，倒数第一笔是向上笔，且倒数第一笔的力度在倒数第二笔的 30% ~ 70% 之间
+        if 0.2 * b1.power_price < ubi_power_price < 0.7 * b1.power_price:
+            v1 = "卖点"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_overlap_V240612(c: CZSC, **kwargs) -> OrderedDict:
+    """顺畅笔的顶底分型构建支撑压力位
+
+    参数模板："{freq}_SNR顺畅N{n}_支撑压力V240612"
+
+    **信号逻辑：**
+
+    前面N笔中走势最顺畅的笔，顶底分型是重要支撑压力位，可以作为决策点。
+
+    1. 取最近 N 笔，找出SNR最大的笔 B1；
+    2. 如果当前笔是向下笔，且向下笔的底分型区间与B1的顶/底分型区间有重合，那么认为当前位置是支撑位；
+
+    **信号列表：**
+
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_支撑_顺畅笔底分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_压力_顺畅笔底分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_支撑_顺畅笔顶分型_任意_0')
+    - Signal('60分钟_SNR顺畅N9_支撑压力V240612_压力_顺畅笔顶分型_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 7))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_SNR顺畅N{n}_支撑压力V240612".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=3, n=n)
+    bis = [x for x in bis if len(x.raw_bars) >= 9]
+    if len(bis) == 0:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    max_snr_bi = max(bis, key=lambda x: x.SNR)
+    if max_snr_bi.SNR < 0.7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if max_snr_bi.direction == Direction.Down:
+        fxg = max_snr_bi.fx_a
+        fxd = max_snr_bi.fx_b
+    else:
+        fxg = max_snr_bi.fx_b
+        fxd = max_snr_bi.fx_a
+
+    def is_price_overlap(h1, l1, h2, l2):
+        """判断两个价格区间是否有重合"""
+        return True if max(l1, l2) < min(h1, h2) else False
+
+    last_bi = c.bi_list[-1]
+    v2 = "任意"
+    if last_bi.direction == Direction.Down:
+        if is_price_overlap(fxg.high, fxg.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "支撑"
+            v2 = "顺畅笔顶分型"
+        if is_price_overlap(fxd.high, fxd.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "支撑"
+            v2 = "顺畅笔底分型"
+
+    if last_bi.direction == Direction.Up:
+        if is_price_overlap(fxg.high, fxg.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "压力"
+            v2 = "顺畅笔顶分型"
+
+        if is_price_overlap(fxd.high, fxd.low, last_bi.fx_b.high, last_bi.fx_b.low):
+            v1 = "压力"
+            v2 = "顺畅笔底分型"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
+
+
+def cxt_decision_V240612(c: CZSC, **kwargs) -> OrderedDict:
+    """以最近W根K线的高低点附近N个价位作为决策区域
+
+    参数模板："{freq}_W{w}N{n}高低点_决策区域V240612"
+
+    **信号逻辑：**
+
+    1. 取最近W根K线的高点和低点，分别找出第N个价位，作为决策区域的上下界；
+    2. 当前K线的最高价超过决策区域的上界，开空；
+    3. 当前K线的最低价低于决策区域的下界，开多；
+
+    **信号列表：**
+
+    - Signal('15分钟_W10N5高低点_决策区域V240612_开多_任意_任意_0')
+    - Signal('15分钟_W10N5高低点_决策区域V240612_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    w = int(kwargs.get("w", 10))
+    n = int(kwargs.get("n", 9))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_W{w}N{n}高低点_决策区域V240612".split("_")
+    v1 = "其他"
+    if len(c.bars_raw) < 120:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bars = get_sub_elements(c.bars_raw, di=1, n=100)
+    prices = [x.close for x in bars] + [x.high for x in bars] + [x.low for x in bars] + [x.open for x in bars]
+    prices = list(set(prices))
+
+    w_bars = get_sub_elements(c.bars_raw, di=1, n=w)
+
+    max_high = max([x.high for x in w_bars])
+    min_low = min([x.low for x in w_bars])
+    last_bar = c.bars_raw[-1]
+
+    # 低点上方的第N个价位
+    min_low_upper = sorted([x for x in prices if x >= min_low])
+    low_range = min_low_upper[n] if len(min_low_upper) > n else min_low_upper[-1]
+
+    # 高点下方的第N个价位
+    max_high_lower = sorted([x for x in prices if x <= max_high], reverse=True)
+    high_range = max_high_lower[n] if len(max_high_lower) > n else max_high_lower[-1]
+
+    if last_bar.close < low_range and last_bar.low != min_low:
+        v1 = "开多"
+
+    if last_bar.close > high_range and last_bar.high != max_high:
+        v1 = "开空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_decision_V240613(c: CZSC, **kwargs) -> OrderedDict:
+    """取最近N笔，如果当前笔向下未新低，且累计成交量最大，开多；如果当前笔向上未新高，且累计成交量最大，开空
+
+    参数模板："{freq}_放量笔N{n}BS2_决策区域V240613"
+
+    **信号逻辑：**
+
+    取最近N笔，如果当前笔向下未新低，且累计成交量最大，开多；如果当前笔向上未新高，且累计成交量最大，开空
+
+    相比于 cxt_decision_V240614，区别就是有没有新高新低的判断
+
+    **信号列表：**
+
+    - Signal('15分钟_放量笔N4BS2_决策区域V240613_开多_任意_任意_0')
+    - Signal('15分钟_放量笔N4BS2_决策区域V240613_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 4))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_放量笔N{n}BS2_决策区域V240613".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=n)
+    bis_vol = [x.power_volume for x in bis]
+    if bis[-1].power_volume != max(bis_vol):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bis[-1].direction == Direction.Down and bis[-1].low != min([x.low for x in bis]):
+        v1 = "开多"
+
+    if bis[-1].direction == Direction.Up and bis[-1].high != max([x.high for x in bis]):
+        v1 = "开空"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def cxt_decision_V240614(c: CZSC, **kwargs) -> OrderedDict:
+    """取最近N笔，如果当前笔向下创出新低，且累计成交量最大，开多；如果当前笔向上创出新高，且累计成交量最大，开空
+
+    参数模板："{freq}_放量笔N{n}_决策区域V240614"
+
+    **信号逻辑：**
+
+    取最近N笔，如果当前笔向下创出新低，且累计成交量最大，开多；如果当前笔向上创出新高，且累计成交量最大，开空
+
+    **信号列表：**
+
+    - Signal('15分钟_放量笔N4_决策区域V240614_开多_任意_任意_0')
+    - Signal('15分钟_放量笔N4_决策区域V240614_开空_任意_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs: 无
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 4))
+
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_放量笔N{n}_决策区域V240614".split("_")
+    v1 = "其他"
+    if len(c.bi_list) < n + 2 or len(c.bars_ubi) > 7:
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    bis = get_sub_elements(c.bi_list, di=1, n=n)
+    bis_vol = [x.power_volume for x in bis]
+    if bis[-1].power_volume != max(bis_vol):
+        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    if bis[-1].direction == Direction.Down and bis[-1].low == min([x.low for x in bis]):
+        v1 = "开多"
+
+    if bis[-1].direction == Direction.Up and bis[-1].high == max([x.high for x in bis]):
+        v1 = "开空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

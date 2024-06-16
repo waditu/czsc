@@ -166,6 +166,9 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
         freq_rd = "1m" if freq.value.endswith("分钟") else "1d"
         if freq.value.endswith("分钟"):
             df = get_min_future_klines(code=symbol, sdt=sdt, edt=edt, freq="1m", ttl=ttl)
+            if df.empty:
+                return df
+
             if "amount" not in df.columns:
                 df["amount"] = df["vol"] * df["close"]
 
@@ -175,6 +178,9 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 
         else:
             df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd, ttl=ttl)
+            if df.empty:
+                return df
+
             df.rename(columns={"code": "symbol"}, inplace=True)
             if "amount" not in df.columns:
                 df["amount"] = df["vol"] * df["close"]

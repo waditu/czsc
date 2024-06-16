@@ -41,6 +41,14 @@ from czsc.signals.cxt import (
     cxt_bi_trend_V230824,
     cxt_bi_trend_V230913,
     cxt_second_bs_V240524,
+    cxt_overlap_V240526,
+    cxt_decision_V240526,
+    cxt_bs_V240526,
+    cxt_bs_V240527,
+    cxt_overlap_V240612,
+    cxt_decision_V240612,
+    cxt_decision_V240614,
+    cxt_decision_V240613,
 )
 
 
@@ -108,6 +116,9 @@ from czsc.signals.bar import (
     bar_accelerate_V240428,
     bar_polyfit_V240428,
     bar_break_V240428,
+    bar_classify_V240606,
+    bar_classify_V240607,
+    bar_decision_V240608,
 )
 
 from czsc.signals.jcc import (
@@ -199,12 +210,16 @@ from czsc.signals.tas import (
     tas_macd_bc_ubi_V230804,
     tas_slope_V231019,
     tas_macd_bc_V240307,
+    tas_dma_bs_V240608,
+    tas_dif_zero_V240612,
+    tas_dif_zero_V240614,
 )
 
 from czsc.signals.pos import (
     pos_fx_stop_V230414,
     pos_ma_V230414,
     pos_holds_V230414,
+    pos_holds_V240608,
     pos_bar_stop_V230524,
     pos_fix_exit_V230624,
     pos_profit_loss_V230624,
@@ -214,6 +229,8 @@ from czsc.signals.pos import (
     pos_stop_V240428,
     pos_take_V240428,
     pos_stop_V240331,
+    pos_stop_V240608,
+    pos_stop_V240614,
 )
 
 
