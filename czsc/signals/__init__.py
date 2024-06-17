@@ -119,6 +119,7 @@ from czsc.signals.bar import (
     bar_classify_V240606,
     bar_classify_V240607,
     bar_decision_V240608,
+    bar_decision_V240616,
 )
 
 from czsc.signals.jcc import (
