@@ -15,20 +15,20 @@ def set_url_token(token, url):
     :param token: 凭证码
     :param url: 数据接口地址
     """
-    hash_key = hashlib.md5(str(url).encode('utf-8')).hexdigest()
+    hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
-    with open(file_token, 'w', encoding='utf-8') as f:
+    with open(file_token, "w", encoding="utf-8") as f:
         f.write(token)
     logger.info(f"{url} 数据访问凭证码已保存到 {file_token}")
 
 
 def get_url_token(url):
     """获取指定 URL 数据接口的凭证码"""
-    hash_key = hashlib.md5(str(url).encode('utf-8')).hexdigest()
+    hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
     if file_token.exists():
         logger.info(f"从 {file_token} 读取 {url} 的访问凭证码")
-        return open(file_token, 'r', encoding='utf-8').read()
+        return open(file_token, "r", encoding="utf-8").read()
 
     logger.warning(f"请设置 {url} 的访问凭证码，如果没有请联系管理员申请")
     token = input(f"请输入 {url} 的访问凭证码（token）：")
@@ -41,7 +41,7 @@ def get_url_token(url):
 class DataClient:
     __version__ = "V231109"
 
-    def __init__(self, token=None, url='http://api.tushare.pro', timeout=300, **kwargs):
+    def __init__(self, token=None, url="http://api.tushare.pro", timeout=300, **kwargs):
         """数据接口客户端，支持缓存，默认缓存路径为 ~/.quant_data_cache；兼容Tushare数据接口
 
         :param token: str API接口TOKEN，用于用户认证
@@ -58,12 +58,14 @@ class DataClient:
         self.__token = token or get_url_token(url)
         self.__http_url = url
         self.__timeout = timeout
-        self.__url_hash = hashlib.md5(str(url).encode('utf-8')).hexdigest()[:8]
+        self.__url_hash = hashlib.md5(str(url).encode("utf-8")).hexdigest()[:8]
         assert self.__token, "请设置czsc_token凭证码，如果没有请联系管理员申请"
         self.cache_path = Path(kwargs.get("cache_path", os.path.expanduser("~/.quant_data_cache")))
         self.cache_path.mkdir(exist_ok=True, parents=True)
 
-        logger.info(f"数据URL: {url} 数据缓存路径：{self.cache_path} 占用磁盘空间：{get_dir_size(self.cache_path) / 1024 / 1024:.2f} MB")
+        logger.info(
+            f"数据URL: {url} 数据缓存路径：{self.cache_path} 占用磁盘空间：{get_dir_size(self.cache_path) / 1024 / 1024:.2f} MB"
+        )
         if kwargs.get("clear_cache", False):
             self.clear_cache()
 
@@ -71,8 +73,9 @@ class DataClient:
         """清空缓存"""
         shutil.rmtree(self.cache_path)
         logger.info(f"{self.cache_path} 路径下的数据缓存已清空")
+        self.cache_path.mkdir(exist_ok=True, parents=True)
 
-    def post_request(self, api_name, fields='', **kwargs):
+    def post_request(self, api_name, fields="", **kwargs):
         """执行API数据查询
 
         :param api_name: str, 查询接口名称
@@ -84,11 +87,11 @@ class DataClient:
         :return: pd.DataFrame
         """
         stime = time()
-        if api_name in ['__getstate__', '__setstate__']:
+        if api_name in ["__getstate__", "__setstate__"]:
             return pd.DataFrame()
 
         ttl = int(kwargs.pop("ttl", -1))
-        req_params = {'api_name': api_name, 'token': self.__token, 'params': kwargs, 'fields': fields}
+        req_params = {"api_name": api_name, "token": self.__token, "params": kwargs, "fields": fields}
         path = self.cache_path / f"{self.__url_hash}_{api_name}"
         path.mkdir(exist_ok=True, parents=True)
         file_cache = path / f"{hashlib.md5(str(req_params).encode('utf-8')).hexdigest()}.pkl"
@@ -100,10 +103,10 @@ class DataClient:
         res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
         if res:
             result = res.json()
-            if result['code'] != 0:
+            if result["code"] != 0:
                 raise Exception(f"API: {api_name} - {kwargs} 数据获取失败: {result}")
 
-            df = pd.DataFrame(result['data']['items'], columns=result['data']['fields'])
+            df = pd.DataFrame(result["data"]["items"], columns=result["data"]["fields"])
             df.to_pickle(file_cache)
         else:
             df = pd.DataFrame()
