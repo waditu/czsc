@@ -1042,15 +1042,15 @@ def show_event_return(df, factor, **kwargs):
 
         - sub_title: str, 子标题
         - max_overlap: int, 事件最大重叠次数
+        - max_unique: int, 因子独立值最大数量
 
     """
     sub_title = kwargs.get("sub_title", "事件收益率特征")
-    default_max_overlap = kwargs.get("max_overlap", 2)
-
+    max_unique = kwargs.get("max_unique", 20)
     if sub_title:
         st.subheader(sub_title, divider="rainbow")
 
-    if df[factor].nunique() > 20:
+    if df[factor].nunique() > max_unique:
         st.warning(f"因子分布过于离散，无法进行分析，请检查！！！因子独立值数量：{df[factor].nunique()}")
         return
 
@@ -1065,7 +1065,7 @@ def show_event_return(df, factor, **kwargs):
     )
     sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
     edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
-    max_overlap = c4.number_input("最大重叠次数", value=default_max_overlap, min_value=1, max_value=20)
+    max_overlap = c4.number_input("最大重叠次数", value=5, min_value=1, max_value=20)
 
     df[factor] = df[factor].astype(str)
     df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
