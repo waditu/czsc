@@ -2240,7 +2240,7 @@ def bar_td9_V240616(c: CZSC, **kwargs) -> OrderedDict:
         else:
             bar.cache[cache_key] = 0
 
-    if len(c.bars_raw) < 100:
+    if len(c.bars_raw) < 30 + n:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     v2 = "任意"
