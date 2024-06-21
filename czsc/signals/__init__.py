@@ -215,6 +215,7 @@ from czsc.signals.tas import (
     tas_dma_bs_V240608,
     tas_dif_zero_V240612,
     tas_dif_zero_V240614,
+    cci_decision_V240620,
 )
 
 from czsc.signals.pos import (
