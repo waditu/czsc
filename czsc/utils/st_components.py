@@ -1361,3 +1361,116 @@ def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
     fig_title = kwargs.get("fig_title", f"{factor} 在品种上的相关性分布")
     fig = px.bar(dfr, x="symbol", y="corr", title=fig_title, orientation="v")
     st.plotly_chart(fig, use_container_width=True)
+
+
+def show_czsc_trader(trader: czsc.CzscTrader, max_k_num=300, **kwargs):
+    """显示缠中说禅交易员详情
+
+    :param trader: CzscTrader 对象
+    :param max_k_num: 最大显示 K 线数量
+    :param kwargs: 其他参数
+    """
+    from czsc.utils.ta import MACD
+
+    sub_title = kwargs.get("sub_title", "缠中说禅交易员详情")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow")
+
+    if not trader.freqs or not trader.kas or not trader.positions:
+        st.error("当前 trader 没有回测数据")
+        return
+
+    freqs = czsc.freqs_sorted(trader.freqs)
+    st.write(f"交易品种: {trader.symbol}")
+    tabs = st.tabs(freqs + ["策略详情"])
+
+    for freq, tab in zip(freqs, tabs[:-1]):
+
+        c = trader.kas[freq]
+        sdt = c.bars_raw[-max_k_num].dt if len(c.bars_raw) > max_k_num else c.bars_raw[0].dt
+        df = pd.DataFrame(c.bars_raw)
+        df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"], fastperiod=12, slowperiod=26, signalperiod=9)
+
+        df = df[df["dt"] >= sdt].copy()
+        kline = czsc.KlineChart(n_rows=3, row_heights=(0.5, 0.3, 0.2), title="", width="100%", height=800)
+        kline.add_kline(df, name="")
+
+        if len(c.bi_list) > 0:
+            bi = pd.DataFrame(
+                [{"dt": x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list]
+                + [{"dt": c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx}]
+            )
+            fx = pd.DataFrame([{"dt": x.dt, "fx": x.fx} for x in c.fx_list])
+            fx = fx[fx["dt"] >= sdt]
+            bi = bi[bi["dt"] >= sdt]
+            kline.add_scatter_indicator(
+                fx["dt"],
+                fx["fx"],
+                name="分型",
+                row=1,
+                line_width=1.2,
+                visible=True,
+                mode="lines",
+                line_dash="dot",
+                marker_color="white",
+            )
+            kline.add_scatter_indicator(bi["dt"], bi["bi"], name="笔", row=1, line_width=1.5)
+
+        kline.add_sma(df, ma_seq=(5, 20, 60), row=1, visible=False, line_width=1)
+        kline.add_vol(df, row=2, line_width=1)
+        kline.add_macd(df, row=3, line_width=1)
+
+        # 在基础周期上绘制交易信号
+        if freq == trader.base_freq:
+            for pos in trader.positions:
+                bs_df = pd.DataFrame([x for x in pos.operates if x["dt"] >= sdt])
+                if bs_df.empty:
+                    continue
+
+                open_ops = [czsc.Operate.LO, czsc.Operate.SO]
+                bs_df["tag"] = bs_df["op"].apply(lambda x: "triangle-up" if x in open_ops else "triangle-down")
+                bs_df["color"] = bs_df["op"].apply(lambda x: "red" if x in open_ops else "white")
+
+                kline.add_scatter_indicator(
+                    bs_df["dt"],
+                    bs_df["price"],
+                    name=pos.name,
+                    text=bs_df["op_desc"],
+                    row=1,
+                    mode="markers",
+                    marker_size=15,
+                    marker_symbol=bs_df["tag"],
+                    marker_color=bs_df["color"],
+                    visible=False,
+                    hover_template="价格: %{y:.2f}<br>时间: %{x}<br>操作: %{text}<extra></extra>",
+                )
+
+        with tab:
+            config = {
+                "scrollZoom": True,
+                "displayModeBar": True,
+                "displaylogo": False,
+                "modeBarButtonsToRemove": [
+                    "toggleSpikelines",
+                    "select2d",
+                    "zoomIn2d",
+                    "zoomOut2d",
+                    "lasso2d",
+                    "autoScale2d",
+                    "hoverClosestCartesian",
+                    "hoverCompareCartesian",
+                ],
+            }
+            st.plotly_chart(kline.fig, use_container_width=True, config=config)
+
+    with tabs[-1]:
+        with st.expander("查看最新信号", expanded=False):
+            if len(trader.s):
+                s = {k: v for k, v in trader.s.items() if len(k.split("_")) == 3}
+                st.write(s)
+            else:
+                st.warning("当前没有信号配置信息")
+        for pos in trader.positions:
+            st.divider()
+            st.write(pos.name)
+            st.json(pos.dump(with_data=False))
