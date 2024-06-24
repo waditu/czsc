@@ -78,6 +78,11 @@ def test_czsc_update():
     # 测试自定义信号
     c = CZSC(bars, get_signals=None)
 
+    # # 查看每一笔的加速度
+    # for bi in c.bi_list:
+    #     print(bi.fx_a.dt, bi.fx_b.dt)
+    #     print(bi.slope)
+
     kline = [x.__dict__ for x in c.bars_raw]
     bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list] + \
          [{'dt': c.bi_list[-1].fx_b.dt, "bi": c.bi_list[-1].fx_b.fx}]

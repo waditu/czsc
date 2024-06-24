@@ -6,14 +6,13 @@ from czsc.connectors.research import get_raw_bars
 def init_kline():
     bars = get_raw_bars(symbol="000001.SH", freq="1分钟", sdt="20210903", edt="20210904", fq="后复权")
     dft = pd.DataFrame(bars)
-    dft['time'] = dft['dt'].dt.strftime('%H:%M')
-    dft[['time']].to_excel('test.xlsx')
-
+    dft["time"] = dft["dt"].dt.strftime("%H:%M")
+    dft[["time"]].to_excel("test.xlsx")
 
     bars = get_raw_bars(symbol="SQau9001", freq="1分钟", sdt="20210903", edt="20210904", fq="后复权")
     dft = pd.DataFrame(bars)
-    dft['time'] = dft['dt'].dt.strftime('%H:%M')
-    dft[['time']].to_excel('test.xlsx')
+    dft["time"] = dft["dt"].dt.strftime("%H:%M")
+    dft[["time"]].to_excel("test.xlsx")
 
 
 # df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V2.xlsx")
@@ -36,9 +35,10 @@ def init_kline():
 # df.to_excel(r"C:\Users\zengb\Desktop\time_split_conf_V3.xlsx", index=False)
 
 # df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V3.xlsx")
-# df.to_feather("minites_split.feather")
+# df.to_feather("minutes_split.feather")
 
 # 默认分割规则
+
 
 def split_time(freq="60分钟"):
     sdt = pd.to_datetime("2021-09-03 00:00")
@@ -46,26 +46,59 @@ def split_time(freq="60分钟"):
     for i in range(2000):
         sdt += pd.Timedelta(minutes=1)
         res.append(sdt)
-    df = pd.DataFrame(res, columns=['time'])
-    df['t1'] = df['time'].dt.strftime('%H:%M')
-    df1 = df.resample(freq.replace("分钟", "T"), on='time').last().reset_index()
-    df1['t2'] = df1['time'].dt.strftime('%H:%M')
-    dfx = pd.merge_asof(df, df1, on='time', direction='forward')
+    df = pd.DataFrame(res, columns=["time"])
+    df["t1"] = df["time"].dt.strftime("%H:%M")
+    df1 = df.resample(freq.replace("分钟", "T"), on="time").last().reset_index()
+    df1["t2"] = df1["time"].dt.strftime("%H:%M")
+    dfx = pd.merge_asof(df, df1, on="time", direction="forward")
     dfx = dfx.dropna().copy()
-    dfx['time'] = dfx['t1_x']
-    dfx['edt'] = dfx['t2']
-    dfx['freq'] = freq
-    dfx = dfx[['time', 'edt', 'freq']].drop_duplicates().sort_values('time')
+    dfx["time"] = dfx["t1_x"]
+    dfx["edt"] = dfx["t2"]
+    dfx["freq"] = freq
+    dfx = dfx[["time", "edt", "freq"]].drop_duplicates().sort_values("time")
     return dfx
 
+
 rows = []
-for freq in ("1分钟", "2分钟", "3分钟", "4分钟", "5分钟", "6分钟", "10分钟", "12分钟", "15分钟", "20分钟", "30分钟", "60分钟", '120分钟'):
+for freq in (
+    "1分钟",
+    "2分钟",
+    "3分钟",
+    "4分钟",
+    "5分钟",
+    "6分钟",
+    "10分钟",
+    "12分钟",
+    "15分钟",
+    "20分钟",
+    "30分钟",
+    "60分钟",
+    "120分钟",
+):
     rows.append(split_time(freq))
 
 df = pd.concat(rows, ignore_index=True)
-df = pd.pivot_table(df, index='time', columns='freq', values='edt', aggfunc='first').reset_index()
-df['market'] = "默认"
-df = df[['market', 'time', '1分钟', '2分钟', '3分钟', '4分钟', '5分钟', '6分钟', '10分钟', '12分钟', '15分钟', '20分钟', '30分钟', '60分钟', '120分钟']]
+df = pd.pivot_table(df, index="time", columns="freq", values="edt", aggfunc="first").reset_index()
+df["market"] = "默认"
+df = df[
+    [
+        "market",
+        "time",
+        "1分钟",
+        "2分钟",
+        "3分钟",
+        "4分钟",
+        "5分钟",
+        "6分钟",
+        "10分钟",
+        "12分钟",
+        "15分钟",
+        "20分钟",
+        "30分钟",
+        "60分钟",
+        "120分钟",
+    ]
+]
 df.to_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx", index=False)
 
 df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx")
