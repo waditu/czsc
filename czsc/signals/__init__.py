@@ -290,4 +290,5 @@ from czsc.signals.xls import (
     xl_bar_trend_V240331,
     xl_bar_basis_V240411,
     xl_bar_basis_V240412,
+    xl_bar_trend_V240623,
 )
