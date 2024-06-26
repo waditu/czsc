@@ -314,7 +314,7 @@ def xl_bar_basis_V240411(c: CZSC, **kwargs) -> OrderedDict:
 def xl_bar_trend_V240623(c: CZSC, **kwargs) -> OrderedDict:
     """突破信号; 贡献者：谢磊
 
-    参数模板："{freq}_N{n}_突破信号V240623"
+    参数模板："{freq}_N{n}通道_突破信号V240623"
 
     **信号逻辑：**
 
@@ -323,8 +323,8 @@ def xl_bar_trend_V240623(c: CZSC, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('30分钟_N20_突破信号V240623_做多_连续2次上涨_任意_0')
-    - Signal('30分钟_N20_突破信号V240623_做空_连续2次下跌_任意_0')
+    - Signal('30分钟_N20通道_突破信号V240623_做多_连续2次上涨_任意_0')
+    - Signal('30分钟_N20通道_突破信号V240623_做空_连续2次下跌_任意_0')
 
     :param c: CZSC对象
     :param kwargs:
@@ -335,7 +335,7 @@ def xl_bar_trend_V240623(c: CZSC, **kwargs) -> OrderedDict:
     """
     n = int(kwargs.get("n", 20))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_N{n}_突破信号V240623".split("_")
+    k1, k2, k3 = f"{freq}_N{n}通道_突破信号V240623".split("_")
     v1 = "其他"
     v2 = "任意"
 

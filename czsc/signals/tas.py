@@ -3117,7 +3117,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         # 找出 c1 的最近一次金叉
         macd_gold_bars = []
         for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
-            if bar1.cache[cache_key]["macd"] < 0 and bar2.cache[cache_key]["macd"] > 0:
+            if bar1.cache[cache_key]["macd"] < 0 < bar2.cache[cache_key]["macd"]:
                 macd_gold_bars.append(bar2)
         assert macd_gold_bars, "没有找到金叉"
         macd_gold_bar = macd_gold_bars[-1]
@@ -3127,7 +3127,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         if len(c2_bars) > 3:
             c2_gold_bars = []
             for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
-                if bar1.cache[cache_key]["macd"] < 0 and bar2.cache[cache_key]["macd"] > 0:
+                if bar1.cache[cache_key]["macd"] < 0 < bar2.cache[cache_key]["macd"]:
                     c2_gold_bars.append(bar2)
 
             if len(c2_gold_bars) == 1:
@@ -3137,7 +3137,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         # 找出 c1 的最近一次死叉
         macd_dead_bars = []
         for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
-            if bar1.cache[cache_key]["macd"] > 0 and bar2.cache[cache_key]["macd"] < 0:
+            if bar1.cache[cache_key]["macd"] > 0 > bar2.cache[cache_key]["macd"]:
                 macd_dead_bars.append(bar2)
         assert macd_dead_bars, "没有找到死叉"
         macd_dead_bar = macd_dead_bars[-1]
@@ -3147,7 +3147,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         if len(c2_bars) > 3:
             c2_dead_bars = []
             for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
-                if bar1.cache[cache_key]["macd"] > 0 and bar2.cache[cache_key]["macd"] < 0:
+                if bar1.cache[cache_key]["macd"] > 0 > bar2.cache[cache_key]["macd"]:
                     c2_dead_bars.append(bar2)
 
             if len(c2_dead_bars) == 1:
