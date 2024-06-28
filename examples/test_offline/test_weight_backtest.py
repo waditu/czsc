@@ -14,6 +14,9 @@ def run_by_weights():
     wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002, n_jobs=1)
     # wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002)
     dailys = wb.dailys
+    print(wb.stats)
+    print(wb.alpha_stats)
+    print(wb.bench_stats)
 
     # 计算等权组合的超额
     df1 = dailys.groupby("date").agg({"return": "mean", "n1b": "mean"})

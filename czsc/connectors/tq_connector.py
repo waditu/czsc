@@ -189,6 +189,8 @@ symbols = [
 
 
 future_name_map = {
+    "EC": "欧线集运",
+    "LC": "碳酸锂",
     "PG": "LPG",
     "EB": "苯乙烯",
     "CS": "玉米淀粉",

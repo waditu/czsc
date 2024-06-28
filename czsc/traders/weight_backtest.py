@@ -337,6 +337,15 @@ class WeightBacktest:
         stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
         return stats
 
+    @property
+    def bench_stats(self):
+        """基准收益统计"""
+        df = self.alpha.copy()
+        stats = czsc.daily_performance(df["基准"].to_list())
+        stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
+        stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
+        return stats
+
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
 
@@ -584,6 +593,12 @@ class WeightBacktest:
         fig.for_each_trace(lambda trace: trace.update(visible=True if trace.name == "total" else "legendonly"))
         fig.write_html(res_path.joinpath("daily_return.html"))
         logger.info(f"费后日收益率资金曲线已保存到 {res_path.joinpath('daily_return.html')}")
+
+        # 绘制alpha曲线
+        alpha = self.alpha.copy()
+        alpha[["策略", "基准", "超额"]] = alpha[["策略", "基准", "超额"]].cumsum()
+        fig = px.line(alpha, x="date", y=["策略", "基准", "超额"], title="策略超额收益")
+        fig.write_html(res_path.joinpath("alpha.html"))
 
         # 所有开平交易记录的表现
         stats = res["绩效评价"].copy()
