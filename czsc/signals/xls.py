@@ -89,18 +89,10 @@ def xl_bar_trend_V240329(c: CZSC, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
     bar1, bar2 = get_sub_elements(c.bars_raw, di=1, n=2)
-    if (
-        check_szx(bar2, n)
-        and bar1.close < bar1.open
-        and (bar1.open - bar1.close) / (bar1.high - bar1.low) * 10 >= m
-    ):
+    if check_szx(bar2, n) and bar1.close < bar1.open and (bar1.open - bar1.close) / (bar1.high - bar1.low) * 10 >= m:
         v1 = "底部十字孕线"
 
-    if (
-        check_szx(bar2, n)
-        and bar1.close > bar1.open
-        and (bar1.close - bar1.open) / (bar1.high - bar1.low) * 10 >= m
-    ):
+    if check_szx(bar2, n) and bar1.close > bar1.open and (bar1.close - bar1.open) / (bar1.high - bar1.low) * 10 >= m:
         v1 = "顶部十字孕线"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -311,17 +303,56 @@ def xl_bar_basis_V240411(c: CZSC, **kwargs) -> OrderedDict:
 
     bar1, bar2 = get_sub_elements(c.bars_raw, di=1, n=2)
 
-    if (
-        (bar1.open > bar1.close)
-        and (bar2.close > bar1.high)
-        and (bar2.open <= bar1.low)
-    ):
+    if (bar1.open > bar1.close) and (bar2.close > bar1.high) and (bar2.open <= bar1.low):
         v1 = "看涨吞没"
 
-    elif (
-        (bar1.open < bar1.close)
-        and (bar2.open >= bar1.high)
-        and (bar2.close < bar1.low)
-    ):
+    elif (bar1.open < bar1.close) and (bar2.open >= bar1.high) and (bar2.close < bar1.low):
         v1 = "看跌吞没"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+
+def xl_bar_trend_V240623(c: CZSC, **kwargs) -> OrderedDict:
+    """突破信号; 贡献者：谢磊
+
+    参数模板："{freq}_N{n}通道_突破信号V240623"
+
+    **信号逻辑：**
+
+    1， 突破前N日最高价，入场，做多
+    2.  跌破前N日最低价，入场，做空
+
+    **信号列表：**
+
+    - Signal('30分钟_N20通道_突破信号V240623_做多_连续2次上涨_任意_0')
+    - Signal('30分钟_N20通道_突破信号V240623_做空_连续2次下跌_任意_0')
+
+    :param c: CZSC对象
+    :param kwargs:
+
+        - n: int, 默认20，突破前N日的最高价或最低价
+
+    :return: 信号识别结果
+    """
+    n = int(kwargs.get("n", 20))
+    freq = c.freq.value
+    k1, k2, k3 = f"{freq}_N{n}通道_突破信号V240623".split("_")
+    v1 = "其他"
+    v2 = "任意"
+
+    bars2 = get_sub_elements(c.bars_raw, di=1, n=n + 1)
+    hh = max([x.high for x in bars2[0:-2]])
+    ll = min([x.low for x in bars2[0:-2]])
+    _high = bars2[-2].high
+    _low = bars2[-2].low
+
+    if _high >= hh:
+        v1 = "做多"
+        if bars2[-1].high > _high:
+            v2 = "连续2次上涨"
+
+    elif _low <= ll:
+        v1 = "做空"
+        if bars2[-1].low < _low:
+            v2 = "连续2次下跌"
+
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
