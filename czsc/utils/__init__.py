@@ -181,3 +181,20 @@ def print_df_sample(df, n=5):
     from tabulate import tabulate
 
     print(tabulate(df.head(n).values, headers=df.columns, tablefmt="rst"))
+
+
+def mac_address():
+    """获取本机 MAC 地址
+
+    MAC地址（英语：Media Access Control Address），直译为媒体访问控制地址，也称为局域网地址（LAN Address），
+    以太网地址（Ethernet Address）或物理地址（Physical Address），它是一个用来确认网络设备位置的地址。在OSI模
+    型中，第三层网络层负责IP地址，第二层数据链接层则负责MAC地址。MAC地址用于在网络中唯一标示一个网卡，一台设备若有一
+    或多个网卡，则每个网卡都需要并会有一个唯一的MAC地址。
+
+    :return: 本机 MAC 地址
+    """
+    import uuid
+
+    x = uuid.UUID(int=uuid.getnode()).hex[-12:].upper()
+    x = "-".join([x[i : i + 2] for i in range(0, 11, 2)])
+    return x

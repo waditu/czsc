@@ -45,6 +45,7 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    mac_address,
     overlap,
 
     format_standard_kline,
@@ -187,7 +188,7 @@ from czsc.utils.kline_quality import (
 )
 
 
-__version__ = "0.9.54"
+__version__ = "0.9.55"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20240616"
