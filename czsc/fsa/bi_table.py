@@ -18,8 +18,8 @@ class BiTable(FeishuApiBase):
     def __init__(self, app_id=None, app_secret=None, app_token=None):
         """
 
-        :param app_id:
-        :param app_secret:
+        :param app_id: 飞书应用的唯一标识
+        :param app_secret: 飞书应用的密钥
         :param app_token: 一个多维表格的唯一标识。示例值："bascnKMKGS5oD3lmCHq9euO8cGh"
         """
         app_id = app_id or os.getenv("FEISHU_APP_ID")
@@ -50,11 +50,11 @@ class BiTable(FeishuApiBase):
             kwargs["page_token"] = ""
         url = url + "?" + "&".join([f"{k}={v}" for k, v in kwargs.items()])
         return request("GET", url, self.get_headers())
-    
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 数据表相关api 
+    # 数据表相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def create_table(self, name = None, default_view_name = None, fields = None):
+    def create_table(self, name=None, default_view_name=None, fields=None):
         """新增一个仅包含索引列的空数据表，也可以指定一部分初始字段。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/create
@@ -74,16 +74,16 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         params = {}
-        if name != None:
-            params['name'] = name
-        if default_view_name != None:
-            params['default_view_name'] = default_view_name
-        if default_view_name != None:
-            params['fields'] = fields
+        if name is not None:
+            params["name"] = name
+        if default_view_name is not None:
+            params["default_view_name"] = default_view_name
+        if default_view_name is not None:
+            params["fields"] = fields
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables"
-        return request("POST", url, self.get_headers(),payload={'table':params})
-    
-    def batch_create_table(self,names=None):
+        return request("POST", url, self.get_headers(), payload={"table": params})
+
+    def batch_create_table(self, names=None):
         """新增多个数据表。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_create
@@ -97,12 +97,12 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         params = []
-        if names != None:
+        if names is not None:
             for name in names:
-                params.append({'name':name})
+                params.append({"name": name})
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/batch_create"
-        return request("POST", url, self.get_headers(),payload={'tables':params})
-    
+        return request("POST", url, self.get_headers(), payload={"tables": params})
+
     def delete_table(self, table_id):
         """删除一个数据表，最后一张数据表不允许被删除。
 
@@ -114,7 +114,7 @@ class BiTable(FeishuApiBase):
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}"
         return request("DELETE", url, self.get_headers())
 
-    def batch_delete_table(self, table_ids = None):
+    def batch_delete_table(self, table_ids=None):
         """删除一个数据表，最后一张数据表不允许被删除。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/batch_delete
@@ -123,47 +123,57 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/batch_delete"
-        return request("POST", url, self.get_headers(),payload={'table_ids': table_ids})
-    
+        return request("POST", url, self.get_headers(), payload={"table_ids": table_ids})
+
     def patch_table(self, table_id, name):
         """更新数据表的基本信息，包括数据表的名称等
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/patch
         :param table_id: 多维表格数据表的唯一标识符
         :param name: 数据表的新名称。请注意：
-                                        名称中的首尾空格将会被去除。
-                                        如果名称为空或和旧名称相同，接口仍然会返回成功，但是名称不会被更改。
-                                        示例值："数据表的新名称"
-                                        数据校验规则：
-                                        长度范围：1 字符 ～ 100 字符
-                                        正则校验：^[^\[\]\:\\\/\?\*]+$
+                    名称中的首尾空格将会被去除。
+                    如果名称为空或和旧名称相同，接口仍然会返回成功，但是名称不会被更改。
+                    示例值："数据表的新名称"
+                    数据校验规则：
+                    长度范围：1 字符 ～ 100 字符
+                    正则校验：^[^\[\]\:\\\/\?\*]+$
 
         :return: 返回数据
         """
         params = {}
-        if name != None:
-            params['name'] = name
+        if name is not None:
+            params["name"] = name
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}"
-        return request("PATCH", url, self.get_headers(),payload=params)
-    
-    def list_tables(self,page_token = None ,page_size = 20):
-        """ 获取多维表格下的所有数据表。
+        return request("PATCH", url, self.get_headers(), payload=params)
+
+    def list_tables(self, page_token=None, page_size=20):
+        """获取多维表格下的所有数据表。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list
-        :param page_token: 	分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果
+        :param page_token: 	分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，
+            下次遍历可采用该 page_token 获取查询结果
         :param page_size: 	分页大小示例值：10 默认值：20 数据校验规则：最大值：100
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables?page_size={page_size}"
-        url = url if page_token == None else url + f"&page_token={page_token}"
+        url = url if page_token is None else url + f"&page_token={page_token}"
         return request("GET", url, self.get_headers())
-    
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 记录相关api 
+    # 记录相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-    def table_record_get(self,table_id ,record_id ,text_field_as_array = None,user_id_type = None,display_formula_ref = None,with_shared_url = None,automatic_fields = None):
-        """ 获取多维表格下的所有数据表。
+    def table_record_get(
+        self,
+        table_id,
+        record_id,
+        text_field_as_array=None,
+        user_id_type=None,
+        display_formula_ref=None,
+        with_shared_url=None,
+        automatic_fields=None,
+    ):
+        """获取多维表格下的所有数据表。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/get
         :param table_id: table id
@@ -177,16 +187,26 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/{record_id}?1=1"
-        url = url if text_field_as_array == None else url + f"&text_field_as_array={text_field_as_array}"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        url = url if display_formula_ref == None else url + f"&display_formula_ref={display_formula_ref}"
-        url = url if with_shared_url == None else url + f"&with_shared_url={with_shared_url}"
-        url = url if automatic_fields == None else url + f"&automatic_fields={automatic_fields}"
+        url = url if text_field_as_array is None else url + f"&text_field_as_array={text_field_as_array}"
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        url = url if display_formula_ref is None else url + f"&display_formula_ref={display_formula_ref}"
+        url = url if with_shared_url is None else url + f"&with_shared_url={with_shared_url}"
+        url = url if automatic_fields is None else url + f"&automatic_fields={automatic_fields}"
         return request("GET", url, self.get_headers())
 
-    def table_record_search(self,table_id , user_id_type = None, page_token = None,page_size = 20,
-                            view_id = None ,field_names = None,sort=None,filter=None,automatic_fields=None):
-        """ 查询数据表中的现有记录，单次最多查询 500 行记录，支持分页获取
+    def table_record_search(
+        self,
+        table_id,
+        user_id_type=None,
+        page_token=None,
+        page_size=20,
+        view_id=None,
+        field_names=None,
+        sort=None,
+        filter=None,
+        automatic_fields=None,
+    ):
+        """查询数据表中的现有记录，单次最多查询 500 行记录，支持分页获取
 
         https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-record/search
         :param table_id: table id
@@ -205,100 +225,99 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/search?page_size={page_size}"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        url = url if page_token == None else url + f"&page_token={page_token}"
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        url = url if page_token is None else url + f"&page_token={page_token}"
 
         params = {}
-        if view_id != None:
-            params['view_id'] = view_id
-        if field_names != None:
-            params['field_names'] = field_names        
-        if sort != None:
-            params['sort'] = sort
-        if filter != None:
-            params['filter'] = filter
-        if automatic_fields != None:
-            params['automatic_fields'] = automatic_fields
-        return request("POST", url, self.get_headers(),payload=params)
-    
+        if view_id is not None:
+            params["view_id"] = view_id
+        if field_names is not None:
+            params["field_names"] = field_names
+        if sort is not None:
+            params["sort"] = sort
+        if filter is not None:
+            params["filter"] = filter
+        if automatic_fields is not None:
+            params["automatic_fields"] = automatic_fields
+        return request("POST", url, self.get_headers(), payload=params)
 
-    def table_record_create(self,table_id ,fields ,user_id_type = None,client_token = None):
+    def table_record_create(self, table_id, fields, user_id_type=None, client_token=None):
         """数据表中新增一条记录
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/create
         :param table_id: table id
-      
+
         :param user_id_type: 非必需 用户 ID 类型
         :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。
 
         :param fields: 必需
             数据表的字段，即数据表的列。当前接口支持的字段类型为：多行文本、单选、条码、多选、日期、人员、附件、复选框、超链接、数字、单向关联、双向关联、电话号码、地理位置。详情参考
-      
+
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records?1=1"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        url = url if client_token == None else url + f"&client_token={client_token}"
-        return request("POST", url, self.get_headers(),payload={'fields':fields})
-    
-    def table_record_update(self,table_id ,record_id, fields,user_id_type = None):
-        """ 更新数据表中的一条记录
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        url = url if client_token is None else url + f"&client_token={client_token}"
+        return request("POST", url, self.get_headers(), payload={"fields": fields})
+
+    def table_record_update(self, table_id, record_id, fields, user_id_type=None):
+        """更新数据表中的一条记录
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/update
         :param table_id: table id
-        :param record_id: 一条记录的唯一标识 id 
-      
+        :param record_id: 一条记录的唯一标识 id
+
         :param user_id_type: 非必需 用户 ID 类型
-        
+
         :param fields: 必需
             数据表的字段，即数据表的列。当前接口支持的字段类型为：多行文本、单选、条码、多选、日期、人员、附件、复选框、超链接、数字、单向关联、双向关联、电话号码、地理位置。详情参考
-      
+
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/{record_id}/?1=1"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        return request("PUT", url, self.get_headers(),payload={'fields':fields})
-    
-    def table_record_delete(self,table_id ,record_id):
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        return request("PUT", url, self.get_headers(), payload={"fields": fields})
+
+    def table_record_delete(self, table_id, record_id):
         """删除数据表中的一条记录
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/delete
         :param table_id: table id
-        :param record_id: 一条记录的唯一标识 id 
-      
+        :param record_id: 一条记录的唯一标识 id
+
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/{record_id}"
         return request("DELETE", url, self.get_headers())
-    
-    def table_record_batch_create(self,table_id ,fields,user_id_type = None,client_token = None):
+
+    def table_record_batch_create(self, table_id, fields, user_id_type=None, client_token=None):
         """在数据表中新增多条记录，单次调用最多新增 500 条记录。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_create
         :param table_id: table id
-        
+
         :param user_id_type: 非必需 用户 ID 类型
         :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。
-        
+
         :param fields:[] 	数据表的字段，即数据表的列当前接口支持的字段类型 示例值：{"多行文本":"HelloWorld"}
         :return: 返回数据
         """
         records = []
-        for field in fields :
-            records.append({'fields':field})
+        for field in fields:
+            records.append({"fields": field})
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_create?1=1"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        url = url if client_token == None else url + f"&client_token={client_token}"
-        return request("POST", url, self.get_headers(),payload={'records':records})
-    
-    def table_record_batch_update(self,table_id ,records,user_id_type = None):
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        url = url if client_token is None else url + f"&client_token={client_token}"
+        return request("POST", url, self.get_headers(), payload={"records": records})
+
+    def table_record_batch_update(self, table_id, records, user_id_type=None):
         """更新数据表中的多条记录，单次调用最多更新 500 条记录。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_update
         :param table_id: table id
-        
+
         :param user_id_type: 非必需 用户 ID 类型
-      
+
         :param records:[] 	记录
                         [{
                             "record_id": "reclAqylTN",
@@ -309,25 +328,26 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_update?1=1"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        return request("POST", url, self.get_headers(),payload={'records':records})
-    
-    def table_record_batch_delete(self,table_id ,record_ids):
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        return request("POST", url, self.get_headers(), payload={"records": records})
+
+    def table_record_batch_delete(self, table_id, record_ids):
         """删除数据表中现有的多条记录，单次调用中最多删除 500 条记录
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_delete
         :param table_id: table id
-        
+
         :param record_ids:string[] 	删除的多条记录id列表示例值：["recwNXzPQv"]
 
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_delete"
-        return request("POST", url, self.get_headers(),payload={'records':record_ids})
+        return request("POST", url, self.get_headers(), payload={"records": record_ids})
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 视图相关api 
+    # 视图相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def table_view_patch(self,table_id,view_id,infos):
+    def table_view_patch(self, table_id, view_id, infos):
         """增量修改视图信息
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/patch
@@ -340,8 +360,9 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/views/{view_id}"
-        return request("PATCH", url, self.get_headers(),payload=infos)
-    def table_view_get(self,table_id,view_id):
+        return request("PATCH", url, self.get_headers(), payload=infos)
+
+    def table_view_get(self, table_id, view_id):
         """根据 view_id 检索现有视图
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/get
@@ -352,8 +373,8 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/views/{view_id}"
         return request("GET", url, self.get_headers())
-    
-    def table_view_list(self,table_id,page_size=20,user_id_type=None,page_token=None):
+
+    def table_view_list(self, table_id, page_size=20, user_id_type=None, page_token=None):
         """根据 app_token 和 table_id，获取数据表的所有视图
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/list
@@ -366,11 +387,11 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/views?page_size={page_size}"
-        url = url if user_id_type == None else url + f"&user_id_type={user_id_type}"
-        url = url if page_token == None else url + f"&page_token={page_token}"
+        url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
+        url = url if page_token is None else url + f"&page_token={page_token}"
         return request("GET", url, self.get_headers())
-    
-    def table_view_create(self,table_id,view_name,view_type):
+
+    def table_view_create(self, table_id, view_name, view_type):
         """在数据表中新增一个视图
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/create
@@ -387,24 +408,25 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/views"
-        return request("POST", url, self.get_headers(),payload={'view_name':view_name,'view_type':view_type})
-    def table_view_delete(self,table_id,view_id):
+        return request("POST", url, self.get_headers(), payload={"view_name": view_name, "view_type": view_type})
+
+    def table_view_delete(self, table_id, view_id):
         """在数据表中新增一个视图
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-view/create
         :param table_id: table id
 
         :param view_id: 视图id
-      
+
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/views/{view_id}"
         return request("DELETE", url, self.get_headers())
-    
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 字段相关api 
+    # 字段相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def table_field_list(self,table_id,page_size=20,view_id=None,text_field_as_array=None,page_token=None):
+    def table_field_list(self, table_id, page_size=20, view_id=None, text_field_as_array=None, page_token=None):
         """根据 app_token 和 table_id，获取数据表的所有字段
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/list
@@ -418,12 +440,14 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields?page_size={page_size}"
-        url = url if view_id == None else url + f"&view_id={view_id}"
-        url = url if text_field_as_array == None else url + f"&text_field_as_array={text_field_as_array}"
-        url = url if page_token == None else url + f"&page_token={page_token}"
+        url = url if view_id is None else url + f"&view_id={view_id}"
+        url = url if text_field_as_array is None else url + f"&text_field_as_array={text_field_as_array}"
+        url = url if page_token is None else url + f"&page_token={page_token}"
         return request("GET", url, self.get_headers())
-    
-    def table_field_create(self,table_id,field_name,type,property=None,description=None,ui_type=None,client_token=None):
+
+    def table_field_create(
+        self, table_id, field_name, type, property=None, description=None, ui_type=None, client_token=None
+    ):
         """在数据表中新增一个字段
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/create
@@ -442,23 +466,23 @@ class BiTable(FeishuApiBase):
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields?1=1"
-        url = url if client_token == None else url + f"&client_token={client_token}"
+        url = url if client_token is None else url + f"&client_token={client_token}"
 
         params = {}
-        if field_name != None:
-            params['field_name'] = field_name
-        if type != None:
-            params['type'] = type
-        if property != None:
-            params['property'] = property
-        if description != None:
-            params['description'] = description
-        if ui_type != None:
-            params['ui_type'] = ui_type
-  
-        return request("POST", url, self.get_headers(),payload=params)
+        if field_name is not None:
+            params["field_name"] = field_name
+        if type is not None:
+            params["type"] = type
+        if property is not None:
+            params["property"] = property
+        if description is not None:
+            params["description"] = description
+        if ui_type is not None:
+            params["ui_type"] = ui_type
 
-    def table_field_update(self,table_id,field_id,field_name,type,property=None,description=None,ui_type=None):
+        return request("POST", url, self.get_headers(), payload=params)
+
+    def table_field_update(self, table_id, field_id, field_name, type, property=None, description=None, ui_type=None):
         """数据表中更新一个字段
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/update
@@ -479,20 +503,20 @@ class BiTable(FeishuApiBase):
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields/{field_id}"
 
         params = {}
-        if field_name != None:
-            params['field_name'] = field_name
-        if type != None:
-            params['type'] = type
-        if property != None:
-            params['property'] = property
-        if description != None:
-            params['description'] = description
-        if ui_type != None:
-            params['ui_type'] = ui_type
-  
-        return request("PUT", url, self.get_headers(),payload=params)
-    
-    def table_field_delete(self,table_id,field_id):
+        if field_name is not None:
+            params["field_name"] = field_name
+        if type is not None:
+            params["type"] = type
+        if property is not None:
+            params["property"] = property
+        if description is not None:
+            params["description"] = description
+        if ui_type is not None:
+            params["ui_type"] = ui_type
+
+        return request("PUT", url, self.get_headers(), payload=params)
+
+    def table_field_delete(self, table_id, field_id):
         """数据表中删除一个字段
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-field/delete
@@ -504,10 +528,13 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/fields/{field_id}"
         return request("DELETE", url, self.get_headers())
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 表单相关api 
+    # 表单相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def table_form_patch_2(self,table_id,form_id,name=None,description=None,shared=None,shared_limit=None,submit_limit_once=None):
+    def table_form_patch_2(
+        self, table_id, form_id, name=None, description=None, shared=None, shared_limit=None, submit_limit_once=None
+    ):
         """更新表单中的元数据项
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/patch-2
@@ -525,19 +552,19 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/forms/{form_id}"
         params = {}
-        if name != None:
-            params['name'] = name
-        if description != None:
-            params['description'] = description
-        if shared != None:
-            params['shared'] = shared
-        if shared_limit != None:
-            params['shared_limit'] = shared_limit
-        if submit_limit_once != None:
-            params['submit_limit_once'] = submit_limit_once
-        return request("PATCH", url, self.get_headers(),payload=params)
-    
-    def table_form_get(self,table_id,form_id):
+        if name is not None:
+            params["name"] = name
+        if description is not None:
+            params["description"] = description
+        if shared is not None:
+            params["shared"] = shared
+        if shared_limit is not None:
+            params["shared_limit"] = shared_limit
+        if submit_limit_once is not None:
+            params["submit_limit_once"] = submit_limit_once
+        return request("PATCH", url, self.get_headers(), payload=params)
+
+    def table_form_get(self, table_id, form_id):
         """列出表单的所有问题项
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/list
@@ -549,8 +576,10 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/forms/{form_id}"
         return request("GET", url, self.get_headers())
-    
-    def table_form_patch(self,table_id,form_id,field_id,pre_field_id=None,title=None,description=None,required=None,visible=None):
+
+    def table_form_patch(
+        self, table_id, form_id, field_id, pre_field_id=None, title=None, description=None, required=None, visible=None
+    ):
         """更新表单中的问题项
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/patch
@@ -568,19 +597,19 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/forms/{form_id}/fields/{field_id}"
         params = {}
-        if pre_field_id != None:
-            params['pre_field_id'] = pre_field_id
-        if description != None:
-            params['description'] = description
-        if title != None:
-            params['title'] = title
-        if required != None:
-            params['required'] = required
-        if visible != None:
-            params['visible'] = visible
-        return request("PATCH", url, self.get_headers(),payload=params)
-    
-    def table_form_list(self,table_id,form_id):
+        if pre_field_id is not None:
+            params["pre_field_id"] = pre_field_id
+        if description is not None:
+            params["description"] = description
+        if title is not None:
+            params["title"] = title
+        if required is not None:
+            params["required"] = required
+        if visible is not None:
+            params["visible"] = visible
+        return request("PATCH", url, self.get_headers(), payload=params)
+
+    def table_form_list(self, table_id, form_id):
         """列出表单的所有问题项
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/form/list
@@ -592,38 +621,37 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/forms/{form_id}/fields"
         return request("GET", url, self.get_headers())
-    
+
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    # 多维表格相关api 
+    # 多维表格相关api
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    def table_copy(self,app_token=None,name=None,folder_token=None,without_content=None,time_zone=None):
+    def table_copy(self, app_token=None, name=None, folder_token=None, without_content=None, time_zone=None):
         """复制一个多维表格，可以指定复制到某个有权限的文件夹下
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/copy
-        :param app_token: app_token 不传复制当前表格
 
+        :param app_token: app_token 不传复制当前表格
         :param name: 多维表格 App 名字
         :param folder_token: 多维表格 App 归属文件夹
         :param without_content: 是否复制多维表格内容，取值：true：不复制 false：复制
         :param time_zone: 文档时区 示例值："Asia/Shanghai"
-
         :return: 返回数据
         """
-        if app_token == None:
+        if app_token is None:
             app_token = self.app_token
         url = f"{self.host}/open-apis/bitable/v1/apps/{app_token}/copy"
         params = {}
-        if name != None:
-            params['name'] = name
-        if folder_token != None:
-            params['folder_token'] = folder_token
-        if without_content != None:
-            params['without_content'] = without_content
-        if time_zone != None:
-            params['time_zone'] = time_zone
-        return request("POST", url, self.get_headers(),payload=params)
+        if name is not None:
+            params["name"] = name
+        if folder_token is not None:
+            params["folder_token"] = folder_token
+        if without_content is not None:
+            params["without_content"] = without_content
+        if time_zone is not None:
+            params["time_zone"] = time_zone
+        return request("POST", url, self.get_headers(), payload=params)
 
-    def table_create(self,name=None,folder_token=None,time_zone=None):
+    def table_create(self, name=None, folder_token=None, time_zone=None):
         """复制一个多维表格，可以指定复制到某个有权限的文件夹下
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/create
@@ -635,28 +663,28 @@ class BiTable(FeishuApiBase):
         """
         url = f"{self.host}/open-apis/bitable/v1/apps"
         params = {}
-        if name != None:
-            params['name'] = name
-        if folder_token != None:
-            params['folder_token'] = folder_token
-        if time_zone != None:
-            params['time_zone'] = time_zone
-        return request("POST", url, self.get_headers(),payload=params)
-    
-    def table_get(self,app_token=None):
+        if name is not None:
+            params["name"] = name
+        if folder_token is not None:
+            params["folder_token"] = folder_token
+        if time_zone is not None:
+            params["time_zone"] = time_zone
+        return request("POST", url, self.get_headers(), payload=params)
+
+    def table_get(self, app_token=None):
         """复制一个多维表格，可以指定复制到某个有权限的文件夹下
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/get
-        :param app_token: 不传获取当前表格
 
+        :param app_token: 不传获取当前表格
         :return: 返回数据
         """
-        if app_token == None:
+        if app_token is None:
             app_token = self.app_token
         url = f"{self.host}/open-apis/bitable/v1/apps/{app_token}"
         return request("GET", url, self.get_headers())
 
-    def table_update(self,app_token=None,name=None,is_advanced=None):
+    def table_update(self, app_token=None, name=None, is_advanced=None):
         """通过 app_token 更新多维表格元数据
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app/update
@@ -666,17 +694,16 @@ class BiTable(FeishuApiBase):
 
         :return: 返回数据
         """
-        if app_token == None:
+        if app_token is None:
             app_token = self.app_token
         url = f"{self.host}/open-apis/bitable/v1/apps/{app_token}"
 
         params = {}
-        if name != None:
-            params['name'] = name
-        if is_advanced != None:
-            params['is_advanced'] = is_advanced
-        return request("PUT", url, self.get_headers(),payload=params)
-    
+        if name is not None:
+            params["name"] = name
+        if is_advanced is not None:
+            params["is_advanced"] = is_advanced
+        return request("PUT", url, self.get_headers(), payload=params)
 
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     # 以下是便捷使用的封装，非官方API接口
@@ -707,67 +734,3 @@ class BiTable(FeishuApiBase):
 
         assert len(rows) == total, "数据读取异常"
         return pd.DataFrame([x["fields"] for x in rows])
-
-if __name__ == "__main__":
-    app_id = ''
-    app_secret = ''
-    bi_table = BiTable(app_id=app_id,app_secret=app_secret,app_token='KDKnbCF1VaQSiKsu5JscpZtInXb')
-    print(bi_table.tables)
-    
-    # print(bi_table.create_table(name='test2',default_view_name='视图1',fields=[{'field_name':'text','type': 1},{'field_name':'text1','type': 2}]))
-    # print(bi_table.batch_create_table(['tb1','tb2','tb3']))
-    # print(bi_table.delete_table('tblYn0MMUKMDSSWz'))
-    # print(bi_table.batch_delete_table(['tbl8L0ECVcic4Kqq','tblLlWNkQdM6z4Dz']))
-    # print(bi_table.patch_table('tblzRoIFq3URau2V','name_patch'))
-    # print(bi_table.list_tables(page_token='tbltFoOtwXCuhtj9'))
-    
-    # print(bi_table.table_record_get(table_id='tblfSD2jLnUMi4sE',record_id='recwyiPrHM'))
-    # print(bi_table.table_record_search(table_id='tblfSD2jLnUMi4sE'))
-    # print(bi_table.table_record_create(table_id='tblfSD2jLnUMi4sE',fields={
-    #     "文本": "多行文本内容",
-    #     "日期": 1674206443000}))
-
-    # print(bi_table.table_record_update(table_id='tblfSD2jLnUMi4sE',record_id='recuhm4cMqw7fn',fields={
-    #      "文本": "多行文本内容修改",
-    # }))
-    # print(bi_table.table_record_delete(table_id='tblfSD2jLnUMi4sE',record_id='recwyiPrHM'))
-
-    # print(bi_table.table_record_batch_create(table_id='tblfSD2jLnUMi4sE',fields=[
-    #     {"文本": "多行文本内容1"},{"文本": "多行文本内容2"},{"文本": "多行文本内容3","日期": 1674206443000}
-    # ]))
-
-    # print(bi_table.table_record_batch_update(table_id='tblfSD2jLnUMi4sE',records=[
-    #     {'record_id':'recuhm9s2axNVM','fields':{'文本':'批量修改内容1'}},
-    #     {'record_id':'recuhm9s2aZ3At','fields':{'文本':'批量修改内容2'}}
-    # ]))
-
-    # print(bi_table.table_record_batch_delete(table_id='tblfSD2jLnUMi4sE',record_ids=['recuhm9s2axNVM','recuhm9s2aZ3At']))
-
-    # print(bi_table.table_view_list(table_id='tblfSD2jLnUMi4sE'))
-    # print(bi_table.table_field_list(table_id='tblfSD2jLnUMi4sE',view_id='vewo15a8k6'))
-
-    # print(bi_table.table_view_patch(table_id='tblfSD2jLnUMi4sE',view_id='vewo15a8k6',infos={
-    #     'view_name' : '修改的视图名'
-    # }))
-    
-    # print(bi_table.table_view_get(table_id='tblfSD2jLnUMi4sE',view_id='vewo15a8k6'))
-
-    # print(bi_table.table_view_create(table_id='tblfSD2jLnUMi4sE',view_name='测试添加视图',view_type="grid"))
-    # print(bi_table.table_view_delete(table_id='tblfSD2jLnUMi4sE',view_id='vew4hoglsH'))
-    
-    # print(bi_table.table_field_create(table_id='tblfSD2jLnUMi4sE',field_name='测试添加2',type=1,description={'text':'测试的'}))
-    # print(bi_table.table_field_update(table_id='tblfSD2jLnUMi4sE',field_id='fldEbAErbT',field_name='测试添加2修改',type=11,description={'text':'测试的 并修改'},property={
-    #     "multiple": True
-    # }))
-
-    # print(bi_table.table_field_delete(table_id='tblfSD2jLnUMi4sE',field_id='fldEbAErbT'))
-
-    # print(bi_table.table_form_list(table_id='tblfSD2jLnUMi4sE',form_id='vewafwFMhM'))
-    # print(bi_table.table_form_patch(table_id='tblfSD2jLnUMi4sE',form_id='vewafwFMhM',name="测试修改的名字",description='测试修改的备注'))
-    # print(bi_table.table_form_get(table_id='tblfSD2jLnUMi4sE',form_id='vewafwFMhM'))
-    # print(bi_table.table_form_patch(table_id='tblfSD2jLnUMi4sE',form_id='vewafwFMhM',field_id='fld7mfWuZ2',title='修改的title',description='api修改的'))
-
-    # print(bi_table.table_copy(name='测试添加的'))
-    # print(bi_table.table_create(name='测试添加的'))
-    # print(bi_table.table_get(app_token='YuSZbIPLlaPenUsOzbfcL25Sn4g'))
-    # print(bi_table.table_update(app_token='YuSZbIPLlaPenUsOzbfcL25Sn4g',name='修改成的新名字'))
