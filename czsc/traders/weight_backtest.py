@@ -15,6 +15,8 @@ from deprecated import deprecated
 from typing import Union, AnyStr, Callable
 from multiprocessing import cpu_count
 from concurrent.futures import ProcessPoolExecutor
+
+import czsc
 from czsc.traders.base import CzscTrader
 from czsc.utils.io import save_json
 from czsc.utils.stats import daily_performance, evaluate_pairs
@@ -226,9 +228,13 @@ class WeightBacktest:
     """持仓权重回测
 
     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/Pf1fw1woQi4iJikbKJmcYToznxb
+
+    更新日志：
+
+    - V240627: 增加dailys属性，品种每日的交易信息
     """
 
-    version = "V231126"
+    version = "V240627"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
@@ -278,6 +284,7 @@ class WeightBacktest:
         self.dfw["weight"] = self.dfw["weight"].astype("float").round(digits)
         self.symbols = list(self.dfw["symbol"].unique().tolist())
         default_n_jobs = min(cpu_count() // 2, len(self.symbols))
+        self._dailys = None
         self.results = self.backtest(n_jobs=kwargs.get("n_jobs", default_n_jobs))
 
     @property
@@ -290,6 +297,55 @@ class WeightBacktest:
         """品种等权费后日收益率"""
         return self.results.get("品种等权日收益", pd.DataFrame())
 
+    @property
+    def dailys(self) -> pd.DataFrame:
+        """品种每日的交易信息
+
+        columns = ['date', 'symbol', 'edge', 'return', 'cost', 'n1b', 'turnover']
+
+        其中:
+            date        交易日，
+            symbol      合约代码，
+            n1b         品种每日收益率，
+            edge        策略每日收益率，
+            return      策略每日收益率减去交易成本后的真实收益，
+            cost        交易成本
+            turnover    当日的单边换手率
+        """
+        return self._dailys.copy() if self._dailys is not None else pd.DataFrame()
+
+    @property
+    def alpha(self) -> pd.DataFrame:
+        """策略超额收益
+
+        columns = ['date', '策略', '基准', '超额']
+        """
+        if self._dailys is None:
+            return pd.DataFrame()
+        df1 = self._dailys.groupby("date").agg({"return": "mean", "n1b": "mean"})
+        df1["alpha"] = df1["return"] - df1["n1b"]
+        df1.rename(columns={"return": "策略", "n1b": "基准", "alpha": "超额"}, inplace=True)
+        df1 = df1.reset_index()
+        return df1
+
+    @property
+    def alpha_stats(self):
+        """策略超额收益统计"""
+        df = self.alpha.copy()
+        stats = czsc.daily_performance(df["超额"].to_list())
+        stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
+        stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
+        return stats
+
+    @property
+    def bench_stats(self):
+        """基准收益统计"""
+        df = self.alpha.copy()
+        stats = czsc.daily_performance(df["基准"].to_list())
+        stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
+        stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
+        return stats
+
     def get_symbol_daily(self, symbol):
         """获取某个合约的每日收益率
 
@@ -301,19 +357,21 @@ class WeightBacktest:
         4. 计算每条数据扣除手续费后的收益（edge_post_fee）：收益减去手续费。
         5. 根据日期进行分组，并对每组进行求和操作，得到每日的总收益、总扣除手续费后的收益和总手续费。
         6. 重置索引，并将交易标的符号添加到DataFrame中。
-        7. 重命名列名，将'edge_post_fee'列改为'return'，将'dt'列改为'date'。
+        7. 重命名列名，将'edge_post_fee'列改为 return，将'dt'列改为 date。
         8. 选择需要的列，并返回包含日期、交易标的、收益、扣除手续费后的收益和手续费的DataFrame。
 
         :param symbol: str，合约代码
         :return: pd.DataFrame，品种每日收益率，
 
-            columns = ['date', 'symbol', 'edge', 'return', 'cost']
+            columns = ['date', 'symbol', 'edge', 'return', 'cost', 'n1b']
             其中
-                date    为交易日，
-                symbol  为合约代码，
-                edge    为每日收益率，
-                return  为每日收益率减去交易成本后的真实收益，
-                cost    为交易成本
+                date        交易日，
+                symbol      合约代码，
+                n1b         品种每日收益率，
+                edge        策略每日收益率，
+                return      策略每日收益率减去交易成本后的真实收益，
+                cost        交易成本
+                turnover    当日的单边换手率
 
             数据样例如下：
 
@@ -328,13 +386,19 @@ class WeightBacktest:
                 ==========  ========  ============  ============  =======
         """
         dfs = self.dfw[self.dfw["symbol"] == symbol].copy()
-        dfs["edge"] = dfs["weight"] * (dfs["price"].shift(-1) / dfs["price"] - 1)
-        dfs["cost"] = abs(dfs["weight"].shift(1) - dfs["weight"]) * self.fee_rate
+        dfs["n1b"] = dfs["price"].shift(-1) / dfs["price"] - 1
+        dfs["edge"] = dfs["weight"] * dfs["n1b"]
+        dfs["turnover"] = abs(dfs["weight"].shift(1) - dfs["weight"])
+        dfs["cost"] = dfs["turnover"] * self.fee_rate
         dfs["edge_post_fee"] = dfs["edge"] - dfs["cost"]
-        daily = dfs.groupby(dfs["dt"].dt.date).agg({"edge": "sum", "edge_post_fee": "sum", "cost": "sum"}).reset_index()
+        daily = (
+            dfs.groupby(dfs["dt"].dt.date)
+            .agg({"edge": "sum", "edge_post_fee": "sum", "cost": "sum", "n1b": "sum", "turnover": "sum"})
+            .reset_index()
+        )
         daily["symbol"] = symbol
         daily.rename(columns={"edge_post_fee": "return", "dt": "date"}, inplace=True)
-        daily = daily[["date", "symbol", "edge", "return", "cost"]]
+        daily = daily[["date", "symbol", "n1b", "edge", "return", "cost", "turnover"]].copy()
         return daily
 
     def get_symbol_pairs(self, symbol):
@@ -485,6 +549,8 @@ class WeightBacktest:
                 ):
                     res[symbol] = res_symbol
 
+        self._dailys = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
+
         dret = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index="date", columns="symbol", values="return").fillna(0)
         dret["total"] = dret[list(res.keys())].mean(axis=1)
@@ -527,6 +593,12 @@ class WeightBacktest:
         fig.for_each_trace(lambda trace: trace.update(visible=True if trace.name == "total" else "legendonly"))
         fig.write_html(res_path.joinpath("daily_return.html"))
         logger.info(f"费后日收益率资金曲线已保存到 {res_path.joinpath('daily_return.html')}")
+
+        # 绘制alpha曲线
+        alpha = self.alpha.copy()
+        alpha[["策略", "基准", "超额"]] = alpha[["策略", "基准", "超额"]].cumsum()
+        fig = px.line(alpha, x="date", y=["策略", "基准", "超额"], title="策略超额收益")
+        fig.write_html(res_path.joinpath("alpha.html"))
 
         # 所有开平交易记录的表现
         stats = res["绩效评价"].copy()

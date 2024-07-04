@@ -1,10 +1,11 @@
 import sys
+
 sys.path.insert(0, ".")
 sys.path.insert(0, "..")
 import czsc
 import pandas as pd
 
-assert czsc.WeightBacktest.version == "V231126"
+assert czsc.WeightBacktest.version == "V240627"
 
 
 def run_by_weights():
@@ -12,11 +13,19 @@ def run_by_weights():
     dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
     wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002, n_jobs=1)
     # wb = czsc.WeightBacktest(dfw, digits=1, fee_rate=0.0002)
+    dailys = wb.dailys
+    print(wb.stats)
+    print(wb.alpha_stats)
+    print(wb.bench_stats)
+
+    # 计算等权组合的超额
+    df1 = dailys.groupby("date").agg({"return": "mean", "n1b": "mean"})
+    df1["alpha"] = df1["return"] - df1["n1b"]
 
     # ------------------------------------------------------------------------------------
     # 查看绩效评价
     # ------------------------------------------------------------------------------------
-    print(wb.results['绩效评价'])
+    print(wb.results["绩效评价"])
     # {'开始日期': '20170103',
     #  '结束日期': '20230731',
     #  '年化': 0.093,                       # 品种等权之后的年化收益率
@@ -41,5 +50,5 @@ def run_by_weights():
     wb.report(res_path=r"C:\Users\zengb\Desktop\231005\weight_example")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_by_weights()

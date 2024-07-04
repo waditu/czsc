@@ -22,7 +22,7 @@ class BiTable(FeishuApiBase):
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list
 
-        :param app_token: 应用token
+        :param app_token: 一个多维表格的唯一标识。示例值："bascnKMKGS5oD3lmCHq9euO8cGh"
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{app_token}/tables"
@@ -33,7 +33,7 @@ class BiTable(FeishuApiBase):
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/list
 
-        :param app_token: 应用token
+        :param app_token: 一个多维表格的唯一标识。示例值："bascnKMKGS5oD3lmCHq9euO8cGh"
         :param table_id: 数据表id
         :return: 返回数据
         """
@@ -51,17 +51,17 @@ class BiTable(FeishuApiBase):
     def read_table(self, app_token, table_id, **kwargs):
         """读取多维表格中指定表格的数据
 
-        :param app_token: 多维表格应用token
+        :param app_token: 一个多维表格的唯一标识。示例值："bascnKMKGS5oD3lmCHq9euO8cGh"
         :param table_id: 表格id
         :return:
         """
         rows = []
-        res = self.list_records(app_token, table_id, **kwargs)['data']
-        total = res['total']
-        rows.extend(res['items'])
-        while res['has_more']:
-            res = self.list_records(app_token, table_id, page_token=res['page_token'], **kwargs)['data']
-            rows.extend(res['items'])
+        res = self.list_records(app_token, table_id, **kwargs)["data"]
+        total = res["total"]
+        rows.extend(res["items"])
+        while res["has_more"]:
+            res = self.list_records(app_token, table_id, page_token=res["page_token"], **kwargs)["data"]
+            rows.extend(res["items"])
 
         assert len(rows) == total, "数据读取异常"
-        return pd.DataFrame([x['fields'] for x in rows])
+        return pd.DataFrame([x["fields"] for x in rows])

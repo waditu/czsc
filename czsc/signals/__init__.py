@@ -119,6 +119,8 @@ from czsc.signals.bar import (
     bar_classify_V240606,
     bar_classify_V240607,
     bar_decision_V240608,
+    bar_decision_V240616,
+    bar_td9_V240616,
 )
 
 from czsc.signals.jcc import (
@@ -213,6 +215,7 @@ from czsc.signals.tas import (
     tas_dma_bs_V240608,
     tas_dif_zero_V240612,
     tas_dif_zero_V240614,
+    cci_decision_V240620,
 )
 
 from czsc.signals.pos import (
@@ -287,4 +290,5 @@ from czsc.signals.xls import (
     xl_bar_trend_V240331,
     xl_bar_basis_V240411,
     xl_bar_basis_V240412,
+    xl_bar_trend_V240623,
 )
