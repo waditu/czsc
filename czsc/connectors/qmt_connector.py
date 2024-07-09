@@ -75,6 +75,47 @@ def close_exe_window(title):
         logger.error(f"没有找到 {title} 程序")
 
 
+def wait_qmt_ready(timeout=60):
+    """等待 QMT 窗口就绪"""
+    start = time.time()
+    while time.time() - start < timeout:
+        x = xtdata.get_full_tick(code_list=["000001.SZ"])
+        if x and x["000001.SZ"]["lastPrice"] > 0:
+            return True
+
+        logger.warning("等待 QMT 窗口就绪")
+        time.sleep(1)
+    return False
+
+
+def initialize_qmt(**kwargs):
+    """初始化 QMT 交易端
+
+    :param kwargs:
+        mini_qmt_dir: str, mini qmt 目录
+        account_id: str, 账户id
+        callback_params: dict, TraderCallback 回调类的参数
+    :return: xtt, acc
+        xtt - XtQuantTrader
+        acc - StockAccount
+    """
+    import random
+
+    mini_qmt_dir = kwargs.get("mini_qmt_dir")
+    account_id = kwargs.get("account_id")
+
+    session = random.randint(10000, 20000)
+    callback = TraderCallback(**kwargs.get("callback_params", {}))
+    xtt = XtQuantTrader(mini_qmt_dir, session=session, callback=callback)
+    acc = StockAccount(account_id, "STOCK")
+    xtt.start()
+    xtt.connect()
+    assert xtt.connected, "交易服务器连接失败"
+    _res = xtt.subscribe(acc)
+    assert _res == 0, "账号订阅失败"
+    return xtt, acc
+
+
 def start_qmt_exe(acc, pwd, qmt_exe, title, max_retry=6, **kwargs):
     """windows系统：启动 QMT，并登录
 
@@ -578,14 +619,53 @@ def cancel_timeout_orders(xtt: XtQuantTrader, acc: StockAccount, minutes=30):
             xtt.cancel_order_stock(acc, o.order_id)
 
 
-def is_order_exist(xtt: XtQuantTrader, acc: StockAccount, symbol, order_type, volume=None):
-    """判断是否存在相同的委托单
+def query_stock_orders(xtt, acc, **kwargs):
+    """查询股票委托单
 
-    http://docs.thinktrader.net/pages/ee0e9b/#%E8%82%A1%E7%A5%A8%E5%90%8C%E6%AD%A5%E6%92%A4%E5%8D%95
-    http://docs.thinktrader.net/pages/ee0e9b/#%E5%A7%94%E6%89%98%E6%9F%A5%E8%AF%A2
-    http://docs.thinktrader.net/pages/198696/#%E5%A7%94%E6%89%98xtorder
-
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
+    :param kwargs:
+        cancelable_only: bool, 是否只查询可撤单的委托单
+        start_time: str, 开始时间，格式：09:00:00
     """
+    cancelable_only = kwargs.get("cancelable_only", False)
+    orders = xtt.query_stock_orders(acc, cancelable_only)
+
+    start_time = kwargs.get("start_time", "09:00:00")
+    rows = []
+    for order in orders:
+        row = {
+            "account_id": order.account_id,
+            "stock_code": order.stock_code,
+            "order_id": order.order_id,
+            "order_sysid": order.order_sysid,
+            "order_time": order.order_time,
+            "order_type": order.order_type,
+            "order_volume": order.order_volume,
+            "price_type": order.price_type,
+            "price": order.price,
+            "traded_volume": order.traded_volume,
+            "traded_price": order.traded_price,
+            "order_status": order.order_status,
+            "status_msg": order.status_msg,
+            "strategy_name": order.strategy_name,
+            "order_remark": order.order_remark,
+            "direction": order.direction,
+            "offset_flag": order.offset_flag,
+        }
+        rows.append(row)
+
+    dfr = pd.DataFrame(rows)
+    dfr["order_time"] = pd.to_datetime(dfr["order_time"], unit="s") + pd.Timedelta(hours=8)
+    dfr["order_date"] = dfr["order_time"].dt.strftime("%Y-%m-%d")
+    dfr["order_time"] = dfr["order_time"].dt.strftime("%H:%M:%S")
+    if start_time:
+        dfr = dfr[dfr["order_time"] >= start_time].copy().reset_index(drop=True)
+    return dfr
+
+
+def is_order_exist(xtt: XtQuantTrader, acc: StockAccount, symbol, order_type, volume=None):
+    """判断是否存在相同方向的委托单"""
     orders = xtt.query_stock_orders(acc, cancelable_only=False)
     for o in orders:
         if o.stock_code == symbol and o.order_type == order_type:
@@ -594,13 +674,20 @@ def is_order_exist(xtt: XtQuantTrader, acc: StockAccount, symbol, order_type, vo
     return False
 
 
-def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, price, **kwargs):
+def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     """判断是否允许开仓
 
-    http://docs.thinktrader.net/pages/198696/#%E8%B5%84%E4%BA%A7xtasset
+    http://dict.thinktrader.net/nativeApi/xttrader.html?id=H018C2#%E8%B5%84%E4%BA%A7xtasset
 
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
     :param symbol: 股票代码
-    :param price: 股票现价
+    :param kwargs:
+
+        max_pos: int, 最大持仓数量
+        forbidden_symbols: list, 禁止交易的标的
+        multiple_orders: bool, 是否允许多次下单
+
     :return: True 允许开仓，False 不允许开仓
     """
     symbol_max_pos = kwargs.get("max_pos", 0)  # 最大持仓数量
@@ -614,17 +701,16 @@ def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, price, **kwargs
         return False
 
     # 如果 未成交的开仓委托单 存在，不允许开仓
-    if is_order_exist(xtt, acc, symbol, order_type=23):
-        logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
-        return False
-
-    # 如果已经有持仓，不允许开仓
-    if query_stock_positions(xtt, acc).get(symbol, None):
-        return False
+    multiple_orders = kwargs.get("multiple_orders", False)
+    if not multiple_orders:
+        if is_order_exist(xtt, acc, symbol, order_type=23):
+            logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
+            return False
 
     # 如果资金不足，不允许开仓
     assets = xtt.query_stock_asset(acc)
-    if assets.cash < price * 120:
+    symbol_price = xtdata.get_full_tick([symbol])[symbol]["lastPrice"]
+    if assets.cash < symbol_price * 120:
         logger.warning(f"资金不足，无法开仓，symbol={symbol}")
         return False
 
@@ -634,9 +720,17 @@ def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, price, **kwargs
 def is_allow_exit(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     """判断是否允许平仓
 
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
     :param symbol: 股票代码
+    :param kwargs:
+
+        forbidden_symbols: list, 禁止交易的标的
+        multiple_orders: bool, 是否允许多次下单
+
     :return: True 允许开仓，False 不允许开仓
     """
+    # logger = kwargs.get("logger", logger)
     # symbol 在禁止交易的列表中，不允许平仓
     if symbol in kwargs.get("forbidden_symbols", []):
         return False
@@ -644,12 +738,15 @@ def is_allow_exit(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     # 没有持仓 或 可用数量为 0，不允许平仓
     pos = query_stock_positions(xtt, acc).get(symbol, None)
     if not pos or pos.can_use_volume <= 0:
+        logger.warning(f"没有持仓或可用数量为0，无法平仓，symbol={symbol}")
         return False
 
-    # 未成交的平仓委托单 存在，不允许继续平仓
-    if is_order_exist(xtt, acc, symbol, order_type=24):
-        logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
-        return False
+    multiple_orders = kwargs.get("multiple_orders", False)
+    if not multiple_orders:
+        # 未成交的平仓委托单 存在，不允许继续平仓
+        if is_order_exist(xtt, acc, symbol, order_type=24):
+            logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
+            return False
 
     return True
 
@@ -721,7 +818,7 @@ def order_stock_target(xtt: XtQuantTrader, acc: StockAccount, symbol, target, **
     price = kwargs.get("price", 0)
 
     # 如果目标小于当前，平仓
-    if target < current:
+    if target < current and is_allow_exit(xtt, acc, symbol, **kwargs):
         delta = min(current - target, pos.can_use_volume if pos else current)
         logger.info(f"{symbol}平仓，目标仓位：{target}，当前仓位：{current}，平仓数量：{delta}")
         if delta != 0:
@@ -731,7 +828,7 @@ def order_stock_target(xtt: XtQuantTrader, acc: StockAccount, symbol, target, **
             return
 
     # 如果目标大于当前，开仓
-    if target > current:
+    if target > current and is_allow_open(xtt, acc, symbol, **kwargs):
         delta = target - current
         logger.info(f"{symbol}开仓，目标仓位：{target}，当前仓位：{current}，开仓数量：{delta}")
         if delta != 0:
