@@ -106,6 +106,10 @@ from czsc.utils import (
 
     optuna_study,
     optuna_good_params,
+
+    generate_fernet_key,
+    fernet_encrypt,
+    fernet_decrypt,
 )
 
 # 交易日历工具

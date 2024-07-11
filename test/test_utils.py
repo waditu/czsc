@@ -19,6 +19,16 @@ def test_x_round():
     assert utils.x_round(1.000342, 5) == 1.00034
 
 
+def test_fernet():
+    from czsc.utils.fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
+
+    key = generate_fernet_key()
+    text = {"account": "admin", "password": "123456"}
+    encrypted = fernet_encrypt(text, key)
+    decrypted = fernet_decrypt(encrypted, key, is_dict=True)
+    assert text == decrypted, f"{text} != {decrypted}"
+
+
 def test_subtract_fee():
     from czsc.utils.stats import subtract_fee
 

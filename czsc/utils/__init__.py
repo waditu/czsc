@@ -35,6 +35,7 @@ from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS
 from .optuna import optuna_study, optuna_good_params
 from .events import overlap
+from .fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
 
 
 sorted_freqs = [
