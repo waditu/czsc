@@ -9,10 +9,9 @@ describe: 对接天勤量化
 2. [使用 tqsdk 查看期货实时行情](https://s0cqcxuy3p.feishu.cn/wiki/SH3mwOU6piPqnGkRRiocQrhAnrh)
 """
 import czsc
+import loguru
 import pandas as pd
-from loguru import logger
-from typing import List, Union, Optional
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from czsc import Freq, RawBar
 from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq  # noqa
 
@@ -358,8 +357,9 @@ def get_daily_backup(api: TqApi, **kwargs):
     return backup
 
 
-def is_trade_time(quote):
+def is_trade_time(quote, **kwargs):
     """判断当前是否是交易时间"""
+    logger = kwargs.get("logger", loguru.logger)
     trade_time = pd.Timestamp.now().strftime("%H:%M:%S")
     times = quote["trading_time"]["day"] + quote["trading_time"]["night"]
 
@@ -387,6 +387,7 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
     :param kwargs: dict, 其他参数
     """
+    logger = kwargs.get("logger", loguru.logger)
     timeout = kwargs.get("timeout", 600)
     start_time = datetime.now()
 
