@@ -22,7 +22,7 @@ from requests_toolbelt import MultipartEncoder
 logger.disable(__name__)
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_random(min=1, max=5))
+@retry(stop=stop_after_attempt(2), wait=wait_random(min=1, max=3))
 def request(method, url, headers, payload=None) -> dict:
     """飞书API标准请求
 
@@ -40,7 +40,7 @@ def request(method, url, headers, payload=None) -> dict:
     logger.info(f"payload: {payload}")
 
     resp = {}
-    if response.text[0] == '{':
+    if response.text[0] == "{":
         resp = response.json()
         logger.info(f"response: {resp}")
     else:
@@ -62,32 +62,32 @@ class FeishuApiBase:
         self.app_id = app_id
         self.app_secret = app_secret
         self.host = "https://open.feishu.cn"
-        self.headers = {'Content-Type': 'application/json'}
+        self.headers = {"Content-Type": "application/json"}
         self.cache = dict()
 
-    def get_access_token(self, key='app_access_token'):
-        assert key in ['app_access_token', 'tenant_access_token']
-        cache_key = 'access_token_data'
+    def get_access_token(self, key="app_access_token"):
+        assert key in ["app_access_token", "tenant_access_token"]
+        cache_key = "access_token_data"
         data = self.cache.get(cache_key, {})
 
-        if not data or time.time() - data['update_time'] > data['expire'] * 0.8:
+        if not data or time.time() - data["update_time"] > data["expire"] * 0.8:
             url = "https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal"
-            data = request('POST', url, self.headers, {"app_id": self.app_id, "app_secret": self.app_secret})
-            data['update_time'] = time.time()
+            data = request("POST", url, self.headers, {"app_id": self.app_id, "app_secret": self.app_secret})
+            data["update_time"] = time.time()
 
         self.cache[cache_key] = data
         return data[key]
 
     def get_headers(self):
         headers = dict(self.headers)
-        headers['Authorization'] = f"Bearer {self.get_access_token()}"
+        headers["Authorization"] = f"Bearer {self.get_access_token()}"
         return headers
 
     def get_root_folder_token(self):
         """获取飞书云空间根目录 token"""
         url = f"{self.host}/open-apis/drive/explorer/v2/root_folder/meta"
         resp = request("GET", url, self.get_headers())
-        return resp['data']['token']
+        return resp["data"]["token"]
 
     def remove(self, token, kind):
         """删除用户在云空间内的文件或者文件夹。文件或者文件夹被删除后，会进入用户回收站里。
@@ -153,12 +153,17 @@ class FeishuApiBase:
         """
         file_size = os.path.getsize(file_path)
         url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
-        form = {'file_name': os.path.basename(file_path), 'parent_type': 'explorer',
-                'parent_node': parent_node, 'size': str(file_size), 'file': (open(file_path, 'rb'))}
+        form = {
+            "file_name": os.path.basename(file_path),
+            "parent_type": "explorer",
+            "parent_node": parent_node,
+            "size": str(file_size),
+            "file": (open(file_path, "rb")),
+        }
         multi_form = MultipartEncoder(form)
-        headers = {'Authorization': f'Bearer {self.get_access_token()}', 'Content-Type': multi_form.content_type}
+        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
         response = requests.request("POST", url, headers=headers, data=multi_form)
-        return response.json()['data']['file_token']
+        return response.json()["data"]["file_token"]
 
     def download_file(self, file_token, file_path):
         """使用该接口可以下载在云空间目录下的文件（不含飞书文档/表格/思维导图等在线文档）
@@ -171,6 +176,6 @@ class FeishuApiBase:
         """
         url = f"{self.host}/open-apis/drive/v1/files/{file_token}/download"
         res = requests.request("GET", url, headers=self.get_headers())
-        with open(file_path, 'w') as f:
+        with open(file_path, "w") as f:
             f.write(res.text)
         return res

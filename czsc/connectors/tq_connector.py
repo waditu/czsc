@@ -9,10 +9,9 @@ describe: 对接天勤量化
 2. [使用 tqsdk 查看期货实时行情](https://s0cqcxuy3p.feishu.cn/wiki/SH3mwOU6piPqnGkRRiocQrhAnrh)
 """
 import czsc
+import loguru
 import pandas as pd
-from loguru import logger
-from typing import List, Union, Optional
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from czsc import Freq, RawBar
 from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq  # noqa
 
@@ -129,10 +128,12 @@ symbols = [
     "KQ.m@SHFE.au",
     "KQ.m@SHFE.sn",
     "KQ.m@SHFE.al",
+    "KQ.m@SHFE.ao",
     "KQ.m@SHFE.zn",
     "KQ.m@SHFE.cu",
     "KQ.m@SHFE.pb",
-    "KQ.m@SHFE.wr",
+    # "KQ.m@SHFE.wr",
+    "KQ.m@SHFE.br",
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/CZCE
     "KQ.m@CZCE.SA",
     "KQ.m@CZCE.FG",
@@ -146,8 +147,11 @@ symbols = [
     "KQ.m@CZCE.PF",
     "KQ.m@CZCE.AP",
     "KQ.m@CZCE.SF",
+    "KQ.m@CZCE.PX",
+    "KQ.m@CZCE.CJ",
     "KQ.m@CZCE.PK",
     "KQ.m@CZCE.SM",
+    "KQ.m@CZCE.CY",
     "KQ.m@CZCE.RS",
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/DCE
     "KQ.m@DCE.m",
@@ -170,25 +174,31 @@ symbols = [
     "KQ.m@DCE.lh",
     "KQ.m@DCE.rr",
     "KQ.m@DCE.fb",
+    "KQ.m@DCE.bb",
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/GFEX
     "KQ.m@GFEX.si",
+    "KQ.m@GFEX.lc",
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/INE
     "KQ.m@INE.lu",
     "KQ.m@INE.sc",
     "KQ.m@INE.nr",
     "KQ.m@INE.bc",
+    "KQ.m@INE.ec",
     # https://www.jiaoyixingqiu.com/shouxufei/jiaoyisuo/CFFEX
     "KQ.m@CFFEX.T",
     "KQ.m@CFFEX.TF",
+    "KQ.m@CFFEX.TS",
+    "KQ.m@CFFEX.TL",
     "KQ.m@CFFEX.IF",
     "KQ.m@CFFEX.IC",
     "KQ.m@CFFEX.IH",
     "KQ.m@CFFEX.IM",
-    "KQ.m@CFFEX.TS",
 ]
 
 
 future_name_map = {
+    "AO": "氧化铝",
+    "PX": "对二甲苯",
     "EC": "欧线集运",
     "LC": "碳酸锂",
     "PG": "LPG",
@@ -254,6 +264,7 @@ future_name_map = {
     "AU": "黄金",
     "PB": "沪铅",
     "RU": "橡胶",
+    "BR": "合成橡胶",
     "HC": "热轧卷板",
     "BU": "沥青",
     "SP": "纸浆",
@@ -346,8 +357,9 @@ def get_daily_backup(api: TqApi, **kwargs):
     return backup
 
 
-def is_trade_time(quote):
+def is_trade_time(quote, **kwargs):
     """判断当前是否是交易时间"""
+    logger = kwargs.get("logger", loguru.logger)
     trade_time = pd.Timestamp.now().strftime("%H:%M:%S")
     times = quote["trading_time"]["day"] + quote["trading_time"]["night"]
 
@@ -375,6 +387,7 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
     :param kwargs: dict, 其他参数
     """
+    logger = kwargs.get("logger", loguru.logger)
     timeout = kwargs.get("timeout", 600)
     start_time = datetime.now()
 

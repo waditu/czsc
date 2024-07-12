@@ -13,12 +13,14 @@ import os
 import time
 import random
 import czsc
+import loguru
 import pyautogui
 import subprocess
 import pandas as pd
 from typing import List
 from tqdm import tqdm
-from loguru import logger
+
+# from loguru import logger
 from datetime import datetime, timedelta
 from czsc.objects import Freq, RawBar
 from czsc.fsa.im import IM
@@ -32,8 +34,9 @@ from xtquant.xttype import StockAccount
 dt_fmt = "%Y-%m-%d %H:%M:%S"
 
 
-def find_exe_window(title):
+def find_exe_window(title, **kwargs):
     """windows系统：根据 title 查找 window"""
+    logger = kwargs.get("logger", loguru.logger)
     windows = pyautogui.getWindowsWithTitle(title)
     if len(windows) > 1:
         logger.warning(f"找到多个 {title} 窗口，数量：{len(windows)}；请检查是否有多个程序实例")
@@ -45,7 +48,7 @@ def find_exe_window(title):
     return windows[0]
 
 
-def close_exe_window(title):
+def close_exe_window(title, **kwargs):
     """windows系统：关闭 exe 应用程序
 
     :param title: 程序标题，支持模糊匹配，不需要完全匹配
@@ -66,6 +69,8 @@ def close_exe_window(title):
             1. 将鼠标悬停在任务栏上的应用程序图标上。
             2. 通常，任务栏会显示该应用程序的标题。
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     window = find_exe_window(title)
     if window:
         window.activate()
@@ -73,6 +78,51 @@ def close_exe_window(title):
         pyautogui.press("enter")
     else:
         logger.error(f"没有找到 {title} 程序")
+
+
+def wait_qmt_ready(timeout=60, **kwargs):
+    """等待 QMT 窗口就绪"""
+    logger = kwargs.get("logger", loguru.logger)
+
+    start = time.time()
+    while time.time() - start < timeout:
+        x = xtdata.get_full_tick(code_list=["000001.SZ"])
+        if x and x["000001.SZ"]["lastPrice"] > 0:
+            return True
+
+        logger.warning("等待 QMT 窗口就绪")
+        time.sleep(1)
+    return False
+
+
+def initialize_qmt(**kwargs):
+    """初始化 QMT 交易端
+
+    :param kwargs:
+        mini_qmt_dir: str, mini qmt 目录
+        account_id: str, 账户id
+        callback_params: dict, TraderCallback 回调类的参数
+    :return: xtt, acc
+        xtt - XtQuantTrader
+        acc - StockAccount
+    """
+    logger = kwargs.get("logger", loguru.logger)
+
+    import random
+
+    mini_qmt_dir = kwargs.get("mini_qmt_dir")
+    account_id = kwargs.get("account_id")
+
+    session = random.randint(10000, 20000)
+    callback = TraderCallback(logger=logger, **kwargs.get("callback_params", {}))
+    xtt = XtQuantTrader(mini_qmt_dir, session=session, callback=callback)
+    acc = StockAccount(account_id, "STOCK")
+    xtt.start()
+    xtt.connect()
+    assert xtt.connected, "交易服务器连接失败"
+    _res = xtt.subscribe(acc)
+    assert _res == 0, "账号订阅失败"
+    return xtt, acc
 
 
 def start_qmt_exe(acc, pwd, qmt_exe, title, max_retry=6, **kwargs):
@@ -84,6 +134,8 @@ def start_qmt_exe(acc, pwd, qmt_exe, title, max_retry=6, **kwargs):
     :param title: QMT 窗口标题，如 国金证券QMT交易端
     :param max_retry: 最大重试次数
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     wait_seconds = kwargs.get("wait_seconds", 6)
     i = 0
     while not find_exe_window(acc):
@@ -182,6 +234,8 @@ def get_kline(symbol, period, start_time, end_time, count=-1, dividend_type="fro
         3  000001.SZ
         4  000001.SZ
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     start_time = pd.to_datetime(start_time).strftime("%Y%m%d%H%M%S")
     if "1d" == period:
         end_time = pd.to_datetime(end_time).replace(hour=15, minute=0).strftime("%Y%m%d%H%M%S")
@@ -227,6 +281,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs) -> List[RawBa
     :param kwargs:
     :return:
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     freq = Freq(freq)
     if freq == Freq.F1:
         period = "1m"
@@ -328,6 +384,7 @@ class TraderCallback(XtQuantTraderCallback):
     def __init__(self, **kwargs):
         super(TraderCallback, self).__init__()
         self.kwargs = kwargs
+        self.logger = kwargs.get("logger", loguru.logger)
 
         if kwargs.get("feishu_app_id", None) and kwargs.get("feishu_app_secret", None):
             self.im = IM(app_id=kwargs["feishu_app_id"], app_secret=kwargs["feishu_app_secret"])
@@ -341,9 +398,9 @@ class TraderCallback(XtQuantTraderCallback):
 
         file_log = kwargs.get("file_log", None)
         if file_log:
-            logger.add(file_log, rotation="1 day", encoding="utf-8", enqueue=True)
+            self.logger.add(file_log, rotation="1 day", encoding="utf-8", enqueue=True)
         self.file_log = file_log
-        logger.info(f"TraderCallback init: {kwargs}")
+        self.logger.info(f"TraderCallback init: {kwargs}")
 
     def push_message(self, msg: str, msg_type="text"):
         """批量推送消息"""
@@ -357,13 +414,13 @@ class TraderCallback(XtQuantTraderCallback):
                     elif msg_type == "file":
                         self.im.send_file(msg, member)
                     else:
-                        logger.error(f"不支持的消息类型：{msg_type}")
+                        self.logger.error(f"不支持的消息类型：{msg_type}")
                 except Exception as e:
-                    logger.error(f"推送消息失败：{e}")
+                    self.logger.error(f"推送消息失败：{e}")
 
     def on_disconnected(self):
         """连接断开"""
-        logger.info("connection lost")
+        self.logger.info("connection lost")
         if is_trade_time():
             self.push_message("连接断开")
 
@@ -398,7 +455,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"价格：{order.price}\n"
             f"状态：{order_status_map[order.order_status]}"
         )
-        logger.info(f"on order callback: {msg}")
+        self.logger.info(f"on order callback: {msg}")
         if self.feishu_push_mode == "detail" and is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -414,7 +471,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"可用资金：{asset.cash} \n"
             f"总资产：{asset.total_asset}"
         )
-        logger.info(f"on asset callback: {msg}")
+        self.logger.info(f"on asset callback: {msg}")
         if self.feishu_push_mode == "detail" and is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -432,7 +489,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"成交量：{int(trade.traded_volume)}\n"
             f"成交价：{round(trade.traded_price, 2)}"
         )
-        logger.info(f"on trade callback: {msg}")
+        self.logger.info(f"on trade callback: {msg}")
         if self.feishu_push_mode == "detail" and is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -448,7 +505,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"标的：{position.stock_code}\n"
             f"成交量：{position.volume}"
         )
-        logger.info(f"on position callback: {msg}")
+        self.logger.info(f"on position callback: {msg}")
         if self.feishu_push_mode == "detail" and is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -465,7 +522,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"错误编码：{order_error.error_id}\n"
             f"失败原因：{order_error.error_msg}"
         )
-        logger.info(f"on order_error callback: {msg}")
+        self.logger.info(f"on order_error callback: {msg}")
         if is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -482,7 +539,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"错误编码：{cancel_error.error_id}\n"
             f"失败原因：{cancel_error.error_msg}"
         )
-        logger.info(f"on_cancel_error: {msg}")
+        self.logger.info(f"on_cancel_error: {msg}")
         if is_trade_time():
             self.push_message(msg, msg_type="text")
 
@@ -500,7 +557,7 @@ class TraderCallback(XtQuantTraderCallback):
         )
         if is_trade_time():
             self.push_message(msg, msg_type="text")
-        logger.info(f"on_order_stock_async_response: {msg}")
+        self.logger.info(f"on_order_stock_async_response: {msg}")
 
     def on_account_status(self, status):
         """账户状态变化推送
@@ -521,7 +578,7 @@ class TraderCallback(XtQuantTraderCallback):
             f"账户状态：{status_map[status.status]}\n"
         )
 
-        logger.info(
+        self.logger.info(
             f"账户ID: {status.account_id} "
             f"账号类型：{'证券账户' if status.account_type == 2 else '其他'} "
             f"账户状态：{status_map[status.status]}"
@@ -562,7 +619,7 @@ def query_today_trades(xtt: XtQuantTrader, acc: StockAccount):
     return res
 
 
-def cancel_timeout_orders(xtt: XtQuantTrader, acc: StockAccount, minutes=30):
+def cancel_timeout_orders(xtt: XtQuantTrader, acc: StockAccount, minutes=30, **kwargs):
     """撤销超时的委托单
 
     http://docs.thinktrader.net/pages/ee0e9b/#%E8%82%A1%E7%A5%A8%E5%90%8C%E6%AD%A5%E6%92%A4%E5%8D%95
@@ -572,20 +629,61 @@ def cancel_timeout_orders(xtt: XtQuantTrader, acc: StockAccount, minutes=30):
     :param minutes: 超时时间，单位分钟
     :return:
     """
+    logger = kwargs.get("logger", loguru.logger)
     orders = xtt.query_stock_orders(acc, cancelable_only=True)
     for o in orders:
         if datetime.fromtimestamp(o.order_time) < datetime.now() - timedelta(minutes=minutes):
             xtt.cancel_order_stock(acc, o.order_id)
+            logger.info(f"撤销超时委托单：{o.order_id}; {o.stock_code}; {o.order_volume}; {o.order_type}")
+
+
+def query_stock_orders(xtt, acc, **kwargs):
+    """查询股票委托单
+
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
+    :param kwargs:
+        cancelable_only: bool, 是否只查询可撤单的委托单
+        start_time: str, 开始时间，格式：09:00:00
+    """
+    cancelable_only = kwargs.get("cancelable_only", False)
+    orders = xtt.query_stock_orders(acc, cancelable_only)
+
+    start_time = kwargs.get("start_time", "09:00:00")
+    rows = []
+    for order in orders:
+        row = {
+            "account_id": order.account_id,
+            "stock_code": order.stock_code,
+            "order_id": order.order_id,
+            "order_sysid": order.order_sysid,
+            "order_time": order.order_time,
+            "order_type": order.order_type,
+            "order_volume": order.order_volume,
+            "price_type": order.price_type,
+            "price": order.price,
+            "traded_volume": order.traded_volume,
+            "traded_price": order.traded_price,
+            "order_status": order.order_status,
+            "status_msg": order.status_msg,
+            "strategy_name": order.strategy_name,
+            "order_remark": order.order_remark,
+            "direction": order.direction,
+            "offset_flag": order.offset_flag,
+        }
+        rows.append(row)
+
+    dfr = pd.DataFrame(rows)
+    dfr["order_time"] = pd.to_datetime(dfr["order_time"], unit="s") + pd.Timedelta(hours=8)
+    dfr["order_date"] = dfr["order_time"].dt.strftime("%Y-%m-%d")
+    dfr["order_time"] = dfr["order_time"].dt.strftime("%H:%M:%S")
+    if start_time:
+        dfr = dfr[dfr["order_time"] >= start_time].copy().reset_index(drop=True)
+    return dfr
 
 
 def is_order_exist(xtt: XtQuantTrader, acc: StockAccount, symbol, order_type, volume=None):
-    """判断是否存在相同的委托单
-
-    http://docs.thinktrader.net/pages/ee0e9b/#%E8%82%A1%E7%A5%A8%E5%90%8C%E6%AD%A5%E6%92%A4%E5%8D%95
-    http://docs.thinktrader.net/pages/ee0e9b/#%E5%A7%94%E6%89%98%E6%9F%A5%E8%AF%A2
-    http://docs.thinktrader.net/pages/198696/#%E5%A7%94%E6%89%98xtorder
-
-    """
+    """判断是否存在相同方向的委托单"""
     orders = xtt.query_stock_orders(acc, cancelable_only=False)
     for o in orders:
         if o.stock_code == symbol and o.order_type == order_type:
@@ -594,37 +692,38 @@ def is_order_exist(xtt: XtQuantTrader, acc: StockAccount, symbol, order_type, vo
     return False
 
 
-def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, price, **kwargs):
+def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     """判断是否允许开仓
 
-    http://docs.thinktrader.net/pages/198696/#%E8%B5%84%E4%BA%A7xtasset
+    http://dict.thinktrader.net/nativeApi/xttrader.html?id=H018C2#%E8%B5%84%E4%BA%A7xtasset
 
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
     :param symbol: 股票代码
-    :param price: 股票现价
+    :param kwargs:
+
+        forbidden_symbols: list, 禁止交易的标的
+        multiple_orders: bool, 是否允许多次下单
+
     :return: True 允许开仓，False 不允许开仓
     """
-    symbol_max_pos = kwargs.get("max_pos", 0)  # 最大持仓数量
-
-    # 如果 symbol_max_pos 为 0，不允许开仓
-    if symbol_max_pos <= 0:
-        return False
+    logger = kwargs.get("logger", loguru.logger)
 
     # 如果 symbol 在禁止交易的列表中，不允许开仓
     if symbol in kwargs.get("forbidden_symbols", []):
         return False
 
     # 如果 未成交的开仓委托单 存在，不允许开仓
-    if is_order_exist(xtt, acc, symbol, order_type=23):
-        logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
-        return False
-
-    # 如果已经有持仓，不允许开仓
-    if query_stock_positions(xtt, acc).get(symbol, None):
-        return False
+    multiple_orders = kwargs.get("multiple_orders", False)
+    if not multiple_orders:
+        if is_order_exist(xtt, acc, symbol, order_type=23):
+            logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
+            return False
 
     # 如果资金不足，不允许开仓
     assets = xtt.query_stock_asset(acc)
-    if assets.cash < price * 120:
+    symbol_price = xtdata.get_full_tick([symbol])[symbol]["lastPrice"]
+    if assets.cash < symbol_price * 120:
         logger.warning(f"资金不足，无法开仓，symbol={symbol}")
         return False
 
@@ -634,9 +733,18 @@ def is_allow_open(xtt: XtQuantTrader, acc: StockAccount, symbol, price, **kwargs
 def is_allow_exit(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     """判断是否允许平仓
 
+    :param xtt: XtQuantTrader, QMT 交易接口
+    :param acc: StockAccount, 账户
     :param symbol: 股票代码
+    :param kwargs:
+
+        forbidden_symbols: list, 禁止交易的标的
+        multiple_orders: bool, 是否允许多次下单
+
     :return: True 允许开仓，False 不允许开仓
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     # symbol 在禁止交易的列表中，不允许平仓
     if symbol in kwargs.get("forbidden_symbols", []):
         return False
@@ -644,12 +752,15 @@ def is_allow_exit(xtt: XtQuantTrader, acc: StockAccount, symbol, **kwargs):
     # 没有持仓 或 可用数量为 0，不允许平仓
     pos = query_stock_positions(xtt, acc).get(symbol, None)
     if not pos or pos.can_use_volume <= 0:
+        logger.warning(f"没有持仓或可用数量为0，无法平仓，symbol={symbol}")
         return False
 
-    # 未成交的平仓委托单 存在，不允许继续平仓
-    if is_order_exist(xtt, acc, symbol, order_type=24):
-        logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
-        return False
+    multiple_orders = kwargs.get("multiple_orders", False)
+    if not multiple_orders:
+        # 未成交的平仓委托单 存在，不允许继续平仓
+        if is_order_exist(xtt, acc, symbol, order_type=24):
+            logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
+            return False
 
     return True
 
@@ -673,6 +784,8 @@ def send_stock_order(xtt: XtQuantTrader, acc: StockAccount, **kwargs):
 
     :return: 返回下单请求序号, 成功委托后的下单请求序号为大于0的正整数, 如果为-1表示委托失败
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     stock_code = kwargs.get("stock_code")
     order_type = kwargs.get("order_type")
     order_volume = kwargs.get("order_volume")  # 委托数量, 股票以'股'为单位, 债券以'张'为单位
@@ -706,9 +819,14 @@ def order_stock_target(xtt: XtQuantTrader, acc: StockAccount, symbol, target, **
             xtconstant.LATEST_PRICE	    5	最新价
             xtconstant.FIX_PRICE	    11	限价
         - price: float, 报价价格, 如果price_type为限价, 那price为指定的价格, 否则填0
+        - logger: loguru.logger, 日志记录器
+        - forbidden_symbols: list, 禁止交易的标的
+        - multiple_orders: bool, 是否允许多次下单
 
     :return:
     """
+    logger = kwargs.get("logger", loguru.logger)
+
     # 查询持仓
     pos = query_stock_positions(xtt, acc).get(symbol, None)
     current = pos.volume if pos else 0
@@ -721,7 +839,7 @@ def order_stock_target(xtt: XtQuantTrader, acc: StockAccount, symbol, target, **
     price = kwargs.get("price", 0)
 
     # 如果目标小于当前，平仓
-    if target < current:
+    if target < current and is_allow_exit(xtt, acc, symbol, **kwargs):
         delta = min(current - target, pos.can_use_volume if pos else current)
         logger.info(f"{symbol}平仓，目标仓位：{target}，当前仓位：{current}，平仓数量：{delta}")
         if delta != 0:
@@ -731,7 +849,7 @@ def order_stock_target(xtt: XtQuantTrader, acc: StockAccount, symbol, target, **
             return
 
     # 如果目标大于当前，开仓
-    if target > current:
+    if target > current and is_allow_open(xtt, acc, symbol, **kwargs):
         delta = target - current
         logger.info(f"{symbol}开仓，目标仓位：{target}，当前仓位：{current}，开仓数量：{delta}")
         if delta != 0:
@@ -761,6 +879,8 @@ class QmtTradeManager:
         :param kwargs:
 
         """
+        self.logger = kwargs.get("logger", loguru.logger)
+
         self.cache_path = kwargs["cache_path"]  # 交易缓存路径
         os.makedirs(self.cache_path, exist_ok=True)
         self.symbols = kwargs.get("symbols", [])  # 交易标的列表
@@ -804,7 +924,7 @@ class QmtTradeManager:
                     )
                     news = [x for x in bars if x.dt > trader.end_dt]
                     if news:
-                        logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
+                        self.logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
                         for bar in news:
                             trader.on_bar(bar)
 
@@ -820,9 +940,9 @@ class QmtTradeManager:
 
                 traders[symbol] = trader
                 pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
-                logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
+                self.logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
             except Exception as e:
-                logger.exception(f"创建交易对象失败，symbol={symbol}, e={e}")
+                self.logger.exception(f"创建交易对象失败，symbol={symbol}, e={e}")
 
         return traders
 
@@ -890,7 +1010,7 @@ class QmtTradeManager:
 
         # 如果 未成交的开仓委托单 存在，不允许开仓
         if self.is_order_exist(symbol, order_type=23):
-            logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
+            self.logger.warning(f"存在未成交的开仓委托单，symbol={symbol}")
             return False
 
         # 如果 symbol_max_pos 为 0，不允许开仓
@@ -904,7 +1024,7 @@ class QmtTradeManager:
         # 如果资金不足，不允许开仓
         assets = self.get_assets()
         if assets.cash < price * 120:
-            logger.warning(f"资金不足，无法开仓，symbol={symbol}")
+            self.logger.warning(f"资金不足，无法开仓，symbol={symbol}")
             return False
 
         return True
@@ -926,7 +1046,7 @@ class QmtTradeManager:
 
         # 未成交的平仓委托单 存在，不允许平仓
         if self.is_order_exist(symbol, order_type=24):
-            logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
+            self.logger.warning(f"存在未成交的平仓委托单，symbol={symbol}")
             return False
 
         # 持仓可用数量为 0，不允许平仓
@@ -998,7 +1118,7 @@ class QmtTradeManager:
 
                 news = [x for x in bars if x.dt > trader.end_dt]
                 if news:
-                    logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
+                    self.logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
                     for bar in news:
                         trader.on_bar(bar)
 
@@ -1018,11 +1138,11 @@ class QmtTradeManager:
                             self.send_stock_order(stock_code=symbol, order_type=24, order_volume=order_volume)
 
                 else:
-                    logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
+                    self.logger.info(f"{symbol} 没有需要更新的K线，最新的K线时间是 {trader.end_dt}")
 
                 if trader.get_ensemble_pos("mean") > 0:
                     pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
-                    logger.info(
+                    self.logger.info(
                         f"{trader.end_dt} {symbol} trader pos：{pos_info} | ensemble_pos: {trader.get_ensemble_pos('mean')}"
                     )
 
@@ -1031,7 +1151,7 @@ class QmtTradeManager:
 
             except Exception as e:
                 self.callback.push_message(f"{symbol} 更新交易策略失败，原因是 {e}")
-                logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
+                self.logger.error(f"{symbol} 更新交易策略失败，原因是 {e}")
 
     def update_offline_traders(self):
         """更新全部品种策略"""
@@ -1044,7 +1164,7 @@ class QmtTradeManager:
 
             file_trader = os.path.join(self.cache_path, f"{symbol}.ct")
             if not os.path.exists(file_trader):
-                logger.error(f"{symbol} 交易对象不存在，无法更新")
+                self.logger.error(f"{symbol} 交易对象不存在，无法更新")
                 continue
 
             try:
@@ -1052,7 +1172,7 @@ class QmtTradeManager:
                 trader: CzscTrader = czsc.dill_load(file_trader)
                 news = [x for x in bars if x.dt > trader.end_dt]
                 if news:
-                    logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
+                    self.logger.info(f"{symbol} 需要更新的K线数量：{len(news)} | 最新的K线时间是 {news[-1].dt}")
                     for bar in news:
                         trader.on_bar(bar)
 
@@ -1074,9 +1194,9 @@ class QmtTradeManager:
 
                 traders[symbol] = trader
                 pos_info = {x.name: x.pos for x in trader.positions if x.pos != 0}
-                logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
+                self.logger.info(f"最新时间：{trader.end_dt}；{symbol} trader pos：{pos_info} | mean_pos: {mean_pos}")
             except Exception as e:
-                logger.exception(f"创建交易对象失败，symbol={symbol}, e={e}")
+                self.logger.exception(f"创建交易对象失败，symbol={symbol}, e={e}")
 
         self.traders = traders
 

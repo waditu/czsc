@@ -1041,7 +1041,6 @@ def show_event_return(df, factor, **kwargs):
     :param kwargs: dict, 其他参数
 
         - sub_title: str, 子标题
-        - max_overlap: int, 事件最大重叠次数
         - max_unique: int, 因子独立值最大数量
 
     """
@@ -1059,21 +1058,28 @@ def show_event_return(df, factor, **kwargs):
     c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
     agg_method = c1.selectbox(
         "聚合方法",
-        ["平均收益率", "收益中位数", "最小收益率", "盈亏比", "交易胜率"],
+        [
+            "平均收益率",
+            "收益中位数",
+            "盈亏比",
+            "交易胜率",
+            "前20%平均收益率",
+            "后20%平均收益率",
+        ],
         index=0,
         key=f"agg_method_{factor}",
     )
     sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
     edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
-    max_overlap = c4.number_input("最大重叠次数", value=5, min_value=1, max_value=20)
+    max_overlap = c4.number_input("最大重叠次数", value=3, min_value=1, max_value=20)
 
     df[factor] = df[factor].astype(str)
     df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
     df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
 
-    st.write(
-        f"时间范围：{df['dt'].min().strftime('%Y%m%d')} ~ {df['dt'].max().strftime('%Y%m%d')}；聚合方法：{agg_method}"
-    )
+    sdt = df["dt"].min().strftime("%Y-%m-%d")
+    edt = df["dt"].max().strftime("%Y-%m-%d")
+    st.write(f"时间范围：{sdt} ~ {edt}；聚合方法：{agg_method}")
     nb_cols = [x for x in df.columns.to_list() if x.startswith("n") and x.endswith("b")]
 
     if agg_method == "平均收益率":
@@ -1082,8 +1088,11 @@ def show_event_return(df, factor, **kwargs):
     if agg_method == "收益中位数":
         agg_method = lambda x: np.median(x)
 
-    if agg_method == "最小收益率":
-        agg_method = lambda x: np.min(x)
+    if agg_method == "前20%平均收益率":
+        agg_method = lambda x: np.mean(sorted(x)[int(len(x) * 0.8) :])
+
+    if agg_method == "后20%平均收益率":
+        agg_method = lambda x: np.mean(sorted(x)[: int(len(x) * 0.2)])
 
     if agg_method == "盈亏比":
         agg_method = lambda x: np.mean([y for y in x if y > 0]) / abs(np.mean([y for y in x if y < 0]))

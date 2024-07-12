@@ -212,8 +212,6 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     for year in years:
         ttl = 3600 * 6 if year == str(datetime.now().year) else -1
         kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
-        kline["price"] = kline["open"].shift(-1)
-        kline["price"] = kline["price"].fillna(kline["close"])
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
@@ -223,6 +221,7 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
         dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)
 
     dfk = dfk.rename(columns={"code": "symbol"})
+    dfk["price"] = dfk["close"]
     nxb = kwargs.get("nxb", [1, 2, 5, 10, 20, 30, 60])
     if nxb:
         dfk = czsc.update_nxb(dfk, nseq=nxb)
