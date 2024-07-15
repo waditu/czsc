@@ -1,20 +1,21 @@
 import os
 import shutil
+import loguru
 import hashlib
 import requests
 import pandas as pd
 from time import time
 from pathlib import Path
-from loguru import logger
 from functools import partial
 
 
-def set_url_token(token, url):
+def set_url_token(token, url, **kwargs):
     """设置指定 URL 数据接口的凭证码，通常一台机器只需要设置一次即可
 
     :param token: 凭证码
     :param url: 数据接口地址
     """
+    logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
     with open(file_token, "w", encoding="utf-8") as f:
@@ -22,8 +23,9 @@ def set_url_token(token, url):
     logger.info(f"{url} 数据访问凭证码已保存到 {file_token}")
 
 
-def get_url_token(url):
+def get_url_token(url, **kwargs):
     """获取指定 URL 数据接口的凭证码"""
+    logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
     if file_token.exists():
@@ -62,15 +64,17 @@ class DataClient:
         assert self.__token, "请设置czsc_token凭证码，如果没有请联系管理员申请"
         self.cache_path = Path(kwargs.get("cache_path", os.path.expanduser("~/.quant_data_cache")))
         self.cache_path.mkdir(exist_ok=True, parents=True)
-
+        logger = kwargs.pop("logger", loguru.logger)
         logger.info(
             f"数据URL: {url} 数据缓存路径：{self.cache_path} 占用磁盘空间：{get_dir_size(self.cache_path) / 1024 / 1024:.2f} MB"
         )
         if kwargs.get("clear_cache", False):
             self.clear_cache()
 
-    def clear_cache(self):
+    def clear_cache(self, **kwargs):
         """清空缓存"""
+        logger = kwargs.pop("logger", loguru.logger)
+
         shutil.rmtree(self.cache_path)
         logger.info(f"{self.cache_path} 路径下的数据缓存已清空")
         self.cache_path.mkdir(exist_ok=True, parents=True)
@@ -83,9 +87,12 @@ class DataClient:
         :param kwargs: dict, 查询参数
 
             - ttl: int, 缓存有效期，单位秒，-1表示不过期
+            - logger: loguru.logger, 日志记录器
 
         :return: pd.DataFrame
         """
+        logger = kwargs.pop("logger", loguru.logger)
+
         stime = time()
         if api_name in ["__getstate__", "__setstate__"]:
             return pd.DataFrame()
