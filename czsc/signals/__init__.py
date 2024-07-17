@@ -234,6 +234,7 @@ from czsc.signals.pos import (
     pos_stop_V240331,
     pos_stop_V240608,
     pos_stop_V240614,
+    pos_stop_V240717,
 )
 
 
