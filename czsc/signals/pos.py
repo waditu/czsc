@@ -20,10 +20,10 @@ def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     **信号逻辑：**
 
-    多头止损逻辑如下，反之为空头止损逻辑：
+    多头持有状态如下，反之为空头持有状态：
 
-    1. 从多头开仓点开始，在给定对的K线周期 freq1 上向前找 N 个底分型，记为 F1
-    2. 将这 N 个底分型的最低点，记为 L1，如果 L1 的价格低于开仓点的价格，则止损
+    1. 如果持有多头，且开仓后有价格升破MA均线，则为多头升破均线；
+    2. 如果持有空头，且开仓后有价格跌破MA均线，则为空头跌破均线。
 
     **信号列表：**
 
@@ -55,7 +55,6 @@ def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     c = cat.kas[freq1]
     op = pos.operates[-1]
 
-    # 多头止损逻辑
     if op["op"] == Operate.LO:
         bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
         for x in bars:
@@ -63,7 +62,6 @@ def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
                 v1, v2 = "多头", "升破均线"
                 break
 
-    # 空头止损逻辑
     if op["op"] == Operate.SO:
         bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
         for x in bars:
