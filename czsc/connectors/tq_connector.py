@@ -412,6 +412,12 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
         target_pos.set_target_volume(int(lots))
         symbol_infos[symbol] = {"quote": quote, "target_pos": target_pos, "lots": lots}
 
+    if not symbol_infos:
+        logger.warning(f"没有需要调仓的品种，跳过调仓")
+        return api
+    else:
+        logger.info(f"开始调仓：{[x for x in symbol_infos.keys()]}")
+
     while True:
         api.wait_update()
 
@@ -439,6 +445,10 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
 
         if (datetime.now() - start_time).seconds > timeout:
             logger.error(f"调仓超时，已运行 {timeout} 秒")
+            for symbol, info in symbol_infos.items():
+                target_pos: TargetPosTask = info["target_pos"]
+                target_pos.cancel()
+                logger.info(f"取消调仓：{symbol}")
             break
 
     return api

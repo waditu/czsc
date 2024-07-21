@@ -9,9 +9,10 @@ describe: CZSC开源协作团队内部使用数据接口
 """
 import os
 import czsc
+import requests
+import loguru
 import pandas as pd
 from tqdm import tqdm
-from loguru import logger
 from datetime import datetime
 from czsc import RawBar, Freq
 
@@ -74,6 +75,8 @@ def get_symbols(name, **kwargs):
 
 def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
     """分段获取期货1分钟K线后合并"""
+    logger = kwargs.pop("logger", loguru.logger)
+
     sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
     edt = pd.to_datetime(edt).strftime("%Y%m%d")
     # dates = pd.date_range(start=sdt, end=edt, freq='1M')
@@ -133,6 +136,8 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     >>> from czsc.connectors import cooperation as coo
     >>> df = coo.get_raw_bars(symbol="000001.SH#INDEX", freq="日线", sdt="2001-01-01", edt="2021-12-31", fq='后复权', raw_bars=False)
     """
+    logger = kwargs.pop("logger", loguru.logger)
+
     freq = czsc.Freq(freq)
     raw_bars = kwargs.get("raw_bars", True)
     ttl = kwargs.get("ttl", -1)
@@ -226,3 +231,63 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     if nxb:
         dfk = czsc.update_nxb(dfk, nseq=nxb)
     return dfk
+
+
+def upload_strategy(df, meta, token=None, **kwargs):
+    """上传策略数据
+
+    :param df: pd.DataFrame, 策略持仓权重数据，至少包含 dt, symbol, weight 三列, 例如：
+
+        ===================  ========  ========
+        dt                   symbol      weight
+        ===================  ========  ========
+        2017-01-03 09:01:00  ZZSF9001  0
+        2017-01-03 09:01:00  DLj9001   0
+        2017-01-03 09:01:00  SQag9001  0
+        2017-01-03 09:06:00  ZZSF9001  0.136364
+        2017-01-03 09:06:00  SQag9001  1
+        ===================  ========  ========
+
+    :param meta: dict, 策略元数据
+
+        至少包含 name, description, base_freq, author, outsample_sdt 字段, 例如：
+
+        {'name': 'TS001_3',
+        'description': '测试策略：仅用于读写redis测试',
+        'base_freq': '1分钟',
+        'author': 'ZB',
+        'outsample_sdt': '20220101'}
+
+    :param token: str, 上传凭证码；如果不提供，将从环境变量 CZSC_TOKEN 中获取
+    :param kwargs: dict, 其他参数
+
+            - logger: loguru.logger, 日志记录器
+    :return dict
+    """
+    logger = kwargs.pop("logger", loguru.logger)
+    df = df.copy()
+    df["dt"] = pd.to_datetime(df["dt"])
+    logger.info(f"输入数据中有 {len(df)} 条权重信号")
+
+    # 去除单个品种下相邻时间权重相同的数据
+    _res = []
+    for _, dfg in df.groupby("symbol"):
+        dfg = dfg.sort_values("dt", ascending=True).reset_index(drop=True)
+        dfg = dfg[dfg["weight"].diff().fillna(1) != 0].copy()
+        _res.append(dfg)
+    df = pd.concat(_res, ignore_index=True)
+    df = df.sort_values(["dt"]).reset_index(drop=True)
+    df["dt"] = df["dt"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    logger.info(f"去除单个品种下相邻时间权重相同的数据后，剩余 {len(df)} 条权重信号")
+
+    data = {
+        "weights": df[["dt", "symbol", "weight"]].to_json(orient="split"),
+        "token": token or os.getenv("CZSC_TOKEN"),
+        "strategy_name": meta.get("name"),
+        "meta": meta,
+    }
+    response = requests.post("http://zbczsc.com:9106/upload_strategy", json=data)
+
+    logger.info(f"上传策略接口返回: {response.json()}")
+    return response.json()
