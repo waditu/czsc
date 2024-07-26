@@ -959,8 +959,8 @@ def pos_stop_V240717(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('SMA5多头_15分钟N3T20_止损V240614_多头止损_任意_任意_0')
-    - Signal('SMA5空头_15分钟N3T20_止损V240614_空头止损_任意_任意_0')
+    - Signal('SMA5多头_15分钟N3T20_止损V240717_多头止损_任意_任意_0')
+    - Signal('SMA5空头_15分钟N3T20_止损V240717_空头止损_任意_任意_0')
 
     :param cat: CzscTrader对象
     :param kwargs: 参数字典
