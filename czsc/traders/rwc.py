@@ -101,6 +101,7 @@ class RedisWeightsClient:
             "kwargs": json.dumps(kwargs),
         }
         self.r.hset(key, mapping=meta)
+        self.r.sadd(f"{self.key_prefix}:StrategyNames", self.strategy_name)
 
     def update_last(self, **kwargs):
         """设置策略最近一次更新时间，以及更新参数【可选】"""
@@ -111,6 +112,7 @@ class RedisWeightsClient:
             "kwargs": json.dumps(kwargs),
         }
         self.r.hset(key, mapping=last)
+
         logger.info(f"更新 {key} 的 last 时间")
 
     @property
@@ -592,3 +594,23 @@ def get_heartbeat_time(strategy_name=None, redis_url=None, connection_pool=None,
             logger.warning(f"{sn} 没有心跳时间")
     r.close()
     return res
+
+
+def get_strategy_names(redis_url=None, connection_pool=None, key_prefix="Weights"):
+    """获取所有策略名的列表.
+
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+
+    :return: list, 所有策略名
+    """
+
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    rs = r.smembers(f"{key_prefix}:StrategyNames")
+    return list(rs)
