@@ -30,8 +30,8 @@ def max_sharp(df, weight_bounds=(0, 1), **kwargs):
 
     logger = kwargs.get("logger", loguru.logger)
     df = df.copy()
-    if 'dt' in df.columns:
-        df = df.set_index('dt')
+    if "dt" in df.columns:
+        df = df.set_index("dt")
 
     mu = expected_returns.mean_historical_return(df, returns_data=True)
     S = risk_models.risk_matrix(df, returns_data=True, method="sample_cov")
