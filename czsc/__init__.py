@@ -152,6 +152,7 @@ from czsc.utils.st_components import (
     show_symbols_corr,
     show_feature_returns,
     show_czsc_trader,
+    show_strategies_recent,
 )
 
 from czsc.utils.bi_info import (

@@ -1483,3 +1483,48 @@ def show_czsc_trader(trader: czsc.CzscTrader, max_k_num=300, **kwargs):
             st.divider()
             st.write(pos.name)
             st.json(pos.dump(with_data=False))
+
+
+def show_strategies_recent(df, **kwargs):
+    """展示最近 N 天的策略表现
+
+    :param df: pd.DataFrame, columns=['dt', 'strategy', 'returns'], 样例如下：
+
+        ===================  ==========  ============
+        dt                   strategy    returns
+        ===================  ==========  ============
+        2021-01-04 00:00:00  STK001      -0.00240078
+        2021-01-05 00:00:00  STK001      -0.00107012
+        2021-01-06 00:00:00  STK001       0.00122168
+        2021-01-07 00:00:00  STK001       0.0020896
+        2021-01-08 00:00:00  STK001       0.000510725
+        ===================  ==========  ============
+
+    :param kwargs: dict
+
+        - nseq: tuple, optional, 默认为 (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360)，展示的天数序列
+    """
+    nseq = kwargs.get("nseq", (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360))
+    dfr = df.copy()
+    dfr = pd.pivot_table(dfr, index="dt", columns="strategy", values="returns", aggfunc="sum").fillna(0)
+    rows = []
+    for n in nseq:
+        for k, v in dfr.iloc[-n:].sum(axis=0).to_dict().items():
+            rows.append({"天数": f"近{n}天", "策略": k, "收益": v})
+
+    n_rets = pd.DataFrame(rows).pivot_table(index="策略", columns="天数", values="收益")
+    n_rets = n_rets[[f"近{x}天" for x in nseq]]
+
+    st.dataframe(
+        n_rets.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}", na_rep="-"),
+        use_container_width=True,
+        hide_index=False,
+    )
+
+    # 计算每个时间段的盈利策略数量
+    win_count = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0)
+    win_rate = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
+    dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
+    dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
+    st.dataframe(dfs, use_container_width=True)
+    st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
