@@ -6,6 +6,7 @@ create_dt: 2023/06/16 19:45
 describe: 飞书多维表格接口
 """
 import os
+import loguru
 import pandas as pd
 from czsc.fsa.base import FeishuApiBase, request
 
@@ -15,7 +16,7 @@ class BiTable(FeishuApiBase):
     多维表格概述: https://open.feishu.cn/document/server-docs/docs/bitable-v1/bitable-overview
     """
 
-    def __init__(self, app_id=None, app_secret=None, app_token=None):
+    def __init__(self, app_id=None, app_secret=None, app_token=None, **kwargs):
         """
 
         :param app_id: 飞书应用的唯一标识
@@ -24,8 +25,9 @@ class BiTable(FeishuApiBase):
         """
         app_id = app_id or os.getenv("FEISHU_APP_ID")
         app_secret = app_secret or os.getenv("FEISHU_APP_SECRET")
-        super().__init__(app_id, app_secret)
+        super().__init__(app_id, app_secret, **kwargs)
         self.app_token = app_token
+        # self.logger = kwargs.get("logger", loguru.logger)
 
     def one_record(self, table_id, record_id):
         """根据 record_id 的值检索现有记录
@@ -294,11 +296,13 @@ class BiTable(FeishuApiBase):
 
         :param table_id: table id
         :param user_id_type: 非必需 用户 ID 类型
-        :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。
-            此值为空表示将发起一次新请求，此值非空表示幂等的进行更新操作。
-        :param records: [] 数据表的字段
+        :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。
+        :param records:[] 	数据表的字段，即数据表的列当前接口支持的字段类型 示例值：{"多行文本":"HelloWorld"}
         :return: 返回数据
         """
+        # records = []
+        # for field in fields:
+        #     records.append({"fields": field})
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_create?1=1"
         url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
         url = url if client_token is None else url + f"&client_token={client_token}"
@@ -728,3 +732,25 @@ class BiTable(FeishuApiBase):
 
         assert len(rows) == total, "数据读取异常"
         return pd.DataFrame([x["fields"] for x in rows])
+
+    def empty_table(self, table_id, **kwargs):
+        """清空多维表格中指定表格的数据，保留表头
+
+        :param table_id: 表格id
+        :return:
+        """
+        res = self.list_records(table_id, **kwargs)["data"]
+        self.logger.info(f"{table_id} 表格中共有 {res['total']} 条数据")
+        records = res["items"]
+        if records:
+            record_ids = [x["record_id"] for x in records]
+            self.table_record_batch_delete(table_id, record_ids)
+            self.logger.info(f"{table_id} 删除 {len(record_ids)} 条数据")
+
+        while res["has_more"]:
+            res = self.list_records(table_id, page_token=res["page_token"], **kwargs)["data"]
+            records = res["items"]
+            if records:
+                record_ids = [x["record_id"] for x in records]
+                self.table_record_batch_delete(table_id, record_ids)
+                self.logger.info(f"{table_id} 删除 {len(record_ids)} 条数据")

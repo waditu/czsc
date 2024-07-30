@@ -14,8 +14,8 @@ from czsc.fsa.base import FeishuApiBase, request, MultipartEncoder
 class IM(FeishuApiBase):
     """即时消息发送"""
 
-    def __init__(self, app_id, app_secret):
-        super().__init__(app_id, app_secret)
+    def __init__(self, app_id, app_secret, **kwargs):
+        super().__init__(app_id, app_secret, **kwargs)
 
     def get_user_id(self, payload, user_id_type="open_id"):
         """获取用户ID

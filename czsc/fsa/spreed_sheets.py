@@ -16,8 +16,8 @@ class SpreadSheets(FeishuApiBase):
     电子表格概述: https://open.feishu.cn/document/ukTMukTMukTM/uATMzUjLwEzM14CMxMTN/overview
     """
 
-    def __init__(self, app_id, app_secret):
-        super().__init__(app_id, app_secret)
+    def __init__(self, app_id, app_secret, **kwargs):
+        super().__init__(app_id, app_secret, **kwargs)
 
     def create(self, folder_token, title):
         """创建电子表格
@@ -65,7 +65,7 @@ class SpreadSheets(FeishuApiBase):
                 }
         """
         url = f"{self.host}/open-apis/sheets/v3/spreadsheets/{token}"
-        return request('GET', url, self.get_headers())
+        return request("GET", url, self.get_headers())
 
     def get_sheets(self, token):
         """获取工作表
@@ -110,7 +110,7 @@ class SpreadSheets(FeishuApiBase):
              'msg': ''}
         """
         url = f"{self.host}/open-apis/sheets/v3/spreadsheets/{token}/sheets/{sheet_id}"
-        return request('GET', url, self.get_headers())
+        return request("GET", url, self.get_headers())
 
     def update_values(self, token, data):
         """向多个范围写入数据
@@ -170,7 +170,7 @@ class SpreadSheets(FeishuApiBase):
         :return:
         """
         url = f"https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{token}/dimension_range"
-        row_count = self.get_sheet_meta(token, sheet_id)['data']['sheet']['grid_properties']['row_count'] - 1
+        row_count = self.get_sheet_meta(token, sheet_id)["data"]["sheet"]["grid_properties"]["row_count"] - 1
         while row_count > 1:
             data = {
                 "dimension": {
@@ -180,10 +180,10 @@ class SpreadSheets(FeishuApiBase):
                     "endIndex": min(4001, row_count),
                 }
             }
-            request('DELETE', url, self.get_headers(), data)
-            row_count = self.get_sheet_meta(token, sheet_id)['data']['sheet']['grid_properties']['row_count'] - 1
+            request("DELETE", url, self.get_headers(), data)
+            row_count = self.get_sheet_meta(token, sheet_id)["data"]["sheet"]["grid_properties"]["row_count"] - 1
 
-        col_count = self.get_sheet_meta(token, sheet_id)['data']['sheet']['grid_properties']['column_count'] - 1
+        col_count = self.get_sheet_meta(token, sheet_id)["data"]["sheet"]["grid_properties"]["column_count"] - 1
         if col_count > 1:
             data = {
                 "dimension": {
@@ -193,7 +193,7 @@ class SpreadSheets(FeishuApiBase):
                     "endIndex": min(4001, col_count),
                 }
             }
-            request('DELETE', url, self.get_headers(), data)
+            request("DELETE", url, self.get_headers(), data)
 
     def dimension_range(self, token, data):
         """增加行列
@@ -212,7 +212,7 @@ class SpreadSheets(FeishuApiBase):
         :return:
         """
         url = f"https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/{token}/dimension_range"
-        return request('POST', url, self.get_headers(), data)
+        return request("POST", url, self.get_headers(), data)
 
     def update_sheets(self, token, operates):
         """增加工作表，复制工作表、删除工作表
@@ -286,23 +286,23 @@ class SpreadSheets(FeishuApiBase):
             self.delete_values(token, sheet_id)
             cols = df.columns.tolist()
             col_range = f"{sheet_id}!A1:{string.ascii_uppercase[len(cols) - 1]}1"
-            self.update_values(token, {'valueRanges': [{"range": col_range, "values": [cols]}]})
+            self.update_values(token, {"valueRanges": [{"range": col_range, "values": [cols]}]})
 
         # 读取表格列名，确保 df 列名与表格列名一致
         sheet_cols = self.get_sheet_cols(token, sheet_id)
         df = df[sheet_cols]
 
         meta = self.get_sheet_meta(token, sheet_id)
-        start_index = meta['data']['sheet']['grid_properties']['row_count']
-        col_count = meta['data']['sheet']['grid_properties']['column_count']
+        start_index = meta["data"]["sheet"]["grid_properties"]["row_count"]
+        col_count = meta["data"]["sheet"]["grid_properties"]["column_count"]
         assert df.shape[1] == col_count, f"df 列数 {df.shape[1]} 与表格列数 {col_count} 不一致"
 
         for i in range(0, len(df), batch_size):
-            dfi = df.iloc[i: i + batch_size]
+            dfi = df.iloc[i : i + batch_size]
             si = i + start_index + 1
             ei = si + batch_size
             vol_range = f"{sheet_id}!A{si}:{string.ascii_uppercase[col_count - 1]}{ei}"
-            self.update_values(token, {'valueRanges': [{"range": vol_range, "values": dfi.values.tolist()}]})
+            self.update_values(token, {"valueRanges": [{"range": vol_range, "values": dfi.values.tolist()}]})
 
     def get_sheet_cols(self, token, sheet_id, n=1):
         """读取表格列名
@@ -313,9 +313,9 @@ class SpreadSheets(FeishuApiBase):
         :return: 列名列表
         """
         meta = self.get_sheet_meta(token, sheet_id)
-        col_count = meta['data']['sheet']['grid_properties']['column_count']
+        col_count = meta["data"]["sheet"]["grid_properties"]["column_count"]
         res = self.read_sheet(token, f"{sheet_id}!A{n}:{string.ascii_uppercase[col_count - 1]}{n}")
-        values = res['data']['valueRange']['values']
+        values = res["data"]["valueRange"]["values"]
         cols = values.pop(0)
         return cols
 
@@ -327,7 +327,7 @@ class SpreadSheets(FeishuApiBase):
         :return:
         """
         res = self.read_sheet(token, sheet_id)
-        values = res['data']['valueRange']['values']
+        values = res["data"]["valueRange"]["values"]
         cols = values.pop(0)
         return pd.DataFrame(values, columns=cols)
 
@@ -347,7 +347,7 @@ class SpreadSheets(FeishuApiBase):
         url = f"{self.host}/open-apis/sheets/v2/spreadsheets/{token}/condition_formats/batch_create"
         return request("POST", url, self.get_headers(), data)
 
-    def set_styles_batch(self, token,data):
+    def set_styles_batch(self, token, data):
         """批量设置表格普通样式
         https://open.feishu.cn/document/server-docs/docs/sheets-v3/data-operation/batch-set-cell-style
         """
@@ -403,4 +403,3 @@ class SingleSheet(SpreadSheets):
         删除电子表格的所有数据
         """
         super().delete_values(self.token, self.sheet_id)
-

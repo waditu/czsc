@@ -14,6 +14,7 @@ describe: 飞书应用API接口封装
 """
 import os
 import time
+import loguru
 import requests
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_random
@@ -58,12 +59,13 @@ def request(method, url, headers, payload=None) -> dict:
 
 
 class FeishuApiBase:
-    def __init__(self, app_id, app_secret):
+    def __init__(self, app_id, app_secret, **kwargs):
         self.app_id = app_id
         self.app_secret = app_secret
         self.host = "https://open.feishu.cn"
         self.headers = {"Content-Type": "application/json"}
         self.cache = dict()
+        self.logger = kwargs.get("logger", loguru.logger)
 
     def get_access_token(self, key="app_access_token"):
         assert key in ["app_access_token", "tenant_access_token"]
