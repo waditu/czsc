@@ -245,14 +245,12 @@ class BiTable(FeishuApiBase):
         """数据表中新增一条记录
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/create
-        :param table_id: table id
 
+        :param table_id: table id
         :param user_id_type: 非必需 用户 ID 类型
         :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。
-
         :param fields: 必需
             数据表的字段，即数据表的列。当前接口支持的字段类型为：多行文本、单选、条码、多选、日期、人员、附件、复选框、超链接、数字、单向关联、双向关联、电话号码、地理位置。详情参考
-
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records?1=1"
@@ -284,27 +282,23 @@ class BiTable(FeishuApiBase):
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/delete
         :param table_id: table id
         :param record_id: 一条记录的唯一标识 id
-
         :return: 返回数据
         """
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/{record_id}"
         return request("DELETE", url, self.get_headers())
 
-    def table_record_batch_create(self, table_id, fields, user_id_type=None, client_token=None):
+    def table_record_batch_create(self, table_id, records, user_id_type=None, client_token=None):
         """在数据表中新增多条记录，单次调用最多新增 500 条记录。
 
         https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/batch_create
+
         :param table_id: table id
-
         :param user_id_type: 非必需 用户 ID 类型
-        :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。此值为空表示将发起一次新的请求，此值非空表示幂等的进行更新操作。
-
-        :param fields:[] 	数据表的字段，即数据表的列当前接口支持的字段类型 示例值：{"多行文本":"HelloWorld"}
+        :param client_token: 非必需 格式为标准的 uuidv4，操作的唯一标识，用于幂等的进行更新操作。
+            此值为空表示将发起一次新请求，此值非空表示幂等的进行更新操作。
+        :param records: [] 数据表的字段
         :return: 返回数据
         """
-        records = []
-        for field in fields:
-            records.append({"fields": field})
         url = f"{self.host}/open-apis/bitable/v1/apps/{self.app_token}/tables/{table_id}/records/batch_create?1=1"
         url = url if user_id_type is None else url + f"&user_id_type={user_id_type}"
         url = url if client_token is None else url + f"&client_token={client_token}"
