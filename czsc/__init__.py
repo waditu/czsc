@@ -197,6 +197,10 @@ from czsc.utils.portfolio import (
     max_sharp,
 )
 
+from czsc.eda import (
+    remove_beta_effects, vwap, twap
+)
+
 
 __version__ = "0.9.57"
 __author__ = "zengbin93"
