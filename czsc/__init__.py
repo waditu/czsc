@@ -198,7 +198,8 @@ from czsc.utils.portfolio import (
 )
 
 from czsc.eda import (
-    remove_beta_effects, vwap, twap
+    remove_beta_effects, vwap, twap,
+    cross_sectional_strategy,
 )
 
 
