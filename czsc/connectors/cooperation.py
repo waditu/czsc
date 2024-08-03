@@ -304,7 +304,7 @@ def get_stk_strategy(name="STK_001", **kwargs):
         edt: str, optional
             结束日期，默认为当前日期
     """
-    dfw = dc.post_request(api_name=name, v=2, hist=1)
+    dfw = dc.post_request(api_name=name, v=2, hist=1, ttl=kwargs.get("ttl", 3600 * 6))
     dfw["dt"] = pd.to_datetime(dfw["dt"])
     sdt = kwargs.get("sdt", "20170101")
     edt = pd.Timestamp.now().strftime("%Y%m%d")
