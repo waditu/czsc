@@ -153,6 +153,8 @@ from czsc.utils.st_components import (
     show_feature_returns,
     show_czsc_trader,
     show_strategies_recent,
+    show_factor_value,
+    show_code_editor,
 )
 
 from czsc.utils.bi_info import (
