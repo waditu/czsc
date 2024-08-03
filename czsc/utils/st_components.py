@@ -408,6 +408,7 @@ def show_weight_backtest(dfw, **kwargs):
         - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
         - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
         - show_monthly_return: bool，是否展示月度累计收益，默认为 False
+        - n_jobs: int, 并行计算的进程数，默认为 1
 
     """
     fee = kwargs.get("fee", 2)
@@ -417,7 +418,7 @@ def show_weight_backtest(dfw, **kwargs):
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
+    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits, n_jobs=kwargs.get("n_jobs", 1))
     stat = wb.results["绩效评价"]
 
     st.divider()

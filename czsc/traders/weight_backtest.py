@@ -283,9 +283,8 @@ class WeightBacktest:
         self.fee_rate = kwargs.get("fee_rate", 0.0002)
         self.dfw["weight"] = self.dfw["weight"].astype("float").round(digits)
         self.symbols = list(self.dfw["symbol"].unique().tolist())
-        default_n_jobs = min(cpu_count() // 2, len(self.symbols))
         self._dailys = None
-        self.results = self.backtest(n_jobs=kwargs.get("n_jobs", default_n_jobs))
+        self.results = self.backtest(n_jobs=kwargs.get("n_jobs", 1))
 
     @property
     def stats(self):
