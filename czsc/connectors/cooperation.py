@@ -291,3 +291,27 @@ def upload_strategy(df, meta, token=None, **kwargs):
 
     logger.info(f"上传策略接口返回: {response.json()}")
     return response.json()
+
+
+def get_stk_strategy(name="STK_001", **kwargs):
+    """获取 STK 系列子策略的持仓权重数据
+
+    :param name: str
+        子策略名称
+    :param kwargs: dict
+        sdt: str, optional
+            开始日期，默认为 "20170101"
+        edt: str, optional
+            结束日期，默认为当前日期
+    """
+    dfw = dc.post_request(api_name=name, v=2, hist=1, ttl=kwargs.get("ttl", 3600 * 6))
+    dfw["dt"] = pd.to_datetime(dfw["dt"])
+    sdt = kwargs.get("sdt", "20170101")
+    edt = pd.Timestamp.now().strftime("%Y%m%d")
+    edt = kwargs.get("edt", edt)
+    dfw = dfw[(dfw["dt"] >= pd.to_datetime(sdt)) & (dfw["dt"] <= pd.to_datetime(edt))].copy().reset_index(drop=True)
+
+    dfb = stocks_daily_klines(sdt=sdt, edt=edt, nxb=(1, 2))
+    dfw = pd.merge(dfw, dfb, on=["dt", "symbol"], how="left")
+    dfh = dfw[["dt", "symbol", "weight", "n1b"]].copy()
+    return dfh

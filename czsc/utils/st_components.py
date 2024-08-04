@@ -408,6 +408,7 @@ def show_weight_backtest(dfw, **kwargs):
         - show_splited_daily: bool，是否展示分段日收益表现，默认为 False
         - show_yearly_stats: bool，是否展示年度绩效指标，默认为 False
         - show_monthly_return: bool，是否展示月度累计收益，默认为 False
+        - n_jobs: int, 并行计算的进程数，默认为 1
 
     """
     fee = kwargs.get("fee", 2)
@@ -417,7 +418,7 @@ def show_weight_backtest(dfw, **kwargs):
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits)
+    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits, n_jobs=kwargs.get("n_jobs", 1))
     stat = wb.results["绩效评价"]
 
     st.divider()
@@ -1483,3 +1484,166 @@ def show_czsc_trader(trader: czsc.CzscTrader, max_k_num=300, **kwargs):
             st.divider()
             st.write(pos.name)
             st.json(pos.dump(with_data=False))
+
+
+def show_strategies_recent(df, **kwargs):
+    """展示最近 N 天的策略表现
+
+    :param df: pd.DataFrame, columns=['dt', 'strategy', 'returns'], 样例如下：
+
+        ===================  ==========  ============
+        dt                   strategy    returns
+        ===================  ==========  ============
+        2021-01-04 00:00:00  STK001      -0.00240078
+        2021-01-05 00:00:00  STK001      -0.00107012
+        2021-01-06 00:00:00  STK001       0.00122168
+        2021-01-07 00:00:00  STK001       0.0020896
+        2021-01-08 00:00:00  STK001       0.000510725
+        ===================  ==========  ============
+
+    :param kwargs: dict
+
+        - nseq: tuple, optional, 默认为 (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360)，展示的天数序列
+    """
+    nseq = kwargs.get("nseq", (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360))
+    dfr = df.copy()
+    dfr = pd.pivot_table(dfr, index="dt", columns="strategy", values="returns", aggfunc="sum").fillna(0)
+    rows = []
+    for n in nseq:
+        for k, v in dfr.iloc[-n:].sum(axis=0).to_dict().items():
+            rows.append({"天数": f"近{n}天", "策略": k, "收益": v})
+
+    n_rets = pd.DataFrame(rows).pivot_table(index="策略", columns="天数", values="收益")
+    n_rets = n_rets[[f"近{x}天" for x in nseq]]
+
+    st.dataframe(
+        n_rets.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}", na_rep="-"),
+        use_container_width=True,
+        hide_index=False,
+    )
+
+    # 计算每个时间段的盈利策略数量
+    win_count = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0)
+    win_rate = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
+    dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
+    dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
+    st.dataframe(dfs, use_container_width=True)
+    st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
+
+
+def show_factor_value(df, factor, **kwargs):
+    """展示因子值可视化
+
+    :param df: pd.DataFrame, columns=['dt', ‘open’, ‘close’, ‘high’, ‘low’, ‘vol’, factor]
+    :param factor: str, 因子名称
+    :param kwargs: dict, 其他参数
+
+        - height: int, 可视化高度，默认为 600
+        - row_heights: list, 默认为 [0.6, 0.1, 0.3]
+        - title: str, 默认为 f"{factor} 可视化"
+
+    """
+    if factor not in df.columns:
+        st.warning(f"因子 {factor} 不存在，请检查")
+        return
+
+    height = kwargs.get("height", 600)
+    row_heights = kwargs.get("row_heights", [0.6, 0.1, 0.3])
+    title = kwargs.get("title", f"{factor} 可视化")
+
+    chart = czsc.KlineChart(n_rows=3, height=height, row_heights=row_heights, title=title)
+    chart.add_kline(df)
+    chart.add_sma(df, visible=True, line_width=1)
+    chart.add_vol(df, row=2)
+    chart.add_scatter_indicator(df["dt"], df[factor], name=factor, row=3, line_width=1.5)
+
+    plotly_config = {
+        "scrollZoom": True,
+        "displayModeBar": True,
+        "displaylogo": False,
+        "modeBarButtonsToRemove": [
+            "toggleSpikelines",
+            "select2d",
+            "zoomIn2d",
+            "zoomOut2d",
+            "lasso2d",
+            "autoScale2d",
+            "hoverClosestCartesian",
+            "hoverCompareCartesian",
+        ],
+    }
+    st.plotly_chart(chart.fig, use_container_width=True, config=plotly_config)
+
+
+def show_code_editor(default: str = None, **kwargs):
+    """用户自定义 Python 代码编辑器
+
+    :param default: str, 默认代码
+    :param kwargs: dict, 额外参数
+
+        - language: str, 编辑器语言，默认为 "python"
+        - use_expander: bool, 是否使用折叠面板，默认为 True
+        - expander_title: str, 折叠面板标题，默认为 "PYTHON代码编辑"
+        - exec: bool, 是否执行代码，默认为 True
+        - theme: str, 编辑器主题，默认为 "gruvbox"
+        - keybinding: str, 编辑器快捷键，默认为 "vscode"
+
+    :return: tuple
+        - code: str, 编辑器中的代码
+        - namespace: dict, 执行代码后的命名空间
+    """
+    if default is None:
+        default = """
+# 代码示例
+import czsc
+import pandas as pd
+import numpy as np
+"""
+    try:
+        from streamlit_ace import st_ace, THEMES, KEYBINDINGS, LANGUAGES
+    except ImportError:
+        st.error("请先安装 streamlit-ace 库，执行命令：pip install streamlit-ace")
+        return
+
+    default_language = kwargs.get("language", "python")
+    default_theme = kwargs.get("theme", "gruvbox")
+    default_keybinding = kwargs.get("keybinding", "vscode")
+
+    def __editor():
+        c1, c2 = st.columns([10, 1])
+        with c2:
+            language = c2.selectbox("语言", LANGUAGES, index=LANGUAGES.index(default_language))
+            height = c2.number_input("编辑器高度", value=550, min_value=100, max_value=2000, step=50)
+            font_size = c2.number_input("字体大小", value=16, min_value=8, max_value=32)
+            theme = c2.selectbox("主题", THEMES, index=THEMES.index(default_theme))
+            keybinding = c2.selectbox("快捷键", KEYBINDINGS, index=KEYBINDINGS.index(default_keybinding))
+            wrap = c2.checkbox("自动换行", value=True)
+            show_gutter = c2.checkbox("显示行号", value=True)
+            readonly = c2.checkbox("只读模式", value=False)
+
+        with c1:
+            _code = st_ace(
+                language=language,
+                value=default,
+                height=height,
+                font_size=font_size,
+                theme=theme,
+                show_gutter=show_gutter,
+                keybinding=keybinding,
+                markers=None,
+                tab_size=4,
+                wrap=wrap,
+                show_print_margin=False,
+                readonly=readonly,
+                key="python_editor",
+            )
+        return _code
+
+    use_expander = kwargs.get("use_expander", True)
+    expander_title = kwargs.get("expander_title", "代码编辑器")
+    if not use_expander:
+        code = __editor()
+    else:
+        with st.expander(expander_title, expanded=True):
+            code = __editor()
+    return code

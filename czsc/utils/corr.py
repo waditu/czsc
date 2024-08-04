@@ -123,6 +123,10 @@ def cross_sectional_ic(df, x_col="open", y_col="n1b", method="spearman", **kwarg
         "IC绝对值>2%占比": 0,
         "累计IC回归R2": 0,
         "累计IC回归斜率": 0,
+        "月胜率": 0,
+        "月均值": 0,
+        "年胜率": 0,
+        "年均值": 0,
     }
     if df.empty:
         return df, res
@@ -143,4 +147,15 @@ def cross_sectional_ic(df, x_col="open", y_col="n1b", method="spearman", **kwarg
 
     lr_ = single_linear(y=df["ic"].cumsum().to_list())
     res.update({"累计IC回归R2": lr_["r2"], "累计IC回归斜率": lr_["slope"]})
+
+    monthly_ic = df.groupby(df["dt"].dt.strftime("%Y年%m月"))["ic"].mean().to_dict()
+    monthly_win_rate = len([1 for x in monthly_ic.values() if np.sign(x) == np.sign(res["IC均值"])]) / len(monthly_ic)
+    res["月胜率"] = round(monthly_win_rate, 4)
+    res["月均值"] = round(np.mean(list(monthly_ic.values())), 4)
+
+    yearly_ic = df.groupby(df["dt"].dt.strftime("%Y年"))["ic"].mean().to_dict()
+    yearly_win_rate = len([1 for x in yearly_ic.values() if np.sign(x) == np.sign(res["IC均值"])]) / len(yearly_ic)
+    res["年胜率"] = round(yearly_win_rate, 4)
+    res["年均值"] = round(np.mean(list(yearly_ic.values())), 4)
+
     return df, res

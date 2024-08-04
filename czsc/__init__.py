@@ -152,6 +152,9 @@ from czsc.utils.st_components import (
     show_symbols_corr,
     show_feature_returns,
     show_czsc_trader,
+    show_strategies_recent,
+    show_factor_value,
+    show_code_editor,
 )
 
 from czsc.utils.bi_info import (
@@ -192,10 +195,20 @@ from czsc.utils.kline_quality import (
 )
 
 
-__version__ = "0.9.56"
+from czsc.utils.portfolio import (
+    max_sharp,
+)
+
+from czsc.eda import (
+    remove_beta_effects, vwap, twap,
+    cross_sectional_strategy,
+)
+
+
+__version__ = "0.9.57"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240714"
+__date__ = "20240726"
 
 
 def welcome():
