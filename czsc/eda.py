@@ -121,3 +121,30 @@ def cross_sectional_strategy(df, factor, **kwargs):
             df.loc[dfb.index, "weight"] = -1 / short_num
 
     return df
+
+
+def judge_factor_direction(df: pd.DataFrame, factor, target='n1b', by='symbol', **kwargs):
+    """判断因子的方向，正向还是反向
+
+    :param df: pd.DataFrame, 数据源，必须包含 symbol, dt, target, factor 列
+    :param factor: str, 因子名称
+    :param target: str, 目标名称，默认为 n1b，表示下一根K线的涨跌幅
+    :param by: str, 分组字段，默认为 symbol，表示按品种分组（时序）；也可以按 dt 分组，表示按时间分组（截面）
+    :param kwargs: dict, 其他参数
+        - method: str, 相关系数计算方法，默认为 pearson，可选 pearson, kendall, spearman
+    :return: str, positive or negative
+    """
+    assert by in df.columns, f"数据中不存在 {by} 字段"
+    assert factor in df.columns, f"数据中不存在 {factor} 字段"
+    assert target in df.columns, f"数据中不存在 {target} 字段"
+
+    if by == "dt" and df['symbol'].nunique() < 2:
+        raise ValueError("品种数量过少，无法在时间截面上计算因子有效性方向")
+
+    if by == "symbol" and df['dt'].nunique() < 2:
+        raise ValueError("时间序列数据量过少，无法在品种上计算因子有效性方向")
+
+    method = kwargs.get("method", "pearson")
+    dfc = df.groupby(by)[[factor, target]].corr(method=method).unstack().iloc[:, 1].reset_index()
+    return "positive" if dfc[factor].mean().iloc[0] >= 0 else "negative"
+
