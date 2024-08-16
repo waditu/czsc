@@ -422,7 +422,7 @@ def show_weight_backtest(dfw, **kwargs):
     stat = wb.results["绩效评价"]
 
     st.divider()
-    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     c1.metric("盈亏平衡点", f"{stat['盈亏平衡点']:.2%}")
     c2.metric("单笔收益（BP）", f"{stat['单笔收益']}")
     c3.metric("交易胜率", f"{stat['交易胜率']:.2%}")
@@ -433,6 +433,7 @@ def show_weight_backtest(dfw, **kwargs):
     c8.metric("卡玛比率", f"{stat['卡玛']:.2f}")
     c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
+    c11.metric("空头占比", f"{stat['空头占比']:.2%}")
     st.divider()
 
     dret = wb.results["品种等权日收益"].copy()

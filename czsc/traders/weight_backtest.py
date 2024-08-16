@@ -565,7 +565,7 @@ class WeightBacktest:
         dfw = self.dfw.copy()
         long_rate = dfw[dfw["weight"] > 0].shape[0] / dfw.shape[0]
         short_rate = dfw[dfw["weight"] < 0].shape[0] / dfw.shape[0]
-        stats.update({"多头占比": long_rate, "空头占比": short_rate})
+        stats.update({"多头占比": round(long_rate, 4), "空头占比": round(short_rate, 4)})
 
         res["绩效评价"] = stats
         return res
