@@ -22,12 +22,14 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         - legend_only_cols: list，仅在图例中展示的列名
         - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
         - plot_cumsum: bool，是否展示日收益累计曲线，默认为 True
+        - yearly_days: int，年交易天数，默认为 252
 
     """
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    yearly_days = kwargs.get("yearly_days", 252)
 
     df = df.copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
@@ -35,13 +37,13 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     def _stats(df_, type_="持有日"):
         df_ = df_.copy()
         stats = []
-        for col in df_.columns:
+        for _col in df_.columns:
             if type_ == "持有日":
-                col_stats = czsc.daily_performance([x for x in df_[col] if x != 0])
+                col_stats = czsc.daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
             else:
                 assert type_ == "交易日", "type_ 参数必须是 持有日 或 交易日"
-                col_stats = czsc.daily_performance(df_[col])
-            col_stats["日收益名称"] = col
+                col_stats = czsc.daily_performance(df_[_col])
+            col_stats["日收益名称"] = _col
             stats.append(col_stats)
 
         stats = pd.DataFrame(stats).set_index("日收益名称")
@@ -51,6 +53,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
@@ -61,6 +64,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             {
                 "盈亏平衡点": "{:.2f}",
                 "年化波动率": "{:.2%}",
+                "下行波动率": "{:.2%}",
                 "最大回撤": "{:.2%}",
                 "卡玛": "{:.2f}",
                 "年化": "{:.2%}",
@@ -585,6 +589,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
@@ -596,6 +601,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
         {
             "盈亏平衡点": "{:.2f}",
             "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
             "最大回撤": "{:.2%}",
             "卡玛": "{:.2f}",
             "年化": "{:.2%}",
