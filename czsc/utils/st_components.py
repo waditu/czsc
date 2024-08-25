@@ -42,7 +42,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
                 col_stats = czsc.daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
             else:
                 assert type_ == "交易日", "type_ 参数必须是 持有日 或 交易日"
-                col_stats = czsc.daily_performance(df_[_col])
+                col_stats = czsc.daily_performance(df_[_col], yearly_days=yearly_days)
             col_stats["日收益名称"] = _col
             stats.append(col_stats)
 
@@ -482,6 +482,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         sub_title: str, 子标题
 
     """
+    yearly_days = kwargs.get("yearly_days", 252)
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -509,7 +510,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     rows = []
     for name, sdt in sdt_map.items():
         df1 = df.loc[sdt:last_dt].copy()
-        row = czsc.daily_performance(df1[ret_col])
+        row = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
         row["开始日期"] = sdt.strftime("%Y-%m-%d")
         row["结束日期"] = last_dt.strftime("%Y-%m-%d")
         row["收益名称"] = name
@@ -574,10 +575,11 @@ def show_yearly_stats(df, ret_col, **kwargs):
     df.sort_index(inplace=True, ascending=True)
 
     df["年份"] = df.index.year
+    yearly_days = max(len(df_) for year, df_ in df.groupby("年份"))
 
     _stats = []
     for year, df_ in df.groupby("年份"):
-        _yst = czsc.daily_performance(df_[ret_col].to_list())
+        _yst = czsc.daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
         _yst["年份"] = year
         _stats.append(_yst)
 
