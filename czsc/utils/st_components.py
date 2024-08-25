@@ -23,6 +23,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
         - plot_cumsum: bool，是否展示日收益累计曲线，默认为 True
         - yearly_days: int，年交易天数，默认为 252
+        - show_dailys: bool，是否展示日收益数据详情，默认为 False
 
     """
     if not df.index.dtype == "datetime64[ns]":
@@ -84,17 +85,22 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     with st.container():
         sub_title = kwargs.get("sub_title", "")
         if sub_title:
-            st.subheader(sub_title, divider="rainbow")
+            st.subheader(sub_title, divider="rainbow", anchor=sub_title)
+        if kwargs.get("show_dailys", False):
+            with st.expander("日收益数据详情", expanded=False):
+                st.dataframe(df, use_container_width=True)
 
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
                 st.table(_stats(df, type_="交易日"))
             else:
                 st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
+            st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
 
         if kwargs.get("stat_hold_days", True):
             with st.expander("持有日绩效指标", expanded=False):
                 st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+                st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
         if kwargs.get("plot_cumsum", True):
             df = df.cumsum()
@@ -131,7 +137,7 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     df.sort_index(inplace=True, ascending=True)
 
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     monthly = df[[ret_col]].resample("ME").sum()
     monthly["year"] = monthly.index.year
@@ -493,7 +499,7 @@ def show_splited_daily(df, ret_col, **kwargs):
 
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     last_dt = df.index[-1]
     sdt_map = {
@@ -617,8 +623,9 @@ def show_yearly_stats(df, ret_col, **kwargs):
         }
     )
 
-    if kwargs.get("sub_title"):
-        st.subheader(kwargs.get("sub_title"), divider="rainbow")
+    sub_title = kwargs.get("sub_title", "")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
     st.dataframe(stats, use_container_width=True)
 
 
@@ -1029,7 +1036,7 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
 
     sub_title = kwargs.get("sub_title", "滚动日收益绩效")
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     c1, c2, c3 = st.columns(3)
     window = c1.number_input("滚动窗口（自然日）", value=365 * 3, min_value=365, max_value=3650)
