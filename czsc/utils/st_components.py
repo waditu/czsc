@@ -532,6 +532,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         "最大回撤",
         "卡玛",
         "年化波动率",
+        "下行波动率",
         "非零覆盖",
         "日胜率",
         "盈亏平衡点",
@@ -544,6 +545,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["最大回撤"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["卡玛"])
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["年化波动率"])
+    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["下行波动率"])
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["盈亏平衡点"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["日胜率"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["非零覆盖"])
@@ -551,6 +553,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         {
             "盈亏平衡点": "{:.2f}",
             "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
             "最大回撤": "{:.2%}",
             "卡玛": "{:.2f}",
             "年化": "{:.2%}",
@@ -845,11 +848,11 @@ def show_cointegration(df, col1, col2, **kwargs):
             )
 
     l1, l2, l3 = st.columns(3)
-    coint_t, pvalue, crit_value = coint(df[col1], df[col2])
-    l1.metric("协整检验统计量", str(round(coint_t, 3)), help="单位根检验的T统计量。")
+    t, p, crit_value = coint(df[col1], df[col2])
+    l1.metric("协整检验统计量", str(round(t, 3)), help="单位根检验的T统计量。")
     l2.metric(
         "协整检验P值（不协整的概率）",
-        f"{pvalue:.2%}",
+        f"{p:.2%}",
         help="两个时间序列不协整的概率，低于5%则可以认为两个时间序列协整。",
     )
     fig = px.line(df, x=df.index, y=[col1, col2])
