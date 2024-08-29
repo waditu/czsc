@@ -570,8 +570,8 @@ class WeightBacktest:
         alpha = self.alpha.copy()
         stats["与基准相关性"] = round(alpha["策略"].corr(alpha["基准"]), 4)
         alpha_short = alpha[alpha["基准"] < 0].copy()
-        stats['与基准空头相关性'] = round(alpha_short["策略"].corr(alpha_short["基准"]), 4)
-        stats['品种数量'] = len(symbols)
+        stats["与基准空头相关性"] = round(alpha_short["策略"].corr(alpha_short["基准"]), 4)
+        stats["品种数量"] = len(symbols)
 
         res["绩效评价"] = stats
         return res
