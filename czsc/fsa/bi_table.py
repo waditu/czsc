@@ -725,6 +725,10 @@ class BiTable(FeishuApiBase):
         rows = []
         res = self.list_records(table_id, **kwargs)["data"]
         total = res["total"]
+
+        if total == 0:
+            return pd.DataFrame()
+
         rows.extend(res["items"])
         while res["has_more"]:
             res = self.list_records(table_id, page_token=res["page_token"], **kwargs)["data"]

@@ -565,7 +565,13 @@ class WeightBacktest:
         dfw = self.dfw.copy()
         long_rate = dfw[dfw["weight"] > 0].shape[0] / dfw.shape[0]
         short_rate = dfw[dfw["weight"] < 0].shape[0] / dfw.shape[0]
-        stats.update({"多头占比": long_rate, "空头占比": short_rate})
+        stats.update({"多头占比": round(long_rate, 4), "空头占比": round(short_rate, 4)})
+
+        alpha = self.alpha.copy()
+        stats["与基准相关性"] = round(alpha["策略"].corr(alpha["基准"]), 4)
+        alpha_short = alpha[alpha["基准"] < 0].copy()
+        stats["与基准空头相关性"] = round(alpha_short["策略"].corr(alpha_short["基准"]), 4)
+        stats["品种数量"] = len(symbols)
 
         res["绩效评价"] = stats
         return res

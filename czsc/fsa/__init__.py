@@ -3,7 +3,7 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:37
-describe: 
+describe:
 """
 
 import requests
@@ -36,7 +36,7 @@ def push_text(text: str, key: str) -> None:
         logger.error(f"推送消息失败: {e}")
 
 
-def push_card(card: str, key: str) -> None:
+def push_card(card: dict, key: str) -> None:
     """使用自定义机器人推送卡片消息到飞书群聊
 
     如何在群组中使用机器人:
@@ -150,7 +150,7 @@ def update_spreadsheet(df: pd.DataFrame, spreadsheet_token: str, sheet_id: str, 
 
     获取 sheet_id - https://open.feishu.cn/document/server-docs/docs/sheets-v3/spreadsheet-sheet/query?appId=cli_a3077015cc39500e
 
-    :param df: datafream内容
+    :param df: dataframe内容
     :param spreadsheet_token: 表格对应的token，url获取
     :param sheet_id:  工作表的id
     :param kwargs:
@@ -175,6 +175,6 @@ def update_spreadsheet(df: pd.DataFrame, spreadsheet_token: str, sheet_id: str, 
         else:
             logger.error(b)
             return 0
-    except Exception:
-        logger.exception("更新飞书表格失败")
+    except Exception as e:
+        logger.exception(f"更新飞书表格失败: {e}")
         return 0

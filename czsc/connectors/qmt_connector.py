@@ -138,7 +138,7 @@ def start_qmt_exe(acc, pwd, qmt_exe, title, max_retry=6, **kwargs):
 
     wait_seconds = kwargs.get("wait_seconds", 6)
     i = 0
-    while not find_exe_window(acc):
+    while not find_exe_window(title):
         if i > max_retry:
             logger.warning(f"QMT连续{i}次尝试依旧无法启动，请人工检查!")
             break

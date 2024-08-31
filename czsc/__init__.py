@@ -202,13 +202,15 @@ from czsc.utils.portfolio import (
 from czsc.eda import (
     remove_beta_effects, vwap, twap,
     cross_sectional_strategy,
+    judge_factor_direction,
+    monotonicity,
 )
 
 
-__version__ = "0.9.57"
+__version__ = "0.9.58"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240726"
+__date__ = "20240808"
 
 
 def welcome():

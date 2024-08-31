@@ -78,10 +78,11 @@ def daily_performance(daily_returns, **kwargs):
         - 卡玛比率 = 年化收益率 / 最大回撤（如果最大回撤不为零，则除以最大回撤；否则为10）
         - 日胜率 = 大于零的日收益率的个数 / 日收益率的总个数
         - 年化波动率 = 日收益率的标准差 * 标准差的根号252
+        - 下行波动率 = 日收益率中小于零的日收益率的标准差 * 标准差的根号252
         - 非零覆盖 = 非零的日收益率个数 / 日收益率的总个数
         - 回撤风险 = 最大回撤 / 年化波动率；一般认为 1 以下为低风险，1-2 为中风险，2 以上为高风险
 
-    4. 将所有指标的值存储在一个字典中，其中键为指标名称，值为相应的计算结果。
+    4. 将所有指标的值存储在字典中，其中键为指标名称，值为相应的计算结果。
 
     :param daily_returns: 日收益率数据，样例：
         [0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01]
@@ -101,6 +102,7 @@ def daily_performance(daily_returns, **kwargs):
             "卡玛": 0,
             "日胜率": 0,
             "年化波动率": 0,
+            "下行波动率": 0,
             "非零覆盖": 0,
             "盈亏平衡点": 0,
             "新高间隔": 0,
@@ -117,6 +119,8 @@ def daily_performance(daily_returns, **kwargs):
     win_pct = len(daily_returns[daily_returns >= 0]) / len(daily_returns)
     annual_volatility = np.std(daily_returns) * np.sqrt(yearly_days)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
+
+    downside_volatility = np.std(daily_returns[daily_returns < 0]) * np.sqrt(yearly_days)
 
     # 计算最大新高间隔
     max_interval = Counter(np.maximum.accumulate(cum_returns).tolist()).most_common(1)[0][1]
@@ -141,6 +145,7 @@ def daily_performance(daily_returns, **kwargs):
         "卡玛": __min_max(kama, -10, 10, 2),
         "日胜率": round(win_pct, 4),
         "年化波动率": round(annual_volatility, 4),
+        "下行波动率": round(downside_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),
         "盈亏平衡点": round(cal_break_even_point(daily_returns), 4),
         "新高间隔": max_interval,

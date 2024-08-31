@@ -1,3 +1,5 @@
+# 飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f
+
 import czsc
 import hashlib
 import optuna
@@ -22,12 +24,15 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         - legend_only_cols: list，仅在图例中展示的列名
         - use_st_table: bool，是否使用 st.table 展示绩效指标，默认为 False
         - plot_cumsum: bool，是否展示日收益累计曲线，默认为 True
+        - yearly_days: int，年交易天数，默认为 252
+        - show_dailys: bool，是否展示日收益数据详情，默认为 False
 
     """
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    yearly_days = kwargs.get("yearly_days", 252)
 
     df = df.copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
@@ -35,13 +40,13 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     def _stats(df_, type_="持有日"):
         df_ = df_.copy()
         stats = []
-        for col in df_.columns:
+        for _col in df_.columns:
             if type_ == "持有日":
-                col_stats = czsc.daily_performance([x for x in df_[col] if x != 0])
+                col_stats = czsc.daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
             else:
                 assert type_ == "交易日", "type_ 参数必须是 持有日 或 交易日"
-                col_stats = czsc.daily_performance(df_[col])
-            col_stats["日收益名称"] = col
+                col_stats = czsc.daily_performance(df_[_col], yearly_days=yearly_days)
+            col_stats["日收益名称"] = _col
             stats.append(col_stats)
 
         stats = pd.DataFrame(stats).set_index("日收益名称")
@@ -51,6 +56,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
         stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
         stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
@@ -61,6 +67,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             {
                 "盈亏平衡点": "{:.2f}",
                 "年化波动率": "{:.2%}",
+                "下行波动率": "{:.2%}",
                 "最大回撤": "{:.2%}",
                 "卡玛": "{:.2f}",
                 "年化": "{:.2%}",
@@ -80,17 +87,22 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     with st.container():
         sub_title = kwargs.get("sub_title", "")
         if sub_title:
-            st.subheader(sub_title, divider="rainbow")
+            st.subheader(sub_title, divider="rainbow", anchor=sub_title)
+        if kwargs.get("show_dailys", False):
+            with st.expander("日收益数据详情", expanded=False):
+                st.dataframe(df, use_container_width=True)
 
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
                 st.table(_stats(df, type_="交易日"))
             else:
                 st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
+            st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
 
         if kwargs.get("stat_hold_days", True):
             with st.expander("持有日绩效指标", expanded=False):
                 st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+                st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
         if kwargs.get("plot_cumsum", True):
             df = df.cumsum()
@@ -127,7 +139,7 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     df.sort_index(inplace=True, ascending=True)
 
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     monthly = df[[ret_col]].resample("ME").sum()
     monthly["year"] = monthly.index.year
@@ -185,8 +197,10 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     :param y_col: str，收益列名
     :param method: str，计算IC的方法，可选 pearson 和 spearman
     :param kwargs:
+
         - show_cumsum_ic: bool，是否展示累计IC曲线，默认为 True
         - show_factor_histgram: bool，是否展示因子数据分布图，默认为 False
+
     """
     dfc, res = czsc.cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
 
@@ -315,7 +329,6 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     :param kwargs:
 
         - n: 分层数量，默认为10
-
     """
     n = kwargs.get("n", 10)
     df = czsc.feture_cross_layering(df, factor, n=n)
@@ -325,7 +338,26 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     if "第00层" in mrr.columns:
         mrr.drop(columns=["第00层"], inplace=True)
 
-    czsc.show_daily_return(mrr, stat_hold_days=False)
+    # 计算每层的累计收益率
+    dfc = mrr.sum(axis=0).to_frame("绝对收益")
+
+    dfc["text"] = dfc["绝对收益"].apply(lambda x: f"{x:.2%}")
+    fig = px.bar(
+        dfc,
+        y="绝对收益",
+        title="因子分层绝对收益 | 单调性：{:.2%}".format(czsc.monotonicity(dfc["绝对收益"])),
+        color="绝对收益",
+        color_continuous_scale="RdYlGn_r",
+        text="text",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    czsc.show_daily_return(
+        mrr,
+        stat_hold_days=False,
+        yearly_days=kwargs.get("yearly_days", 252),
+        show_dailys=kwargs.get("show_dailys", False),
+    )
 
 
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
@@ -422,7 +454,7 @@ def show_weight_backtest(dfw, **kwargs):
     stat = wb.results["绩效评价"]
 
     st.divider()
-    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+    c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     c1.metric("盈亏平衡点", f"{stat['盈亏平衡点']:.2%}")
     c2.metric("单笔收益（BP）", f"{stat['单笔收益']}")
     c3.metric("交易胜率", f"{stat['交易胜率']:.2%}")
@@ -433,6 +465,7 @@ def show_weight_backtest(dfw, **kwargs):
     c8.metric("卡玛比率", f"{stat['卡玛']:.2f}")
     c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
+    c11.metric("空头占比", f"{stat['空头占比']:.2%}")
     st.divider()
 
     dret = wb.results["品种等权日收益"].copy()
@@ -477,6 +510,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         sub_title: str, 子标题
 
     """
+    yearly_days = kwargs.get("yearly_days", 252)
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -487,7 +521,7 @@ def show_splited_daily(df, ret_col, **kwargs):
 
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     last_dt = df.index[-1]
     sdt_map = {
@@ -504,7 +538,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     rows = []
     for name, sdt in sdt_map.items():
         df1 = df.loc[sdt:last_dt].copy()
-        row = czsc.daily_performance(df1[ret_col])
+        row = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
         row["开始日期"] = sdt.strftime("%Y-%m-%d")
         row["结束日期"] = last_dt.strftime("%Y-%m-%d")
         row["收益名称"] = name
@@ -520,6 +554,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         "最大回撤",
         "卡玛",
         "年化波动率",
+        "下行波动率",
         "非零覆盖",
         "日胜率",
         "盈亏平衡点",
@@ -532,6 +567,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["最大回撤"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["卡玛"])
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["年化波动率"])
+    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["下行波动率"])
     dfv = dfv.background_gradient(cmap="RdYlGn", subset=["盈亏平衡点"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["日胜率"])
     dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["非零覆盖"])
@@ -539,6 +575,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         {
             "盈亏平衡点": "{:.2f}",
             "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
             "最大回撤": "{:.2%}",
             "卡玛": "{:.2f}",
             "年化": "{:.2%}",
@@ -569,10 +606,11 @@ def show_yearly_stats(df, ret_col, **kwargs):
     df.sort_index(inplace=True, ascending=True)
 
     df["年份"] = df.index.year
+    yearly_days = max(len(df_) for year, df_ in df.groupby("年份"))
 
     _stats = []
     for year, df_ in df.groupby("年份"):
-        _yst = czsc.daily_performance(df_[ret_col].to_list())
+        _yst = czsc.daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
         _yst["年份"] = year
         _stats.append(_yst)
 
@@ -584,6 +622,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
     stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
@@ -595,6 +634,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
         {
             "盈亏平衡点": "{:.2f}",
             "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
             "最大回撤": "{:.2%}",
             "卡玛": "{:.2f}",
             "年化": "{:.2%}",
@@ -608,8 +648,9 @@ def show_yearly_stats(df, ret_col, **kwargs):
         }
     )
 
-    if kwargs.get("sub_title"):
-        st.subheader(kwargs.get("sub_title"), divider="rainbow")
+    sub_title = kwargs.get("sub_title", "")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
     st.dataframe(stats, use_container_width=True)
 
 
@@ -829,11 +870,11 @@ def show_cointegration(df, col1, col2, **kwargs):
             )
 
     l1, l2, l3 = st.columns(3)
-    coint_t, pvalue, crit_value = coint(df[col1], df[col2])
-    l1.metric("协整检验统计量", str(round(coint_t, 3)), help="单位根检验的T统计量。")
+    t, p, crit_value = coint(df[col1], df[col2])
+    l1.metric("协整检验统计量", str(round(t, 3)), help="单位根检验的T统计量。")
     l2.metric(
         "协整检验P值（不协整的概率）",
-        f"{pvalue:.2%}",
+        f"{p:.2%}",
         help="两个时间序列不协整的概率，低于5%则可以认为两个时间序列协整。",
     )
     fig = px.line(df, x=df.index, y=[col1, col2])
@@ -1020,7 +1061,7 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
 
     sub_title = kwargs.get("sub_title", "滚动日收益绩效")
     if sub_title:
-        st.subheader(sub_title, divider="rainbow")
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
     c1, c2, c3 = st.columns(3)
     window = c1.number_input("滚动窗口（自然日）", value=365 * 3, min_value=365, max_value=3650)

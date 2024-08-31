@@ -32,36 +32,37 @@ os.environ['backtest_commission_ratio'] = '0.001'
 os.environ['backtest_slippage_ratio'] = '0.0005'
 """
 import sys
-sys.path.insert(0, '.')
-sys.path.insert(0, '..')
+
+sys.path.insert(0, "..")
+sys.path.insert(0, "../..")
 from czsc.connectors.gm_connector import *
 from czsc.strategies import CzscStrategyExample2
 
-os.environ['strategy_id'] = 'b24661f5-838d-11ed-882c-988fe0675a5b'
-os.environ['max_sym_pos'] = '0.5'
-os.environ['path_gm_logs'] = 'C:/gm_logs'
-os.environ['backtest_start_time'] = '2020-01-01 14:30:00'
-os.environ['backtest_end_time'] = '2020-12-31 15:30:00'
-os.environ['backtest_initial_cash'] = '100000000'
-os.environ['backtest_transaction_ratio'] = '1'
-os.environ['backtest_commission_ratio'] = '0.001'
-os.environ['backtest_slippage_ratio'] = '0.0005'
+os.environ["strategy_id"] = "b24661f5-838d-11ed-882c-988fe0675a5b"
+os.environ["max_sym_pos"] = "0.5"
+os.environ["path_gm_logs"] = "C:/gm_logs"
+os.environ["backtest_start_time"] = "2020-01-01 14:30:00"
+os.environ["backtest_end_time"] = "2020-12-31 15:30:00"
+os.environ["backtest_initial_cash"] = "100000000"
+os.environ["backtest_transaction_ratio"] = "1"
+os.environ["backtest_commission_ratio"] = "0.001"
+os.environ["backtest_slippage_ratio"] = "0.0005"
 
 
 def init(context):
     symbols = [
-        'SZSE.300014',
-        'SHSE.600143',
-        'SZSE.002216',
-        'SZSE.300033',
-        'SZSE.000795',
-        'SZSE.002739',
-        'SHSE.600000',
-        'SHSE.600008',
-        'SHSE.600006',
-        'SHSE.600009',
-        'SHSE.600010',
-        'SHSE.600011'
+        "SZSE.300014",
+        "SHSE.600143",
+        "SZSE.002216",
+        "SZSE.300033",
+        "SZSE.000795",
+        "SZSE.002739",
+        "SHSE.600000",
+        "SHSE.600008",
+        "SHSE.600006",
+        "SHSE.600009",
+        "SHSE.600010",
+        "SHSE.600011",
     ]
 
     # 配置消息推送服务，支持飞书、企业微信通道
@@ -69,11 +70,11 @@ def init(context):
         "wx_key": "",
         "fs_app": {
             # 飞书应用的 app_id 和 app_secret
-            'feishu_app_id': 'cli_a30770****39500e',
-            'feishu_app_secret': 'jVoMf688Gbw2*****HhoVbZ7fiTkTkgg',
+            "feishu_app_id": "cli_a30770****39500e",
+            "feishu_app_secret": "jVoMf688Gbw2*****HhoVbZ7fiTkTkgg",
             # 指定消息推送给哪些飞书用户，
-            'feishu_members': ['ou_6fa04b5b4d8*****fdc87d267e8f2a270'],
-        }
+            "feishu_members": ["ou_6fa04b5b4d8*****fdc87d267e8f2a270"],
+        },
     }
 
     name = "stocks_sma5"
@@ -84,14 +85,18 @@ def init(context):
     init_context_schedule(context)
 
 
-if __name__ == '__main__':
-    run(filename=os.path.basename(__file__), token=gm_token, mode=MODE_BACKTEST,
-        strategy_id=os.environ['strategy_id'],
-        backtest_start_time=os.environ['backtest_start_time'],
-        backtest_end_time=os.environ['backtest_end_time'],
-        backtest_initial_cash=int(os.environ['backtest_initial_cash']),
-        backtest_transaction_ratio=float(os.environ['backtest_transaction_ratio']),
-        backtest_commission_ratio=float(os.environ['backtest_commission_ratio']),
-        backtest_slippage_ratio=float(os.environ['backtest_slippage_ratio']),
+if __name__ == "__main__":
+    run(
+        filename=os.path.basename(__file__),
+        token=gm_token,
+        mode=MODE_BACKTEST,
+        strategy_id=os.environ["strategy_id"],
+        backtest_start_time=os.environ["backtest_start_time"],
+        backtest_end_time=os.environ["backtest_end_time"],
+        backtest_initial_cash=int(os.environ["backtest_initial_cash"]),
+        backtest_transaction_ratio=float(os.environ["backtest_transaction_ratio"]),
+        backtest_commission_ratio=float(os.environ["backtest_commission_ratio"]),
+        backtest_slippage_ratio=float(os.environ["backtest_slippage_ratio"]),
         backtest_adjust=ADJUST_PREV,
-        backtest_check_cache=1)
+        backtest_check_cache=1,
+    )
