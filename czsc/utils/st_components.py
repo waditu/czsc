@@ -1,3 +1,5 @@
+# 飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f
+
 import czsc
 import hashlib
 import optuna
@@ -195,8 +197,10 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     :param y_col: str，收益列名
     :param method: str，计算IC的方法，可选 pearson 和 spearman
     :param kwargs:
+
         - show_cumsum_ic: bool，是否展示累计IC曲线，默认为 True
         - show_factor_histgram: bool，是否展示因子数据分布图，默认为 False
+
     """
     dfc, res = czsc.cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
 
@@ -325,7 +329,6 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     :param kwargs:
 
         - n: 分层数量，默认为10
-
     """
     n = kwargs.get("n", 10)
     df = czsc.feture_cross_layering(df, factor, n=n)
@@ -335,7 +338,26 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     if "第00层" in mrr.columns:
         mrr.drop(columns=["第00层"], inplace=True)
 
-    czsc.show_daily_return(mrr, stat_hold_days=False)
+    # 计算每层的累计收益率
+    dfc = mrr.sum(axis=0).to_frame("绝对收益")
+
+    dfc["text"] = dfc["绝对收益"].apply(lambda x: f"{x:.2%}")
+    fig = px.bar(
+        dfc,
+        y="绝对收益",
+        title="因子分层绝对收益 | 单调性：{:.2%}".format(czsc.monotonicity(dfc["绝对收益"])),
+        color="绝对收益",
+        color_continuous_scale="RdYlGn_r",
+        text="text",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+    czsc.show_daily_return(
+        mrr,
+        stat_hold_days=False,
+        yearly_days=kwargs.get("yearly_days", 252),
+        show_dailys=kwargs.get("show_dailys", False),
+    )
 
 
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):

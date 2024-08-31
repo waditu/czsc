@@ -148,3 +148,14 @@ def judge_factor_direction(df: pd.DataFrame, factor, target='n1b', by='symbol', 
     dfc = df.groupby(by)[[factor, target]].corr(method=method).unstack().iloc[:, 1].reset_index()
     return "positive" if dfc[factor].mean().iloc[0] >= 0 else "negative"
 
+
+def monotonicity(sequence):
+    """计算序列的单调性
+
+    原理：计算序列与自然数序列的相关系数，系数越接近1，表示单调递增；系数越接近-1，表示单调递减；接近0表示无序
+
+    :param sequence: list, tuple 序列
+    :return: float, 单调性系数
+    """
+    from scipy.stats import spearmanr
+    return spearmanr(sequence, range(len(sequence)))[0]
