@@ -107,6 +107,7 @@ def test_daily_performance():
     # Test case 1: empty daily returns
     result = daily_performance([])
     assert result == {
+        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
@@ -124,6 +125,7 @@ def test_daily_performance():
     # Test case 2: daily returns with zero standard deviation
     result = daily_performance([1, 1, 1, 1, 1])
     assert result == {
+        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
@@ -141,6 +143,7 @@ def test_daily_performance():
     # Test case 3: daily returns with all zeros
     result = daily_performance([0, 0, 0, 0, 0])
     assert result == {
+        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
@@ -159,6 +162,7 @@ def test_daily_performance():
     daily_returns = np.array([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
     result = daily_performance(daily_returns)
     assert result == {
+        "下行波动率": 0.0748,
         "绝对收益": 0.08,
         "年化": 2.016,
         "夏普": 5,
@@ -176,6 +180,7 @@ def test_daily_performance():
     # Test case 5: normal daily returns with different input type
     result = daily_performance([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
     assert result == {
+        "下行波动率": 0.0748,
         "绝对收益": 0.08,
         "年化": 2.016,
         "夏普": 5,
