@@ -277,6 +277,7 @@ class WeightBacktest:
         """
         self.kwargs = kwargs
         self.dfw = dfw.copy()
+        self.dfw["dt"] = pd.to_datetime(self.dfw["dt"])
         if self.dfw.isnull().sum().sum() > 0:
             raise ValueError("dfw 中存在空值, 请先处理")
         self.digits = digits
