@@ -159,3 +159,15 @@ def monotonicity(sequence):
     """
     from scipy.stats import spearmanr
     return spearmanr(sequence, range(len(sequence)))[0]
+
+
+def min_max_limit(x, min_val, max_val, digits=4):
+    """限制 x 的取值范围在 min_val 和 max_val 之间
+
+    :param x: float, 输入值
+    :param min_val: float, 最小值
+    :param max_val: float, 最大值
+    :param digits: int, 保留小数位数
+    :return: float
+    """
+    return round(max(min_val, min(max_val, x)), digits)
