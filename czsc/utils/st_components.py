@@ -1688,3 +1688,58 @@ import numpy as np
         with st.expander(expander_title, expanded=True):
             code = __editor()
     return code
+
+
+def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
+    """显示 col1 对 col2 的分类作用
+
+    :param df: 数据，pd.DataFrame
+    :param col1: 分层列
+    :param col2: 统计列
+    :param n: 分层数量
+    :param method: 分层方法，cut 或 qcut
+    :param kwargs:
+
+        - show_bar: bool, 是否展示柱状图，默认为 False
+
+    """
+    df = df[[col1, col2]].copy()
+    if method == "cut":
+        df[f"{col1}_分层"] = pd.cut(df[col1], bins=n, duplicates="drop")
+    elif method == "qcut":
+        df[f"{col1}_分层"] = pd.qcut(df[col1], q=n, duplicates="drop")
+    else:
+        raise ValueError("method must be 'cut' or 'qcut'")
+
+    dfg = df.groupby(f"{col1}_分层", observed=True)[col2].describe().reset_index()
+    dfx = dfg.copy()
+    info = (
+        f"{col1} 分层对应 {col2} 的均值单调性：:red[{czsc.monotonicity(dfx['mean']):.2%}]； "
+        f"最后一层的均值：:red[{dfx['mean'].iloc[-1]:.4f}]；"
+        f"第一层的均值：:red[{dfx['mean'].iloc[0]:.4f}]"
+    )
+    st.markdown(info)
+
+    if kwargs.get("show_bar", False):
+        dfx["标记"] = dfx[f"{col1}_分层"].astype(str)
+        dfx["text"] = dfx["mean"].apply(lambda x: f"{x:.4f}")
+        fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
+        fig.update_xaxes(title=None)
+        fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+
+    dfg = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["count"])
+    dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean", "std", "min", "25%", "50%", "75%", "max"])
+    dfg = dfg.format(
+        {
+            "count": "{:.0f}",
+            "mean": "{:.4f}",
+            "std": "{:.2%}",
+            "min": "{:.4f}",
+            "25%": "{:.4f}",
+            "50%": "{:.4f}",
+            "75%": "{:.4f}",
+            "max": "{:.4f}",
+        }
+    )
+    st.dataframe(dfg, use_container_width=True)
