@@ -176,6 +176,7 @@ class RedisWeightsClient:
         :param df: pandas.DataFrame, 必需包含['symbol', 'dt', 'weight']列,
                 可选['price', 'ref']列, 如没有price则写0, dtype同publish方法
         :param overwrite: boolean, 是否覆盖已有记录
+        :param batch_size: int, 每次发布的最大数量
         :return: 成功发布信号的条数
         """
         df = df.copy()
@@ -392,7 +393,7 @@ return cnt
             price = price if price is None else float(price)
             try:
                 ref = json.loads(ref)
-            except Exception:
+            except Exception as e:
                 ref = ref
             weights.append((self.strategy_name, symbol, dt, weight, price, ref))
 

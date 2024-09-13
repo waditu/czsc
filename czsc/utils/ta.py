@@ -299,3 +299,42 @@ def CCI(high, low, close, timeperiod=14):
     # CCI Calculation
     cci = (typical_price - mean_typical_price) / (constant * mean_deviation)
     return cci
+
+
+def LINEARREG_ANGLE(real, timeperiod=14):
+    """
+    Calculate the Linear Regression Angle for a given time period.
+
+    https://github.com/TA-Lib/ta-lib/blob/main/src/ta_func/ta_LINEARREG_ANGLE.c
+
+    :param real: NumPy ndarray of input data points.
+    :param timeperiod: The number of periods to use for the regression (default is 14).
+    :return: NumPy ndarray of angles in degrees.
+    """
+    # Validate input parameters
+    if not isinstance(real, np.ndarray) or not isinstance(timeperiod, int):
+        raise ValueError("Invalid input parameters.")
+    if timeperiod < 2 or timeperiod > 100000:
+        raise ValueError("timeperiod must be between 2 and 100000.")
+    if len(real) < timeperiod:
+        raise ValueError("Input data must have at least timeperiod elements.")
+
+    # Initialize output array
+    angles = np.zeros(len(real))
+
+    # Calculate the total sum and sum of squares for the given time period
+    SumX = timeperiod * (timeperiod - 1) * 0.5
+    SumXSqr = timeperiod * (timeperiod - 1) * (2 * timeperiod - 1) / 6
+    Divisor = SumX * SumX - timeperiod * SumXSqr
+
+    # Calculate the angle for each point in the input array
+    for today in range(timeperiod - 1, len(real)):
+        SumXY = 0
+        SumY = 0
+        for i in range(timeperiod):
+            SumY += real[today - i]
+            SumXY += i * real[today - i]
+        m = (timeperiod * SumXY - SumX * SumY) / Divisor
+        angles[today] = np.arctan(m) * (180.0 / np.pi)
+
+    return angles
