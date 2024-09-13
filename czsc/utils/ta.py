@@ -338,3 +338,31 @@ def LINEARREG_ANGLE(real, timeperiod=14):
         angles[today] = np.arctan(m) * (180.0 / np.pi)
 
     return angles
+
+
+def ACOS(real):
+    """
+        Calculate the vector trigonometric ACos of the input array.
+
+        Parameters:
+        real (np.ndarray): Input array of real values.
+
+        Returns:
+        np.ndarray: Array of calculated ACos values.
+        """
+    # Ensure the input is a numpy array
+    real = np.asarray(real)
+
+    # Calculate the ACos values
+    acos_values = np.arccos(real)
+
+    return acos_values
+
+
+
+
+
+
+
+
+
