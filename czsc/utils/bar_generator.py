@@ -31,6 +31,7 @@ def is_trading_time(dt: datetime = datetime.now(), market="A股"):
 def get_intraday_times(freq="1分钟", market="A股"):
     """获取指定市场的交易时间段
 
+    :param freq: K线周期，如 1分钟、5分钟、15分钟、30分钟、60分钟
     :param market: 市场名称，可选值：A股、期货、默认
     :return: 交易时间段列表
     """
