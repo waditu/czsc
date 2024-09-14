@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import pandas as pd
 from typing import List, Union
 
 from . import qywx
