@@ -101,6 +101,8 @@ def daily_performance(daily_returns, **kwargs):
             "最大回撤": 0,
             "卡玛": 0,
             "日胜率": 0,
+            "日盈亏比": 0,
+            "日赢面": 0,
             "年化波动率": 0,
             "下行波动率": 0,
             "非零覆盖": 0,
@@ -117,6 +119,9 @@ def daily_performance(daily_returns, **kwargs):
     max_drawdown = np.max(dd)
     kama = annual_returns / max_drawdown if max_drawdown != 0 else 10
     win_pct = len(daily_returns[daily_returns >= 0]) / len(daily_returns)
+    daily_mean_loss = np.mean(daily_returns[daily_returns < 0]) if len(daily_returns[daily_returns < 0]) > 0 else 0
+    daily_ykb = np.mean(daily_returns[daily_returns >= 0]) / abs(daily_mean_loss) if daily_mean_loss != 0 else 5
+
     annual_volatility = np.std(daily_returns) * np.sqrt(yearly_days)
     none_zero_cover = len(daily_returns[daily_returns != 0]) / len(daily_returns)
 
@@ -144,6 +149,8 @@ def daily_performance(daily_returns, **kwargs):
         "最大回撤": round(max_drawdown, 4),
         "卡玛": __min_max(kama, -10, 10, 2),
         "日胜率": round(win_pct, 4),
+        "日盈亏比": round(daily_ykb, 4),
+        "日赢面": round(win_pct * daily_ykb - (1 - win_pct), 4),
         "年化波动率": round(annual_volatility, 4),
         "下行波动率": round(downside_volatility, 4),
         "非零覆盖": round(none_zero_cover, 4),

@@ -277,6 +277,7 @@ class WeightBacktest:
         """
         self.kwargs = kwargs
         self.dfw = dfw.copy()
+        self.dfw["dt"] = pd.to_datetime(self.dfw["dt"])
         if self.dfw.isnull().sum().sum() > 0:
             raise ValueError("dfw 中存在空值, 请先处理")
         self.digits = digits
@@ -553,9 +554,10 @@ class WeightBacktest:
         dret = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index="date", columns="symbol", values="return").fillna(0)
         dret["total"] = dret[list(res.keys())].mean(axis=1)
+        dret = dret.round(4).reset_index()
         res["品种等权日收益"] = dret
 
-        stats = {"开始日期": dret.index.min().strftime("%Y%m%d"), "结束日期": dret.index.max().strftime("%Y%m%d")}
+        stats = {"开始日期": dret["date"].min().strftime("%Y%m%d"), "结束日期": dret["date"].max().strftime("%Y%m%d")}
         stats.update(daily_performance(dret["total"]))
         dfp = pd.concat([v["pairs"] for k, v in res.items() if k in symbols], ignore_index=True)
         pairs_stats = evaluate_pairs(dfp)

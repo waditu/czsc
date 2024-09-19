@@ -16,7 +16,6 @@ loguru
 click
 pytest
 tenacity
-requests-toolbelt
 plotly
 parse
 lightgbm
@@ -26,8 +25,7 @@ oss2
 statsmodels
 optuna
 cryptography
-tqsdk
 pytz
 flask
-setuptools
 scipy
+requests_toolbelt

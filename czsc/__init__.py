@@ -47,6 +47,7 @@ from czsc.traders import (
 from czsc.utils import (
     mac_address,
     overlap,
+    to_arrow,
 
     format_standard_kline,
 
@@ -65,6 +66,7 @@ from czsc.utils import (
     save_json,
     get_sub_elements,
     get_py_namespace,
+    code_namespace,
     freqs_sorted,
     x_round,
     import_by_name,
@@ -155,6 +157,7 @@ from czsc.utils.st_components import (
     show_strategies_recent,
     show_factor_value,
     show_code_editor,
+    show_classify,
 )
 
 from czsc.utils.bi_info import (
@@ -204,13 +207,15 @@ from czsc.eda import (
     cross_sectional_strategy,
     judge_factor_direction,
     monotonicity,
+    min_max_limit,
+    rolling_layers,
 )
 
 
-__version__ = "0.9.58"
+__version__ = "0.9.59"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240808"
+__date__ = "20240901"
 
 
 def welcome():

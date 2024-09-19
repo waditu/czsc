@@ -13,6 +13,44 @@ from deprecated import deprecated
 from sklearn.linear_model import LinearRegression
 
 
+def __stats_style(stats):
+    stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日盈亏比"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日赢面"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
+    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
+    stats = stats.format(
+        {
+            "盈亏平衡点": "{:.2f}",
+            "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
+            "最大回撤": "{:.2%}",
+            "卡玛": "{:.2f}",
+            "年化": "{:.2%}",
+            "夏普": "{:.2f}",
+            "非零覆盖": "{:.2%}",
+            "绝对收益": "{:.2%}",
+            "日胜率": "{:.2%}",
+            "日盈亏比": "{:.2f}",
+            "日赢面": "{:.2%}",
+            "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
+            "新高占比": "{:.2%}",
+        }
+    )
+    return stats
+
+
 def show_daily_return(df: pd.DataFrame, **kwargs):
     """用 streamlit 展示日收益
 
@@ -50,36 +88,41 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             stats.append(col_stats)
 
         stats = pd.DataFrame(stats).set_index("日收益名称")
-        stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
-        stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
-        stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
-        stats = stats.format(
-            {
-                "盈亏平衡点": "{:.2f}",
-                "年化波动率": "{:.2%}",
-                "下行波动率": "{:.2%}",
-                "最大回撤": "{:.2%}",
-                "卡玛": "{:.2f}",
-                "年化": "{:.2%}",
-                "夏普": "{:.2f}",
-                "非零覆盖": "{:.2%}",
-                "绝对收益": "{:.2%}",
-                "日胜率": "{:.2%}",
-                "新高间隔": "{:.2f}",
-                "回撤风险": "{:.2f}",
-                "新高占比": "{:.2%}",
-            }
-        )
+        stats = __stats_style(stats)
+        # stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日盈亏比"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日赢面"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
+        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
+        # stats = stats.format(
+        #     {
+        #         "盈亏平衡点": "{:.2f}",
+        #         "年化波动率": "{:.2%}",
+        #         "下行波动率": "{:.2%}",
+        #         "最大回撤": "{:.2%}",
+        #         "卡玛": "{:.2f}",
+        #         "年化": "{:.2%}",
+        #         "夏普": "{:.2f}",
+        #         "非零覆盖": "{:.2%}",
+        #         "绝对收益": "{:.2%}",
+        #         "日胜率": "{:.2%}",
+        #         "日盈亏比": "{:.2f}",
+        #         "日赢面": "{:.2%}",
+        #         "新高间隔": "{:.2f}",
+        #         "回撤风险": "{:.2f}",
+        #         "新高占比": "{:.2%}",
+        #     }
+        # )
         return stats
 
     use_st_table = kwargs.get("use_st_table", False)
@@ -469,7 +512,9 @@ def show_weight_backtest(dfw, **kwargs):
     st.divider()
 
     dret = wb.results["品种等权日收益"].copy()
-    dret.index = pd.to_datetime(dret.index)
+    dret["dt"] = pd.to_datetime(dret["date"])
+    dret = dret.set_index("dt").drop(columns=["date"])
+    # dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), **kwargs)
 
     if kwargs.get("show_drawdowns", False):
@@ -538,53 +583,16 @@ def show_splited_daily(df, ret_col, **kwargs):
     rows = []
     for name, sdt in sdt_map.items():
         df1 = df.loc[sdt:last_dt].copy()
-        row = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
-        row["开始日期"] = sdt.strftime("%Y-%m-%d")
-        row["结束日期"] = last_dt.strftime("%Y-%m-%d")
-        row["收益名称"] = name
-        # row['绝对收益'] = df1[ret_col].sum()
+        row = {
+            "收益名称": name,
+            "开始日期": sdt.strftime("%Y-%m-%d"),
+            "结束日期": last_dt.strftime("%Y-%m-%d"),
+        }
+        row_ = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
+        row.update(row_)
         rows.append(row)
     dfv = pd.DataFrame(rows).set_index("收益名称")
-    cols = [
-        "开始日期",
-        "结束日期",
-        "绝对收益",
-        "年化",
-        "夏普",
-        "最大回撤",
-        "卡玛",
-        "年化波动率",
-        "下行波动率",
-        "非零覆盖",
-        "日胜率",
-        "盈亏平衡点",
-    ]
-    dfv = dfv[cols].copy()
-
-    dfv = dfv.style.background_gradient(cmap="RdYlGn_r", subset=["绝对收益"])
-    dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["年化"])
-    dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["夏普"])
-    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["最大回撤"])
-    dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["卡玛"])
-    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["年化波动率"])
-    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["下行波动率"])
-    dfv = dfv.background_gradient(cmap="RdYlGn", subset=["盈亏平衡点"])
-    dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["日胜率"])
-    dfv = dfv.background_gradient(cmap="RdYlGn_r", subset=["非零覆盖"])
-    dfv = dfv.format(
-        {
-            "盈亏平衡点": "{:.2f}",
-            "年化波动率": "{:.2%}",
-            "下行波动率": "{:.2%}",
-            "最大回撤": "{:.2%}",
-            "卡玛": "{:.2f}",
-            "年化": "{:.2%}",
-            "夏普": "{:.2f}",
-            "非零覆盖": "{:.2%}",
-            "日胜率": "{:.2%}",
-            "绝对收益": "{:.2%}",
-        }
-    )
+    dfv = __stats_style(dfv)
     st.dataframe(dfv, use_container_width=True)
 
 
@@ -615,38 +623,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
         _stats.append(_yst)
 
     stats = pd.DataFrame(_stats).set_index("年份")
-
-    stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
-    stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
-    stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
-
-    stats = stats.format(
-        {
-            "盈亏平衡点": "{:.2f}",
-            "年化波动率": "{:.2%}",
-            "下行波动率": "{:.2%}",
-            "最大回撤": "{:.2%}",
-            "卡玛": "{:.2f}",
-            "年化": "{:.2%}",
-            "夏普": "{:.2f}",
-            "非零覆盖": "{:.2%}",
-            "绝对收益": "{:.2%}",
-            "日胜率": "{:.2%}",
-            "新高间隔": "{:.2f}",
-            "回撤风险": "{:.2f}",
-            "新高占比": "{:.2%}",
-        }
-    )
+    stats = __stats_style(stats)
 
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
@@ -1688,3 +1665,58 @@ import numpy as np
         with st.expander(expander_title, expanded=True):
             code = __editor()
     return code
+
+
+def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
+    """显示 col1 对 col2 的分类作用
+
+    :param df: 数据，pd.DataFrame
+    :param col1: 分层列
+    :param col2: 统计列
+    :param n: 分层数量
+    :param method: 分层方法，cut 或 qcut
+    :param kwargs:
+
+        - show_bar: bool, 是否展示柱状图，默认为 False
+
+    """
+    df = df[[col1, col2]].copy()
+    if method == "cut":
+        df[f"{col1}_分层"] = pd.cut(df[col1], bins=n, duplicates="drop")
+    elif method == "qcut":
+        df[f"{col1}_分层"] = pd.qcut(df[col1], q=n, duplicates="drop")
+    else:
+        raise ValueError("method must be 'cut' or 'qcut'")
+
+    dfg = df.groupby(f"{col1}_分层", observed=True)[col2].describe().reset_index()
+    dfx = dfg.copy()
+    info = (
+        f"{col1} 分层对应 {col2} 的均值单调性：:red[{czsc.monotonicity(dfx['mean']):.2%}]； "
+        f"最后一层的均值：:red[{dfx['mean'].iloc[-1]:.4f}]；"
+        f"第一层的均值：:red[{dfx['mean'].iloc[0]:.4f}]"
+    )
+    st.markdown(info)
+
+    if kwargs.get("show_bar", False):
+        dfx["标记"] = dfx[f"{col1}_分层"].astype(str)
+        dfx["text"] = dfx["mean"].apply(lambda x: f"{x:.4f}")
+        fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
+        fig.update_xaxes(title=None)
+        fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+
+    dfg = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["count"])
+    dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean", "std", "min", "25%", "50%", "75%", "max"])
+    dfg = dfg.format(
+        {
+            "count": "{:.0f}",
+            "mean": "{:.4f}",
+            "std": "{:.2%}",
+            "min": "{:.4f}",
+            "25%": "{:.4f}",
+            "50%": "{:.4f}",
+            "75%": "{:.4f}",
+            "max": "{:.4f}",
+        }
+    )
+    st.dataframe(dfg, use_container_width=True)

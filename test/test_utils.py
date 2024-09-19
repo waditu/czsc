@@ -107,14 +107,16 @@ def test_daily_performance():
     # Test case 1: empty daily returns
     result = daily_performance([])
     assert result == {
-        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
         "最大回撤": 0,
         "卡玛": 0,
         "日胜率": 0,
+        "日盈亏比": 0,
+        "日赢面": 0,
         "年化波动率": 0,
+        "下行波动率": 0,
         "非零覆盖": 0,
         "盈亏平衡点": 0,
         "新高间隔": 0,
@@ -125,14 +127,16 @@ def test_daily_performance():
     # Test case 2: daily returns with zero standard deviation
     result = daily_performance([1, 1, 1, 1, 1])
     assert result == {
-        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
         "最大回撤": 0,
         "卡玛": 0,
         "日胜率": 0,
+        "日盈亏比": 0,
+        "日赢面": 0,
         "年化波动率": 0,
+        "下行波动率": 0,
         "非零覆盖": 0,
         "盈亏平衡点": 0,
         "新高间隔": 0,
@@ -143,14 +147,16 @@ def test_daily_performance():
     # Test case 3: daily returns with all zeros
     result = daily_performance([0, 0, 0, 0, 0])
     assert result == {
-        "下行波动率": 0,
         "绝对收益": 0,
         "年化": 0,
         "夏普": 0,
         "最大回撤": 0,
         "卡玛": 0,
         "日胜率": 0,
+        "日盈亏比": 0,
+        "日赢面": 0,
         "年化波动率": 0,
+        "下行波动率": 0,
         "非零覆盖": 0,
         "盈亏平衡点": 0,
         "新高间隔": 0,
@@ -162,14 +168,16 @@ def test_daily_performance():
     daily_returns = np.array([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
     result = daily_performance(daily_returns)
     assert result == {
-        "下行波动率": 0.0748,
         "绝对收益": 0.08,
         "年化": 2.016,
         "夏普": 5,
         "最大回撤": 0.02,
         "卡玛": 10,
         "日胜率": 0.7,
+        "日盈亏比": 1.2857,
+        "日赢面": 0.6,
         "年化波动率": 0.2439,
+        "下行波动率": 0.0748,
         "非零覆盖": 1.0,
         "盈亏平衡点": 0.7,
         "新高间隔": 5,
@@ -180,14 +188,16 @@ def test_daily_performance():
     # Test case 5: normal daily returns with different input type
     result = daily_performance([0.01, 0.02, -0.01, 0.03, 0.02, -0.02, 0.01, -0.01, 0.02, 0.01])
     assert result == {
-        "下行波动率": 0.0748,
         "绝对收益": 0.08,
         "年化": 2.016,
         "夏普": 5,
         "最大回撤": 0.02,
         "卡玛": 10,
         "日胜率": 0.7,
+        "日盈亏比": 1.2857,
+        "日赢面": 0.6,
         "年化波动率": 0.2439,
+        "下行波动率": 0.0748,
         "非零覆盖": 1.0,
         "盈亏平衡点": 0.7,
         "新高间隔": 5,

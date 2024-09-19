@@ -1,5 +1,6 @@
 # coding: utf-8
 import os
+import pandas as pd
 from typing import List, Union
 
 from . import qywx
@@ -89,6 +90,20 @@ def get_py_namespace(file_py: str, keys: list = []) -> dict:
     text = open(file_py, "r", encoding="utf-8").read()
     code = compile(text, file_py, "exec")
     namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
+    exec(code, namespace)
+    if keys:
+        namespace = {k: v for k, v in namespace.items() if k in keys}
+    return namespace
+
+
+def code_namespace(code: str, keys: list = []) -> dict:
+    """获取 python 代码中的 namespace
+
+    :param code: python 代码
+    :param keys: 指定需要的对象名称
+    :return: namespace
+    """
+    namespace = {"code": code}
     exec(code, namespace)
     if keys:
         namespace = {k: v for k, v in namespace.items() if k in keys}
@@ -199,3 +214,15 @@ def mac_address():
     x = uuid.UUID(int=uuid.getnode()).hex[-12:].upper()
     x = "-".join([x[i : i + 2] for i in range(0, 11, 2)])
     return x
+
+
+def to_arrow(df: pd.DataFrame):
+    """将 pandas.DataFrame 转换为 pyarrow.Table"""
+    import io
+    import pyarrow as pa
+
+    table = pa.Table.from_pandas(df)
+    with io.BytesIO() as sink:
+        with pa.ipc.new_file(sink, table.schema) as writer:
+            writer.write_table(table)
+        return sink.getvalue()

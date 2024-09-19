@@ -159,3 +159,66 @@ def monotonicity(sequence):
     """
     from scipy.stats import spearmanr
     return spearmanr(sequence, range(len(sequence)))[0]
+
+
+def min_max_limit(x, min_val, max_val, digits=4):
+    """限制 x 的取值范围在 min_val 和 max_val 之间
+
+    :param x: float, 输入值
+    :param min_val: float, 最小值
+    :param max_val: float, 最大值
+    :param digits: int, 保留小数位数
+    :return: float
+    """
+    return round(max(min_val, min(max_val, x)), digits)
+
+
+def rolling_layers(df, factor, n=5, **kwargs):
+    """对时间序列数据进行分层
+
+    :param df: 因子数据，必须包含 dt, factor 列，其中 dt 为日期，factor 为因子值
+    :param factor: 因子列名
+    :param n: 分层数量，默认为10
+    :param kwargs:
+
+        - window: 窗口大小，默认为2000
+        - min_periods: 最小样本数量，默认为300
+        - mode: str, {'loose', 'strict'}, 分层模式，默认为 'loose'；
+            loose 表示使用 rolling + rank 的方式分层，有一点点未来信息，存在一定的数据穿越问题；
+            strict 表示使用 rolling + qcut 的方式分层，无未来信息，但是执行速度较慢。
+
+    :return: df, 添加了 factor分层 列
+    """
+    assert df[factor].nunique() > n * 2, "因子值的取值数量必须大于分层数量"
+    assert df[factor].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[factor].isna().sum())
+    assert df['dt'].duplicated().sum() == 0, f"dt 列不能有重复值，存在重复值数量：{df['dt'].duplicated().sum()}"
+
+    window = kwargs.get("window", 600)
+    min_periods = kwargs.get("min_periods", 300)
+
+    # 不能有 inf 和 -inf
+    if df.loc[df[factor].isin([float("inf"), float("-inf")]), factor].shape[0] > 0:
+        raise ValueError(f"存在 {factor} 为 inf / -inf 的数据")
+
+    if kwargs.get('mode', 'loose') == 'loose':
+        # loose 模式，可能存在一点点未来信息
+        df['pct_rank'] = df[factor].rolling(window=window, min_periods=min_periods).rank(pct=True, ascending=True)
+        bins = [i/n for i in range(n+1)]
+        df['pct_rank_cut'] = pd.cut(df['pct_rank'], bins=bins, labels=False)
+        df['pct_rank_cut'] = df['pct_rank_cut'].fillna(-1)
+        # 第00层表示缺失值
+        df[f"{factor}分层"] = df['pct_rank_cut'].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+        df.drop(['pct_rank', 'pct_rank_cut'], axis=1, inplace=True)
+
+    else:
+        assert kwargs.get('mode', 'strict') == 'strict'
+        df[f"{factor}_qcut"] = (
+            df[factor].rolling(window=window, min_periods=min_periods)
+            .apply(lambda x: pd.qcut(x, q=n, labels=False, duplicates="drop", retbins=False).values[-1], raw=False)
+        )
+        df[f"{factor}_qcut"] = df[f"{factor}_qcut"].fillna(-1)
+        # 第00层表示缺失值
+        df[f"{factor}分层"] = df[f"{factor}_qcut"].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+        df.drop([f"{factor}_qcut"], axis=1, inplace=True)
+
+    return df
