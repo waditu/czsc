@@ -212,10 +212,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.59"
+__version__ = "0.9.60"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240901"
+__date__ = "20240918"
 
 
 def welcome():
