@@ -50,12 +50,12 @@ def EMA(close: np.array, timeperiod=5):
     return np.array(res, dtype=np.double).round(4)
 
 
-def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
+def MACD(real: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     """MACD 异同移动平均线
     https://baike.baidu.com/item/MACD%E6%8C%87%E6%A0%87/6271283
 
-    :param close: np.array
-        收盘价序列
+    :param real: np.array
+        价格序列
     :param fastperiod: int
         快周期，默认值 12
     :param slowperiod: int
@@ -65,8 +65,8 @@ def MACD(close: np.array, fastperiod=12, slowperiod=26, signalperiod=9):
     :return: (np.array, np.array, np.array)
         diff, dea, macd
     """
-    ema12 = EMA(close, timeperiod=fastperiod)
-    ema26 = EMA(close, timeperiod=slowperiod)
+    ema12 = EMA(real, timeperiod=fastperiod)
+    ema26 = EMA(real, timeperiod=slowperiod)
     diff = ema12 - ema26
     dea = EMA(diff, timeperiod=signalperiod)
     macd = (diff - dea) * 2
@@ -146,7 +146,7 @@ def RSQ(close: [np.array, list]) -> float:
     return round(rsq, 4)
 
 
-def plus_di(high, low, close, timeperiod=14):
+def PLUS_DI(high, low, close, timeperiod=14):
     """
     Calculate Plus Directional Indicator (PLUS_DI) manually.
 
@@ -179,7 +179,7 @@ def plus_di(high, low, close, timeperiod=14):
     return plus_di_
 
 
-def minus_di(high, low, close, timeperiod=14):
+def MINUS_DI(high, low, close, timeperiod=14):
     """
     Calculate Minus Directional Indicator (MINUS_DI) manually.
 
@@ -213,7 +213,7 @@ def minus_di(high, low, close, timeperiod=14):
     return minus_di_
 
 
-def atr(high, low, close, timeperiod=14):
+def ATR(high, low, close, timeperiod=14):
     """
     Calculate Average True Range (ATR).
 
@@ -234,7 +234,6 @@ def atr(high, low, close, timeperiod=14):
 
     # Calculate ATR
     atr_ = tr.rolling(window=timeperiod).mean()
-
     return atr_
 
 
@@ -338,3 +337,88 @@ def LINEARREG_ANGLE(real, timeperiod=14):
         angles[today] = np.arctan(m) * (180.0 / np.pi)
 
     return angles
+
+
+def DOUBLE_SMA_LS(series: pd.Series, n=5, m=20, **kwargs):
+    """双均线多空
+
+    :param series: str, 数据源字段
+    :param n: int, 短周期
+    :param m: int, 长周期
+    """
+    assert n < m, "短周期必须小于长周期"
+    return np.sign(series.rolling(window=n).mean() - series.rolling(window=m).mean()).fillna(0)
+
+
+def BOLL_LS(series: pd.Series, n=5, s=0.1, **kwargs):
+    """布林线多空
+
+    series 大于 n 周期均线 + s * n周期标准差，做多；小于 n 周期均线 - s * n周期标准差，做空
+
+    :param series: str, 数据源字段
+    :param n: int, 短周期
+    :param s: int, 波动率的倍数，默认为 0.1
+    """
+    sm = series.rolling(window=n).mean()
+    sd = series.rolling(window=n).std()
+    return np.where(series > sm + s * sd, 1, np.where(series < sm - s * sd, -1, 0))
+
+
+def SMA_MIN_MAX_SCALE(series: pd.Series, timeperiod=5, window=5, **kwargs):
+    """均线的最大最小值归一化
+
+    :param series: str, 数据源字段
+    :param timeperiod: int, 均线周期
+    :param window: int, 窗口大小
+    """
+    sm = series.rolling(window=timeperiod).mean()
+    sm_min = sm.rolling(window=window).min()
+    sm_max = sm.rolling(window=window).max()
+    res = (sm - sm_min) / (sm_max - sm_min)
+    res = res.fillna(0) * 2 - 1
+    return res
+
+
+def RS_VOLATILITY(df: pd.DataFrame, timeperiod=30, **kwargs):
+    """RS 波动率，值越大，波动越大
+
+    :param df: str, 标准K线数据
+    :param timeperiod: int, 周期
+    """
+    log_h_c = np.log(df["high"] / df["close"])
+    log_h_o = np.log(df["high"] / df["open"])
+    log_l_c = np.log(df["low"] / df["close"])
+    log_l_o = np.log(df["low"] / df["open"])
+
+    x = log_h_c * log_h_o + log_l_c * log_l_o
+    res = np.sqrt(x.rolling(window=timeperiod).mean())
+    return res
+
+
+def PK_VOLATILITY(df: pd.DataFrame, timeperiod=30, **kwargs):
+    """PK 波动率，值越大，波动越大
+
+    :param df: str, 标准K线数据
+    :param timeperiod: int, 周期
+    """
+    log_h_l = np.log(df["high"] / df["low"]).pow(2)
+    log_hl_mean = log_h_l.rolling(window=timeperiod).sum() / (4 * timeperiod * np.log(2))
+    res = np.sqrt(log_hl_mean)
+    return res
+
+
+try:
+    import talib as ta
+
+    SMA = ta.SMA
+    EMA = ta.EMA
+    MACD = ta.MACD
+    LINEARREG_ANGLE = ta.LINEARREG_ANGLE
+except ImportError:
+    SMA = SMA
+    EMA = EMA
+    MACD = MACD
+    print(
+        f"ta-lib 没有正确安装，将使用自定义分析函数。建议安装 ta-lib，可以大幅提升计算速度。"
+        f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
+    )
