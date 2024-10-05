@@ -554,6 +554,8 @@ class WeightBacktest:
         dret = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index="date", columns="symbol", values="return").fillna(0)
         dret["total"] = dret[list(res.keys())].mean(axis=1)
+        # dret = dret.shift(1).fillna(0).round(4).reset_index()
+        # ret 中的 date 对应的是上一日；date 后移一位，对应的才是当日收益
         dret = dret.round(4).reset_index()
         res["品种等权日收益"] = dret
 
