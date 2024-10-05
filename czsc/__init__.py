@@ -41,6 +41,7 @@ from czsc.traders import (
     get_heartbeat_time,
     clear_strategy,
     get_strategy_weights,
+    get_strategy_latest,
 
     OpensOptimize,
     ExitsOptimize,
