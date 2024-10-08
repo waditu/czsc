@@ -222,3 +222,33 @@ def rolling_layers(df, factor, n=5, **kwargs):
         df.drop([f"{factor}_qcut"], axis=1, inplace=True)
 
     return df
+
+
+def cal_yearly_days(dts: list, **kwargs):
+    """计算年度交易日数量
+
+    :param dts: list, datetime 列表
+    :param kwargs:
+    :return: int, 年度交易日数量
+    """
+    logger = kwargs.get("logger", loguru.logger)
+
+    assert len(dts) > 0, "输入的日期数量必须大于0"
+
+    # 将日期列表转换为 DataFrame
+    dts = pd.DataFrame(dts, columns=["dt"])
+    dts["dt"] = pd.to_datetime(dts["dt"]).dt.date
+    dts = dts.drop_duplicates()
+
+    # 时间跨度小于一年，直接返回252，并警告
+    if (dts["dt"].max() - dts["dt"].min()).days < 365:
+        logger.warning("时间跨度小于一年，直接返回 252")
+        return 252
+
+    # 设置索引为日期，并确保索引为 DatetimeIndex
+    dts.set_index(pd.to_datetime(dts["dt"]), inplace=True)
+    dts.drop(columns=["dt"], inplace=True)
+
+    # 按年重采样并计算每年的交易日数量，取最大值
+    yearly_days = dts.resample('YE').size().max()
+    return yearly_days
