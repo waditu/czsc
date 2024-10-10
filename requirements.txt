@@ -1,7 +1,7 @@
 requests>=2.24.0
 pyecharts>=1.9.1
 tqdm>=4.66.4
-pandas>=1.1.0
+pandas>=2.0.0
 numpy>=1.16.5
 tushare>=1.4.6
 python-docx
