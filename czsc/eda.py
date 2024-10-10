@@ -8,6 +8,8 @@ describe: 用于探索性分析的函数
 import loguru
 import pandas as pd
 import numpy as np
+from typing import Callable
+from tqdm import tqdm
 from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
 
@@ -252,3 +254,93 @@ def cal_yearly_days(dts: list, **kwargs):
     # 按年重采样并计算每年的交易日数量，取最大值
     yearly_days = dts.resample('YE').size().max()
     return yearly_days
+
+
+def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
+    """计算多个品种的标准量价因子
+
+    :param dfk: 行情数据，N 个品种的行情数据
+    :param factor_function: 因子文件，py文件
+    :param kwargs:
+
+        - logger: loguru.logger, 默认为 loguru.logger
+        - factor_params: dict, 因子计算参数
+        - min_klines: int, 最小K线数据量，默认为 300
+
+    :return: dff, pd.DataFrame, 计算后的因子数据
+    """
+    logger = kwargs.get("logger", loguru.logger)
+    min_klines = kwargs.get("min_klines", 300)
+    factor_params = kwargs.get("factor_params", {})
+    symbols = dfk["symbol"].unique().tolist()
+    factor_name = factor_function.__name__
+
+    rows = []
+    for symbol in tqdm(symbols, desc=f"{factor_name} 因子计算"):
+        try:
+            df = dfk[(dfk["symbol"] == symbol)].copy()
+            df = df.sort_values("dt", ascending=True).reset_index(drop=True)
+            if len(df) < min_klines:
+                logger.warning(f"{symbol} 数据量过小，跳过；仅有 {len(df)} 条数据，需要 {min_klines} 条数据")
+                continue
+
+            df = factor_function(df, **factor_params)
+            df["price"] = df["close"]
+            df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
+
+            factor = [x for x in df.columns if x.startswith("F#")][0]
+            df[factor] = df[factor].replace([np.inf, -np.inf], np.nan).ffill().fillna(0)
+            if df[factor].var() == 0 or np.isnan(df[factor].var()):
+                logger.warning(f"{symbol} {factor} var is 0 or nan")
+            else:
+                rows.append(df.copy())
+        except Exception as e:
+            logger.error(f"{factor_name} - {symbol} - 计算因子出错：{e}")
+
+    dff = pd.concat(rows, ignore_index=True)
+    return dff
+
+
+def weights_simple_ensemble(df, weight_cols, method="mean", only_long=False, **kwargs):
+    """用朴素的方法集成多个策略的权重
+
+    :param df: pd.DataFrame, 包含多个策略的权重列
+    :param weight_cols: list, 权重列名称列表
+    :param method: str, 集成方法，可选 mean, vote, sum_clip
+
+        - mean: 平均值
+        - vote: 投票
+        - sum_clip: 求和并截断
+
+    :param only_long: bool, 是否只做多
+    :param kwargs: dict, 其他参数
+
+        - clip_min: float, 截断最小值
+        - clip_max: float, 截断最大值
+
+    :return: pd.DataFrame, 添加了 weight 列的数据
+    """
+    method = method.lower()
+
+    assert all([x in df.columns for x in weight_cols]), f"数据中不包含全部权重列，不包含的列：{set(weight_cols) - set(df.columns)}"
+    assert 'weight' not in df.columns, "数据中已经包含 weight 列，请先删除，再调用该函数"
+
+    if method == "mean":
+        df["weight"] = df[weight_cols].mean(axis=1).fillna(0)
+
+    elif method == "vote":
+        df["weight"] = np.sign(df[weight_cols].sum(axis=1)).fillna(0)
+
+    elif method == "sum_clip":
+        clip_min = kwargs.get("clip_min", -1)
+        clip_max = kwargs.get("clip_max", 1)
+        df["weight"] = df[weight_cols].sum(axis=1).clip(clip_min, clip_max).fillna(0)
+
+    else:
+        raise ValueError("method 参数错误，可选 mean, vote, sum_clip")
+
+    if only_long:
+        df["weight"] = np.where(df["weight"] > 0, df["weight"], 0)
+
+    return df
+
