@@ -3,6 +3,9 @@ import pandas as pd
 
 
 def test_cal_yearly_days():
+    if pd.__version__ < "1.3.0":
+        pytest.skip("skip this test if pandas version is less than 1.3.0")
+
     from czsc.eda import cal_yearly_days
 
     # Test with a list of dates within a single year
