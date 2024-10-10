@@ -216,6 +216,7 @@ from czsc.signals.tas import (
     tas_dif_zero_V240612,
     tas_dif_zero_V240614,
     cci_decision_V240620,
+    tas_dif_layer_V241010,
 )
 
 from czsc.signals.pos import (

@@ -407,6 +407,11 @@ def PK_VOLATILITY(df: pd.DataFrame, timeperiod=30, **kwargs):
     return res
 
 
+def SNR(real: pd.Series, timeperiod=14, **kwargs):
+    """信噪比（Signal Noise Ratio，SNR）"""
+    return real.diff(timeperiod) / real.diff().abs().rolling(window=timeperiod).sum()
+
+
 try:
     import talib as ta
 
