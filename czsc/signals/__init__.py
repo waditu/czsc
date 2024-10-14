@@ -121,6 +121,7 @@ from czsc.signals.bar import (
     bar_decision_V240608,
     bar_decision_V240616,
     bar_td9_V240616,
+    bar_volatility_V241013,
 )
 
 from czsc.signals.jcc import (
