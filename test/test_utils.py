@@ -7,9 +7,11 @@ describe: czsc.utils 单元测试
 """
 import sys
 import pytest
+import time
 import pandas as pd
 import numpy as np
 from czsc import utils
+from czsc.utils import timeout_decorator
 
 
 def test_x_round():
@@ -344,3 +346,22 @@ def test_overlap():
 
     # 验证结果
     assert result["col_overlap"].tolist() == [1, 2, 1, 2, 1]
+
+
+def test_timeout_decorator_success():
+    @timeout_decorator(2)
+    def fast_function():
+        time.sleep(1)
+        return "Completed"
+
+    assert fast_function() == "Completed"
+
+
+def test_timeout_decorator_timeout():
+    @timeout_decorator(1)
+    def slow_function():
+        time.sleep(2)
+        return "Completed"
+
+    with pytest.raises(ValueError, match="timed out after 1 seconds"):
+        slow_function()

@@ -47,6 +47,7 @@ from czsc.traders import (
     ExitsOptimize,
 )
 from czsc.utils import (
+    timeout_decorator,
     mac_address,
     overlap,
     to_arrow,
