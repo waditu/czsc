@@ -231,33 +231,6 @@ def to_arrow(df: pd.DataFrame):
         return sink.getvalue()
 
 
-# def timeout_decorator(timeout):
-#     """超时装饰器
-#
-#     :param timeout: int, 超时时间，单位秒
-#     """
-#
-#     def decorator(func):
-#         @functools.wraps(func)
-#         def wrapper(*args, **kwargs):
-#             from concurrent.futures import ThreadPoolExecutor, TimeoutError
-#
-#             with ThreadPoolExecutor() as executor:
-#                 future = executor.submit(func, *args, **kwargs)
-#                 try:
-#                     result = future.result(timeout=timeout)
-#                     return result
-#                 except TimeoutError:
-#                     logger.warning(
-#                         f"{func.__name__} timed out after {timeout} seconds;" f"args: {args}; kwargs: {kwargs}"
-#                     )
-#                     return None
-#
-#         return wrapper
-#
-#     return decorator
-
-
 def timeout_decorator(timeout):
     """Timeout decorator using threading
 
