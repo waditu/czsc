@@ -78,6 +78,11 @@ pip install git+https://github.com/waditu/czsc.git@V0.9.46 -U
 pip install czsc -U -i https://pypi.python.org/simple
 ```
 
+从`rye`安装：
+```
+rye add czsc
+```
+
 ## 使用前必看
 
 * 目前的开发还在高频次的迭代中，对于已经在使用某个版本的用户，请谨慎更新，版本兼容性实在是太差，主要是因为当前还有太多考虑不完善的地方，我为此感到抱歉；
