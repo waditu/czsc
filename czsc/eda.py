@@ -368,6 +368,30 @@ def unify_weights(dfw: pd.DataFrame, **kwargs):
         - clip_max: float，权重合并方法为 'sum_clip' 时，clip 的最大值，默认 1
 
     :return: pd.DataFrame，columns=['symbol', 'weight', 'dt', 'price']
+
+    example:
+    ================
+        dfw = ...
+        wb = czsc.WeightBacktest(dfw, fee_rate=0.0002)
+        print(wb.stats)
+
+        dfw1 = unify_weights(dfw.copy(), method='mean')
+        wb1 = czsc.WeightBacktest(dfw1, fee_rate=0.0002)
+        print(wb1.stats)
+
+        dfw2 = unify_weights(dfw.copy(), method='sum_clip')
+        wb2 = czsc.WeightBacktest(dfw2, fee_rate=0.0002)
+        print(wb2.stats)
+
+        # 合并 daily_return，看看是否一致
+        dfd1 = wb.daily_return.copy()
+        dfd2 = wb1.daily_return.copy()
+        dfd3 = wb2.daily_return.copy()
+
+        dfd = pd.merge(dfd1, dfd2, on='date', how='left', suffixes=('', '_mean'))
+        dfd = pd.merge(dfd, dfd3, on='date', how='left', suffixes=('', '_sum_clip'))
+        print(dfd[['total', 'total_mean', 'total_sum_clip']].corr())
+    ================
     """
     method = kwargs.get('method', 'sum_clip')
     if kwargs.get("copy", True):
