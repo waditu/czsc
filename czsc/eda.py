@@ -344,3 +344,51 @@ def weights_simple_ensemble(df, weight_cols, method="mean", only_long=False, **k
 
     return df
 
+
+def unify_weights(dfw: pd.DataFrame, **kwargs):
+    """按策略统一权重进行大盘择时交易
+
+    在任意时刻 dt，将所有品种的权重通过某种算法合并，然后所有品种都按照这个权重进行操作
+
+    :param dfw: pd.DataFrame，columns=['symbol', 'weight', 'dt', 'price']，数据样例如下
+
+        ========  ===================  ========  =======
+        symbol    dt                     weight    price
+        ========  ===================  ========  =======
+        IC9001    2017-01-03 00:00:00     -0.82  11113.8
+        IC9001    2017-01-04 00:00:00     -0.83  11275.3
+        IC9001    2017-01-05 00:00:00     -0.84  11261.1
+        ========  ===================  ========  =======
+
+    :param kwargs: dict，其他参数
+
+        - method: str，权重合并方法，支持 'mean' 和 'sum_clip'，默认 'sum_clip'
+        - copy: bool，是否复制输入数据，默认 True
+        - clip_min: float，权重合并方法为 'sum_clip' 时，clip 的最小值，默认 -1
+        - clip_max: float，权重合并方法为 'sum_clip' 时，clip 的最大值，默认 1
+
+    :return: pd.DataFrame，columns=['symbol', 'weight', 'dt', 'price']
+    """
+    method = kwargs.get('method', 'sum_clip')
+    if kwargs.get("copy", True):
+        dfw = dfw.copy()
+
+    if method == 'mean':
+        uw = dfw.groupby('dt')['weight'].mean().reset_index()
+
+    elif method == 'sum_clip':
+        clip_min = kwargs.get('clip_min', -1)
+        clip_max = kwargs.get('clip_max', 1)
+        assert clip_min < clip_max, "clip_min should be less than clip_max"
+
+        uw = dfw.groupby('dt')['weight'].sum().reset_index()
+        uw['weight'] = uw['weight'].clip(clip_min, clip_max)
+
+    else:
+        raise ValueError(f"method {method} not supported")
+
+    dfw = pd.merge(dfw, uw, on='dt', how='left', suffixes=('_raw', '_unified'))
+    dfw['weight'] = dfw['weight_unified'].copy()
+    return dfw
+
+

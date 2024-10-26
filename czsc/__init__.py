@@ -214,6 +214,7 @@ from czsc.eda import (
     rolling_layers,
     cal_symbols_factor,
     weights_simple_ensemble,
+    unify_weights,
 )
 
 
