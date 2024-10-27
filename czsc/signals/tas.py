@@ -103,9 +103,9 @@ def update_macd_cache(c: CZSC, **kwargs):
         dif, dea, macd = MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
         for i in range(len(close)):
             _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
-            dif_i = dif[i] if dif[i] else close[i]
-            dea_i = dea[i] if dea[i] else close[i]
-            macd_i = dif_i - dea_i
+            dif_i = dif[i] if dif[i] else 0
+            dea_i = dea[i] if dea[i] else 0
+            macd_i = macd[i] if macd[i] else 0
             _c.update({cache_key: {"dif": dif_i, "dea": dea_i, "macd": macd_i}})
             c.bars_raw[i].cache = _c
 
