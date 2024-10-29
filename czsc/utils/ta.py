@@ -448,12 +448,11 @@ def CHOP(high, low, close, **kwargs):
     Calculation:
         Default Inputs:
             length=14, scalar=100, drift=1
+
         HH = high.rolling(length).max()
         LL = low.rolling(length).min()
-
         ATR_SUM = SUM(ATR(drift), length)
-        CHOP = scalar * (LOG10(ATR_SUM) - LOG10(HH - LL))
-        CHOP /= LOG10(length)
+        CHOP = scalar * (LOG10(ATR_SUM) - LOG10(HH - LL)) / LOG10(length)
 
     :param high: pd.Series, Series of 'high's
     :param low: pd.Series, Series of 'low's
