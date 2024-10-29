@@ -4,9 +4,14 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/1/24 15:01
 describe: 常用技术分析指标
+
+参考链接：
+1. https://github.com/twopirllc/pandas-ta
+
 """
 import numpy as np
 import pandas as pd
+import pandas_ta
 
 
 def SMA(close: np.array, timeperiod=5):
@@ -427,3 +432,43 @@ except ImportError:
         f"ta-lib 没有正确安装，将使用自定义分析函数。建议安装 ta-lib，可以大幅提升计算速度。"
         f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
     )
+
+
+def CHOP(high, low, close, **kwargs):
+    """Choppiness Index
+
+    为了确定市场当前是否在波动或趋势中，可以使用波动指数。波动指数是由澳大利亚大宗商品交易员 Bill Dreiss 开发的波动率指标。
+    波动指数不是为了预测未来的市场方向，而是用于量化当前市场的“波动”。波动的市场是指价格大幅上下波动的市场。
+    波动指数的值在 100 和 0 之间波动。值越高，市场波动性越高。
+
+    Sources:
+        https://www.tradingview.com/scripts/choppinessindex/
+        https://www.motivewave.com/studies/choppiness_index.htm
+
+    Calculation:
+        Default Inputs:
+            length=14, scalar=100, drift=1
+        HH = high.rolling(length).max()
+        LL = low.rolling(length).min()
+
+        ATR_SUM = SUM(ATR(drift), length)
+        CHOP = scalar * (LOG10(ATR_SUM) - LOG10(HH - LL))
+        CHOP /= LOG10(length)
+
+    :param high: pd.Series, Series of 'high's
+    :param low: pd.Series, Series of 'low's
+    :param close: pd.Series, Series of 'close's
+    :param kwargs: dict, Additional arguments
+
+        - length (int): It's period. Default: 14
+        - atr_length (int): Length for ATR. Default: 1
+        - ln (bool): If True, uses ln otherwise log10. Default: False
+        - scalar (float): How much to magnify. Default: 100
+        - drift (int): The difference period. Default: 1
+        - offset (int): How many periods to offset the result. Default: 0
+        - fillna (value): pd.DataFrame.fillna(value)
+        - fill_method (value): Type of fill method
+
+    :return: pd.Series, New feature generated.
+    """
+    return pandas_ta.chop(high=high, low=low, close=close, **kwargs)
