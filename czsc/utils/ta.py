@@ -822,6 +822,11 @@ def rolling_std(real: pd.Series, window=20):
 def ultimate_smoother(price, period: int = 7):
     """Ultimate Smoother
 
+    https://www.95sca.cn/archives/111068
+
+    终极平滑器（Ultimate Smoother）是由交易系统和算法交易策略开发者John Ehlers设计的
+    一种技术分析指标，它是一种趋势追踪指标，用于识别股票价格的趋势。
+
     :param price: np.array, 价格序列
     :param period: int, 周期
     :return:
