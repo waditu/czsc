@@ -63,3 +63,9 @@ def test_rolling_mdd():
     df1 = df.copy()
     df1["mdd"] = ta.rolling_mdd(df1["close"], window=5)
     print(df1[["close", "mdd"]].tail(10))
+
+
+def test_ultimate_smoother():
+    df1 = df.copy()
+    df1["uo"] = ta.ultimate_smoother(df1["close"], period=5)
+    print(df1[["close", "uo"]].tail(10))
