@@ -554,8 +554,7 @@ class WeightBacktest:
         dret = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index="date", columns="symbol", values="return").fillna(0)
         dret["total"] = dret[list(res.keys())].mean(axis=1)
-        # dret = dret.shift(1).fillna(0).round(4).reset_index()
-        # ret 中的 date 对应的是上一日；date 后移一位，对应的才是当日收益
+        # dret 中的 date 对应的是上一日；date 后移一位，对应的才是当日收益
         dret = dret.round(4).reset_index()
         res["品种等权日收益"] = dret
 
@@ -572,6 +571,8 @@ class WeightBacktest:
         stats.update({"多头占比": round(long_rate, 4), "空头占比": round(short_rate, 4)})
 
         alpha = self.alpha.copy()
+        stats["波动比"] = round(alpha["策略"].std() / alpha["基准"].std(), 4)
+        stats["与基准波动相关性"] = round(alpha["策略"].corr(alpha["基准"].abs()), 4)
         stats["与基准相关性"] = round(alpha["策略"].corr(alpha["基准"]), 4)
         alpha_short = alpha[alpha["基准"] < 0].copy()
         stats["与基准空头相关性"] = round(alpha_short["策略"].corr(alpha_short["基准"]), 4)
