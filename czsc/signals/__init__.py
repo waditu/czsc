@@ -121,6 +121,9 @@ from czsc.signals.bar import (
     bar_decision_V240608,
     bar_decision_V240616,
     bar_td9_V240616,
+    bar_volatility_V241013,
+    bar_zfzd_V241013,
+    bar_zfzd_V241014,
 )
 
 from czsc.signals.jcc import (
@@ -216,6 +219,7 @@ from czsc.signals.tas import (
     tas_dif_zero_V240612,
     tas_dif_zero_V240614,
     cci_decision_V240620,
+    tas_dif_layer_V241010,
 )
 
 from czsc.signals.pos import (

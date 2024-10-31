@@ -603,7 +603,6 @@ def get_strategy_names(redis_url=None, connection_pool=None, key_prefix="Weights
     :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
     :param connection_pool: redis.ConnectionPool, redis连接池
     :param key_prefix: str, redis中key的前缀，默认为 Weights
-
     :return: list, 所有策略名
     """
 
@@ -615,3 +614,35 @@ def get_strategy_names(redis_url=None, connection_pool=None, key_prefix="Weights
 
     rs = r.smembers(f"{key_prefix}:StrategyNames")
     return list(rs)
+
+
+def get_strategy_latest(redis_url=None, connection_pool=None, key_prefix="Weights"):
+    """获取所有策略的最新持仓
+
+    :param redis_url: str, redis连接字符串, 默认为None, 即从环境变量 RWC_REDIS_URL 中读取
+    :param connection_pool: redis.ConnectionPool, redis连接池
+    :param key_prefix: str, redis中key的前缀，默认为 Weights
+    :return: pd.DataFrame, 最新持仓数据
+    """
+    if connection_pool:
+        r = redis.Redis(connection_pool=connection_pool)
+    else:
+        redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
+        r = redis.Redis.from_url(redis_url, decode_responses=True)
+
+    keys = r.keys(f"{key_prefix}:*:LAST")
+    pipeline = r.pipeline()
+    for key in keys:
+        pipeline.hgetall(key)
+    fetched_data = pipeline.execute()
+
+    results = []
+    for key, data in zip(keys, fetched_data):
+        strategy = key.split(":")[1]
+        data["strategy"] = strategy
+        results.append(data)
+
+    df = pd.DataFrame(results)
+    df["weight"] = df["weight"].astype(float)
+    df = df[["dt", "strategy", "symbol", "weight", "update_time"]]
+    return df

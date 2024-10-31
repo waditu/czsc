@@ -15,6 +15,7 @@ from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector
+from czsc.utils import ta
 from czsc.traders import (
     CzscTrader,
     CzscSignals,
@@ -40,11 +41,13 @@ from czsc.traders import (
     get_heartbeat_time,
     clear_strategy,
     get_strategy_weights,
+    get_strategy_latest,
 
     OpensOptimize,
     ExitsOptimize,
 )
 from czsc.utils import (
+    timeout_decorator,
     mac_address,
     overlap,
     to_arrow,
@@ -209,13 +212,19 @@ from czsc.eda import (
     monotonicity,
     min_max_limit,
     rolling_layers,
+    cal_symbols_factor,
+    weights_simple_ensemble,
+    unify_weights,
+    sma_long_bear,
+    dif_long_bear,
+    tsf_type,
 )
 
 
-__version__ = "0.9.59"
+__version__ = "0.9.60"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240901"
+__date__ = "20240918"
 
 
 def welcome():

@@ -1,7 +1,10 @@
 # coding: utf-8
 import os
+import functools
+import threading
 import pandas as pd
 from typing import List, Union
+from loguru import logger
 
 from . import qywx
 from . import ta
@@ -226,3 +229,39 @@ def to_arrow(df: pd.DataFrame):
         with pa.ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
         return sink.getvalue()
+
+
+def timeout_decorator(timeout):
+    """Timeout decorator using threading
+
+    :param timeout: int, timeout duration in seconds
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            result = [None]
+            exception = [None]
+
+            def target():
+                try:
+                    result[0] = func(*args, **kwargs)
+                except Exception as e:
+                    exception[0] = e
+
+            thread = threading.Thread(target=target)
+            thread.start()
+            thread.join(timeout)
+
+            if thread.is_alive():
+                logger.warning(f"{func.__name__} timed out after {timeout} seconds; args: {args}; kwargs: {kwargs}")
+                return None
+
+            if exception[0]:
+                raise exception[0]
+
+            return result[0]
+
+        return wrapper
+
+    return decorator

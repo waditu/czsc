@@ -8,6 +8,8 @@ describe: 用于探索性分析的函数
 import loguru
 import pandas as pd
 import numpy as np
+from typing import Callable
+from tqdm import tqdm
 from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
 
@@ -222,3 +224,286 @@ def rolling_layers(df, factor, n=5, **kwargs):
         df.drop([f"{factor}_qcut"], axis=1, inplace=True)
 
     return df
+
+
+def cal_yearly_days(dts: list, **kwargs):
+    """计算年度交易日数量
+
+    :param dts: list, datetime 列表
+    :param kwargs:
+    :return: int, 年度交易日数量
+    """
+    logger = kwargs.get("logger", loguru.logger)
+
+    assert len(dts) > 0, "输入的日期数量必须大于0"
+
+    # 将日期列表转换为 DataFrame
+    dts = pd.DataFrame(dts, columns=["dt"])
+    dts["dt"] = pd.to_datetime(dts["dt"]).dt.date
+    dts = dts.drop_duplicates()
+
+    # 时间跨度小于一年，直接返回252，并警告
+    if (dts["dt"].max() - dts["dt"].min()).days < 365:
+        logger.warning("时间跨度小于一年，直接返回 252")
+        return 252
+
+    # 设置索引为日期，并确保索引为 DatetimeIndex
+    dts.set_index(pd.to_datetime(dts["dt"]), inplace=True)
+    dts.drop(columns=["dt"], inplace=True)
+
+    # 按年重采样并计算每年的交易日数量，取最大值
+    yearly_days = dts.resample('YE').size().max()
+    return yearly_days
+
+
+def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
+    """计算多个品种的标准量价因子
+
+    :param dfk: 行情数据，N 个品种的行情数据
+    :param factor_function: 因子文件，py文件
+    :param kwargs:
+
+        - logger: loguru.logger, 默认为 loguru.logger
+        - factor_params: dict, 因子计算参数
+        - min_klines: int, 最小K线数据量，默认为 300
+
+    :return: dff, pd.DataFrame, 计算后的因子数据
+    """
+    logger = kwargs.get("logger", loguru.logger)
+    min_klines = kwargs.get("min_klines", 300)
+    factor_params = kwargs.get("factor_params", {})
+    symbols = dfk["symbol"].unique().tolist()
+    factor_name = factor_function.__name__
+
+    rows = []
+    for symbol in tqdm(symbols, desc=f"{factor_name} 因子计算"):
+        try:
+            df = dfk[(dfk["symbol"] == symbol)].copy()
+            df = df.sort_values("dt", ascending=True).reset_index(drop=True)
+            if len(df) < min_klines:
+                logger.warning(f"{symbol} 数据量过小，跳过；仅有 {len(df)} 条数据，需要 {min_klines} 条数据")
+                continue
+
+            df = factor_function(df, **factor_params)
+            df["price"] = df["close"]
+            df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
+
+            factor = [x for x in df.columns if x.startswith("F#")][0]
+            df[factor] = df[factor].replace([np.inf, -np.inf], np.nan).ffill().fillna(0)
+            if df[factor].var() == 0 or np.isnan(df[factor].var()):
+                logger.warning(f"{symbol} {factor} var is 0 or nan")
+            else:
+                rows.append(df.copy())
+        except Exception as e:
+            logger.error(f"{factor_name} - {symbol} - 计算因子出错：{e}")
+
+    dff = pd.concat(rows, ignore_index=True)
+    return dff
+
+
+def weights_simple_ensemble(df, weight_cols, method="mean", only_long=False, **kwargs):
+    """用朴素的方法集成多个策略的权重
+
+    :param df: pd.DataFrame, 包含多个策略的权重列
+    :param weight_cols: list, 权重列名称列表
+    :param method: str, 集成方法，可选 mean, vote, sum_clip
+
+        - mean: 平均值
+        - vote: 投票
+        - sum_clip: 求和并截断
+
+    :param only_long: bool, 是否只做多
+    :param kwargs: dict, 其他参数
+
+        - clip_min: float, 截断最小值
+        - clip_max: float, 截断最大值
+
+    :return: pd.DataFrame, 添加了 weight 列的数据
+    """
+    method = method.lower()
+
+    assert all([x in df.columns for x in weight_cols]), f"数据中不包含全部权重列，不包含的列：{set(weight_cols) - set(df.columns)}"
+    assert 'weight' not in df.columns, "数据中已经包含 weight 列，请先删除，再调用该函数"
+
+    if method == "mean":
+        df["weight"] = df[weight_cols].mean(axis=1).fillna(0)
+
+    elif method == "vote":
+        df["weight"] = np.sign(df[weight_cols].sum(axis=1)).fillna(0)
+
+    elif method == "sum_clip":
+        clip_min = kwargs.get("clip_min", -1)
+        clip_max = kwargs.get("clip_max", 1)
+        df["weight"] = df[weight_cols].sum(axis=1).clip(clip_min, clip_max).fillna(0)
+
+    else:
+        raise ValueError("method 参数错误，可选 mean, vote, sum_clip")
+
+    if only_long:
+        df["weight"] = np.where(df["weight"] > 0, df["weight"], 0)
+
+    return df
+
+
+def unify_weights(dfw: pd.DataFrame, **kwargs):
+    """按策略统一权重进行大盘择时交易
+
+    在任意时刻 dt，将所有品种的权重通过某种算法合并，然后所有品种都按照这个权重进行操作
+
+    :param dfw: pd.DataFrame，columns=['symbol', 'weight', 'dt', 'price']，数据样例如下
+
+        ========  ===================  ========  =======
+        symbol    dt                     weight    price
+        ========  ===================  ========  =======
+        IC9001    2017-01-03 00:00:00     -0.82  11113.8
+        IC9001    2017-01-04 00:00:00     -0.83  11275.3
+        IC9001    2017-01-05 00:00:00     -0.84  11261.1
+        ========  ===================  ========  =======
+
+    :param kwargs: dict，其他参数
+
+        - method: str，权重合并方法，支持 'mean' 和 'sum_clip'，默认 'sum_clip'
+        - copy: bool，是否复制输入数据，默认 True
+        - clip_min: float，权重合并方法为 'sum_clip' 时，clip 的最小值，默认 -1
+        - clip_max: float，权重合并方法为 'sum_clip' 时，clip 的最大值，默认 1
+
+    :return: pd.DataFrame，columns=['symbol', 'weight', 'dt', 'price']
+
+    example:
+    ================
+        dfw = ...
+        wb = czsc.WeightBacktest(dfw, fee_rate=0.0002)
+        print(wb.stats)
+
+        dfw1 = unify_weights(dfw.copy(), method='mean')
+        wb1 = czsc.WeightBacktest(dfw1, fee_rate=0.0002)
+        print(wb1.stats)
+
+        dfw2 = unify_weights(dfw.copy(), method='sum_clip')
+        wb2 = czsc.WeightBacktest(dfw2, fee_rate=0.0002)
+        print(wb2.stats)
+
+        # 合并 daily_return，看看是否一致
+        dfd1 = wb.daily_return.copy()
+        dfd2 = wb1.daily_return.copy()
+        dfd3 = wb2.daily_return.copy()
+
+        dfd = pd.merge(dfd1, dfd2, on='date', how='left', suffixes=('', '_mean'))
+        dfd = pd.merge(dfd, dfd3, on='date', how='left', suffixes=('', '_sum_clip'))
+        print(dfd[['total', 'total_mean', 'total_sum_clip']].corr())
+    ================
+    """
+    method = kwargs.get('method', 'sum_clip')
+    if kwargs.get("copy", True):
+        dfw = dfw.copy()
+
+    if method == 'mean':
+        uw = dfw.groupby('dt')['weight'].mean().reset_index()
+
+    elif method == 'sum_clip':
+        clip_min = kwargs.get('clip_min', -1)
+        clip_max = kwargs.get('clip_max', 1)
+        assert clip_min < clip_max, "clip_min should be less than clip_max"
+
+        uw = dfw.groupby('dt')['weight'].sum().reset_index()
+        uw['weight'] = uw['weight'].clip(clip_min, clip_max)
+
+    else:
+        raise ValueError(f"method {method} not supported")
+
+    dfw = pd.merge(dfw, uw, on='dt', how='left', suffixes=('_raw', '_unified'))
+    dfw['weight'] = dfw['weight_unified'].copy()
+    return dfw
+
+
+def sma_long_bear(df: pd.DataFrame, **kwargs):
+    """均线牛熊分界指标过滤持仓，close 在长期均线上方为牛市，下方为熊市
+
+    牛市只做多，熊市只做空。
+
+    :param df: DataFrame, 必须包含 dt, close, symbol, weight 列
+    :return: DataFrame
+    """
+    assert df["symbol"].nunique() == 1, "数据中包含多个品种，必须单品种"
+    assert df["dt"].is_monotonic_increasing, "数据未按日期排序，必须升序排列"
+    assert df["dt"].is_unique, "数据中存在重复dt，必须唯一"
+
+    window = kwargs.get("window", 200)
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+
+    df['SMA_LB'] = df['close'].rolling(window).mean()
+    df['raw_weight'] = df['weight']
+    df['weight'] = np.where(np.sign(df['close'] - df['SMA_LB']) == np.sign(df['weight']), df['weight'], 0)
+    return df
+
+
+def dif_long_bear(df: pd.DataFrame, **kwargs):
+    """DIF牛熊分界指标过滤持仓，DIF 在0上方为牛市，下方为熊市
+
+    牛市只做多，熊市只做空。
+
+    :param df: DataFrame, 必须包含 dt, close, symbol, weight 列
+    :return: DataFrame
+    """
+    from czsc.utils.ta import MACD
+
+    assert df["symbol"].nunique() == 1, "数据中包含多个品种，必须单品种"
+    assert df["dt"].is_monotonic_increasing, "数据未按日期排序，必须升序排列"
+    assert df["dt"].is_unique, "数据中存在重复dt，必须唯一"
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+
+    df['DIF_LB'], _, _ = MACD(df['close'])
+    df['raw_weight'] = df['weight']
+    df['weight'] = np.where(np.sign(df['DIF_LB']) == np.sign(df['weight']), df['weight'], 0)
+    return df
+
+
+def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
+    """时序因子的类型定性分析
+
+    tsf 是 time series factor 的缩写，时序因子的类型定性分析，是指对某个时序因子进行分层，然后计算每个分层的平均收益，
+
+    :param df: pd.DataFrame, 必须包含 dt, symbol, factor 列，其中 dt 为日期，symbol 为标的代码，factor 为因子值
+    :param factor: str, 因子列名
+    :param n: int, 分层数量
+    :param kwargs:
+
+        - window: int, 窗口大小，默认为600
+        - min_periods: int, 最小样本数量，默认为300
+        - target: str, 目标列名，默认为 n1b
+
+    :return: str, 返回分层收益排序（从大到小）结果，例如：第01层->第02层->第03层->第04层->第05层
+    """
+    window = kwargs.get("window", 600)
+    min_periods = kwargs.get("min_periods", 300)
+    target = kwargs.get("target", "n1b")
+
+    if target == 'n1b' and 'n1b' not in df.columns:
+        from czsc.utils.trade import update_nxb
+        df = update_nxb(df, nseq=(1,))
+
+    assert target in df.columns, f"数据中不存在 {target} 列"
+    assert factor in df.columns, f"数据中不存在 {factor} 列"
+
+    rows = []
+    for symbol, dfg in df.groupby("symbol"):
+        dfg = dfg.copy().reset_index(drop=True)
+        dfg = rolling_layers(dfg, factor, n=n, window=window, min_periods=min_periods)
+        rows.append(dfg)
+
+    df = pd.concat(rows, ignore_index=True)
+    layers = [x for x in df[f"{factor}分层"].unique() if x != "第00层" and str(x).endswith("层")]
+
+    # 计算每个分层的平均收益
+    layer_returns = {}
+    for layer in layers:
+        dfg = df[df[f"{factor}分层"] == layer].copy()
+        dfg = dfg.groupby("dt")[target].mean().reset_index()
+        layer_returns[layer] = dfg[target].sum()
+
+    sorted_layers = sorted(layer_returns.items(), key=lambda x: x[1], reverse=True)
+    return "->".join([f"{x[0]}" for x in sorted_layers])

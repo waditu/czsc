@@ -131,7 +131,7 @@ def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
 def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
     """按照开仓点附近的N根K线极值止损
 
-    参数模板："{pos_name}_{freq1}N{n}K_止损V2305224"
+    参数模板："{pos_name}_{freq1}N{n}K_止损V230524"
 
     **信号逻辑：**
 
@@ -142,8 +142,8 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     **信号列表：**
 
-    - Signal('日线三买多头_日线N3K_止损V2305224_多头止损_任意_任意_0')
-    - Signal('日线三买多头_日线N3K_止损V2305224_空头止损_任意_任意_0')
+    - Signal('日线三买多头_日线N3K_止损V230524_多头止损_任意_任意_0')
+    - Signal('日线三买多头_日线N3K_止损V230524_空头止损_任意_任意_0')
 
     :param cat: CzscTrader对象
     :param kwargs: 参数字典
@@ -157,7 +157,7 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
     pos_name = kwargs["pos_name"]
     freq1 = kwargs["freq1"]
     n = int(kwargs.get("n", 3))
-    k1, k2, k3 = f"{pos_name}_{freq1}N{n}K_止损V2305224".split("_")
+    k1, k2, k3 = f"{pos_name}_{freq1}N{n}K_止损V230524".split("_")
     v1 = "其他"
     assert 20 >= n >= 1, "参数 n 取值范围为 1~20"
     # 如果没有持仓策略，则不产生信号
