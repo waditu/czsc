@@ -467,25 +467,27 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     tsf 是 time series factor 的缩写，时序因子的类型定性分析，是指对某个时序因子进行分层，然后计算每个分层的平均收益，
 
-    :param df: pd.DataFrame, 必须包含 dt, symbol, factor, price 列，其中 dt 为日期，symbol 为标的代码，factor 为因子值
+    :param df: pd.DataFrame, 必须包含 dt, symbol, factor 列，其中 dt 为日期，symbol 为标的代码，factor 为因子值
     :param factor: str, 因子列名
     :param n: int, 分层数量
     :param kwargs:
 
         - window: int, 窗口大小，默认为600
         - min_periods: int, 最小样本数量，默认为300
+        - target: str, 目标列名，默认为 n1b
 
     :return: str, 返回分层收益排序（从大到小）结果，例如：第01层->第02层->第03层->第04层->第05层
     """
     window = kwargs.get("window", 600)
     min_periods = kwargs.get("min_periods", 300)
     target = kwargs.get("target", "n1b")
-    assert target in df.columns, f"数据中不存在 {target} 列"
-    assert factor in df.columns, f"数据中不存在 {factor} 列"
 
     if target == 'n1b' and 'n1b' not in df.columns:
         from czsc.utils.trade import update_nxb
         df = update_nxb(df, nseq=(1,))
+
+    assert target in df.columns, f"数据中不存在 {target} 列"
+    assert factor in df.columns, f"数据中不存在 {factor} 列"
 
     rows = []
     for symbol, dfg in df.groupby("symbol"):
