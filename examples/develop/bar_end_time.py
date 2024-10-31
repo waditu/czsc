@@ -59,31 +59,9 @@ def split_time(freq="60分钟"):
     return dfx
 
 
-rows = []
-for freq in (
-    "1分钟",
-    "2分钟",
-    "3分钟",
-    "4分钟",
-    "5分钟",
-    "6分钟",
-    "10分钟",
-    "12分钟",
-    "15分钟",
-    "20分钟",
-    "30分钟",
-    "60分钟",
-    "120分钟",
-):
-    rows.append(split_time(freq))
-
-df = pd.concat(rows, ignore_index=True)
-df = pd.pivot_table(df, index="time", columns="freq", values="edt", aggfunc="first").reset_index()
-df["market"] = "默认"
-df = df[
-    [
-        "market",
-        "time",
+def main():
+    rows = []
+    for freq in (
         "1分钟",
         "2分钟",
         "3分钟",
@@ -97,9 +75,40 @@ df = df[
         "30分钟",
         "60分钟",
         "120分钟",
-    ]
-]
-df.to_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx", index=False)
+    ):
+        rows.append(split_time(freq))
 
-df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx")
-df.to_feather(r"D:\ZB\git_repo\waditu\czsc\czsc\utils\minites_split.feather")
+    df = pd.concat(rows, ignore_index=True)
+    df = pd.pivot_table(df, index="time", columns="freq", values="edt", aggfunc="first").reset_index()
+    df["market"] = "默认"
+    df = df[
+        [
+            "market",
+            "time",
+            "1分钟",
+            "2分钟",
+            "3分钟",
+            "4分钟",
+            "5分钟",
+            "6分钟",
+            "10分钟",
+            "12分钟",
+            "15分钟",
+            "20分钟",
+            "30分钟",
+            "60分钟",
+            "120分钟",
+        ]
+    ]
+    df.to_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx", index=False)
+
+    df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx")
+    df.to_feather(r"D:\ZB\git_repo\waditu\czsc\czsc\utils\minites_split.feather")
+
+
+def fix_error():
+    df = pd.read_feather(r"A:\ZB\git_repo\waditu\czsc\czsc\utils\minutes_split.feather")
+    df.to_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx", index=False)
+
+    df = pd.read_excel(r"C:\Users\zengb\Desktop\time_split_conf_V4.xlsx")
+    df.to_feather(r"A:\ZB\git_repo\waditu\czsc\czsc\utils\minutes_split.feather")
