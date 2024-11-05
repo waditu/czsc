@@ -478,6 +478,7 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     :return: str, 返回分层收益排序（从大到小）结果，例如：第01层->第02层->第03层->第04层->第05层
     """
+    logger = kwargs.get("logger", loguru.logger)
     window = kwargs.get("window", 600)
     min_periods = kwargs.get("min_periods", 300)
     target = kwargs.get("target", "n1b")
@@ -491,9 +492,12 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     rows = []
     for symbol, dfg in df.groupby("symbol"):
-        dfg = dfg.copy().reset_index(drop=True)
-        dfg = rolling_layers(dfg, factor, n=n, window=window, min_periods=min_periods)
-        rows.append(dfg)
+        try:
+            dfg = dfg.copy().reset_index(drop=True)
+            dfg = rolling_layers(dfg, factor, n=n, window=window, min_periods=min_periods)
+            rows.append(dfg)
+        except Exception as e:
+            logger.warning(f"{symbol} 计算分层失败: {e}")
 
     df = pd.concat(rows, ignore_index=True)
     layers = [x for x in df[f"{factor}分层"].unique() if x != "第00层" and str(x).endswith("层")]
