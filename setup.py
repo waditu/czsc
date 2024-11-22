@@ -1,7 +1,8 @@
 # coding: utf-8
 import czsc
 from os import path
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Extension
+from Cython.Build import cythonize
 
 here = path.abspath(path.dirname(__file__))
 
@@ -10,6 +11,11 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
     install_requires = f.read().strip().split("\n")
+
+extensions = [
+    Extension("czsc", ["czsc/*.py"]),
+]
+
 
 setup(
     name="czsc",
@@ -24,6 +30,7 @@ setup(
     url="https://github.com/waditu/czsc",
     packages=find_packages(exclude=["test", "images", "docs", "examples", "hist"]),
     include_package_data=True,
+    ext_modules=cythonize(extensions),
     install_requires=install_requires,
     package_data={"": ["utils/china_calendar.feather", "utils/minutes_split.feather"]},
     classifiers=[
@@ -41,3 +48,5 @@ setup(
         ],
     },
 )
+
+# 打包 pyd：python setup.py build_ext --inplace

@@ -1541,8 +1541,8 @@ def show_strategies_recent(df, **kwargs):
     )
 
     # 计算每个时间段的盈利策略数量
-    win_count = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0)
-    win_rate = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
+    win_count = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0)
+    win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
     dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
     st.dataframe(dfs, use_container_width=True)
