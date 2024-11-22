@@ -28,7 +28,7 @@ setup(
     long_description_content_type="text/markdown",
     license="Apache Software License",
     url="https://github.com/waditu/czsc",
-    packages=find_packages(exclude=["test", "images", "docs", "examples", "hist"]),
+    packages=find_packages(include=["czsc", "czsc.*"]),
     include_package_data=True,
     ext_modules=cythonize(extensions),
     install_requires=install_requires,
