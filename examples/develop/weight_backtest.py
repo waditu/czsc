@@ -13,7 +13,7 @@ def test_ensemble_weight():
     from czsc import WeightBacktest
 
     dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
-    wb = WeightBacktest(dfw, digits=1, fee_rate=0.0002)
+    wb = WeightBacktest(dfw, digits=2, fee_rate=0.0002, n_jobs=1)
     ss = sorted(wb.stats.items())
     print(ss)
 
@@ -24,7 +24,7 @@ def test_rust_weight_backtest():
 
     dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
 
-    wb = WeightBacktest(czsc.to_arrow(dfw), digits=1, fee_rate=0.0002, n_jobs=1)
+    wb = WeightBacktest(czsc.to_arrow(dfw), digits=2, fee_rate=0.0002, n_jobs=1)
 
-    ss = sorted(wb.stats.items())
-    print(ss)
+    # ss = sorted(wb.stats.items())
+    # print(ss)

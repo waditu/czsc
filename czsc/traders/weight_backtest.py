@@ -231,10 +231,13 @@ class WeightBacktest:
 
     更新日志：
 
-    - V240627: 增加dailys属性，品种每日的交易信息
+    #### 20241125
+
+    1. 新增 yearly_days 参数，用于指定每年的交易日天数，默认为 252。
+
     """
 
-    version = "V240627"
+    version = "V241125"
 
     def __init__(self, dfw, digits=2, **kwargs) -> None:
         """持仓权重回测
@@ -285,7 +288,8 @@ class WeightBacktest:
         self.dfw["weight"] = self.dfw["weight"].astype("float").round(digits)
         self.symbols = list(self.dfw["symbol"].unique().tolist())
         self._dailys = None
-        self.results = self.backtest(n_jobs=kwargs.get("n_jobs", 1))
+        self.yearly_days = kwargs.pop("yearly_days", 252)
+        self.results = self.backtest(n_jobs=kwargs.pop("n_jobs", 1))
 
     @property
     def stats(self):
@@ -332,7 +336,7 @@ class WeightBacktest:
     def alpha_stats(self):
         """策略超额收益统计"""
         df = self.alpha.copy()
-        stats = czsc.daily_performance(df["超额"].to_list())
+        stats = czsc.daily_performance(df["超额"].to_list(), yearly_days=self.yearly_days)
         stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
         stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
         return stats
@@ -341,7 +345,7 @@ class WeightBacktest:
     def bench_stats(self):
         """基准收益统计"""
         df = self.alpha.copy()
-        stats = czsc.daily_performance(df["基准"].to_list())
+        stats = czsc.daily_performance(df["基准"].to_list(), yearly_days=self.yearly_days)
         stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
         stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
         return stats
@@ -559,7 +563,7 @@ class WeightBacktest:
         res["品种等权日收益"] = dret
 
         stats = {"开始日期": dret["date"].min().strftime("%Y%m%d"), "结束日期": dret["date"].max().strftime("%Y%m%d")}
-        stats.update(daily_performance(dret["total"]))
+        stats.update(daily_performance(dret["total"], yearly_days=self.yearly_days))
         dfp = pd.concat([v["pairs"] for k, v in res.items() if k in symbols], ignore_index=True)
         pairs_stats = evaluate_pairs(dfp)
         pairs_stats = {k: v for k, v in pairs_stats.items() if k in ["单笔收益", "持仓K线数", "交易胜率", "持仓天数"]}

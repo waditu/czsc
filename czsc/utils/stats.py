@@ -163,7 +163,7 @@ def daily_performance(daily_returns, **kwargs):
 
 
 def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods=100, **kwargs):
-    """计算滚动日收益
+    """计算滚动日收益的各项指标
 
     :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col]
     :param ret_col: str, 收益列名
@@ -173,10 +173,14 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
 
         - yearly_days: int, 252, 一年的交易日数
     """
+    from czsc.eda import cal_yearly_days
+
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+
+    yearly_days = kwargs.get("yearly_days", cal_yearly_days(df.index))
 
     df = df[[ret_col]].copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)
@@ -185,7 +189,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
     for edt in dts[min_periods:]:
         sdt = edt - pd.Timedelta(days=window)
         dfg = df[(df.index >= sdt) & (df.index <= edt)].copy()
-        s = daily_performance(dfg[ret_col].to_list(), yearly_days=kwargs.get("yearly_days", 252))
+        s = daily_performance(dfg[ret_col].to_list(), yearly_days=yearly_days)
         s["sdt"] = sdt
         s["edt"] = edt
         res.append(s)

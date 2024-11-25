@@ -486,8 +486,15 @@ def show_weight_backtest(dfw, **kwargs):
         - n_jobs: int, 并行计算的进程数，默认为 1
 
     """
+    from czsc.eda import cal_yearly_days
+
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
+    yearly_days = kwargs.pop("yearly_days", None)
+
+    if not yearly_days:
+        yearly_days = cal_yearly_days(dts=dfw["dt"].unique())
+
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
@@ -509,13 +516,14 @@ def show_weight_backtest(dfw, **kwargs):
     c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
     c11.metric("空头占比", f"{stat['空头占比']:.2%}")
+    st.caption(f"回测参数：单边手续费 {fee} BP，权重小数位数 {digits} ，年交易天数 {yearly_days}")
     st.divider()
 
     dret = wb.results["品种等权日收益"].copy()
     dret["dt"] = pd.to_datetime(dret["date"])
     dret = dret.set_index("dt").drop(columns=["date"])
     # dret.index = pd.to_datetime(dret.index)
-    show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), **kwargs)
+    show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), yearly_days=yearly_days, **kwargs)
 
     if kwargs.get("show_drawdowns", False):
         show_drawdowns(dret, ret_col="total", sub_title="")
@@ -532,7 +540,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
-            show_splited_daily(dret[["total"]].copy(), ret_col="total")
+            show_splited_daily(dret[["total"]].copy(), ret_col="total", yearly_days=yearly_days)
 
     if kwargs.get("show_yearly_stats", False):
         with st.expander("年度绩效指标", expanded=False):
