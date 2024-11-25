@@ -500,7 +500,13 @@ def show_weight_backtest(dfw, **kwargs):
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits, n_jobs=kwargs.get("n_jobs", 1))
+    wb = czsc.WeightBacktest(
+        dfw,
+        fee_rate=fee / 10000,
+        digits=digits,
+        n_jobs=kwargs.get("n_jobs", 1),
+        yearly_days=yearly_days,
+    )
     stat = wb.results["绩效评价"]
 
     st.divider()
