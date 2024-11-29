@@ -69,5 +69,39 @@ def test_weights_simple_ensemble_only_long():
     pd.testing.assert_series_equal(result["weight"], expected)
 
 
+def test_limit_leverage():
+    from czsc.eda import limit_leverage
+
+    data = {
+        "dt": pd.date_range(start="2023-01-01", periods=10, freq="D"),
+        "symbol": ["TEST"] * 10,
+        "weight": [0.1, 0.2, -0.3, 3, -0.5, 0.6, -0.7, 0.8, -0.9, 1.0],
+        "price": [100 + i for i in range(10)],
+    }
+    df = pd.DataFrame(data)
+
+    # Test with leverage = 1.0
+    df_result = limit_leverage(df, leverage=1.0, copy=True, window=3, min_periods=2)
+    assert df_result["weight"].max() <= 1.0
+    assert df_result["weight"].min() >= -1.0
+
+    # Test with leverage = 2.0
+    df_result = limit_leverage(df, leverage=2.0, copy=True, window=3, min_periods=2)
+    assert df_result["weight"].max() <= 2.0
+    assert df_result["weight"].min() >= -2.0
+
+    # Test with different window and min_periods
+    df_result = limit_leverage(df, leverage=1.0, window=5, min_periods=2, copy=True)
+    assert df_result["weight"].max() <= 1.0
+    assert df_result["weight"].min() >= -1.0
+
+    df1 = df.copy()
+    df1.rename(columns={"weight": "weight1"}, inplace=True)
+    # Test with leverage = 1.0
+    df_result = limit_leverage(df1, leverage=1.0, copy=True, window=3, min_periods=2, weight="weight1")
+    assert df_result["weight1"].max() <= 1.0
+    assert df_result["weight1"].min() >= -1.0
+
+
 if __name__ == "__main__":
     pytest.main()

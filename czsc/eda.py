@@ -511,3 +511,41 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     sorted_layers = sorted(layer_returns.items(), key=lambda x: x[1], reverse=True)
     return "->".join([f"{x[0]}" for x in sorted_layers])
+
+
+def limit_leverage(df: pd.DataFrame, leverage: float = 1.0, **kwargs):
+    """限制杠杆比例
+
+    原理描述：
+
+    1. 计算滚动窗口内权重的绝对均值 abs_mean，初始窗口内权重的绝对均值设为 leverage
+    2. 用 leverage 除以 abs_mean，得到调整比例 adjust_ratio
+    3. 将原始权重乘以 adjust_ratio，再限制在 -leverage 和 leverage 之间
+
+    :param df: DataFrame, columns=['dt', 'symbol', 'weight']
+    :param leverage: float, 杠杆倍数
+    :param kwargs:
+
+        - copy: bool, 是否复制 DataFrame
+        - window: int, 滚动窗口，默认为 300
+        - min_periods: int, 最小样本数，小于该值的窗口不计算均值，默认为 50
+        - weight: str, 权重列名，默认为 'weight'
+
+    :return: DataFrame
+    """
+    window = kwargs.get("window", 300)
+    min_periods = kwargs.get("min_periods", 50)
+    weight = kwargs.get("weight", "weight")
+
+    assert weight in df.columns, f"数据中不包含权重列 {weight}"
+    assert df['symbol'].nunique() == 1, "数据中包含多个品种，必须单品种"
+    assert df['dt'].is_monotonic_increasing, "数据未按日期排序，必须升序排列"
+    assert df['dt'].is_unique, "数据中存在重复dt，必须唯一"
+
+    if kwargs.get("copy", False):
+        df = df.copy()
+
+    abs_mean = df[weight].abs().rolling(window=window, min_periods=min_periods).mean().fillna(leverage)
+    adjust_ratio = leverage / abs_mean
+    df[weight] = (df[weight] * adjust_ratio).clip(-leverage, leverage)
+    return df

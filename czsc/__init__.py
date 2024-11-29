@@ -218,6 +218,7 @@ from czsc.eda import (
     sma_long_bear,
     dif_long_bear,
     tsf_type,
+    limit_leverage,
 )
 
 
