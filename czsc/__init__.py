@@ -136,6 +136,7 @@ from czsc.utils.st_components import (
     show_splited_daily,
     show_monthly_return,
     show_correlation,
+    show_corr_graph,
     show_sectional_ic,
     show_factor_returns,
     show_factor_layering,

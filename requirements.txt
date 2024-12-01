@@ -31,3 +31,4 @@ flask
 scipy
 requests_toolbelt
 pandas-ta
+networkx>=3.3

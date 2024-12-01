@@ -223,7 +223,9 @@ def show_correlation(df, cols=None, method="pearson", **kwargs):
     """
     cols = cols or df.columns.to_list()
     dfr = df[cols].corr(method=method)
-    dfr["average"] = (dfr.sum(axis=1) - 1) / (len(cols) - 1)
+    dfr = dfr.copy().where(~np.eye(dfr.shape[0], dtype=bool))
+
+    dfr["average"] = dfr.sum(axis=1) / (len(cols) - 1)
     dfr = dfr.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS")
 
     if kwargs.get("use_st_table", False):
@@ -1734,3 +1736,47 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         }
     )
     st.dataframe(dfg, use_container_width=True)
+
+
+def show_corr_graph(df, columns=None, threshold=0.2, **kwargs):
+    """显示相关性矩阵的图形
+
+    :param df: pd.DataFrame, 需要计算相关性的数据
+    :param columns: list, 需要显示的列名
+    :param threshold: float, 相关性阈值
+    :param kwargs:
+
+        - method: str, 相关性计算方法，默认为 pearson, 可选 pearson, kendall, spearman
+    """
+    import networkx as nx
+    from czsc.utils.plotly_plot import plot_nx_graph
+
+    method = kwargs.get("method", "pearson")
+
+    if columns is None:
+        columns = df.columns
+
+    dfr = df[columns].corr(method=method).round(4)
+
+    # 创建一个无向图
+    G = nx.Graph()
+
+    # 添加节点，使用列名作为节点名称
+    G.add_nodes_from(dfr.columns)
+
+    # 添加边，只有当相关性超过阈值时
+    for i, col1 in enumerate(dfr.columns):
+        for j, col2 in enumerate(dfr.columns):
+            if i < j:  # 避免重复和自环
+                if abs(dfr.iat[i, j]) > threshold:
+                    G.add_edge(col1, col2, weight=dfr.iat[i, j])
+
+    fig = plot_nx_graph(G, node_marker_size=15)
+    st.plotly_chart(fig, use_container_width=True)
+    with st.expander("相关性矩阵"):
+        # 将 dfr 对角线上的 1 填充为 0
+        dfr = dfr.copy().where(~np.eye(dfr.shape[0], dtype=bool))
+        dfr["average"] = dfr.sum(axis=1) / (len(columns) - 1)
+
+        dfr = dfr.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS")
+        st.dataframe(dfr, use_container_width=True)
