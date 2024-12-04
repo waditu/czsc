@@ -266,12 +266,15 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - logger: loguru.logger, 默认为 loguru.logger
         - factor_params: dict, 因子计算参数
         - min_klines: int, 最小K线数据量，默认为 300
+        - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
     logger = kwargs.get("logger", loguru.logger)
     min_klines = kwargs.get("min_klines", 300)
     factor_params = kwargs.get("factor_params", {})
+    price_type = kwargs.get("price_type", "close")
+
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
 
@@ -285,7 +288,13 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 continue
 
             df = factor_function(df, **factor_params)
-            df["price"] = df["close"]
+            if price_type == 'next_open':
+                df["price"] = df["open"].shift(-1).fillna(df["close"])
+            elif price_type == 'close':
+                df["price"] = df["close"]
+            else:
+                raise ValueError("price_type 参数错误, 可选值为 close 或 next_open")
+
             df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
 
             factor = [x for x in df.columns if x.startswith("F#")][0]
