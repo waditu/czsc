@@ -276,6 +276,10 @@ class WeightBacktest:
 
         :param digits: int, 权重列保留小数位数
         :param weight_type: str, default 'ts'，持仓权重类别，可选值包括：'ts'、'cs'，分别表示时序策略、截面策略
+
+            ts 表示 time series，时序策略；
+            cs 表示 cross section，截面策略。
+
         :param kwargs:
 
             - fee_rate: float，单边交易成本，包括手续费与冲击成本, 默认为 0.0002
