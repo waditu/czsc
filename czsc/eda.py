@@ -95,7 +95,7 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
 
         - factor_direction: str, 因子方向，positive 或 negative
         - logger: loguru.logger, 日志记录器
-        - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 False
+        - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 True
 
     :return: pd.DataFrame, 包含 weight 列的数据
     """
@@ -111,12 +111,12 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
     if factor_direction == "negative":
         df[factor] = -df[factor]
 
-    df[weight] = 0
+    df[weight] = 0.0
     rows = []
 
     for dt, dfg in df.groupby("dt"):
-        long_num = long if long >= 1 else int(len(dfg) * long)
-        short_num = short if short >= 1 else int(len(dfg) * short)
+        long_num = int(long) if long >= 1 else int(len(dfg) * long)
+        short_num = int(short) if short >= 1 else int(len(dfg) * short)
 
         if long_num == 0 and short_num == 0:
             logger.warning(f"{dt} 多空目前持仓数量都为0; long: {long}, short: {short}")
@@ -132,8 +132,8 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
             long_symbols = list(set(long_symbols) - union_symbols)
             short_symbols = list(set(short_symbols) - union_symbols)
 
-        dfg.loc[dfg['symbol'].isin(long_symbols), weight] = 1 / long_num if norm else 1
-        dfg.loc[dfg['symbol'].isin(short_symbols), weight] = -1 / short_num if norm else -1
+        dfg.loc[dfg['symbol'].isin(long_symbols), weight] = 1 / long_num if norm else 1.0
+        dfg.loc[dfg['symbol'].isin(short_symbols), weight] = -1 / short_num if norm else -1.0
         rows.append(dfg)
 
     dfx = pd.concat(rows, ignore_index=True)
