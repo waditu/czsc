@@ -223,7 +223,9 @@ def show_correlation(df, cols=None, method="pearson", **kwargs):
     """
     cols = cols or df.columns.to_list()
     dfr = df[cols].corr(method=method)
-    dfr["average"] = (dfr.sum(axis=1) - 1) / (len(cols) - 1)
+    dfr = dfr.copy().where(~np.eye(dfr.shape[0], dtype=bool))
+
+    dfr["average"] = dfr.sum(axis=1) / (len(cols) - 1)
     dfr = dfr.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS")
 
     if kwargs.get("use_st_table", False):
@@ -486,14 +488,27 @@ def show_weight_backtest(dfw, **kwargs):
         - n_jobs: int, 并行计算的进程数，默认为 1
 
     """
+    from czsc.eda import cal_yearly_days
+
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
+    yearly_days = kwargs.pop("yearly_days", None)
+
+    if not yearly_days:
+        yearly_days = cal_yearly_days(dts=dfw["dt"].unique())
+
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    wb = czsc.WeightBacktest(dfw, fee_rate=fee / 10000, digits=digits, n_jobs=kwargs.get("n_jobs", 1))
+    wb = czsc.WeightBacktest(
+        dfw,
+        fee_rate=fee / 10000,
+        digits=digits,
+        n_jobs=kwargs.get("n_jobs", 1),
+        yearly_days=yearly_days,
+    )
     stat = wb.results["绩效评价"]
 
     st.divider()
@@ -509,13 +524,14 @@ def show_weight_backtest(dfw, **kwargs):
     c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
     c11.metric("空头占比", f"{stat['空头占比']:.2%}")
+    st.caption(f"回测参数：单边手续费 {fee} BP，权重小数位数 {digits} ，年交易天数 {yearly_days}")
     st.divider()
 
     dret = wb.results["品种等权日收益"].copy()
     dret["dt"] = pd.to_datetime(dret["date"])
     dret = dret.set_index("dt").drop(columns=["date"])
     # dret.index = pd.to_datetime(dret.index)
-    show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), **kwargs)
+    show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), yearly_days=yearly_days, **kwargs)
 
     if kwargs.get("show_drawdowns", False):
         show_drawdowns(dret, ret_col="total", sub_title="")
@@ -532,7 +548,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
-            show_splited_daily(dret[["total"]].copy(), ret_col="total")
+            show_splited_daily(dret[["total"]].copy(), ret_col="total", yearly_days=yearly_days)
 
     if kwargs.get("show_yearly_stats", False):
         with st.expander("年度绩效指标", expanded=False):
@@ -1541,8 +1557,8 @@ def show_strategies_recent(df, **kwargs):
     )
 
     # 计算每个时间段的盈利策略数量
-    win_count = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0)
-    win_rate = n_rets.applymap(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
+    win_count = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0)
+    win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
     dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
     st.dataframe(dfs, use_container_width=True)
@@ -1705,8 +1721,9 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
         st.plotly_chart(fig, use_container_width=True)
 
-    dfg = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["count"])
-    dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean", "std", "min", "25%", "50%", "75%", "max"])
+    dfg = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
+    dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
+    dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["min", "25%", "50%", "75%", "max"])
     dfg = dfg.format(
         {
             "count": "{:.0f}",
@@ -1720,3 +1737,128 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         }
     )
     st.dataframe(dfg, use_container_width=True)
+
+
+def show_corr_graph(df, columns=None, threshold=0.2, **kwargs):
+    """显示相关性矩阵的图形
+
+    :param df: pd.DataFrame, 需要计算相关性的数据
+    :param columns: list, 需要显示的列名
+    :param threshold: float, 相关性阈值
+    :param kwargs:
+
+        - method: str, 相关性计算方法，默认为 pearson, 可选 pearson, kendall, spearman
+    """
+    import networkx as nx
+    from czsc.utils.plotly_plot import plot_nx_graph
+
+    method = kwargs.get("method", "pearson")
+
+    if columns is None:
+        columns = df.columns
+
+    dfr = df[columns].corr(method=method).round(4)
+
+    # 创建一个无向图
+    G = nx.Graph()
+
+    # 添加节点，使用列名作为节点名称
+    G.add_nodes_from(dfr.columns)
+
+    # 添加边，只有当相关性超过阈值时
+    for i, col1 in enumerate(dfr.columns):
+        for j, col2 in enumerate(dfr.columns):
+            if i < j:  # 避免重复和自环
+                if abs(dfr.iat[i, j]) > threshold:
+                    G.add_edge(col1, col2, weight=dfr.iat[i, j])
+
+    fig = plot_nx_graph(G, node_marker_size=15)
+    st.plotly_chart(fig, use_container_width=True)
+    with st.expander("相关性矩阵"):
+        # 将 dfr 对角线上的 1 填充为 0
+        dfr = dfr.copy().where(~np.eye(dfr.shape[0], dtype=bool))
+        dfr["average"] = dfr.sum(axis=1) / (len(columns) - 1)
+
+        dfr = dfr.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS")
+        st.dataframe(dfr, use_container_width=True)
+
+
+def show_df_describe(df: pd.DataFrame):
+    """展示 DataFrame 的描述性统计信息
+
+    :param df: pd.DataFrame，必须是 df.describe() 的结果
+    """
+    quantiles = [x for x in df.columns if "%" in x]
+    df = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
+
+    format_dict = {
+        "count": "{:.0f}",
+        "mean": "{:.4f}",
+        "std": "{:.4f}",
+        "min": "{:.4f}",
+        "max": "{:.4f}",
+    }
+    for q in quantiles:
+        format_dict[q] = "{:.4f}"
+
+    df = df.format(format_dict)
+    st.dataframe(df, use_container_width=True)
+
+
+def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
+    """分析日收益数据的日历效应
+
+    :param df: pd.DataFrame, 包含日期的日收益数据
+    :param ret_col: str, 收益列名称
+    :param kwargs: dict, 其他参数
+
+        - show_weekday: bool, 是否展示星期效应，默认为 True
+        - show_month: bool, 是否展示月份效应，默认为 True
+        - percentiles: list, 分位数，默认为 [0.1, 0.25, 0.5, 0.75, 0.9]
+
+    """
+    show_weekday = kwargs.get("show_weekday", True)
+    show_month = kwargs.get("show_month", True)
+    percentiles = kwargs.get("percentiles", [0.1, 0.25, 0.5, 0.75, 0.9])
+
+    assert ret_col in df.columns, f"ret_col 必须是 {df.columns} 中的一个"
+    assert show_month or show_weekday, "show_month 和 show_weekday 不能同时为 False"
+
+    if not df.index.dtype == "datetime64[ns]":
+        df["dt"] = pd.to_datetime(df["dt"])
+        df.set_index("dt", inplace=True)
+
+    assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    df = df.copy()
+
+    st.write(
+        f"交易区间 {df.index.min().strftime('%Y-%m-%d')} ~ {df.index.max().strftime('%Y-%m-%d')}；总天数：{len(df)}"
+    )
+
+    if show_weekday:
+        st.write("##### 星期效应")
+        df["weekday"] = df.index.weekday
+        sorted_weekday = sorted(df["weekday"].unique().tolist())
+        weekday_map = {0: "周一", 1: "周二", 2: "周三", 3: "周四", 4: "周五", 5: "周六", 6: "周日"}
+        df["weekday"] = df["weekday"].map(weekday_map)
+        sorted_rows = [weekday_map[i] for i in sorted_weekday]
+
+        weekday_effect = df.groupby("weekday")[ret_col].describe(percentiles=percentiles)
+        weekday_effect = weekday_effect.loc[sorted_rows]
+        show_df_describe(weekday_effect)
+
+    if show_month:
+        st.write("##### 月份效应")
+        df["month"] = df.index.month
+        month_map = {i: f"{i}月" for i in range(1, 13)}
+        sorted_month = sorted(df["month"].unique().tolist())
+        sorted_rows = [month_map[i] for i in sorted_month]
+
+        df["month"] = df["month"].map(month_map)
+        month_effect = df.groupby("month")[ret_col].describe(percentiles=percentiles)
+        month_effect = month_effect.loc[sorted_rows]
+        show_df_describe(month_effect)
+
+    st.caption("数据说明：count 为样本数量，mean 为均值，std 为标准差，min 为最小值，n% 为分位数，max 为最大值")

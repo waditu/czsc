@@ -9,6 +9,7 @@ import os
 import webbrowser
 import numpy as np
 import pandas as pd
+import networkx as nx
 from plotly import graph_objects as go
 from plotly.subplots import make_subplots
 from czsc.utils.cache import home_path
@@ -46,35 +47,53 @@ class KlineChart:
             assert self.n_rows in heights_map.keys(), "使用内置高度配置，n_rows 只能是 3, 4, 5"
             row_heights = heights_map[self.n_rows]
 
-        self.color_red = 'rgba(249,41,62,0.7)'
-        self.color_green = 'rgba(0,170,59,0.7)'
-        fig = make_subplots(rows=self.n_rows, cols=1, shared_xaxes=True, row_heights=row_heights,
-                            horizontal_spacing=0, vertical_spacing=0)
+        self.color_red = "rgba(249,41,62,0.7)"
+        self.color_green = "rgba(0,170,59,0.7)"
+        fig = make_subplots(
+            rows=self.n_rows,
+            cols=1,
+            shared_xaxes=True,
+            row_heights=row_heights,
+            horizontal_spacing=0,
+            vertical_spacing=0,
+        )
 
-        fig = fig.update_yaxes(showgrid=True, zeroline=False, automargin=True,
-                               fixedrange=kwargs.get('y_fixed_range', True),
-                               showspikes=True, spikemode='across', spikesnap='cursor', showline=False, spikedash='dot')
-        fig = fig.update_xaxes(type='category', rangeslider_visible=False, showgrid=False, automargin=True,
-                               showticklabels=False, showspikes=True, spikemode='across', spikesnap='cursor',
-                               showline=False, spikedash='dot')
+        fig = fig.update_yaxes(
+            showgrid=True,
+            zeroline=False,
+            automargin=True,
+            fixedrange=kwargs.get("y_fixed_range", True),
+            showspikes=True,
+            spikemode="across",
+            spikesnap="cursor",
+            showline=False,
+            spikedash="dot",
+        )
+        fig = fig.update_xaxes(
+            type="category",
+            rangeslider_visible=False,
+            showgrid=False,
+            automargin=True,
+            showticklabels=False,
+            showspikes=True,
+            spikemode="across",
+            spikesnap="cursor",
+            showline=False,
+            spikedash="dot",
+        )
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
-            title=dict(text=kwargs.get('title', ''), yanchor='top'),
-            margin=go.layout.Margin(
-                l=0,  # left margin
-                r=0,  # right margin
-                b=0,  # bottom margin
-                t=0   # top margin
-            ),
+            title=dict(text=kwargs.get("title", ""), yanchor="top"),
+            margin=go.layout.Margin(l=0, r=0, b=0, t=0),  # left margin  # right margin  # bottom margin  # top margin
             # https://plotly.com/python/reference/layout/#layout-legend
-            legend=dict(orientation='h', yanchor="top", y=1.05, xanchor="left", x=0, bgcolor='rgba(0,0,0,0)'),
+            legend=dict(orientation="h", yanchor="top", y=1.05, xanchor="left", x=0, bgcolor="rgba(0,0,0,0)"),
             template="plotly_dark",
             hovermode="x unified",
-            hoverlabel=dict(bgcolor='rgba(255,255,255,0.1)', font=dict(size=20)),  # 透明，更容易看清后面k线
-            dragmode='pan',
+            hoverlabel=dict(bgcolor="rgba(255,255,255,0.1)", font=dict(size=20)),  # 透明，更容易看清后面k线
+            dragmode="pan",
             legend_title_font_color="red",
-            height=kwargs.get('height', 300),
+            height=kwargs.get("height", 300),
         )
 
         self.fig = fig
@@ -98,13 +117,24 @@ class KlineChart:
         3. 将创建的烛台图对象添加到 self.fig 中的第一个子图（row=1, col=1）。
         4. 使用 fig.update_traces 更新所有 traces 的 xaxis 属性为 "x1"。
         """
-        if 'text' not in kline.columns:
-            kline['text'] = ""
+        if "text" not in kline.columns:
+            kline["text"] = ""
 
-        candle = go.Candlestick(x=kline['dt'], open=kline["open"], high=kline["high"], low=kline["low"],
-                                close=kline["close"], text=kline["text"], name=name, showlegend=True,
-                                increasing_line_color=self.color_red, decreasing_line_color=self.color_green,
-                                increasing_fillcolor=self.color_red, decreasing_fillcolor=self.color_green, **kwargs)
+        candle = go.Candlestick(
+            x=kline["dt"],
+            open=kline["open"],
+            high=kline["high"],
+            low=kline["low"],
+            close=kline["close"],
+            text=kline["text"],
+            name=name,
+            showlegend=True,
+            increasing_line_color=self.color_red,
+            decreasing_line_color=self.color_green,
+            increasing_fillcolor=self.color_red,
+            decreasing_fillcolor=self.color_green,
+            **kwargs,
+        )
         self.fig.add_trace(candle, row=1, col=1)
         self.fig.update_traces(xaxis="x1")
 
@@ -125,8 +155,8 @@ class KlineChart:
             - show_legend: 是否显示图例，默认值为 False
         """
         df = kline.copy()
-        df['vol_color'] = np.where(df['close'] > df['open'], self.color_red, self.color_green)
-        self.add_bar_indicator(df['dt'], df['vol'], color=df['vol_color'], name="成交量", row=row, show_legend=False)
+        df["vol_color"] = np.where(df["close"] > df["open"], self.color_red, self.color_green)
+        self.add_bar_indicator(df["dt"], df["vol"], color=df["vol_color"], name="成交量", row=row, show_legend=False)
 
     def add_sma(self, kline: pd.DataFrame, row=1, ma_seq=(5, 10, 20), visible=False, **kwargs):
         """绘制均线图
@@ -147,10 +177,17 @@ class KlineChart:
                 - show_legend: 是否显示图例，默认值为 True
         """
         df = kline.copy()
-        line_width = kwargs.get('line_width', 0.6)
+        line_width = kwargs.get("line_width", 0.6)
         for ma in ma_seq:
-            self.add_scatter_indicator(df['dt'], df['close'].rolling(ma).mean(), name=f"MA{ma}",
-                                       row=row, line_width=line_width, visible=visible, show_legend=True)
+            self.add_scatter_indicator(
+                df["dt"],
+                df["close"].rolling(ma).mean(),
+                name=f"MA{ma}",
+                row=row,
+                line_width=line_width,
+                visible=visible,
+                show_legend=True,
+            )
 
     def add_macd(self, kline: pd.DataFrame, row=3, **kwargs):
         """绘制MACD图
@@ -178,24 +215,28 @@ class KlineChart:
             - show_legend: 是否显示图例，默认值为 False
         """
         df = kline.copy()
-        fastperiod = kwargs.get('fastperiod', 12)
-        slowperiod = kwargs.get('slowperiod', 26)
-        signalperiod = kwargs.get('signalperiod', 9)
-        line_width = kwargs.get('line_width', 0.6)
+        fastperiod = kwargs.get("fastperiod", 12)
+        slowperiod = kwargs.get("slowperiod", 26)
+        signalperiod = kwargs.get("signalperiod", 9)
+        line_width = kwargs.get("line_width", 0.6)
 
-        if 'DIFF' in df.columns and 'DEA' in df.columns and 'MACD' in df.columns:
-            diff, dea, macd = df['DIFF'], df['DEA'], df['MACD']
+        if "DIFF" in df.columns and "DEA" in df.columns and "MACD" in df.columns:
+            diff, dea, macd = df["DIFF"], df["DEA"], df["MACD"]
         else:
             diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
 
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
-        self.add_scatter_indicator(df['dt'], diff, name="DIFF", row=row,
-                                   line_color='white', show_legend=False, line_width=line_width)
-        self.add_scatter_indicator(df['dt'], dea, name="DEA", row=row,
-                                   line_color='yellow', show_legend=False, line_width=line_width)
-        self.add_bar_indicator(df['dt'], macd, name="MACD", row=row, color=macd_colors, show_legend=False)
+        self.add_scatter_indicator(
+            df["dt"], diff, name="DIFF", row=row, line_color="white", show_legend=False, line_width=line_width
+        )
+        self.add_scatter_indicator(
+            df["dt"], dea, name="DEA", row=row, line_color="yellow", show_legend=False, line_width=line_width
+        )
+        self.add_bar_indicator(df["dt"], macd, name="MACD", row=row, color=macd_colors, show_legend=False)
 
-    def add_indicator(self, dt, scatters: list = None, scatter_names: list = None, bar=None, bar_name='', row=4, **kwargs):
+    def add_indicator(
+        self, dt, scatters: list = None, scatter_names: list = None, bar=None, bar_name="", row=4, **kwargs
+    ):
         """绘制曲线叠加bar型指标
 
         1. 获取自定义参数 line_width，默认值为 0.6。
@@ -216,9 +257,11 @@ class KlineChart:
             - color: 根据上一步计算的颜色设置
             - show_legend: 是否显示图例，默认值为 False
         """
-        line_width = kwargs.get('line_width', 0.6)
+        line_width = kwargs.get("line_width", 0.6)
         for i, scatter in enumerate(scatters):
-            self.add_scatter_indicator(dt, scatter, name=scatter_names[i], row=row, show_legend=False, line_width=line_width)
+            self.add_scatter_indicator(
+                dt, scatter, name=scatter_names[i], row=row, show_legend=False, line_width=line_width
+            )
 
         if bar:
             bar_colors = np.where(np.array(bar, dtype=np.double) > 0, self.color_red, self.color_green)
@@ -254,16 +297,27 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        line_color = kwargs.get('line_color', None)
-        line_width = kwargs.get('line_width', None)
-        hover_template = kwargs.get('hover_template', '%{y:.3f}-%{text}')
-        show_legend = kwargs.get('show_legend', True)
-        visible = True if kwargs.get('visible', True) else 'legendonly'
-        color = kwargs.get('color', None)
-        tag = kwargs.get('tag', None)
-        scatter = go.Scatter(x=x, y=y, name=name, text=text, line_width=line_width, line_color=line_color,
-                             hovertemplate=hover_template, showlegend=show_legend, visible=visible, opacity=1.0,
-                             mode='markers', marker=dict(size=10, color=color, symbol=tag))
+        line_color = kwargs.get("line_color", None)
+        line_width = kwargs.get("line_width", None)
+        hover_template = kwargs.get("hover_template", "%{y:.3f}-%{text}")
+        show_legend = kwargs.get("show_legend", True)
+        visible = True if kwargs.get("visible", True) else "legendonly"
+        color = kwargs.get("color", None)
+        tag = kwargs.get("tag", None)
+        scatter = go.Scatter(
+            x=x,
+            y=y,
+            name=name,
+            text=text,
+            line_width=line_width,
+            line_color=line_color,
+            hovertemplate=hover_template,
+            showlegend=show_legend,
+            visible=visible,
+            opacity=1.0,
+            mode="markers",
+            marker=dict(size=10, color=color, symbol=tag),
+        )
 
         self.fig.add_trace(scatter, row=row, col=1)
         self.fig.update_traces(xaxis="x1")
@@ -296,14 +350,24 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        mode = kwargs.pop('mode', 'text+lines')
-        hover_template = kwargs.pop('hover_template', '%{y:.3f}')
-        show_legend = kwargs.pop('show_legend', True)
-        opacity = kwargs.pop('opacity', 1.0)
-        visible = True if kwargs.pop('visible', True) else 'legendonly'
+        mode = kwargs.pop("mode", "text+lines")
+        hover_template = kwargs.pop("hover_template", "%{y:.3f}")
+        show_legend = kwargs.pop("show_legend", True)
+        opacity = kwargs.pop("opacity", 1.0)
+        visible = True if kwargs.pop("visible", True) else "legendonly"
 
-        scatter = go.Scatter(x=x, y=y, name=name, text=text, mode=mode, hovertemplate=hover_template,
-                             showlegend=show_legend, visible=visible, opacity=opacity, **kwargs)
+        scatter = go.Scatter(
+            x=x,
+            y=y,
+            name=name,
+            text=text,
+            mode=mode,
+            hovertemplate=hover_template,
+            showlegend=show_legend,
+            visible=visible,
+            opacity=opacity,
+            **kwargs,
+        )
         self.fig.add_trace(scatter, row=row, col=1)
         self.fig.update_traces(xaxis="x1")
 
@@ -337,15 +401,25 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        hover_template = kwargs.pop('hover_template', '%{y:.3f}')
-        show_legend = kwargs.pop('show_legend', True)
-        visible = kwargs.pop('visible', True)
-        base = kwargs.pop('base', True)
+        hover_template = kwargs.pop("hover_template", "%{y:.3f}")
+        show_legend = kwargs.pop("show_legend", True)
+        visible = kwargs.pop("visible", True)
+        base = kwargs.pop("base", True)
         if color is None:
             color = self.color_red
 
-        bar = go.Bar(x=x, y=y, marker_line_color=color, marker_color=color, name=name,
-                     showlegend=show_legend, hovertemplate=hover_template, visible=visible, base=base, **kwargs)
+        bar = go.Bar(
+            x=x,
+            y=y,
+            marker_line_color=color,
+            marker_color=color,
+            name=name,
+            showlegend=show_legend,
+            hovertemplate=hover_template,
+            visible=visible,
+            base=base,
+            **kwargs,
+        )
         self.fig.add_trace(bar, row=row, col=1)
         self.fig.update_traces(xaxis="x1")
 
@@ -356,3 +430,96 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
+
+
+def plot_nx_graph(G: nx.Graph, **kwargs) -> go.Figure:
+    """使用 Plotly 绘制 nx.Graph 的图形
+
+    :param G: nx.Graph 对象
+    :param kwargs:
+    :return: go.Figure 对象
+    """
+    title = kwargs.get("title", "Network graph made with Python")
+    edge_width = kwargs.get("edge_width", 1.5)
+    node_marker_size = kwargs.get("node_marker_size", 10)
+
+    # 使用 spring_layout 为图分配位置
+    pos = nx.spring_layout(G)
+
+    # 准备绘图数据
+    edge_x = []
+    edge_y = []
+    edge_weights = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        edge_x.extend([x0, x1, None])
+        edge_y.extend([y0, y1, None])
+        edge_weights.append(f'{G[edge[0]][edge[1]]["weight"]:.2f}')
+
+    node_x = []
+    node_y = []
+    node_labels = []
+    for node in G.nodes():
+        node_x.append(pos[node][0])
+        node_y.append(pos[node][1])
+        node_labels.append(node)
+
+    # 创建边的散点图
+    edge_trace = go.Scatter(
+        x=edge_x,
+        y=edge_y,
+        line=dict(width=edge_width, color="#888"),
+        hoverinfo="none",
+        mode="lines",
+    )
+
+    # 创建节点的散点图
+    node_trace = go.Scatter(
+        x=node_x,
+        y=node_y,
+        mode="markers",
+        hoverinfo="text",
+        text=node_labels,  # 添加节点标签
+        marker=dict(
+            showscale=False,
+            color="skyblue",
+            size=node_marker_size,
+            line_width=0,
+        ),
+    )
+
+    # 计算边的中点位置并添加注释
+    edge_annotations = []
+    for edge in G.edges():
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        mid_x = (x0 + x1) / 2
+        mid_y = (y0 + y1) / 2
+        weight = f'{G[edge[0]][edge[1]]["weight"]:.2f}'
+        edge_annotations.append(
+            dict(
+                x=mid_x,
+                y=mid_y,
+                text=weight,
+                showarrow=False,
+                font=dict(size=12, color="red" if float(weight) > 0 else "green"),
+            )
+        )
+
+    # 创建图表
+    fig = go.Figure(
+        data=[edge_trace, node_trace],
+        layout=go.Layout(
+            title=f"<br>{title}",
+            titlefont_size=16,
+            showlegend=False,
+            hovermode="closest",
+            margin=dict(b=20, l=5, r=5, t=40),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            annotations=edge_annotations,  # 添加边的注释
+        ),
+    )
+
+    return fig

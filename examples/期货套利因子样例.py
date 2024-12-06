@@ -67,6 +67,7 @@ def main():
     import czsc
     from czsc.connectors import cooperation as coo
 
+    # 构建策略
     df1 = coo.get_raw_bars(symbol="DLy9001", freq="日线", sdt="20170101", edt="20221231", raw_bars=False, fq="后复权")
     df2 = coo.get_raw_bars(symbol="DLp9001", freq="日线", sdt="20170101", edt="20221231", raw_bars=False, fq="后复权")
     df = pd.concat([df1, df2], axis=0)
@@ -76,6 +77,8 @@ def main():
     df["price"] = df["close"]
 
     dfw = df[["dt", "symbol", "price", "weight"]].copy()
+
+    # 执行回测
     st.title("期货套利研究")
     czsc.show_weight_backtest(
         dfw, fee_rate=0.0002, show_drawdowns=True, show_yearly_stats=True, show_monthly_return=True

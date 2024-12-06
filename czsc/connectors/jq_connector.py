@@ -22,11 +22,27 @@ dt_fmt = "%Y-%m-%d %H:%M:%S"
 date_fmt = "%Y-%m-%d"
 
 # 1m, 5m, 15m, 30m, 60m, 120m, 1d, 1w, 1M
-freq_convert = {"1min": "1m", "5min": '5m', '15min': '15m',
-                "30min": "30m", "60min": '60m', "D": "1d", "W": '1w', "M": "1M"}
+freq_convert = {
+    "1min": "1m",
+    "5min": "5m",
+    "15min": "15m",
+    "30min": "30m",
+    "60min": "60m",
+    "D": "1d",
+    "W": "1w",
+    "M": "1M",
+}
 
-freq_map = {'1min': Freq.F1, '5min': Freq.F5, '15min': Freq.F15, '30min': Freq.F30,
-            '60min': Freq.F60, 'D': Freq.D, 'W': Freq.W, 'M': Freq.M}
+freq_map = {
+    "1min": Freq.F1,
+    "5min": Freq.F5,
+    "15min": Freq.F15,
+    "30min": Freq.F30,
+    "60min": Freq.F60,
+    "D": Freq.D,
+    "W": Freq.W,
+    "M": Freq.M,
+}
 
 
 def set_token(jq_mob, jq_pwd):
@@ -38,7 +54,7 @@ def set_token(jq_mob, jq_pwd):
         Password为聚宽官网登录密码，新申请用户默认为手机号后6位
     :return: None
     """
-    with open(file_token, 'wb') as f:
+    with open(file_token, "wb") as f:
         pickle.dump([jq_mob, jq_pwd], f)
 
 
@@ -47,7 +63,7 @@ def get_token():
     if not os.path.exists(file_token):
         raise ValueError(f"{file_token} 文件不存在，请先调用 set_token 进行设置")
 
-    with open(file_token, 'rb') as f:
+    with open(file_token, "rb") as f:
         jq_mob, jq_pwd = pickle.load(f)
 
     body = {
@@ -61,7 +77,7 @@ def get_token():
 
 
 def text2df(text):
-    rows = [x.split(",") for x in text.strip().split('\n')]
+    rows = [x.split(",") for x in text.strip().split("\n")]
     df = pd.DataFrame(rows[1:], columns=rows[0])
     return df
 
@@ -120,14 +136,9 @@ def get_concept_stocks(symbol, date=None):
     if isinstance(date, datetime):
         date = str(date.date())
 
-    data = {
-        "method": "get_concept_stocks",
-        "token": get_token(),
-        "code": symbol,
-        "date": date
-    }
+    data = {"method": "get_concept_stocks", "token": get_token(), "code": symbol, "date": date}
     r = requests.post(url, data=json.dumps(data))
-    return r.text.split('\n')
+    return r.text.split("\n")
 
 
 def get_index_stocks(symbol, date=None):
@@ -152,14 +163,9 @@ def get_index_stocks(symbol, date=None):
     if isinstance(date, datetime):
         date = str(date.date())
 
-    data = {
-        "method": "get_index_stocks",
-        "token": get_token(),
-        "code": symbol,
-        "date": date
-    }
+    data = {"method": "get_index_stocks", "token": get_token(), "code": symbol, "date": date}
     r = requests.post(url, data=json.dumps(data))
-    return r.text.split('\n')
+    return r.text.split("\n")
 
 
 def get_industry(symbol):
@@ -168,28 +174,23 @@ def get_industry(symbol):
     :param symbol:
     :return:
     """
-    data = {
-        "method": "get_industry",
-        "token": get_token(),
-        "code": symbol,
-        "date": str(datetime.now().date())
-    }
+    data = {"method": "get_industry", "token": get_token(), "code": symbol, "date": str(datetime.now().date())}
     r = requests.post(url, data=json.dumps(data))
     df = text2df(r.text)
     res = {
         "股票代码": symbol,
-        "证监会行业代码": df[df['industry'] == 'zjw']['industry_code'].iloc[0],
-        "证监会行业名称": df[df['industry'] == 'zjw']['industry_name'].iloc[0],
-        "聚宽一级行业代码": df[df['industry'] == 'jq_l1']['industry_code'].iloc[0],
-        "聚宽一级行业名称": df[df['industry'] == 'jq_l1']['industry_name'].iloc[0],
-        "聚宽二级行业代码": df[df['industry'] == 'jq_l2']['industry_code'].iloc[0],
-        "聚宽二级行业名称": df[df['industry'] == 'jq_l2']['industry_name'].iloc[0],
-        "申万一级行业代码": df[df['industry'] == 'sw_l1']['industry_code'].iloc[0],
-        "申万一级行业名称": df[df['industry'] == 'sw_l1']['industry_name'].iloc[0],
-        "申万二级行业代码": df[df['industry'] == 'sw_l2']['industry_code'].iloc[0],
-        "申万二级行业名称": df[df['industry'] == 'sw_l2']['industry_name'].iloc[0],
-        "申万三级行业代码": df[df['industry'] == 'sw_l3']['industry_code'].iloc[0],
-        "申万三级行业名称": df[df['industry'] == 'sw_l3']['industry_name'].iloc[0],
+        "证监会行业代码": df[df["industry"] == "zjw"]["industry_code"].iloc[0],
+        "证监会行业名称": df[df["industry"] == "zjw"]["industry_name"].iloc[0],
+        "聚宽一级行业代码": df[df["industry"] == "jq_l1"]["industry_code"].iloc[0],
+        "聚宽一级行业名称": df[df["industry"] == "jq_l1"]["industry_name"].iloc[0],
+        "聚宽二级行业代码": df[df["industry"] == "jq_l2"]["industry_code"].iloc[0],
+        "聚宽二级行业名称": df[df["industry"] == "jq_l2"]["industry_name"].iloc[0],
+        "申万一级行业代码": df[df["industry"] == "sw_l1"]["industry_code"].iloc[0],
+        "申万一级行业名称": df[df["industry"] == "sw_l1"]["industry_name"].iloc[0],
+        "申万二级行业代码": df[df["industry"] == "sw_l2"]["industry_code"].iloc[0],
+        "申万二级行业名称": df[df["industry"] == "sw_l2"]["industry_name"].iloc[0],
+        "申万三级行业代码": df[df["industry"] == "sw_l3"]["industry_code"].iloc[0],
+        "申万三级行业名称": df[df["industry"] == "sw_l3"]["industry_name"].iloc[0],
     }
     return res
 
@@ -213,18 +214,14 @@ def get_all_securities(code, date=None) -> pd.DataFrame:
     if isinstance(date, datetime):
         date = str(date.date())
 
-    data = {
-        "method": "get_all_securities",
-        "token": get_token(),
-        "code": code,
-        "date": date
-    }
+    data = {"method": "get_all_securities", "token": get_token(), "code": code, "date": date}
     r = requests.post(url, data=json.dumps(data))
     return text2df(r.text)
 
 
-def get_kline(symbol: str, end_date: [datetime, str], freq: str,
-              start_date: [datetime, str] = None, count=None, fq: bool = True) -> List[RawBar]:
+def get_kline(
+    symbol: str, end_date: [datetime, str], freq: str, start_date: [datetime, str] = None, count=None, fq: bool = True
+) -> List[RawBar]:
     """获取K线数据
 
     https://www.joinquant.com/help/api/help#JQDataHttp:get_priceget_bars-%E8%8E%B7%E5%8F%96%E6%8C%87%E5%AE%9A%E6%97%B6%E9%97%B4%E5%91%A8%E6%9C%9F%E7%9A%84%E8%A1%8C%E6%83%85%E6%95%B0%E6%8D%AE
@@ -274,7 +271,7 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
         data.update({"fq_ref_date": end_date.strftime("%Y-%m-%d")})
 
     r = requests.post(url, data=json.dumps(data))
-    rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
+    rows = [x.split(",") for x in r.text.strip().split("\n")][1:]
 
     bars = []
     i = -1
@@ -286,12 +283,20 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
 
         if int(row[5]) > 0:
             i += 1
-            bars.append(RawBar(symbol=symbol, dt=dt, id=i, freq=freq_map[freq],
-                               open=round(float(row[1]), 2),
-                               close=round(float(row[2]), 2),
-                               high=round(float(row[3]), 2),
-                               low=round(float(row[4]), 2),
-                               vol=int(row[5]), amount=int(float(row[6]))))
+            bars.append(
+                RawBar(
+                    symbol=symbol,
+                    dt=dt,
+                    id=i,
+                    freq=freq_map[freq],
+                    open=round(float(row[1]), 4),
+                    close=round(float(row[2]), 4),
+                    high=round(float(row[3]), 4),
+                    low=round(float(row[4]), 4),
+                    vol=int(row[5]),
+                    amount=int(float(row[6])),
+                )
+            )
             # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
@@ -301,8 +306,9 @@ def get_kline(symbol: str, end_date: [datetime, str], freq: str,
     return bars
 
 
-def get_kline_period(symbol: str, start_date: [datetime, str],
-                     end_date: [datetime, str], freq: str, fq=True) -> List[RawBar]:
+def get_kline_period(
+    symbol: str, start_date: [datetime, str], end_date: [datetime, str], freq: str, fq=True
+) -> List[RawBar]:
     """获取指定时间段的行情数据
 
     https://www.joinquant.com/help/api/help#JQDataHttp:get_price_periodget_bars_period-%E8%8E%B7%E5%8F%96%E6%8C%87%E5%AE%9A%E6%97%B6%E9%97%B4%E6%AE%B5%E7%9A%84%E8%A1%8C%E6%83%85%E6%95%B0%E6%8D%AE
@@ -331,7 +337,7 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
         data.update({"fq_ref_date": end_date.strftime("%Y-%m-%d")})
 
     r = requests.post(url, data=json.dumps(data))
-    rows = [x.split(",") for x in r.text.strip().split('\n')][1:]
+    rows = [x.split(",") for x in r.text.strip().split("\n")][1:]
     bars = []
     i = -1
     for row in rows:
@@ -342,12 +348,20 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
 
         if int(row[5]) > 0:
             i += 1
-            bars.append(RawBar(symbol=symbol, dt=dt, id=i, freq=freq_map[freq],
-                               open=round(float(row[1]), 2),
-                               close=round(float(row[2]), 2),
-                               high=round(float(row[3]), 2),
-                               low=round(float(row[4]), 2),
-                               vol=int(row[5]), amount=int(float(row[6]))))
+            bars.append(
+                RawBar(
+                    symbol=symbol,
+                    dt=dt,
+                    id=i,
+                    freq=freq_map[freq],
+                    open=round(float(row[1]), 4),
+                    close=round(float(row[2]), 4),
+                    high=round(float(row[3]), 4),
+                    low=round(float(row[4]), 4),
+                    vol=int(row[5]),
+                    amount=int(float(row[6])),
+                )
+            )
             # amount 单位：元
     if start_date:
         bars = [x for x in bars if x.dt >= start_date]
@@ -357,12 +371,7 @@ def get_kline_period(symbol: str, start_date: [datetime, str],
     return bars
 
 
-def get_init_bg(symbol: str,
-                end_dt: [str, datetime],
-                base_freq: str,
-                freqs: List[str],
-                max_count=1000,
-                fq=True):
+def get_init_bg(symbol: str, end_dt: [str, datetime], base_freq: str, freqs: List[str], max_count=1000, fq=True):
     """获取 symbol 的初始化 bar generator"""
     if isinstance(end_dt, str):
         end_dt = pd.to_datetime(end_dt, utc=False)
@@ -380,7 +389,8 @@ def get_init_bg(symbol: str,
     data = [x for x in bars2 if x.dt > last_day]
     assert len(data) > 0
     print(
-        f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update")
+        f"{symbol}: bar generator 最新时间 {bg.bars[base_freq][-1].dt.strftime(dt_fmt)}，还有{len(data)}行数据需要update"
+    )
     return bg, data
 
 
@@ -411,7 +421,7 @@ def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> di
         "columns": columns,
         "code": symbol,
         "date": date,
-        "count": 1
+        "count": 1,
     }
     r = requests.post(url, data=json.dumps(data))
     df = text2df(r.text)
@@ -435,15 +445,9 @@ def run_query(table: str, conditions: str, columns=None, count=1):
     :param count: 数量
     :return:
     """
-    data = {
-        "method": "run_query",
-        "token": get_token(),
-        "table": table,
-        "conditions": conditions,
-        "count": count
-    }
+    data = {"method": "run_query", "token": get_token(), "table": table, "conditions": conditions, "count": count}
     if columns:
-        data['columns'] = columns
+        data["columns"] = columns
     r = requests.post(url, data=json.dumps(data))
     df = text2df(r.text)
     return df
@@ -459,64 +463,80 @@ def get_share_basic(symbol):
     basic_info = basic_info.iloc[0].to_dict()
 
     f10 = OrderedDict()
-    f10['股票代码'] = basic_info['code']
-    f10['股票名称'] = basic_info['short_name']
-    f10['行业'] = "{}-{}".format(basic_info['industry_1'], basic_info['industry_2'])
-    f10['地域'] = "{}{}".format(basic_info['province'], basic_info['city'])
-    f10['主营'] = basic_info['main_business']
-    f10['同花顺F10'] = "http://basic.10jqka.com.cn/{}".format(basic_info['code'][:6])
+    f10["股票代码"] = basic_info["code"]
+    f10["股票名称"] = basic_info["short_name"]
+    f10["行业"] = "{}-{}".format(basic_info["industry_1"], basic_info["industry_2"])
+    f10["地域"] = "{}{}".format(basic_info["province"], basic_info["city"])
+    f10["主营"] = basic_info["main_business"]
+    f10["同花顺F10"] = "http://basic.10jqka.com.cn/{}".format(basic_info["code"][:6])
 
     # 市盈率，总市值，流通市值，流通比
     # ------------------------------------------------------------------------------------------------------------------
     last_date = datetime.now() - timedelta(days=1)
     res = get_fundamental(table="valuation", symbol=symbol, date=last_date.strftime("%Y-%m-%d"))
-    f10['总市值（亿）'] = float(res['market_cap'])
-    f10['流通市值（亿）'] = float(res['circulating_market_cap'])
-    f10['流通比（%）'] = round(float(res['circulating_market_cap']) / float(res['market_cap']) * 100, 2)
-    f10['PE_TTM'] = float(res['pe_ratio'])
-    f10['PE'] = float(res['pe_ratio_lyr'])
-    f10['PB'] = float(res['pb_ratio'])
+    f10["总市值（亿）"] = float(res["market_cap"])
+    f10["流通市值（亿）"] = float(res["circulating_market_cap"])
+    f10["流通比（%）"] = round(float(res["circulating_market_cap"]) / float(res["market_cap"]) * 100, 2)
+    f10["PE_TTM"] = float(res["pe_ratio"])
+    f10["PE"] = float(res["pe_ratio_lyr"])
+    f10["PB"] = float(res["pb_ratio"])
 
     # 净资产收益率
     # ------------------------------------------------------------------------------------------------------------------
-    for year in ['2017', '2018', '2019', '2020']:
+    for year in ["2017", "2018", "2019", "2020"]:
         indicator = get_fundamental(table="indicator", symbol=symbol, date=year)
-        f10['{}EPS'.format(year)] = float(indicator.get('eps', 0)) if indicator.get('eps', 0) else 0
-        f10['{}ROA'.format(year)] = float(indicator.get('roa', 0)) if indicator.get('roa', 0) else 0
-        f10['{}ROE'.format(year)] = float(indicator.get('roe', 0)) if indicator.get('roe', 0) else 0
-        f10['{}销售净利率(%)'.format(year)] = float(indicator.get('net_profit_margin', 0)) if indicator.get(
-            'net_profit_margin', 0) else 0
-        f10['{}销售毛利率(%)'.format(year)] = float(indicator.get('gross_profit_margin', 0)) if indicator.get(
-            'gross_profit_margin', 0) else 0
-        f10['{}营业收入同比增长率(%)'.format(year)] = float(
-            indicator.get('inc_revenue_year_on_year', 0)) if indicator.get('inc_revenue_year_on_year', 0) else 0
-        f10['{}营业收入环比增长率(%)'.format(year)] = float(indicator.get('inc_revenue_annual', 0)) if indicator.get(
-            'inc_revenue_annual', 0) else 0
-        f10['{}营业利润同比增长率(%)'.format(year)] = float(
-            indicator.get('inc_operation_profit_year_on_year', 0)) if indicator.get('inc_operation_profit_year_on_year',
-                                                                                    0) else 0
-        f10['{}经营活动产生的现金流量净额/营业收入(%)'.format(year)] = float(
-            indicator.get('ocf_to_revenue', 0)) if indicator.get('ocf_to_revenue', 0) else 0
+        f10["{}EPS".format(year)] = float(indicator.get("eps", 0)) if indicator.get("eps", 0) else 0
+        f10["{}ROA".format(year)] = float(indicator.get("roa", 0)) if indicator.get("roa", 0) else 0
+        f10["{}ROE".format(year)] = float(indicator.get("roe", 0)) if indicator.get("roe", 0) else 0
+        f10["{}销售净利率(%)".format(year)] = (
+            float(indicator.get("net_profit_margin", 0)) if indicator.get("net_profit_margin", 0) else 0
+        )
+        f10["{}销售毛利率(%)".format(year)] = (
+            float(indicator.get("gross_profit_margin", 0)) if indicator.get("gross_profit_margin", 0) else 0
+        )
+        f10["{}营业收入同比增长率(%)".format(year)] = (
+            float(indicator.get("inc_revenue_year_on_year", 0)) if indicator.get("inc_revenue_year_on_year", 0) else 0
+        )
+        f10["{}营业收入环比增长率(%)".format(year)] = (
+            float(indicator.get("inc_revenue_annual", 0)) if indicator.get("inc_revenue_annual", 0) else 0
+        )
+        f10["{}营业利润同比增长率(%)".format(year)] = (
+            float(indicator.get("inc_operation_profit_year_on_year", 0))
+            if indicator.get("inc_operation_profit_year_on_year", 0)
+            else 0
+        )
+        f10["{}经营活动产生的现金流量净额/营业收入(%)".format(year)] = (
+            float(indicator.get("ocf_to_revenue", 0)) if indicator.get("ocf_to_revenue", 0) else 0
+        )
 
     # 组合成可以用来推送的文本
-    msg = "{}（{}）@{}\n".format(f10['股票代码'], f10['股票名称'], f10['地域'])
+    msg = "{}（{}）@{}\n".format(f10["股票代码"], f10["股票名称"], f10["地域"])
     msg += "\n{}\n".format("*" * 30)
-    for k in ['行业', '主营', 'PE_TTM', 'PE', 'PB', '总市值（亿）', '流通市值（亿）', '流通比（%）', '同花顺F10']:
+    for k in ["行业", "主营", "PE_TTM", "PE", "PB", "总市值（亿）", "流通市值（亿）", "流通比（%）", "同花顺F10"]:
         msg += "{}：{}\n".format(k, f10[k])
 
     msg += "\n{}\n".format("*" * 30)
-    cols = ['EPS', 'ROA', 'ROE', '销售净利率(%)', '销售毛利率(%)', '营业收入同比增长率(%)', '营业利润同比增长率(%)',
-            '经营活动产生的现金流量净额/营业收入(%)']
+    cols = [
+        "EPS",
+        "ROA",
+        "ROE",
+        "销售净利率(%)",
+        "销售毛利率(%)",
+        "营业收入同比增长率(%)",
+        "营业利润同比增长率(%)",
+        "经营活动产生的现金流量净额/营业收入(%)",
+    ]
     msg += "2017~2020 财务变化\n\n"
     for k in cols:
         msg += k + "：{} | {} | {} | {}\n".format(
-            *[f10['{}{}'.format(year, k)] for year in ['2017', '2018', '2019', '2020']])
+            *[f10["{}{}".format(year, k)] for year in ["2017", "2018", "2019", "2020"]]
+        )
 
-    f10['msg'] = msg
+    f10["msg"] = msg
     return f10
 
 
-def get_symbols(name='ALL', **kwargs):
+def get_symbols(name="ALL", **kwargs):
     """获取指定分组下的所有标的代码
 
     :param name: 分组名称，可选值：
@@ -526,17 +546,19 @@ def get_symbols(name='ALL', **kwargs):
     :param kwargs: 其他参数
     :return:
     """
-    if name.upper() == 'ALL':
-        codes = get_all_securities('stock', date=None)['code'].unique().tolist() + \
-                get_all_securities('index', date=None)['code'].unique().tolist() + \
-                get_all_securities('futures', date=None)['code'].unique().tolist() + \
-                get_all_securities('etf', date=None)['code'].unique().tolist()
+    if name.upper() == "ALL":
+        codes = (
+            get_all_securities("stock", date=None)["code"].unique().tolist()
+            + get_all_securities("index", date=None)["code"].unique().tolist()
+            + get_all_securities("futures", date=None)["code"].unique().tolist()
+            + get_all_securities("etf", date=None)["code"].unique().tolist()
+        )
     else:
-        codes = get_all_securities(name, date=None)['code'].unique().tolist()
+        codes = get_all_securities(name, date=None)["code"].unique().tolist()
     return codes
 
 
-def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
+def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     """获取 CZSC 库定义的标准 RawBar 对象列表
 
     :param symbol: 标的代码
@@ -548,9 +570,17 @@ def get_raw_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
     :param kwargs:
     :return:
     """
-    kwargs['fq'] = fq
+    kwargs["fq"] = fq
     freq = str(freq)
     fq = True if fq == "前复权" else False
-    _map = {"1分钟": "1min", "5分钟": "5min", "15分钟": "15min", "30分钟": "30min",
-            "60分钟": "60min", "日线": "D", "周线": "W", "月线": "M"}
+    _map = {
+        "1分钟": "1min",
+        "5分钟": "5min",
+        "15分钟": "15min",
+        "30分钟": "30min",
+        "60分钟": "60min",
+        "日线": "D",
+        "周线": "W",
+        "月线": "M",
+    }
     return get_kline(symbol, freq=_map[freq], start_date=sdt, end_date=edt, fq=fq)

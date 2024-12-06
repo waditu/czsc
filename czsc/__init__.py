@@ -136,6 +136,7 @@ from czsc.utils.st_components import (
     show_splited_daily,
     show_monthly_return,
     show_correlation,
+    show_corr_graph,
     show_sectional_ic,
     show_factor_returns,
     show_factor_layering,
@@ -161,6 +162,8 @@ from czsc.utils.st_components import (
     show_factor_value,
     show_code_editor,
     show_classify,
+    show_df_describe,
+    show_date_effect,
 )
 
 from czsc.utils.bi_info import (
@@ -218,13 +221,14 @@ from czsc.eda import (
     sma_long_bear,
     dif_long_bear,
     tsf_type,
+    limit_leverage,
 )
 
 
-__version__ = "0.9.60"
+__version__ = "0.9.61"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20240918"
+__date__ = "20241101"
 
 
 def welcome():

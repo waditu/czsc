@@ -83,25 +83,27 @@ def remove_beta_effects(df, **kwargs):
     return dfr
 
 
-def cross_sectional_strategy(df, factor, **kwargs):
+def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, **kwargs):
     """根据截面因子值构建多空组合
 
     :param df: pd.DataFrame, 包含因子列的数据, 必须包含 dt, symbol, factor 列
     :param factor: str, 因子列名称
+    :param weight: str, 权重列名称，默认为 weight
+    :param long: float, 多头持仓比例/数量，默认为 0.3, 取值范围为 [0, n_symbols], 0~1 表示比例，大于等于1表示数量
+    :param short: float, 空头持仓比例/数量，默认为 0.3, 取值范围为 [0, n_symbols], 0~1 表示比例，大于等于1表示数量
     :param kwargs:
 
         - factor_direction: str, 因子方向，positive 或 negative
-        - long_num: int, 多头持仓数量
-        - short_num: int, 空头持仓数量
         - logger: loguru.logger, 日志记录器
+        - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 True
 
     :return: pd.DataFrame, 包含 weight 列的数据
     """
     factor_direction = kwargs.get("factor_direction", "positive")
-    long_num = kwargs.get("long_num", 5)
-    short_num = kwargs.get("short_num", 5)
     logger = kwargs.get("logger", loguru.logger)
+    norm = kwargs.get("norm", True)
 
+    assert long >= 0 and short >= 0, "long 和 short 参数必须大于等于0"
     assert factor in df.columns, f"{factor} 不在 df 中"
     assert factor_direction in ["positive", "negative"], f"factor_direction 参数错误"
 
@@ -109,20 +111,33 @@ def cross_sectional_strategy(df, factor, **kwargs):
     if factor_direction == "negative":
         df[factor] = -df[factor]
 
-    df['weight'] = 0
+    df[weight] = 0.0
+    rows = []
+
     for dt, dfg in df.groupby("dt"):
-        if len(dfg) < long_num + short_num:
-            logger.warning(f"{dt} 截面数据量过小，跳过；仅有 {len(dfg)} 条数据，需要 {long_num + short_num} 条数据")
+        long_num = int(long) if long >= 1 else int(len(dfg) * long)
+        short_num = int(short) if short >= 1 else int(len(dfg) * short)
+
+        if long_num == 0 and short_num == 0:
+            logger.warning(f"{dt} 多空目前持仓数量都为0; long: {long}, short: {short}")
+            rows.append(dfg)
             continue
 
-        dfa = dfg.sort_values(factor, ascending=False).head(long_num)
-        dfb = dfg.sort_values(factor, ascending=True).head(short_num)
-        if long_num > 0:
-            df.loc[dfa.index, "weight"] = 1 / long_num
-        if short_num > 0:
-            df.loc[dfb.index, "weight"] = -1 / short_num
+        long_symbols = dfg.sort_values(factor, ascending=False).head(long_num)['symbol'].tolist()
+        short_symbols = dfg.sort_values(factor, ascending=True).head(short_num)['symbol'].tolist()
 
-    return df
+        union_symbols = set(long_symbols) & set(short_symbols)
+        if union_symbols:
+            logger.warning(f"{dt} 存在同时在多头和空头的品种：{union_symbols}")
+            long_symbols = list(set(long_symbols) - union_symbols)
+            short_symbols = list(set(short_symbols) - union_symbols)
+
+        dfg.loc[dfg['symbol'].isin(long_symbols), weight] = 1 / long_num if norm else 1.0
+        dfg.loc[dfg['symbol'].isin(short_symbols), weight] = -1 / short_num if norm else -1.0
+        rows.append(dfg)
+
+    dfx = pd.concat(rows, ignore_index=True)
+    return dfx
 
 
 def judge_factor_direction(df: pd.DataFrame, factor, target='n1b', by='symbol', **kwargs):
@@ -266,12 +281,15 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - logger: loguru.logger, 默认为 loguru.logger
         - factor_params: dict, 因子计算参数
         - min_klines: int, 最小K线数据量，默认为 300
+        - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
     logger = kwargs.get("logger", loguru.logger)
     min_klines = kwargs.get("min_klines", 300)
     factor_params = kwargs.get("factor_params", {})
+    price_type = kwargs.get("price_type", "close")
+
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
 
@@ -285,7 +303,13 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 continue
 
             df = factor_function(df, **factor_params)
-            df["price"] = df["close"]
+            if price_type == 'next_open':
+                df["price"] = df["open"].shift(-1).fillna(df["close"])
+            elif price_type == 'close':
+                df["price"] = df["close"]
+            else:
+                raise ValueError("price_type 参数错误, 可选值为 close 或 next_open")
+
             df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
 
             factor = [x for x in df.columns if x.startswith("F#")][0]
@@ -478,6 +502,7 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     :return: str, 返回分层收益排序（从大到小）结果，例如：第01层->第02层->第03层->第04层->第05层
     """
+    logger = kwargs.get("logger", loguru.logger)
     window = kwargs.get("window", 600)
     min_periods = kwargs.get("min_periods", 300)
     target = kwargs.get("target", "n1b")
@@ -491,9 +516,12 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     rows = []
     for symbol, dfg in df.groupby("symbol"):
-        dfg = dfg.copy().reset_index(drop=True)
-        dfg = rolling_layers(dfg, factor, n=n, window=window, min_periods=min_periods)
-        rows.append(dfg)
+        try:
+            dfg = dfg.copy().reset_index(drop=True)
+            dfg = rolling_layers(dfg, factor, n=n, window=window, min_periods=min_periods)
+            rows.append(dfg)
+        except Exception as e:
+            logger.warning(f"{symbol} 计算分层失败: {e}")
 
     df = pd.concat(rows, ignore_index=True)
     layers = [x for x in df[f"{factor}分层"].unique() if x != "第00层" and str(x).endswith("层")]
@@ -507,3 +535,41 @@ def tsf_type(df: pd.DataFrame, factor, n=5, **kwargs):
 
     sorted_layers = sorted(layer_returns.items(), key=lambda x: x[1], reverse=True)
     return "->".join([f"{x[0]}" for x in sorted_layers])
+
+
+def limit_leverage(df: pd.DataFrame, leverage: float = 1.0, **kwargs):
+    """限制杠杆比例
+
+    原理描述：
+
+    1. 计算滚动窗口内权重的绝对均值 abs_mean，初始窗口内权重的绝对均值设为 leverage
+    2. 用 leverage 除以 abs_mean，得到调整比例 adjust_ratio
+    3. 将原始权重乘以 adjust_ratio，再限制在 -leverage 和 leverage 之间
+
+    :param df: DataFrame, columns=['dt', 'symbol', 'weight']
+    :param leverage: float, 杠杆倍数
+    :param kwargs:
+
+        - copy: bool, 是否复制 DataFrame
+        - window: int, 滚动窗口，默认为 300
+        - min_periods: int, 最小样本数，小于该值的窗口不计算均值，默认为 50
+        - weight: str, 权重列名，默认为 'weight'
+
+    :return: DataFrame
+    """
+    window = kwargs.get("window", 300)
+    min_periods = kwargs.get("min_periods", 50)
+    weight = kwargs.get("weight", "weight")
+
+    assert weight in df.columns, f"数据中不包含权重列 {weight}"
+    assert df['symbol'].nunique() == 1, "数据中包含多个品种，必须单品种"
+    assert df['dt'].is_monotonic_increasing, "数据未按日期排序，必须升序排列"
+    assert df['dt'].is_unique, "数据中存在重复dt，必须唯一"
+
+    if kwargs.get("copy", False):
+        df = df.copy()
+
+    abs_mean = df[weight].abs().rolling(window=window, min_periods=min_periods).mean().fillna(leverage)
+    adjust_ratio = leverage / abs_mean
+    df[weight] = (df[weight] * adjust_ratio).clip(-leverage, leverage)
+    return df

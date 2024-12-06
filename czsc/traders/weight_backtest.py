@@ -231,12 +231,18 @@ class WeightBacktest:
 
     更新日志：
 
-    - V240627: 增加dailys属性，品种每日的交易信息
+    #### 20241125
+
+    1. 新增 yearly_days 参数，用于指定每年的交易日天数，默认为 252。
+
+    #### 20241205
+
+    1. 新增 weight_type 参数，用于指定输入的持仓权重类别，ts 表示 time series，时序策略；。
     """
 
-    version = "V240627"
+    version = "20241205"
 
-    def __init__(self, dfw, digits=2, **kwargs) -> None:
+    def __init__(self, dfw, digits=2, weight_type="ts", **kwargs) -> None:
         """持仓权重回测
 
         初始化函数逻辑：
@@ -269,6 +275,11 @@ class WeightBacktest:
             ===================  ========  ========  =======
 
         :param digits: int, 权重列保留小数位数
+        :param weight_type: str, default 'ts'，持仓权重类别，可选值包括：'ts'、'cs'，分别表示时序策略、截面策略
+
+            ts 表示 time series，时序策略；
+            cs 表示 cross section，截面策略。
+
         :param kwargs:
 
             - fee_rate: float，单边交易成本，包括手续费与冲击成本, 默认为 0.0002
@@ -280,12 +291,15 @@ class WeightBacktest:
         self.dfw["dt"] = pd.to_datetime(self.dfw["dt"])
         if self.dfw.isnull().sum().sum() > 0:
             raise ValueError("dfw 中存在空值, 请先处理")
+
         self.digits = digits
+        self.weight_type = weight_type.lower()
         self.fee_rate = kwargs.get("fee_rate", 0.0002)
         self.dfw["weight"] = self.dfw["weight"].astype("float").round(digits)
         self.symbols = list(self.dfw["symbol"].unique().tolist())
         self._dailys = None
-        self.results = self.backtest(n_jobs=kwargs.get("n_jobs", 1))
+        self.yearly_days = kwargs.pop("yearly_days", 252)
+        self.results = self.backtest(n_jobs=kwargs.pop("n_jobs", 1))
 
     @property
     def stats(self):
@@ -332,7 +346,7 @@ class WeightBacktest:
     def alpha_stats(self):
         """策略超额收益统计"""
         df = self.alpha.copy()
-        stats = czsc.daily_performance(df["超额"].to_list())
+        stats = czsc.daily_performance(df["超额"].to_list(), yearly_days=self.yearly_days)
         stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
         stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
         return stats
@@ -341,7 +355,57 @@ class WeightBacktest:
     def bench_stats(self):
         """基准收益统计"""
         df = self.alpha.copy()
-        stats = czsc.daily_performance(df["基准"].to_list())
+        stats = czsc.daily_performance(df["基准"].to_list(), yearly_days=self.yearly_days)
+        stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
+        stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
+        return stats
+
+    @property
+    def long_daily_return(self):
+        """多头每日收益率"""
+        df = self.dailys.copy()
+        dfv = pd.pivot_table(df, index="date", columns="symbol", values="long_return").fillna(0)
+
+        if self.weight_type == "ts":
+            dfv["total"] = dfv.mean(axis=1)
+        elif self.weight_type == "cs":
+            dfv["total"] = dfv.sum(axis=1)
+        else:
+            raise ValueError(f"weight_type {self.weight_type} not supported")
+
+        dfv = dfv.reset_index(drop=False)
+        return dfv
+
+    @property
+    def short_daily_return(self):
+        """空头每日收益率"""
+        df = self.dailys.copy()
+        dfv = pd.pivot_table(df, index="date", columns="symbol", values="short_return").fillna(0)
+
+        if self.weight_type == "ts":
+            dfv["total"] = dfv.mean(axis=1)
+        elif self.weight_type == "cs":
+            dfv["total"] = dfv.sum(axis=1)
+        else:
+            raise ValueError(f"weight_type {self.weight_type} not supported")
+
+        dfv = dfv.reset_index(drop=False)
+        return dfv
+
+    @property
+    def long_stats(self):
+        """多头收益统计"""
+        df = self.long_daily_return.copy()
+        stats = czsc.daily_performance(df["total"].to_list(), yearly_days=self.yearly_days)
+        stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
+        stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
+        return stats
+
+    @property
+    def short_stats(self):
+        """空头收益统计"""
+        df = self.short_daily_return.copy()
+        stats = czsc.daily_performance(df["total"].to_list(), yearly_days=self.yearly_days)
         stats["开始日期"] = df["date"].min().strftime("%Y-%m-%d")
         stats["结束日期"] = df["date"].max().strftime("%Y-%m-%d")
         return stats
@@ -369,6 +433,8 @@ class WeightBacktest:
                 symbol      合约代码，
                 n1b         品种每日收益率，
                 edge        策略每日收益率，
+                long_edge   多头每日收益率，
+                short_edge  空头每日收益率，
                 return      策略每日收益率减去交易成本后的真实收益，
                 cost        交易成本
                 turnover    当日的单边换手率
@@ -390,15 +456,64 @@ class WeightBacktest:
         dfs["edge"] = dfs["weight"] * dfs["n1b"]
         dfs["turnover"] = abs(dfs["weight"].shift(1) - dfs["weight"])
         dfs["cost"] = dfs["turnover"] * self.fee_rate
-        dfs["edge_post_fee"] = dfs["edge"] - dfs["cost"]
+        dfs["return"] = dfs["edge"] - dfs["cost"]
+
+        # 分别计算多头和空头的收益
+        dfs["long_weight"] = np.where(dfs["weight"] > 0, dfs["weight"], 0)
+        dfs["short_weight"] = np.where(dfs["weight"] < 0, dfs["weight"], 0)
+        dfs["long_edge"] = dfs["long_weight"] * dfs["n1b"]
+        dfs["short_edge"] = dfs["short_weight"] * dfs["n1b"]
+
+        dfs["long_turnover"] = abs(dfs["long_weight"].shift(1) - dfs["long_weight"])
+        dfs["short_turnover"] = abs(dfs["short_weight"].shift(1) - dfs["short_weight"])
+        dfs["long_cost"] = dfs["long_turnover"] * self.fee_rate
+        dfs["short_cost"] = dfs["short_turnover"] * self.fee_rate
+
+        dfs["long_return"] = dfs["long_edge"] - dfs["long_cost"]
+        dfs["short_return"] = dfs["short_edge"] - dfs["short_cost"]
+
         daily = (
             dfs.groupby(dfs["dt"].dt.date)
-            .agg({"edge": "sum", "edge_post_fee": "sum", "cost": "sum", "n1b": "sum", "turnover": "sum"})
+            .agg(
+                {
+                    "edge": "sum",
+                    "return": "sum",
+                    "cost": "sum",
+                    "n1b": "sum",
+                    "turnover": "sum",
+                    "long_edge": "sum",
+                    "short_edge": "sum",
+                    "long_cost": "sum",
+                    "short_cost": "sum",
+                    "long_turnover": "sum",
+                    "short_turnover": "sum",
+                    "long_return": "sum",
+                    "short_return": "sum",
+                }
+            )
             .reset_index()
         )
         daily["symbol"] = symbol
-        daily.rename(columns={"edge_post_fee": "return", "dt": "date"}, inplace=True)
-        daily = daily[["date", "symbol", "n1b", "edge", "return", "cost", "turnover"]].copy()
+        daily.rename(columns={"dt": "date"}, inplace=True)
+        cols = [
+            "date",
+            "symbol",
+            "edge",
+            "return",
+            "cost",
+            "n1b",
+            "turnover",
+            "long_edge",
+            "long_cost",
+            "long_return",
+            "long_turnover",
+            "short_edge",
+            "short_cost",
+            "short_return",
+            "short_turnover",
+        ]
+
+        daily = daily[cols].copy()
         return daily
 
     def get_symbol_pairs(self, symbol):
@@ -553,13 +668,22 @@ class WeightBacktest:
 
         dret = pd.concat([v["daily"] for k, v in res.items() if k in symbols], ignore_index=True)
         dret = pd.pivot_table(dret, index="date", columns="symbol", values="return").fillna(0)
-        dret["total"] = dret[list(res.keys())].mean(axis=1)
+
+        if self.weight_type == "ts":
+            # 时序策略每日收益为各品种收益的等权
+            dret["total"] = dret[list(res.keys())].mean(axis=1)
+        elif self.weight_type == "cs":
+            # 截面策略每日收益为各品种收益的和
+            dret["total"] = dret[list(res.keys())].sum(axis=1)
+        else:
+            raise ValueError(f"weight_type {self.weight_type} not supported, should be 'ts' or 'cs'")
+
         # dret 中的 date 对应的是上一日；date 后移一位，对应的才是当日收益
         dret = dret.round(4).reset_index()
         res["品种等权日收益"] = dret
 
         stats = {"开始日期": dret["date"].min().strftime("%Y%m%d"), "结束日期": dret["date"].max().strftime("%Y%m%d")}
-        stats.update(daily_performance(dret["total"]))
+        stats.update(daily_performance(dret["total"], yearly_days=self.yearly_days))
         dfp = pd.concat([v["pairs"] for k, v in res.items() if k in symbols], ignore_index=True)
         pairs_stats = evaluate_pairs(dfp)
         pairs_stats = {k: v for k, v in pairs_stats.items() if k in ["单笔收益", "持仓K线数", "交易胜率", "持仓天数"]}
