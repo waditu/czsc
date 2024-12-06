@@ -162,6 +162,8 @@ from czsc.utils.st_components import (
     show_factor_value,
     show_code_editor,
     show_classify,
+    show_df_describe,
+    show_date_effect,
 )
 
 from czsc.utils.bi_info import (
