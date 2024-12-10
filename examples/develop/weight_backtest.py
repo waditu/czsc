@@ -1902,8 +1902,13 @@ def test_weight_backtest():
     """从持仓权重样例数据中回测"""
     dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
 
-    pw = czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1)
-    print(sorted(pw.stats.items()))
+    pw = czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1, weight_type="ts")
+    print("\n", sorted(pw.stats.items()))
+    print("Python 版本方法：", dir(pw))
 
-    rw = rs_czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1)
-    print(sorted(rw.stats.items()))
+    rw = rs_czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1, weight_type="ts")
+    print("\n", sorted(rw.stats.items()))
+    print("RUST 版本方法：", dir(rw))
+
+    # 对比差异：
+    # 1. 新高间隔 差异较大
