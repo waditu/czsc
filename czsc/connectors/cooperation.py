@@ -379,7 +379,9 @@ def __update_strategy_dailys(file_cache, strategy, logger=loguru.logger):
     return df
 
 
-def get_strategy_dailys(strategy="FCS001", symbol=None, sdt="20240101", edt=None, logger=loguru.logger, path=cache_path):
+def get_strategy_dailys(
+    strategy="FCS001", symbol=None, sdt="20240101", edt=None, logger=loguru.logger, path=cache_path
+):
     """获取策略的历史日收益数据
 
     :param strategy: 策略名称
