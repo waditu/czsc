@@ -4,8 +4,6 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/11/15 20:45
 describe: CZSC开源协作团队内部使用数据接口
-
-接口说明：https://s0cqcxuy3p.feishu.cn/wiki/StQbwOrWdiJPpikET9EcrRVEnrd
 """
 import os
 import time
@@ -22,7 +20,8 @@ from czsc import RawBar, Freq
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
-dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
+url = os.getenv("CZSC_DATA_API", "http://zbczsc.com:9106")
+dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url=url, cache_path=cache_path)
 
 
 def get_groups():
