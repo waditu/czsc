@@ -488,11 +488,18 @@ def show_weight_backtest(dfw, **kwargs):
         - n_jobs: int, 并行计算的进程数，默认为 1
 
     """
+    try:
+        from rs_czsc import WeightBacktest
+    except ImportError:
+        from czsc import WeightBacktest
+
     from czsc.eda import cal_yearly_days
 
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
+    n_jobs = kwargs.pop("n_jobs", 1)
     yearly_days = kwargs.pop("yearly_days", None)
+    weight_type = kwargs.pop("weight_type", "ts")
 
     if not yearly_days:
         yearly_days = cal_yearly_days(dts=dfw["dt"].unique())
@@ -502,16 +509,16 @@ def show_weight_backtest(dfw, **kwargs):
         st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
         st.stop()
 
-    wb = czsc.WeightBacktest(
-        dfw,
-        fee_rate=fee / 10000,
-        digits=digits,
-        n_jobs=kwargs.get("n_jobs", 1),
-        yearly_days=yearly_days,
+    wb = WeightBacktest(
+        dfw=dfw, fee_rate=fee / 10000, digits=digits, n_jobs=n_jobs, yearly_days=yearly_days, weight_type=weight_type
     )
-    stat = wb.results["绩效评价"]
+    stat = wb.stats
 
     st.divider()
+    st.markdown(
+        f"**回测参数：** 单边手续费 {fee} BP，权重小数位数 {digits} ，"
+        f"年交易天数 {yearly_days}，品种数量：{dfw['symbol'].nunique()}"
+    )
     c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11 = st.columns([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     c1.metric("盈亏平衡点", f"{stat['盈亏平衡点']:.2%}")
     c2.metric("单笔收益（BP）", f"{stat['单笔收益']}")
@@ -524,27 +531,30 @@ def show_weight_backtest(dfw, **kwargs):
     c9.metric("年化波动率", f"{stat['年化波动率']:.2%}")
     c10.metric("多头占比", f"{stat['多头占比']:.2%}")
     c11.metric("空头占比", f"{stat['空头占比']:.2%}")
-    st.caption(f"回测参数：单边手续费 {fee} BP，权重小数位数 {digits} ，年交易天数 {yearly_days}")
-    st.divider()
 
-    dret = wb.results["品种等权日收益"].copy()
+    with st.popover(label="交易方向统计", help="统计多头、空头交易次数、胜率、盈亏比等信息"):
+        dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
+        dfx.index = ["多头", "空头"]
+        dfx.index.name = "交易方向"
+        st.dataframe(dfx.T, use_container_width=True)
+
+    dret = wb.daily_return.copy()
     dret["dt"] = pd.to_datetime(dret["date"])
     dret = dret.set_index("dt").drop(columns=["date"])
-    # dret.index = pd.to_datetime(dret.index)
     show_daily_return(dret, legend_only_cols=dfw["symbol"].unique().tolist(), yearly_days=yearly_days, **kwargs)
 
     if kwargs.get("show_drawdowns", False):
         show_drawdowns(dret, ret_col="total", sub_title="")
 
-    if kwargs.get("show_backtest_detail", False):
-        c1, c2 = st.columns([1, 1])
-        with c1.expander("品种等权日收益", expanded=False):
-            df_ = wb.results["品种等权日收益"].copy()
-            st.dataframe(df_.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}"), use_container_width=True)
-
-        with c2.expander("查看开平交易对", expanded=False):
-            dfp = pd.concat([v["pairs"] for k, v in wb.results.items() if k in wb.symbols], ignore_index=True)
-            st.dataframe(dfp, use_container_width=True)
+    # if kwargs.get("show_backtest_detail", False):
+    #     c1, c2 = st.columns([1, 1])
+    #     with c1.expander("品种等权日收益", expanded=False):
+    #         df_ = wb.daily_return.copy()
+    #         st.dataframe(df_.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}"), use_container_width=True)
+    #
+    #     # with c2.expander("查看开平交易对", expanded=False):
+    #     # dfp = pd.concat([v["pairs"] for k, v in wb.results.items() if k in wb.symbols], ignore_index=True)
+    #     # st.dataframe(dfp, use_container_width=True)
 
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
@@ -1007,7 +1017,14 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
             dft = czsc.top_drawdowns(df[ret_col].copy(), top=10)
             dft = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
             dft = dft.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
-            dft = dft.format({"净值回撤": "{:.2%}", "回撤天数": "{:.0f}", "恢复天数": "{:.0f}", "新高间隔": "{:.0f}"})
+            dft = dft.format(
+                {
+                    "净值回撤": "{:.2%}",
+                    "回撤天数": "{:.0f}",
+                    "恢复天数": "{:.0f}",
+                    "新高间隔": "{:.0f}",
+                }
+            )
             st.dataframe(dft, use_container_width=True)
 
     # 画图: 净值回撤
@@ -1019,20 +1036,33 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         line=dict(color="salmon"),
         fill="tozeroy",
         mode="lines",
-        name="回测曲线",
+        name="回撤曲线",
+        opacity=0.5,
     )
     fig = go.Figure(drawdown)
+
+    # 增加累计收益曲线，右轴
+    fig.add_trace(
+        go.Scatter(
+            x=df.index, y=df["cum_ret"], mode="lines", name="累计收益", yaxis="y2", opacity=0.8, line=dict(color="red")
+        )
+    )
+    fig.update_layout(yaxis2=dict(title="累计收益", overlaying="y", side="right"))
 
     # 增加 10% 分位数线，30% 分位数线，50% 分位数线，同时增加文本标记
     for q in [0.1, 0.3, 0.5]:
         y1 = df["drawdown"].quantile(q)
-        fig.add_hline(y=y1, line_dash="dot", line_color="green", line_width=2)
-        fig.add_annotation(x=df.index[-1], y=y1, text=f"{q:.1%} (DD: {y1:.2%})", showarrow=False, yshift=10)
+        fig.add_hline(y=y1, line_dash="dot", line_color="green", line_width=1)
+        fig.add_annotation(
+            x=df.index.unique()[5],
+            y=y1,
+            text=f"{q:.1%} (DD: {y1:.2%})",
+            showarrow=False,
+            yshift=10,
+        )
 
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-    fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤曲线")
-    # 限制 绘制高度
-    fig.update_layout(height=300)
+    fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤分析", height=300)
     st.plotly_chart(fig, use_container_width=True)
 
 
