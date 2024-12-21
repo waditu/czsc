@@ -164,6 +164,7 @@ from czsc.utils.st_components import (
     show_classify,
     show_df_describe,
     show_date_effect,
+    show_weight_distribution,
 )
 
 from czsc.utils.bi_info import (

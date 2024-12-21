@@ -405,6 +405,26 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     )
 
 
+def show_weight_distribution(dfw, abs_weight=True, **kwargs):
+    """展示权重分布
+
+    :param dfw: pd.DataFrame, 包含 symbol, dt, price, weight 列
+    :param abs_weight: bool, 是否取权重的绝对值
+    :param kwargs:
+
+        - percentiles: list, 分位数
+    """
+    dfw = dfw.copy()
+    if abs_weight:
+        dfw["weight"] = dfw["weight"].abs()
+
+    default_percentiles = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
+    percentiles = kwargs.get("percentiles", default_percentiles)
+
+    dfs = dfw.groupby("symbol").apply(lambda x: x["weight"].describe(percentiles=percentiles)).reset_index()
+    show_df_describe(dfs)
+
+
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
     """使用 streamlit 绘制单个标的上的因子分层收益率图
 
@@ -567,6 +587,10 @@ def show_weight_backtest(dfw, **kwargs):
     if kwargs.get("show_monthly_return", False):
         with st.expander("月度累计收益", expanded=False):
             show_monthly_return(dret, ret_col="total", sub_title="")
+
+    if kwargs.get("show_weight_distribution", True):
+        with st.expander("策略分品种的 weight 分布", expanded=False):
+            show_weight_distribution(dfw, abs_weight=True)
 
     return wb
 
