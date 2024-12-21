@@ -526,6 +526,7 @@ def CHOP(high, low, close, **kwargs):
     :return: pd.Series, New feature generated.
     """
     import pandas_ta
+
     return pandas_ta.chop(high=high, low=low, close=close, **kwargs)
 
 
