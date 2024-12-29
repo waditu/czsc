@@ -554,22 +554,38 @@ def limit_leverage(df: pd.DataFrame, leverage: float = 1.0, **kwargs):
         - window: int, 滚动窗口，默认为 300
         - min_periods: int, 最小样本数，小于该值的窗口不计算均值，默认为 50
         - weight: str, 权重列名，默认为 'weight'
+        - method: str, 计算均值的方法，'abs_mean' 或 'abs_max'，默认为 'abs_mean'
+            abs_mean: 计算绝对均值作为调整杠杆的标准
+            abs_max: 计算绝对最大值作为调整杠杆的标准
 
     :return: DataFrame
     """
     window = kwargs.get("window", 300)
     min_periods = kwargs.get("min_periods", 50)
     weight = kwargs.get("weight", "weight")
+    method = kwargs.get("method", "abs_mean")
 
     assert weight in df.columns, f"数据中不包含权重列 {weight}"
-    assert df['symbol'].nunique() == 1, "数据中包含多个品种，必须单品种"
-    assert df['dt'].is_monotonic_increasing, "数据未按日期排序，必须升序排列"
-    assert df['dt'].is_unique, "数据中存在重复dt，必须唯一"
 
     if kwargs.get("copy", False):
         df = df.copy()
 
-    abs_mean = df[weight].abs().rolling(window=window, min_periods=min_periods).mean().fillna(leverage)
-    adjust_ratio = leverage / abs_mean
-    df[weight] = (df[weight] * adjust_ratio).clip(-leverage, leverage)
+    df = df.sort_values(["dt", "symbol"], ascending=True).reset_index(drop=True)
+
+    for symbol in df['symbol'].unique():
+        dfx = df[df['symbol'] == symbol].copy()
+        # assert dfx['dt'].is_monotonic_increasing, f"{symbol} 数据未按日期排序，必须升序排列"
+        assert dfx['dt'].is_unique, f"{symbol} 数据中存在重复dt，必须唯一"
+
+        if method == "abs_mean":
+            bench = dfx[weight].abs().rolling(window=window, min_periods=min_periods).mean().fillna(leverage)
+        elif method == "abs_max":
+            bench = dfx[weight].abs().rolling(window=window, min_periods=min_periods).max().fillna(leverage)
+        else:
+            raise ValueError(f"不支持的 method: {method}")
+
+        adjust_ratio = leverage / bench
+        df.loc[df['symbol'] == symbol, weight] = (dfx[weight] * adjust_ratio).clip(-leverage, leverage)
+
     return df
+
