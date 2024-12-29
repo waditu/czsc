@@ -1,10 +1,3 @@
-"""
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2024/4/27 15:01
-describe: K线质量评估工具函数
-"""
-
 import pandas as pd
 import numpy as np
 
@@ -229,7 +222,7 @@ def check_duplicate_records(df):
 
 
 # 8. 异常值检查
-def check_extreme_values(df, threshold=0.2):
+def check_extreme_values(df, threshold=0.5):
     """
     检查价格日涨跌幅是否超过指定阈值，作为异常值，并返回有问题的行。
 
@@ -253,7 +246,7 @@ def check_extreme_values(df, threshold=0.2):
 
 
 # 主检查函数
-def check_kline_quality(df):
+def check_kline_data_quality_multiple_symbols(df):
     """
     检查包含多个 symbol 的 K 线数据的质量问题，并返回有问题的行。
 
@@ -294,6 +287,9 @@ def check_kline_quality(df):
         quality_issues[symbol] = symbol_issues
 
     return quality_issues
+
+
+# **示例用法**
 
 
 def test():
@@ -452,21 +448,28 @@ def test():
     df.loc[19, "close"] = 3000.0  # 极端跌幅
 
     # 执行数据质量检查
-    issues = check_kline_quality(df)
+    issues = check_kline_data_quality_multiple_symbols(df)
 
-    # # 输出检查结果
-    # for symbol, symbol_issues in issues.items():
-    #     print(f"\n=== 检查结果 for Symbol: {symbol} ===")
-    #     for check, result in symbol_issues.items():
-    #         print(f"\n检查点: {check}")
-    #         print(f"结果描述: {result['description']}")
-    #         if result["rows"] is not None:
-    #             print("有问题的数据行:")
-    #             print(result["rows"])
-    #         else:
-    #             print("无有问题的数据行。")
+    # 输出检查结果
+    for symbol, symbol_issues in issues.items():
+        print(f"\n=== 检查结果 for Symbol: {symbol} ===")
+        for check, result in symbol_issues.items():
+            print(f"\n检查点: {check}")
+            print(f"结果描述: {result['description']}")
+            if result["rows"] is not None:
+                print("有问题的数据行:")
+                print(result["rows"])
+            else:
+                print("无有问题的数据行。")
 
-    # 仅输出有问题的检查结果
+
+def test_new():
+    df = pd.read_feather(r"C:\Users\zengb\Downloads\可转债.feather")
+    df["vol"] = df["vol"].astype(int)
+    # 执行数据质量检查
+    issues = check_kline_data_quality_multiple_symbols(df)
+
+    # 输出检查结果
     for symbol, symbol_issues in issues.items():
         for check, result in symbol_issues.items():
 
