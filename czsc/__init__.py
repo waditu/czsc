@@ -198,7 +198,7 @@ from czsc.features.utils import (
 
 
 from czsc.utils.kline_quality import check_kline_quality
-
+from czsc.traders import cwc
 
 from czsc.utils.portfolio import (
     max_sharp,

@@ -32,3 +32,4 @@ scipy
 requests_toolbelt
 networkx
 rs_czsc>=0.1.2
+clickhouse_connect
