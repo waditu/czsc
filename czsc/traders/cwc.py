@@ -162,7 +162,7 @@ def set_meta(
     memo="",
     logger=loguru.logger,
     overwrite=False,
-    db: ch.driver.Client | None = None,
+    db: Optional[Client] = None,
 ):
     """设置策略元数据
 
