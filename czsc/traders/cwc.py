@@ -18,6 +18,8 @@ import os
 import loguru
 import pandas as pd
 import clickhouse_connect as ch
+from clickhouse_connect.driver import Client
+from typing import Optional
 
 
 def __db_from_env():
@@ -42,7 +44,7 @@ def __db_from_env():
     return db
 
 
-def init_tables(db: ch.driver.Client | None = None, **kwargs):
+def init_tables(db: Optional[Client] = None, **kwargs):
     """
     创建数据库表
 
@@ -117,7 +119,7 @@ def init_tables(db: ch.driver.Client | None = None, **kwargs):
     print("数据表创建成功！")
 
 
-def get_meta(strategy, db: ch.driver.Client | None = None, logger=loguru.logger) -> dict:
+def get_meta(strategy, db: Optional[Client] = None, logger=loguru.logger) -> dict:
     """获取策略元数据
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -139,7 +141,7 @@ def get_meta(strategy, db: ch.driver.Client | None = None, logger=loguru.logger)
         return df.iloc[0].to_dict()
 
 
-def get_all_metas(db: ch.driver.Client | None = None) -> pd.DataFrame:
+def get_all_metas(db: Optional[Client] = None) -> pd.DataFrame:
     """获取所有策略元数据
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -235,7 +237,7 @@ def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger):
         raise
 
 
-def get_strategy_weights(strategy, db: ch.driver.Client | None = None, sdt=None, edt=None, symbols=None):
+def get_strategy_weights(strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None):
     """获取策略持仓权重
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -267,7 +269,7 @@ def get_strategy_weights(strategy, db: ch.driver.Client | None = None, sdt=None,
     return df
 
 
-def get_latest_weights(db: ch.driver.Client | None = None, strategy=None):
+def get_latest_weights(db: Optional[Client] = None, strategy=None):
     """获取策略最新持仓权重时间
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -290,11 +292,7 @@ def get_latest_weights(db: ch.driver.Client | None = None, strategy=None):
 
 
 def publish_weights(
-    strategy: str,
-    df: pd.DataFrame,
-    batch_size=100000,
-    logger=loguru.logger,
-    db: ch.driver.Client | None = None,
+    strategy: str, df: pd.DataFrame, batch_size=100000, logger=loguru.logger, db: Optional[Client] = None
 ):
     """发布策略持仓权重
 
@@ -358,7 +356,7 @@ def publish_returns(
     df: pd.DataFrame,
     batch_size=100000,
     logger=loguru.logger,
-    db: ch.driver.Client | None = None,
+    db: Optional[Client] = None,
 ):
     """发布策略日收益
 
@@ -418,7 +416,7 @@ def publish_returns(
     logger.info(f"完成所有日收益发布, 共 {len(df)} 条")
 
 
-def get_strategy_returns(strategy, db: ch.driver.Client | None = None, sdt=None, edt=None, symbols=None):
+def get_strategy_returns(strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None):
     """获取策略日收益
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -450,7 +448,7 @@ def get_strategy_returns(strategy, db: ch.driver.Client | None = None, sdt=None,
     return df
 
 
-def clear_strategy(strategy, db: ch.driver.Client | None = None, logger=loguru.logger, human_confirm=True):
+def clear_strategy(strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True):
     """清空策略
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
