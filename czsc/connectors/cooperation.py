@@ -4,15 +4,15 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/11/15 20:45
 describe: CZSC开源协作团队内部使用数据接口
-
-接口说明：https://s0cqcxuy3p.feishu.cn/wiki/StQbwOrWdiJPpikET9EcrRVEnrd
 """
 import os
+import time
 import czsc
 import requests
 import loguru
 import pandas as pd
 from tqdm import tqdm
+from pathlib import Path
 from datetime import datetime
 from czsc import RawBar, Freq
 
@@ -20,7 +20,8 @@ from czsc import RawBar, Freq
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
-dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url="http://zbczsc.com:9106", cache_path=cache_path)
+url = os.getenv("CZSC_DATA_API", "http://zbczsc.com:9106")
+dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url=url, cache_path=cache_path)
 
 
 def get_groups():
@@ -315,3 +316,181 @@ def get_stk_strategy(name="STK_001", **kwargs):
     dfw = pd.merge(dfw, dfb, on=["dt", "symbol"], how="left")
     dfh = dfw[["dt", "symbol", "weight", "n1b"]].copy()
     return dfh
+
+
+# ======================================================================================================================
+# 增量更新本地缓存数据
+# ======================================================================================================================
+def get_all_strategies(ttl=3600 * 24 * 7, logger=loguru.logger, path=cache_path):
+    """获取所有策略的元数据
+
+    :param ttl: int, optional, 缓存时间，单位秒，默认为 7 天
+    :param logger: loguru.logger, optional, 日志记录器
+    :param path: str, optional, 缓存路径
+    :return: pd.DataFrame, 包含字段 name, description, author, base_freq, outsample_sdt；示例如下：
+
+        ===========  =====================  =========  =========  ============
+        name         description            author     base_freq  outsample_sdt
+        ===========  =====================  =========  =========  ============
+        STK_001      A股选股策略               ZB         1分钟      20220101
+        STK_002      A股选股策略               ZB         1分钟      20220101
+        STK_003      A股选股策略               ZB         1分钟      20220101
+        ===========  =====================  =========  =========  ============
+    """
+    path = Path(path) / "strategy"
+    path.mkdir(exist_ok=True, parents=True)
+    file_metas = path / "metas.feather"
+
+    if file_metas.exists() and (time.time() - file_metas.stat().st_mtime) < ttl:
+        logger.info("【缓存命中】获取所有策略的元数据")
+        dfm = pd.read_feather(file_metas)
+
+    else:
+        logger.info("【全量刷新】获取所有策略的元数据并刷新缓存")
+        dfm = dc.get_all_strategies(v=2, ttl=0)
+        dfm.to_feather(file_metas)
+
+    return dfm
+
+
+def __update_strategy_dailys(file_cache, strategy, logger=loguru.logger):
+    """更新策略的日收益数据"""
+    # 刷新缓存数据
+    if file_cache.exists():
+        df = pd.read_feather(file_cache)
+
+        cache_sdt = (df["dt"].max() - pd.Timedelta(days=3)).strftime("%Y%m%d")
+        cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
+        logger.info(f"【增量刷新缓存】获取策略 {strategy} 的日收益数据：{cache_sdt} - {cache_edt}")
+
+        dfc = dc.sub_strategy_dailys(strategy=strategy, v=2, sdt=cache_sdt, edt=cache_edt, ttl=0)
+        dfc["dt"] = pd.to_datetime(dfc["dt"])
+        df = pd.concat([df, dfc]).drop_duplicates(["dt", "symbol", "strategy"], keep="last")
+
+    else:
+        cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
+        logger.info(f"【全量刷新缓存】获取策略 {strategy} 的日收益数据：20170101 - {cache_edt}")
+        df = dc.sub_strategy_dailys(strategy=strategy, v=2, sdt="20170101", edt=cache_edt, ttl=0)
+
+    df = df.reset_index(drop=True)
+    df["dt"] = pd.to_datetime(df["dt"])
+    df.to_feather(file_cache)
+    return df
+
+
+def get_strategy_dailys(
+    strategy="FCS001", symbol=None, sdt="20240101", edt=None, logger=loguru.logger, path=cache_path
+):
+    """获取策略的历史日收益数据
+
+    :param strategy: 策略名称
+    :param symbol: 品种名称
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param logger: loguru.logger, optional, 日志记录器
+    :param path: str, optional, 缓存路径
+    :return: pd.DataFrame, 包含字段 dt, symbol, strategy, returns；示例如下：
+
+        ===================  ==========  ========  =========
+        dt                   strategy    symbol      returns
+        ===================  ==========  ========  =========
+        2017-01-10 00:00:00  STK_001     A股选股        0.001
+        2017-01-11 00:00:00  STK_001     A股选股        0.012
+        2017-01-12 00:00:00  STK_001     A股选股        0.011
+        ===================  ==========  ========  =========
+    """
+    path = Path(path) / "strategy" / "dailys"
+    path.mkdir(exist_ok=True, parents=True)
+    file_cache = path / f"{strategy}.feather"
+
+    if edt is None:
+        edt = pd.Timestamp.now().strftime("%Y%m%d %H:%M:%S")
+
+    # 判断缓存数据是否能满足需求
+    if file_cache.exists():
+        df = pd.read_feather(file_cache)
+
+        if df["dt"].max() >= pd.Timestamp(edt):
+            logger.info(f"【缓存命中】获取策略 {strategy} 的日收益数据：{sdt} - {edt}")
+
+            dfd = df[(df["dt"] >= pd.Timestamp(sdt)) & (df["dt"] <= pd.Timestamp(edt))].copy()
+            if symbol:
+                dfd = dfd[dfd["symbol"] == symbol].copy()
+            return dfd
+
+    # 刷新缓存数据
+    logger.info(f"【缓存刷新】获取策略 {strategy} 的日收益数据：{sdt} - {edt}")
+    df = __update_strategy_dailys(file_cache, strategy, logger=logger)
+    dfd = df[(df["dt"] >= pd.Timestamp(sdt)) & (df["dt"] <= pd.Timestamp(edt))].copy()
+    if symbol:
+        dfd = dfd[dfd["symbol"] == symbol].copy()
+    return dfd
+
+
+def __update_strategy_weights(file_cache, strategy, logger=loguru.logger):
+    """更新策略的持仓权重数据"""
+    # 刷新缓存数据
+    if file_cache.exists():
+        df = pd.read_feather(file_cache)
+
+        cache_sdt = (df["dt"].max() - pd.Timedelta(days=3)).strftime("%Y%m%d")
+        cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
+        logger.info(f"【增量刷新缓存】获取策略 {strategy} 的持仓权重数据：{cache_sdt} - {cache_edt}")
+
+        dfc = dc.post_request(api_name=strategy, v=2, sdt=cache_sdt, edt=cache_edt, hist=1, ttl=0)
+        dfc["dt"] = pd.to_datetime(dfc["dt"])
+        dfc["strategy"] = strategy
+
+        df = pd.concat([df, dfc]).drop_duplicates(["dt", "symbol", "weight"], keep="last")
+
+    else:
+        cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
+        logger.info(f"【全量刷新缓存】获取策略 {strategy} 的持仓权重数据：20170101 - {cache_edt}")
+        df = dc.post_request(api_name=strategy, v=2, sdt="20170101", edt=cache_edt, hist=1, ttl=0)
+        df["dt"] = pd.to_datetime(df["dt"])
+        df["strategy"] = strategy
+
+    df = df.reset_index(drop=True)
+    df.to_feather(file_cache)
+    return df
+
+
+def get_strategy_weights(strategy="FCS001", sdt="20240101", edt=None, logger=loguru.logger, path=cache_path):
+    """获取策略的历史持仓权重数据
+
+    :param strategy: 策略名称
+    :param sdt: 开始时间
+    :param edt: 结束时间
+    :param logger: loguru.logger, optional, 日志记录器
+    :param path: str, optional, 缓存路径
+    :return: pd.DataFrame, 包含字段 dt, symbol, weight, update_time, strategy；示例如下：
+
+        ===================  =========  ========  ===================  ==========
+        dt                   symbol       weight  update_time          strategy
+        ===================  =========  ========  ===================  ==========
+        2017-01-09 00:00:00  000001.SZ         0  2024-07-27 16:13:29  STK_001
+        2017-01-10 00:00:00  000001.SZ         0  2024-07-27 16:13:29  STK_001
+        2017-01-11 00:00:00  000001.SZ         0  2024-07-27 16:13:29  STK_001
+        ===================  =========  ========  ===================  ==========
+    """
+    path = Path(path) / "strategy" / "weights"
+    path.mkdir(exist_ok=True, parents=True)
+    file_cache = path / f"{strategy}.feather"
+
+    if edt is None:
+        edt = pd.Timestamp.now().strftime("%Y%m%d %H:%M:%S")
+
+    # 判断缓存数据是否能满足需求
+    if file_cache.exists():
+        df = pd.read_feather(file_cache)
+
+        if df["dt"].max() >= pd.Timestamp(edt):
+            logger.info(f"【缓存命中】获取策略 {strategy} 的历史持仓权重数据：{sdt} - {edt}")
+            dfd = df[(df["dt"] >= pd.Timestamp(sdt)) & (df["dt"] <= pd.Timestamp(edt))].copy()
+            return dfd
+
+    # 刷新缓存数据
+    logger.info(f"【缓存刷新】获取策略 {strategy} 的历史持仓权重数据：{sdt} - {edt}")
+    df = __update_strategy_weights(file_cache, strategy, logger=logger)
+    dfd = df[(df["dt"] >= pd.Timestamp(sdt)) & (df["dt"] <= pd.Timestamp(edt))].copy()
+    return dfd

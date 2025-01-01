@@ -101,7 +101,7 @@ class CzscStrategyBase(ABC):
         :return:
         """
         base_freq = str(bars[0].freq.value)
-        bg: BarGenerator = kwargs.get("bg", None)
+        bg: BarGenerator = kwargs.pop("bg", None)
         freqs = self.sorted_freqs[1:] if base_freq in self.sorted_freqs else self.sorted_freqs
 
         if bg is None:

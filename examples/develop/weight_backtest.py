@@ -5,6 +5,9 @@ sys.path.insert(0, r"A:\ZB\git_repo\waditu\czsc")
 import czsc
 import rs_czsc
 import pandas as pd
+import streamlit as st
+
+st.set_page_config(layout="wide")
 
 
 def test_daily_performance():
@@ -1901,9 +1904,21 @@ def test_daily_performance():
 def test_weight_backtest():
     """从持仓权重样例数据中回测"""
     dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
+    # dfw = pd.read_feather(r"C:\Users\zengb\Downloads\btc_weight_example.feather")
 
-    pw = czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1)
-    print(sorted(pw.stats.items()))
+    pw = czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1, weight_type="ts")
+    print("\n", sorted(pw.stats.items()))
+    print("Python 版本方法：", dir(pw))
 
-    rw = rs_czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=1)
-    print(sorted(rw.stats.items()))
+    rw = rs_czsc.WeightBacktest(dfw.copy(), digits=2, fee_rate=0.0002, n_jobs=4, weight_type="ts")
+    print("\n", sorted(rw.stats.items()))
+    print("RUST 版本方法：", dir(rw))
+
+
+# # dfw = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
+# dfw = pd.read_feather(r"A:\量化研究\BTC策略1H持仓权重和日收益241201\BTC_1H_P01-weights.feather")
+# dfw = dfw[["dt", "symbol", "weight", "price"]].copy().reset_index(drop=True)
+# dfw.to_feather(r"C:\Users\zengb\Downloads\btc_weight_example.feather")
+# st.dataframe(dfw.tail())
+# st.write(dfw.dtypes)
+# czsc.show_weight_backtest(dfw)

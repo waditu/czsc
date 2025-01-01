@@ -30,5 +30,6 @@ pytz
 flask
 scipy
 requests_toolbelt
-pandas-ta
 networkx
+rs_czsc>=0.1.2
+clickhouse_connect

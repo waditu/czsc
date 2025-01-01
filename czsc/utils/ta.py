@@ -11,7 +11,6 @@ describe: 常用技术分析指标
 """
 import numpy as np
 import pandas as pd
-import pandas_ta
 
 
 def SMA(close: np.array, timeperiod=5):
@@ -526,6 +525,8 @@ def CHOP(high, low, close, **kwargs):
 
     :return: pd.Series, New feature generated.
     """
+    import pandas_ta
+
     return pandas_ta.chop(high=high, low=low, close=close, **kwargs)
 
 

@@ -1,10 +1,3 @@
-"""
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2024/4/27 15:01
-describe: K线质量评估工具函数
-"""
-
 import pandas as pd
 import numpy as np
 
@@ -229,7 +222,7 @@ def check_duplicate_records(df):
 
 
 # 8. 异常值检查
-def check_extreme_values(df, threshold=0.2):
+def check_extreme_values(df, threshold=0.5):
     """
     检查价格日涨跌幅是否超过指定阈值，作为异常值，并返回有问题的行。
 
@@ -253,7 +246,7 @@ def check_extreme_values(df, threshold=0.2):
 
 
 # 主检查函数
-def check_kline_quality(df):
+def check_kline_data_quality_multiple_symbols(df):
     """
     检查包含多个 symbol 的 K 线数据的质量问题，并返回有问题的行。
 
@@ -293,8 +286,191 @@ def check_kline_quality(df):
 
         quality_issues[symbol] = symbol_issues
 
+    return quality_issues
+
+
+# **示例用法**
+
+
+def test():
+    import pandas as pd
+
+    # 示例数据
+    data = {
+        "dt": pd.date_range(start="2023-01-01", periods=10, freq="D").tolist() * 2,
+        "symbol": ["AAPL"] * 10 + ["GOOG"] * 10,
+        "open": [
+            150.0,
+            152.0,
+            151.0,
+            153.0,
+            154.0,
+            155.0,
+            156.0,
+            157.0,
+            158.0,
+            159.0,
+            2800.0,
+            2820.0,
+            2810.0,
+            2830.0,
+            2840.0,
+            2850.0,
+            2860.0,
+            2870.0,
+            2880.0,
+            2890.0,
+        ],
+        "close": [
+            152.0,
+            151.0,
+            153.0,
+            154.0,
+            155.0,
+            156.0,
+            157.0,
+            158.0,
+            159.0,
+            160.0,
+            2820.0,
+            2810.0,
+            2830.0,
+            2840.0,
+            2850.0,
+            2860.0,
+            2870.0,
+            2880.0,
+            2890.0,
+            2900.0,
+        ],
+        "high": [
+            153.0,
+            152.5,
+            154.0,
+            155.0,
+            156.0,
+            157.0,
+            158.0,
+            159.0,
+            160.0,
+            161.0,
+            2825.0,
+            2815.0,
+            2835.0,
+            2845.0,
+            2855.0,
+            2865.0,
+            2875.0,
+            2885.0,
+            2895.0,
+            2905.0,
+        ],
+        "low": [
+            149.0,
+            150.5,
+            150.0,
+            152.0,
+            153.0,
+            154.0,
+            155.0,
+            156.0,
+            157.0,
+            158.0,
+            2795.0,
+            2805.0,
+            2815.0,
+            2825.0,
+            2835.0,
+            2845.0,
+            2855.0,
+            2865.0,
+            2875.0,
+            2885.0,
+        ],
+        "vol": [
+            1000,
+            1100,
+            1050,
+            1150,
+            1200,
+            1250,
+            1300,
+            1350,
+            1400,
+            1450,
+            2000,
+            2100,
+            2050,
+            2150,
+            2200,
+            2250,
+            2300,
+            2350,
+            2400,
+            2450,
+        ],
+        "amount": [
+            150000.0,
+            165500.0,
+            160650.0,
+            175500.0,
+            186000.0,
+            193750.0,
+            202000.0,
+            212250.0,
+            224000.0,
+            232250.0,
+            4200000.0,
+            4400000.0,
+            4300000.0,
+            4500000.0,
+            4620000.0,
+            4725000.0,
+            4830000.0,
+            4927500.0,
+            5040000.0,
+            5152500.0,
+        ],
+    }
+
+    df = pd.DataFrame(data)
+
+    # 引入缺失值和异常值进行测试
+    # 对 AAPL
+    df.loc[2, "close"] = None  # 缺失值
+    df.loc[4, "high"] = 140.0  # high < open 或 close
+    df.loc[1, "vol"] = -500  # 负成交量
+
+    # 对 GOOG
+    df.loc[12, "low"] = 3000.0  # low > open 或 close
+    df.loc[15, "amount"] = -1000.0  # 负金额
+    df.loc[18, "close"] = 5000.0  # 极端涨幅
+    df.loc[19, "close"] = 3000.0  # 极端跌幅
+
+    # 执行数据质量检查
+    issues = check_kline_data_quality_multiple_symbols(df)
+
     # 输出检查结果
-    for symbol, symbol_issues in quality_issues.items():
+    for symbol, symbol_issues in issues.items():
+        print(f"\n=== 检查结果 for Symbol: {symbol} ===")
+        for check, result in symbol_issues.items():
+            print(f"\n检查点: {check}")
+            print(f"结果描述: {result['description']}")
+            if result["rows"] is not None:
+                print("有问题的数据行:")
+                print(result["rows"])
+            else:
+                print("无有问题的数据行。")
+
+
+def test_new():
+    df = pd.read_feather(r"C:\Users\zengb\Downloads\可转债.feather")
+    df["vol"] = df["vol"].astype(int)
+    # 执行数据质量检查
+    issues = check_kline_data_quality_multiple_symbols(df)
+
+    # 输出检查结果
+    for symbol, symbol_issues in issues.items():
         for check, result in symbol_issues.items():
 
             if result["rows"] is not None:
@@ -304,5 +480,3 @@ def check_kline_quality(df):
                 print("有问题的数据行:")
                 print(result["rows"])
                 print("\n\n")
-
-    return quality_issues
