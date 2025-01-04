@@ -320,7 +320,7 @@ return cnt
 
     def get_symbols(self):
         """获取策略交易的品种列表"""
-        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}*")
+        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}:*:LAST")
         symbols = {x.split(":")[2] for x in keys}  # type: ignore
         return list(symbols)
 
