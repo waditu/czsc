@@ -228,6 +228,9 @@ __date__ = "20250101"
 
 
 def welcome():
+    from czsc import aphorism, envs
+    from czsc.utils import get_dir_size, home_path
+
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
     aphorism.print_one()
 
@@ -236,10 +239,8 @@ def welcome():
         f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
         f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
     )
-
-
-if envs.get_welcome():
-    welcome()
+    if get_dir_size(home_path) > pow(1024, 3):
+        print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")
 
 
 if get_dir_size(home_path) > pow(1024, 3):

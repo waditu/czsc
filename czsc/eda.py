@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 from typing import Callable
 from tqdm import tqdm
-from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
 
 def vwap(price: np.array, volume: np.array, **kwargs) -> float:
@@ -45,6 +44,7 @@ def remove_beta_effects(df, **kwargs):
 
     :return: DataFrame
     """
+    from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
     linear_model = kwargs.get("linear_model", "ridge")
     linear_model_params = kwargs.get("linear_model_params", {})

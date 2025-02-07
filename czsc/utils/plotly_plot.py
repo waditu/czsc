@@ -6,14 +6,9 @@ create_dt: 2023/2/26 15:03
 describe: 使用 Plotly 构建绘图模块
 """
 import os
-import webbrowser
 import numpy as np
 import pandas as pd
-import networkx as nx
 from plotly import graph_objects as go
-from plotly.subplots import make_subplots
-from czsc.utils.cache import home_path
-from czsc.utils.ta import MACD
 
 
 class KlineChart:
@@ -40,6 +35,8 @@ class KlineChart:
         :param n_rows: 子图数量
         :param kwargs:
         """
+        from plotly.subplots import make_subplots
+
         self.n_rows = n_rows
         row_heights = kwargs.get("row_heights", None)
         if not row_heights:
@@ -223,6 +220,8 @@ class KlineChart:
         if "DIFF" in df.columns and "DEA" in df.columns and "MACD" in df.columns:
             diff, dea, macd = df["DIFF"], df["DEA"], df["MACD"]
         else:
+            from czsc.utils.ta import MACD
+
             diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
 
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
@@ -425,42 +424,49 @@ class KlineChart:
 
     def open_in_browser(self, file_name: str = None, **kwargs):
         """在浏览器中打开"""
+        import webbrowser
+
         if not file_name:
+            from czsc.utils.cache import home_path
+
             file_name = os.path.join(home_path, "kline_chart.html")
+
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
 
 
-def plot_nx_graph(G: nx.Graph, **kwargs) -> go.Figure:
+def plot_nx_graph(g, **kwargs) -> go.Figure:
     """使用 Plotly 绘制 nx.Graph 的图形
 
-    :param G: nx.Graph 对象
+    :param g: nx.Graph 对象
     :param kwargs:
     :return: go.Figure 对象
     """
+    import networkx as nx
+
     title = kwargs.get("title", "Network graph made with Python")
     edge_width = kwargs.get("edge_width", 1.5)
     node_marker_size = kwargs.get("node_marker_size", 10)
 
     # 使用 spring_layout 为图分配位置
-    pos = nx.spring_layout(G)
+    pos = nx.spring_layout(g)
 
     # 准备绘图数据
     edge_x = []
     edge_y = []
     edge_weights = []
-    for edge in G.edges():
+    for edge in g.edges():
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
-        edge_weights.append(f'{G[edge[0]][edge[1]]["weight"]:.2f}')
+        edge_weights.append(f'{g[edge[0]][edge[1]]["weight"]:.2f}')
 
     node_x = []
     node_y = []
     node_labels = []
-    for node in G.nodes():
+    for node in g.nodes():
         node_x.append(pos[node][0])
         node_y.append(pos[node][1])
         node_labels.append(node)
@@ -491,12 +497,12 @@ def plot_nx_graph(G: nx.Graph, **kwargs) -> go.Figure:
 
     # 计算边的中点位置并添加注释
     edge_annotations = []
-    for edge in G.edges():
+    for edge in g.edges():
         x0, y0 = pos[edge[0]]
         x1, y1 = pos[edge[1]]
         mid_x = (x0 + x1) / 2
         mid_y = (y0 + y1) / 2
-        weight = f'{G[edge[0]][edge[1]]["weight"]:.2f}'
+        weight = f'{g[edge[0]][edge[1]]["weight"]:.2f}'
         edge_annotations.append(
             dict(
                 x=mid_x,
