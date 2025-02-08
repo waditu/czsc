@@ -268,7 +268,7 @@ def cal_yearly_days(dts: list, **kwargs):
 
     # 按年重采样并计算每年的交易日数量，取最大值
     yearly_days = dts.resample('YE').size().max()
-    return yearly_days
+    return min(yearly_days, 365)
 
 
 def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
