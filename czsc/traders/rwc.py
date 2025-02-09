@@ -271,7 +271,8 @@ class RedisWeightsClient:
                 return
 
         self.r.delete(*keys)  # type: ignore
-        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录")
+        cong = self.r.srem(f"{self.key_prefix}:StrategyNames", self.strategy_name)
+        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录, {cong} 条策略名")
 
     @staticmethod
     def register_lua_publish(client):
