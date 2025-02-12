@@ -10,6 +10,8 @@ from czsc import utils
 from czsc import traders
 from czsc import sensors
 from czsc import aphorism
+from czsc.traders import rwc
+from czsc.traders import cwc
 from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
@@ -25,7 +27,6 @@ from czsc.traders import (
     PairsPerformance,
     combine_holds_and_pairs,
     combine_dates_and_pairs,
-    stock_holds_performance,
     DummyBacktest,
     SignalsParser,
     get_signals_config,
@@ -34,18 +35,21 @@ from czsc.traders import (
     WeightBacktest,
     stoploss_by_direction,
     get_ensemble_weight,
-    long_short_equity,
-
-    RedisWeightsClient,
-    get_strategy_mates,
-    get_heartbeat_time,
-    clear_strategy,
-    get_strategy_weights,
-    get_strategy_latest,
 
     OpensOptimize,
     ExitsOptimize,
 )
+
+from czsc.traders.rwc import (
+    RedisWeightsClient,
+    get_strategy_mates,
+    get_strategy_names,
+    get_heartbeat_time,
+    clear_strategy,
+    get_strategy_weights,
+    get_strategy_latest,
+)
+
 from czsc.utils import (
     timeout_decorator,
     mac_address,
@@ -81,14 +85,11 @@ from czsc.utils import (
     risk_free_returns,
     resample_to_daily,
 
-    CrossSectionalPerformance,
     cross_sectional_ranker,
     cross_sectional_ic,
     daily_performance,
     rolling_daily_performance,
-    weekly_performance,
     holds_performance,
-    net_value_stats,
     subtract_fee,
     top_drawdowns,
     psi,
@@ -172,7 +173,7 @@ from czsc.utils.bi_info import (
 from czsc.utils.features import (
     normalize_feature,
     normalize_ts_feature,
-    feture_cross_layering,
+    feature_cross_layering,
     find_most_similarity,
 )
 
