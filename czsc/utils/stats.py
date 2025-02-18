@@ -173,6 +173,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
         - yearly_days: int, 252, 一年的交易日数
     """
     from czsc.eda import cal_yearly_days
+    from rs_czsc import daily_performance
 
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])

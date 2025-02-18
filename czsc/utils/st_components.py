@@ -443,7 +443,7 @@ def show_weight_backtest(dfw, **kwargs):
     try:
         from rs_czsc import WeightBacktest
     except ImportError:
-        from czsc import WeightBacktest
+        from czsc.traders.weight_backtest import WeightBacktest
 
     from czsc.eda import cal_yearly_days
 

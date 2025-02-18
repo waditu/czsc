@@ -4,6 +4,14 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
+from rs_czsc import (
+    daily_performance,
+    top_drawdowns,
+
+    # python版本：from czsc.traders.weight_backtest import WeightBacktest
+    WeightBacktest,
+)
+
 from czsc import envs
 from czsc import fsa
 from czsc import utils
@@ -32,7 +40,6 @@ from czsc.traders import (
     get_signals_config,
     get_signals_freqs,
 
-    WeightBacktest,
     stoploss_by_direction,
     get_ensemble_weight,
 
@@ -87,11 +94,11 @@ from czsc.utils import (
 
     cross_sectional_ranker,
     cross_sectional_ic,
-    daily_performance,
+    # daily_performance,
     rolling_daily_performance,
     holds_performance,
     subtract_fee,
-    top_drawdowns,
+    # top_drawdowns,
     psi,
 
     home_path,
