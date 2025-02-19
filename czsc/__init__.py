@@ -4,12 +4,22 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
+from rs_czsc import (
+    daily_performance,
+    top_drawdowns,
+
+    # python版本：from czsc.traders.weight_backtest import WeightBacktest
+    WeightBacktest,
+)
+
 from czsc import envs
 from czsc import fsa
 from czsc import utils
 from czsc import traders
 from czsc import sensors
 from czsc import aphorism
+from czsc.traders import rwc
+from czsc.traders import cwc
 from czsc.analyze import CZSC
 from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
@@ -25,27 +35,28 @@ from czsc.traders import (
     PairsPerformance,
     combine_holds_and_pairs,
     combine_dates_and_pairs,
-    stock_holds_performance,
     DummyBacktest,
     SignalsParser,
     get_signals_config,
     get_signals_freqs,
 
-    WeightBacktest,
     stoploss_by_direction,
     get_ensemble_weight,
-    long_short_equity,
-
-    RedisWeightsClient,
-    get_strategy_mates,
-    get_heartbeat_time,
-    clear_strategy,
-    get_strategy_weights,
-    get_strategy_latest,
 
     OpensOptimize,
     ExitsOptimize,
 )
+
+from czsc.traders.rwc import (
+    RedisWeightsClient,
+    get_strategy_mates,
+    get_strategy_names,
+    get_heartbeat_time,
+    clear_strategy,
+    get_strategy_weights,
+    get_strategy_latest,
+)
+
 from czsc.utils import (
     timeout_decorator,
     mac_address,
@@ -81,18 +92,13 @@ from czsc.utils import (
     risk_free_returns,
     resample_to_daily,
 
-    CrossSectionalPerformance,
     cross_sectional_ranker,
     cross_sectional_ic,
-    SignalAnalyzer,
-    SignalPerformance,
-    daily_performance,
+    # daily_performance,
     rolling_daily_performance,
-    weekly_performance,
     holds_performance,
-    net_value_stats,
     subtract_fee,
-    top_drawdowns,
+    # top_drawdowns,
     psi,
 
     home_path,
@@ -138,7 +144,6 @@ from czsc.utils.st_components import (
     show_correlation,
     show_corr_graph,
     show_sectional_ic,
-    show_factor_returns,
     show_factor_layering,
     show_symbol_factor_layering,
     show_weight_backtest,
@@ -175,7 +180,7 @@ from czsc.utils.bi_info import (
 from czsc.utils.features import (
     normalize_feature,
     normalize_ts_feature,
-    feture_cross_layering,
+    feature_cross_layering,
     find_most_similarity,
 )
 
@@ -221,13 +226,16 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.62"
+__version__ = "0.9.63"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20241208"
+__date__ = "20250101"
 
 
 def welcome():
+    from czsc import aphorism, envs
+    from czsc.utils import get_dir_size, home_path
+
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
     aphorism.print_one()
 
@@ -236,10 +244,8 @@ def welcome():
         f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
         f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
     )
-
-
-if envs.get_welcome():
-    welcome()
+    if get_dir_size(home_path) > pow(1024, 3):
+        print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")
 
 
 if get_dir_size(home_path) > pow(1024, 3):

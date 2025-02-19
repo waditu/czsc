@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 from typing import Callable
 from tqdm import tqdm
-from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
 
 def vwap(price: np.array, volume: np.array, **kwargs) -> float:
@@ -45,6 +44,7 @@ def remove_beta_effects(df, **kwargs):
 
     :return: DataFrame
     """
+    from sklearn.linear_model import Ridge, LinearRegression, Lasso
 
     linear_model = kwargs.get("linear_model", "ridge")
     linear_model_params = kwargs.get("linear_model_params", {})
@@ -268,7 +268,7 @@ def cal_yearly_days(dts: list, **kwargs):
 
     # 按年重采样并计算每年的交易日数量，取最大值
     yearly_days = dts.resample('YE').size().max()
-    return yearly_days
+    return min(yearly_days, 365)
 
 
 def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
@@ -282,6 +282,7 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - factor_params: dict, 因子计算参数
         - min_klines: int, 最小K线数据量，默认为 300
         - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
+        - strict: bool, 是否严格模式，默认为 True, 严格模式下，计算因子出错会抛出异常
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
@@ -289,37 +290,47 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     min_klines = kwargs.get("min_klines", 300)
     factor_params = kwargs.get("factor_params", {})
     price_type = kwargs.get("price_type", "close")
+    strict = kwargs.get("strict", True)
 
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
 
+    def __one_symbol(symbol):
+        df = dfk[(dfk["symbol"] == symbol)].copy()
+        df = df.sort_values("dt", ascending=True).reset_index(drop=True)
+        if len(df) < min_klines:
+            logger.warning(f"{symbol} 数据量过小，跳过；仅有 {len(df)} 条数据，需要 {min_klines} 条数据")
+            return None
+
+        df = factor_function(df, **factor_params)
+        if price_type == 'next_open':
+            df["price"] = df["open"].shift(-1).fillna(df["close"])
+        elif price_type == 'close':
+            df["price"] = df["close"]
+        else:
+            raise ValueError("price_type 参数错误, 可选值为 close 或 next_open")
+
+        df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
+        factor = [x for x in df.columns if x.startswith("F#")][0]
+
+        # df[factor] = df[factor].replace([np.inf, -np.inf], np.nan).ffill().fillna(0)
+        # factor 中不能有 inf 和 -inf 值，也不能有 nan 值
+        assert df[factor].isna().sum() == 0, f"{symbol} {factor} 存在 nan 值"
+        assert df[factor].isin([np.inf, -np.inf]).sum() == 0, f"{symbol} {factor} 存在 inf 值"
+        assert df[factor].var() != 0 and not np.isnan(df[factor].var()), f"{symbol} {factor} var is 0 or nan"
+        return df
+
     rows = []
-    for symbol in tqdm(symbols, desc=f"{factor_name} 因子计算"):
-        try:
-            df = dfk[(dfk["symbol"] == symbol)].copy()
-            df = df.sort_values("dt", ascending=True).reset_index(drop=True)
-            if len(df) < min_klines:
-                logger.warning(f"{symbol} 数据量过小，跳过；仅有 {len(df)} 条数据，需要 {min_klines} 条数据")
+    for _symbol in tqdm(symbols, desc=f"{factor_name} 因子计算"):
+        if strict:
+            dfx = __one_symbol(_symbol)
+        else:
+            try:
+                dfx = __one_symbol(_symbol)
+            except Exception as e:
+                logger.error(f"{factor_name} - {_symbol} - 计算因子出错：{e}")
                 continue
-
-            df = factor_function(df, **factor_params)
-            if price_type == 'next_open':
-                df["price"] = df["open"].shift(-1).fillna(df["close"])
-            elif price_type == 'close':
-                df["price"] = df["close"]
-            else:
-                raise ValueError("price_type 参数错误, 可选值为 close 或 next_open")
-
-            df["n1b"] = (df["price"].shift(-1) / df["price"] - 1).fillna(0)
-
-            factor = [x for x in df.columns if x.startswith("F#")][0]
-            df[factor] = df[factor].replace([np.inf, -np.inf], np.nan).ffill().fillna(0)
-            if df[factor].var() == 0 or np.isnan(df[factor].var()):
-                logger.warning(f"{symbol} {factor} var is 0 or nan")
-            else:
-                rows.append(df.copy())
-        except Exception as e:
-            logger.error(f"{factor_name} - {symbol} - 计算因子出错：{e}")
+        rows.append(dfx)
 
     dff = pd.concat(rows, ignore_index=True)
     return dff

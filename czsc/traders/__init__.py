@@ -11,11 +11,10 @@ from czsc.traders.performance import (
     PairsPerformance,
     combine_holds_and_pairs,
     combine_dates_and_pairs,
-    stock_holds_performance,
 )
 from czsc.traders.dummy import DummyBacktest
 from czsc.traders.sig_parse import SignalsParser, get_signals_config, get_signals_freqs
-from czsc.traders.weight_backtest import WeightBacktest, get_ensemble_weight, long_short_equity, stoploss_by_direction
+from czsc.traders.weight_backtest import WeightBacktest, get_ensemble_weight, stoploss_by_direction
 from czsc.traders.rwc import (
     RedisWeightsClient,
     get_strategy_mates,

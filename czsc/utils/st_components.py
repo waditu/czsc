@@ -2,15 +2,11 @@
 
 import czsc
 import hashlib
-import optuna
 import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import statsmodels.api as sm
 import plotly.graph_objects as go
-from deprecated import deprecated
-from sklearn.linear_model import LinearRegression
 
 
 def __stats_style(stats):
@@ -89,40 +85,6 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
 
         stats = pd.DataFrame(stats).set_index("日收益名称")
         stats = __stats_style(stats)
-        # stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日盈亏比"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日赢面"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
-        # stats = stats.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
-        # stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
-        # stats = stats.format(
-        #     {
-        #         "盈亏平衡点": "{:.2f}",
-        #         "年化波动率": "{:.2%}",
-        #         "下行波动率": "{:.2%}",
-        #         "最大回撤": "{:.2%}",
-        #         "卡玛": "{:.2f}",
-        #         "年化": "{:.2%}",
-        #         "夏普": "{:.2f}",
-        #         "非零覆盖": "{:.2%}",
-        #         "绝对收益": "{:.2%}",
-        #         "日胜率": "{:.2%}",
-        #         "日盈亏比": "{:.2f}",
-        #         "日赢面": "{:.2%}",
-        #         "新高间隔": "{:.2f}",
-        #         "回撤风险": "{:.2f}",
-        #         "新高占比": "{:.2%}",
-        #     }
-        # )
         return stats
 
     use_st_table = kwargs.get("use_st_table", False)
@@ -291,36 +253,6 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
             margin=dict(l=0, r=0, b=0),
         )
         st.plotly_chart(fig, use_container_width=True)
-
-
-@deprecated("请使用 czsc.show_feature_returns")
-def show_factor_returns(df, x_col, y_col):
-    """使用 streamlit 展示因子收益率
-
-    :param df: pd.DataFrame，数据源
-    :param x_col: str，因子列名
-    :param y_col: str，收益列名
-    """
-    assert "dt" in df.columns, "时间列必须为 dt"
-
-    res = []
-    for dt, dfg in df.groupby("dt"):
-        dfg = dfg.copy().dropna(subset=[x_col, y_col])
-        X = dfg[x_col].values.reshape(-1, 1)
-        y = dfg[y_col].values.reshape(-1, 1)
-        model = LinearRegression(fit_intercept=False).fit(X, y)
-        res.append([dt, model.coef_[0][0]])
-
-    res = pd.DataFrame(res, columns=["dt", "因子收益率"])
-    res["dt"] = pd.to_datetime(res["dt"])
-
-    col1, col2 = st.columns(2)
-    fig = px.bar(res, x="dt", y="因子收益率", title="因子逐K收益率")
-    col1.plotly_chart(fig, use_container_width=True)
-
-    res["因子累计收益率"] = res["因子收益率"].cumsum()
-    fig = px.line(res, x="dt", y="因子累计收益率", title="因子累计收益率")
-    col2.plotly_chart(fig, use_container_width=True)
 
 
 def show_feature_returns(df, factor, target="n1b", **kwargs):
@@ -511,7 +443,7 @@ def show_weight_backtest(dfw, **kwargs):
     try:
         from rs_czsc import WeightBacktest
     except ImportError:
-        from czsc import WeightBacktest
+        from czsc.traders.weight_backtest import WeightBacktest
 
     from czsc.eda import cal_yearly_days
 
@@ -746,6 +678,8 @@ def show_ts_self_corr(df, col, **kwargs):
     :param df: pd.DataFrame, 必须包含列 dt 和 col
     :param col: str, df 中的列名
     """
+    import statsmodels.api as sm
+
     if not isinstance(df.index, pd.DatetimeIndex):
         df["dt"] = pd.to_datetime(df["dt"])
         df = df.set_index("dt")
@@ -987,7 +921,19 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     st.dataframe(df_stats, use_container_width=True, hide_index=True)
 
 
-def show_optuna_study(study: optuna.Study, **kwargs):
+def show_optuna_study(study, **kwargs):
+    """展示 Optuna Study 的可视化结果
+
+    :param study: optuna.study.Study, Optuna Study 对象
+    :param kwargs: dict, 其他参数
+
+        - sub_title: str, optional, 子标题
+        - keep: float, optional, 默认0.2, 保留最佳参数的比例
+
+    :return: optuna.study.Study
+    """
+    import optuna
+
     # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
     # https://zh-cn.optuna.org/reference/visualization.html
     from czsc.utils.optuna import optuna_good_params

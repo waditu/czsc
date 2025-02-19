@@ -5,7 +5,7 @@ name: Python package
 
 on:
   push:
-    branches: [ master, 'V0.9.62' ]
+    branches: [ master, 'V0.9.63' ]
   pull_request:
     branches: [ master ]
 
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     steps:
     - uses: actions/checkout@v2

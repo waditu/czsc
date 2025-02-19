@@ -44,16 +44,16 @@ def __db_from_env():
     return db
 
 
-def init_tables(db: Optional[Client] = None, **kwargs):
+def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
     """
     创建数据库表
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
+    :param database: str, 数据库名称
     :param kwargs: dict, 数据表名和建表语句
     :return: None
     """
     db = db or __db_from_env()
-    database = "czsc_strategy"
 
     # 创建数据库
     db.command(f"CREATE DATABASE IF NOT EXISTS {database}")
@@ -119,18 +119,19 @@ def init_tables(db: Optional[Client] = None, **kwargs):
     print("数据表创建成功！")
 
 
-def get_meta(strategy, db: Optional[Client] = None, logger=loguru.logger) -> dict:
+def get_meta(strategy, db: Optional[Client] = None, database="czsc_strategy", logger=loguru.logger) -> dict:
     """获取策略元数据
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称
+    :param database: str, 数据库名称
     :param logger: loguru.logger, 日志记录器
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
 
     query = f"""
-    SELECT * FROM czsc_strategy.metas final WHERE strategy = '{strategy}'
+    SELECT * FROM {database}.metas final WHERE strategy = '{strategy}'
     """
     df = db.query_df(query)
     if df.empty:
@@ -141,14 +142,15 @@ def get_meta(strategy, db: Optional[Client] = None, logger=loguru.logger) -> dic
         return df.iloc[0].to_dict()
 
 
-def get_all_metas(db: Optional[Client] = None) -> pd.DataFrame:
+def get_all_metas(db: Optional[Client] = None, database="czsc_strategy") -> pd.DataFrame:
     """获取所有策略元数据
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
+    :param database: str, 数据库名称
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
-    df = db.query_df("SELECT * FROM czsc_strategy.metas final")
+    df = db.query_df(f"SELECT * FROM {database}.metas final")
     return df
 
 
@@ -162,11 +164,11 @@ def set_meta(
     memo="",
     logger=loguru.logger,
     overwrite=False,
+    database="czsc_strategy",
     db: Optional[Client] = None,
 ):
     """设置策略元数据
 
-    :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名
     :param base_freq: str, 周期
     :param description: str, 描述
@@ -176,13 +178,15 @@ def set_meta(
     :param memo: str, 备注
     :param logger: loguru.logger, 日志记录器
     :param overwrite: bool, 是否覆盖已有元数据
+    :param database: str, 数据库名称
+    :param db: clickhouse_connect.driver.Client, 数据库连接
     :return: None
     """
     db = db or __db_from_env()
 
     outsample_sdt = pd.to_datetime(outsample_sdt).tz_localize(None)
     current_time = pd.to_datetime("now").tz_localize(None)
-    meta = get_meta(db=db, strategy=strategy)
+    meta = get_meta(db=db, strategy=strategy, database=database)
 
     if not overwrite and meta:
         logger.warning(f"策略 {strategy} 已存在元数据，如需更新请设置 overwrite=True")
@@ -208,15 +212,16 @@ def set_meta(
             }
         ]
     )
-    res = db.insert_df("czsc_strategy.metas", df)
+    res = db.insert_df(f"{database}.metas", df)
     logger.info(f"{strategy} set_metadata: {res.summary}")
 
 
-def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger):
+def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger, database="czsc_strategy"):
     """发送心跳
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称
+    :param database: str, 数据库名称
     :param logger: loguru.logger, 日志记录器
     :return: None
     """
@@ -228,7 +233,7 @@ def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger):
 
         current_time = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
         db.command(
-            f"ALTER TABLE czsc_strategy.metas UPDATE heartbeat_time = '{current_time}' WHERE strategy = '{strategy}'"
+            f"ALTER TABLE {database}.metas UPDATE heartbeat_time = '{current_time}' WHERE strategy = '{strategy}'"
         )
         logger.info(f"策略 {strategy} 发送心跳成功")
 
@@ -237,7 +242,9 @@ def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger):
         raise
 
 
-def get_strategy_weights(strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None):
+def get_strategy_weights(
+    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy"
+):
     """获取策略持仓权重
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -245,12 +252,13 @@ def get_strategy_weights(strategy, db: Optional[Client] = None, sdt=None, edt=No
     :param sdt: str, 开始时间
     :param edt: str, 结束时间
     :param symbols: list, 符号列表
+    :param database: str, 数据库名称
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
 
     query = f"""
-    SELECT * FROM czsc_strategy.weights final WHERE strategy = '{strategy}'
+    SELECT * FROM {database}.weights final WHERE strategy = '{strategy}'
     """
     if sdt:
         query += f" AND dt >= '{sdt}'"
@@ -269,16 +277,17 @@ def get_strategy_weights(strategy, db: Optional[Client] = None, sdt=None, edt=No
     return df
 
 
-def get_latest_weights(db: Optional[Client] = None, strategy=None):
+def get_latest_weights(db: Optional[Client] = None, strategy=None, database="czsc_strategy") -> pd.DataFrame:
     """获取策略最新持仓权重时间
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称, 默认 None
+    :param database: str, 数据库名称
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
 
-    query = "SELECT * FROM czsc_strategy.latest_weights final"
+    query = f"SELECT * FROM {database}.latest_weights final"
     if strategy:
         query += f" WHERE strategy = '{strategy}'"
 
@@ -292,7 +301,12 @@ def get_latest_weights(db: Optional[Client] = None, strategy=None):
 
 
 def publish_weights(
-    strategy: str, df: pd.DataFrame, batch_size=100000, logger=loguru.logger, db: Optional[Client] = None
+    strategy: str,
+    df: pd.DataFrame,
+    batch_size=100000,
+    logger=loguru.logger,
+    db: Optional[Client] = None,
+    database="czsc_strategy",
 ):
     """发布策略持仓权重
 
@@ -301,16 +315,17 @@ def publish_weights(
     :param strategy: str, 策略名称
     :param batch_size: int, 批量发布的大小, 默认 100000
     :param logger: loguru.logger, 日志记录器
+    :param database: str, 数据库名称
     :return: None
     """
     db = db or __db_from_env()
 
-    __send_heartbeat(db, strategy)
+    __send_heartbeat(db, strategy, database=database, logger=logger)
     df = df[["dt", "symbol", "weight"]].copy()
     df["strategy"] = strategy
     df["dt"] = pd.to_datetime(df["dt"])
 
-    dfl = get_latest_weights(db, strategy)
+    dfl = get_latest_weights(db, strategy, database=database)
 
     if not dfl.empty:
         dfl["dt"] = pd.to_datetime(dfl["dt"])
@@ -338,7 +353,7 @@ def publish_weights(
     # 批量写入
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i : i + batch_size]
-        res = db.insert_df("czsc_strategy.weights", batch_df)
+        res = db.insert_df(f"{database}.weights", batch_df)
         __send_heartbeat(db, strategy)
 
         if res:
@@ -356,6 +371,7 @@ def publish_returns(
     df: pd.DataFrame,
     batch_size=100000,
     logger=loguru.logger,
+    database="czsc_strategy",
     db: Optional[Client] = None,
 ):
     """发布策略日收益
@@ -375,7 +391,7 @@ def publish_returns(
 
     # 查询 czsc_strategy.returns 表中，每个品种最新的时间
     dfl = db.query_df(
-        f"SELECT symbol, max(dt) as dt FROM czsc_strategy.returns final WHERE strategy = '{strategy}' GROUP BY symbol"
+        f"SELECT symbol, max(dt) as dt FROM {database}.returns final WHERE strategy = '{strategy}' GROUP BY symbol"
     )
 
     if not dfl.empty:
@@ -405,7 +421,7 @@ def publish_returns(
     # 批量写入
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i : i + batch_size]
-        res = db.insert_df("czsc_strategy.returns", batch_df)
+        res = db.insert_df(f"{database}.returns", batch_df)
 
         if res:
             logger.info(f"完成批次 {i//batch_size + 1}, 发布 {len(batch_df)} 条日收益")
@@ -416,7 +432,9 @@ def publish_returns(
     logger.info(f"完成所有日收益发布, 共 {len(df)} 条")
 
 
-def get_strategy_returns(strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None):
+def get_strategy_returns(
+    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy"
+):
     """获取策略日收益
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -424,12 +442,13 @@ def get_strategy_returns(strategy, db: Optional[Client] = None, sdt=None, edt=No
     :param sdt: str, 开始时间
     :param edt: str, 结束时间
     :param symbols: list, 符号列表
+    :param database: str, 数据库名称
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
 
     query = f"""
-    SELECT * FROM czsc_strategy.returns final WHERE strategy = '{strategy}'
+    SELECT * FROM {database}.returns final WHERE strategy = '{strategy}'
     """
     if sdt:
         query += f" AND dt >= '{sdt}'"
@@ -448,13 +467,16 @@ def get_strategy_returns(strategy, db: Optional[Client] = None, sdt=None, edt=No
     return df
 
 
-def clear_strategy(strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True):
+def clear_strategy(
+    strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy"
+):
     """清空策略
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称
     :param logger: loguru.logger, 日志记录器
     :param human_confirm: bool, 是否需要人工确认，默认 True
+    :param database: str, 数据库名称
     :return: None
     """
     db = db or __db_from_env()
@@ -466,19 +488,19 @@ def clear_strategy(strategy, db: Optional[Client] = None, logger=loguru.logger, 
             return
 
     query = f"""
-    DELETE FROM czsc_strategy.metas WHERE strategy = '{strategy}'
+    DELETE FROM {database}.metas WHERE strategy = '{strategy}'
     """
     _ = db.command(query)
     logger.info(f"清空策略 {strategy} 元数据成功")
 
     query = f"""
-    DELETE FROM czsc_strategy.weights WHERE strategy = '{strategy}'
+    DELETE FROM {database}.weights WHERE strategy = '{strategy}'
     """
     _ = db.command(query)
     logger.info(f"清空策略 {strategy} 持仓权重成功")
 
     query = f"""
-    DELETE FROM czsc_strategy.returns WHERE strategy = '{strategy}'
+    DELETE FROM {database}.returns WHERE strategy = '{strategy}'
     """
     _ = db.command(query)
     logger.info(f"清空策略 {strategy} 日收益成功")

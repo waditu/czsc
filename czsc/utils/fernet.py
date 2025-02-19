@@ -8,14 +8,14 @@ describe: Fernet 加密解密
 import os
 from typing import Union
 
-from cryptography.fernet import Fernet
-
 
 def generate_fernet_key():
     """生成 Fernet key
 
     等价于：base64.urlsafe_b64encode(os.urandom(32))
     """
+    from cryptography.fernet import Fernet
+
     key = Fernet.generate_key()
     return key.decode()
 
@@ -28,6 +28,8 @@ def fernet_encrypt(data: Union[dict, str], key: str = None) -> str:
         推荐使用 generate_fernet_key() 生成
     :return: 加密后的文本
     """
+    from cryptography.fernet import Fernet
+
     key = key or os.getenv("FERNET_KEY")
     cipher_suite = Fernet(key.encode())
     encrypted_text = cipher_suite.encrypt(str(data).encode()).decode()
@@ -43,6 +45,8 @@ def fernet_decrypt(data: str, key: str = None, is_dict=False) -> str:
     :param is_dict: 是否解密字典数据
     :return: 解密后的文本
     """
+    from cryptography.fernet import Fernet
+
     key = key or os.getenv("FERNET_KEY")
     cipher_suite = Fernet(key.encode())
     decrypted_text = cipher_suite.decrypt(data.encode()).decode()

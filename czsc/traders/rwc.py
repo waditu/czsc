@@ -271,7 +271,8 @@ class RedisWeightsClient:
                 return
 
         self.r.delete(*keys)  # type: ignore
-        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录")
+        cong = self.r.srem(f"{self.key_prefix}:StrategyNames", self.strategy_name)
+        logger.info(f"{self.strategy_name} 删除了 {len(keys)} 条记录, {cong} 条策略名")
 
     @staticmethod
     def register_lua_publish(client):
@@ -320,7 +321,7 @@ return cnt
 
     def get_symbols(self):
         """获取策略交易的品种列表"""
-        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}*")
+        keys = self.get_keys(f"{self.key_prefix}:{self.strategy_name}:*:LAST")
         symbols = {x.split(":")[2] for x in keys}  # type: ignore
         return list(symbols)
 
