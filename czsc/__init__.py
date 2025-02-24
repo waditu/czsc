@@ -170,6 +170,8 @@ from czsc.utils.st_components import (
     show_df_describe,
     show_date_effect,
     show_weight_distribution,
+    show_normality_check,
+    show_outsample_by_dailys,
 )
 
 from czsc.utils.bi_info import (

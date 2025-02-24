@@ -1862,3 +1862,135 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
         show_df_describe(month_effect)
 
     st.caption("数据说明：count 为样本数量，mean 为均值，std 为标准差，min 为最小值，n% 为分位数，max 为最大值")
+
+
+def show_normality_check(data, alpha=0.05):
+    """展示正态性检验结果"""
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    from scipy.stats import shapiro, jarque_bera, kstest
+    from scipy.stats import norm
+    import statsmodels.api as sm
+
+    clean_data = data.dropna() if isinstance(data, pd.Series) else data[~np.isnan(data)]
+
+    def __metric(s, p):
+        m1, m2, m3 = st.columns(3)
+        m1.metric(label="统计量", value=f"{s:.3f}", border=False)
+        m2.metric(label="P值", value=f"{p:.1%}", border=False)
+        m3.metric(label="拒绝原假设", value="True" if p < alpha else "False", border=False)
+
+    c1, c2, c3 = st.columns(3)
+    with c1.container(border=True):
+        st.write("##### :red[Shapiro-Wilk 检验]")
+        stat, p_sw = shapiro(clean_data)
+        __metric(stat, p_sw)
+
+    with c2.container(border=True):
+        st.write("##### :red[Jarque Bera 检验]")
+        stat, p_jb = jarque_bera(clean_data)
+        __metric(stat, p_jb)
+
+    with c3.container(border=True):
+        st.write("##### :red[Kolmogorov-Smirnov 检验]")
+        mu, std = np.mean(clean_data), np.std(clean_data)
+        stat, p_ks = kstest(clean_data, "norm", args=(mu, std))
+        __metric(stat, p_ks)
+
+    plt.rcParams["axes.unicode_minus"] = False
+    plt.style.use("ggplot")
+
+    plt.figure(figsize=(20, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+
+    sns.histplot(clean_data, kde=True, stat="density", ax=ax1)
+    x = np.linspace(mu - 4 * std, mu + 4 * std, 100)
+    ax1.plot(x, norm.pdf(x, mu, std), "r", lw=2)
+    ax1.set_title(f"Histogram => SKEW: {clean_data.skew():.2f}, KURT: {clean_data.kurt():.2f}")
+    ax1.legend(["Normal PDF", "Data"])
+
+    sm.qqplot(clean_data, line="45", fit=True, ax=ax2)
+    ax2.set_title("Q-Q")
+    st.pyplot(fig)
+    st.divider()
+
+
+def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
+    """根据日收益数据展示样本内外对比
+
+    :param df: 日收益数据，包含列 ['dt', 'returns']
+    :param outsample_sdt1: 样本外开始日期
+    :param outsample_sdt2: 实盘开始跟踪的日期，如果为 None，则只展示样本内和样本外两个阶段
+    :return: None
+    """
+    if not ("dt" in df.columns and "returns" in df.columns):
+        st.error(f"show_outsample_by_dailys -> 数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")
+        return
+
+    df["dt"] = pd.to_datetime(df["dt"])
+    yearly_days = czsc.eda.cal_yearly_days(df["dt"])
+    outsample_sdt1 = pd.to_datetime(outsample_sdt1).strftime("%Y-%m-%d")
+
+    def __show_returns(dfx):
+        dfx = dfx.copy()
+        stats = czsc.daily_performance(dfx["returns"], yearly_days=yearly_days)
+        sc1, sc2, sc3 = st.columns(3)
+
+        # 绘制收益指标
+        sc1.metric("年化收益率", f"{stats['年化']:.2%}")
+        sc1.metric("夏普比率", f"{stats['夏普']:.2f}")
+        sc1.metric("新高占比", f"{stats['新高占比']:.2%}")
+
+        sc2.metric("最大回撤", f"{stats['最大回撤']:.2%}")
+        sc2.metric("新高间隔", f"{stats['新高间隔']:.0f}")
+        sc2.metric("回撤风险", f"{stats['回撤风险']:.3f}")
+
+        sc3.metric("年化波动率", f"{stats['年化波动率']:.2%}")
+        sc3.metric("下行波动率", f"{stats['下行波动率']:.2%}")
+        sc3.metric("非零覆盖", f"{stats['非零覆盖']:.2%}")
+
+        st.divider()
+        dfd = dfx[["dt", "returns"]].copy()
+        dfd.set_index("dt", inplace=True)
+        st.line_chart(dfd["returns"].cumsum(), color="#B22222", use_container_width=True)
+
+    if outsample_sdt2 is not None:
+        outsample_sdt2 = pd.to_datetime(outsample_sdt2).strftime("%Y-%m-%d")
+
+        if outsample_sdt1 >= outsample_sdt2:
+            st.error("show_outsample_by_dailys -> 样本外开始日期必须小于实盘开始日期")
+            return
+
+        df1 = df[df["dt"] < outsample_sdt1].copy()  # 样本内
+        df2 = df[
+            (df["dt"] >= outsample_sdt1) & (df["dt"] < outsample_sdt2)
+        ].copy()  # 第一段样本外：研究员认为的样本外开始日期
+        df3 = df[df["dt"] >= outsample_sdt2].copy()  # 第二段样本外：首次开始实盘跟踪的日期
+
+        c1, c2, c3 = st.columns(3)
+
+        with c1.container(border=True):
+            st.caption(f"研究阶段样本内: {df1['dt'].min().strftime('%Y-%m-%d')} ~ {outsample_sdt1}")
+            __show_returns(df1)
+
+        with c2.container(border=True):
+            st.caption(f"研究阶段样本外: {outsample_sdt1} ~ {df2['dt'].max().strftime('%Y-%m-%d')}")
+            __show_returns(df2)
+
+        with c3.container(border=True):
+            st.caption(f"系统跟踪样本外: {outsample_sdt2} ~ {df3['dt'].max().strftime('%Y-%m-%d')}")
+            __show_returns(df3)
+
+    else:
+        df1 = df[df["dt"] < outsample_sdt1].copy()  # 样本内
+        df2 = df[df["dt"] >= outsample_sdt1].copy()  # 样本外
+
+        c1, c2 = st.columns(2)
+        with c1.container(border=True):
+            st.caption(f"样本内: {df1['dt'].min().strftime('%Y-%m-%d')} ~ {outsample_sdt1}")
+            __show_returns(df1)
+
+        with c2.container(border=True):
+            st.caption(f"样本外: {outsample_sdt1} ~ {df2['dt'].max().strftime('%Y-%m-%d')}")
+            __show_returns(df2)
