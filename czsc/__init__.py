@@ -172,6 +172,7 @@ from czsc.utils.st_components import (
     show_weight_distribution,
     show_normality_check,
     show_outsample_by_dailys,
+    show_returns_contribution,
 )
 
 from czsc.utils.bi_info import (

@@ -10,6 +10,12 @@ import plotly.graph_objects as go
 
 
 def __stats_style(stats):
+    columns = [
+        "绝对收益", "年化", "夏普", "最大回撤", "卡玛", "日胜率",
+        "日盈亏比", "日赢面", "年化波动率", "下行波动率", "非零覆盖",
+        "盈亏平衡点", "新高间隔", "新高占比", "回撤风险"
+    ]
+    stats = stats[columns]
     stats = stats.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
     stats = stats.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
@@ -1924,12 +1930,13 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     :param outsample_sdt2: 实盘开始跟踪的日期，如果为 None，则只展示样本内和样本外两个阶段
     :return: None
     """
+    from czsc.eda import cal_yearly_days
     if not ("dt" in df.columns and "returns" in df.columns):
         st.error(f"show_outsample_by_dailys -> 数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")
         return
 
     df["dt"] = pd.to_datetime(df["dt"])
-    yearly_days = czsc.eda.cal_yearly_days(df["dt"])
+    yearly_days = cal_yearly_days(df["dt"])
     outsample_sdt1 = pd.to_datetime(outsample_sdt1).strftime("%Y-%m-%d")
 
     def __show_returns(dfx):
@@ -1994,3 +2001,55 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
         with c2.container(border=True):
             st.caption(f"样本外: {outsample_sdt1} ~ {df2['dt'].max().strftime('%Y-%m-%d')}")
             __show_returns(df2)
+
+
+def show_returns_contribution(df, returns=None, max_returns=100):
+    """分析子策略对总收益的贡献
+    
+    :param df: pd.DataFrame, 子策略日收益数据，index 为 datetime, columns 为 子策略名称
+    :param returns: list, 子策略名称列表
+    :param max_returns: int, 最大展示策略数量
+    """
+    df = df.copy()
+    for dt_col in ['date', 'dt']:
+        if dt_col in df.columns:
+            df[dt_col] = pd.to_datetime(df[dt_col])
+            df.set_index(dt_col, inplace=True)
+    
+    if returns is None:
+        returns = df.columns.to_list()
+
+    if len(returns) == 1 or len(returns) > max_returns:
+        st.warning(f"请选择多个策略进行对比，或者选择少于{max_returns} 个策略; 当前选择 {len(returns)} 个策略")
+        return 
+
+    # 计算每个策略的总收益贡献
+    total_returns = df[returns].sum(axis=0)
+    
+    # 创建用于绘图的数据框
+    plot_df = pd.DataFrame({
+        '策略': total_returns.index,
+        '收益贡献': total_returns.values
+    })
+    plot_df = plot_df.sort_values(by='收益贡献', ascending=False)
+
+    # 创建两列布局
+    col1, col2 = st.columns([3, 2])
+    
+    with col1.container(border=True):
+        # 绘制柱状图
+        fig_bar = px.bar(plot_df, x='策略', y='收益贡献', 
+                        title='收益贡献分析（柱状图）',
+                        color='收益贡献',
+                        color_continuous_scale='RdYlGn_r',
+                        width=600, height=400)
+        st.plotly_chart(fig_bar)
+        
+    with col2.container(border=True):
+        # 绘制饼图
+        fig_pie = px.pie(plot_df, values='收益贡献', names='策略', 
+                        title='收益贡献分析（饼图）',
+                        width=600, height=400)
+        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        st.plotly_chart(fig_pie)
+
