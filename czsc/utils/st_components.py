@@ -2043,13 +2043,17 @@ def show_returns_contribution(df, returns=None, max_returns=100):
                         color='收益贡献',
                         color_continuous_scale='RdYlGn_r',
                         width=600, height=400)
+        fig_bar.update_layout(yaxis_title='绝对收益', xaxis_title='策略')
         st.plotly_chart(fig_bar)
+        st.caption("柱状图展示每个策略的收益贡献, Y轴为绝对收益大小，X轴为策略名称")
         
     with col2.container(border=True):
-        # 绘制饼图
+        # 绘制饼图，如果收益贡献为负，删除
+        plot_df = plot_df[plot_df['收益贡献'] > 0]
         fig_pie = px.pie(plot_df, values='收益贡献', names='策略', 
-                        title='收益贡献分析（饼图）',
+                        title='盈利贡献分析（饼图）',
                         width=600, height=400)
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pie)
+        st.caption("饼图只展示盈利贡献为正的策略，分析子策略对盈利部分的贡献占比")
 
