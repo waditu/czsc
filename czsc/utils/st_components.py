@@ -988,20 +988,6 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         st.subheader(sub_title, divider="rainbow")
 
     top = kwargs.get("top", 10)
-    if top is not None:
-        with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
-            dft = czsc.top_drawdowns(df[ret_col].copy(), top=10)
-            dft = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
-            dft = dft.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
-            dft = dft.format(
-                {
-                    "净值回撤": "{:.2%}",
-                    "回撤天数": "{:.0f}",
-                    "恢复天数": "{:.0f}",
-                    "新高间隔": "{:.0f}",
-                }
-            )
-            st.dataframe(dft, use_container_width=True)
 
     # 画图: 净值回撤
     # 颜色表：https://www.codeeeee.com/color/rgb.html
@@ -1040,6 +1026,21 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
     fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤分析", height=300)
     st.plotly_chart(fig, use_container_width=True)
+
+    if top is not None:
+        with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
+            dft = czsc.top_drawdowns(df[ret_col].copy(), top=top)
+            dft = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
+            dft = dft.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
+            dft = dft.format(
+                {
+                    "净值回撤": "{:.2%}",
+                    "回撤天数": "{:.0f}",
+                    "恢复天数": "{:.0f}",
+                    "新高间隔": "{:.0f}",
+                }
+            )
+            st.dataframe(dft, use_container_width=True)
 
 
 def show_rolling_daily_performance(df, ret_col, **kwargs):
@@ -2057,3 +2058,147 @@ def show_returns_contribution(df, returns=None, max_returns=100):
         st.plotly_chart(fig_pie)
         st.caption("饼图只展示盈利贡献为正的策略，分析子策略对盈利部分的贡献占比")
 
+def show_symbols_bench(df: pd.DataFrame, **kwargs):
+    """展示多个品种的基准收益相关信息
+
+    :param df: pd.DataFrame, 数据源, 包含symbol, dt, price 字段, 其他字段将被忽略
+        symbol: 品种代码
+        dt: 时间
+        price: 交易价格
+    :param kwargs: 其他参数
+        - use_st_table: bool, 是否使用 st.table 展示相关性矩阵, 默认为 False
+    """
+    from rs_czsc import daily_performance
+    from czsc.eda import cal_yearly_days
+
+    df = df[["symbol", "dt", "price"]].copy()
+    df["pct_change"] = df.groupby("symbol")["price"].pct_change()
+    df['date'] = df['dt'].dt.date
+    dailys = df.groupby(['symbol', 'date'])['pct_change'].sum().reset_index()
+    dailys = dailys.pivot(index='date', columns='symbol', values='pct_change')
+    dailys = dailys.sort_values(by="date", ascending=True)
+    dailys = dailys.fillna(0)
+
+    with st.container(border=True):
+        st.markdown("##### 品种等权累计收益&最大回撤")
+        dailys['total'] = dailys.mean(axis=1)
+        dailys.index = pd.to_datetime(dailys.index)
+
+        yearly_days = cal_yearly_days(dailys.index.to_list())
+        stats = daily_performance(dailys['total'].to_list(), yearly_days=yearly_days)
+
+        c1, c2, c3, c4, c5, c6, c7, c8 = st.columns(8)
+        c1.metric("年化收益率", f"{stats['年化']:.2%}", border=True)
+        c2.metric("夏普比率", f"{stats['夏普']:.2f}", border=True)
+        c3.metric("最大回撤", f"{stats['最大回撤']:.2%}", border=True)
+        c4.metric("卡玛比率", f"{stats['卡玛']:.2f}", border=True)
+        c5.metric("日胜率", f"{stats['日胜率']:.2%}", border=True)
+        c6.metric("年化波动率", f"{stats['年化波动率']:.2%}", border=True)
+        c7.metric("新高占比", f"{stats['新高占比']:.2%}", border=True, help="新高占比: 新高日占所有交易日的比例")
+        c8.metric("新高间隔", f"{stats['新高间隔']}", border=True, help="新高间隔: 相邻新高日之间的最大交易日间隔")
+
+        show_drawdowns(dailys, ret_col='total', sub_title="")
+
+    with st.container(border=True):
+        st.markdown("##### 品种间日收益相关性矩阵")
+        show_correlation(dailys, use_st_table=kwargs.get("use_st_table", False))
+
+
+def show_seasonal_effect(returns: pd.Series):
+    """展示策略的季节性收益对比
+
+    :param returns: 日收益率序列，index 为日期
+    """
+    import plotly.express as px
+    from czsc.eda import cal_yearly_days
+    from rs_czsc import daily_performance
+
+    returns.index = pd.to_datetime(returns.index)
+    yearly_days = cal_yearly_days(returns.index.to_list())
+
+    # 按4个季度划分数据为 s1，s2，s3，s4，分别计算每个季度的统计指标
+    s1 = returns[returns.index.quarter == 1]
+    s2 = returns[returns.index.quarter == 2]
+    s3 = returns[returns.index.quarter == 3]
+    s4 = returns[returns.index.quarter == 4]
+
+    def __show_quarter_stats(s: pd.Series):
+        stats = daily_performance(s.to_list(), yearly_days=yearly_days)
+        mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+        mc1.metric("交易天数", f"{len(s)}天", border=True)
+        mc2.metric("年化", f"{stats['年化']:.2%}", border=True)
+        mc3.metric("夏普", f"{stats['夏普']:.2f}", border=True)
+        mc4.metric("最大回撤", f"{stats['最大回撤']:.2%}", border=True)
+        mc5.metric("卡玛", f"{stats['卡玛']:.2f}", border=True)
+
+        # 用 plotly 绘制累计收益率曲线, 用 数字作为index，方便对比
+        fig = px.line(s.cumsum(), x=list(range(len(s))), y=s.cumsum().values, title="累计收益率")
+        fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率")
+
+        # 按年分组，绘制矩形覆盖
+        years = s.index.year.unique()
+        colors = ['rgba(102, 255, 178, 0.1)', 'rgba(102, 178, 255, 0.1)']  # 薄荷绿和天蓝色，半透明
+        shapes = []
+        for i, year in enumerate(years):
+            # 获取该年的第一个和最后一个交易日在数字索引中的位置
+            year_data = s[s.index.year == year]
+            start_idx = s.index.get_indexer([year_data.index[0]])[0]
+            end_idx = s.index.get_indexer([year_data.index[-1]])[0]
+            
+            # 添加矩形
+            shapes.append(dict(
+                type="rect",
+                xref="x",
+                yref="paper",
+                x0=start_idx,
+                y0=0,
+                x1=end_idx,
+                y1=1,
+                fillcolor=colors[i % len(colors)],
+                opacity=0.5,
+                layer="below",
+                line_width=0,
+            ))
+        
+        # 更新图表布局，添加矩形
+        fig.update_layout(shapes=shapes)
+        
+        # 添加年份标签
+        annotations = []
+        for i, year in enumerate(years):
+            year_data = s[s.index.year == year]
+            mid_idx = s.index.get_indexer([year_data.index[len(year_data)//2]])[0]
+            
+            annotations.append(dict(
+                x=mid_idx,
+                y=1.05,
+                xref="x",
+                yref="paper",
+                text=str(year),
+                showarrow=False,
+                font=dict(size=14)
+            ))
+            
+        fig.update_layout(annotations=annotations)
+        
+        st.plotly_chart(fig, use_container_width=True)
+
+    c1, c2 = st.columns(2)
+    with c1.container(border=True):
+        # 标题红色
+        st.markdown("##### :red[第一季度]")
+        __show_quarter_stats(s1)
+
+    with c2.container(border=True):
+        st.markdown("##### :red[第二季度]")
+        __show_quarter_stats(s2)
+
+    c3, c4 = st.columns(2)
+
+    with c3.container(border=True):
+        st.markdown("##### :red[第三季度]")
+        __show_quarter_stats(s3)
+
+    with c4.container(border=True):
+        st.markdown("##### :red[第四季度]")
+        __show_quarter_stats(s4)

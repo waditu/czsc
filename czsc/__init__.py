@@ -173,6 +173,8 @@ from czsc.utils.st_components import (
     show_normality_check,
     show_outsample_by_dailys,
     show_returns_contribution,
+    show_symbols_bench,
+    show_seasonal_effect,
 )
 
 from czsc.utils.bi_info import (
