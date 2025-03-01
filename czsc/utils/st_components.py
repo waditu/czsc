@@ -7,6 +7,8 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+from deprecated import deprecated
+from czsc.eda import cal_yearly_days
 
 
 def __stats_style(stats):
@@ -314,7 +316,7 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
         - n: 分层数量，默认为10
     """
     n = kwargs.get("n", 10)
-    df = czsc.feture_cross_layering(df, factor, n=n)
+    df = czsc.feature_cross_layering(df, factor, n=n)
 
     mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
     mrr = mr.pivot(index="dt", columns=f"{factor}分层", values=target).fillna(0)
@@ -363,6 +365,7 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
     show_df_describe(dfs)
 
 
+@deprecated(reason="没有必要绘制单个标的上的因子分层收益率图")
 def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
     """使用 streamlit 绘制单个标的上的因子分层收益率图
 
@@ -1082,38 +1085,24 @@ def show_event_return(df, factor, **kwargs):
     :param factor: str, 事件因子名称
     :param kwargs: dict, 其他参数
 
-        - sub_title: str, 子标题
         - max_unique: int, 因子独立值最大数量
+        - agg_method: str, 聚合方法，可选值："平均收益率", "收益中位数", "盈亏比", "交易胜率", "前20%平均收益率", "后20%平均收益率"
+        - sdt: str, 开始时间
+        - edt: str, 结束时间
+        - max_overlap: int, 最大重叠次数
 
     """
-    sub_title = kwargs.get("sub_title", "事件收益率特征")
     max_unique = kwargs.get("max_unique", 20)
-    if sub_title:
-        st.subheader(sub_title, divider="rainbow")
 
     if df[factor].nunique() > max_unique:
         st.warning(f"因子分布过于离散，无法进行分析，请检查！！！因子独立值数量：{df[factor].nunique()}")
         return
 
     df = df.copy()
-
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
-    agg_method = c1.selectbox(
-        "聚合方法",
-        [
-            "平均收益率",
-            "收益中位数",
-            "盈亏比",
-            "交易胜率",
-            "前20%平均收益率",
-            "后20%平均收益率",
-        ],
-        index=0,
-        key=f"agg_method_{factor}",
-    )
-    sdt = pd.to_datetime(c2.date_input("开始时间", value=df["dt"].min()))
-    edt = pd.to_datetime(c3.date_input("结束时间", value=df["dt"].max()))
-    max_overlap = c4.number_input("最大重叠次数", value=3, min_value=1, max_value=20)
+    agg_method = kwargs.get("agg_method", "平均收益率")
+    sdt = kwargs.get("sdt", df["dt"].min())
+    edt = kwargs.get("edt", df["dt"].max())
+    max_overlap = kwargs.get("max_overlap", 3)
 
     df[factor] = df[factor].astype(str)
     df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
@@ -1165,12 +1154,6 @@ def show_event_return(df, factor, **kwargs):
     dfy1 = __markout(df.copy(), [factor, "overlap"])
     st.dataframe(dfy1, use_container_width=True)
 
-    if len(df["symbol"].unique()) > 1:
-        with st.expander("查看品种详细数据", expanded=False):
-            symbol = st.selectbox("选择品种", df["symbol"].unique().tolist(), index=0, key=f"ms1_{agg_method}")
-            dfx = __markout(df[df["symbol"] == symbol].copy(), ["symbol", factor, "overlap"])
-            st.dataframe(dfx, use_container_width=True)
-
 
 def show_psi(df, factor, segment, **kwargs):
     """PSI分布稳定性
@@ -1182,7 +1165,7 @@ def show_psi(df, factor, segment, **kwargs):
 
         - sub_title: str, 子标题
     """
-    sub_title = kwargs.get("sub_title", "PSI分布稳定性")
+    sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
 
@@ -1196,6 +1179,7 @@ def show_psi(df, factor, segment, **kwargs):
     st.table(dfi)
 
 
+@deprecated(reason="这不是一个好的设计")
 def show_strategies_dailys(df, **kwargs):
     """展示多策略多品种日收益率数据：按策略等权日收益
 
@@ -1265,6 +1249,7 @@ def show_strategies_dailys(df, **kwargs):
         czsc.show_out_in_compare(df1.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
 
 
+@deprecated(reason="这不是一个好的设计")
 def show_strategies_symbol(df, **kwargs):
     """展示多策略多品种日收益率数据：按品种等权日收益
 
@@ -1573,9 +1558,9 @@ def show_strategies_recent(df, **kwargs):
 
 
 def show_factor_value(df, factor, **kwargs):
-    """展示因子值可视化
+    """因子值可视化
 
-    :param df: pd.DataFrame, columns=['dt', ‘open’, ‘close’, ‘high’, ‘low’, ‘vol’, factor]
+    :param df: pd.DataFrame, columns=['dt', 'open', 'close', 'high', 'low', 'vol', factor]
     :param factor: str, 因子名称
     :param kwargs: dict, 其他参数
 
@@ -1586,6 +1571,11 @@ def show_factor_value(df, factor, **kwargs):
     """
     if factor not in df.columns:
         st.warning(f"因子 {factor} 不存在，请检查")
+        return
+    
+    # dt 列不允许有重复值
+    if df["dt"].duplicated().any():
+        st.warning("dt 列不允许有重复值，请检查")
         return
 
     height = kwargs.get("height", 600)
@@ -1616,11 +1606,11 @@ def show_factor_value(df, factor, **kwargs):
     st.plotly_chart(chart.fig, use_container_width=True, config=plotly_config)
 
 
-def show_code_editor(default: str = None, **kwargs):
+def show_code_editor(default: str = "", **kwargs):
     """用户自定义 Python 代码编辑器
 
     :param default: str, 默认代码
-    :param kwargs: dict, 额外参数
+    :param kwargs: dict, 其他参数
 
         - language: str, 编辑器语言，默认为 "python"
         - use_expander: bool, 是否使用折叠面板，默认为 True
@@ -1628,10 +1618,10 @@ def show_code_editor(default: str = None, **kwargs):
         - exec: bool, 是否执行代码，默认为 True
         - theme: str, 编辑器主题，默认为 "gruvbox"
         - keybinding: str, 编辑器快捷键，默认为 "vscode"
-
-    :return: tuple
-        - code: str, 编辑器中的代码
-        - namespace: dict, 执行代码后的命名空间
+        - height: int, 编辑器高度，默认为 550
+        - font_size: int, 字体大小，默认为 16
+        - show_gutter: bool, 是否显示行号，默认为 True
+        - readonly: bool, 是否只读，默认为 False
     """
     if default is None:
         default = """

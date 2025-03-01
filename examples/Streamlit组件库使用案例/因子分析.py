@@ -1,13 +1,24 @@
+import sys
+sys.path.insert(0, r"A:\ZB\git_repo\waditu\czsc")
+
 import czsc
 import pandas as pd
 import streamlit as st
 
 st.set_page_config(layout="wide")
 
-df = pd.read_feather(r"C:\Users\zengb\Downloads\ST组件样例数据\因子数据样例.feather")
-factor = [x for x in df.columns if x.startswith("F#")][0]
-# czsc.show_factor_layering(df, factor=factor, target="n1b", n=10)
+def prepare_data():
+    df = pd.read_feather(r"C:\Users\zengb\Downloads\ST组件样例数据\因子数据样例.feather")
+    factor = [x for x in df.columns if x.startswith("F#")][0]
+    df = df[df['symbol'] == 'DLj9001'][['dt', 'open', 'close', 'high', 'low', 'vol', factor]]
+    return df, factor
 
-# czsc.show_feature_returns(df, factor, target="n1b", fit_intercept=True)
+def main():
+    df, factor = prepare_data()
+    st.header("因子值可视化", divider="rainbow")
+    czsc.show_factor_value(df, factor)
 
-czsc.show_sectional_ic(df, factor, "n1b", show_factor_histgram=True, show_cumsum_ic=True)
+
+if __name__ == "__main__":
+    main()
+

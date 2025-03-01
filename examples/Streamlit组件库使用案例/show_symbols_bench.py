@@ -9,16 +9,13 @@ st.set_page_config(layout="wide")
 
 def prepare_data():
     df = pd.read_feather(r"C:\Users\zengb\Downloads\weight_example.feather")
-    wb = czsc.WeightBacktest(df[['dt', 'symbol', 'weight', 'price']], digits=2, fee_rate=0.0002, 
-                             n_jobs=1, weight_type="ts", yearly_days=252)
-    returns = wb.daily_return.copy()
-    returns = returns.set_index('date')['total']
-    return returns
+    return df[['dt', 'symbol', 'weight']]
 
 
 def main():
-    returns = prepare_data()
-    czsc.show_seasonal_effect(returns)
+    df = prepare_data()
+    st.header("策略在标的上的权重分布", divider="rainbow")
+    czsc.show_weight_distribution(df, abs_weight=True)
 
 
 if __name__ == "__main__":
