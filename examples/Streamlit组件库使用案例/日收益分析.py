@@ -1,17 +1,18 @@
+import sys
+sys.path.insert(0, r"A:\ZB\git_repo\waditu\czsc")
+
 import czsc
 import pandas as pd
 import streamlit as st
 
 st.set_page_config(layout="wide")
 
-dfw = pd.read_feather(r"C:\Users\zengb\Downloads\ST组件样例数据\截面持仓权重样例数据.feather")
-st.subheader("截面数据回测", divider="rainbow", anchor="截面数据回测")
-czsc.show_holds_backtest(
-    dfw,
-    fee=2,
-    digits=2,
-    show_drawdowns=True,
-    show_splited_daily=True,
-    show_monthly_return=True,
-    show_yearly_stats=True,
-)
+df = pd.read_feather(r"C:\Users\zengb\Downloads\ST组件样例数据\日收益样例数据.feather")
+df['returns'] = df['total']
+df = df[['dt', 'returns']].copy()
+
+st.header("两段样本内外对比", divider="rainbow")
+czsc.show_outsample_by_dailys(df, outsample_sdt1="2022-01-01")
+
+st.header("三段样本内外对比", divider="rainbow")
+czsc.show_outsample_by_dailys(df, outsample_sdt1="2022-01-01", outsample_sdt2="2023-01-01")

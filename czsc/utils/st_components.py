@@ -2094,7 +2094,7 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
         show_correlation(dailys, use_st_table=kwargs.get("use_st_table", False))
 
 
-def show_seasonal_effect(returns: pd.Series):
+def show_quarterly_effect(returns: pd.Series):
     """展示策略的季节性收益对比
 
     :param returns: 日收益率序列，index 为日期
