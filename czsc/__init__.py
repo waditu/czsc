@@ -175,6 +175,7 @@ from czsc.utils.st_components import (
     show_returns_contribution,
     show_symbols_bench,
     show_quarterly_effect,
+    show_cumulative_returns,
 )
 
 from czsc.utils.bi_info import (

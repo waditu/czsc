@@ -6,6 +6,7 @@ create_dt: 2023/3/21 16:04
 describe: 交易相关的工具函数
 """
 import pandas as pd
+from deprecated import deprecated
 from typing import List, Union
 from czsc.objects import RawBar
 
@@ -28,6 +29,7 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
     return df
 
 
+@deprecated(reason="请使用 czsc.eda.cal_trade_price 替代")
 def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwargs):
     """计算给定品种基础周期K线数据的交易价格
 

@@ -134,6 +134,41 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             st.plotly_chart(fig, use_container_width=True)
 
 
+def show_cumulative_returns(df, **kwargs):
+    """展示累计收益曲线
+    
+    :param df: pd.DataFrame, 数据源，index 为日期，columns 为对应策略上一个日期至当前日期的收益
+    :param kwargs: dict, 可选参数
+    """
+    import plotly.express as px
+
+    assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    assert df.index.is_unique, "df 的索引必须唯一"
+    assert df.index.is_monotonic_increasing, "df 的索引必须单调递增"
+
+    fig_title = kwargs.get("fig_title", "累计收益")
+    df = df.cumsum()
+    fig = px.line(df, y=df.columns.to_list(), title=fig_title)
+    fig.update_xaxes(title="")
+
+    # 添加每年的开始第一个日期的竖线
+    for year in range(df.index.year.min(), df.index.year.max() + 1):
+        first_date = df[df.index.year == year].index.min()
+        fig.add_vline(x=first_date, line_dash="dash", line_color="red")
+
+    for col in kwargs.get("legend_only_cols", []):
+        fig.update_traces(visible="legendonly", selector=dict(name=col))
+        
+    # 将 legend 移动到图表的底部并水平居中显示
+    fig.update_layout(legend=dict(
+        orientation="h",
+        y=-0.1,
+        xanchor="center",
+        x=0.5
+    ), margin=dict(l=0, r=0, b=0))
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **kwargs):
     """展示指定列的月度累计收益
 
@@ -512,7 +547,6 @@ def show_weight_backtest(dfw, **kwargs):
     #     with c1.expander("品种等权日收益", expanded=False):
     #         df_ = wb.daily_return.copy()
     #         st.dataframe(df_.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}"), use_container_width=True)
-    #
     #     # with c2.expander("查看开平交易对", expanded=False):
     #     # dfp = pd.concat([v["pairs"] for k, v in wb.results.items() if k in wb.symbols], ignore_index=True)
     #     # st.dataframe(dfp, use_container_width=True)
