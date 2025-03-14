@@ -2148,16 +2148,16 @@ def show_quarterly_effect(returns: pd.Series):
 
     def __show_quarter_stats(s: pd.Series):
         stats = daily_performance(s.to_list(), yearly_days=yearly_days)
-        mc1, mc2, mc3, mc4, mc5 = st.columns(5)
-        mc1.metric("交易天数", f"{len(s)}天", border=True)
-        mc2.metric("年化", f"{stats['年化']:.2%}", border=True)
-        mc3.metric("夏普", f"{stats['夏普']:.2f}", border=True)
-        mc4.metric("最大回撤", f"{stats['最大回撤']:.2%}", border=True)
-        mc5.metric("卡玛", f"{stats['卡玛']:.2f}", border=True)
-
+        st.markdown(f"总交易天数: `{len(s)}天` \
+                    | 年化: `{stats['年化']:.2%}` \
+                    | 夏普: `{stats['夏普']:.2f}` \
+                    | 最大回撤: `{stats['最大回撤']:.2%}` \
+                    | 卡玛: `{stats['卡玛']:.2f}` \
+                    | 年化波动率: `{stats['年化波动率']:.2%}`")
+        
         # 用 plotly 绘制累计收益率曲线, 用 数字作为index，方便对比
-        fig = px.line(s.cumsum(), x=list(range(len(s))), y=s.cumsum().values, title="累计收益率")
-        fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率")
+        fig = px.line(s.cumsum(), x=list(range(len(s))), y=s.cumsum().values, title="")
+        fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率", margin=dict(l=0, r=0, t=0, b=0))
 
         # 按年分组，绘制矩形覆盖
         years = s.index.year.unique()
@@ -2195,7 +2195,7 @@ def show_quarterly_effect(returns: pd.Series):
             
             annotations.append(dict(
                 x=mid_idx,
-                y=1.05,
+                y=0.95,
                 xref="x",
                 yref="paper",
                 text=str(year),
@@ -2209,7 +2209,6 @@ def show_quarterly_effect(returns: pd.Series):
 
     c1, c2 = st.columns(2)
     with c1.container(border=True):
-        # 标题红色
         st.markdown("##### :red[第一季度]")
         __show_quarter_stats(s1)
 
@@ -2218,7 +2217,6 @@ def show_quarterly_effect(returns: pd.Series):
         __show_quarter_stats(s2)
 
     c3, c4 = st.columns(2)
-
     with c3.container(border=True):
         st.markdown("##### :red[第三季度]")
         __show_quarter_stats(s3)
