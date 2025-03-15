@@ -1895,8 +1895,12 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
     st.caption("数据说明：count 为样本数量，mean 为均值，std 为标准差，min 为最小值，n% 为分位数，max 为最大值")
 
 
-def show_normality_check(data, alpha=0.05):
-    """展示正态性检验结果"""
+def show_normality_check(data: pd.Series, alpha=0.05):
+    """展示正态性检验结果
+    
+    :param data: pd.Series, 需要检验的数据
+    :param alpha: float, 显著性水平，默认为 0.05
+    """
     import matplotlib.pyplot as plt
     import seaborn as sns
 
@@ -1904,7 +1908,7 @@ def show_normality_check(data, alpha=0.05):
     from scipy.stats import norm
     import statsmodels.api as sm
 
-    clean_data = data.dropna() if isinstance(data, pd.Series) else data[~np.isnan(data)]
+    clean_data = data.dropna()
 
     def __metric(s, p):
         m1, m2, m3 = st.columns(3)
@@ -2081,6 +2085,7 @@ def show_returns_contribution(df, returns=None, max_returns=100):
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pie)
         st.caption("饼图只展示盈利贡献为正的策略，分析子策略对盈利部分的贡献占比")
+
 
 def show_symbols_bench(df: pd.DataFrame, **kwargs):
     """展示多个品种的基准收益相关信息

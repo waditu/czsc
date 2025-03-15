@@ -86,7 +86,7 @@ def remove_beta_effects(df, **kwargs):
 def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, **kwargs):
     """根据截面因子值构建多空组合
 
-    :param df: pd.DataFrame, 包含因子列的数据, 必须包含 dt, symbol, factor 列
+    :param df: pd.DataFrame, 包含多个品种的因子数据, 必须包含 dt, symbol, factor 列
     :param factor: str, 因子列名称
     :param weight: str, 权重列名称，默认为 weight
     :param long: float, 多头持仓比例/数量，默认为 0.3, 取值范围为 [0, n_symbols], 0~1 表示比例，大于等于1表示数量
