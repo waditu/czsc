@@ -15,7 +15,7 @@ def test_weight_backtest():
 
     dfw = read_daily()
     dfw = pd.DataFrame(dfw)
-    dfw["weight"] = np.where(dfw["close"] > dfw["open"], 1, -1)
+    dfw["weight"] = np.where(dfw["close"] > dfw["open"], 1.0, -1.0)
     dfw["price"] = dfw["close"]
     wb = WeightBacktest(dfw[["dt", "weight", "symbol", "price"]])
 
