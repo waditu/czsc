@@ -37,17 +37,17 @@
 
 ## 项目贡献
 
-* [择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)
+* **[择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)**
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
 * 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
 * 定义并实现了若干信号函数，详见 `czsc/signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
-* [Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)
+* **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**
 
 
 ## 安装使用
 
-**注意:** python 版本必须大于等于 3.7
+**注意:** python 版本必须大于等于 3.8
 
 直接从github安装：
 ```
@@ -63,6 +63,13 @@ pip install git+https://github.com/waditu/czsc.git@V0.9.46 -U
 ```
 pip install czsc -U -i https://pypi.python.org/simple
 ```
+
+## 使用案例
+
+1. [使用 tqsdk 进行期货交易](https://s0cqcxuy3p.feishu.cn/wiki/wikcn41lQIAJ1f8v41Dj5eAmrub)
+2. [CTA择时：缠论30分钟笔非多即空](https://s0cqcxuy3p.feishu.cn/wiki/YPlewoj70ikwxakPnOucTP8lnYg)
+3. [使用CTA研究UI页面进行策略研究](https://s0cqcxuy3p.feishu.cn/wiki/JWe3wo1VNiglO9kE999cGy8innh)
+
 
 ## 使用前必看
 
