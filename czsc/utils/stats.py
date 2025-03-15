@@ -23,6 +23,7 @@ def cal_break_even_point(seq) -> float:
     return (np.sum(seq < 0) + 1) / len(seq)  # type: ignore
 
 
+@deprecated(reason="用不上了，策略回测统一用 rs_czsc.WeightBacktest 替代，支持扣费")
 def subtract_fee(df, fee=1):
     """依据单品种持仓信号扣除手续费
 
