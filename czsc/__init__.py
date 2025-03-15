@@ -85,7 +85,6 @@ from czsc.utils import (
     x_round,
     import_by_name,
     create_grid_params,
-    cal_trade_price,
     update_bbars,
     update_tbars,
     update_nxb,
@@ -229,6 +228,7 @@ from czsc.eda import (
     dif_long_bear,
     tsf_type,
     limit_leverage,
+    cal_trade_price,
 )
 
 
