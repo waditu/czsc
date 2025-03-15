@@ -7,6 +7,7 @@ describe: 绩效表现统计
 """
 import numpy as np
 import pandas as pd
+from deprecated import deprecated
 from collections import Counter
 
 
@@ -22,6 +23,7 @@ def cal_break_even_point(seq) -> float:
     return (np.sum(seq < 0) + 1) / len(seq)  # type: ignore
 
 
+@deprecated(reason="用不上了，策略回测统一用 rs_czsc.WeightBacktest 替代，支持扣费")
 def subtract_fee(df, fee=1):
     """依据单品种持仓信号扣除手续费
 
@@ -62,6 +64,7 @@ def subtract_fee(df, fee=1):
     return df
 
 
+@deprecated(reason="请使用 rs_czsc.daily_performance 替代")
 def daily_performance(daily_returns, **kwargs):
     """采用单利计算日收益数据的各项指标
 
@@ -144,9 +147,9 @@ def daily_performance(daily_returns, **kwargs):
     sta = {
         "绝对收益": round(np.sum(daily_returns), 4),
         "年化": round(annual_returns, 4),
-        "夏普": __min_max(sharpe_ratio, -5, 5, 2),
+        "夏普": __min_max(sharpe_ratio, -5, 10, 2),
         "最大回撤": round(max_drawdown, 4),
-        "卡玛": __min_max(kama, -10, 10, 2),
+        "卡玛": __min_max(kama, -10, 20, 2),
         "日胜率": round(win_pct, 4),
         "日盈亏比": round(daily_ykb, 4),
         "日赢面": round(win_pct * daily_ykb - (1 - win_pct), 4),
@@ -164,7 +167,7 @@ def daily_performance(daily_returns, **kwargs):
 def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods=100, **kwargs):
     """计算滚动日收益的各项指标
 
-    :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col]
+    :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col] 或者 index 为 datetime64[ns]
     :param ret_col: str, 收益列名
     :param window: int, 滚动窗口, 自然天数
     :param min_periods: int, 最小样本数
@@ -180,7 +183,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
         df.set_index("dt", inplace=True)
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
 
-    yearly_days = kwargs.get("yearly_days", cal_yearly_days(df.index))
+    yearly_days = kwargs.get("yearly_days", cal_yearly_days(df.index.tolist()))
 
     df = df[[ret_col]].copy().fillna(0)
     df.sort_index(inplace=True, ascending=True)

@@ -6,6 +6,7 @@ create_dt: 2023/3/21 16:04
 describe: 交易相关的工具函数
 """
 import pandas as pd
+from deprecated import deprecated
 from typing import List, Union
 from czsc.objects import RawBar
 
@@ -25,54 +26,6 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
 
     trade_dates = get_trading_dates(start_date, end_date)  # type: ignore
     df = pd.DataFrame({"date": trade_dates, "returns": year_returns / 252})
-    return df
-
-
-def cal_trade_price(bars: Union[List[RawBar], pd.DataFrame], decimals=3, **kwargs):
-    """计算给定品种基础周期K线数据的交易价格
-
-    函数执行逻辑：
-
-    1. 首先，根据输入的 bars 参数类型（列表或 DataFrame），将其转换为 DataFrame 格式，并将其存储在变量 df 中。
-    2. 计算下一根K线的开盘价和收盘价，分别存储在新列 next_open 和 next_close 中。同时，将这两个新列名添加到 price_cols 列表中。
-    3. 计算 TWAP（时间加权平均价格）和 VWAP（成交量加权平均价格）。为此，函数使用了一个 for 循环，
-       遍历 t_seq 参数（默认值为 (5, 10, 15, 20, 30, 60)）。在每次循环中：
-
-        - 计算 TWAP：使用 rolling(t).mean().shift(-t) 方法计算时间窗口为 t 的滚动平均收盘价。
-        - 计算 VWAP：首先计算滚动窗口内的成交量之和（sum_vol_t）和成交量乘以收盘价之和（sum_vcp_t），然后用后者除以前者，并向下移动 t 个单位。
-        - 将 TWAP 和 VWAP 的列名添加到 price_cols 列表中。
-
-    4. 遍历 price_cols 列表中的每个列，将其中的 NaN 值替换为对应行的收盘价。
-    5. 从 DataFrame 中选择所需的列（包括基本的K线数据列和新计算的交易价格列），并使用 round(decimals) 方法保留指定的小数位数（默认为3）。
-    6. 返回处理后的 DataFrame。
-
-    :param bars: 基础周期K线数据，一般是1分钟周期的K线
-    :param decimals: 保留小数位数，默认值3
-    :return: 交易价格表
-    """
-    df = pd.DataFrame(bars) if isinstance(bars, list) else bars
-
-    # 下根K线开盘、收盘
-    df["next_open"] = df["open"].shift(-1)
-    df["next_close"] = df["close"].shift(-1)
-    price_cols = ["next_open", "next_close"]
-
-    # TWAP / VWAP 价格
-    df["vol_close_prod"] = df["vol"] * df["close"]
-    for t in kwargs.get("t_seq", (5, 10, 15, 20, 30, 60)):
-        df[f"TWAP{t}"] = df["close"].rolling(t).mean().shift(-t)
-        df[f"sum_vol_{t}"] = df["vol"].rolling(t).sum()
-        df[f"sum_vcp_{t}"] = df["vol_close_prod"].rolling(t).sum()
-        df[f"VWAP{t}"] = (df[f"sum_vcp_{t}"] / df[f"sum_vol_{t}"]).shift(-t)
-        price_cols.extend([f"TWAP{t}", f"VWAP{t}"])
-        df.drop(columns=[f"sum_vol_{t}", f"sum_vcp_{t}"], inplace=True)
-
-    df.drop(columns=["vol_close_prod"], inplace=True)
-    # 用当前K线的收盘价填充交易价中的 nan 值
-    for price_col in price_cols:
-        df.loc[df[price_col].isnull(), price_col] = df[df[price_col].isnull()]["close"]
-
-    df[price_cols] = df[price_cols].round(decimals)
     return df
 
 

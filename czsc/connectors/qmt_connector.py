@@ -372,6 +372,16 @@ def is_trade_time(dt: datetime = datetime.now()):
         return True
 
 
+def is_stock_trade_time(dt: datetime = datetime.now()):
+    """判断指定时间是否是股票交易时间"""
+    hm = dt.strftime("%H:%M")
+    if "09:30" <= hm < "11:30":
+        return True
+    if "13:00" <= hm < "15:00":
+        return True
+    return False
+
+
 def is_trade_day(dt: datetime = datetime.now()):
     """判断指定日期是否是交易日"""
     date = dt.strftime("%Y%m%d")

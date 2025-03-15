@@ -86,7 +86,7 @@ def remove_beta_effects(df, **kwargs):
 def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, **kwargs):
     """根据截面因子值构建多空组合
 
-    :param df: pd.DataFrame, 包含因子列的数据, 必须包含 dt, symbol, factor 列
+    :param df: pd.DataFrame, 包含多个品种的因子数据, 必须包含 dt, symbol, factor 列
     :param factor: str, 因子列名称
     :param weight: str, 权重列名称，默认为 weight
     :param long: float, 多头持仓比例/数量，默认为 0.3, 取值范围为 [0, n_symbols], 0~1 表示比例，大于等于1表示数量
@@ -600,3 +600,68 @@ def limit_leverage(df: pd.DataFrame, leverage: float = 1.0, **kwargs):
 
     return df
 
+
+def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
+    """计算给定品种基础周期K线数据的交易价格表
+
+    :param df: 基础周期K线数据，一般是1分钟周期的K线，支持多个品种
+    :param digits: 保留小数位数，默认值为None，用每个品种的 close 列的小数位数
+    :param kwargs:
+
+        - windows: 计算TWAP和VWAP的窗口列表，默认值为(5, 10, 15, 20, 30, 60)
+        - copy: 是否复制数据，默认值为True
+
+    :return: 交易价格表，包含多个品种的交易价格
+    """
+    assert "symbol" in df.columns, "数据中必须包含 symbol 列"
+    for col in ["dt", "open", "close", "vol"]:
+        assert col in df.columns, f"数据中必须包含 {col} 列"
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+
+    # 获取所有唯一的品种
+    symbols = df["symbol"].unique().tolist()
+    
+    # 为每个品种分别计算交易价格
+    dfs = []
+    for symbol in symbols:
+        df_symbol = df[df["symbol"] == symbol].copy()
+        df_symbol = df_symbol.sort_values("dt").reset_index(drop=True)
+        
+        # 如果没有指定digits，则使用该品种的close列的小数位数
+        symbol_digits = digits
+        if symbol_digits is None:
+            symbol_digits = df_symbol["close"].astype(str).str.split(".").str[1].str.len().max()
+
+        # 下根K线开盘、收盘
+        df_symbol["TP_CLOSE"] = df_symbol["close"]
+        df_symbol["TP_NEXT_OPEN"] = df_symbol["open"].shift(-1)
+        df_symbol["TP_NEXT_CLOSE"] = df_symbol["close"].shift(-1)
+        price_cols = ["TP_CLOSE", "TP_NEXT_OPEN", "TP_NEXT_CLOSE"]
+
+        # TWAP / VWAP 价格
+        df_symbol["vol_close_prod"] = df_symbol["vol"] * df_symbol["close"]
+        for t in kwargs.get("windows", (5, 10, 15, 20, 30, 60)):
+            
+            df_symbol[f"TP_TWAP{t}"] = df_symbol["close"].rolling(t).mean().shift(-t)
+
+            df_symbol[f"sum_vol_{t}"] = df_symbol["vol"].rolling(t).sum()
+            df_symbol[f"sum_vcp_{t}"] = df_symbol["vol_close_prod"].rolling(t).sum()
+            df_symbol[f"TP_VWAP{t}"] = (df_symbol[f"sum_vcp_{t}"] / df_symbol[f"sum_vol_{t}"]).shift(-t)
+            
+            price_cols.extend([f"TP_TWAP{t}", f"TP_VWAP{t}"])
+            df_symbol.drop(columns=[f"sum_vol_{t}", f"sum_vcp_{t}"], inplace=True)
+
+        df_symbol.drop(columns=["vol_close_prod"], inplace=True)
+
+        # 用当前K线的收盘价填充交易价中的 nan 值
+        for price_col in price_cols:
+            df_symbol[price_col] = df_symbol[price_col].fillna(df_symbol["close"])
+
+        df_symbol[price_cols] = df_symbol[price_cols].round(symbol_digits)
+        dfs.append(df_symbol)
+
+    # 合并所有品种的交易价格数据
+    dfk = pd.concat(dfs, ignore_index=True)
+    return dfk

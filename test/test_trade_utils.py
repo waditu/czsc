@@ -13,12 +13,14 @@ from test.test_analyze import read_1min
 
 def test_trade_price():
     bars = read_1min()
-    df = czsc.cal_trade_price(bars)
+    df = pd.DataFrame(bars)
+    df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol']].copy()
+    df = czsc.cal_trade_price(df, digits=3)
 
-    assert df['TWAP20'].iloc[0] == round(df['close'].iloc[1:21].mean(), 3)
+    assert df['TP_TWAP20'].iloc[0] == round(df['close'].iloc[1:21].mean(), 3)
     close = df['close'].iloc[1:21]
     vol = df['vol'].iloc[1:21]
-    assert df['VWAP20'].iloc[0] == round(np.average(close, weights=vol), 3)
+    assert df['TP_VWAP20'].iloc[0] == round(np.average(close, weights=vol), 3)
 
 
 def test_make_it_daily():

@@ -8,7 +8,7 @@ describe: 用于信号计算函数的各种辅助工具函数
 import numpy as np
 from deprecated import deprecated
 from collections import Counter, OrderedDict
-from typing import List, Any, Dict, Union, Tuple
+from typing import List, Any, Dict, Union, Tuple, Optional
 from czsc.enum import Direction
 from czsc.objects import BI, RawBar, ZS, Signal
 
@@ -46,7 +46,7 @@ def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
         return False
 
 
-def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
+def check_cross_info(fast: Union[List, np.ndarray], slow: Union[List, np.ndarray]):
     """计算 fast 和 slow 的交叉信息
 
     :param fast: 快线
@@ -102,41 +102,6 @@ def check_cross_info(fast: [List, np.array], slow: [List, np.array]):
         temp_slow = []
 
     return cross_info
-
-
-@deprecated(version="1.0.0", reason="分析方法不太合理，不再使用")
-def check_pressure_support(bars: List[RawBar], q_seq: List[float] = None) -> Dict:
-    """检查 bars 中的支撑、压力信息
-
-    1. 通过 round 函数对 K 线价格序列进行近似，统计价格出现次数，取出现次数超过5次的价位
-    2. 在出现次数最多的价格序列上计算分位数序列作为关键价格序列
-
-    :param bars: K线序列，按时间升序
-    :param q_seq: 分位数序列
-    :return:
-    """
-
-    assert len(bars) >= 300, "分析至少需要300根K线"
-    min_low = min(x.low for x in bars)
-    price_seq = [y for x in bars for y in (x.open, x.close, x.high, x.low)]
-    price_seq = [round(x, 0) if min_low > 100 else round(x, 1) for x in price_seq]
-
-    lines = sorted([x for x, v in Counter(price_seq).most_common() if v >= 5])
-    q_seq = q_seq if q_seq else [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
-    key_price = [np.quantile(lines, i, method="nearest") for i in q_seq]
-    kp_low = [x for x in key_price if x <= bars[-1].close]
-    kp_high = [x for x in key_price if x >= bars[-1].close]
-
-    info = {
-        "关键位": key_price,
-        "支撑位": kp_low,
-        "压力位": kp_high,
-        "第一支撑": kp_low[-1] if len(kp_low) >= 1 else -1,
-        "第二支撑": kp_low[-2] if len(kp_low) >= 2 else -1,
-        "第一压力": kp_high[0] if len(kp_high) >= 1 else -1,
-        "第二压力": kp_high[1] if len(kp_high) >= 2 else -1,
-    }
-    return info
 
 
 def check_gap_info(bars: List[RawBar]):
@@ -244,7 +209,7 @@ def fast_slow_cross(fast, slow):
     return cross_info
 
 
-def same_dir_counts(seq: [List, np.array]):
+def same_dir_counts(seq: Union[List, np.ndarray]):
     """计算 seq 中与最后一个数字同向的数字数量
 
     :param seq: 数字序列
@@ -265,7 +230,7 @@ def same_dir_counts(seq: [List, np.array]):
     return c
 
 
-def count_last_same(seq: Union[List, np.array, Tuple]):
+def count_last_same(seq: Union[List, np.ndarray, Tuple]):
     """统计与seq列表最后一个元素相似的连续元素数量
 
     :param seq: 数字序列
@@ -383,7 +348,7 @@ def cross_zero_axis(n1: Union[List, np.ndarray], n2: Union[List, np.ndarray]) ->
 
     num1 = np.argmax(x1[:-1] != x1[1:]) + 2 if np.any(x1) else 0
     num2 = np.argmax(x2[:-1] != x2[1:]) + 2 if np.any(x2) else 0
-    return max(num1, num2)
+    return int(max(num1, num2))
 
 
 def cal_cross_num(cross: List, distance: int = 1) -> tuple:
@@ -426,7 +391,7 @@ def cal_cross_num(cross: List, distance: int = 1) -> tuple:
     return jc, sc
 
 
-def down_cross_count(x1: Union[List, np.array], x2: Union[List, np.array]) -> int:
+def down_cross_count(x1: Union[List, np.ndarray], x2: Union[List, np.ndarray]) -> int:
     """输入两个序列，计算 x1 下穿 x2 的次数
 
     :param x1: list

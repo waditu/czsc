@@ -85,7 +85,6 @@ from czsc.utils import (
     x_round,
     import_by_name,
     create_grid_params,
-    cal_trade_price,
     update_bbars,
     update_tbars,
     update_nxb,
@@ -170,6 +169,12 @@ from czsc.utils.st_components import (
     show_df_describe,
     show_date_effect,
     show_weight_distribution,
+    show_normality_check,
+    show_outsample_by_dailys,
+    show_returns_contribution,
+    show_symbols_bench,
+    show_quarterly_effect,
+    show_cumulative_returns,
 )
 
 from czsc.utils.bi_info import (
@@ -223,13 +228,14 @@ from czsc.eda import (
     dif_long_bear,
     tsf_type,
     limit_leverage,
+    cal_trade_price,
 )
 
 
-__version__ = "0.9.63"
+__version__ = "0.9.64"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250101"
+__date__ = "20250224"
 
 
 def welcome():

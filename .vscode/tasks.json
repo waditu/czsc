@@ -1,0 +1,38 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "运行所有测试",
+            "type": "shell",
+            "command": "python -m pytest test -v",
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "运行当前测试文件",
+            "type": "shell",
+            "command": "python -m pytest ${file} -v",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "运行带覆盖率报告的测试",
+            "type": "shell",
+            "command": "python -m pytest test -v --cov=czsc --cov-report=html",
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        }
+    ]
+} 

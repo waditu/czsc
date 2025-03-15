@@ -145,25 +145,6 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     sdt = pd.to_datetime(sdt).strftime("%Y%m%d")
     edt = pd.to_datetime(edt).strftime("%Y%m%d")
 
-    if "SH" in symbol or "SZ" in symbol:
-        fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
-        adj = fq_map.get(fq, None)
-
-        code, asset = symbol.split("#")
-
-        if freq.value.endswith("分钟"):
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="min", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
-            df = df[~df["dt"].str.endswith("09:30:00")].reset_index(drop=True)
-            df.rename(columns={"code": "symbol"}, inplace=True)
-            df["dt"] = pd.to_datetime(df["dt"])
-            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
-
-        else:
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="day", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
-            df.rename(columns={"code": "symbol"}, inplace=True)
-            df["dt"] = pd.to_datetime(df["dt"])
-            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
-
     if symbol.endswith("9001"):
         # https://s0cqcxuy3p.feishu.cn/wiki/WLGQwJLWQiWPCZkPV7Xc3L1engg
         if fq == "前复权":
@@ -202,6 +183,25 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
         df.rename(columns={"code": "symbol", "volume": "vol"}, inplace=True)
         df["dt"] = pd.to_datetime(df["dt"])
         return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
+
+    if "SH" in symbol or "SZ" in symbol:
+        fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
+        adj = fq_map.get(fq, None)
+
+        code, asset = symbol.split("#")
+
+        if freq.value.endswith("分钟"):
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="min", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df = df[~df["dt"].str.endswith("09:30:00")].reset_index(drop=True)
+            df.rename(columns={"code": "symbol"}, inplace=True)
+            df["dt"] = pd.to_datetime(df["dt"])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
+
+        else:
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="day", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df.rename(columns={"code": "symbol"}, inplace=True)
+            df["dt"] = pd.to_datetime(df["dt"])
+            return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
 
     raise ValueError(f"symbol {symbol} 无法识别，获取数据失败！")
 

@@ -15,7 +15,6 @@ from deprecated import deprecated
 from collections import OrderedDict
 from czsc import envs, CZSC, Signal
 from czsc.objects import RawBar
-from czsc.utils.sig import check_pressure_support
 from czsc.signals.tas import update_ma_cache, update_macd_cache
 from czsc.utils import single_linear, freq_end_time, get_sub_elements, create_single_signal
 
@@ -357,63 +356,6 @@ def bar_mean_amount_V221112(c: CZSC, **kwargs) -> OrderedDict:
                 logger.warning(msg)
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-
-@deprecated(version="1.0.0", reason="计算耗时，逻辑不严谨")
-def bar_cross_ps_V221112(c: CZSC, **kwargs) -> OrderedDict:
-    """倒数第 di 根 K 线穿越支撑、压力位的数量【慎用，非常耗时】
-
-    参数模板："{freq}_D{di}K_N{num}"
-
-    **信号逻辑：**
-
-    1. 计算最近600根K线的支撑、压力位列表；
-    2. 如果dik是阳性，切上穿 num 个以上的压力位，择时多头；反之，空头。
-
-    **信号列表：**
-
-    - Signal('15分钟_D2K_N3_空头_任意_任意_0')
-    - Signal('15分钟_D2K_N3_多头_任意_任意_0')
-
-    :param c: CZSC对象
-    :param di: 信号计算在倒数第 di 根
-    :param num: 阈值
-    :return: s
-    """
-    di = int(kwargs.get("di", 1))
-    num = int(kwargs.get("num", 3))
-
-    k1, k2, k3 = str(c.freq.value), f"D{di}K", f"N{num}"
-
-    if len(c.bars_raw) < 300 + di:
-        v1 = "其他"
-
-    else:
-        bars = get_sub_elements(c.bars_raw, di=di, n=600)
-        pres = check_pressure_support(bars, q_seq=[x / 100 for x in list(range(0, 100, 3))])
-        last = bars[-1]
-
-        cnt = 0
-        for x in pres["关键位"]:
-            if last.close > x > last.open:
-                assert cnt >= 0
-                cnt += 1
-
-            if last.close < x < last.open:
-                assert cnt <= 0
-                cnt -= 1
-
-        if cnt >= num:
-            v1 = "多头"
-        elif cnt <= -num:
-            v1 = "空头"
-        else:
-            v1 = "其他"
-
-    s = OrderedDict()
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    s[signal.key] = signal.value
-    return s
 
 
 def bar_section_momentum_V221112(c: CZSC, **kwargs) -> OrderedDict:

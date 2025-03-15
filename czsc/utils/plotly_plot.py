@@ -81,7 +81,7 @@ class KlineChart:
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
-            title=dict(text=kwargs.get("title", ""), yanchor="top"),
+            title=dict(text=kwargs.get("title", ""), yanchor="top", y=0.95),
             margin=go.layout.Margin(l=0, r=0, b=0, t=0),  # left margin  # right margin  # bottom margin  # top margin
             # https://plotly.com/python/reference/layout/#layout-legend
             legend=dict(orientation="h", yanchor="top", y=1.05, xanchor="left", x=0, bgcolor="rgba(0,0,0,0)"),
