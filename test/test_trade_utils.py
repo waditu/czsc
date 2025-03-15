@@ -13,7 +13,9 @@ from test.test_analyze import read_1min
 
 def test_trade_price():
     bars = read_1min()
-    df = czsc.cal_trade_price(bars)
+    df = pd.DataFrame(bars)
+    df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol']].copy()
+    df = czsc.cal_trade_price(df)
 
     assert df['TWAP20'].iloc[0] == round(df['close'].iloc[1:21].mean(), 3)
     close = df['close'].iloc[1:21]

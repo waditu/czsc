@@ -81,7 +81,6 @@ from czsc.signals.bar import (
     bar_end_V221211,
     bar_operate_span_V221111,
     bar_zdt_V230331,
-    bar_cross_ps_V221112,
     bar_section_momentum_V221112,
     bar_vol_grow_V221112,
     bar_mean_amount_V221112,

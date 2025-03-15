@@ -4,7 +4,7 @@
         {
             "label": "运行所有测试",
             "type": "shell",
-            "command": "python -m pytest tests -v",
+            "command": "python -m pytest test -v",
             "group": {
                 "kind": "test",
                 "isDefault": true
@@ -27,7 +27,7 @@
         {
             "label": "运行带覆盖率报告的测试",
             "type": "shell",
-            "command": "python -m pytest tests -v --cov=czsc --cov-report=html",
+            "command": "python -m pytest test -v --cov=czsc --cov-report=html",
             "group": "test",
             "presentation": {
                 "reveal": "always",
