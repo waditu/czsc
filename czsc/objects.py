@@ -295,10 +295,7 @@ class BI:
 
         SNR越大，说明内部走势越顺畅，力度也就越大
         """
-        close = [x.close for x in self.raw_bars]
-        abs_diff = [abs(close[i] - close[i - 1]) for i in range(1, len(close))]
-        snr = abs(close[-1] - close[0]) / sum(abs_diff)
-        return round(snr, 4)
+        return round(self.SNR, 4)
 
     @property
     def change(self):
