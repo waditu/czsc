@@ -10,13 +10,16 @@ def mark_periods(df: pd.DataFrame, **kwargs):
     最难赚钱：笔走势的绝对收益、R平方、波动率排序，取这三个指标的均值，保留 bottom n 个均值最小的笔，在标准K线上新增一列，标记这些笔的起止时间
 
     :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
-    :param percent: 需要返回的最佳/最差时间段数量占比
+    :param kwargs: 
+
+        - copy: 是否复制数据
+        - verbose: 是否打印日志
+        - logger: 日志记录器
+
     :return: 带有标记的K线数据，新增列 'is_best_period', 'is_worst_period'
     """
     from czsc.analyze import CZSC
     from czsc.utils.bar_generator import format_standard_kline
-
-    freq = kwargs.get('freq', '日线') # 可选值：1分钟、5分钟、15分钟、30分钟、60分钟、日线、周线、月线
 
     if kwargs.get("copy", True):
         df = df.copy()
@@ -30,7 +33,7 @@ def mark_periods(df: pd.DataFrame, **kwargs):
             logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
 
         dfg = dfg.sort_values('dt').copy().reset_index(drop=True)
-        bars = format_standard_kline(dfg, freq)
+        bars = format_standard_kline(dfg, freq='30分钟')
         c = CZSC(bars, max_bi_num=len(bars))
 
         bi_stats = []
@@ -40,8 +43,7 @@ def mark_periods(df: pd.DataFrame, **kwargs):
                 'sdt': bi.sdt,
                 'edt': bi.edt,
                 'direction': bi.direction.value,
-                'power_price': bi.power_price,
-                'power_snr': bi.power_snr,
+                'power_price': abs(bi.change),
                 'length': bi.length,
                 'rsq': bi.rsq,
                 'power_volume': bi.power_volume,
@@ -72,7 +74,6 @@ def mark_periods(df: pd.DataFrame, **kwargs):
 
         rows.append(dfg)
 
-
     dfr = pd.concat(rows, ignore_index=True)
     if verbose:
         logger.info(f"处理完成，最易赚钱时间覆盖率：{dfr['is_best_period'].value_counts()[1] / len(dfr):.2%}, "
@@ -90,3 +91,4 @@ if __name__ == '__main__':
     df = pd.concat([df1, df2], ignore_index=True)
 
     dfs = mark_periods(df.copy(), freq='日线', verbose=True)
+    print(dfs.head())
