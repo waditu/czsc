@@ -297,7 +297,7 @@ class BI:
         """
         close = [x.close for x in self.raw_bars]
         abs_diff = [abs(close[i] - close[i - 1]) for i in range(1, len(close))]
-        snr = self.power_price / sum(abs_diff)
+        snr = abs(close[-1] - close[0]) / sum(abs_diff)
         return round(snr, 4)
 
     @property
