@@ -665,3 +665,89 @@ def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
     # 合并所有品种的交易价格数据
     dfk = pd.concat(dfs, ignore_index=True)
     return dfk
+
+
+def mark_cta_periods(df: pd.DataFrame, **kwargs):
+    """【后验，有未来信息，不能用于实盘】标记CTA最容易/最难赚钱的N个时间段
+
+    最容易赚钱：笔走势的绝对收益、R平方、波动率排序，取这三个指标的均值，保留 top n 个均值最大的笔，在标准K线上新增一列，标记这些笔的起止时间
+    最难赚钱：笔走势的绝对收益、R平方、波动率排序，取这三个指标的均值，保留 bottom n 个均值最小的笔，在标准K线上新增一列，标记这些笔的起止时间
+
+    :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
+    :param kwargs: 
+
+        - copy: 是否复制数据
+        - verbose: 是否打印日志
+        - logger: 日志记录器
+        - q1: 最容易赚钱的笔的占比
+        - q2: 最难赚钱的笔的占比
+
+    :return: 带有标记的K线数据，新增列 'is_best_period', 'is_worst_period'
+    """
+    from czsc.analyze import CZSC
+    from czsc.utils.bar_generator import format_standard_kline
+
+    q1 = kwargs.get("q1", 0.15)
+    q2 = kwargs.get("q2", 0.4)
+    assert 0.3 >= q1 >= 0.0, "q1 必须在 0.3 和 0.0 之间"
+    assert 0.5 >= q2 >= 0.0, "q2 必须在 0.5 和 0.0 之间"
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+    
+    verbose = kwargs.get("verbose", False)
+    logger = kwargs.get("logger", loguru.logger)
+
+    rows = []
+    for symbol, dfg in df.groupby('symbol'):
+        if verbose:
+            logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
+
+        dfg = dfg.sort_values('dt').copy().reset_index(drop=True)
+        bars = format_standard_kline(dfg, freq='30分钟')
+        c = CZSC(bars, max_bi_num=len(bars))
+
+        bi_stats = []
+        for bi in c.bi_list:
+            bi_stats.append({
+                'symbol': symbol,
+                'sdt': bi.sdt,
+                'edt': bi.edt,
+                'direction': bi.direction.value,
+                'power_price': abs(bi.change),
+                'length': bi.length,
+                'rsq': bi.rsq,
+                'power_volume': bi.power_volume,
+            })
+        bi_stats = pd.DataFrame(bi_stats)
+        bi_stats['power_price_rank'] = bi_stats['power_price'].rank(method='min', ascending=True, pct=True)
+        bi_stats['rsq_rank'] = bi_stats['rsq'].rank(method='min', ascending=True, pct=True)
+        bi_stats['power_volume_rank'] = bi_stats['power_volume'].rank(method='min', ascending=True, pct=True)
+        bi_stats['score'] = bi_stats['power_price_rank'] + bi_stats['rsq_rank'] + bi_stats['power_volume_rank']
+        bi_stats['rank'] = bi_stats['score'].rank(method='min', ascending=False, pct=True)
+
+        best_periods = bi_stats[bi_stats['rank'] <= q1]
+        worst_periods = bi_stats[bi_stats['rank'] > 1 - q2]
+
+        if verbose:
+            logger.info(f"最容易赚钱的笔：{len(best_periods)} 个，详情：\n{best_periods.sort_values('rank', ascending=False)}")
+            logger.info(f"最难赚钱的笔：{len(worst_periods)} 个，详情：\n{worst_periods.sort_values('rank', ascending=True)}")
+
+        # 用 best_periods 的 sdt 和 edt 标记 is_best_period 为 True
+        dfg['is_best_period'] = 0
+        for _, row in best_periods.iterrows():
+            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_best_period'] = 1
+
+        # 用 worst_periods 的 sdt 和 edt 标记 is_worst_period 为 True`
+        dfg['is_worst_period'] = 0
+        for _, row in worst_periods.iterrows():
+            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_worst_period'] = 1
+
+        rows.append(dfg)
+
+    dfr = pd.concat(rows, ignore_index=True)
+    if verbose:
+        logger.info(f"处理完成，最易赚钱时间覆盖率：{dfr['is_best_period'].value_counts()[1] / len(dfr):.2%}, "
+                    f"最难赚钱时间覆盖率：{dfr['is_worst_period'].value_counts()[1] / len(dfr):.2%}")
+
+    return dfr

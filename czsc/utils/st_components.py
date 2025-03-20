@@ -96,42 +96,50 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         return stats
 
     use_st_table = kwargs.get("use_st_table", False)
+    stat_hold_days = kwargs.get("stat_hold_days", True)
+    plot_cumsum = kwargs.get("plot_cumsum", True)
 
-    with st.container():
-        sub_title = kwargs.get("sub_title", "")
-        if sub_title:
-            st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-        if kwargs.get("show_dailys", False):
-            with st.expander("日收益数据详情", expanded=False):
-                st.dataframe(df, use_container_width=True)
-
+    sub_title = kwargs.get("sub_title", "")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
+    
+    if kwargs.get("show_dailys", False):
+        with st.expander("日收益数据详情", expanded=False):
+            st.dataframe(df, use_container_width=True)
+    
+    if stat_hold_days:
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
                 st.table(_stats(df, type_="交易日"))
             else:
                 st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
             st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
+    else:
+        if use_st_table:
+            st.table(_stats(df, type_="交易日"))
+        else:
+            st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
 
-        if kwargs.get("stat_hold_days", True):
-            with st.expander("持有日绩效指标", expanded=False):
-                st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
-                st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
+    if stat_hold_days:
+        with st.expander("持有日绩效指标", expanded=False):
+            st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+            st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
-        if kwargs.get("plot_cumsum", True):
-            df = df.cumsum()
-            fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
-            fig.update_xaxes(title="")
+    if plot_cumsum:
+        df = df.cumsum()
+        fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
+        fig.update_xaxes(title="")
 
-            # 添加每年的开始第一个日期的竖线
-            for year in range(df.index.year.min(), df.index.year.max() + 1):
-                first_date = df[df.index.year == year].index.min()
-                fig.add_vline(x=first_date, line_dash="dash", line_color="red")
+        # 添加每年的开始第一个日期的竖线
+        for year in range(df.index.year.min(), df.index.year.max() + 1):
+            first_date = df[df.index.year == year].index.min()
+            fig.add_vline(x=first_date, line_dash="dash", line_color="red")
 
-            for col in kwargs.get("legend_only_cols", []):
-                fig.update_traces(visible="legendonly", selector=dict(name=col))
-            # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
-            fig.update_layout(margin=dict(l=0, r=0, b=0))
-            st.plotly_chart(fig, use_container_width=True)
+        for col in kwargs.get("legend_only_cols", []):
+            fig.update_traces(visible="legendonly", selector=dict(name=col))
+        # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        fig.update_layout(margin=dict(l=0, r=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_cumulative_returns(df, **kwargs):
@@ -2229,3 +2237,66 @@ def show_quarterly_effect(returns: pd.Series):
     with c4.container(border=True):
         st.markdown("##### :red[第四季度]")
         __show_quarter_stats(s4)
+
+
+def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
+    """展示不同市场环境下的策略表现
+
+    :param df: 标准K线数据，
+            必须包含 dt, symbol, open, close, high, low, vol, amount, weight, price 列; 
+            如果 price 列不存在，则使用 close 列
+    :param kwargs: 
+
+        - fee_rate: 手续费率
+        - digits: 小数位数
+        - weight_type: 权重类型
+        - q1: 最容易赚钱的笔的占比, mark_cta_periods 函数的参数
+        - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
+    """
+    from rs_czsc import WeightBacktest
+    from czsc.eda import mark_cta_periods
+    # from czsc.utils.st_components import show_daily_return, show_cumulative_returns
+
+    fee_rate = kwargs.get('fee_rate', 0.00)
+    digits = kwargs.get('digits', 1)
+    weight_type = kwargs.get('weight_type', 'ts')
+    q1 = kwargs.get('q1', 0.15)
+    q2 = kwargs.get('q2', 0.4)
+
+    dfs = mark_cta_periods(df.copy(), freq='日线', verbose=False, q1=q1, q2=q2)
+
+    if 'price' not in dfs.columns:
+        dfs['price'] = dfs['close']
+
+    p1 = dfs['is_best_period'].value_counts()[1] / len(dfs)
+    p2 = dfs['is_worst_period'].value_counts()[1] / len(dfs)
+    st.markdown(f"趋势行情占比：:red[{p1:.2%}]；震荡行情占比：:blue[{p2:.2%}]")
+
+    wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    df1 = dfs.copy()
+    df1['weight'] = np.where(df1['is_best_period'], df1['weight'], 0)
+    df1 = df1[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    df2 = dfs.copy()
+    df2['weight'] = np.where(df2['is_worst_period'], df2['weight'], 0)
+    df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    classify = ['原始策略', '趋势行情', '震荡行情']
+    # stats = pd.DataFrame([wb.stats, wb1.stats, wb2.stats])
+    # stats['classify'] = classify
+    # st.dataframe(stats)
+
+    dailys = []
+    for wb_, classify_ in zip([wb, wb1, wb2], classify):
+        df_daily = wb_.daily_return.copy()
+        df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
+        df_daily['classify'] = classify_
+        dailys.append(df_daily)
+    dailys = pd.concat(dailys, ignore_index=True)
+    dailys['date'] = pd.to_datetime(dailys['date'])
+    dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
+    show_daily_return(dailys, stat_hold_days=False)
+    # show_cumulative_returns(dailys, fig_title="")

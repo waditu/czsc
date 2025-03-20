@@ -175,6 +175,7 @@ from czsc.utils.st_components import (
     show_symbols_bench,
     show_quarterly_effect,
     show_cumulative_returns,
+    show_cta_periods_classify,
 )
 
 from czsc.utils.bi_info import (
@@ -229,6 +230,7 @@ from czsc.eda import (
     tsf_type,
     limit_leverage,
     cal_trade_price,
+    mark_cta_periods,
 )
 
 
