@@ -1,6 +1,6 @@
 # 飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f
 
-import czsc
+# import czsc
 import hashlib
 import numpy as np
 import pandas as pd
@@ -8,7 +8,6 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from deprecated import deprecated
-from czsc.eda import cal_yearly_days
 
 
 def __stats_style(stats):
@@ -70,6 +69,8 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         - show_dailys: bool，是否展示日收益数据详情，默认为 False
 
     """
+    from czsc import daily_performance
+
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -84,10 +85,10 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         stats = []
         for _col in df_.columns:
             if type_ == "持有日":
-                col_stats = czsc.daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
+                col_stats = daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
             else:
                 assert type_ == "交易日", "type_ 参数必须是 持有日 或 交易日"
-                col_stats = czsc.daily_performance(df_[_col], yearly_days=yearly_days)
+                col_stats = daily_performance(df_[_col], yearly_days=yearly_days)
             col_stats["日收益名称"] = _col
             stats.append(col_stats)
 
@@ -260,7 +261,9 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
         - show_factor_histgram: bool，是否展示因子数据分布图，默认为 False
 
     """
-    dfc, res = czsc.cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
+    from czsc.utils.corr import cross_sectional_ic
+
+    dfc, res = cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
 
     col1, col2, col3, col4 = st.columns([1, 1, 1, 5])
     col1.metric("IC均值", res["IC均值"])
@@ -322,10 +325,11 @@ def show_feature_returns(df, factor, target="n1b", **kwargs):
     assert "symbol" in df.columns, "标的列必须为 symbol"
     assert factor in df.columns, f"因子列 {factor} 不存在"
     assert target in df.columns, f"目标列 {target} 不存在"
+    from czsc.features.utils import feature_returns
 
     fit_intercept = kwargs.get("fit_intercept", False)
 
-    dft = czsc.feature_returns(df, factor, target, fit_intercept=fit_intercept)
+    dft = feature_returns(df, factor, target, fit_intercept=fit_intercept)
     dft.columns = ["dt", "因子收益率"]
     dft["累计收益率"] = dft["因子收益率"].cumsum()
 
@@ -358,8 +362,11 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
 
         - n: 分层数量，默认为10
     """
+    from czsc.eda import monotonicity
+    from czsc.utils.features import feature_cross_layering
+
     n = kwargs.get("n", 10)
-    df = czsc.feature_cross_layering(df, factor, n=n)
+    df = feature_cross_layering(df, factor, n=n)
 
     mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
     mrr = mr.pivot(index="dt", columns=f"{factor}分层", values=target).fillna(0)
@@ -373,14 +380,14 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     fig = px.bar(
         dfc,
         y="绝对收益",
-        title="因子分层绝对收益 | 单调性：{:.2%}".format(czsc.monotonicity(dfc["绝对收益"])),
+        title="因子分层绝对收益 | 单调性：{:.2%}".format(monotonicity(dfc["绝对收益"])),
         color="绝对收益",
         color_continuous_scale="RdYlGn_r",
         text="text",
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    czsc.show_daily_return(
+    show_daily_return(
         mrr,
         stat_hold_days=False,
         yearly_days=kwargs.get("yearly_days", 252),
@@ -406,62 +413,6 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
 
     dfs = dfw.groupby("symbol").apply(lambda x: x["weight"].describe(percentiles=percentiles)).reset_index()
     show_df_describe(dfs)
-
-
-@deprecated(reason="没有必要绘制单个标的上的因子分层收益率图")
-def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
-    """使用 streamlit 绘制单个标的上的因子分层收益率图
-
-    :param df: 因子数据，必须包含 dt, x_col, y_col 列，其中 dt 为日期，x_col 为因子值，y_col 为收益率，数据样例：
-
-        ===================  ============  ============
-        dt                      intercept     n1b
-        ===================  ============  ============
-        2017-01-03 00:00:00   0             0.00716081
-        2017-01-04 00:00:00  -0.00154541    0.000250816
-        2017-01-05 00:00:00   0.000628884  -0.0062695
-        2017-01-06 00:00:00  -0.00681021    0.00334212
-        2017-01-09 00:00:00   0.00301077   -0.00182963
-        ===================  ============  ============
-
-    :param x_col: 因子列名
-    :param y_col: 收益列名
-    :param kwargs:
-
-        - n: 分层数量，默认为10
-
-    """
-    df = df.copy()
-    n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:  # 如果收益率单位为BP, 转换为万分之一
-        df[y_col] = df[y_col] / 10000
-    if df[x_col].nunique() < n * 2:
-        st.error(f"因子值数量小于{n*2}，无法进行分层")
-
-    if f"{x_col}分层" not in df.columns:
-        czsc.normalize_ts_feature(df, x_col, n=n)
-
-    for i in range(n):
-        df[f"第{str(i+1).zfill(2)}层"] = np.where(df[f"{x_col}分层"] == f"第{str(i+1).zfill(2)}层", df[y_col], 0)
-
-    layering_cols = [f"第{str(i).zfill(2)}层" for i in range(1, n + 1)]
-    mrr = df[["dt"] + layering_cols].copy()
-    mrr.set_index("dt", inplace=True)
-
-    tabs = st.tabs(["分层收益率", "多空组合"])
-
-    with tabs[0]:
-        show_daily_return(mrr, stat_hold_days=False)
-
-    with tabs[1]:
-        col1, col2 = st.columns(2)
-        long = col1.multiselect("多头组合", layering_cols, default=["第02层"], key="symbol_factor_long")
-        short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="symbol_factor_short")
-        dfr = mrr.copy()
-        dfr["多头"] = dfr[long].sum(axis=1)
-        dfr["空头"] = -dfr[short].sum(axis=1)
-        dfr["多空"] = dfr["多头"] + dfr["空头"]
-        show_daily_return(dfr[["多头", "空头", "多空"]])
 
 
 def show_weight_backtest(dfw, **kwargs):
@@ -588,6 +539,8 @@ def show_splited_daily(df, ret_col, **kwargs):
         sub_title: str, 子标题
 
     """
+    from rs_czsc import daily_performance
+
     yearly_days = kwargs.get("yearly_days", 252)
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -621,7 +574,7 @@ def show_splited_daily(df, ret_col, **kwargs):
             "开始日期": sdt.strftime("%Y-%m-%d"),
             "结束日期": last_dt.strftime("%Y-%m-%d"),
         }
-        row_ = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
+        row_ = daily_performance(df1[ret_col], yearly_days=yearly_days)
         row.update(row_)
         rows.append(row)
     dfv = pd.DataFrame(rows).set_index("收益名称")
@@ -638,6 +591,8 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
         - sub_title: str, 子标题
     """
+    from rs_czsc import daily_performance
+
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -651,7 +606,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
     _stats = []
     for year, df_ in df.groupby("年份"):
-        _yst = czsc.daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
+        _yst = daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
         _yst["年份"] = year
         _stats.append(_yst)
 
@@ -790,9 +745,11 @@ def show_stoploss_by_direction(dfw, **kwargs):
 
     :return: None
     """
+    from czsc.traders.weight_backtest import stoploss_by_direction
+    
     dfw = dfw.copy()
     stoploss = kwargs.pop("stoploss", 0.08)
-    dfw1 = czsc.stoploss_by_direction(dfw, stoploss=stoploss)
+    dfw1 = stoploss_by_direction(dfw, stoploss=stoploss)
 
     # 找出逐笔止损点
     rows = []
@@ -831,7 +788,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         with st.expander("止损点详情", expanded=False):
             st.dataframe(dfs, use_container_width=True)
 
-    czsc.show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
+    show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
 
 
 def show_cointegration(df, col1, col2, **kwargs):
@@ -896,6 +853,7 @@ def show_cointegration(df, col1, col2, **kwargs):
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     """展示样本内外表现对比"""
+    from rs_czsc import daily_performance
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -909,12 +867,12 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     dfi = df[df.index < mid_dt].copy()
     dfo = df[df.index >= mid_dt].copy()
 
-    stats_i = czsc.daily_performance(dfi[ret_col].to_list())
+    stats_i = daily_performance(dfi[ret_col].to_list())
     stats_i["标记"] = "样本内"
     stats_i["开始日期"] = dfi.index[0].strftime("%Y-%m-%d")
     stats_i["结束日期"] = dfi.index[-1].strftime("%Y-%m-%d")
 
-    stats_o = czsc.daily_performance(dfo[ret_col].to_list())
+    stats_o = daily_performance(dfo[ret_col].to_list())
     stats_o["标记"] = "样本外"
     stats_o["开始日期"] = dfo.index[0].strftime("%Y-%m-%d")
     stats_o["结束日期"] = dfo.index[-1].strftime("%Y-%m-%d")
@@ -1017,6 +975,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         - top: int, optional, 默认10, 返回最大回撤的数量
 
     """
+    from rs_czsc import top_drawdowns
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -1074,7 +1033,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
 
     if top is not None:
         with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
-            dft = czsc.top_drawdowns(df[ret_col].copy(), top=top)
+            dft = top_drawdowns(df[ret_col].copy(), top=top)
             dft = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
             dft = dft.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
             dft = dft.format(
@@ -1095,6 +1054,8 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     :param ret_col: str, 收益列名
     :param kwargs:
     """
+    from czsc.utils.stats import rolling_daily_performance
+
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -1112,7 +1073,7 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     window = c1.number_input("滚动窗口（自然日）", value=365 * 3, min_value=365, max_value=3650)
     min_periods = c2.number_input("最小样本数", value=365, min_value=100, max_value=3650)
 
-    dfr = czsc.rolling_daily_performance(df, ret_col, window=window, min_periods=min_periods)
+    dfr = rolling_daily_performance(df, ret_col, window=window, min_periods=min_periods)
     dfr["年化波动率/最大回撤"] = dfr["年化波动率"] / dfr["最大回撤"]
     cols = [x for x in dfr.columns if x not in ["sdt", "edt"]]
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普"))
@@ -1134,6 +1095,7 @@ def show_event_return(df, factor, **kwargs):
         - max_overlap: int, 最大重叠次数
 
     """
+    from czsc.utils.events import overlap
     max_unique = kwargs.get("max_unique", 20)
 
     if df[factor].nunique() > max_unique:
@@ -1147,7 +1109,7 @@ def show_event_return(df, factor, **kwargs):
     max_overlap = kwargs.get("max_overlap", 3)
 
     df[factor] = df[factor].astype(str)
-    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
+    df = overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
     df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
 
     sdt = df["dt"].min().strftime("%Y-%m-%d")
@@ -1207,11 +1169,12 @@ def show_psi(df, factor, segment, **kwargs):
 
         - sub_title: str, 子标题
     """
+    from czsc.utils.stats import psi
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
 
-    dfi = czsc.psi(df, factor, segment)
+    dfi = psi(df, factor, segment)
     segs = df[segment].unique().tolist()
     segs_psi = [x for x in dfi.columns if x.endswith("_PSI")]
     dfi = dfi.style.background_gradient(cmap="RdYlGn_r", subset=segs_psi, axis=None)
@@ -1219,142 +1182,6 @@ def show_psi(df, factor, segment, **kwargs):
     dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=["PSI"], axis=None)
     dfi = dfi.format("{:.2%}", na_rep="MISS")
     st.table(dfi)
-
-
-@deprecated(reason="这不是一个好的设计")
-def show_strategies_dailys(df, **kwargs):
-    """展示多策略多品种日收益率数据：按策略等权日收益
-
-    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
-
-            ===================  ==========  ========  ============
-            dt                   strategy    symbol    returns
-            ===================  ==========  ========  ============
-            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
-            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
-            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
-            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
-            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
-            ===================  ==========  ========  ============
-
-    :param kwargs:
-
-        - sub_title: str, 子标题
-    """
-    sub_title = kwargs.get("sub_title", "按策略等权日收益")
-    if sub_title:
-        st.subheader(sub_title, divider="rainbow")
-
-    strategies = sorted(df["strategy"].unique().tolist())
-    strategies = st.multiselect("选择策略", strategies, default=strategies)
-    # st.write(f"策略：{strategies}")
-    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
-
-    symbols = sorted(df["symbol"].unique().tolist())
-    symbols = st.multiselect("选择品种", symbols, default=symbols)
-    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
-
-    with st.expander("每个品种的策略覆盖情况", expanded=False):
-        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
-        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
-        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
-
-    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
-    df["dt"] = pd.to_datetime(df["dt"])
-
-    df1 = (
-        df.groupby(["dt", "strategy"])
-        .apply(lambda x: x["returns"].mean(), include_groups=False)
-        .to_frame("returns")
-        .reset_index()
-    )
-    df1 = df1.pivot(index="dt", columns="strategy", values="returns").fillna(0)
-    df1["等权组合"] = df1.mean(axis=1)
-    czsc.show_daily_return(df1, stat_hold_days=False, legend_only_cols=strategies)
-
-    st.write("策略最近表现")
-    czsc.show_splited_daily(df1, ret_col="等权组合", sub_title="")
-
-    st.write("年度绩效统计")
-    czsc.show_yearly_stats(df1.copy(), ret_col="等权组合", sub_title="")
-
-    st.write("策略相关性")
-    czsc.show_correlation(df1)
-
-    st.write("月度收益率")
-    czsc.show_monthly_return(df1.copy(), ret_col="等权组合", sub_title="")
-
-    mid_dt = kwargs.get("mid_dt")
-    if mid_dt:
-        st.write("样本内外对比")
-        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
-        czsc.show_out_in_compare(df1.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
-
-
-@deprecated(reason="这不是一个好的设计")
-def show_strategies_symbol(df, **kwargs):
-    """展示多策略多品种日收益率数据：按品种等权日收益
-
-    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
-
-            ===================  ==========  ========  ============
-            dt                   strategy    symbol    returns
-            ===================  ==========  ========  ============
-            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
-            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
-            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
-            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
-            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
-            ===================  ==========  ========  ============
-
-    :param kwargs:
-    """
-    sub_title = kwargs.get("sub_title", "按品种等权日收益")
-    if sub_title:
-        st.subheader(sub_title, divider="rainbow")
-
-    strategies = sorted(df["strategy"].unique().tolist())
-    strategies = st.multiselect("选择策略", strategies, default=strategies, key="strategies_symbol")
-    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
-    symbols = sorted(df["symbol"].unique().tolist())
-    symbols = st.multiselect("选择品种", symbols, default=symbols, key="strategies_symbol_x")
-    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
-
-    with st.expander("每个品种的策略覆盖情况", expanded=False):
-        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
-        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
-        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
-
-    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
-    df["dt"] = pd.to_datetime(df["dt"])
-
-    df2 = (
-        df.groupby(["dt", "symbol"])
-        .apply(lambda x: x["returns"].mean(), include_groups=False)
-        .to_frame("returns")
-        .reset_index()
-    )
-    df2 = df2.pivot(index="dt", columns="symbol", values="returns").fillna(0)
-    df2["等权组合"] = df2.mean(axis=1)
-    show_daily_return(df2, stat_hold_days=False, legend_only_cols=symbols)
-
-    st.write("策略最近表现")
-    show_splited_daily(df2, ret_col="等权组合", sub_title="")
-
-    st.write("年度绩效统计")
-    show_yearly_stats(df2.copy(), ret_col="等权组合", sub_title="")
-
-    st.write("品种相关性")
-    show_correlation(df2)
-
-    st.write("月度收益率")
-    show_monthly_return(df2.copy(), ret_col="等权组合", sub_title="")
-
-    mid_dt = kwargs.get("mid_dt")
-    if mid_dt:
-        st.write("样本内外对比")
-        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
-        show_out_in_compare(df2.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
 
 
 def show_holds_backtest(df, **kwargs):
@@ -1382,6 +1209,7 @@ def show_holds_backtest(df, **kwargs):
         - show_monthly_return: 是否展示月度累计收益，默认为True
 
     """
+    from czsc.utils.stats import holds_performance
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
     if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
@@ -1392,29 +1220,29 @@ def show_holds_backtest(df, **kwargs):
     # 计算每日收益、交易成本、净收益
     sdt = df["dt"].min().strftime("%Y-%m-%d")
     edt = df["dt"].max().strftime("%Y-%m-%d")
-    dfr = czsc.holds_performance(df, fee=fee, digits=digits)
+    dfr = holds_performance(df, fee=fee, digits=digits)
     st.write(f"回测时间：{sdt} ~ {edt}; 单边年换手率：{dfr['change'].mean() * 252:.2f} 倍; 单边费率：{fee}BP")
     daily = dfr[["date", "edge_post_fee"]].copy()
     daily.columns = ["dt", "return"]
     daily["dt"] = pd.to_datetime(daily["dt"])
     daily = daily.sort_values("dt").reset_index(drop=True)
 
-    czsc.show_daily_return(daily, stat_hold_days=False)
+    show_daily_return(daily, stat_hold_days=False)
     if kwargs.get("show_drawdowns", True):
         st.write("最大回撤分析")
-        czsc.show_drawdowns(daily, ret_col="return", sub_title="")
+        show_drawdowns(daily, ret_col="return", sub_title="")
 
     if kwargs.get("show_splited_daily", False):
         st.write("分段收益表现")
-        czsc.show_splited_daily(daily, ret_col="return")
+        show_splited_daily(daily, ret_col="return")
 
     if kwargs.get("show_yearly_stats", True):
         st.write("年度绩效指标")
-        czsc.show_yearly_stats(daily, ret_col="return", sub_title="")
+        show_yearly_stats(daily, ret_col="return", sub_title="")
 
     if kwargs.get("show_monthly_return", True):
         st.write("月度累计收益")
-        czsc.show_monthly_return(daily, ret_col="return", sub_title="")
+        show_monthly_return(daily, ret_col="return", sub_title="")
 
 
 def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
@@ -1441,13 +1269,14 @@ def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def show_czsc_trader(trader: czsc.CzscTrader, max_k_num=300, **kwargs):
+def show_czsc_trader(trader, max_k_num=300, **kwargs):
     """显示缠中说禅交易员详情
 
     :param trader: CzscTrader 对象
     :param max_k_num: 最大显示 K 线数量
     :param kwargs: 其他参数
     """
+    import czsc
     from czsc.utils.ta import MACD
 
     sub_title = kwargs.get("sub_title", "缠中说禅交易员详情")
@@ -1611,6 +1440,7 @@ def show_factor_value(df, factor, **kwargs):
         - title: str, 默认为 f"{factor} 可视化"
 
     """
+    import czsc
     if factor not in df.columns:
         st.warning(f"因子 {factor} 不存在，请检查")
         return
@@ -1735,6 +1565,8 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         - show_bar: bool, 是否展示柱状图，默认为 False
 
     """
+    import czsc
+
     df = df[[col1, col2]].copy()
     if method == "cut":
         df[f"{col1}_分层"] = pd.cut(df[col1], bins=n, duplicates="drop")
@@ -1968,6 +1800,8 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     :return: None
     """
     from czsc.eda import cal_yearly_days
+    from rs_czsc import daily_performance
+
     if not ("dt" in df.columns and "returns" in df.columns):
         st.error(f"show_outsample_by_dailys -> 数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")
         return
@@ -1978,7 +1812,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
 
     def __show_returns(dfx):
         dfx = dfx.copy()
-        stats = czsc.daily_performance(dfx["returns"], yearly_days=yearly_days)
+        stats = daily_performance(dfx["returns"], yearly_days=yearly_days)
         sc1, sc2, sc3 = st.columns(3)
 
         # 绘制收益指标

@@ -8,11 +8,6 @@ describe: 阿里云OSS操作类
 import os
 from loguru import logger
 from tqdm import tqdm
-try:
-    import oss2
-    from oss2.models import PartInfo
-except:
-    logger.warning("请安装 oss2 库，pip install oss2")
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from typing import List
@@ -28,6 +23,8 @@ class AliyunOSS:
         :param endpoint: string, OSS服务所在的区域的域名信息。
         :param bucket_name: string, 需要操作的Bucket的名称。
         """
+        import oss2
+
         self.auth = oss2.Auth(access_key_id, access_key_secret)
         self.bucket = oss2.Bucket(self.auth, endpoint, bucket_name)
 
@@ -132,8 +129,10 @@ class AliyunOSS:
         :param extensions: list, 需要列举的文件的后缀名，默认为空，表示列举所有文件。
         :return: list, 列举的文件的名称列表。
         """
+        from oss2 import ObjectIterator
+
         oss_keys = []
-        for obj in tqdm(oss2.ObjectIterator(self.bucket, prefix=prefix), desc=f"List files of {prefix}"):
+        for obj in tqdm(ObjectIterator(self.bucket, prefix=prefix), desc=f"List files of {prefix}"):
             if obj.key.endswith("/"):
                 continue
             if extensions and not any(obj.key.endswith(ext) for ext in extensions):
@@ -174,8 +173,11 @@ class AliyunOSS:
         :param filepath: string, 本地文件的路径。
         :param oss_key: string, 文件在OSS上的路径和名称。
         """
+        from oss2.models import PartInfo
+        from oss2 import determine_part_size
+
         total_size = os.path.getsize(filepath)
-        part_size = oss2.determine_part_size(total_size, preferred_size=100 * 1024)
+        part_size = determine_part_size(total_size, preferred_size=100 * 1024)
         upload_id = self.bucket.init_multipart_upload(oss_key).upload_id
         parts = []
         with open(filepath, "rb") as file:

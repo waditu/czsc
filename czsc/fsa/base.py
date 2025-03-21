@@ -18,7 +18,6 @@ import loguru
 import requests
 from loguru import logger
 from tenacity import retry, stop_after_attempt, wait_random
-from requests_toolbelt import MultipartEncoder
 
 logger.disable(__name__)
 
@@ -153,6 +152,8 @@ class FeishuApiBase:
         :param parent_node: 文件夹token，示例值："fldbcO1UuPz8VwnpPx5a92abcef"
         :return:
         """
+        from requests_toolbelt import MultipartEncoder
+
         file_size = os.path.getsize(file_path)
         url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
         form = {
