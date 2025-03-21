@@ -212,6 +212,8 @@ def rolling_tanh(df: pd.DataFrame, col: str, window=300, min_periods=100, new_co
     :param min_periods: int, 最小计算周期, 默认为100
     :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_scale' 作为新列名
     """
+    from sklearn.preprocessing import scale
+    
     if kwargs.get("copy", False):
         df = df.copy()
     new_col = new_col if new_col else f"{col}_tanh"

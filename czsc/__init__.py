@@ -173,6 +173,7 @@ from czsc.utils.st_components import (
     show_quarterly_effect,
     show_cumulative_returns,
     show_cta_periods_classify,
+    show_volatility_classify,
 )
 
 from czsc.utils.bi_info import (
@@ -226,6 +227,7 @@ from czsc.eda import (
     limit_leverage,
     cal_trade_price,
     mark_cta_periods,
+    mark_volatility,
 )
 
 
