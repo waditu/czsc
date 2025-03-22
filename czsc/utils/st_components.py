@@ -2105,6 +2105,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     p1 = dfs['is_best_period'].value_counts()[1] / len(dfs)
     p2 = dfs['is_worst_period'].value_counts()[1] / len(dfs)
     st.markdown(f"趋势行情占比：:red[{p1:.2%}]；震荡行情占比：:blue[{p2:.2%}]")
+    st.caption(f"mark_cta_periods 参数：q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
     wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
@@ -2178,6 +2179,7 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     p1 = dfs['is_max_volatility'].value_counts()[1] / len(dfs)
     p2 = dfs['is_min_volatility'].value_counts()[1] / len(dfs)
     st.markdown(f"波动率最大行情占比：:red[{p1:.2%}]；波动率最小行情占比：:blue[{p2:.2%}]")
+    st.caption(f"mark_volatility 参数：kind={kind}, window={window}, q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
     wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, 
                         weight_type=weight_type)
