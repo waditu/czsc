@@ -174,6 +174,7 @@ from czsc.utils.st_components import (
     show_cumulative_returns,
     show_cta_periods_classify,
     show_volatility_classify,
+    show_portfolio,
 )
 
 from czsc.utils.bi_info import (
@@ -228,6 +229,7 @@ from czsc.eda import (
     cal_trade_price,
     mark_cta_periods,
     mark_volatility,
+    cal_yearly_days,
 )
 
 

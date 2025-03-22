@@ -8,6 +8,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from deprecated import deprecated
+from typing import Optional
 
 
 def __stats_style(stats):
@@ -148,12 +149,18 @@ def show_cumulative_returns(df, **kwargs):
     
     :param df: pd.DataFrame, 数据源，index 为日期，columns 为对应策略上一个日期至当前日期的收益
     :param kwargs: dict, 可选参数
+
+        - fig_title: str, 图表标题，默认为 "累计收益"
+        - legend_only_cols: list, 仅在图例中展示的列名
+        - display_legend: bool, 是否展示图例，默认为 True
     """
     import plotly.express as px
 
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     assert df.index.is_unique, "df 的索引必须唯一"
     assert df.index.is_monotonic_increasing, "df 的索引必须单调递增"
+
+    display_legend = kwargs.get("display_legend", True)
 
     fig_title = kwargs.get("fig_title", "累计收益")
     df = df.cumsum()
@@ -167,15 +174,18 @@ def show_cumulative_returns(df, **kwargs):
 
     for col in kwargs.get("legend_only_cols", []):
         fig.update_traces(visible="legendonly", selector=dict(name=col))
-        
-    # 将 legend 移动到图表的底部并水平居中显示
-    fig.update_layout(legend=dict(
-        orientation="h",
-        y=-0.1,
-        xanchor="center",
-        x=0.5
-    ), margin=dict(l=0, r=0, b=0))
-    st.plotly_chart(fig, use_container_width=True)
+    
+    if display_legend:
+        # 将 legend 移动到图表的底部并水平居中显示
+        fig.update_layout(legend=dict(
+            orientation="h",
+            y=-0.1,
+            xanchor="center",
+            x=0.5
+        ), margin=dict(l=0, r=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **kwargs):
@@ -2206,3 +2216,62 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     dailys['date'] = pd.to_datetime(dailys['date'])
     dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
     show_daily_return(dailys, stat_hold_days=False)
+
+
+def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: Optional[str] = None, **kwargs):
+    """分析组合日收益绩效
+
+    :param df: 日收益数据，包含 dt, portfolio, benchmark 三列, 其中 dt 为日期, portfolio 为组合收益, benchmark 为基准收益
+    :param portfolio: 组合名称
+    :param benchmark: 基准名称, 可选
+    :param show_detail: 是否展示详情, 可选, 默认展示
+    """
+    from rs_czsc import daily_performance
+    from czsc.eda import cal_yearly_days
+
+    if benchmark is not None:
+        df['alpha'] = df[portfolio] - df[benchmark]
+        df = df[['dt', portfolio, benchmark, 'alpha']].copy()
+    else:
+        df = df[['dt', portfolio]].copy()
+
+    stats = daily_performance(df[portfolio].to_list())
+
+    with st.container(border=True):
+        st.subheader("组合基础表现", divider="rainbow")
+        m1, m2, m3, m4, m5, m6, m7, m8 = st.columns(8)
+        m1.metric("年化收益", f"{stats['年化']:.2%}")
+        m2.metric("最大回撤", f"{stats['最大回撤']:.2%}")
+        m3.metric("夏普比率", f"{stats['夏普']:.2f}")
+        m4.metric("卡玛比率", f"{stats['卡玛']:.2f}")
+        m5.metric("年化波动率", f"{stats['年化波动率']:.2%}")
+        m6.metric("日胜率", f"{stats['日胜率']:.2%}")
+        m7.metric("新高间隔", f"{stats['新高间隔']}")
+        m8.metric("新高占比", f"{stats['新高占比']:.2%}")
+        show_drawdowns(df.copy(), ret_col=portfolio, sub_title="")
+
+    show_detail = kwargs.get("show_detail", True)
+    if not show_detail:
+        return
+
+    with st.container(border=True):
+        st.subheader("组合绩效详情", divider="rainbow")
+        if benchmark is not None:
+            tabs = st.tabs(["年度绩效", "季度效应", "月度绩效", "超额分析"])
+        else:
+            tabs = st.tabs(["年度绩效", "季度效应", "月度绩效"])
+
+        daily = df.copy().set_index('dt')
+        with tabs[0]:
+            show_yearly_stats(daily, ret_col=portfolio, sub_title="")
+
+        with tabs[1]:
+            show_quarterly_effect(daily[portfolio])
+
+        with tabs[2]:
+            show_monthly_return(daily, ret_col=portfolio, sub_title="")
+
+        if benchmark is not None:
+            with tabs[3]:
+                yearly_days = cal_yearly_days(daily.index.to_list())
+                show_daily_return(daily, stat_hold_days=False, plot_cumsum=True, sub_title="", yearly_days=yearly_days)
