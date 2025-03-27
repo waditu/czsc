@@ -2275,3 +2275,58 @@ def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: Optional[str] = 
             with tabs[3]:
                 yearly_days = cal_yearly_days(daily.index.to_list())
                 show_daily_return(daily, stat_hold_days=False, plot_cumsum=True, sub_title="", yearly_days=yearly_days)
+
+
+def show_turnover_rate(df: pd.DataFrame):
+    """显示换手率变化
+    
+    :param df: 权重数据，必须包含 dt, symbol, weight 三列, 其他列忽略
+    """
+    import plotly.express as px
+    from czsc.eda import turnover_rate
+
+    res = turnover_rate(df, verbose=True)
+    dfc = res['日换手详情']  # 两列：dt, change
+    dfc['dt'] = pd.to_datetime(dfc['dt'])
+
+    # 最近30天换手率
+    _sdt_30 = dfc['dt'].max() - pd.Timedelta(days=30)
+    _dfc = dfc[dfc['dt'] >= _sdt_30]
+
+    # 最近一年换手率
+    _sdt_year = dfc['dt'].max() - pd.Timedelta(days=365)
+    _dfy = dfc[dfc['dt'] >= _sdt_year]
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("单边换手率", f"{res['单边换手率']:.2f}")
+    m2.metric("日均换手率", f"{res['日均换手率']:.2%}")
+    m3.metric("最大单日换手率", f"{res['最大单日换手率']:.2%}")
+    m4.metric("最小单日换手率", f"{res['最小单日换手率']:.2%}")
+    m5.metric("最近30天换手率", f"{_dfc['change'].sum():.2f}", help=f"最近30天换手率，自{_sdt_30}以来")
+    m6.metric("最近一年换手率", f"{_dfy['change'].sum():.2f}", help=f"最近一年换手率，自{_sdt_year}以来")
+
+    p1, p2, p3 = st.columns([2, 3, 1])
+    # 日换手的累计变化（X轴不显示）
+    df_daily = dfc.copy()
+    df_daily['change'] = df_daily['change'].cumsum()
+    fig = px.line(df_daily, x='dt', y='change', title='日换手累计曲线')
+    fig.update_xaxes(title_text='')
+    p1.plotly_chart(fig, use_container_width=True)
+
+    # 月换手的柱状图
+    df_monthly = dfc.copy()
+    df_monthly = df_monthly.set_index('dt').resample('M').sum().reset_index()
+    fig = px.bar(df_monthly, x='dt', y='change', title='月换手变化')
+    fig.update_xaxes(title_text='')
+    p2.plotly_chart(fig, use_container_width=True)
+
+    # 年换手的柱状图
+    df_yearly = dfc.copy()
+    df_yearly = df_yearly.set_index('dt').resample('Y').sum().reset_index()
+    df_yearly['dt'] = df_yearly['dt'].dt.strftime('%Y')
+    df_yearly['change'] = df_yearly['change'].round(0)
+    fig = px.bar(df_yearly, x='dt', y='change', title='年换手变化', hover_data=['change'])
+    fig.update_xaxes(title_text='')
+    p3.plotly_chart(fig, use_container_width=True)
+
+    st.caption("说明：以单边换手率计算")

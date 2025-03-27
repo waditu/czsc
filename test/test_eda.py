@@ -135,20 +135,20 @@ def test_turnover_rate_normal():
     # 验证结果
     assert isinstance(result, dict)
     assert "单边换手率" in result
-    assert "每日换手率" in result
+    assert "日均换手率" in result
     assert "最大单日换手率" in result
     assert "最小单日换手率" in result
-    assert "换手详情" in result
+    assert "日换手详情" in result
     
     # 验证换手率计算是否正确
     # 第一天：1.0 + 0.5 + 0.0 = 1.5
     # 第二天：|0.5-1.0| + |1.0-0.5| + |0.5-0.0| = 1.5
     # 第三天：|0.0-0.5| + |0.5-1.0| + |1.0-0.5| = 1.5
     assert result["单边换手率"] == 4.5  # 1.5 + 1.5 + 1.5
-    assert result["每日换手率"] == 1.5  # 4.5 / 3
+    assert result["日均换手率"] == 1.5  # 4.5 / 3
     assert result["最大单日换手率"] == 1.5
     assert result["最小单日换手率"] == 1.5
-    print(result['换手详情'])
+    print(result['日换手详情'])
 
 
 def test_turnover_rate_verbose():

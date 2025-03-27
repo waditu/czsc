@@ -868,20 +868,20 @@ def turnover_rate(df: pd.DataFrame, **kwargs):
 
     # 由于是 diff 计算，第一个时刻的仓位变化被忽视了，修改一下
     sdt = df["dt"].min()
-    df_turns.loc[(df_turns["dt"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].sum()
+    df_turns.loc[(df_turns["dt"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].abs().sum()
 
     # 按日期 resample
-    df_turns = df_turns.set_index("dt").resample("D").sum().reset_index()
+    df_daily = df_turns.set_index("dt").resample("D").sum().reset_index()
 
     if verbose:
         logger.info(f"组合换手率：{round(df_turns.change.sum() / 2, 4)}")
 
     res = {
-        "单边换手率": round(df_turns.change.sum(), 4),
-        "每日换手率": df_turns.change.mean(),
-        "最大单日换手率": df_turns.change.max(),
-        "最小单日换手率": df_turns.change.min(),
-        "换手详情": df_turns
+        "单边换手率": round(df_daily.change.sum(), 4),
+        "日均换手率": df_daily.change.mean(),
+        "最大单日换手率": df_daily.change.max(),
+        "最小单日换手率": df_daily.change.min(),
+        "日换手详情": df_daily
     }
 
     return res

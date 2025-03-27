@@ -175,6 +175,7 @@ from czsc.utils.st_components import (
     show_cta_periods_classify,
     show_volatility_classify,
     show_portfolio,
+    show_turnover_rate,
 )
 
 from czsc.utils.bi_info import (
