@@ -176,6 +176,8 @@ from czsc.utils.st_components import (
     show_volatility_classify,
     show_portfolio,
     show_turnover_rate,
+    show_describe,
+    show_event_features,
 )
 
 from czsc.utils.bi_info import (
@@ -232,6 +234,7 @@ from czsc.eda import (
     mark_volatility,
     cal_yearly_days,
     turnover_rate,
+    make_price_features,
 )
 
 

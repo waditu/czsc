@@ -2330,3 +2330,109 @@ def show_turnover_rate(df: pd.DataFrame):
     p3.plotly_chart(fig, use_container_width=True)
 
     st.caption("说明：以单边换手率计算")
+
+
+def show_describe(df: pd.DataFrame, **kwargs):
+    """展示 DataFrame 的描述性统计信息
+
+    :param df: pd.DataFrame, 数据框
+    """
+    columns = kwargs.get('columns', None)
+    percentiles = kwargs.get('percentiles', [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+    digits = kwargs.get('digits', 2)
+
+    columns = columns or df.columns
+    df_raw = df[columns].copy()
+
+    df = df_raw.describe(percentiles=percentiles).T
+    df['偏度'] = df_raw.skew()
+    df['峰度'] = df_raw.kurt()
+
+    quantiles = [x for x in df.columns if "%" in x]
+    df = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["偏度"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["峰度"])
+
+    format_dict = {
+        "count": "{:.0f}",
+        "mean": f"{{:.{digits}f}}",
+        "std": f"{{:.{digits}f}}",
+        "min": f"{{:.{digits}f}}",
+        "max": f"{{:.{digits}f}}",
+        "偏度": f"{{:.{digits}f}}",
+        "峰度": f"{{:.{digits}f}}",
+    }
+    for q in quantiles:
+        format_dict[q] = f"{{:.{digits}f}}"
+    
+    df = df.format(format_dict)
+    st.dataframe(df, use_container_width=True)
+    st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
+
+
+def show_event_features(df, event_col, event=None, features=None, **kwargs):
+    """分析指定事件发生前后的走势特征统计量
+    
+    :param df: 数据框, 包含事件发生时间、事件名称、价格
+    :param event_col: 事件因子, 如'event'
+    :param event: 事件名称, 如'事件1'
+    :param features: 特征列表, 如['B13收益', 'B13波动', 'F13收益', 'F13波动']，使用 make_price_features 计算的特征
+    :param kwargs: 其他参数
+        - percentiles: 百分位数, 默认[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+    """
+    import re
+    percentiles = kwargs.get('percentiles', [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+
+    df = df.copy()
+    available_features = [f for f in df.columns if re.match(r'B\d{2}收益|B\d{2}波动|F\d{2}收益|F\d{2}波动', f)]
+    features = features or available_features
+    features = [f for f in features if f in available_features]
+
+    df[event_col] = df[event_col].astype(str)
+    if event == "基准":    # 基准事件，不进行过滤
+        df_i = df.copy()
+    else:
+        df_i = df[df[event_col] == event].copy()
+    
+    df_i = df_i[features + [event_col]]
+    st.divider()
+    st.subheader(f"事件：{event}", divider='rainbow')
+
+    ret_future_features = [f for f in features if re.match(r'F\d{2}收益', f)]
+    ret_before_features = [f for f in features if re.match(r'B\d{2}收益', f)]
+    vol_future_features = [f for f in features if re.match(r'F\d{2}波动', f)]
+    vol_before_features = [f for f in features if re.match(r'B\d{2}波动', f)]
+    tabs = st.tabs(["BEFORE收益特征", "FUTURE收益特征", "BEFORE波动特征", "FUTURE波动特征"])
+
+    with tabs[0]:
+        st.markdown("###### 事件发生前的收益特征")
+        show_describe(df_i, columns=ret_before_features, percentiles=percentiles)
+
+    with tabs[1]:
+        st.markdown("###### 事件发生后的收益特征")
+        show_describe(df_i, columns=ret_future_features, percentiles=percentiles)
+
+    with tabs[2]:
+        st.markdown("###### 事件发生前的波动特征")
+        show_describe(df_i, columns=vol_before_features, percentiles=percentiles)
+
+    with tabs[3]:
+        st.markdown("###### 事件发生后的波动特征")
+        show_describe(df_i, columns=vol_future_features, percentiles=percentiles)
+
+    c1, c2 = st.columns([2, 2])
+    with c1:
+        st.divider()
+        st.markdown("###### 特征统计量说明")
+        st.caption("偏度指标：衡量数据分布的偏斜程度，正数向右偏，负数向左偏；标准正态分布偏度为0")
+        st.caption("峰度指标：衡量数据分布的尖锐程度，正数更尖锐，负数更平缓；标准正态分布峰度为3")
+
+    with c2:
+        st.divider()
+        st.markdown("###### 特征计算说明")
+        st.caption("BX收益：事件发生前N根K线的收益，单位: BP，如：B13收益 = 过去13根K线收益 * 10000")
+        st.caption("BX波动：事件发生前N根K线的波动, std / price, 如：B13波动 = 过去13根K线STD波动率 / 最新一根K线收盘价")
+        st.caption("FX收益：事件发生后N根K线的收益，单位: BP，如：F13收益 = 未来13根K线收益 * 10000")
+        st.caption("FX波动：事件发生后N根K线的波动, std / price, 如：F13波动 = 未来13根K线STD波动率 / 未来第13根K线收盘价")

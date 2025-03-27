@@ -834,6 +834,45 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
     return dfr
 
 
+def make_price_features(df, price='price', **kwargs):
+    """计算某个K线过去(before)/未来(future)的价格走势特征
+    
+    :param df: 数据框, 包含 dt, symbol, price 列
+    :param price: 价格列名, 默认'price'
+    :param windows: 窗口列表, 默认(1, 2, 3, 5, 8, 13, 21, 34)
+    :return: 数据框, 包含事件发生时间、事件名称、价格、价格走势特征
+    """
+    df = df.sort_values('dt').reset_index(drop=True)
+    windows = kwargs.get('windows', (1, 2, 3, 5, 8, 13, 21, 34))
+
+    rows = []
+    for _, dfg in df.groupby('symbol'):
+        dfg = dfg.sort_values('dt').reset_index(drop=True)
+        for n in windows:
+            dfg[f'price_change_{n}'] = (dfg[price].pct_change(n) * 10000).round(2)        # 收益单位：BP
+            if n > 5:
+                dfg[f'volatility_{n}'] = dfg[price].rolling(n).std() / dfg[price]
+
+            n_str = str(n).zfill(2)
+            # 过去 N 根K线的特征（Before）
+            dfg[f"B{n_str}收益"] = dfg[f"price_change_{n}"]
+
+            # 未来 N 根K线的特征（Future）
+            dfg[f"F{n_str}收益"] = dfg[f"price_change_{n}"].shift(-n)
+
+            if n > 5:
+                dfg[f"B{n_str}波动"] = dfg[f"volatility_{n}"]
+                dfg[f"F{n_str}波动"] = dfg[f"volatility_{n}"].shift(-n)
+                dfg.drop(columns=[f"volatility_{n}"], inplace=True)
+
+            dfg.drop(columns=[f"price_change_{n}"], inplace=True)
+
+        rows.append(dfg)
+
+    dfx = pd.concat(rows, ignore_index=True)
+    return dfx
+
+
 def turnover_rate(df: pd.DataFrame, **kwargs):
     """计算持仓变化的单边换手率
 
