@@ -230,6 +230,7 @@ from czsc.eda import (
     mark_cta_periods,
     mark_volatility,
     cal_yearly_days,
+    turnover_rate,
 )
 
 

@@ -103,5 +103,87 @@ def test_limit_leverage():
     assert df_result["weight1"].min() >= -1.0
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_turnover_rate_normal():
+    """测试正常数据的换手率计算"""
+    from czsc.eda import turnover_rate
+    
+    # 创建测试数据
+    dates = pd.date_range(start='2024-01-01', periods=3, freq='D')
+    symbols = ['A', 'B', 'C']
+    
+    # 创建权重数据
+    weights = [
+        [1.0, 0.5, 0.0],  # 第一天
+        [0.5, 1.0, 0.5],  # 第二天
+        [0.0, 0.5, 1.0],  # 第三天
+    ]
+    
+    # 构建DataFrame
+    data = []
+    for i, date in enumerate(dates):
+        for j, symbol in enumerate(symbols):
+            data.append({
+                'dt': date,
+                'symbol': symbol,
+                'weight': weights[i][j]
+            })
+    df = pd.DataFrame(data)
+    
+    # 计算换手率
+    result = turnover_rate(df)
+    
+    # 验证结果
+    assert isinstance(result, dict)
+    assert "单边换手率" in result
+    assert "每日换手率" in result
+    assert "最大单日换手率" in result
+    assert "最小单日换手率" in result
+    assert "换手详情" in result
+    
+    # 验证换手率计算是否正确
+    # 第一天：1.0 + 0.5 + 0.0 = 1.5
+    # 第二天：|0.5-1.0| + |1.0-0.5| + |0.5-0.0| = 1.5
+    # 第三天：|0.0-0.5| + |0.5-1.0| + |1.0-0.5| = 1.5
+    assert result["单边换手率"] == 4.5  # 1.5 + 1.5 + 1.5
+    assert result["每日换手率"] == 1.5  # 4.5 / 3
+    assert result["最大单日换手率"] == 1.5
+    assert result["最小单日换手率"] == 1.5
+    print(result['换手详情'])
+
+
+def test_turnover_rate_verbose():
+    """测试verbose模式下的日志输出"""
+    from czsc.eda import turnover_rate
+    
+    dates = pd.date_range(start='2024-01-01', periods=2, freq='D')
+    symbols = ['A', 'B']
+    data = [
+        {'dt': dates[0], 'symbol': 'A', 'weight': 1.0},
+        {'dt': dates[0], 'symbol': 'B', 'weight': 0.0},
+        {'dt': dates[1], 'symbol': 'A', 'weight': 0.0},
+        {'dt': dates[1], 'symbol': 'B', 'weight': 1.0},
+    ]
+    df = pd.DataFrame(data)
+    
+    # 这里我们只验证verbose=True时不会抛出异常
+    result = turnover_rate(df, verbose=True)
+    assert isinstance(result, dict)
+
+
+def test_turnover_rate_invalid_data():
+    """测试无效数据的处理"""
+    from czsc.eda import turnover_rate
+    
+    # 测试缺少必要列的数据
+    df = pd.DataFrame({'dt': ['2024-01-01'], 'symbol': ['A']})
+    with pytest.raises(KeyError):
+        turnover_rate(df)
+    
+    # 测试权重列包含非数值数据
+    df = pd.DataFrame({
+        'dt': ['2024-01-01'],
+        'symbol': ['A'],
+        'weight': ['invalid']
+    })
+    with pytest.raises(TypeError, match="weight 列必须包含数值数据"):
+        turnover_rate(df)
