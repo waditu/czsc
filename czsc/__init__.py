@@ -178,6 +178,8 @@ from czsc.utils.st_components import (
     show_turnover_rate,
     show_describe,
     show_event_features,
+    show_stats_compare,
+    show_symbol_penalty,
 )
 
 from czsc.utils.bi_info import (

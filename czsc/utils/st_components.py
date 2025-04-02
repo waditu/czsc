@@ -2436,3 +2436,122 @@ def show_event_features(df, event_col, event=None, features=None, **kwargs):
         st.caption("BX波动：事件发生前N根K线的波动, std / price, 如：B13波动 = 过去13根K线STD波动率 / 最新一根K线收盘价")
         st.caption("FX收益：事件发生后N根K线的收益，单位: BP，如：F13收益 = 未来13根K线收益 * 10000")
         st.caption("FX波动：事件发生后N根K线的波动, std / price, 如：F13波动 = 未来13根K线STD波动率 / 未来第13根K线收盘价")
+
+
+def show_stats_compare(df: pd.DataFrame, **kwargs):
+    """显示多组策略回测的绩效对比
+
+    :param df: 策略回测结果, WeightBacktest 的 stats 数据汇总成的 DataFrame，用 name 列区分不同的策略
+    """
+    if 'name' in df.columns:
+        df.set_index("name", inplace=True)
+
+    # # 收益指标
+    # cols_x = ['绝对收益', '年化', '夏普', '单笔收益', '盈亏平衡点', '日胜率', '日盈亏比', '日赢面']
+    # # 风险指标
+    # cols_y = ['最大回撤', '卡玛', '年化波动率', '下行波动率', '新高间隔', '新高占比', '回撤风险','波动比']
+    # # 特质指标
+    # cols_z = ["开始日期", "结束日期", '品种数量', '持仓K线数', '多头占比', '空头占比', '交易胜率']
+
+    df = df[['绝对收益', '年化', '夏普', '最大回撤', '卡玛', '年化波动率', '下行波动率', '非零覆盖', '新高间隔', '新高占比', '回撤风险', 
+               '交易胜率', '单笔收益', '持仓K线数', '多头占比', '空头占比', '波动比', '盈亏平衡点', '日胜率', '日盈亏比', 
+               '日赢面', '品种数量', "开始日期", "结束日期"]].copy()
+
+    df = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日盈亏比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日赢面"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["品种数量"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["波动比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["多头占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["空头占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["交易胜率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["单笔收益"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["持仓K线数"])
+
+    df = df.format(
+        {
+            "盈亏平衡点": "{:.2f}",
+            "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
+            "最大回撤": "{:.2%}",
+            "卡玛": "{:.2f}",
+            "年化": "{:.2%}",
+            "夏普": "{:.2f}",
+            "非零覆盖": "{:.2%}",
+            "绝对收益": "{:.2%}",
+            "日胜率": "{:.2%}",
+            "日盈亏比": "{:.2f}",
+            "日赢面": "{:.2%}",
+            "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
+            "新高占比": "{:.2%}",
+            "品种数量": "{:.0f}",
+            "波动比": "{:.2f}",
+            "多头占比": "{:.2%}",
+            "空头占比": "{:.2%}",
+            "交易胜率": "{:.2%}",
+            "单笔收益": "{:.2f}",
+            "持仓K线数": "{:.2f}",
+        }
+    )
+    st.dataframe(df, use_container_width=True)
+
+
+def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):
+    """依次删除策略收益最高的N个品种，对比收益变化
+
+    :param df: 策略权重数据
+    :param n: 删除的品种数量
+    :return: None 
+    """
+    from rs_czsc import WeightBacktest
+
+    digits = kwargs.get('digits', 2)
+    fee_rate = kwargs.get('fee_rate', 0.0)
+    weight_type = kwargs.get('weight_type', 'ts')
+    yearly_days = kwargs.get('yearly_days', 252)
+
+    n = min(n, df['symbol'].nunique() - 1)
+    dfw = df[['dt', 'symbol', 'weight', 'price']].copy()
+    wb_map = {}
+    wb1 = WeightBacktest(dfw.copy(), digits=digits, fee_rate=fee_rate, weight_type=weight_type, yearly_days=yearly_days)
+    wb_map['原始策略'] = wb1
+
+    for i in list(range(1, n+1)):
+        top_symbols = wb1.get_top_symbols(i, kind='profit')
+        dfw1 = dfw[~dfw['symbol'].isin(top_symbols)].copy().reset_index(drop=True)
+        wb2 = WeightBacktest(dfw1.copy(), digits=digits, fee_rate=fee_rate, weight_type=weight_type, yearly_days=yearly_days)
+        wb_map[f"删除：{';'.join(top_symbols)}"] = wb2
+
+    dfs = []
+    dailys = []
+    for k, wb in wb_map.items():
+        s = wb.stats.copy()
+        s['name'] = k
+        dfs.append(s)
+
+        d = wb.daily_return.copy()
+        d = d[['date', 'total']].copy()
+        d['name'] = k
+        dailys.append(d)
+    
+    dfd = pd.concat(dailys, ignore_index=True)
+    dfd['date'] = pd.to_datetime(dfd['date'])
+    dfd = pd.pivot_table(dfd, index='date', columns='name', values='total', aggfunc='sum')
+    show_cumulative_returns(dfd, fig_title="删除表现最佳品种后的累计收益对比")
+
+    dfs = pd.DataFrame(dfs)
+    show_stats_compare(dfs)
+
