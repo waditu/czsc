@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2023/2/7 13:17
 describe: 用于探索性分析的函数
 """
+import time
 import loguru
 import pandas as pd
 import numpy as np
@@ -291,6 +292,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     factor_params = kwargs.get("factor_params", {})
     price_type = kwargs.get("price_type", "close")
     strict = kwargs.get("strict", True)
+    max_seconds = kwargs.get("max_seconds", 800)
+
+    start_time = time.time()
 
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
@@ -331,6 +335,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 logger.error(f"{factor_name} - {_symbol} - 计算因子出错：{e}")
                 continue
         rows.append(dfx)
+        if time.time() - start_time > max_seconds:
+            logger.warning(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
+            return pd.DataFrame()
 
     dff = pd.concat(rows, ignore_index=True)
     return dff
