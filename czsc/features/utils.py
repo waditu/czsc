@@ -1,8 +1,6 @@
 # 工具函数
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import minmax_scale, scale, maxabs_scale, robust_scale
 from loguru import logger
 
 
@@ -121,6 +119,8 @@ def rolling_compare(df, col1, col2, window=300, min_periods=100, new_col=None, *
         min_periods: int
             最小计算周期
     """
+    from sklearn.linear_model import LinearRegression
+
     window = kwargs.get("window", 300)
     min_periods = kwargs.get("min_periods", 2)
     new_col = new_col if new_col else f"compare_{col1}_{col2}"
@@ -170,6 +170,8 @@ def rolling_scale(df: pd.DataFrame, col: str, window=300, min_periods=100, new_c
     :param min_periods: int, 最小计算周期, 默认为100
     :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_scale' 作为新列名
     """
+    from sklearn.preprocessing import minmax_scale, scale, maxabs_scale, robust_scale
+
     if kwargs.get("copy", False):
         df = df.copy()
 
@@ -210,6 +212,8 @@ def rolling_tanh(df: pd.DataFrame, col: str, window=300, min_periods=100, new_co
     :param min_periods: int, 最小计算周期, 默认为100
     :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_scale' 作为新列名
     """
+    from sklearn.preprocessing import scale
+    
     if kwargs.get("copy", False):
         df = df.copy()
     new_col = new_col if new_col else f"{col}_tanh"
@@ -238,6 +242,8 @@ def rolling_slope(df: pd.DataFrame, col: str, window=300, min_periods=100, new_c
             - std/mean: 使用序列的 std/mean 计算斜率
             - snr: 使用序列的 snr 计算斜率
     """
+    from sklearn.linear_model import LinearRegression
+
     method = kwargs.get("method", "linear")
     new_col = new_col if new_col else f"{col}_slope_{method}"
 
@@ -312,128 +318,6 @@ def normalize_corr(df: pd.DataFrame, fcol, ycol=None, **kwargs):
             raise ValueError(f"Unknown mode: {mode}")
 
         df.loc[df["symbol"] == symbol, fcol] = dfg[fcol]
-    return df
-
-
-def feature_adjust_V230101(df: pd.DataFrame, fcol, **kwargs):
-    """特征调整函数：对特征进行调整，使其符合持仓权重的定义
-
-    方法说明：对因子进行滚动相关系数计算，然后对因子值用 maxabs_scale 进行归一化，最后乘以滚动相关系数的符号
-
-    :param df: pd.DataFrame, 必须包含 dt、symbol、price 列，以及因子列
-    :param fcol: str 因子列名
-    :param kwargs: dict
-    """
-    window = kwargs.get("window", 1000)
-    min_periods = kwargs.get("min_periods", 200)
-
-    df = df.copy().sort_values("dt", ascending=True).reset_index(drop=True)
-    df["n1b"] = df["price"].shift(-1) / df["price"] - 1
-    df["corr"] = df[fcol].rolling(window=window, min_periods=min_periods).corr(df["n1b"])
-    df["corr"] = df["corr"].shift(5).fillna(0)
-
-    df = rolling_scale(
-        df, col=fcol, window=window, min_periods=min_periods, new_col="weight", method="maxabs_scale", copy=True
-    )
-    df["weight"] = df["weight"] * np.sign(df["corr"])
-
-    df.drop(["n1b", "corr"], axis=1, inplace=True)
-    return df
-
-
-def feature_adjust_V240323(df: pd.DataFrame, fcol, **kwargs):
-    """特征调整函数：对特征进行调整，使其符合持仓权重的定义
-
-    方法说明：对因子进行滚动相关系数计算，然后对因子值用 scale + tanh 进行归一化，最后乘以滚动相关系数的符号
-
-    :param df: pd.DataFrame, 必须包含 dt、symbol、price 列，以及因子列
-    :param fcol: str 因子列名
-    :param kwargs: dict
-    """
-    window = kwargs.get("window", 1000)
-    min_periods = kwargs.get("min_periods", 200)
-
-    df = df.copy().sort_values("dt", ascending=True).reset_index(drop=True)
-    df["n1b"] = df["price"].shift(-1) / df["price"] - 1
-    df["corr"] = df[fcol].rolling(window=window, min_periods=min_periods).corr(df["n1b"])
-    df["corr"] = df["corr"].shift(5).fillna(0)
-
-    df = rolling_tanh(df, col=fcol, window=window, min_periods=min_periods, new_col="weight")
-    df["weight"] = df["weight"] * np.sign(df["corr"])
-
-    df.drop(["n1b", "corr"], axis=1, inplace=True)
-    return df
-
-
-def feature_adjust(df: pd.DataFrame, fcol, method, **kwargs):
-    """特征调整函数：对特征进行调整，使其符合持仓权重的定义
-
-    :param df: pd.DataFrame, 待调整的数据
-    :param fcol: str, 因子列名
-    :param method: str, 调整方法
-
-        - KEEP: 直接使用原始因子值作为权重
-        - V230101: 对因子进行滚动相关系数计算，然后对因子值用 maxabs_scale 进行归一化，最后乘以滚动相关系数的符号
-        - V240323: 对因子进行滚动相关系数计算，然后对因子值用 scale + tanh 进行归一化，最后乘以滚动相关系数的符号
-
-    :param kwargs: dict
-
-        - window: int, 滚动窗口大小
-        - min_periods: int, 最小计算周期
-
-    :return: pd.DataFrame, 新增 weight 列
-    """
-    if method == "KEEP":
-        df["weight"] = df[fcol]
-        return df
-
-    if method == "V230101":
-        return feature_adjust_V230101(df, fcol, **kwargs)
-    elif method == "V240323":
-        return feature_adjust_V240323(df, fcol, **kwargs)
-    else:
-        raise ValueError(f"Unknown method: {method}")
-
-
-def feature_to_weight(df, factor, positive, **kwargs):
-    """时序因子转换为持仓权重
-
-    处理流程：
-
-    1. 缩尾处理：去除极端值
-    2. scale 缩放，均值为0
-    3. maxabs_scale 缩放至 [-1, 1]
-
-    :param df: pd.DataFrame, 包含因子列的数据
-    :param factor: str, 因子列名
-    :param positive: bool, 因子是否为正向因子
-    :param kwargs:
-
-        - window: int, 计算窗口长度，默认为1000
-        - min_periods: int, 最小计算窗口长度，默认为100
-        - q_threshold: float, 缩尾阈值，默认为0.05
-
-    """
-    window = kwargs.get("window", 1000)
-    min_periods = kwargs.get("min_periods", 100)
-    q_threshold = kwargs.get("q_threshold", 0.05)
-    assert df["symbol"].nunique() == 1, "必须按品种计算权重"
-
-    # 缩尾处理
-    df["upper"] = df[factor].rolling(window, min_periods).quantile(1 - q_threshold)
-    df["lower"] = df[factor].rolling(window, min_periods).quantile(q_threshold)
-    df[factor] = df[factor].clip(lower=df["lower"], upper=df["upper"])
-
-    # scale 缩放，均值为0
-    df["norm"] = df[factor].rolling(window, min_periods).apply(lambda x: scale(x)[-1])
-
-    # maxabs_scale 缩放至 [-1, 1]
-    df["weight"] = df["norm"].rolling(window, min_periods).apply(lambda x: maxabs_scale(x)[-1])
-    df["weight"] = df["weight"].fillna(0)
-    if not positive:
-        df["weight"] = -df["weight"]
-
-    df.drop(["upper", "lower", "norm"], axis=1, inplace=True)
     return df
 
 

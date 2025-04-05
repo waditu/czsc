@@ -169,7 +169,6 @@ def disk_cache(path: Union[AnyStr, Path] = home_path, suffix: str = "pkl", ttl: 
     """
 
     def decorator(func):
-        nonlocal path
         _c = DiskCache(path=Path(path) / func.__name__)
 
         def cached_func(*args, **kwargs):

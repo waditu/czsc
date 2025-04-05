@@ -6,10 +6,6 @@ create_dt: 2023/10/06 15:01
 describe: 因子（特征）处理
 """
 import pandas as pd
-from loguru import logger
-from deprecated import deprecated
-from sklearn.preprocessing import scale
-from sklearn.linear_model import LinearRegression
 
 
 def normalize_feature(df, x_col, **kwargs):
@@ -31,6 +27,8 @@ def normalize_feature(df, x_col, **kwargs):
 
     :return: pd.DataFrame，处理后的数据
     """
+    from sklearn.preprocessing import scale
+
     df = df.copy()
     assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
     q = kwargs.get("q", 0.05)  # 缩尾比例

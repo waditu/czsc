@@ -1,6 +1,6 @@
 # 飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f
 
-import czsc
+# import czsc
 import hashlib
 import numpy as np
 import pandas as pd
@@ -8,7 +8,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from deprecated import deprecated
-from czsc.eda import cal_yearly_days
+from typing import Optional
 
 
 def __stats_style(stats):
@@ -70,6 +70,8 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         - show_dailys: bool，是否展示日收益数据详情，默认为 False
 
     """
+    from czsc import daily_performance
+
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -84,10 +86,10 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         stats = []
         for _col in df_.columns:
             if type_ == "持有日":
-                col_stats = czsc.daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
+                col_stats = daily_performance([x for x in df_[_col] if x != 0], yearly_days=yearly_days)
             else:
                 assert type_ == "交易日", "type_ 参数必须是 持有日 或 交易日"
-                col_stats = czsc.daily_performance(df_[_col], yearly_days=yearly_days)
+                col_stats = daily_performance(df_[_col], yearly_days=yearly_days)
             col_stats["日收益名称"] = _col
             stats.append(col_stats)
 
@@ -96,42 +98,50 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
         return stats
 
     use_st_table = kwargs.get("use_st_table", False)
+    stat_hold_days = kwargs.get("stat_hold_days", True)
+    plot_cumsum = kwargs.get("plot_cumsum", True)
 
-    with st.container():
-        sub_title = kwargs.get("sub_title", "")
-        if sub_title:
-            st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-        if kwargs.get("show_dailys", False):
-            with st.expander("日收益数据详情", expanded=False):
-                st.dataframe(df, use_container_width=True)
-
+    sub_title = kwargs.get("sub_title", "")
+    if sub_title:
+        st.subheader(sub_title, divider="rainbow", anchor=sub_title)
+    
+    if kwargs.get("show_dailys", False):
+        with st.expander("日收益数据详情", expanded=False):
+            st.dataframe(df, use_container_width=True)
+    
+    if stat_hold_days:
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
                 st.table(_stats(df, type_="交易日"))
             else:
                 st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
             st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
+    else:
+        if use_st_table:
+            st.table(_stats(df, type_="交易日"))
+        else:
+            st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
 
-        if kwargs.get("stat_hold_days", True):
-            with st.expander("持有日绩效指标", expanded=False):
-                st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
-                st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
+    if stat_hold_days:
+        with st.expander("持有日绩效指标", expanded=False):
+            st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+            st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
-        if kwargs.get("plot_cumsum", True):
-            df = df.cumsum()
-            fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
-            fig.update_xaxes(title="")
+    if plot_cumsum:
+        df = df.cumsum()
+        fig = px.line(df, y=df.columns.to_list(), title="日收益累计曲线")
+        fig.update_xaxes(title="")
 
-            # 添加每年的开始第一个日期的竖线
-            for year in range(df.index.year.min(), df.index.year.max() + 1):
-                first_date = df[df.index.year == year].index.min()
-                fig.add_vline(x=first_date, line_dash="dash", line_color="red")
+        # 添加每年的开始第一个日期的竖线
+        for year in range(df.index.year.min(), df.index.year.max() + 1):
+            first_date = df[df.index.year == year].index.min()
+            fig.add_vline(x=first_date, line_dash="dash", line_color="red")
 
-            for col in kwargs.get("legend_only_cols", []):
-                fig.update_traces(visible="legendonly", selector=dict(name=col))
-            # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
-            fig.update_layout(margin=dict(l=0, r=0, b=0))
-            st.plotly_chart(fig, use_container_width=True)
+        for col in kwargs.get("legend_only_cols", []):
+            fig.update_traces(visible="legendonly", selector=dict(name=col))
+        # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        fig.update_layout(margin=dict(l=0, r=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
 
 
 def show_cumulative_returns(df, **kwargs):
@@ -139,12 +149,18 @@ def show_cumulative_returns(df, **kwargs):
     
     :param df: pd.DataFrame, 数据源，index 为日期，columns 为对应策略上一个日期至当前日期的收益
     :param kwargs: dict, 可选参数
+
+        - fig_title: str, 图表标题，默认为 "累计收益"
+        - legend_only_cols: list, 仅在图例中展示的列名
+        - display_legend: bool, 是否展示图例，默认为 True
     """
     import plotly.express as px
 
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     assert df.index.is_unique, "df 的索引必须唯一"
     assert df.index.is_monotonic_increasing, "df 的索引必须单调递增"
+
+    display_legend = kwargs.get("display_legend", True)
 
     fig_title = kwargs.get("fig_title", "累计收益")
     df = df.cumsum()
@@ -158,15 +174,18 @@ def show_cumulative_returns(df, **kwargs):
 
     for col in kwargs.get("legend_only_cols", []):
         fig.update_traces(visible="legendonly", selector=dict(name=col))
-        
-    # 将 legend 移动到图表的底部并水平居中显示
-    fig.update_layout(legend=dict(
-        orientation="h",
-        y=-0.1,
-        xanchor="center",
-        x=0.5
-    ), margin=dict(l=0, r=0, b=0))
-    st.plotly_chart(fig, use_container_width=True)
+    
+    if display_legend:
+        # 将 legend 移动到图表的底部并水平居中显示
+        fig.update_layout(legend=dict(
+            orientation="h",
+            y=-0.1,
+            xanchor="center",
+            x=0.5
+        ), margin=dict(l=0, r=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **kwargs):
@@ -252,7 +271,9 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
         - show_factor_histgram: bool，是否展示因子数据分布图，默认为 False
 
     """
-    dfc, res = czsc.cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
+    from czsc.utils.corr import cross_sectional_ic
+
+    dfc, res = cross_sectional_ic(df, x_col=x_col, y_col=y_col, dt_col="dt", method=method)
 
     col1, col2, col3, col4 = st.columns([1, 1, 1, 5])
     col1.metric("IC均值", res["IC均值"])
@@ -314,10 +335,11 @@ def show_feature_returns(df, factor, target="n1b", **kwargs):
     assert "symbol" in df.columns, "标的列必须为 symbol"
     assert factor in df.columns, f"因子列 {factor} 不存在"
     assert target in df.columns, f"目标列 {target} 不存在"
+    from czsc.features.utils import feature_returns
 
     fit_intercept = kwargs.get("fit_intercept", False)
 
-    dft = czsc.feature_returns(df, factor, target, fit_intercept=fit_intercept)
+    dft = feature_returns(df, factor, target, fit_intercept=fit_intercept)
     dft.columns = ["dt", "因子收益率"]
     dft["累计收益率"] = dft["因子收益率"].cumsum()
 
@@ -350,8 +372,11 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
 
         - n: 分层数量，默认为10
     """
+    from czsc.eda import monotonicity
+    from czsc.utils.features import feature_cross_layering
+
     n = kwargs.get("n", 10)
-    df = czsc.feature_cross_layering(df, factor, n=n)
+    df = feature_cross_layering(df, factor, n=n)
 
     mr = df.groupby(["dt", f"{factor}分层"])[target].mean().reset_index()
     mrr = mr.pivot(index="dt", columns=f"{factor}分层", values=target).fillna(0)
@@ -365,14 +390,14 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
     fig = px.bar(
         dfc,
         y="绝对收益",
-        title="因子分层绝对收益 | 单调性：{:.2%}".format(czsc.monotonicity(dfc["绝对收益"])),
+        title="因子分层绝对收益 | 单调性：{:.2%}".format(monotonicity(dfc["绝对收益"])),
         color="绝对收益",
         color_continuous_scale="RdYlGn_r",
         text="text",
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    czsc.show_daily_return(
+    show_daily_return(
         mrr,
         stat_hold_days=False,
         yearly_days=kwargs.get("yearly_days", 252),
@@ -398,62 +423,6 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
 
     dfs = dfw.groupby("symbol").apply(lambda x: x["weight"].describe(percentiles=percentiles)).reset_index()
     show_df_describe(dfs)
-
-
-@deprecated(reason="没有必要绘制单个标的上的因子分层收益率图")
-def show_symbol_factor_layering(df, x_col, y_col="n1b", **kwargs):
-    """使用 streamlit 绘制单个标的上的因子分层收益率图
-
-    :param df: 因子数据，必须包含 dt, x_col, y_col 列，其中 dt 为日期，x_col 为因子值，y_col 为收益率，数据样例：
-
-        ===================  ============  ============
-        dt                      intercept     n1b
-        ===================  ============  ============
-        2017-01-03 00:00:00   0             0.00716081
-        2017-01-04 00:00:00  -0.00154541    0.000250816
-        2017-01-05 00:00:00   0.000628884  -0.0062695
-        2017-01-06 00:00:00  -0.00681021    0.00334212
-        2017-01-09 00:00:00   0.00301077   -0.00182963
-        ===================  ============  ============
-
-    :param x_col: 因子列名
-    :param y_col: 收益列名
-    :param kwargs:
-
-        - n: 分层数量，默认为10
-
-    """
-    df = df.copy()
-    n = kwargs.get("n", 10)
-    if df[y_col].max() > 100:  # 如果收益率单位为BP, 转换为万分之一
-        df[y_col] = df[y_col] / 10000
-    if df[x_col].nunique() < n * 2:
-        st.error(f"因子值数量小于{n*2}，无法进行分层")
-
-    if f"{x_col}分层" not in df.columns:
-        czsc.normalize_ts_feature(df, x_col, n=n)
-
-    for i in range(n):
-        df[f"第{str(i+1).zfill(2)}层"] = np.where(df[f"{x_col}分层"] == f"第{str(i+1).zfill(2)}层", df[y_col], 0)
-
-    layering_cols = [f"第{str(i).zfill(2)}层" for i in range(1, n + 1)]
-    mrr = df[["dt"] + layering_cols].copy()
-    mrr.set_index("dt", inplace=True)
-
-    tabs = st.tabs(["分层收益率", "多空组合"])
-
-    with tabs[0]:
-        show_daily_return(mrr, stat_hold_days=False)
-
-    with tabs[1]:
-        col1, col2 = st.columns(2)
-        long = col1.multiselect("多头组合", layering_cols, default=["第02层"], key="symbol_factor_long")
-        short = col2.multiselect("空头组合", layering_cols, default=["第01层"], key="symbol_factor_short")
-        dfr = mrr.copy()
-        dfr["多头"] = dfr[long].sum(axis=1)
-        dfr["空头"] = -dfr[short].sum(axis=1)
-        dfr["多空"] = dfr["多头"] + dfr["空头"]
-        show_daily_return(dfr[["多头", "空头", "多空"]])
 
 
 def show_weight_backtest(dfw, **kwargs):
@@ -580,6 +549,8 @@ def show_splited_daily(df, ret_col, **kwargs):
         sub_title: str, 子标题
 
     """
+    from rs_czsc import daily_performance
+
     yearly_days = kwargs.get("yearly_days", 252)
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -613,7 +584,7 @@ def show_splited_daily(df, ret_col, **kwargs):
             "开始日期": sdt.strftime("%Y-%m-%d"),
             "结束日期": last_dt.strftime("%Y-%m-%d"),
         }
-        row_ = czsc.daily_performance(df1[ret_col], yearly_days=yearly_days)
+        row_ = daily_performance(df1[ret_col], yearly_days=yearly_days)
         row.update(row_)
         rows.append(row)
     dfv = pd.DataFrame(rows).set_index("收益名称")
@@ -630,6 +601,8 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
         - sub_title: str, 子标题
     """
+    from rs_czsc import daily_performance
+
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -643,7 +616,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
     _stats = []
     for year, df_ in df.groupby("年份"):
-        _yst = czsc.daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
+        _yst = daily_performance(df_[ret_col].to_list(), yearly_days=yearly_days)
         _yst["年份"] = year
         _stats.append(_yst)
 
@@ -782,9 +755,11 @@ def show_stoploss_by_direction(dfw, **kwargs):
 
     :return: None
     """
+    from czsc.traders.weight_backtest import stoploss_by_direction
+    
     dfw = dfw.copy()
     stoploss = kwargs.pop("stoploss", 0.08)
-    dfw1 = czsc.stoploss_by_direction(dfw, stoploss=stoploss)
+    dfw1 = stoploss_by_direction(dfw, stoploss=stoploss)
 
     # 找出逐笔止损点
     rows = []
@@ -823,7 +798,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         with st.expander("止损点详情", expanded=False):
             st.dataframe(dfs, use_container_width=True)
 
-    czsc.show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
+    show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
 
 
 def show_cointegration(df, col1, col2, **kwargs):
@@ -888,6 +863,7 @@ def show_cointegration(df, col1, col2, **kwargs):
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     """展示样本内外表现对比"""
+    from rs_czsc import daily_performance
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -901,12 +877,12 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     dfi = df[df.index < mid_dt].copy()
     dfo = df[df.index >= mid_dt].copy()
 
-    stats_i = czsc.daily_performance(dfi[ret_col].to_list())
+    stats_i = daily_performance(dfi[ret_col].to_list())
     stats_i["标记"] = "样本内"
     stats_i["开始日期"] = dfi.index[0].strftime("%Y-%m-%d")
     stats_i["结束日期"] = dfi.index[-1].strftime("%Y-%m-%d")
 
-    stats_o = czsc.daily_performance(dfo[ret_col].to_list())
+    stats_o = daily_performance(dfo[ret_col].to_list())
     stats_o["标记"] = "样本外"
     stats_o["开始日期"] = dfo.index[0].strftime("%Y-%m-%d")
     stats_o["结束日期"] = dfo.index[-1].strftime("%Y-%m-%d")
@@ -1009,6 +985,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         - top: int, optional, 默认10, 返回最大回撤的数量
 
     """
+    from rs_czsc import top_drawdowns
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
@@ -1066,7 +1043,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
 
     if top is not None:
         with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
-            dft = czsc.top_drawdowns(df[ret_col].copy(), top=top)
+            dft = top_drawdowns(df[ret_col].copy(), top=top)
             dft = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
             dft = dft.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
             dft = dft.format(
@@ -1087,6 +1064,8 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     :param ret_col: str, 收益列名
     :param kwargs:
     """
+    from czsc.utils.stats import rolling_daily_performance
+
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     if not df.index.dtype == "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
@@ -1104,7 +1083,7 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     window = c1.number_input("滚动窗口（自然日）", value=365 * 3, min_value=365, max_value=3650)
     min_periods = c2.number_input("最小样本数", value=365, min_value=100, max_value=3650)
 
-    dfr = czsc.rolling_daily_performance(df, ret_col, window=window, min_periods=min_periods)
+    dfr = rolling_daily_performance(df, ret_col, window=window, min_periods=min_periods)
     dfr["年化波动率/最大回撤"] = dfr["年化波动率"] / dfr["最大回撤"]
     cols = [x for x in dfr.columns if x not in ["sdt", "edt"]]
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普"))
@@ -1126,6 +1105,7 @@ def show_event_return(df, factor, **kwargs):
         - max_overlap: int, 最大重叠次数
 
     """
+    from czsc.utils.events import overlap
     max_unique = kwargs.get("max_unique", 20)
 
     if df[factor].nunique() > max_unique:
@@ -1139,7 +1119,7 @@ def show_event_return(df, factor, **kwargs):
     max_overlap = kwargs.get("max_overlap", 3)
 
     df[factor] = df[factor].astype(str)
-    df = czsc.overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
+    df = overlap(df, factor, new_col="overlap", max_overlap=max_overlap)
     df = df[(df["dt"] >= sdt) & (df["dt"] <= edt)].copy()
 
     sdt = df["dt"].min().strftime("%Y-%m-%d")
@@ -1199,11 +1179,12 @@ def show_psi(df, factor, segment, **kwargs):
 
         - sub_title: str, 子标题
     """
+    from czsc.utils.stats import psi
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
 
-    dfi = czsc.psi(df, factor, segment)
+    dfi = psi(df, factor, segment)
     segs = df[segment].unique().tolist()
     segs_psi = [x for x in dfi.columns if x.endswith("_PSI")]
     dfi = dfi.style.background_gradient(cmap="RdYlGn_r", subset=segs_psi, axis=None)
@@ -1211,142 +1192,6 @@ def show_psi(df, factor, segment, **kwargs):
     dfi = dfi.background_gradient(cmap="RdYlGn_r", subset=["PSI"], axis=None)
     dfi = dfi.format("{:.2%}", na_rep="MISS")
     st.table(dfi)
-
-
-@deprecated(reason="这不是一个好的设计")
-def show_strategies_dailys(df, **kwargs):
-    """展示多策略多品种日收益率数据：按策略等权日收益
-
-    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
-
-            ===================  ==========  ========  ============
-            dt                   strategy    symbol    returns
-            ===================  ==========  ========  ============
-            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
-            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
-            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
-            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
-            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
-            ===================  ==========  ========  ============
-
-    :param kwargs:
-
-        - sub_title: str, 子标题
-    """
-    sub_title = kwargs.get("sub_title", "按策略等权日收益")
-    if sub_title:
-        st.subheader(sub_title, divider="rainbow")
-
-    strategies = sorted(df["strategy"].unique().tolist())
-    strategies = st.multiselect("选择策略", strategies, default=strategies)
-    # st.write(f"策略：{strategies}")
-    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
-
-    symbols = sorted(df["symbol"].unique().tolist())
-    symbols = st.multiselect("选择品种", symbols, default=symbols)
-    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
-
-    with st.expander("每个品种的策略覆盖情况", expanded=False):
-        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
-        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
-        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
-
-    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
-    df["dt"] = pd.to_datetime(df["dt"])
-
-    df1 = (
-        df.groupby(["dt", "strategy"])
-        .apply(lambda x: x["returns"].mean(), include_groups=False)
-        .to_frame("returns")
-        .reset_index()
-    )
-    df1 = df1.pivot(index="dt", columns="strategy", values="returns").fillna(0)
-    df1["等权组合"] = df1.mean(axis=1)
-    czsc.show_daily_return(df1, stat_hold_days=False, legend_only_cols=strategies)
-
-    st.write("策略最近表现")
-    czsc.show_splited_daily(df1, ret_col="等权组合", sub_title="")
-
-    st.write("年度绩效统计")
-    czsc.show_yearly_stats(df1.copy(), ret_col="等权组合", sub_title="")
-
-    st.write("策略相关性")
-    czsc.show_correlation(df1)
-
-    st.write("月度收益率")
-    czsc.show_monthly_return(df1.copy(), ret_col="等权组合", sub_title="")
-
-    mid_dt = kwargs.get("mid_dt")
-    if mid_dt:
-        st.write("样本内外对比")
-        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
-        czsc.show_out_in_compare(df1.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
-
-
-@deprecated(reason="这不是一个好的设计")
-def show_strategies_symbol(df, **kwargs):
-    """展示多策略多品种日收益率数据：按品种等权日收益
-
-    :param df: N策略M品种日收益率数据，columns=['dt', 'strategy', 'symbol', 'returns']，样例如下：
-
-            ===================  ==========  ========  ============
-            dt                   strategy    symbol    returns
-            ===================  ==========  ========  ============
-            2021-01-04 00:00:00  FUT001      SFT9001   -0.00240078
-            2021-01-05 00:00:00  FUT001      SFT9001   -0.00107012
-            2021-01-06 00:00:00  FUT001      SFT9001    0.00122168
-            2021-01-07 00:00:00  FUT001      SFT9001    0.0020896
-            2021-01-08 00:00:00  FUT001      SFT9001    0.000510725
-            ===================  ==========  ========  ============
-
-    :param kwargs:
-    """
-    sub_title = kwargs.get("sub_title", "按品种等权日收益")
-    if sub_title:
-        st.subheader(sub_title, divider="rainbow")
-
-    strategies = sorted(df["strategy"].unique().tolist())
-    strategies = st.multiselect("选择策略", strategies, default=strategies, key="strategies_symbol")
-    df = df[df["strategy"].isin(strategies)].copy().reset_index(drop=True)
-    symbols = sorted(df["symbol"].unique().tolist())
-    symbols = st.multiselect("选择品种", symbols, default=symbols, key="strategies_symbol_x")
-    df = df[df["symbol"].isin(symbols)].copy().reset_index(drop=True)
-
-    with st.expander("每个品种的策略覆盖情况", expanded=False):
-        dfc_ = df.groupby("symbol")["strategy"].unique().to_frame().reset_index()
-        dfc_["count"] = dfc_["strategy"].apply(lambda x: len(x))
-        st.dataframe(dfc_[["symbol", "count", "strategy"]], use_container_width=True)
-
-    assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame"
-    df["dt"] = pd.to_datetime(df["dt"])
-
-    df2 = (
-        df.groupby(["dt", "symbol"])
-        .apply(lambda x: x["returns"].mean(), include_groups=False)
-        .to_frame("returns")
-        .reset_index()
-    )
-    df2 = df2.pivot(index="dt", columns="symbol", values="returns").fillna(0)
-    df2["等权组合"] = df2.mean(axis=1)
-    show_daily_return(df2, stat_hold_days=False, legend_only_cols=symbols)
-
-    st.write("策略最近表现")
-    show_splited_daily(df2, ret_col="等权组合", sub_title="")
-
-    st.write("年度绩效统计")
-    show_yearly_stats(df2.copy(), ret_col="等权组合", sub_title="")
-
-    st.write("品种相关性")
-    show_correlation(df2)
-
-    st.write("月度收益率")
-    show_monthly_return(df2.copy(), ret_col="等权组合", sub_title="")
-
-    mid_dt = kwargs.get("mid_dt")
-    if mid_dt:
-        st.write("样本内外对比")
-        mid_dt = pd.to_datetime(mid_dt).strftime("%Y%m%d")
-        show_out_in_compare(df2.copy(), ret_col="等权组合", sub_title="", mid_dt=mid_dt)
 
 
 def show_holds_backtest(df, **kwargs):
@@ -1374,6 +1219,7 @@ def show_holds_backtest(df, **kwargs):
         - show_monthly_return: 是否展示月度累计收益，默认为True
 
     """
+    from czsc.utils.stats import holds_performance
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)
     if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
@@ -1384,29 +1230,29 @@ def show_holds_backtest(df, **kwargs):
     # 计算每日收益、交易成本、净收益
     sdt = df["dt"].min().strftime("%Y-%m-%d")
     edt = df["dt"].max().strftime("%Y-%m-%d")
-    dfr = czsc.holds_performance(df, fee=fee, digits=digits)
+    dfr = holds_performance(df, fee=fee, digits=digits)
     st.write(f"回测时间：{sdt} ~ {edt}; 单边年换手率：{dfr['change'].mean() * 252:.2f} 倍; 单边费率：{fee}BP")
     daily = dfr[["date", "edge_post_fee"]].copy()
     daily.columns = ["dt", "return"]
     daily["dt"] = pd.to_datetime(daily["dt"])
     daily = daily.sort_values("dt").reset_index(drop=True)
 
-    czsc.show_daily_return(daily, stat_hold_days=False)
+    show_daily_return(daily, stat_hold_days=False)
     if kwargs.get("show_drawdowns", True):
         st.write("最大回撤分析")
-        czsc.show_drawdowns(daily, ret_col="return", sub_title="")
+        show_drawdowns(daily, ret_col="return", sub_title="")
 
     if kwargs.get("show_splited_daily", False):
         st.write("分段收益表现")
-        czsc.show_splited_daily(daily, ret_col="return")
+        show_splited_daily(daily, ret_col="return")
 
     if kwargs.get("show_yearly_stats", True):
         st.write("年度绩效指标")
-        czsc.show_yearly_stats(daily, ret_col="return", sub_title="")
+        show_yearly_stats(daily, ret_col="return", sub_title="")
 
     if kwargs.get("show_monthly_return", True):
         st.write("月度累计收益")
-        czsc.show_monthly_return(daily, ret_col="return", sub_title="")
+        show_monthly_return(daily, ret_col="return", sub_title="")
 
 
 def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
@@ -1433,13 +1279,14 @@ def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def show_czsc_trader(trader: czsc.CzscTrader, max_k_num=300, **kwargs):
+def show_czsc_trader(trader, max_k_num=300, **kwargs):
     """显示缠中说禅交易员详情
 
     :param trader: CzscTrader 对象
     :param max_k_num: 最大显示 K 线数量
     :param kwargs: 其他参数
     """
+    import czsc
     from czsc.utils.ta import MACD
 
     sub_title = kwargs.get("sub_title", "缠中说禅交易员详情")
@@ -1603,6 +1450,7 @@ def show_factor_value(df, factor, **kwargs):
         - title: str, 默认为 f"{factor} 可视化"
 
     """
+    import czsc
     if factor not in df.columns:
         st.warning(f"因子 {factor} 不存在，请检查")
         return
@@ -1727,6 +1575,8 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         - show_bar: bool, 是否展示柱状图，默认为 False
 
     """
+    import czsc
+
     df = df[[col1, col2]].copy()
     if method == "cut":
         df[f"{col1}_分层"] = pd.cut(df[col1], bins=n, duplicates="drop")
@@ -1960,6 +1810,8 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     :return: None
     """
     from czsc.eda import cal_yearly_days
+    from rs_czsc import daily_performance
+
     if not ("dt" in df.columns and "returns" in df.columns):
         st.error(f"show_outsample_by_dailys -> 数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")
         return
@@ -1970,7 +1822,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
 
     def __show_returns(dfx):
         dfx = dfx.copy()
-        stats = czsc.daily_performance(dfx["returns"], yearly_days=yearly_days)
+        stats = daily_performance(dfx["returns"], yearly_days=yearly_days)
         sc1, sc2, sc3 = st.columns(3)
 
         # 绘制收益指标
@@ -2229,3 +2081,477 @@ def show_quarterly_effect(returns: pd.Series):
     with c4.container(border=True):
         st.markdown("##### :red[第四季度]")
         __show_quarter_stats(s4)
+
+
+def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
+    """展示不同市场环境下的策略表现
+
+    :param df: 标准K线数据，
+            必须包含 dt, symbol, open, close, high, low, vol, amount, weight, price 列; 
+            如果 price 列不存在，则使用 close 列
+    :param kwargs: 
+
+        - fee_rate: 手续费率
+        - digits: 小数位数
+        - weight_type: 权重类型
+        - q1: 最容易赚钱的笔的占比, mark_cta_periods 函数的参数
+        - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
+    """
+    from rs_czsc import WeightBacktest
+    from czsc.eda import mark_cta_periods
+    # from czsc.utils.st_components import show_daily_return, show_cumulative_returns
+
+    fee_rate = kwargs.get('fee_rate', 0.00)
+    digits = kwargs.get('digits', 1)
+    weight_type = kwargs.get('weight_type', 'ts')
+    q1 = kwargs.get('q1', 0.15)
+    q2 = kwargs.get('q2', 0.4)
+
+    dfs = mark_cta_periods(df.copy(), freq='日线', verbose=False, q1=q1, q2=q2)
+
+    if 'price' not in dfs.columns:
+        dfs['price'] = dfs['close']
+
+    p1 = dfs['is_best_period'].value_counts()[1] / len(dfs)
+    p2 = dfs['is_worst_period'].value_counts()[1] / len(dfs)
+    st.markdown(f"趋势行情占比：:red[{p1:.2%}]；震荡行情占比：:blue[{p2:.2%}]")
+    st.caption(f"mark_cta_periods 参数：q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
+
+    wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    df1 = dfs.copy()
+    df1['weight'] = np.where(df1['is_best_period'], df1['weight'], 0)
+    df1 = df1[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    df2 = dfs.copy()
+    df2['weight'] = np.where(df2['is_worst_period'], df2['weight'], 0)
+    df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    classify = ['原始策略', '趋势行情', '震荡行情']
+    # stats = pd.DataFrame([wb.stats, wb1.stats, wb2.stats])
+    # stats['classify'] = classify
+    # st.dataframe(stats)
+
+    dailys = []
+    for wb_, classify_ in zip([wb, wb1, wb2], classify):
+        df_daily = wb_.daily_return.copy()
+        df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
+        df_daily['classify'] = classify_
+        dailys.append(df_daily)
+    dailys = pd.concat(dailys, ignore_index=True)
+    dailys['date'] = pd.to_datetime(dailys['date'])
+    dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
+    show_daily_return(dailys, stat_hold_days=False)
+    # show_cumulative_returns(dailys, fig_title="")
+
+
+def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
+    """【后验，有未来信息，不能用于实盘】波动率分类回测
+
+    :param df: 标准K线数据，
+            必须包含 dt, symbol, open, close, high, low, vol, amount, weight, price 列; 
+            如果 price 列不存在，则使用 close 列
+    :param kwargs: 
+
+        - fee_rate: 手续费率，WeightBacktest 的参数
+        - digits: 小数位数，WeightBacktest 的参数
+        - weight_type: 权重类型，'ts' 表示时序，'cs' 表示截面，WeightBacktest 的参数
+        - kind: 波动率分类方式，'ts' 表示时序，'cs' 表示截面，mark_volatility 函数的参数
+        - window: 计算波动率的窗口，mark_volatility 函数的参数
+        - q1: 波动率最大的K线数量占比，默认 0.2，mark_volatility 函数的参数
+        - q2: 波动率最小的K线数量占比，默认 0.2，mark_volatility 函数的参数
+
+    :return: None
+
+    ==============
+    example
+    ==============
+    >>> show_volatility_classify(df, fee_rate=0.00, digits=1, weight_type='ts', 
+    >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
+    """
+    from rs_czsc import WeightBacktest
+    from czsc.eda import mark_volatility
+
+    fee_rate = kwargs.get('fee_rate', 0.00)
+    digits = kwargs.get('digits', 1)
+    weight_type = kwargs.get('weight_type', 'ts')
+    window = kwargs.get('window', 20)
+    q1 = kwargs.get('q1', 0.2)
+    q2 = kwargs.get('q2', 0.2)
+
+    dfs = mark_volatility(df.copy(), kind=kind, verbose=False, q1=q1, q2=q2, window=window)
+
+    if 'price' not in dfs.columns:
+        dfs['price'] = dfs['close']
+
+    p1 = dfs['is_max_volatility'].value_counts()[1] / len(dfs)
+    p2 = dfs['is_min_volatility'].value_counts()[1] / len(dfs)
+    st.markdown(f"波动率最大行情占比：:red[{p1:.2%}]；波动率最小行情占比：:blue[{p2:.2%}]")
+    st.caption(f"mark_volatility 参数：kind={kind}, window={window}, q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
+
+    wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, 
+                        weight_type=weight_type)
+
+    df1 = dfs.copy()
+    df1['weight'] = np.where(df1['is_max_volatility'], df1['weight'], 0)
+    df1 = df1[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    df2 = dfs.copy()
+    df2['weight'] = np.where(df2['is_min_volatility'], df2['weight'], 0)
+    df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    classify = ['原始策略', '波动率大', '波动率小']
+
+    dailys = []
+    for wb_, classify_ in zip([wb, wb1, wb2], classify):
+        df_daily = wb_.daily_return.copy()
+        df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
+        df_daily['classify'] = classify_
+        dailys.append(df_daily)
+    dailys = pd.concat(dailys, ignore_index=True)
+    dailys['date'] = pd.to_datetime(dailys['date'])
+    dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
+    show_daily_return(dailys, stat_hold_days=False)
+
+
+def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: Optional[str] = None, **kwargs):
+    """分析组合日收益绩效
+
+    :param df: 日收益数据，包含 dt, portfolio, benchmark 三列, 其中 dt 为日期, portfolio 为组合收益, benchmark 为基准收益
+    :param portfolio: 组合名称
+    :param benchmark: 基准名称, 可选
+    :param show_detail: 是否展示详情, 可选, 默认展示
+    """
+    from rs_czsc import daily_performance
+    from czsc.eda import cal_yearly_days
+
+    if benchmark is not None:
+        df['alpha'] = df[portfolio] - df[benchmark]
+        df = df[['dt', portfolio, benchmark, 'alpha']].copy()
+    else:
+        df = df[['dt', portfolio]].copy()
+
+    stats = daily_performance(df[portfolio].to_list())
+
+    with st.container(border=True):
+        st.subheader("组合基础表现", divider="rainbow")
+        m1, m2, m3, m4, m5, m6, m7, m8 = st.columns(8)
+        m1.metric("年化收益", f"{stats['年化']:.2%}")
+        m2.metric("最大回撤", f"{stats['最大回撤']:.2%}")
+        m3.metric("夏普比率", f"{stats['夏普']:.2f}")
+        m4.metric("卡玛比率", f"{stats['卡玛']:.2f}")
+        m5.metric("年化波动率", f"{stats['年化波动率']:.2%}")
+        m6.metric("日胜率", f"{stats['日胜率']:.2%}")
+        m7.metric("新高间隔", f"{stats['新高间隔']}")
+        m8.metric("新高占比", f"{stats['新高占比']:.2%}")
+        show_drawdowns(df.copy(), ret_col=portfolio, sub_title="")
+
+    show_detail = kwargs.get("show_detail", True)
+    if not show_detail:
+        return
+
+    with st.container(border=True):
+        st.subheader("组合绩效详情", divider="rainbow")
+        if benchmark is not None:
+            tabs = st.tabs(["年度绩效", "季度效应", "月度绩效", "超额分析"])
+        else:
+            tabs = st.tabs(["年度绩效", "季度效应", "月度绩效"])
+
+        daily = df.copy().set_index('dt')
+        with tabs[0]:
+            show_yearly_stats(daily, ret_col=portfolio, sub_title="")
+
+        with tabs[1]:
+            show_quarterly_effect(daily[portfolio])
+
+        with tabs[2]:
+            show_monthly_return(daily, ret_col=portfolio, sub_title="")
+
+        if benchmark is not None:
+            with tabs[3]:
+                yearly_days = cal_yearly_days(daily.index.to_list())
+                show_daily_return(daily, stat_hold_days=False, plot_cumsum=True, sub_title="", yearly_days=yearly_days)
+
+
+def show_turnover_rate(df: pd.DataFrame):
+    """显示换手率变化
+    
+    :param df: 权重数据，必须包含 dt, symbol, weight 三列, 其他列忽略
+    """
+    import plotly.express as px
+    from czsc.eda import turnover_rate
+
+    res = turnover_rate(df, verbose=True)
+    dfc = res['日换手详情']  # 两列：dt, change
+    dfc['dt'] = pd.to_datetime(dfc['dt'])
+
+    # 最近30天换手率
+    _sdt_30 = dfc['dt'].max() - pd.Timedelta(days=30)
+    _dfc = dfc[dfc['dt'] >= _sdt_30]
+
+    # 最近一年换手率
+    _sdt_year = dfc['dt'].max() - pd.Timedelta(days=365)
+    _dfy = dfc[dfc['dt'] >= _sdt_year]
+
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("单边换手率", f"{res['单边换手率']:.2f}")
+    m2.metric("日均换手率", f"{res['日均换手率']:.2%}")
+    m3.metric("最大单日换手率", f"{res['最大单日换手率']:.2%}")
+    m4.metric("最小单日换手率", f"{res['最小单日换手率']:.2%}")
+    m5.metric("最近30天换手率", f"{_dfc['change'].sum():.2f}", help=f"最近30天换手率，自{_sdt_30}以来")
+    m6.metric("最近一年换手率", f"{_dfy['change'].sum():.2f}", help=f"最近一年换手率，自{_sdt_year}以来")
+
+    p1, p2, p3 = st.columns([2, 3, 1])
+    # 日换手的累计变化（X轴不显示）
+    df_daily = dfc.copy()
+    df_daily['change'] = df_daily['change'].cumsum()
+    fig = px.line(df_daily, x='dt', y='change', title='日换手累计曲线')
+    fig.update_xaxes(title_text='')
+    p1.plotly_chart(fig, use_container_width=True)
+
+    # 月换手的柱状图
+    df_monthly = dfc.copy()
+    df_monthly = df_monthly.set_index('dt').resample('M').sum().reset_index()
+    fig = px.bar(df_monthly, x='dt', y='change', title='月换手变化')
+    fig.update_xaxes(title_text='')
+    p2.plotly_chart(fig, use_container_width=True)
+
+    # 年换手的柱状图
+    df_yearly = dfc.copy()
+    df_yearly = df_yearly.set_index('dt').resample('Y').sum().reset_index()
+    df_yearly['dt'] = df_yearly['dt'].dt.strftime('%Y')
+    df_yearly['change'] = df_yearly['change'].round(0)
+    fig = px.bar(df_yearly, x='dt', y='change', title='年换手变化', hover_data=['change'])
+    fig.update_xaxes(title_text='')
+    p3.plotly_chart(fig, use_container_width=True)
+
+    st.caption("说明：以单边换手率计算")
+
+
+def show_describe(df: pd.DataFrame, **kwargs):
+    """展示 DataFrame 的描述性统计信息
+
+    :param df: pd.DataFrame, 数据框
+    """
+    columns = kwargs.get('columns', None)
+    percentiles = kwargs.get('percentiles', [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+    digits = kwargs.get('digits', 2)
+
+    columns = columns or df.columns
+    df_raw = df[columns].copy()
+
+    df = df_raw.describe(percentiles=percentiles).T
+    df['偏度'] = df_raw.skew()
+    df['峰度'] = df_raw.kurt()
+
+    quantiles = [x for x in df.columns if "%" in x]
+    df = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["偏度"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["峰度"])
+
+    format_dict = {
+        "count": "{:.0f}",
+        "mean": f"{{:.{digits}f}}",
+        "std": f"{{:.{digits}f}}",
+        "min": f"{{:.{digits}f}}",
+        "max": f"{{:.{digits}f}}",
+        "偏度": f"{{:.{digits}f}}",
+        "峰度": f"{{:.{digits}f}}",
+    }
+    for q in quantiles:
+        format_dict[q] = f"{{:.{digits}f}}"
+    
+    df = df.format(format_dict)
+    st.dataframe(df, use_container_width=True)
+    st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
+
+
+def show_event_features(df, event_col, event=None, features=None, **kwargs):
+    """分析指定事件发生前后的走势特征统计量
+    
+    :param df: 数据框, 包含事件发生时间、事件名称、价格
+    :param event_col: 事件因子, 如'event'
+    :param event: 事件名称, 如'事件1'
+    :param features: 特征列表, 如['B13收益', 'B13波动', 'F13收益', 'F13波动']，使用 make_price_features 计算的特征
+    :param kwargs: 其他参数
+        - percentiles: 百分位数, 默认[0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+    """
+    import re
+    percentiles = kwargs.get('percentiles', [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+
+    df = df.copy()
+    available_features = [f for f in df.columns if re.match(r'B\d{2}收益|B\d{2}波动|F\d{2}收益|F\d{2}波动', f)]
+    features = features or available_features
+    features = [f for f in features if f in available_features]
+
+    df[event_col] = df[event_col].astype(str)
+    if event == "基准":    # 基准事件，不进行过滤
+        df_i = df.copy()
+    else:
+        df_i = df[df[event_col] == event].copy()
+    
+    df_i = df_i[features + [event_col]]
+    st.divider()
+    st.subheader(f"事件：{event}", divider='rainbow')
+
+    ret_future_features = [f for f in features if re.match(r'F\d{2}收益', f)]
+    ret_before_features = [f for f in features if re.match(r'B\d{2}收益', f)]
+    vol_future_features = [f for f in features if re.match(r'F\d{2}波动', f)]
+    vol_before_features = [f for f in features if re.match(r'B\d{2}波动', f)]
+    tabs = st.tabs(["BEFORE收益特征", "FUTURE收益特征", "BEFORE波动特征", "FUTURE波动特征"])
+
+    with tabs[0]:
+        st.markdown("###### 事件发生前的收益特征")
+        show_describe(df_i, columns=ret_before_features, percentiles=percentiles)
+
+    with tabs[1]:
+        st.markdown("###### 事件发生后的收益特征")
+        show_describe(df_i, columns=ret_future_features, percentiles=percentiles)
+
+    with tabs[2]:
+        st.markdown("###### 事件发生前的波动特征")
+        show_describe(df_i, columns=vol_before_features, percentiles=percentiles)
+
+    with tabs[3]:
+        st.markdown("###### 事件发生后的波动特征")
+        show_describe(df_i, columns=vol_future_features, percentiles=percentiles)
+
+    c1, c2 = st.columns([2, 2])
+    with c1:
+        st.divider()
+        st.markdown("###### 特征统计量说明")
+        st.caption("偏度指标：衡量数据分布的偏斜程度，正数向右偏，负数向左偏；标准正态分布偏度为0")
+        st.caption("峰度指标：衡量数据分布的尖锐程度，正数更尖锐，负数更平缓；标准正态分布峰度为3")
+
+    with c2:
+        st.divider()
+        st.markdown("###### 特征计算说明")
+        st.caption("BX收益：事件发生前N根K线的收益，单位: BP，如：B13收益 = 过去13根K线收益 * 10000")
+        st.caption("BX波动：事件发生前N根K线的波动, std / price, 如：B13波动 = 过去13根K线STD波动率 / 最新一根K线收盘价")
+        st.caption("FX收益：事件发生后N根K线的收益，单位: BP，如：F13收益 = 未来13根K线收益 * 10000")
+        st.caption("FX波动：事件发生后N根K线的波动, std / price, 如：F13波动 = 未来13根K线STD波动率 / 未来第13根K线收盘价")
+
+
+def show_stats_compare(df: pd.DataFrame, **kwargs):
+    """显示多组策略回测的绩效对比
+
+    :param df: 策略回测结果, WeightBacktest 的 stats 数据汇总成的 DataFrame，用 name 列区分不同的策略
+    """
+    if 'name' in df.columns:
+        df.set_index("name", inplace=True)
+
+    # # 收益指标
+    # cols_x = ['绝对收益', '年化', '夏普', '单笔收益', '盈亏平衡点', '日胜率', '日盈亏比', '日赢面']
+    # # 风险指标
+    # cols_y = ['最大回撤', '卡玛', '年化波动率', '下行波动率', '新高间隔', '新高占比', '回撤风险','波动比']
+    # # 特质指标
+    # cols_z = ["开始日期", "结束日期", '品种数量', '持仓K线数', '多头占比', '空头占比', '交易胜率']
+
+    df = df[['绝对收益', '年化', '夏普', '最大回撤', '卡玛', '年化波动率', '下行波动率', '非零覆盖', '新高间隔', '新高占比', '回撤风险', 
+               '交易胜率', '单笔收益', '持仓K线数', '多头占比', '空头占比', '波动比', '盈亏平衡点', '日胜率', '日盈亏比', 
+               '日赢面', '品种数量', "开始日期", "结束日期"]].copy()
+
+    df = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年化"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["绝对收益"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["盈亏平衡点"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["夏普"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["最大回撤"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["卡玛"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["年化波动率"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["下行波动率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日胜率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日盈亏比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["日赢面"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["非零覆盖"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["新高间隔"])
+    df = df.background_gradient(cmap="RdYlGn", axis=None, subset=["回撤风险"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["新高占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["品种数量"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["波动比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["多头占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["空头占比"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["交易胜率"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["单笔收益"])
+    df = df.background_gradient(cmap="RdYlGn_r", axis=None, subset=["持仓K线数"])
+
+    df = df.format(
+        {
+            "盈亏平衡点": "{:.2f}",
+            "年化波动率": "{:.2%}",
+            "下行波动率": "{:.2%}",
+            "最大回撤": "{:.2%}",
+            "卡玛": "{:.2f}",
+            "年化": "{:.2%}",
+            "夏普": "{:.2f}",
+            "非零覆盖": "{:.2%}",
+            "绝对收益": "{:.2%}",
+            "日胜率": "{:.2%}",
+            "日盈亏比": "{:.2f}",
+            "日赢面": "{:.2%}",
+            "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
+            "新高占比": "{:.2%}",
+            "品种数量": "{:.0f}",
+            "波动比": "{:.2f}",
+            "多头占比": "{:.2%}",
+            "空头占比": "{:.2%}",
+            "交易胜率": "{:.2%}",
+            "单笔收益": "{:.2f}",
+            "持仓K线数": "{:.2f}",
+        }
+    )
+    st.dataframe(df, use_container_width=True)
+
+
+def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):
+    """依次删除策略收益最高的N个品种，对比收益变化
+
+    :param df: 策略权重数据
+    :param n: 删除的品种数量
+    :return: None 
+    """
+    from rs_czsc import WeightBacktest
+
+    digits = kwargs.get('digits', 2)
+    fee_rate = kwargs.get('fee_rate', 0.0)
+    weight_type = kwargs.get('weight_type', 'ts')
+    yearly_days = kwargs.get('yearly_days', 252)
+
+    n = min(n, df['symbol'].nunique() - 1)
+    dfw = df[['dt', 'symbol', 'weight', 'price']].copy()
+    wb_map = {}
+    wb1 = WeightBacktest(dfw.copy(), digits=digits, fee_rate=fee_rate, weight_type=weight_type, yearly_days=yearly_days)
+    wb_map['原始策略'] = wb1
+
+    for i in list(range(1, n+1)):
+        top_symbols = wb1.get_top_symbols(i, kind='profit')
+        dfw1 = dfw[~dfw['symbol'].isin(top_symbols)].copy().reset_index(drop=True)
+        wb2 = WeightBacktest(dfw1.copy(), digits=digits, fee_rate=fee_rate, weight_type=weight_type, yearly_days=yearly_days)
+        wb_map[f"删除：{';'.join(top_symbols)}"] = wb2
+
+    dfs = []
+    dailys = []
+    for k, wb in wb_map.items():
+        s = wb.stats.copy()
+        s['name'] = k
+        dfs.append(s)
+
+        d = wb.daily_return.copy()
+        d = d[['date', 'total']].copy()
+        d['name'] = k
+        dailys.append(d)
+    
+    dfd = pd.concat(dailys, ignore_index=True)
+    dfd['date'] = pd.to_datetime(dfd['date'])
+    dfd = pd.pivot_table(dfd, index='date', columns='name', values='total', aggfunc='sum')
+    show_cumulative_returns(dfd, fig_title="删除表现最佳品种后的累计收益对比")
+
+    dfs = pd.DataFrame(dfs)
+    show_stats_compare(dfs)
+

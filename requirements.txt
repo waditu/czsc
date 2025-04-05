@@ -32,5 +32,5 @@ flask
 scipy
 requests_toolbelt
 networkx
-rs_czsc>=0.1.4
+rs_czsc>=0.1.6
 clickhouse_connect

@@ -144,7 +144,6 @@ from czsc.utils.st_components import (
     show_corr_graph,
     show_sectional_ic,
     show_factor_layering,
-    show_symbol_factor_layering,
     show_weight_backtest,
     show_ts_rolling_corr,
     show_ts_self_corr,
@@ -156,8 +155,6 @@ from czsc.utils.st_components import (
     show_rolling_daily_performance,
     show_event_return,
     show_psi,
-    show_strategies_symbol,
-    show_strategies_dailys,
     show_holds_backtest,
     show_symbols_corr,
     show_feature_returns,
@@ -175,6 +172,14 @@ from czsc.utils.st_components import (
     show_symbols_bench,
     show_quarterly_effect,
     show_cumulative_returns,
+    show_cta_periods_classify,
+    show_volatility_classify,
+    show_portfolio,
+    show_turnover_rate,
+    show_describe,
+    show_event_features,
+    show_stats_compare,
+    show_symbol_penalty,
 )
 
 from czsc.utils.bi_info import (
@@ -199,9 +204,7 @@ from czsc.features.utils import (
     rolling_scale,
     rolling_slope,
     rolling_tanh,
-    feature_adjust,
     normalize_corr,
-    feature_to_weight,
     feature_returns,
     feature_sectional_corr,
 )
@@ -229,13 +232,18 @@ from czsc.eda import (
     tsf_type,
     limit_leverage,
     cal_trade_price,
+    mark_cta_periods,
+    mark_volatility,
+    cal_yearly_days,
+    turnover_rate,
+    make_price_features,
 )
 
 
-__version__ = "0.9.64"
+__version__ = "0.9.65"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250224"
+__date__ = "20250315"
 
 
 def welcome():

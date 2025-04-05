@@ -5,6 +5,7 @@ email: zeng_bin8888@163.com
 create_dt: 2023/2/7 13:17
 describe: 用于探索性分析的函数
 """
+import time
 import loguru
 import pandas as pd
 import numpy as np
@@ -291,6 +292,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     factor_params = kwargs.get("factor_params", {})
     price_type = kwargs.get("price_type", "close")
     strict = kwargs.get("strict", True)
+    max_seconds = kwargs.get("max_seconds", 800)
+
+    start_time = time.time()
 
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
@@ -331,6 +335,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 logger.error(f"{factor_name} - {_symbol} - 计算因子出错：{e}")
                 continue
         rows.append(dfx)
+        if time.time() - start_time > max_seconds:
+            logger.warning(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
+            return pd.DataFrame()
 
     dff = pd.concat(rows, ignore_index=True)
     return dff
@@ -665,3 +672,262 @@ def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
     # 合并所有品种的交易价格数据
     dfk = pd.concat(dfs, ignore_index=True)
     return dfk
+
+
+def mark_cta_periods(df: pd.DataFrame, **kwargs):
+    """【后验，有未来信息，不能用于实盘】标记CTA最容易/最难赚钱的N个时间段
+
+    最容易赚钱：笔走势的绝对收益、R平方、波动率排序，取这三个指标的均值，保留 top n 个均值最大的笔，在标准K线上新增一列，标记这些笔的起止时间
+    最难赚钱：笔走势的绝对收益、R平方、波动率排序，取这三个指标的均值，保留 bottom n 个均值最小的笔，在标准K线上新增一列，标记这些笔的起止时间
+
+    :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
+    :param kwargs: 
+
+        - copy: 是否复制数据
+        - verbose: 是否打印日志
+        - logger: 日志记录器
+        - q1: 最容易赚钱的笔的占比
+        - q2: 最难赚钱的笔的占比
+
+    :return: 带有标记的K线数据，新增列 'is_best_period', 'is_worst_period'
+    """
+    from czsc.analyze import CZSC
+    from czsc.utils.bar_generator import format_standard_kline
+
+    q1 = kwargs.get("q1", 0.15)
+    q2 = kwargs.get("q2", 0.4)
+    assert 0.3 >= q1 >= 0.0, "q1 必须在 0.3 和 0.0 之间"
+    assert 0.5 >= q2 >= 0.0, "q2 必须在 0.5 和 0.0 之间"
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+    
+    verbose = kwargs.get("verbose", False)
+    logger = kwargs.get("logger", loguru.logger)
+
+    rows = []
+    for symbol, dfg in df.groupby('symbol'):
+        if verbose:
+            logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
+
+        dfg = dfg.sort_values('dt').copy().reset_index(drop=True)
+        bars = format_standard_kline(dfg, freq='30分钟')
+        c = CZSC(bars, max_bi_num=len(bars))
+
+        bi_stats = []
+        for bi in c.bi_list:
+            bi_stats.append({
+                'symbol': symbol,
+                'sdt': bi.sdt,
+                'edt': bi.edt,
+                'direction': bi.direction.value,
+                'power_price': abs(bi.change),
+                'length': bi.length,
+                'rsq': bi.rsq,
+                'power_volume': bi.power_volume,
+            })
+        bi_stats = pd.DataFrame(bi_stats)
+        bi_stats['power_price_rank'] = bi_stats['power_price'].rank(method='min', ascending=True, pct=True)
+        bi_stats['rsq_rank'] = bi_stats['rsq'].rank(method='min', ascending=True, pct=True)
+        bi_stats['power_volume_rank'] = bi_stats['power_volume'].rank(method='min', ascending=True, pct=True)
+        bi_stats['score'] = bi_stats['power_price_rank'] + bi_stats['rsq_rank'] + bi_stats['power_volume_rank']
+        bi_stats['rank'] = bi_stats['score'].rank(method='min', ascending=False, pct=True)
+
+        best_periods = bi_stats[bi_stats['rank'] <= q1]
+        worst_periods = bi_stats[bi_stats['rank'] > 1 - q2]
+
+        if verbose:
+            logger.info(f"最容易赚钱的笔：{len(best_periods)} 个，详情：\n{best_periods.sort_values('rank', ascending=False)}")
+            logger.info(f"最难赚钱的笔：{len(worst_periods)} 个，详情：\n{worst_periods.sort_values('rank', ascending=True)}")
+
+        # 用 best_periods 的 sdt 和 edt 标记 is_best_period 为 True
+        dfg['is_best_period'] = 0
+        for _, row in best_periods.iterrows():
+            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_best_period'] = 1
+
+        # 用 worst_periods 的 sdt 和 edt 标记 is_worst_period 为 True`
+        dfg['is_worst_period'] = 0
+        for _, row in worst_periods.iterrows():
+            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_worst_period'] = 1
+
+        rows.append(dfg)
+
+    dfr = pd.concat(rows, ignore_index=True)
+    if verbose:
+        logger.info(f"处理完成，最易赚钱时间覆盖率：{dfr['is_best_period'].value_counts()[1] / len(dfr):.2%}, "
+                    f"最难赚钱时间覆盖率：{dfr['is_worst_period'].value_counts()[1] / len(dfr):.2%}")
+
+    return dfr
+
+
+def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
+    """【后验，有未来信息，不能用于实盘】标记时序/截面波动率最大/最小的N个时间段
+
+    :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
+    :param kind: 波动率类型，'ts' 表示时序波动率，'cs' 表示截面波动率
+    :param kwargs: 
+
+        - copy: 是否复制数据
+        - verbose: 是否打印日志
+        - logger: 日志记录器
+        - window: 计算波动率的窗口
+        - q1: 波动率最大的K线数量占比
+        - q2: 波动率最小的K线数量占比
+
+    :return: 带有标记的K线数据，新增列 'is_max_volatility', 'is_min_volatility'
+    """
+    window = kwargs.get("window", 20)
+    q1 = kwargs.get("q1", 0.2)
+    q2 = kwargs.get("q2", 0.2)
+    assert 0.4 >= q1 >= 0.0, "q1 必须在 0.4 和 0.0 之间"
+    assert 0.4 >= q2 >= 0.0, "q2 必须在 0.4 和 0.0 之间"
+    assert kind in ['ts', 'cs'], "kind 必须是 'ts' 或 'cs'"
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+    
+    verbose = kwargs.get("verbose", False)
+    logger = kwargs.get("logger", loguru.logger)
+    
+    # 计算波动率
+    if kind == 'ts':
+        # 时序波动率：每个股票单独计算时间序列上的波动率
+        rows = []
+        for symbol, dfg in df.groupby('symbol'):
+            if verbose:
+                logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
+
+            dfg = dfg.sort_values('dt').copy().reset_index(drop=True)
+            dfg['volatility'] = dfg['close'].pct_change().rolling(window=window).std().shift(-window)
+            dfg['volatility_rank'] = dfg['volatility'].rank(method='min', ascending=False, pct=True)
+            dfg['is_max_volatility'] = np.where(dfg['volatility_rank'] <= q1, 1, 0)
+            dfg['is_min_volatility'] = np.where(dfg['volatility_rank'] > 1 - q2, 1, 0)
+            rows.append(dfg)
+
+        dfr = pd.concat(rows, ignore_index=True)
+    
+    elif kind == 'cs':
+        if df['symbol'].nunique() < 2:
+            raise ValueError(f"品种数量太少(仅 {df['symbol'].nunique()})，无法计算截面波动率")
+        # 截面波动率：在每个时间点比较不同股票之间的波动率
+        # 首先计算各个股票的波动率
+        df = df.sort_values(['dt', 'symbol']).copy()
+        df['volatility'] = df.groupby('symbol')['close'].pct_change().rolling(window=window).std().shift(-window)
+        
+        # 对每个时间点的不同股票进行排序
+        df['volatility_rank'] = df.groupby('dt')['volatility'].rank(method='min', ascending=False, pct=True)
+        df['is_max_volatility'] = np.where(df['volatility_rank'] <= q1, 1, 0)
+        df['is_min_volatility'] = np.where(df['volatility_rank'] > 1 - q2, 1, 0)
+
+        if df['is_max_volatility'].sum() == 0:
+            df['is_max_volatility'] = np.where(df['volatility_rank'] == df['volatility_rank'].max(), 1, 0)
+
+        if df['is_min_volatility'].sum() == 0:
+            df['is_min_volatility'] = np.where(df['volatility_rank'] == df['volatility_rank'].min(), 1, 0)
+
+        dfr = df
+
+    else:
+        raise ValueError(f"kind 必须是 'ts' 或 'cs'，当前值为 {kind}")
+
+    if verbose:
+        # 计算波动率最大和最小的占比
+        max_volatility_pct = dfr['is_max_volatility'].sum() / len(dfr)
+        min_volatility_pct = dfr['is_min_volatility'].sum() / len(dfr)
+        logger.info(f"处理完成，波动率计算方式：{kind}，波动率最大时间覆盖率：{max_volatility_pct:.2%}, "
+                   f"波动率最小时间覆盖率：{min_volatility_pct:.2%}")
+    
+    dfr.drop(columns=['volatility', 'volatility_rank'], inplace=True)
+    return dfr
+
+
+def make_price_features(df, price='price', **kwargs):
+    """计算某个K线过去(before)/未来(future)的价格走势特征
+    
+    :param df: 数据框, 包含 dt, symbol, price 列
+    :param price: 价格列名, 默认'price'
+    :param windows: 窗口列表, 默认(1, 2, 3, 5, 8, 13, 21, 34)
+    :return: 数据框, 包含事件发生时间、事件名称、价格、价格走势特征
+    """
+    df = df.sort_values('dt').reset_index(drop=True)
+    windows = kwargs.get('windows', (1, 2, 3, 5, 8, 13, 21, 34))
+
+    rows = []
+    for _, dfg in df.groupby('symbol'):
+        dfg = dfg.sort_values('dt').reset_index(drop=True)
+        for n in windows:
+            dfg[f'price_change_{n}'] = (dfg[price].pct_change(n) * 10000).round(2)        # 收益单位：BP
+            if n > 5:
+                dfg[f'volatility_{n}'] = dfg[price].rolling(n).std() / dfg[price]
+
+            n_str = str(n).zfill(2)
+            # 过去 N 根K线的特征（Before）
+            dfg[f"B{n_str}收益"] = dfg[f"price_change_{n}"]
+
+            # 未来 N 根K线的特征（Future）
+            dfg[f"F{n_str}收益"] = dfg[f"price_change_{n}"].shift(-n)
+
+            if n > 5:
+                dfg[f"B{n_str}波动"] = dfg[f"volatility_{n}"]
+                dfg[f"F{n_str}波动"] = dfg[f"volatility_{n}"].shift(-n)
+                dfg.drop(columns=[f"volatility_{n}"], inplace=True)
+
+            dfg.drop(columns=[f"price_change_{n}"], inplace=True)
+
+        rows.append(dfg)
+
+    dfx = pd.concat(rows, ignore_index=True)
+    return dfx
+
+
+def turnover_rate(df: pd.DataFrame, **kwargs):
+    """计算持仓变化的单边换手率
+
+    :param df: 标准持仓数据，必须包含 dt, symbol, weight 列
+    :param kwargs:
+
+        - copy: 是否复制数据
+        - verbose: 是否打印日志
+        - logger: 日志记录器
+
+    :return: 单边换手率
+    """
+    verbose = kwargs.get("verbose", False)
+    logger = kwargs.get("logger", loguru.logger)
+
+    if kwargs.get("copy", True):
+        df = df.copy()
+
+    df['dt'] = pd.to_datetime(df['dt'])
+
+    if df['weight'].dtype != 'float64':
+        raise TypeError("weight 列必须包含数值数据")
+
+    if verbose:
+        logger.info(f"正在处理 {df['symbol'].nunique()} 个品种，共 {len(df)} 条数据; "
+                    f"时间范围：{df['dt'].min()} - {df['dt'].max()}")
+
+    dft = pd.pivot_table(df, index="dt", columns="symbol", values="weight", aggfunc="sum")
+    dft = dft.fillna(0)
+    df_turns = dft.diff().abs().sum(axis=1).reset_index()
+    df_turns.columns = ["dt", "change"]
+
+    # 由于是 diff 计算，第一个时刻的仓位变化被忽视了，修改一下
+    sdt = df["dt"].min()
+    df_turns.loc[(df_turns["dt"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].abs().sum()
+
+    # 按日期 resample
+    df_daily = df_turns.set_index("dt").resample("D").sum().reset_index()
+
+    if verbose:
+        logger.info(f"组合换手率：{round(df_turns.change.sum() / 2, 4)}")
+
+    res = {
+        "单边换手率": round(df_daily.change.sum(), 4),
+        "日均换手率": df_daily.change.mean(),
+        "最大单日换手率": df_daily.change.max(),
+        "最小单日换手率": df_daily.change.min(),
+        "日换手详情": df_daily
+    }
+
+    return res

@@ -8,85 +8,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from collections import Counter
-from typing import List
-from deprecated import deprecated
-from sklearn.preprocessing import KBinsDiscretizer
-from ..data import TsDataCache
-
-
-def discretizer(df: pd.DataFrame, col: str, n_bins=20, encode="ordinal", strategy="quantile"):
-    """使用 KBinsDiscretizer 对连续变量在时间截面上进行离散化
-
-    :param df: 数据对象
-    :param col: 连续变量列名
-    :param n_bins: 参见 KBinsDiscretizer 文档
-        https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.KBinsDiscretizer.html
-    :param encode: 参见 KBinsDiscretizer 文档
-    :param strategy: 参见 KBinsDiscretizer 文档
-    :return:
-    """
-    assert col in df.columns, f"{col} not in {df.columns}"
-    assert "dt" in df.columns
-
-    new_col = f"{col}_bins{n_bins}"
-    results = []
-    for dt, dfg in tqdm(df.groupby("dt"), desc=f"{col}_bins{n_bins}"):
-        kb = KBinsDiscretizer(n_bins=n_bins, encode=encode, strategy=strategy)
-        # 加1，使分组从1开始
-        dfg[new_col] = kb.fit_transform(dfg[col].values.reshape(-1, 1)).ravel() + 1
-        results.append(dfg)
-    df = pd.concat(results, ignore_index=True)
-    return df
-
-
-def get_index_beta(dc: TsDataCache, sdt: str, edt: str, freq="D", file_xlsx=None, indices=None):
-    """获取基准指数的Beta
-
-    :param dc: 数据缓存对象
-    :param sdt: 开始日期
-    :param edt: 结束日期
-    :param freq: K线周期，D 日线，W 周线，M 月线
-    :param file_xlsx: 结果保存文件
-    :param indices: 定义指数列表
-    :return:
-    """
-    if not indices:
-        indices = ["000001.SH", "000016.SH", "000905.SH", "000300.SH", "399001.SZ", "399006.SZ"]
-
-    beta = {}
-    p = []
-    for ts_code in indices:
-        df = dc.pro_bar(ts_code=ts_code, start_date=sdt, end_date=edt, freq=freq, asset="I", raw_bar=False)
-        beta[ts_code] = df
-        df = df.fillna(0)
-        start_i, end_i, mdd = max_draw_down(df["n1b"].to_list())
-        start_dt = df.iloc[start_i]["trade_date"]
-        end_dt = df.iloc[end_i]["trade_date"]
-        row = {
-            "标的": ts_code,
-            "开始日期": sdt,
-            "结束日期": edt,
-            "最大回撤": mdd,
-            "回撤开始": start_dt,
-            "回撤结束": end_dt,
-            "交易次数": len(df),
-            "交易胜率": round(len(df[df.n1b > 0]) / len(df), 4),
-            "累计收益": round(df.n1b.sum(), 4),
-        }
-        cols = [x for x in df.columns if x[0] == "n" and x[-1] == "b"]
-        row.update({x: round(df[x].mean(), 4) for x in cols})
-        p.append(row)
-
-    dfp = pd.DataFrame(p)
-    if file_xlsx:
-        f = pd.ExcelWriter(file_xlsx)
-        dfp.to_excel(f, index=False, sheet_name="指数表现")
-        for name, df_ in beta.items():
-            df_.to_excel(f, index=False, sheet_name=name)
-        f.close()
-    else:
-        beta["dfp"] = dfp
-        return beta
+from typing import List, Tuple
 
 
 def max_draw_down(n1b: List):
@@ -111,7 +33,7 @@ def max_draw_down(n1b: List):
     return j, i, mdd
 
 
-def turn_over_rate(df_holds: pd.DataFrame) -> [pd.DataFrame, float]:
+def turn_over_rate(df_holds: pd.DataFrame) -> Tuple[pd.DataFrame, float]:
     """计算持仓明细对应的组合换手率
 
     :param df_holds: 每个交易日的持仓明细，数据样例如下
