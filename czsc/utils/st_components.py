@@ -501,7 +501,7 @@ def show_weight_backtest(dfw, **kwargs):
         dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
         dfx.index = ["多头", "空头"]
         dfx.index.name = "交易方向"
-        st.dataframe(dfx.T, use_container_width=True)
+        st.dataframe(dfx.T.astype(str), use_container_width=True)
 
     dret = wb.daily_return.copy()
     dret["dt"] = pd.to_datetime(dret["date"])
