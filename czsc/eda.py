@@ -743,12 +743,15 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         # 用 best_periods 的 sdt 和 edt 标记 is_best_period 为 True
         dfg['is_best_period'] = 0
         for _, row in best_periods.iterrows():
-            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_best_period'] = 1
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_best_period'] = 1
 
         # 用 worst_periods 的 sdt 和 edt 标记 is_worst_period 为 True`
         dfg['is_worst_period'] = 0
         for _, row in worst_periods.iterrows():
-            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_worst_period'] = 1
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_worst_period'] = 1
+
+        # 将剩余的K线标记为 is_normal_period 为 True
+        dfg['is_normal_period'] = np.where((dfg['is_best_period'] == 0) & (dfg['is_worst_period'] == 0), 1, 0)
 
         rows.append(dfg)
 

@@ -217,7 +217,7 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     res = []
     for year in years:
         ttl = 3600 * 6 if year == str(datetime.now().year) else -1
-        kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
+        kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl, sttl=3600*6)
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
