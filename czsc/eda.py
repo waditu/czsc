@@ -648,10 +648,7 @@ def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
         price_cols = ["TP_CLOSE", "TP_NEXT_OPEN", "TP_NEXT_CLOSE"]
 
         # TWAP / VWAP 价格
-        if "amount" in df_symbol.columns:
-            df_symbol["vol_close_prod"] = df_symbol["amount"]
-        else:
-            df_symbol["vol_close_prod"] = df_symbol["vol"] * df_symbol["close"]
+        df_symbol["vol_close_prod"] = df_symbol["vol"] * df_symbol["close"]
 
         for t in kwargs.get("windows", (5, 10, 15, 20, 30, 60)):
             
