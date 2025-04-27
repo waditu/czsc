@@ -20,7 +20,6 @@ pytest-cov>=4.0.0
 tenacity
 plotly
 parse
-lightgbm
 streamlit
 redis
 oss2
