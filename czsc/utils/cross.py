@@ -23,8 +23,11 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
 
     :return: df, 包含预测分数和排序列
     """
-    from lightgbm import LGBMRanker
-    from sklearn.model_selection import TimeSeriesSplit
+    try:
+        from lightgbm import LGBMRanker
+        from sklearn.model_selection import TimeSeriesSplit
+    except ImportError:
+        raise ImportError("lightgbm is not installed, please install it by `pip install lightgbm`")
 
     assert "symbol" in df.columns, "df must have column 'symbol'"
     assert "dt" in df.columns, "df must have column 'dt'"
