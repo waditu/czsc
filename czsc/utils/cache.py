@@ -194,6 +194,20 @@ def disk_cache(path: Union[AnyStr, Path] = home_path, suffix: str = "pkl", ttl: 
     return decorator
 
 
+def clear_expired_cache(path, max_age: int = 3600 * 24 * 30):
+    """清空过期缓存文件夹
+
+    :param path: 缓存文件夹路径
+    :param max_age: 最大缓存时间，单位：秒
+    """
+    logger.info(f"开始清理缓存文件夹：{path}, max_age={max_age} 秒")
+    path = Path(path)
+    for file in path.glob("*.pkl"):
+        if (time.time() - file.stat().st_ctime) > max_age:
+            file.unlink()
+            logger.info(f"已删除过期缓存文件：{file}, 创建时间：{file.stat().st_ctime}，当前时间：{time.time()}")
+
+
 def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False):
     """清空缓存文件夹
 

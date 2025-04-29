@@ -16,12 +16,15 @@ from pathlib import Path
 from datetime import datetime
 from czsc import RawBar, Freq
 
+
 # 首次使用需要打开一个python终端按如下方式设置 token或者在环境变量中设置 CZSC_TOKEN
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
 
 cache_path = os.getenv("CZSC_CACHE_PATH", os.path.expanduser("~/.quant_data_cache"))
 url = os.getenv("CZSC_DATA_API", "http://zbczsc.com:9106")
 dc = czsc.DataClient(token=os.getenv("CZSC_TOKEN"), url=url, cache_path=cache_path)
+
+czsc.clear_expired_cache(path=cache_path, max_age=3600 * 24 * 30)
 
 
 def get_groups():
@@ -208,20 +211,41 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 
 @czsc.disk_cache(path=cache_path, ttl=-1)
 def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
-    """获取全市场A股的日线数据"""
+    """获取全市场A股的日线数据，按季度分段获取"""
     adj = kwargs.get("adj", "hfq")
-    sdt = pd.to_datetime(sdt).year
-    edt = pd.to_datetime(edt).year
-    years = [str(year) for year in range(sdt, edt + 1)]
+    logger = kwargs.get("logger", loguru.logger)
+    logger.info(f"获取全市场A股的日线数据：{sdt} - {edt}")
+    sdt = pd.to_datetime(sdt)
+    edt = pd.to_datetime(edt)
+
+    # 生成季度区间
+    quarters = pd.date_range(start=sdt, end=edt, freq="QE")
+    # 补上首季度起点和最后一天
+    if len(quarters) == 0 or quarters[0] > sdt:
+        quarters = quarters.insert(0, sdt)
+    if quarters[-1] < edt:
+        quarters = quarters.append(pd.DatetimeIndex([edt]))
+    quarters = quarters.sort_values()
+    logger.info(f"生成季度区间：{quarters}")
 
     res = []
-    for year in years:
-        ttl = 3600 * 6 if year == str(datetime.now().year) else -1
-        kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl, sttl=3600*6)
+    for i in range(len(quarters) - 1):
+        q_sdt = quarters[i] - pd.Timedelta(days=5)
+        q_edt = quarters[i + 1]
+        if q_edt > edt:
+            q_edt = edt
+
+        ttl = 3600 * 6 if q_edt >= datetime.now() else -1
+        kline = dc.pro_bar(sdt=q_sdt.strftime("%Y%m%d"), edt=q_edt.strftime("%Y%m%d"), adj=adj, v=2, ttl=ttl, sttl=3600*6)
         res.append(kline)
+        logger.info(f"获取{q_sdt.strftime('%Y%m%d')} - {q_edt.strftime('%Y%m%d')} - ttl={ttl} 的日线数据：{len(kline)}条")
 
     dfk = pd.concat(res, ignore_index=True)
     dfk["dt"] = pd.to_datetime(dfk["dt"])
+    logger.info(f"合并后的日线数据：{len(dfk)}条")
+    dfk = dfk.drop_duplicates(subset=["code", "dt"], keep="last")
+    logger.info(f"去除重复数据后：{len(dfk)}条")
+
     dfk = dfk.sort_values(["code", "dt"], ascending=True).reset_index(drop=True)
     if kwargs.get("exclude_bj", True):
         dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)

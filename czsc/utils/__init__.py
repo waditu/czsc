@@ -30,7 +30,7 @@ from .stats import (
     rolling_daily_performance,
     psi,
 )
-from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache
+from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache, clear_expired_cache
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS

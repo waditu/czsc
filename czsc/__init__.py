@@ -104,6 +104,7 @@ from czsc.utils import (
     DiskCache,
     disk_cache,
     clear_cache,
+    clear_expired_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,
