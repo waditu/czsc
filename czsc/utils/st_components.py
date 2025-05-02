@@ -501,7 +501,7 @@ def show_weight_backtest(dfw, **kwargs):
         dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
         dfx.index = ["多头", "空头"]
         dfx.index.name = "交易方向"
-        st.dataframe(dfx.T, use_container_width=True)
+        st.dataframe(dfx.T.astype(str), use_container_width=True)
 
     dret = wb.daily_return.copy()
     dret["dt"] = pd.to_datetime(dret["date"])
@@ -2129,22 +2129,27 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
     wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
-    classify = ['原始策略', '趋势行情', '震荡行情']
+    df3 = dfs.copy()
+    df3['weight'] = np.where(df3['is_normal_period'], df3['weight'], 0)
+    df3 = df3[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb3 = WeightBacktest(df3, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    classify = ['原始策略', '趋势行情', '震荡行情', '普通行情']
     # stats = pd.DataFrame([wb.stats, wb1.stats, wb2.stats])
     # stats['classify'] = classify
     # st.dataframe(stats)
 
     dailys = []
-    for wb_, classify_ in zip([wb, wb1, wb2], classify):
+    for wb_, classify_ in zip([wb, wb1, wb2, wb3], classify):
         df_daily = wb_.daily_return.copy()
         df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
         df_daily['classify'] = classify_
         dailys.append(df_daily)
+        
     dailys = pd.concat(dailys, ignore_index=True)
     dailys['date'] = pd.to_datetime(dailys['date'])
     dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
     show_daily_return(dailys, stat_hold_days=False)
-    # show_cumulative_returns(dailys, fig_title="")
 
 
 def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):

@@ -104,6 +104,7 @@ from czsc.utils import (
     DiskCache,
     disk_cache,
     clear_cache,
+    clear_expired_cache,
     get_dir_size,
     empty_cache_path,
     print_df_sample,
@@ -240,10 +241,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.65"
+__version__ = "0.9.66"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250315"
+__date__ = "20250410"
 
 
 def welcome():

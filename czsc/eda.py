@@ -284,6 +284,7 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - min_klines: int, 最小K线数据量，默认为 300
         - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
         - strict: bool, 是否严格模式，默认为 True, 严格模式下，计算因子出错会抛出异常
+        - timeout: int, 超时时间，默认为 300 秒
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
@@ -292,7 +293,7 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     factor_params = kwargs.get("factor_params", {})
     price_type = kwargs.get("price_type", "close")
     strict = kwargs.get("strict", True)
-    max_seconds = kwargs.get("max_seconds", 800)
+    timeout = kwargs.get("timeout", 300)
 
     start_time = time.time()
 
@@ -335,9 +336,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 logger.error(f"{factor_name} - {_symbol} - 计算因子出错：{e}")
                 continue
         rows.append(dfx)
-        if time.time() - start_time > max_seconds:
-            logger.warning(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
-            return pd.DataFrame()
+        
+        if time.time() - start_time > timeout:
+            raise TimeoutError(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
 
     dff = pd.concat(rows, ignore_index=True)
     return dff
@@ -649,6 +650,7 @@ def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
 
         # TWAP / VWAP 价格
         df_symbol["vol_close_prod"] = df_symbol["vol"] * df_symbol["close"]
+
         for t in kwargs.get("windows", (5, 10, 15, 20, 30, 60)):
             
             df_symbol[f"TP_TWAP{t}"] = df_symbol["close"].rolling(t).mean().shift(-t)
@@ -701,7 +703,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
 
     if kwargs.get("copy", True):
         df = df.copy()
-    
+
     verbose = kwargs.get("verbose", False)
     logger = kwargs.get("logger", loguru.logger)
 
@@ -743,12 +745,37 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         # 用 best_periods 的 sdt 和 edt 标记 is_best_period 为 True
         dfg['is_best_period'] = 0
         for _, row in best_periods.iterrows():
-            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_best_period'] = 1
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_best_period'] = 1
+
+        best_up_periods = best_periods[best_periods['direction'] == '向上'].copy()
+        best_down_periods = best_periods[best_periods['direction'] == '向下'].copy()
+
+        dfg['is_best_up_period'] = 0
+        for _, row in best_up_periods.iterrows():
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_best_up_period'] = 1
+
+        dfg['is_best_down_period'] = 0
+        for _, row in best_down_periods.iterrows():
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_best_down_period'] = 1
 
         # 用 worst_periods 的 sdt 和 edt 标记 is_worst_period 为 True`
         dfg['is_worst_period'] = 0
         for _, row in worst_periods.iterrows():
-            dfg.loc[(dfg['dt'] >= row['sdt']) & (dfg['dt'] <= row['edt']), 'is_worst_period'] = 1
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_worst_period'] = 1
+
+        worst_up_periods = worst_periods[worst_periods['direction'] == '向上'].copy()
+        worst_down_periods = worst_periods[worst_periods['direction'] == '向下'].copy()
+
+        dfg['is_worst_up_period'] = 0
+        for _, row in worst_up_periods.iterrows():
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_worst_up_period'] = 1
+        
+        dfg['is_worst_down_period'] = 0
+        for _, row in worst_down_periods.iterrows():
+            dfg.loc[(dfg['dt'] > row['sdt']) & (dfg['dt'] < row['edt']), 'is_worst_down_period'] = 1
+
+        # 将剩余的K线标记为 is_normal_period 为 True
+        dfg['is_normal_period'] = np.where((dfg['is_best_period'] == 0) & (dfg['is_worst_period'] == 0), 1, 0)
 
         rows.append(dfg)
 
@@ -785,10 +812,10 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
 
     if kwargs.get("copy", True):
         df = df.copy()
-    
+   
     verbose = kwargs.get("verbose", False)
     logger = kwargs.get("logger", loguru.logger)
-    
+   
     # 计算波动率
     if kind == 'ts':
         # 时序波动率：每个股票单独计算时间序列上的波动率
@@ -805,7 +832,7 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
             rows.append(dfg)
 
         dfr = pd.concat(rows, ignore_index=True)
-    
+   
     elif kind == 'cs':
         if df['symbol'].nunique() < 2:
             raise ValueError(f"品种数量太少(仅 {df['symbol'].nunique()})，无法计算截面波动率")
@@ -813,7 +840,7 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
         # 首先计算各个股票的波动率
         df = df.sort_values(['dt', 'symbol']).copy()
         df['volatility'] = df.groupby('symbol')['close'].pct_change().rolling(window=window).std().shift(-window)
-        
+       
         # 对每个时间点的不同股票进行排序
         df['volatility_rank'] = df.groupby('dt')['volatility'].rank(method='min', ascending=False, pct=True)
         df['is_max_volatility'] = np.where(df['volatility_rank'] <= q1, 1, 0)
