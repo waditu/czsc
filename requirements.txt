@@ -4,7 +4,6 @@ pyecharts>=1.9.1
 tqdm>=4.66.4
 pandas>=1.0.0
 numpy>1.16,<=1.26.4
-tushare>=1.4.6
 python-docx
 matplotlib
 seaborn

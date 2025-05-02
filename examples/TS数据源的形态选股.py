@@ -5,6 +5,8 @@ email: zeng_bin8888@163.com
 create_dt: 2023/9/25 19:45
 describe: 使用 Tushare 数据源的形态选股
 
+czsc 版本：0.9.66 可用, 需要开通 Tushare 的 API 权限
+
 相关飞书文档：
 1. https://s0cqcxuy3p.feishu.cn/wiki/UGvvw2bMiihciHkRnJecKzm6nnb
 """

@@ -4,6 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/9/10 19:45
 describe: 30分钟笔非多即空策略
+
+czsc 版本：0.9.66 可用
 """
 import czsc
 from pathlib import Path
@@ -132,8 +134,8 @@ class Strategy(czsc.CzscStrategyBase):
 
 if __name__ == '__main__':
     results_path = Path(r'D:\策略研究\笔非多即空')
-    logger.add(results_path / "czsc.log", rotation="1 week", encoding="utf-8")
     results_path.mkdir(exist_ok=True, parents=True)
+    logger.add(results_path / "czsc.log", rotation="1 week", encoding="utf-8")
 
     symbols = research.get_symbols('中证500成分股')[:30]
     symbol = symbols[0]
