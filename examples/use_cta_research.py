@@ -4,6 +4,8 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/6/7 21:12
 describe:
+
+czsc 版本：0.9.66 可用
 """
 import sys
 sys.path.insert(0, '.')

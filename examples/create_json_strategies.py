@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2025/05/02 00:00
+describe: 创建基础策略的 json 文件
+
+czsc 版本：0.9.66 可用
+"""
 from typing import List
 from czsc.strategies import (
     create_macd_long,
@@ -105,4 +114,4 @@ class BetaStrategy(CzscStrategyBase):
 
 if __name__ == "__main__":
     tactic = BetaStrategy(symbol="000001.XSHG", signals_module_name='czsc.signals')
-    tactic.save_positions(r"D:\QMT投研\基础策略V230707")
+    tactic.save_positions(r"D:\CTA投研\策略测试\基础策略V230707")

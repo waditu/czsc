@@ -208,4 +208,4 @@ if __name__ == "__main__":
 
     tactic = Strategy(symbol="000001.SH")
     bars = get_raw_bars("000001.SH", freq="30分钟", sdt="2015-01-01", edt="2022-07-01")
-    tactic.replay(bars, res_path=r"C:\Users\zengb\Desktop\230814\一开多平")
+    tactic.replay(bars, res_path=r"D:\CTA投研\策略测试\一开多平")
