@@ -284,6 +284,7 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - min_klines: int, 最小K线数据量，默认为 300
         - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
         - strict: bool, 是否严格模式，默认为 True, 严格模式下，计算因子出错会抛出异常
+        - timeout: int, 超时时间，默认为 300 秒
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
@@ -292,7 +293,7 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     factor_params = kwargs.get("factor_params", {})
     price_type = kwargs.get("price_type", "close")
     strict = kwargs.get("strict", True)
-    max_seconds = kwargs.get("max_seconds", 800)
+    timeout = kwargs.get("timeout", 300)
 
     start_time = time.time()
 
@@ -335,9 +336,9 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
                 logger.error(f"{factor_name} - {_symbol} - 计算因子出错：{e}")
                 continue
         rows.append(dfx)
-        if time.time() - start_time > max_seconds:
-            logger.warning(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
-            return pd.DataFrame()
+        
+        if time.time() - start_time > timeout:
+            raise TimeoutError(f"{factor_name} - {_symbol} - 计算因子超时，返回空值")
 
     dff = pd.concat(rows, ignore_index=True)
     return dff
