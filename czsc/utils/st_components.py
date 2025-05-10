@@ -2098,58 +2098,63 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
         - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
     """
     from rs_czsc import WeightBacktest
-    from czsc.eda import mark_cta_periods
-    # from czsc.utils.st_components import show_daily_return, show_cumulative_returns
+    from czsc.eda import cal_yearly_days
 
     fee_rate = kwargs.get('fee_rate', 0.00)
     digits = kwargs.get('digits', 1)
     weight_type = kwargs.get('weight_type', 'ts')
-    q1 = kwargs.get('q1', 0.15)
-    q2 = kwargs.get('q2', 0.4)
 
-    dfs = mark_cta_periods(df.copy(), freq='日线', verbose=False, q1=q1, q2=q2)
+    yearly_days = cal_yearly_days(df['dt'].unique().tolist())
+
+    mark_cols = ['is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period',
+                 'is_worst_period', 'is_worst_up_period', 'is_worst_down_period']
+    if not all(col in df.columns for col in mark_cols):
+        from czsc.eda import mark_cta_periods
+        
+        q1 = kwargs.get('q1', 0.15)
+        q2 = kwargs.get('q2', 0.4)
+        dfs = mark_cta_periods(df.copy(), freq='日线', verbose=False, q1=q1, q2=q2)
+    else:
+        dfs = df.copy()
 
     if 'price' not in dfs.columns:
         dfs['price'] = dfs['close']
 
     p1 = dfs['is_best_period'].value_counts()[1] / len(dfs)
+    p1_up = dfs['is_best_up_period'].value_counts()[1] / len(dfs)
+    p1_down = dfs['is_best_down_period'].value_counts()[1] / len(dfs)
     p2 = dfs['is_worst_period'].value_counts()[1] / len(dfs)
-    st.markdown(f"趋势行情占比：:red[{p1:.2%}]；震荡行情占比：:blue[{p2:.2%}]")
+    p2_up = dfs['is_worst_up_period'].value_counts()[1] / len(dfs)
+    p2_down = dfs['is_worst_down_period'].value_counts()[1] / len(dfs)
+    st.markdown(f"趋势行情占比：:red[{p1:.2%}]，其中上涨趋势占比：:red[{p1_up:.2%}]，下跌趋势占比：:red[{p1_down:.2%}]；\n"
+                f"震荡行情占比：:green[{p2:.2%}]，其中上行震荡占比：:green[{p2_up:.2%}]，下行震荡占比：:green[{p2_down:.2%}]")
     st.caption(f"mark_cta_periods 参数：q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
-    wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+    wb_cols = ['dt', 'symbol', 'weight', 'price']
+    period_flags = [
+        None, 'is_best_period', 'is_worst_period', 'is_normal_period',
+        'is_best_up_period', 'is_best_down_period', 'is_worst_up_period', 'is_worst_down_period'
+    ]
+    classify = ['原始策略', '趋势行情', '震荡行情', '普通行情', '上涨趋势', '下跌趋势', '上行震荡', '下行震荡']
 
-    df1 = dfs.copy()
-    df1['weight'] = np.where(df1['is_best_period'], df1['weight'], 0)
-    df1 = df1[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
-    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
-
-    df2 = dfs.copy()
-    df2['weight'] = np.where(df2['is_worst_period'], df2['weight'], 0)
-    df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
-    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
-
-    df3 = dfs.copy()
-    df3['weight'] = np.where(df3['is_normal_period'], df3['weight'], 0)
-    df3 = df3[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
-    wb3 = WeightBacktest(df3, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
-
-    classify = ['原始策略', '趋势行情', '震荡行情', '普通行情']
-    # stats = pd.DataFrame([wb.stats, wb1.stats, wb2.stats])
-    # stats['classify'] = classify
-    # st.dataframe(stats)
+    wbs = []
+    for flag in period_flags:
+        df_tmp = dfs.copy()
+        if flag:
+            df_tmp['weight'] = np.where(df_tmp[flag], df_tmp['weight'], 0)
+        wb = WeightBacktest(df_tmp[wb_cols], fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
+        wbs.append(wb)
 
     dailys = []
-    for wb_, classify_ in zip([wb, wb1, wb2, wb3], classify):
-        df_daily = wb_.daily_return.copy()
-        df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
+    for wb_, classify_ in zip(wbs, classify):
+        df_daily = wb_.daily_return[['date', 'total']].copy().reset_index(drop=True)
         df_daily['classify'] = classify_
         dailys.append(df_daily)
         
     dailys = pd.concat(dailys, ignore_index=True)
     dailys['date'] = pd.to_datetime(dailys['date'])
     dailys = pd.pivot_table(dailys, index='date', columns='classify', values='total')
-    show_daily_return(dailys, stat_hold_days=False)
+    show_daily_return(dailys, stat_hold_days=False, legend_only_cols=['上涨趋势', '下跌趋势', '上行震荡', '下行震荡'])
 
 
 def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
@@ -2177,16 +2182,26 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
     """
     from rs_czsc import WeightBacktest
-    from czsc.eda import mark_volatility
+    from czsc.eda import cal_yearly_days
+
 
     fee_rate = kwargs.get('fee_rate', 0.00)
     digits = kwargs.get('digits', 1)
     weight_type = kwargs.get('weight_type', 'ts')
-    window = kwargs.get('window', 20)
-    q1 = kwargs.get('q1', 0.2)
-    q2 = kwargs.get('q2', 0.2)
 
-    dfs = mark_volatility(df.copy(), kind=kind, verbose=False, q1=q1, q2=q2, window=window)
+    yearly_days = cal_yearly_days(df['dt'].unique().tolist())
+
+    mark_cols = ['is_max_volatility', 'is_min_volatility']
+    if not all(col in df.columns for col in mark_cols):
+        from czsc.eda import mark_volatility
+
+        window = kwargs.get('window', 20)
+        q1 = kwargs.get('q1', 0.2)
+        q2 = kwargs.get('q2', 0.2)
+        dfs = mark_volatility(df.copy(), kind=kind, verbose=False, q1=q1, q2=q2, window=window)
+
+    else:
+        dfs = df.copy()
 
     if 'price' not in dfs.columns:
         dfs['price'] = dfs['close']
@@ -2197,17 +2212,17 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     st.caption(f"mark_volatility 参数：kind={kind}, window={window}, q1={q1}, q2={q2}; WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
     wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, 
-                        weight_type=weight_type)
+                        weight_type=weight_type, yearly_days=yearly_days)
 
     df1 = dfs.copy()
     df1['weight'] = np.where(df1['is_max_volatility'], df1['weight'], 0)
     df1 = df1[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
-    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+    wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
     df2 = dfs.copy()
     df2['weight'] = np.where(df2['is_min_volatility'], df2['weight'], 0)
     df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
-    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+    wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
     classify = ['原始策略', '波动率大', '波动率小']
 
