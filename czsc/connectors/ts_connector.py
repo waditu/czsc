@@ -172,7 +172,7 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
 
     df_klines = pd.concat(klines, ignore_index=True)
     kline = df_klines.drop_duplicates("trade_time").sort_values("trade_time", ascending=True, ignore_index=True)
-    kline["trade_time"] = pd.to_datetime(kline["trade_time"], format=dt_fmt)
+    kline["trade_time"] = pd.to_datetime(kline["trade_time"])
     kline["dt"] = kline["trade_time"]
     float_cols = ["open", "close", "high", "low", "vol", "amount"]
     kline[float_cols] = kline[float_cols].astype("float32")
@@ -291,19 +291,21 @@ def get_symbols(step="all"):
 
 def get_raw_bars(symbol, freq, sdt, edt, fq="后复权", raw_bar=True):
     """读取本地数据"""
-    from czsc import data
-
-    tdc = data.TsDataCache(data_path=cache_path)
     ts_code, asset = symbol.split("#")
     freq = str(freq)
     adj = "qfq" if fq == "前复权" else "hfq"
 
     if "分钟" in freq:
         freq = freq.replace("分钟", "min")
-        bars = tdc.pro_bar_minutes(ts_code, sdt=sdt, edt=edt, freq=freq, asset=asset, adj=adj, raw_bar=raw_bar)
+        bars = pro_bar_minutes(ts_code, sdt=sdt, edt=edt, freq=freq, asset=asset, adj=adj)
+        if raw_bar:
+            bars = format_kline(bars, Freq(freq))
 
     else:
+        import tushare as ts
         _map = {"日线": "D", "周线": "W", "月线": "M"}
         freq = _map[freq]
-        bars = tdc.pro_bar(ts_code, start_date=sdt, end_date=edt, freq=freq, asset=asset, adj=adj, raw_bar=raw_bar)
+        bars = ts.pro_bar(ts_code, start_date=sdt, end_date=edt, freq=freq, asset=asset, adj=adj)
+        if raw_bar:
+            bars = format_kline(bars, Freq(freq))
     return bars
