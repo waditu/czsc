@@ -28,15 +28,9 @@ setup(
     package_data={"": ["utils/china_calendar.feather", "utils/minutes_split.feather"]},
     classifiers=[
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
-    ],
-    entry_points={
-        "console_scripts": [
-            "czsc = czsc.cmd:czsc",
-        ],
-    },
+        "Programming Language :: Python :: 3.13",
+    ]
 )

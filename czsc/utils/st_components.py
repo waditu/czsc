@@ -951,7 +951,11 @@ def show_optuna_study(study, **kwargs):
 
     :return: optuna.study.Study
     """
-    import optuna
+    try:
+        import optuna
+    except ImportError:
+        st.error("请安装 optuna 库, 执行命令：pip install optuna")
+        return
 
     # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
     # https://zh-cn.optuna.org/reference/visualization.html
@@ -1630,8 +1634,12 @@ def show_corr_graph(df, columns=None, threshold=0.2, **kwargs):
 
         - method: str, 相关性计算方法，默认为 pearson, 可选 pearson, kendall, spearman
     """
-    import networkx as nx
-    from czsc.utils.plotly_plot import plot_nx_graph
+    try:
+        import networkx as nx
+        from czsc.utils.plotly_plot import plot_nx_graph
+    except ImportError:
+        st.error("请先安装 networkx 和 czsc 库，执行命令：pip install networkx czsc")
+        return
 
     method = kwargs.get("method", "pearson")
 

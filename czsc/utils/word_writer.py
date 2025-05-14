@@ -12,9 +12,12 @@ describe: 实现一个用python-docx写word文档的辅助工具
 import os
 import docx
 import pandas as pd
-from docx.oxml.ns import qn
-from docx.shared import Cm, Pt, RGBColor
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+try:
+    from docx.oxml.ns import qn
+    from docx.shared import Cm, Pt, RGBColor
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+except ImportError:
+    raise ImportError("请安装 python-docx 库")
 
 
 class WordWriter:
