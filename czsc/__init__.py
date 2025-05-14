@@ -66,7 +66,6 @@ from czsc.utils import (
     format_standard_kline,
 
     KlineChart,
-    WordWriter,
     BarGenerator,
     freq_end_time,
     resample_bars,
@@ -114,9 +113,6 @@ from czsc.utils import (
     DataClient,
     set_url_token,
     get_url_token,
-
-    optuna_study,
-    optuna_good_params,
 
     generate_fernet_key,
     fernet_encrypt,

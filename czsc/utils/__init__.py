@@ -12,7 +12,6 @@ from . import io
 from . import echarts_plot
 
 from .echarts_plot import kline_pro, heat_map
-from .word_writer import WordWriter
 from .corr import nmi_matrix, single_linear, cross_sectional_ic
 from .bar_generator import BarGenerator, freq_end_time, resample_bars, format_standard_kline
 from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market
@@ -34,7 +33,6 @@ from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_ca
 from .index_composition import index_composition
 from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS
-from .optuna import optuna_study, optuna_good_params
 from .events import overlap
 from .fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
 
