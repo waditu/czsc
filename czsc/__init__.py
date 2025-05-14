@@ -66,7 +66,6 @@ from czsc.utils import (
     format_standard_kline,
 
     KlineChart,
-    WordWriter,
     BarGenerator,
     freq_end_time,
     resample_bars,
@@ -114,9 +113,6 @@ from czsc.utils import (
     DataClient,
     set_url_token,
     get_url_token,
-
-    optuna_study,
-    optuna_good_params,
 
     generate_fernet_key,
     fernet_encrypt,
@@ -241,10 +237,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.66"
+__version__ = "0.9.67"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250410"
+__date__ = "20250502"
 
 
 def welcome():

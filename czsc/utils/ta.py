@@ -8,6 +8,9 @@ describe: 常用技术分析指标
 参考链接：
 1. https://github.com/twopirllc/pandas-ta
 
+
+python 3.10 以上版本，可以用 pip install ta-lib-everywhere 安装 ta-lib
+
 """
 import numpy as np
 import pandas as pd

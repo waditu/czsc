@@ -691,7 +691,9 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         - q1: 最容易赚钱的笔的占比
         - q2: 最难赚钱的笔的占比
 
-    :return: 带有标记的K线数据，新增列 'is_best_period', 'is_worst_period'
+    :return: 带有标记的K线数据，新增列
+        'is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period'
+        'is_worst_period', 'is_worst_up_period', 'is_worst_down_period'
     """
     from czsc.analyze import CZSC
     from czsc.utils.bar_generator import format_standard_kline
@@ -729,9 +731,12 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
                 'power_volume': bi.power_volume,
             })
         bi_stats = pd.DataFrame(bi_stats)
-        bi_stats['power_price_rank'] = bi_stats['power_price'].rank(method='min', ascending=True, pct=True)
-        bi_stats['rsq_rank'] = bi_stats['rsq'].rank(method='min', ascending=True, pct=True)
-        bi_stats['power_volume_rank'] = bi_stats['power_volume'].rank(method='min', ascending=True, pct=True)
+        
+        logger.info(f"symbol: {symbol} 共 {len(bi_stats)} 笔")
+        bi_stats['power_price_rank'] = bi_stats['power_price'].rolling(window=100, min_periods=10).rank(method='min', ascending=True, pct=True)
+        bi_stats['rsq_rank'] = bi_stats['rsq'].rolling(window=100, min_periods=10).rank(method='min', ascending=True, pct=True)
+        bi_stats['power_volume_rank'] = bi_stats['power_volume'].rolling(window=100, min_periods=10).rank(method='min', ascending=True, pct=True)
+
         bi_stats['score'] = bi_stats['power_price_rank'] + bi_stats['rsq_rank'] + bi_stats['power_volume_rank']
         bi_stats['rank'] = bi_stats['score'].rank(method='min', ascending=False, pct=True)
 
@@ -739,8 +744,8 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         worst_periods = bi_stats[bi_stats['rank'] > 1 - q2]
 
         if verbose:
-            logger.info(f"最容易赚钱的笔：{len(best_periods)} 个，详情：\n{best_periods.sort_values('rank', ascending=False)}")
-            logger.info(f"最难赚钱的笔：{len(worst_periods)} 个，详情：\n{worst_periods.sort_values('rank', ascending=True)}")
+            logger.info(f"最容易赚钱的笔：{len(best_periods)} 个，样例：\n{best_periods.sort_values('rank', ascending=False).head(10)}")
+            logger.info(f"最难赚钱的笔：{len(worst_periods)} 个，样例：\n{worst_periods.sort_values('rank', ascending=True).head(10)}")
 
         # 用 best_periods 的 sdt 和 edt 标记 is_best_period 为 True
         dfg['is_best_period'] = 0
