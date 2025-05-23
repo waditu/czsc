@@ -39,7 +39,7 @@ def check_data_types(df):
         "close": "float",
         "high": "float",
         "low": "float",
-        "vol": "int64",
+        "vol": "float",
         "amount": "float",
     }
     type_mismatches = {}
