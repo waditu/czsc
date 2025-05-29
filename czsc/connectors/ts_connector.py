@@ -145,7 +145,8 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     """
     import tushare as ts
     from datetime import timedelta
-    pro = dc
+
+    pro = ts.pro_api()
 
     dt_fmt = "%Y%m%d"
 
@@ -155,9 +156,11 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     klines = []
     end_dt = pd.to_datetime(edt)
     dt1 = pd.to_datetime(sdt)
-    delta = timedelta(days=20 * int(freq.replace("min", "")))
+    delta = timedelta(days=40 * int(freq.replace("min", "")))
     dt2 = dt1 + delta
+
     while dt1 < end_dt:
+        print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 请求时间范围：{dt1.strftime(dt_fmt)} - {dt2.strftime(dt_fmt)}")
         df = ts.pro_bar(
             ts_code=ts_code,
             asset=asset,
@@ -165,10 +168,12 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
             start_date=dt1.strftime(dt_fmt),
             end_date=dt2.strftime(dt_fmt),
         )
-        klines.append(df)
-        dt1 = dt2
+        dt1 = dt2 - pd.Timedelta(days=1)
         dt2 = dt1 + delta
-        print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - {dt1} - {dt2} - {len(df)}")
+        if len(df) > 0:
+            klines.append(df)
+            print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 数据长度 = {len(df)}; "
+                f"时间范围：{df['trade_time'].min()} - {df['trade_time'].max()}")
 
     df_klines = pd.concat(klines, ignore_index=True)
     kline = df_klines.drop_duplicates("trade_time").sort_values("trade_time", ascending=True, ignore_index=True)
@@ -229,6 +234,11 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
         kline = kline[kline["trade_time"] <= pd.to_datetime(edt)]
 
     kline = kline.reset_index(drop=True)
+
+    # 标准化：dt, symbol, open, high, low, close, vol, amount
+    kline['symbol'] = ts_code
+    kline['dt'] = pd.to_datetime(kline['trade_time'])
+    kline = kline[['symbol', 'dt', 'open', 'high', 'low', 'close', 'vol', 'amount']].copy()
     return kline
 
 
