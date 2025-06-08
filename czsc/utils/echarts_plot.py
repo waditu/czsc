@@ -551,38 +551,54 @@ def _add_macd_indicator(chart: Chart, kline: List[dict], df_data: List[dict]) ->
             # 重新设置主图高度，为子图腾出空间
             chart.resize(1, 0.7)  # 主图占70%高度
             
+            # 隐藏主图的时间轴，避免重复显示
+            chart.time_scale(visible=False)
+            
             # 创建MACD子图表，占30%高度并同步时间轴
             macd_chart = chart.create_subchart(width=1, height=0.3, sync=True)
-            logger.info("成功创建MACD子图表")
+            
+            # 确保子图显示时间轴，并设置时间轴格式保持一致
+            macd_chart.time_scale(visible=True, time_visible=True, seconds_visible=False)
+            
+            logger.info("成功创建MACD子图表并设置时间轴同步")
         except Exception as subchart_e:
             # 如果不支持子图表，直接返回
             logger.warning(f"子图表创建失败，跳过MACD指标: {subchart_e}")
             return
         
-        # 准备MACD线数据 - 使用简单的时间-数值格式
+        # 确保所有数组长度一致
+        data_length = min(len(df_data), len(diff), len(dea), len(macd))
+        
+        # 重要：对NaN值填充为0，确保数据长度一致，保证时间轴对齐
         diff_line_data = []
         dea_line_data = []
         histogram_data = []
         
-        for j, item in enumerate(df_data):
-            if j < len(diff) and not np.isnan(diff[j]):
-                diff_line_data.append({
-                    'time': item['time'],
-                    'value': float(diff[j])  # 使用 'value' 而不是 'DIFF'
-                })
+        for j in range(data_length):
+            time_value = df_data[j]['time']
             
-            if j < len(dea) and not np.isnan(dea[j]):
-                dea_line_data.append({
-                    'time': item['time'], 
-                    'value': float(dea[j])  # 使用 'value' 而不是 'DEA'
-                })
+            # 对NaN值填充为0，而不是跳过，确保数据长度一致
+            diff_val = 0.0 if np.isnan(diff[j]) else float(diff[j])
+            dea_val = 0.0 if np.isnan(dea[j]) else float(dea[j])
+            macd_val = 0.0 if np.isnan(macd[j]) else float(macd[j])
             
-            if j < len(macd) and not np.isnan(macd[j]):
-                histogram_data.append({
-                    'time': item['time'],
-                    'value': float(macd[j]),
-                    'color': '#26a69a' if macd[j] >= 0 else '#ef5350'
-                })
+            diff_line_data.append({
+                'time': time_value,
+                'value': diff_val
+            })
+            
+            dea_line_data.append({
+                'time': time_value, 
+                'value': dea_val
+            })
+            
+            histogram_data.append({
+                'time': time_value,
+                'value': macd_val,
+                'color': '#26a69a' if macd_val >= 0 else '#ef5350'
+            })
+        
+        logger.info(f"MACD数据准备完成：总数据长度{data_length}，DIFF({len(diff_line_data)})，DEA({len(dea_line_data)})，柱状图({len(histogram_data)})")
         
         # 添加DIFF线（MACD快线）
         if diff_line_data:
@@ -605,8 +621,21 @@ def _add_macd_indicator(chart: Chart, kline: List[dict], df_data: List[dict]) ->
             macd_histogram.set(histogram_df)
             logger.info(f"成功添加MACD柱状图，数据点数：{len(histogram_data)}")
         
-        # 设置子图表图例
+        # 设置子图表样式和联动
         macd_chart.legend(visible=True)
+        
+        # 添加一些样式设置以确保更好的视觉效果
+        try:
+            # 设置MACD子图的网格线
+            macd_chart.grid(vert_enabled=True, horz_enabled=True)
+            
+            # 确保子图的十字光标与主图同步
+            macd_chart.crosshair(mode='normal', vert_color='#758494', vert_style='dotted',
+                               horz_color='#758494', horz_style='dotted')
+        except Exception as style_e:
+            logger.debug(f"设置MACD子图样式时出现警告: {style_e}")
+        
+        logger.info("MACD子图与主图时间轴联动设置完成")
         
     except Exception as e:
         logger.warning(f"添加MACD指标失败: {e}")
