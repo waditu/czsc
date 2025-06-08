@@ -120,6 +120,12 @@ from czsc.utils import (
     fernet_decrypt,
 )
 
+# 警告信息捕获工具
+from czsc.utils.warning_capture import (
+    capture_warnings,
+    execute_with_warning_capture,
+)
+
 # 交易日历工具
 from czsc.utils.calendar import (
     is_trading_date,

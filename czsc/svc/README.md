@@ -15,6 +15,7 @@ czsc/svc/
 ├── factor.py            # 因子分析组件
 ├── backtest.py          # 回测相关组件
 ├── statistics.py        # 统计分析组件
+├── strategy.py          # 策略分析组件
 ├── utils.py             # 工具类组件
 ├── price_analysis.py    # 价格敏感性分析组件
 └── README.md           # 说明文档
@@ -79,6 +80,20 @@ czsc/svc/
 - `show_normality_check` - 正态性检验
 - `show_describe` - 描述性统计
 - `show_df_describe` - DataFrame描述统计
+
+### 策略分析 (`strategy.py`)
+- `show_optuna_study` - Optuna优化结果展示
+- `show_czsc_trader` - 缠中说禅交易员详情
+- `show_strategies_recent` - 最近N天策略表现
+- `show_returns_contribution` - 子策略收益贡献分析
+- `show_symbols_bench` - 多品种基准收益分析
+- `show_quarterly_effect` - 季节性收益对比
+- `show_cta_periods_classify` - 不同市场环境下策略表现
+- `show_volatility_classify` - 波动率分类回测
+- `show_portfolio` - 组合日收益绩效分析
+- `show_turnover_rate` - 换手率变化展示
+- `show_stats_compare` - 多组策略回测绩效对比
+- `show_symbol_penalty` - 依次删除收益最高品种对比
 
 ### 工具组件 (`utils.py`)
 - `show_code_editor` - 代码编辑器

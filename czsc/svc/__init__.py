@@ -76,28 +76,20 @@ from .price_analysis import (
     show_price_sensitive,
 )
 
-# 创建占位函数的工厂
-def _create_placeholder(func_name: str):
-    """创建占位函数的工厂函数"""
-    def placeholder(*args, **kwargs):
-        import streamlit as st
-        st.error(f"{func_name} 功能正在迁移中，请稍候使用")
-    return placeholder
-
-# 需要从原文件迁移的函数（暂时从原文件导入保持兼容性）
-_missing_functions = [
-    'show_optuna_study', 'show_czsc_trader', 'show_strategies_recent',
-    'show_returns_contribution', 'show_symbols_bench', 'show_quarterly_effect',
-    'show_cta_periods_classify', 'show_volatility_classify', 'show_portfolio',
-    'show_turnover_rate', 'show_stats_compare', 'show_symbol_penalty'
-]
-
-# 尝试从原文件导入，如果失败则创建占位函数
-for func_name in _missing_functions:
-    try:
-        exec(f"from ..utils.st_components import {func_name}")
-    except ImportError:
-        globals()[func_name] = _create_placeholder(func_name)
+from .strategy import (
+    show_optuna_study,
+    show_czsc_trader,
+    show_strategies_recent,
+    show_returns_contribution,
+    show_symbols_bench,
+    show_quarterly_effect,
+    show_cta_periods_classify,
+    show_volatility_classify,
+    show_portfolio,
+    show_turnover_rate,
+    show_stats_compare,
+    show_symbol_penalty,
+)
 
 # 将所有函数添加到 __all__ 中
 __all__ = [
