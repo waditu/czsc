@@ -64,6 +64,7 @@ def execute_with_warning_capture(
     func: Callable, 
     *args, 
     return_as_string: bool = False,
+    drop_duplicates: bool = True,
     **kwargs
 ) -> Union[Tuple[List[str], Any], Tuple[str, Any]]:
     """
@@ -73,6 +74,7 @@ def execute_with_warning_capture(
         func: 要执行的函数
         *args: 函数的位置参数
         return_as_string: 是否以字符串格式返回警告信息，默认False返回列表
+        drop_duplicates: 是否删除重复的警告信息，默认True
         **kwargs: 函数的关键字参数
     
     Returns:
@@ -107,6 +109,9 @@ def execute_with_warning_capture(
     warnings_list = warning_capture.get_warnings()
     result = warning_capture.get_result()
     
+    if drop_duplicates:
+        warnings_list = list(dict.fromkeys(warnings_list))
+
     if return_as_string:
         warnings_string = "\n".join(warnings_list) if warnings_list else "无警告信息"
         logger.info(f"捕获到 {len(warnings_list)} 条警告信息")
