@@ -11,7 +11,7 @@ from . import ta
 from . import io
 from . import echarts_plot
 
-from .echarts_plot import kline_pro, heat_map
+from .echarts_plot import kline_pro, trading_view_kline
 from .corr import nmi_matrix, single_linear, cross_sectional_ic
 from .bar_generator import BarGenerator, freq_end_time, resample_bars, format_standard_kline
 from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market

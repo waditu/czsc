@@ -7,57 +7,12 @@
 from pyecharts import options as opts
 from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid, Boxplot
 from pyecharts.commons.utils import JsCode
-from typing import List
+from typing import List, Optional
 import numpy as np
 from czsc.objects import Operate
 from .ta import SMA, MACD
 
-
-def heat_map(data: List[dict],
-             x_label: List[str] = None,
-             y_label: List[str] = None,
-             title: str = "热力图",
-             width: str = "900px",
-             height: str = "680px") -> HeatMap:
-    """绘制热力图
-
-    :param data: 用于绘制热力图的数据，示例如下
-        [{'x': '0hour', 'y': '0day', 'heat': 11},
-         {'x': '0hour', 'y': '1day', 'heat': 40},
-         {'x': '0hour', 'y': '2day', 'heat': 38},
-         {'x': '0hour', 'y': '3day', 'heat': 36},
-         {'x': '0hour', 'y': '4day', 'heat': 11}]
-    :param x_label: x轴标签
-    :param y_label: y轴标签
-    :param title: 图表标题
-    :param width: 图表宽度
-    :param height: 图表高度
-    :return: 图表
-    """
-
-    value = [[s['x'], s['y'], s['heat']] for s in data]
-    heat = [s['heat'] for s in data]
-
-    if not x_label:
-        x_label = sorted(list(set([s['x'] for s in data])))
-
-    if not y_label:
-        y_label = sorted(list(set([s['y'] for s in data])))
-
-    vis_map_opts = opts.VisualMapOpts(pos_left="90%", pos_top="20%", min_=min(heat), max_=max(heat))
-    title_opts = opts.TitleOpts(title=title)
-    init_opts = opts.InitOpts(page_title=title, width=width, height=height)
-    dz_inside = opts.DataZoomOpts(False, "inside", xaxis_index=[0], range_start=80, range_end=100)
-    dz_slider = opts.DataZoomOpts(True, "slider", xaxis_index=[0], pos_top="96%", pos_bottom="0%",
-                                  range_start=80, range_end=100)
-    legend_opts = opts.LegendOpts(is_show=False)
-
-    hm = HeatMap(init_opts=init_opts)
-    hm.add_xaxis(x_label)
-    hm.add_yaxis("heat", y_label, value, label_opts=opts.LabelOpts(is_show=True, position="inside"))
-    hm.set_global_opts(title_opts=title_opts, visualmap_opts=vis_map_opts, legend_opts=legend_opts,
-                       xaxis_opts=opts.AxisOpts(grid_index=0), datazoom_opts=[dz_inside, dz_slider])
-    return hm
+from lightweight_charts import Chart
 
 
 def kline_pro(kline: List[dict],
@@ -376,9 +331,9 @@ def kline_pro(kline: List[dict],
 
     line = Line()
     line.add_xaxis(dts)
-    line.add_yaxis(series_name="DIFF", y_axis=diff, label_opts=label_not_show_opts, is_symbol_show=False,
+    line.add_yaxis(series_name="DIFF", y_axis=diff.tolist(), label_opts=label_not_show_opts, is_symbol_show=False,
                    linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color="#da6ee8"))
-    line.add_yaxis(series_name="DEA", y_axis=dea, label_opts=label_not_show_opts, is_symbol_show=False,
+    line.add_yaxis(series_name="DEA", y_axis=dea.tolist(), label_opts=label_not_show_opts, is_symbol_show=False,
                    linestyle_opts=opts.LineStyleOpts(opacity=0.8, width=1.0, color="#39afe6"))
 
     chart_macd = chart_macd.overlap(line)
@@ -394,48 +349,401 @@ def kline_pro(kline: List[dict],
     return grid_chart
 
 
-def box_plot(data: dict,
-             title: str = "箱线图",
-             width: str = "900px",
-             height: str = "680px") -> Boxplot:
+def _prepare_kline_data(kline: List[dict]) -> tuple:
+    """准备K线数据
+    
+    :param kline: K线数据
+    :return: (df_data, chart)
     """
+    from loguru import logger
+    import pandas as pd
+    
+    # 准备K线数据
+    df_data = []
+    for item in kline:
+        # 处理时间格式
+        if hasattr(item['dt'], 'strftime'):
+            time_str = item['dt'].strftime('%Y-%m-%d')
+        else:
+            time_str = str(item['dt'])
+            
+        df_data.append({
+            'time': time_str,
+            'open': float(item['open']),
+            'high': float(item['high']),
+            'low': float(item['low']),
+            'close': float(item['close']),
+            'volume': float(item.get('vol', item.get('volume', 0)))
+        })
+    
+    # 创建主图表
+    chart = Chart()
+    df = pd.DataFrame(df_data)
+    chart.set(df)
+    
+    logger.info(f"成功创建基础K线图表，包含{len(df_data)}根K线")
+    return df_data, chart
 
-    :param data: 数据
-        样例：
-        data = {
-            "expr 0": [960, 850, 830, 880],
-            "expr 1": [960, 850, 830, 880],
-        }
-    :param title:
-    :param width:
-    :param height:
-    :return:
+
+def _add_moving_averages(chart: Chart, kline: List[dict], df_data: List[dict], 
+                        t_seq: List[int]) -> None:
+    """添加移动平均线
+    
+    :param chart: 图表对象
+    :param kline: K线数据
+    :param df_data: 格式化后的数据
+    :param t_seq: 均线周期序列
     """
-    x_data = []
-    y_data = []
-    for k, v in data.items():
-        x_data.append(k)
-        y_data.append(v)
+    from loguru import logger
+    import pandas as pd
+    
+    if not t_seq:
+        return
+        
+    try:
+        close_prices = np.array([x['close'] for x in kline], dtype=np.double)
+        # 均线颜色：橙色、蓝色、绿色、紫色、青色
+        ma_colors = ['#FF9800', '#2196F3', '#4CAF50', '#9C27B0', '#00BCD4']
+        
+        for i, period in enumerate(t_seq[:5]):  # 最多显示5条均线
+            try:
+                ma_values = SMA(close_prices, timeperiod=period)
+                ma_data = []
+                
+                for j, item in enumerate(df_data):
+                    if j >= period - 1 and j < len(ma_values) and not np.isnan(ma_values[j]):
+                        ma_data.append({
+                            'time': item['time'],
+                            f'MA{period}': float(ma_values[j])
+                        })
+                
+                if ma_data:
+                    ma_df = pd.DataFrame(ma_data).set_index('time')
+                    color = ma_colors[i] if i < len(ma_colors) else '#999999'
+                    ma_line = chart.create_line(f'MA{period}', color=color)
+                    ma_line.set(ma_df)
+                    logger.info(f"成功添加MA{period}均线（{color}），数据点数：{len(ma_data)}")
+            except Exception as e:
+                logger.warning(f"添加MA{period}均线失败: {e}")
+                continue
+    except Exception as e:
+        logger.warning(f"添加移动平均线失败: {e}")
 
-    init_opts = opts.InitOpts(page_title=title, width=width, height=height)
 
-    chart = Boxplot(init_opts=init_opts)
-    chart.add_xaxis(xaxis_data=x_data)
-    chart.add_yaxis(series_name="", y_axis=y_data)
-    chart.set_global_opts(title_opts=opts.TitleOpts(pos_left="center", title=title),
-                          tooltip_opts=opts.TooltipOpts(trigger="item", axis_pointer_type="shadow"),
-                          xaxis_opts=opts.AxisOpts(
-                              type_="category",
-                              boundary_gap=True,
-                              splitarea_opts=opts.SplitAreaOpts(is_show=False),
-                              axislabel_opts=opts.LabelOpts(formatter="{value}"),
-                              splitline_opts=opts.SplitLineOpts(is_show=False),
-                          ),
-                          yaxis_opts=opts.AxisOpts(
-                              type_="value",
-                              name="",
-                              splitarea_opts=opts.SplitAreaOpts(
-                                  is_show=True, areastyle_opts=opts.AreaStyleOpts(opacity=1)
-                              )
-                          ))
+def _add_fractal_marks(chart: Chart, fx: List[dict]) -> None:
+    """添加分型标记
+    
+    :param chart: 图表对象
+    :param fx: 分型数据
+    """
+    from loguru import logger
+    import pandas as pd
+    
+    if not fx:
+        return
+        
+    try:
+        fx_data = []
+        for item in fx:
+            if hasattr(item['dt'], 'strftime'):
+                time_str = item['dt'].strftime('%Y-%m-%d')
+            else:
+                time_str = str(item['dt'])
+                
+            fx_data.append({
+                'time': time_str,
+                '分型': float(item['fx'])
+            })
+        
+        if fx_data:
+            fx_df = pd.DataFrame(fx_data).set_index('time')
+            fx_line = chart.create_line('分型', color='#FF5722')  # 深橙红色
+            fx_line.set(fx_df)
+            logger.info(f"成功添加{len(fx_data)}个分型点（深橙红色）")
+    except Exception as e:
+        logger.warning(f"添加分型标记失败: {e}")
+
+
+def _add_bi_lines(chart: Chart, bi: List[dict]) -> None:
+    """添加笔线
+    
+    :param chart: 图表对象
+    :param bi: 笔数据
+    """
+    from loguru import logger
+    import pandas as pd
+    
+    if not bi:
+        return
+        
+    try:
+        bi_data = []
+        for item in bi:
+            if hasattr(item['dt'], 'strftime'):
+                time_str = item['dt'].strftime('%Y-%m-%d')
+            else:
+                time_str = str(item['dt'])
+                
+            bi_data.append({
+                'time': time_str,
+                '笔': float(item['bi'])
+            })
+        
+        if bi_data:
+            bi_df = pd.DataFrame(bi_data).set_index('time')
+            bi_line = chart.create_line('笔', color='#FFC107')  # 琥珀黄色
+            bi_line.set(bi_df)
+            logger.info(f"成功添加{len(bi_data)}笔（琥珀黄色）")
+    except Exception as e:
+        logger.warning(f"添加笔线失败: {e}")
+
+
+def _add_xd_lines(chart: Chart, xd: List[dict]) -> None:
+    """添加线段
+    
+    :param chart: 图表对象
+    :param xd: 线段数据
+    """
+    from loguru import logger
+    import pandas as pd
+    
+    if not xd:
+        return
+        
+    try:
+        xd_data = []
+        for item in xd:
+            if hasattr(item['dt'], 'strftime'):
+                time_str = item['dt'].strftime('%Y-%m-%d')
+            else:
+                time_str = str(item['dt'])
+                
+            xd_data.append({
+                'time': time_str,
+                '线段': float(item['xd'])
+            })
+        
+        if xd_data:
+            xd_df = pd.DataFrame(xd_data).set_index('time')
+            xd_line = chart.create_line('线段', color='#E91E63')  # 粉红色
+            xd_line.set(xd_df)
+            logger.info(f"成功添加{len(xd_data)}条线段（粉红色）")
+    except Exception as e:
+        logger.warning(f"添加线段失败: {e}")
+
+
+def _add_macd_indicator(chart: Chart, kline: List[dict], df_data: List[dict]) -> None:
+    """添加MACD指标到子图表
+    
+    :param chart: 图表对象
+    :param kline: K线数据
+    :param df_data: 格式化后的数据
+    """
+    from loguru import logger
+    import pandas as pd
+    
+    try:
+        close_prices = np.array([x['close'] for x in kline], dtype=np.double)
+        diff, dea, macd = MACD(close_prices)
+        
+        # 尝试创建子图表用于MACD显示
+        try:
+            # 重新设置主图高度，为子图腾出空间
+            chart.resize(1, 0.7)  # 主图占70%高度
+            
+            # 创建MACD子图表，占30%高度并同步时间轴
+            macd_chart = chart.create_subchart(width=1, height=0.3, sync=True)
+            logger.info("成功创建MACD子图表")
+        except Exception as subchart_e:
+            # 如果不支持子图表，直接返回
+            logger.warning(f"子图表创建失败，跳过MACD指标: {subchart_e}")
+            return
+        
+        # 准备MACD线数据 - 使用简单的时间-数值格式
+        diff_line_data = []
+        dea_line_data = []
+        histogram_data = []
+        
+        for j, item in enumerate(df_data):
+            if j < len(diff) and not np.isnan(diff[j]):
+                diff_line_data.append({
+                    'time': item['time'],
+                    'value': float(diff[j])  # 使用 'value' 而不是 'DIFF'
+                })
+            
+            if j < len(dea) and not np.isnan(dea[j]):
+                dea_line_data.append({
+                    'time': item['time'], 
+                    'value': float(dea[j])  # 使用 'value' 而不是 'DEA'
+                })
+            
+            if j < len(macd) and not np.isnan(macd[j]):
+                histogram_data.append({
+                    'time': item['time'],
+                    'value': float(macd[j]),
+                    'color': '#26a69a' if macd[j] >= 0 else '#ef5350'
+                })
+        
+        # 添加DIFF线（MACD快线）
+        if diff_line_data:
+            diff_df = pd.DataFrame(diff_line_data)
+            diff_line = macd_chart.create_line(color='#1976D2', width=2)  # 深蓝色
+            diff_line.set(diff_df)
+            logger.info(f"成功添加DIFF线（深蓝色），数据点数：{len(diff_line_data)}")
+        
+        # 添加DEA线（MACD慢线/信号线）
+        if dea_line_data:
+            dea_df = pd.DataFrame(dea_line_data)
+            dea_line = macd_chart.create_line(color='#FF5722', width=2)  # 橙红色
+            dea_line.set(dea_df)
+            logger.info(f"成功添加DEA线（橙红色），数据点数：{len(dea_line_data)}")
+        
+        # 添加MACD柱状图
+        if histogram_data:
+            histogram_df = pd.DataFrame(histogram_data)
+            macd_histogram = macd_chart.create_histogram()
+            macd_histogram.set(histogram_df)
+            logger.info(f"成功添加MACD柱状图，数据点数：{len(histogram_data)}")
+        
+        # 设置子图表图例
+        macd_chart.legend(visible=True)
+        
+    except Exception as e:
+        logger.warning(f"添加MACD指标失败: {e}")
+
+
+def _add_trade_signals(chart: Chart, bs: List[dict]) -> None:
+    """添加买卖点标记
+    
+    :param chart: 图表对象
+    :param bs: 买卖点数据
+    """
+    from loguru import logger
+    from datetime import datetime
+    
+    if not bs:
+        return
+        
+    try:
+        for signal in bs:
+            # 处理时间格式
+            if hasattr(signal['dt'], 'strftime'):
+                marker_time = signal['dt']
+            else:
+                # 尝试转换为datetime对象
+                try:
+                    marker_time = datetime.strptime(str(signal['dt']), '%Y-%m-%d')
+                except:
+                    marker_time = None
+            
+            if marker_time is None:
+                continue
+                
+            # 根据操作类型设置不同的标记
+            if signal['op'] in [Operate.LO]:  # 买入开仓
+                chart.marker(time=marker_time, position='below', 
+                           shape='circle', color='#4CAF50', 
+                           text=signal.get('op_desc', '买入'))
+            elif signal['op'] in [Operate.LE]:  # 卖出平仓
+                chart.marker(time=marker_time, position='above', 
+                           shape='circle', color='#F44336', 
+                           text=signal.get('op_desc', '卖出'))
+            elif signal['op'] in [Operate.SO]:  # 卖出开仓
+                chart.marker(time=marker_time, position='above', 
+                           shape='arrow_down', color='#FF9800', 
+                           text=signal.get('op_desc', '做空'))
+            elif signal['op'] in [Operate.SE]:  # 买入平仓
+                chart.marker(time=marker_time, position='below', 
+                           shape='arrow_up', color='#2196F3', 
+                           text=signal.get('op_desc', '平空'))
+        
+        logger.info(f"成功添加{len(bs)}个买卖点标记")
+    except Exception as e:
+        logger.warning(f"添加买卖点标记失败: {e}")
+
+
+def _setup_chart_style(chart: Chart, title: str) -> None:
+    """设置图表样式
+    
+    :param chart: 图表对象
+    :param title: 图表标题
+    """
+    from loguru import logger
+    
+    try:
+        # 设置图表样式
+        chart.legend(visible=True)
+        chart.watermark(title)
+        
+        # 可以添加更多样式设置
+        # chart.layout(background_color='#FFFFFF', text_color='#000000')
+        # chart.grid(vert_enabled=True, horz_enabled=True)
+        
+        logger.info(f"成功设置图表样式和标题: {title}")
+    except Exception as e:
+        logger.warning(f"设置图表样式失败: {e}")
+
+
+def trading_view_kline(kline: List[dict],
+                      fx: Optional[List[dict]] = None,
+                      bi: Optional[List[dict]] = None,
+                      xd: Optional[List[dict]] = None,
+                      bs: Optional[List[dict]] = None,
+                      title: str = "缠中说禅K线分析",
+                      t_seq: Optional[List[int]] = None,
+                      **kwargs) -> Optional[Chart]:
+    """使用 lightweight_charts 绘制缠中说禅K线分析结果
+
+    注意：本函数提供基础的lightweight_charts集成。
+    如需完整功能和更好的视觉效果，建议使用 kline_pro 函数。
+
+    :param kline: K线数据
+    :param fx: 分型识别结果
+    :param bi: 笔识别结果
+    :param xd: 线段识别结果
+    :param bs: 买卖点
+    :param title: 图表标题
+    :param t_seq: 均线系统
+    :return: lightweight_charts Chart对象 或 None
+    """
+    from loguru import logger
+    import pandas as pd
+    
+    # 设置默认值
+    fx = fx or []
+    bi = bi or []
+    xd = xd or []
+    bs = bs or []
+    t_seq = t_seq or [5, 13, 21]
+    
+    # 创建主图表
+    chart = Chart()
+    
+    # 准备K线数据
+    df_data, chart = _prepare_kline_data(kline)
+    
+    # 添加移动平均线
+    _add_moving_averages(chart, kline, df_data, t_seq)
+    
+    # 添加分型标记
+    _add_fractal_marks(chart, fx)
+    
+    # 添加笔线
+    _add_bi_lines(chart, bi)
+    
+    # 添加线段
+    _add_xd_lines(chart, xd)
+    
+    # 添加MACD指标
+    _add_macd_indicator(chart, kline, df_data)
+    
+    # 添加买卖点标记
+    _add_trade_signals(chart, bs)
+    
+    # 设置图表样式
+    _setup_chart_style(chart, title)
+    
+    logger.info(f"创建 lightweight_charts 图表成功: {title}")
+    logger.info(f"包含: K线({len(kline)}), 均线({len(t_seq)}), 分型({len(fx)}), 笔({len(bi)}), 线段({len(xd)}), MACD")
+    
     return chart
