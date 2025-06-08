@@ -1,0 +1,53 @@
+---
+description: 项目整体结构
+globs: 
+alwaysApply: false
+---
+# CZSC项目结构指南
+
+## 项目结构概览
+
+### 主要目录
+- `czsc/` - 核心包目录
+  - `utils/` - 工具函数模块
+  - `traders/` - 交易相关模块
+  - `sensors/` - 传感器模块
+  - `features/` - 特征工程模块
+  - `fsa/` - FSA相关模块
+  - `signals/` - 信号模块
+  - `svc/` - 服务模块
+- `test/` - 单元测试目录
+- `examples/` - 示例代码目录
+- `docs/` - 文档目录
+
+### 关键文件
+- [czsc/__init__.py](mdc:czsc/__init__.py) - 主包初始化文件，暴露公共API
+- [czsc/utils/warning_capture.py](mdc:czsc/utils/warning_capture.py) - 警告捕获工具
+- [test/test_warning_capture.py](mdc:test/test_warning_capture.py) - 警告捕获工具的单元测试
+
+## 导入模式
+
+### 主包API暴露
+所有公共工具函数都应该在 [czsc/__init__.py](mdc:czsc/__init__.py) 中暴露，允许用户直接从主包导入：
+
+```python
+# 推荐的导入方式
+import czsc
+czsc.capture_warnings()
+czsc.execute_with_warning_capture()
+
+# 而不是
+from czsc.utils.warning_capture import capture_warnings
+```
+
+### 新工具函数的暴露
+当添加新的工具函数时，需要：
+1. 在相应的 `utils/` 子模块中实现
+2. 在 [czsc/__init__.py](mdc:czsc/__init__.py) 中添加导入语句
+3. 保持导入分组的一致性和注释说明
+
+### 模块组织
+- 工具函数放在 `czsc/utils/` 下
+- 每个工具模块都应该有对应的测试文件在 `test/` 目录下
+- 测试文件命名格式：`test_<module_name>.py`
+
