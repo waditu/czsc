@@ -12,16 +12,11 @@
 """
 
 import pandas as pd
-import numpy as np
 from loguru import logger
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple
 
-try:
-    import streamlit as st
-    import plotly.express as px
-    HAS_STREAMLIT = True
-except ImportError:
-    HAS_STREAMLIT = False
+import streamlit as st
+import plotly.express as px
 
 from .base import safe_import_weight_backtest, apply_stats_style
 from .returns import show_cumulative_returns
@@ -70,20 +65,11 @@ def show_price_sensitive(df: pd.DataFrame,
         ...     show_detailed_stats=True
         ... )
     """
-    if not HAS_STREAMLIT:
-        raise ImportError("需要安装 streamlit: pip install streamlit")
-    
-    try:
-        from czsc.eda import cal_yearly_days
-    except ImportError:
-        logger.error("无法导入 cal_yearly_days，请检查 czsc 版本")
-        st.error("无法导入必要的功能，请检查 czsc 版本")
-        return None
+    from czsc.eda import cal_yearly_days
     
     # 参数处理
     title_prefix = kwargs.get("title_prefix", "")
     show_detailed_stats = kwargs.get("show_detailed_stats", False)
-    export_results = kwargs.get("export_results", False)
     
     # 数据验证
     required_cols = ["symbol", "dt", "weight", "price"]
@@ -232,7 +218,7 @@ def show_price_sensitive(df: pd.DataFrame,
 
 def _show_sensitivity_assessment(dfr: pd.DataFrame) -> None:
     """显示敏感性评估"""
-    annual_returns = dfr["年化"].values
+    annual_returns = dfr["年化"]
     sensitivity_score = (annual_returns.max() - annual_returns.min()) / annual_returns.mean()
     
     st.markdown("**敏感性评估：**")
