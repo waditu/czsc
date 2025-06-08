@@ -1,0 +1,99 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# CZSC Utils模块指南
+
+## 模块概述
+
+[czsc/utils/](mdc:czsc/utils) 目录包含项目的核心工具函数和辅助类，为其他模块提供通用功能支持。
+
+## 核心模块
+
+### 缓存系统 - cache.py
+[czsc/utils/cache.py](mdc:czsc/utils/cache.py) 提供完整的磁盘缓存解决方案：
+
+#### 主要功能
+- `DiskCache` 类：磁盘缓存管理
+- `disk_cache` 装饰器：函数结果缓存
+- 支持多种数据格式：pkl, json, txt, csv, xlsx, feather, parquet
+- TTL（生存时间）支持
+- 缓存清理和管理
+
+#### 使用示例
+```python
+from czsc.utils.cache import disk_cache, DiskCache
+
+# 装饰器用法
+@disk_cache(path="./cache", suffix="pkl", ttl=3600)
+def expensive_function(data):
+    # 耗时计算
+    return result
+
+# 直接使用缓存类
+cache = DiskCache()
+cache.set("key", data)
+result = cache.get("key")
+```
+
+#### 相关测试
+参考 [test/test_utils_cache.py](mdc:test/test_utils_cache.py) 了解完整的测试用例和使用方法。
+
+### 警告捕获 - warning_capture.py
+[czsc/utils/warning_capture.py](mdc:czsc/utils/warning_capture.py) 提供警告信息捕获和管理：
+
+#### 主要功能
+- `capture_warnings` 上下文管理器：捕获代码块中的警告
+- `execute_with_warning_capture` 函数：执行函数并捕获警告
+- 支持警告去重（drop_duplicates参数）
+- 支持字符串和列表格式输出
+- 异常处理和结果管理
+
+#### 使用示例
+```python
+from czsc.utils.warning_capture import execute_with_warning_capture
+
+def risky_function():
+    warnings.warn("这是一个警告")
+    return "结果"
+
+# 捕获警告
+warnings_list, result = execute_with_warning_capture(risky_function)
+print(f"警告: {warnings_list}")
+print(f"结果: {result}")
+```
+
+#### 相关测试
+参考 [test/test_warning_capture.py](mdc:test/test_warning_capture.py) 了解完整的测试用例。
+
+## 开发规范
+
+### 新工具函数添加
+1. 功能清晰单一，职责明确
+2. 提供完整的类型注解
+3. 编写中文文档字符串
+4. 添加对应的单元测试
+5. 使用loguru.logger进行日志记录
+
+### 错误处理
+- 使用适当的异常类型
+- 提供有意义的错误消息
+- 记录错误日志用于调试
+
+### 性能考虑
+- 大文件操作要考虑内存使用
+- 提供适当的缓存机制
+- 避免不必要的重复计算
+
+## 扩展指南
+
+### 添加新的缓存格式
+在 [czsc/utils/cache.py](mdc:czsc/utils/cache.py) 的 `DiskCache.set()` 和 `DiskCache.get()` 方法中添加新的格式支持。
+
+### 添加新的工具函数
+1. 在相应的模块文件中添加函数
+2. 保持与现有代码风格一致
+3. 添加完整的测试覆盖
+4. 更新文档和示例
+

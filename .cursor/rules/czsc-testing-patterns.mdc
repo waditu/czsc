@@ -1,0 +1,77 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# CZSC项目测试模式
+
+## 测试文件结构
+
+### 测试文件命名
+- 测试文件以 `test_` 开头
+- 测试文件位于 `test/` 目录下
+- 测试文件名与被测试模块对应，如 `test_utils_cache.py` 对应 [czsc/utils/cache.py](mdc:czsc/utils/cache.py)
+
+### 测试文件头部
+```python
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: 2024/01/01 00:00
+describe: 模块名 单元测试
+"""
+```
+
+## 测试函数模式
+
+### 函数风格
+- **必须使用单个函数测试风格，不要使用class**
+- 测试函数命名以 `test_` 开头
+- 使用中文文档字符串描述测试目的
+- 每个函数测试一个具体功能点
+
+### 测试函数示例
+```python
+def test_function_name():
+    """测试具体功能的中文描述"""
+    # 准备测试数据
+    test_data = "测试数据"
+    
+    # 执行被测试功能
+    result = function_under_test(test_data)
+    
+    # 验证结果
+    assert result == expected_value
+    assert isinstance(result, expected_type)
+```
+
+## 测试覆盖要求
+
+### 功能覆盖
+- 正常情况测试
+- 边界条件测试
+- 异常情况测试
+- 参数组合测试
+
+### 断言模式
+- 使用 `assert` 进行断言
+- 检查返回值类型和内容
+- 验证副作用（如文件创建、日志输出等）
+- 使用有意义的断言消息
+
+## 测试数据管理
+
+### 临时文件和目录
+- 使用 `tempfile.mkdtemp()` 创建临时目录
+- 测试结束后必须清理临时文件
+- 避免测试之间的相互影响
+
+### 测试隔离
+- 每个测试函数必须独立
+- 不依赖其他测试的执行顺序
+- 使用setUp和tearDown模式清理环境
+
+## 参考示例
+参考 [test/test_utils_cache.py](mdc:test/test_utils_cache.py) 和 [test/test_warning_capture.py](mdc:test/test_warning_capture.py) 了解完整的测试实现模式。
+

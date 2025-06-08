@@ -1,0 +1,90 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# CZSC项目结构指南
+
+## 项目整体结构
+
+```
+czsc/
+├── czsc/                    # 主要代码包
+│   ├── connectors/         # 数据连接器
+│   ├── features/           # 特征工程
+│   ├── fsa/                # 分形结构分析
+│   ├── sensors/            # 传感器模块
+│   ├── signals/            # 信号处理
+│   ├── svc/                # 服务层
+│   ├── traders/            # 交易模块
+│   └── utils/              # 工具函数
+├── docs/                   # 文档
+├── examples/               # 示例代码
+├── test/                   # 测试文件
+├── pyproject.toml          # 项目配置
+├── requirements.txt        # 依赖管理
+└── README.md              # 项目说明
+```
+
+## 核心模块说明
+
+### utils模块
+- [czsc/utils/cache.py](mdc:czsc/utils/cache.py) - 缓存系统，提供磁盘缓存功能
+- [czsc/utils/warning_capture.py](mdc:czsc/utils/warning_capture.py) - 警告捕获工具
+- 包含各种工具函数和辅助类
+
+### 测试结构
+- [test/](mdc:test) 目录包含所有测试文件
+- 测试文件与源码文件一一对应
+- 使用pytest框架进行测试
+
+## 文件组织原则
+
+### 模块命名
+- 使用小写字母和下划线
+- 模块名要简洁明了，体现功能
+- 避免使用缩写，除非是通用缩写
+
+### 包结构
+- 每个包都有 `__init__.py` 文件
+- 相关功能组织在同一个包内
+- 避免循环导入
+
+### 导入规范
+```python
+# 标准库导入
+import os
+import time
+
+# 第三方库导入
+import pandas as pd
+from loguru import logger
+
+# 本地导入
+from czsc.utils.cache import DiskCache
+```
+
+## 配置文件
+
+### pyproject.toml
+项目的主要配置文件，包含：
+- 项目元数据
+- 依赖声明
+- 工具配置（pytest, linter等）
+
+### requirements.txt
+运行时依赖列表，保持版本固定以确保环境一致性。
+
+## 开发工作流
+
+### 新功能开发
+1. 在相应模块下创建功能代码
+2. 在 `test/` 下创建对应测试文件
+3. 遵循编码规范和测试模式
+4. 确保所有测试通过
+
+### 文档更新
+- 代码变更时同步更新文档
+- 使用中文编写用户文档
+- 保持README.md的最新状态
+
