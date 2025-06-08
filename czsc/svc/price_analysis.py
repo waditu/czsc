@@ -12,11 +12,9 @@
 """
 
 import pandas as pd
+import streamlit as st
 from loguru import logger
 from typing import Optional, Tuple
-
-import streamlit as st
-import plotly.express as px
 
 from .base import safe_import_weight_backtest, apply_stats_style
 from .returns import show_cumulative_returns
