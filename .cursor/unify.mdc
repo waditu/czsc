@@ -1,0 +1,60 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cursor AI 项目规则
+
+## 基本规则
+- 始终用中文回复
+- 生成的 commit 信息使用中文
+- 不要自动执行 git add 和 git commit 操作
+
+## Python 代码规范
+- 统一使用 loguru.logger 进行日志记录
+- 函数/方法复杂度控制在30行以内
+- 每行代码长度限制在120字符，超过需要换行
+- 使用类型注解提高代码可读性
+
+## 提交信息规范
+提交信息必须遵循以下格式：`类型(范围): 描述`
+
+### 类型（type）
+- feat: 新功能
+- fix: 修复
+- perf: 性能优化
+- style: 代码样式
+- docs: 文档
+- test: 测试
+- refactor: 重构
+- build: 构建
+- ci: CI配置
+- chore: 其他更改
+- revert: 回滚
+- types: 类型定义
+- release: 发布
+
+### 范围（scope）
+- 项目包名
+- project
+- style
+- lint
+- ci
+- dev
+- deploy
+- other
+
+
+## 代码质量要求
+- 函数应该单一职责，功能明确
+- 添加适当的错误处理和日志记录
+- 使用异步编程提升性能
+- 保持代码整洁和可维护性 
+
+## 代码审查要求
+
+- 检查代码中是否有冗余的逻辑，必须删除冗余
+- 检查代码中是否有没有使用的 import，必须删除
+
+
+

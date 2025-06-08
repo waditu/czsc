@@ -18,6 +18,7 @@ from czsc import utils
 from czsc import traders
 from czsc import sensors
 from czsc import aphorism
+from czsc import svc
 from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.analyze import CZSC
