@@ -14,6 +14,13 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
+from czsc.mock import (
+    generate_strategy_returns,
+    generate_portfolio_data,
+    generate_weight_data,
+    generate_price_data,
+    generate_kline_data
+)
 
 # 设置页面配置
 st.set_page_config(
@@ -34,136 +41,7 @@ demo_type = st.sidebar.selectbox(
      "换手率分析", "策略绩效对比", "品种基准分析", "市场环境分类", "波动率分类"]
 )
 
-# 生成示例数据的函数
-@st.cache_data
-def generate_strategy_returns(n_strategies=10, n_days=None):
-    """生成多策略收益数据"""
-    dates = pd.date_range(start='2010-01-01', end='2025-06-08', freq='D')
-    if n_days and len(dates) > n_days:
-        dates = dates[-n_days:]  # 取最近的n_days天
-    data = []
-    
-    for i in range(n_strategies):
-        strategy_name = f"策略_{i+1:02d}"
-        # 生成具有不同特征的收益率
-        base_return = np.random.normal(0.0005, 0.015, len(dates))
-        if i % 3 == 0:  # 每3个策略中有一个表现更好
-            base_return += np.random.normal(0.0002, 0.005, len(dates))
-        
-        for j, dt in enumerate(dates):
-            data.append({
-                'dt': dt,
-                'strategy': strategy_name,
-                'returns': base_return[j]
-            })
-    
-    return pd.DataFrame(data)
-
-@st.cache_data
-def generate_portfolio_data():
-    """生成组合数据"""
-    dates = pd.date_range(start='2010-01-01', end='2025-06-08', freq='D')
-    portfolio_returns = np.random.normal(0.0008, 0.012, len(dates))
-    benchmark_returns = np.random.normal(0.0003, 0.010, len(dates))
-    
-    return pd.DataFrame({
-        'dt': dates,
-        'portfolio': portfolio_returns,
-        'benchmark': benchmark_returns
-    })
-
-@st.cache_data
-def generate_weight_data():
-    """生成权重数据"""
-    dates = pd.date_range(start='2010-01-01', end='2025-06-08', freq='D')
-    symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
-    
-    data = []
-    for dt in dates:
-        # 生成随机权重，每日权重和为1
-        weights = np.random.random(len(symbols))
-        weights = weights / weights.sum()
-        
-        for i, symbol in enumerate(symbols):
-            data.append({
-                'dt': dt,
-                'symbol': symbol,
-                'weight': weights[i]
-            })
-    
-    return pd.DataFrame(data)
-
-@st.cache_data  
-def generate_price_data():
-    """生成价格数据"""
-    dates = pd.date_range(start='2010-01-01', end='2025-06-08', freq='D')
-    symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
-    
-    data = []
-    for symbol in symbols:
-        price = 100.0
-        for dt in dates:
-            price *= (1 + np.random.normal(0.0005, 0.02))
-            data.append({
-                'symbol': symbol,
-                'dt': dt,
-                'price': price
-            })
-    
-    return pd.DataFrame(data)
-
-@st.cache_data
-def generate_kline_data():
-    """生成K线数据，包含完整的OHLCVA信息（开高低收量额）"""
-    dates = pd.date_range(start='2010-01-01', end='2025-06-08', freq='D')
-    symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA']
-    
-    data = []
-    for symbol in symbols:
-        # 初始价格
-        price = 100.0
-        
-        for i, dt in enumerate(dates):
-            # 生成开盘价
-            open_price = price * (1 + np.random.normal(0, 0.01))
-            
-            # 生成日内波动
-            daily_return = np.random.normal(0.0005, 0.02)
-            high_mult = 1 + abs(np.random.normal(0, 0.015))
-            low_mult = 1 - abs(np.random.normal(0, 0.015))
-            
-            # 计算OHLC
-            close_price = open_price * (1 + daily_return)
-            high_price = max(open_price, close_price) * high_mult
-            low_price = min(open_price, close_price) * low_mult
-            
-            # 成交量（随机生成）
-            volume = np.random.randint(1000000, 10000000)
-            
-            # 成交金额（价格 * 成交量）
-            amount = close_price * volume
-            
-            # 权重（简单均权或随机权重）
-            weight = 1.0 / len(symbols) + np.random.normal(0, 0.02)
-            weight = max(0.01, min(0.5, weight))  # 限制权重范围
-            
-            data.append({
-                'dt': dt,
-                'symbol': symbol,
-                'open': round(open_price, 2),
-                'close': round(close_price, 2),
-                'high': round(high_price, 2),
-                'low': round(low_price, 2),
-                'vol': volume,
-                'amount': round(amount, 2),  # 成交金额
-                'weight': round(weight, 4),
-                'price': round(close_price, 2)  # 用收盘价作为价格
-            })
-            
-            # 更新基准价格
-            price = close_price
-    
-    return pd.DataFrame(data)
+# 数据生成函数已迁移到 czsc.mock 模块中
 
 # 根据选择的演示类型展示相应功能
 if demo_type == "策略收益贡献分析":
