@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 模拟数据生成模块
-
-本模块提供各种用于测试和演示的模拟数据生成函数。
-
-作者: 缠中说禅团队
 """
 import numpy as np
 import pandas as pd
@@ -49,7 +45,7 @@ def generate_strategy_returns(n_strategies=10, n_days=None, seed=42):
 
 
 @disk_cache(ttl=3600*24)
-def generate_portfolio_data(seed=42):
+def generate_portfolio(seed=42):
     """生成组合数据
     
     Args:
@@ -73,7 +69,7 @@ def generate_portfolio_data(seed=42):
 
 
 @disk_cache(ttl=3600*24)
-def generate_weight_data(seed=42):
+def generate_weights(seed=42):
     """生成权重数据
     
     Args:
@@ -209,27 +205,3 @@ def set_global_seed(seed=42):
         适用于需要统一设置种子的场景
     """
     np.random.seed(seed)
-
-
-# 使用示例和说明
-"""
-使用方式：
-
-1. 每次调用时指定相同的seed参数：
-   data1 = generate_kline_data(seed=123)
-   data2 = generate_kline_data(seed=123)
-   # data1 和 data2 完全相同
-
-2. 使用全局种子：
-   set_global_seed(123)
-   data1 = generate_kline_data()
-   
-   set_global_seed(123)
-   data2 = generate_kline_data()
-   # data1 和 data2 完全相同
-
-3. 不指定seed时使用默认值42，确保默认行为一致：
-   data1 = generate_kline_data()
-   data2 = generate_kline_data()
-   # data1 和 data2 完全相同
-"""
