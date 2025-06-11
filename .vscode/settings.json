@@ -17,5 +17,14 @@
         "120"
     ],
     "typescript.locale": "zh-CN",
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "off",
+    "pylint.args": ["--disable=all"],
+    "pyright.disableLanguageServices": true,
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.linting.enabled": false,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.linting.mypyEnabled": false
 }
