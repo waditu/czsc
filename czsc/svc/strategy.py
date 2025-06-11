@@ -443,6 +443,10 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
         - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
     """
     WeightBacktest = safe_import_weight_backtest()
+    if WeightBacktest is None:
+        st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
+        return
+
     from czsc.eda import cal_yearly_days
 
     fee_rate = kwargs.get('fee_rate', 0.00)
@@ -529,6 +533,10 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
     """
     WeightBacktest = safe_import_weight_backtest()
+    if WeightBacktest is None:
+        st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
+        return
+
     from czsc.eda import cal_yearly_days
 
     fee_rate = kwargs.get('fee_rate', 0.00)
@@ -537,13 +545,13 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
 
     yearly_days = cal_yearly_days(df['dt'].unique().tolist())
 
-    mark_cols = ['is_max_volatility', 'is_min_volatility']
+    mark_cols = ['is_max_volatility', 'is_mid_volatility', 'is_min_volatility']
     if not all(col in df.columns for col in mark_cols):
         from czsc.eda import mark_volatility
 
         window = kwargs.get('window', 20)
-        q1 = kwargs.get('q1', 0.2)
-        q2 = kwargs.get('q2', 0.2)
+        q1 = kwargs.get('q1', 0.3)
+        q2 = kwargs.get('q2', 0.3)
         dfs = mark_volatility(df.copy(), kind=kind, verbose=False, q1=q1, q2=q2, window=window)
 
     else:
@@ -553,8 +561,9 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
         dfs['price'] = dfs['close']
 
     p1 = dfs['is_max_volatility'].value_counts()[1] / len(dfs)
-    p2 = dfs['is_min_volatility'].value_counts()[1] / len(dfs)
-    st.markdown(f"波动率最大行情占比：:red[{p1:.2%}]；波动率最小行情占比：:blue[{p2:.2%}]")
+    p2 = dfs['is_mid_volatility'].value_counts()[1] / len(dfs)
+    p3 = dfs['is_min_volatility'].value_counts()[1] / len(dfs)
+    st.markdown(f"高波动行情占比：:red[{p1:.2%}]；中波动行情占比：:green[{p2:.2%}]；低波动行情占比：:blue[{p3:.2%}]")
     st.caption(f"WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
     wb = WeightBacktest(dfs[['dt', 'symbol', 'weight', 'price']], fee_rate=fee_rate, digits=digits, 
@@ -566,14 +575,19 @@ def show_volatility_classify(df: pd.DataFrame, kind='ts', **kwargs):
     wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
     df2 = dfs.copy()
-    df2['weight'] = np.where(df2['is_min_volatility'], df2['weight'], 0)
+    df2['weight'] = np.where(df2['is_mid_volatility'], df2['weight'], 0)
     df2 = df2[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
     wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
-    classify = ['原始策略', '波动率大', '波动率小']
+    df3 = dfs.copy()
+    df3['weight'] = np.where(df3['is_min_volatility'], df3['weight'], 0)
+    df3 = df3[['dt', 'symbol', 'weight', 'price']].copy().reset_index(drop=True)
+    wb3 = WeightBacktest(df3, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
+
+    classify = ['原始策略', '高波动', '中波动', '低波动']
 
     dailys = []
-    for wb_, classify_ in zip([wb, wb1, wb2], classify):
+    for wb_, classify_ in zip([wb, wb1, wb2, wb3], classify):
         df_daily = wb_.daily_return.copy()
         df_daily = df_daily[['date', 'total']].copy().reset_index(drop=True)
         df_daily['classify'] = classify_

@@ -809,8 +809,8 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
     :return: 带有标记的K线数据，新增列 'is_max_volatility', 'is_min_volatility'
     """
     window = kwargs.get("window", 20)
-    q1 = kwargs.get("q1", 0.2)
-    q2 = kwargs.get("q2", 0.2)
+    q1 = kwargs.get("q1", 0.3)
+    q2 = kwargs.get("q2", 0.3)
     assert 0.4 >= q1 >= 0.0, "q1 必须在 0.4 和 0.0 之间"
     assert 0.4 >= q2 >= 0.0, "q2 必须在 0.4 和 0.0 之间"
     assert kind in ['ts', 'cs'], "kind 必须是 'ts' 或 'cs'"
@@ -831,9 +831,11 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
 
             dfg = dfg.sort_values('dt').copy().reset_index(drop=True)
             dfg['volatility'] = dfg['close'].pct_change().rolling(window=window).std().shift(-window)
-            dfg['volatility_rank'] = dfg['volatility'].rank(method='min', ascending=False, pct=True)
+            dfg['volatility_rank'] = dfg['volatility'].rolling(window=300, min_periods=100).rank(method='min', ascending=False, pct=True)
             dfg['is_max_volatility'] = np.where(dfg['volatility_rank'] <= q1, 1, 0)
             dfg['is_min_volatility'] = np.where(dfg['volatility_rank'] > 1 - q2, 1, 0)
+            # 如果 is_max_volatility 和 is_min_volatility 都为 0，则标记为 is_mid_volatility
+            dfg['is_mid_volatility'] = np.where((dfg['is_max_volatility'] == 0) & (dfg['is_min_volatility'] == 0), 1, 0)
             rows.append(dfg)
 
         dfr = pd.concat(rows, ignore_index=True)
@@ -857,6 +859,9 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
         if df['is_min_volatility'].sum() == 0:
             df['is_min_volatility'] = np.where(df['volatility_rank'] == df['volatility_rank'].min(), 1, 0)
 
+        # 如果 is_max_volatility 和 is_min_volatility 都为 0，则标记为 is_mid_volatility
+        df['is_mid_volatility'] = np.where((df['is_max_volatility'] == 0) & (df['is_min_volatility'] == 0), 1, 0)
+
         dfr = df
 
     else:
@@ -865,9 +870,11 @@ def mark_volatility(df: pd.DataFrame, kind='ts', **kwargs):
     if verbose:
         # 计算波动率最大和最小的占比
         max_volatility_pct = dfr['is_max_volatility'].sum() / len(dfr)
+        mid_volatility_pct = dfr['is_mid_volatility'].sum() / len(dfr)
         min_volatility_pct = dfr['is_min_volatility'].sum() / len(dfr)
-        logger.info(f"处理完成，波动率计算方式：{kind}，波动率最大时间覆盖率：{max_volatility_pct:.2%}, "
-                   f"波动率最小时间覆盖率：{min_volatility_pct:.2%}")
+        logger.info(f"处理完成，波动率计算方式：{kind}，高波动覆盖率：{max_volatility_pct:.2%}, "
+                   f"中波动覆盖率：{mid_volatility_pct:.2%}, "
+                   f"低波动覆盖率：{min_volatility_pct:.2%}")
     
     dfr.drop(columns=['volatility', 'volatility_rank'], inplace=True)
     return dfr
