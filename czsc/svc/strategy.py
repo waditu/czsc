@@ -650,20 +650,6 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
     wbs = {classify_: wb_ for classify_, wb_ in zip(classify, [wb, wb1, wb2, wb3])}
     show_multi_backtest(wbs, show_describe=False)
 
-    # dailys = []
-    # for wb_, classify_ in zip([wb, wb1, wb2, wb3], classify):
-    #     df_daily = wb_.daily_return.copy()
-    #     df_daily = df_daily[["date", "total"]].copy().reset_index(drop=True)
-    #     df_daily["classify"] = classify_
-    #     dailys.append(df_daily)
-    # dailys = pd.concat(dailys, ignore_index=True)
-    # dailys["date"] = pd.to_datetime(dailys["date"])
-    # dailys = pd.pivot_table(dailys, index="date", columns="classify", values="total")
-
-    # from .returns import show_daily_return
-
-    # show_daily_return(dailys, stat_hold_days=False)
-
 
 def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: Optional[str] = None, **kwargs):
     """分析组合日收益绩效
