@@ -609,14 +609,14 @@ def clear_strategy(
         logger.info("将继续执行删除操作...")
 
     if human_confirm:
-        print("\n" + "="*60)
-        print(f"⚠️  警告：即将删除策略 {strategy} 的所有数据")
-        print("="*60)
+        logger.info("\n" + "="*60)
+        logger.info(f"⚠️  警告：即将删除策略 {strategy} 的所有数据")
+        logger.info("="*60)
         confirm = input("请仔细确认上述信息，确认删除请输入 'DELETE' (大小写敏感): ")
         if confirm != "DELETE":
             logger.warning(f"取消清空策略 {strategy} 的所有数据")
             return
-        print("开始执行删除操作...")
+        logger.info("开始执行删除操作...")
 
     query = f"""
     DELETE FROM {database}.metas WHERE strategy = '{strategy}'
