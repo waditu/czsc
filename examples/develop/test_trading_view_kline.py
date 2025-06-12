@@ -9,10 +9,10 @@ create_dt: 2025-01-27
 import sys
 import os
 
-# # 添加当前项目路径到sys.path
-# current_dir = os.path.dirname(os.path.abspath(__file__))
-# project_dir = os.path.dirname(current_dir)
-sys.path.insert(0, r"A:\ZB\git_repo\waditu\czsc")
+# 添加当前项目路径到sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.dirname(current_dir)
+sys.path.insert(0, project_dir)
 
 import pandas as pd
 import numpy as np
@@ -172,23 +172,17 @@ def test_trading_view_kline():
 
         # 调用函数
         chart = trading_view_kline(
-            kline=kline_data,
-            fx=fx_data,
-            bi=bi_data,
-            bs=bs_data,
-            title="缠中说禅K线分析测试",
-            t_seq=[5, 10, 20],
-            use_streamlit=True,
+            kline=kline_data, fx=fx_data, bi=bi_data, bs=bs_data, title="缠中说禅K线分析测试", t_seq=[5, 10, 20]
         )
 
         logger.info("trading_view_kline 函数调用成功！")
-        chart.load()
-        # # 显示图表（如果支持的话）
-        # if chart and hasattr(chart, "show"):
-        #     logger.info("显示图表...")
-        #     chart.show(block=True)
-        # else:
-        #     logger.warning("图表对象无法显示，可能是 lightweight_charts 未正确安装")
+
+        # 显示图表（如果支持的话）
+        if chart and hasattr(chart, "show"):
+            logger.info("显示图表...")
+            chart.show(block=True)
+        else:
+            logger.warning("图表对象无法显示，可能是 lightweight_charts 未正确安装")
 
         return True
 

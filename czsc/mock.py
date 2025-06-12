@@ -8,6 +8,161 @@ from czsc.utils.cache import disk_cache
 
 
 @disk_cache(ttl=3600 * 24)
+def generate_klines(seed=42):
+    """生成K线数据，包含完整的OHLCVA信息（开高低收量额）
+
+    Args:
+        seed: 随机数种子，确保结果可重现，默认42
+
+    Returns:
+        pd.DataFrame: 包含K线数据的DataFrame，列包括dt、symbol、open、close、high、low、vol、amount
+    """
+    # 设置随机数种子确保结果可重现
+    np.random.seed(seed)
+
+    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
+    symbols = [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "TSLA",
+        "NVDA",
+        "META",
+        "NFLX",
+        "PYPL",
+        "INTC",
+        "CSCO",
+        "IBM",
+        "ORCL",
+        "SAP",
+        "BTC",
+        "ETH",
+        "000001",
+    ]
+
+    # 定义不同的市场阶段，模拟真实市场的周期性变化
+    phases = [
+        {"name": "熊市", "trend": -0.0008, "volatility": 0.025, "length": 0.3},
+        {"name": "震荡", "trend": 0.0002, "volatility": 0.015, "length": 0.2},
+        {"name": "牛市", "trend": 0.0012, "volatility": 0.02, "length": 0.3},
+        {"name": "调整", "trend": -0.0005, "volatility": 0.02, "length": 0.2},
+    ]
+
+    data = []
+    for symbol in symbols:
+        # 初始价格
+        base_price = 100.0
+
+        # 为每个标的设置不同的种子偏移，确保不同标的有不同的走势
+        symbol_seed = seed + hash(symbol) % 1000
+        np.random.seed(symbol_seed)
+
+        # 市场阶段控制变量
+        total_days = len(dates)
+        phase_idx = 0
+        phase_days = 0
+        current_phase = phases[phase_idx]
+
+        for i, dt in enumerate(dates):
+            # 切换市场阶段
+            if phase_days >= total_days * current_phase["length"]:
+                phase_idx = (phase_idx + 1) % len(phases)
+                current_phase = phases[phase_idx]
+                phase_days = 0
+
+            # 当前阶段的趋势和波动
+            trend = current_phase["trend"]
+            volatility = current_phase["volatility"]
+
+            # 添加周期性波动，模拟季节性等因素
+            cycle_factor = np.sin(i / 30) * 0.001  # 30天周期
+
+            # 添加长期周期，模拟年度周期
+            annual_cycle = np.sin(i / 365) * 0.0005  # 年度周期
+
+            # 随机噪音
+            noise = np.random.normal(0, volatility)
+
+            # 计算开盘价和收盘价
+            open_price = base_price
+            close_price = base_price * (1 + trend + cycle_factor + annual_cycle + noise)
+
+            # 确保价格不会变为负数
+            if close_price <= 0:
+                close_price = base_price * 0.95
+
+            # 计算日内波动范围，考虑市场波动的合理性
+            price_change_ratio = abs(close_price - open_price) / open_price
+            daily_range = base_price * (price_change_ratio + np.random.uniform(0.01, 0.04))
+
+            if close_price > open_price:  # 阳线
+                high_price = close_price + daily_range * np.random.uniform(0.1, 0.5)
+                low_price = open_price - daily_range * np.random.uniform(0.1, 0.3)
+            else:  # 阴线
+                high_price = open_price + daily_range * np.random.uniform(0.1, 0.3)
+                low_price = close_price - daily_range * np.random.uniform(0.1, 0.5)
+
+            # 确保价格关系正确：high >= max(open, close), low <= min(open, close)
+            high_price = max(high_price, open_price, close_price)
+            low_price = min(low_price, open_price, close_price)
+
+            # 模拟成交量 - 价格波动大的时候成交量通常也大
+            base_volume = np.random.uniform(100000, 300000)
+            volatility_factor = price_change_ratio * 5  # 波动率影响成交量
+            volume_multiplier = 1 + volatility_factor + np.random.uniform(-0.2, 0.2)
+            volume = int(base_volume * max(volume_multiplier, 0.3))  # 确保成交量不会过小
+
+            # 计算成交金额（使用平均价格）
+            avg_price = (high_price + low_price + open_price + close_price) / 4
+            amount = volume * avg_price
+
+            data.append(
+                {
+                    "dt": dt,
+                    "symbol": symbol,
+                    "open": round(open_price, 2),
+                    "close": round(close_price, 2),
+                    "high": round(high_price, 2),
+                    "low": round(low_price, 2),
+                    "vol": volume,
+                    "amount": round(amount, 2),
+                }
+            )
+
+            # 更新基准价格为收盘价
+            base_price = close_price
+            phase_days += 1
+
+    return pd.DataFrame(data)
+
+
+def generate_klines_with_weights(seed=42):
+    """生成K线数据，包含权重信息"""
+    df = generate_klines(seed)
+    df["weight"] = np.random.normal(-1, 1, len(df))
+    df["weight"] = df["weight"].clip(-1, 1)
+    df["price"] = df["close"]
+    return df
+
+
+def generate_ts_factor(seed=42):
+    """生成K线数据，包含权重信息"""
+    df = generate_klines(seed)
+    df["F#SMA#20"] = df.groupby("symbol")["close"].rolling(20).mean().reset_index(drop=True).fillna(0)
+    return df
+
+
+def generate_cs_factor(seed=42):
+    """生成截面因子数据"""
+    df = generate_klines(seed)
+    df["ret20"] = df.groupby("symbol")["close"].pct_change(20).reset_index(drop=True).fillna(0)
+    df["F#RPS#20"] = df.groupby("dt")["ret20"].rank(pct=True).reset_index(drop=True).fillna(0)
+    df.drop(columns=["ret20"], inplace=True)
+    return df
+
+
+@disk_cache(ttl=3600 * 24)
 def generate_strategy_returns(n_strategies=10, n_days=None, seed=42):
     """生成多策略收益数据
 
@@ -60,126 +215,6 @@ def generate_portfolio(seed=42):
     return pd.DataFrame({"dt": dates, "portfolio": portfolio_returns, "benchmark": benchmark_returns})
 
 
-@disk_cache(ttl=3600 * 24)
-def generate_weights(seed=42):
-    """生成权重数据
-
-    Args:
-        seed: 随机数种子，确保结果可重现，默认42
-
-    Returns:
-        pd.DataFrame: 包含权重数据的DataFrame，列包括dt、symbol、weight
-    """
-    # 设置随机数种子确保结果可重现
-    np.random.seed(seed)
-
-    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-
-    data = []
-    for dt in dates:
-        # 生成随机权重，每日权重和为1
-        weights = np.random.random(len(symbols))
-        weights = weights / weights.sum()
-
-        for i, symbol in enumerate(symbols):
-            data.append({"dt": dt, "symbol": symbol, "weight": weights[i]})
-
-    return pd.DataFrame(data)
-
-
-@disk_cache(ttl=3600 * 24)
-def generate_price_data(seed=42):
-    """生成价格数据
-
-    Args:
-        seed: 随机数种子，确保结果可重现，默认42
-
-    Returns:
-        pd.DataFrame: 包含价格数据的DataFrame，列包括symbol、dt、price
-    """
-    # 设置随机数种子确保结果可重现
-    np.random.seed(seed)
-
-    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-
-    data = []
-    for symbol in symbols:
-        price = 100.0
-        for dt in dates:
-            price *= 1 + np.random.normal(0.0005, 0.02)
-            data.append({"symbol": symbol, "dt": dt, "price": price})
-
-    return pd.DataFrame(data)
-
-
-@disk_cache(ttl=3600 * 24)
-def generate_klines(seed=42):
-    """生成K线数据，包含完整的OHLCVA信息（开高低收量额）
-
-    Args:
-        seed: 随机数种子，确保结果可重现，默认42
-
-    Returns:
-        pd.DataFrame: 包含K线数据的DataFrame，列包括dt、symbol、open、close、high、low、vol、amount、weight、price
-    """
-    # 设置随机数种子确保结果可重现
-    np.random.seed(seed)
-
-    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-
-    data = []
-    for symbol in symbols:
-        # 初始价格
-        price = 100.0
-
-        for i, dt in enumerate(dates):
-            # 生成开盘价
-            open_price = price * (1 + np.random.normal(0, 0.01))
-
-            # 生成日内波动
-            daily_return = np.random.normal(0.0005, 0.02)
-            high_mult = 1 + abs(np.random.normal(0, 0.015))
-            low_mult = 1 - abs(np.random.normal(0, 0.015))
-
-            # 计算OHLC
-            close_price = open_price * (1 + daily_return)
-            high_price = max(open_price, close_price) * high_mult
-            low_price = min(open_price, close_price) * low_mult
-
-            # 成交量（随机生成）
-            volume = np.random.randint(1000000, 10000000)
-
-            # 成交金额（价格 * 成交量）
-            amount = close_price * volume
-
-            # 权重（简单均权或随机权重）
-            weight = 1.0 / len(symbols) + np.random.normal(0, 0.02)
-            weight = max(0.01, min(0.5, weight))  # 限制权重范围
-
-            data.append(
-                {
-                    "dt": dt,
-                    "symbol": symbol,
-                    "open": round(open_price, 2),
-                    "close": round(close_price, 2),
-                    "high": round(high_price, 2),
-                    "low": round(low_price, 2),
-                    "vol": volume,
-                    "amount": round(amount, 2),  # 成交金额
-                    "weight": round(weight, 4),
-                    "price": round(close_price, 2),  # 用收盘价作为价格
-                }
-            )
-
-            # 更新基准价格
-            price = close_price
-
-    return pd.DataFrame(data)
-
-
 def set_global_seed(seed=42):
     """设置全局随机数种子
 
@@ -191,41 +226,6 @@ def set_global_seed(seed=42):
         适用于需要统一设置种子的场景
     """
     np.random.seed(seed)
-
-
-@disk_cache(ttl=3600 * 24)
-def generate_factor_data(seed=42):
-    """生成因子分析数据
-
-    Args:
-        seed: 随机数种子，确保结果可重现，默认42
-
-    Returns:
-        pd.DataFrame: 包含因子和目标变量的DataFrame
-    """
-    # 设置随机数种子确保结果可重现
-    np.random.seed(seed)
-
-    dates = pd.date_range(start="2020-01-01", end="2023-12-31", freq="D")
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-
-    data = []
-    for symbol in symbols:
-        for dt in dates:
-            data.append(
-                {
-                    "dt": dt,
-                    "symbol": symbol,
-                    "factor1": np.random.normal(0, 1),
-                    "factor2": np.random.normal(0, 1.5),
-                    "factor3": np.random.normal(0, 0.8),
-                    "target": np.random.normal(0.001, 0.02),
-                    "price": 100 * (1 + np.random.normal(0.0005, 0.015)),
-                    "volume": np.random.randint(1000000, 10000000),
-                }
-            )
-
-    return pd.DataFrame(data)
 
 
 @disk_cache(ttl=3600 * 24)
@@ -260,49 +260,6 @@ def generate_correlation_data(seed=42):
     )
 
     return data
-
-
-@disk_cache(ttl=3600 * 24)
-def generate_backtest_data(seed=42):
-    """生成回测分析数据
-
-    Args:
-        seed: 随机数种子，确保结果可重现，默认42
-
-    Returns:
-        pd.DataFrame: 包含交易记录的DataFrame
-    """
-    # 设置随机数种子确保结果可重现
-    np.random.seed(seed)
-
-    dates = pd.date_range(start="2020-01-01", end="2023-12-31", freq="D")
-    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
-
-    # 生成持仓数据
-    holds_data = []
-    for i in range(100):  # 生成100笔交易
-        symbol = np.random.choice(symbols)
-        entry_date = np.random.choice(dates)
-        exit_date = entry_date + pd.Timedelta(days=np.random.randint(1, 30))
-
-        entry_price = 100 + np.random.normal(0, 20)
-        exit_price = entry_price * (1 + np.random.normal(0.02, 0.1))
-
-        holds_data.append(
-            {
-                "symbol": symbol,
-                "dt": entry_date,
-                "price": entry_price,
-                "exit_dt": exit_date,
-                "exit_price": exit_price,
-                "returns": (exit_price - entry_price) / entry_price,
-                "hold_days": (exit_date - entry_date).days,
-                "direction": np.random.choice(["多头", "空头"]),
-                "max_drawdown": -abs(np.random.normal(0.05, 0.03)),
-            }
-        )
-
-    return pd.DataFrame(holds_data)
 
 
 @disk_cache(ttl=3600 * 24)

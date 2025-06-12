@@ -97,16 +97,20 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
         - factor_direction: str, 因子方向，positive 或 negative
         - logger: loguru.logger, 日志记录器
         - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 True
+        - window: int, 窗口大小，默认为 1，平滑截面权重
 
     :return: pd.DataFrame, 包含 weight 列的数据
     """
     factor_direction = kwargs.get("factor_direction", "positive")
     logger = kwargs.get("logger", loguru.logger)
-    norm = kwargs.get("norm", True)
+    norm = kwargs.get("norm", False)
+    window = kwargs.get("window", 1)
+    verbose = kwargs.get("verbose", False)
 
     assert long >= 0 and short >= 0, "long 和 short 参数必须大于等于0"
     assert factor in df.columns, f"{factor} 不在 df 中"
     assert factor_direction in ["positive", "negative"], f"factor_direction 参数错误"
+    assert window >= 1 and isinstance(window, int), "window 参数必须大于等于1, 且为整数"
 
     df = df.copy()
     if factor_direction == "negative":
@@ -116,28 +120,52 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
     rows = []
 
     for dt, dfg in df.groupby("dt"):
+        # 计算多空持仓数量
         long_num = int(long) if long >= 1 else int(len(dfg) * long)
         short_num = int(short) if short >= 1 else int(len(dfg) * short)
+        if verbose:
+            logger.info(f"{dt} 多空持仓数量: long: {long_num}, short: {short_num}")
 
         if long_num == 0 and short_num == 0:
             logger.warning(f"{dt} 多空目前持仓数量都为0; long: {long}, short: {short}")
             rows.append(dfg)
             continue
 
-        long_symbols = dfg.sort_values(factor, ascending=False).head(long_num)["symbol"].tolist()
-        short_symbols = dfg.sort_values(factor, ascending=True).head(short_num)["symbol"].tolist()
+        # 按因子值排序并选择多空品种
+        dfg_sorted = dfg.sort_values(factor, ascending=False)
+        long_symbols = dfg_sorted.head(long_num)["symbol"].tolist()
+        short_symbols = dfg_sorted.tail(short_num)["symbol"].tolist()
 
+        # 检查并处理多空重叠的品种
         union_symbols = set(long_symbols) & set(short_symbols)
+
         if union_symbols:
-            logger.warning(f"{dt} 存在同时在多头和空头的品种：{union_symbols}")
+            if verbose:
+                logger.info(f"{dt} 多头品种：{long_symbols}; 数量：{len(long_symbols)}")
+                logger.info(f"{dt} 空头品种：{short_symbols}; 数量：{len(short_symbols)}")
+                logger.warning(f"{dt} 多空重叠品种：{union_symbols}; 数量：{len(union_symbols)}")
+
+            # 从多头和空头中移除重叠的品种
             long_symbols = list(set(long_symbols) - union_symbols)
             short_symbols = list(set(short_symbols) - union_symbols)
 
-        dfg.loc[dfg["symbol"].isin(long_symbols), weight] = 1 / long_num if norm else 1.0
-        dfg.loc[dfg["symbol"].isin(short_symbols), weight] = -1 / short_num if norm else -1.0
+        # 设置权重
+        if norm:
+            # 归一化权重，确保多空权重之和为0
+            if long_num > 0:
+                dfg.loc[dfg["symbol"].isin(long_symbols), weight] = 0.5 / len(long_symbols)
+            if short_num > 0:
+                dfg.loc[dfg["symbol"].isin(short_symbols), weight] = -0.5 / len(short_symbols)
+        else:
+            # 非归一化权重
+            dfg.loc[dfg["symbol"].isin(long_symbols), weight] = 1.0
+            dfg.loc[dfg["symbol"].isin(short_symbols), weight] = -1.0
+
         rows.append(dfg)
 
     dfx = pd.concat(rows, ignore_index=True)
+    dfx[weight] = dfx.groupby("symbol")[weight].transform(lambda x: x.rolling(window=window, min_periods=1).mean())
+    dfx[weight] = dfx[weight].fillna(0)
     return dfx
 
 
