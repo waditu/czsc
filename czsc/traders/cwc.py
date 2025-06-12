@@ -506,11 +506,11 @@ def update_strategy_status(
     # 更新策略状态和更新时间
     query = f"""
     ALTER TABLE {database}.metas 
-    UPDATE status = '{status}', update_time = '{current_time}' 
-    WHERE strategy = '{strategy}'
+    UPDATE status = %s, update_time = %s 
+    WHERE strategy = %s
     """
     
-    db.command(query)
+    db.command(query, parameters=(status, current_time, strategy))
     logger.info(f"策略 {strategy} 状态已更新为: {status}")
 
 
