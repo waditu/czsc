@@ -501,7 +501,7 @@ def update_strategy_status(
         logger.warning(f"策略 {strategy} 不存在，无法更新状态")
         return
     
-    current_time = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     # 更新策略状态和更新时间
     query = f"""
