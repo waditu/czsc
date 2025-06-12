@@ -1,0 +1,107 @@
+---
+description: 编写单元测试的指南
+globs: 
+alwaysApply: false
+---
+# CZSC测试模式指南
+
+## 测试框架
+项目使用 `pytest` 作为测试框架。
+
+## 测试文件结构
+
+### 文件命名和位置
+- 所有测试文件放在 `test/` 目录下
+- 测试文件命名格式：`test_<模块名>.py`
+- 例如：[test/test_warning_capture.py](mdc:test/test_warning_capture.py) 对应 `czsc/utils/warning_capture.py`
+
+### 测试文件头部
+```python
+# -*- coding: utf-8 -*-
+"""
+author: zengbin93
+email: zeng_bin8888@163.com
+create_dt: YYYY/MM/DD HH:MM
+describe: 模块名 单元测试
+"""
+import pytest
+# 其他必要的导入
+```
+
+## 测试函数模式
+
+### 函数命名
+- 测试函数必须以 `test_` 开头
+- 函数名应该清楚描述测试内容
+- 使用中文注释说明测试目的
+
+### 测试覆盖范围
+参考 [test/test_warning_capture.py](mdc:test/test_warning_capture.py) 的完整测试覆盖：
+
+1. **基本功能测试**
+   - 正常执行路径
+   - 无数据/空数据情况
+   - 边界条件
+
+2. **异常处理测试**
+   - 使用 `pytest.raises()` 测试预期的异常
+   - 验证异常消息内容
+
+3. **参数变化测试**
+   - 不同参数组合
+   - 可选参数的不同设置
+
+4. **隔离性测试**
+   - 确保测试之间不相互影响
+   - 验证状态重置
+
+## 示例测试模式
+
+### 基本测试结构
+```python
+def test_function_name():
+    """测试描述"""
+    # 准备测试数据
+    test_data = setup_test_data()
+    
+    # 执行被测试的功能
+    result = function_under_test(test_data)
+    
+    # 验证结果
+    assert result == expected_result
+    assert len(result) == expected_length
+```
+
+### 异常测试
+```python
+def test_function_with_exception():
+    """测试异常情况"""
+    with pytest.raises(ValueError, match="预期的错误消息"):
+        function_that_should_raise_error()
+```
+
+### 上下文管理器测试
+```python
+def test_context_manager():
+    """测试上下文管理器"""
+    with context_manager() as cm:
+        # 在上下文中执行操作
+        result = perform_operation()
+        cm.set_result(result)
+    
+    # 验证上下文管理器的状态
+    assert cm.get_result() == expected_result
+```
+
+## 运行测试
+```bash
+# 运行单个测试文件
+python -m pytest test/test_warning_capture.py -v
+
+# 运行特定测试函数
+python -m pytest test/test_warning_capture.py::test_function_name -v
+
+# 运行所有测试
+python -m pytest test/ -v
+```
+

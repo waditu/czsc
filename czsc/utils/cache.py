@@ -203,9 +203,11 @@ def clear_expired_cache(path, max_age: int = 3600 * 24 * 30):
     logger.info(f"开始清理缓存文件夹：{path}, max_age={max_age} 秒")
     path = Path(path)
     for file in path.glob("*.pkl"):
-        if (time.time() - file.stat().st_ctime) > max_age:
+        # 使用修改时间而不是创建时间，因为在Windows上创建时间不能轻易修改
+        file_stat = file.stat()
+        if (time.time() - file_stat.st_mtime) > max_age:
             file.unlink()
-            logger.info(f"已删除过期缓存文件：{file}, 创建时间：{file.stat().st_ctime}，当前时间：{time.time()}")
+            logger.info(f"已删除过期缓存文件：{file}, 修改时间：{file_stat.st_mtime}，当前时间：{time.time()}")
 
 
 def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False):

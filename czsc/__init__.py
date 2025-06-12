@@ -18,6 +18,7 @@ from czsc import utils
 from czsc import traders
 from czsc import sensors
 from czsc import aphorism
+from czsc import svc
 from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.analyze import CZSC
@@ -117,6 +118,12 @@ from czsc.utils import (
     generate_fernet_key,
     fernet_encrypt,
     fernet_decrypt,
+)
+
+# 警告信息捕获工具
+from czsc.utils.warning_capture import (
+    capture_warnings,
+    execute_with_warning_capture,
 )
 
 # 交易日历工具
@@ -237,10 +244,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.67"
+__version__ = "0.9.68"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250502"
+__date__ = "20250514"
 
 
 def welcome():

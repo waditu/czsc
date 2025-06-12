@@ -18,13 +18,14 @@ import os
 import loguru
 import pandas as pd
 import clickhouse_connect as ch
-from clickhouse_connect.driver import Client
+from clickhouse_connect.driver.client import Client
 from typing import Optional
 
 
 def __db_from_env():
     host = os.getenv("CLICKHOUSE_HOST")
-    port = int(os.getenv("CLICKHOUSE_PORT"))
+    port_str = os.getenv("CLICKHOUSE_PORT")
+    port = int(port_str) if port_str else None
     user = os.getenv("CLICKHOUSE_USER")
     password = os.getenv("CLICKHOUSE_PASS")
 
@@ -69,6 +70,7 @@ def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs)
         update_time DateTime,                          -- 策略更新时间
         heartbeat_time DateTime,                       -- 最后一次心跳时间
         weight_type String,                            -- 策略上传的权重类型，ts 或 cs
+        status String DEFAULT '实盘',                   -- 策略状态：实盘、废弃
         memo String                                    -- 策略备忘信息
     ) 
     ENGINE = ReplacingMergeTree()
@@ -161,6 +163,7 @@ def set_meta(
     author,
     outsample_sdt,
     weight_type="ts",
+    status="实盘",
     memo="",
     logger=loguru.logger,
     overwrite=False,
@@ -175,6 +178,7 @@ def set_meta(
     :param author: str, 作者
     :param outsample_sdt: str, 样本外起始时间
     :param weight_type: str, 权重类型，ts 或 cs
+    :param status: str, 策略状态，实盘 或 废弃
     :param memo: str, 备注
     :param logger: loguru.logger, 日志记录器
     :param overwrite: bool, 是否覆盖已有元数据
@@ -208,6 +212,7 @@ def set_meta(
                 "update_time": current_time,
                 "heartbeat_time": current_time,
                 "weight_type": weight_type,
+                "status": status,
                 "memo": memo,
             }
         ]
@@ -216,7 +221,7 @@ def set_meta(
     logger.info(f"{strategy} set_metadata: {res.summary}")
 
 
-def __send_heartbeat(db: ch.driver.Client, strategy, logger=loguru.logger, database="czsc_strategy"):
+def __send_heartbeat(db: Client, strategy, logger=loguru.logger, database="czsc_strategy"):
     """发送心跳
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -467,6 +472,62 @@ def get_strategy_returns(
     return df
 
 
+def update_strategy_status(
+    strategy, status, db: Optional[Client] = None, logger=loguru.logger, database="czsc_strategy"
+):
+    """更新策略状态
+
+    :param strategy: str, 策略名称
+    :param status: str, 策略状态，实盘 或 废弃
+    :param db: clickhouse_connect.driver.Client, 数据库连接
+    :param logger: loguru.logger, 日志记录器
+    :param database: str, 数据库名称
+    :return: None
+    """
+    db = db or __db_from_env()
+
+    # 验证状态值
+    valid_statuses = ["实盘", "废弃"]
+    if status not in valid_statuses:
+        raise ValueError(f"无效的策略状态: {status}，有效状态为: {valid_statuses}")
+
+    # 检查策略是否存在
+    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger)
+    if not meta:
+        logger.warning(f"策略 {strategy} 不存在，无法更新状态")
+        return
+
+    current_time = pd.to_datetime("now").strftime("%Y-%m-%d %H:%M:%S")
+
+    # 更新策略状态和更新时间
+    query = f"""
+    ALTER TABLE {database}.metas 
+    UPDATE status = %s, update_time = %s 
+    WHERE strategy = %s
+    """
+
+    db.command(query, parameters=(status, current_time, strategy))
+    logger.info(f"策略 {strategy} 状态已更新为: {status}")
+
+
+def get_strategies_by_status(status=None, db: Optional[Client] = None, database="czsc_strategy") -> pd.DataFrame:
+    """根据状态获取策略列表
+
+    :param status: str, 策略状态，实盘 或 废弃，None 表示获取所有状态
+    :param db: clickhouse_connect.driver.Client, 数据库连接
+    :param database: str, 数据库名称
+    :return: pd.DataFrame
+    """
+    db = db or __db_from_env()
+
+    query = f"SELECT * FROM {database}.metas final"
+    if status:
+        query += f" WHERE status = '{status}'"
+
+    df = db.query_df(query)
+    return df
+
+
 def clear_strategy(
     strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy"
 ):
@@ -481,11 +542,77 @@ def clear_strategy(
     """
     db = db or __db_from_env()
 
+    # 删除前，先查询跟这个策略相关的数据情况
+    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger)
+    if not meta:
+        logger.warning(f"策略 {strategy} 不存在，无需清空")
+        return
+
+    # 统计各个表中的数据量
+    try:
+        # 统计权重数据量
+        weights_count = db.query_df(
+            f"SELECT count(*) as count FROM {database}.weights final WHERE strategy = '{strategy}'"
+        ).iloc[0]["count"]
+
+        # 统计收益数据量
+        returns_count = db.query_df(
+            f"SELECT count(*) as count FROM {database}.returns final WHERE strategy = '{strategy}'"
+        ).iloc[0]["count"]
+
+        # 获取权重数据的时间范围
+        weights_time_range = db.query_df(
+            f"""
+            SELECT min(dt) as min_dt, max(dt) as max_dt 
+            FROM {database}.weights final 
+            WHERE strategy = '{strategy}'
+        """
+        )
+
+        # 获取收益数据的时间范围
+        returns_time_range = db.query_df(
+            f"""
+            SELECT min(dt) as min_dt, max(dt) as max_dt 
+            FROM {database}.returns final 
+            WHERE strategy = '{strategy}'
+        """
+        )
+
+        # 输出数据概况
+        logger.info(f"策略 {strategy} 数据概况:")
+        logger.info(f"  - 策略状态: {meta.get('status', '未知')}")
+        logger.info(f"  - 创建时间: {meta.get('create_time', '未知')}")
+        logger.info(f"  - 最后更新: {meta.get('update_time', '未知')}")
+        logger.info(f"  - 权重数据: {weights_count:,} 条")
+
+        if not weights_time_range.empty and weights_time_range.iloc[0]["min_dt"] is not None:
+            min_dt = weights_time_range.iloc[0]["min_dt"]
+            max_dt = weights_time_range.iloc[0]["max_dt"]
+            logger.info(f"    时间范围: {min_dt} 至 {max_dt}")
+
+        logger.info(f"  - 收益数据: {returns_count:,} 条")
+
+        if not returns_time_range.empty and returns_time_range.iloc[0]["min_dt"] is not None:
+            min_dt = returns_time_range.iloc[0]["min_dt"]
+            max_dt = returns_time_range.iloc[0]["max_dt"]
+            logger.info(f"    时间范围: {min_dt} 至 {max_dt}")
+
+        total_records = weights_count + returns_count + 1  # +1 for meta record
+        logger.info(f"  - 总计将删除: {total_records:,} 条记录")
+
+    except Exception as e:
+        logger.error(f"查询策略 {strategy} 数据概况失败: {e}")
+        logger.info("将继续执行删除操作...")
+
     if human_confirm:
-        confirm = input(f"确认清空策略 {strategy} 的所有数据？(y/n): ")
-        if confirm.lower() != "y":
+        logger.info("\n" + "=" * 60)
+        logger.info(f"⚠️  警告：即将删除策略 {strategy} 的所有数据")
+        logger.info("=" * 60)
+        confirm = input("请仔细确认上述信息，确认删除请输入 'DELETE' (大小写敏感): ")
+        if confirm != "DELETE":
             logger.warning(f"取消清空策略 {strategy} 的所有数据")
             return
+        logger.info("开始执行删除操作...")
 
     query = f"""
     DELETE FROM {database}.metas WHERE strategy = '{strategy}'

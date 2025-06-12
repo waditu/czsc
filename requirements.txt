@@ -27,3 +27,4 @@ requests_toolbelt
 rs_czsc>=0.1.6
 clickhouse_connect
 ta-lib-everywhere
+lightweight-charts
