@@ -19,12 +19,14 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
+from loguru import logger
 from czsc.mock import (
     generate_strategy_returns,
     generate_portfolio,
     generate_weights,
     generate_price_data,
     generate_klines,
+    generate_klines_with_weights,
 )
 
 # 设置页面配置
@@ -478,6 +480,294 @@ def show_volatility_classify_advanced_demo():
             st.success("✅ 测试完成！")
 
 
+def show_yearly_backtest_demo():
+    """展示按年度权重回测演示"""
+    st.header("📅 按年度权重回测")
+    st.markdown("根据权重数据，按年回测分析绩效差异")
+
+    # 生成带权重的K线数据
+    df_klines_weights = generate_klines_with_weights()
+
+    # 使用策略分析组件
+    from czsc.svc import show_yearly_backtest
+
+    st.subheader("📊 年度回测分析")
+
+    # 添加参数配置
+    st.markdown("#### ⚙️ 参数配置")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        fee_rate = st.slider("手续费率", 0.0001, 0.001, 0.0002, 0.0001, format="%.4f", key="yearly_fee")
+    with col2:
+        digits = st.selectbox("小数位数", [1, 2, 3], index=1, key="yearly_digits")
+    with col3:
+        weight_type = st.selectbox(
+            "权重类型", ["ts", "cs"], index=0, help="ts: 时序权重, cs: 截面权重", key="yearly_weight"
+        )
+
+    st.markdown("#### 📈 年度回测结果")
+    show_yearly_backtest(df_klines_weights, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+
+    # 添加说明信息
+    with st.expander("📋 数据和参数说明", expanded=False):
+        st.markdown(
+            """
+        **数据信息:**
+        - 数据量: {:,} 条记录
+        - 品种数: {} 个
+        - 时间范围: {} 至 {}
+        - 年份跨度: {} 年
+        - 权重统计: 均值 {:.4f}, 标准差 {:.4f}
+        
+        **功能说明:**
+        - **年度对比**: 对比不同年份的回测表现
+        - **基准对比**: 包含全部年份作为基准进行对比
+        - **风险分析**: 分析各年份的风险收益特征
+        
+        **参数说明:**
+        - **手续费率**: 交易成本，影响最终收益
+        - **权重类型**: ts表示时序权重，cs表示截面权重
+        - **小数位数**: 权重保留精度
+        """.format(
+                len(df_klines_weights),
+                df_klines_weights["symbol"].nunique(),
+                df_klines_weights["dt"].min().strftime("%Y-%m-%d"),
+                df_klines_weights["dt"].max().strftime("%Y-%m-%d"),
+                df_klines_weights["dt"].dt.year.nunique(),
+                df_klines_weights["weight"].mean(),
+                df_klines_weights["weight"].std(),
+            )
+        )
+
+
+def show_backtest_by_thresholds_demo():
+    """展示权重阈值回测演示"""
+    st.header("🎯 权重阈值回测")
+    st.markdown("根据权重阈值进行回测对比，优化权重使用策略")
+
+    # 生成带权重的K线数据
+    df_klines_weights = generate_klines_with_weights()
+
+    # 使用策略分析组件
+    from czsc.svc import show_backtest_by_thresholds
+
+    st.subheader("📊 阈值回测分析")
+
+    # 添加参数配置
+    st.markdown("#### ⚙️ 参数配置")
+    col1, col2 = st.columns(2)
+    with col1:
+        out_sample_sdt = st.date_input(
+            "样本外开始时间",
+            value=pd.to_datetime("2020-01-01"),
+            help="用于分割样本内外数据",
+            key="threshold_sample_date",
+        ).strftime("%Y-%m-%d")
+    with col2:
+        only_out_sample = st.checkbox(
+            "仅样本外分析", value=False, help="是否只分析样本外数据", key="threshold_only_out"
+        )
+
+    col3, col4, col5 = st.columns(3)
+    with col3:
+        fee_rate = st.slider("手续费率", 0.0001, 0.001, 0.0002, 0.0001, format="%.4f", key="threshold_fee")
+    with col4:
+        digits = st.selectbox("小数位数", [1, 2, 3], index=1, key="threshold_digits")
+    with col5:
+        weight_type = st.selectbox(
+            "权重类型", ["ts", "cs"], index=0, help="ts: 时序权重, cs: 截面权重", key="threshold_weight"
+        )
+
+    # 分位数设置
+    st.markdown("#### 📊 分位数阈值设置")
+    col6, col7, col8 = st.columns(3)
+    with col6:
+        start_percentile = st.slider("起始分位数", 0.0, 0.8, 0.0, 0.1, key="threshold_start")
+    with col7:
+        end_percentile = st.slider("结束分位数", 0.2, 0.9, 0.9, 0.1, key="threshold_end")
+    with col8:
+        step_size = st.slider("步长", 0.1, 0.2, 0.1, 0.1, key="threshold_step")
+
+    percentiles = list(np.arange(start_percentile, end_percentile + step_size, step_size))
+    st.info(f"当前分位数序列: {[f'{p:.1f}' for p in percentiles]}")
+
+    st.markdown("#### 📈 阈值回测结果")
+    show_backtest_by_thresholds(
+        df_klines_weights,
+        out_sample_sdt=out_sample_sdt,
+        percentiles=percentiles,
+        fee_rate=fee_rate,
+        digits=digits,
+        weight_type=weight_type,
+        only_out_sample=only_out_sample,
+    )
+
+    # 添加说明信息
+    with st.expander("📋 权重阈值回测说明", expanded=False):
+        st.markdown(
+            """
+        **数据分割:**
+        - 样本内数据: 用于计算权重阈值
+        - 样本外数据: 用于验证策略效果
+        - 样本外开始时间: {}
+        
+        **阈值策略:**
+        - 计算样本内权重绝对值的分位数作为阈值
+        - 仅当权重绝对值大于等于阈值时，使用 sign(weight) 进行交易
+        - 其他情况权重设为0，即不交易
+        
+        **分位数含义:**
+        - 0%分位数: 使用所有权重信号
+        - 50%分位数: 仅使用权重绝对值在中位数以上的信号
+        - 90%分位数: 仅使用权重绝对值在90%分位数以上的信号
+        
+        **预期效果:**
+        - 较高的阈值可能减少交易频率和成本
+        - 可能提高信号质量，过滤掉弱信号
+        - 需要权衡信号覆盖度和信号质量
+        
+        **注意事项:**
+        ⚠️ 该分析基于历史数据的后验分析，实盘应用需谨慎
+        """.format(
+                out_sample_sdt
+            )
+        )
+
+
+def show_backtest_by_thresholds_advanced_demo():
+    """展示权重阈值回测高级案例"""
+    st.header("🎯 权重阈值回测 - 高级案例")
+    st.markdown("深入分析不同阈值策略的表现和优化方向")
+
+    # 生成带权重的K线数据
+    df_klines_weights = generate_klines_with_weights()
+
+    from czsc.svc import show_backtest_by_thresholds
+
+    # 创建标签页
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 分位数敏感性", "📊 样本期对比", "⚖️ 成本影响分析", "🧮 综合优化"])
+
+    with tab1:
+        st.subheader("不同分位数设置的影响")
+        st.markdown("测试不同分位数范围对阈值策略的影响")
+
+        # 预设分位数组合
+        quantile_sets = [
+            {"range": [0.0, 0.5], "step": 0.1, "name": "保守策略(0-50%)"},
+            {"range": [0.0, 0.9], "step": 0.1, "name": "标准策略(0-90%)"},
+            {"range": [0.5, 0.9], "step": 0.1, "name": "激进策略(50-90%)"},
+        ]
+
+        selected_set = st.selectbox("选择分位数组合", [q["name"] for q in quantile_sets])
+        current_set = next(q for q in quantile_sets if q["name"] == selected_set)
+
+        percentiles = list(
+            np.arange(current_set["range"][0], current_set["range"][1] + current_set["step"], current_set["step"])
+        )
+        st.info(f"当前分位数序列: {[f'{p:.1f}' for p in percentiles]}")
+
+        show_backtest_by_thresholds(
+            df_klines_weights,
+            out_sample_sdt="2020-01-01",
+            percentiles=percentiles,
+            fee_rate=0.0002,
+            digits=2,
+            weight_type="ts",
+            only_out_sample=False,
+        )
+
+    with tab2:
+        st.subheader("样本内外数据对比")
+        st.markdown("对比样本内外数据的回测效果差异")
+
+        sample_analysis = st.radio(
+            "选择分析范围",
+            ["全部数据", "仅样本外"],
+            format_func=lambda x: f"📊 全部数据分析" if x == "全部数据" else f"🎯 仅样本外分析",
+            help="全部数据: 使用完整数据集; 仅样本外: 只分析样本外数据",
+        )
+
+        only_out_sample = sample_analysis == "仅样本外"
+
+        if only_out_sample:
+            st.info("🎯 仅分析样本外数据，更贴近实际交易情况")
+        else:
+            st.info("📊 分析全部数据，包含样本内和样本外")
+
+        show_backtest_by_thresholds(
+            df_klines_weights,
+            out_sample_sdt="2020-01-01",
+            percentiles=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            fee_rate=0.0002,
+            digits=2,
+            weight_type="ts",
+            only_out_sample=only_out_sample,
+        )
+
+    with tab3:
+        st.subheader("交易成本影响分析")
+        st.markdown("分析不同手续费率对阈值策略的影响")
+
+        fee_scenarios = {
+            "低成本(0.01%)": 0.0001,
+            "标准成本(0.02%)": 0.0002,
+            "高成本(0.05%)": 0.0005,
+        }
+
+        selected_fee = st.selectbox("选择手续费场景", list(fee_scenarios.keys()))
+        fee_rate = fee_scenarios[selected_fee]
+
+        st.info(f"当前手续费率: {fee_rate:.4f} ({fee_rate:.2%})")
+
+        show_backtest_by_thresholds(
+            df_klines_weights,
+            out_sample_sdt="2020-01-01",
+            percentiles=[0.0, 0.2, 0.4, 0.6, 0.8],
+            fee_rate=fee_rate,
+            digits=2,
+            weight_type="ts",
+            only_out_sample=True,
+        )
+
+    with tab4:
+        st.subheader("综合参数优化平台")
+        st.markdown("自由组合所有参数，寻找最优阈值策略")
+
+        # 参数配置区域
+        with st.container(border=True):
+            st.markdown("**🔧 完整参数配置**")
+
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                opt_out_sample = st.date_input(
+                    "样本外开始时间", value=pd.to_datetime("2020-01-01"), key="opt_sample_date"
+                ).strftime("%Y-%m-%d")
+                opt_only_out = st.checkbox("仅样本外", value=True, key="opt_only_out")
+
+            with col2:
+                opt_start_p = st.number_input("起始分位数", 0.0, 0.8, 0.0, 0.1, key="opt_start_p")
+                opt_end_p = st.number_input("结束分位数", 0.2, 0.9, 0.8, 0.1, key="opt_end_p")
+
+            with col3:
+                opt_fee = st.number_input("手续费率", 0.0, 0.01, 0.0002, 0.0001, format="%.4f", key="opt_fee")
+                opt_weight = st.selectbox("权重类型", ["ts", "cs"], key="opt_weight")
+
+        opt_percentiles = list(np.arange(opt_start_p, opt_end_p + 0.1, 0.1))
+
+        if st.button("🎯 执行综合优化测试", type="primary"):
+            with st.spinner("正在运行权重阈值优化回测..."):
+                show_backtest_by_thresholds(
+                    df_klines_weights,
+                    out_sample_sdt=opt_out_sample,
+                    percentiles=opt_percentiles,
+                    fee_rate=opt_fee,
+                    digits=2,
+                    weight_type=opt_weight,
+                    only_out_sample=opt_only_out,
+                )
+            st.success("✅ 优化测试完成！")
+
+
 def show_help_info():
     """展示帮助信息和组件说明"""
     st.markdown("---")
@@ -533,9 +823,22 @@ def show_help_info():
         - 支持时序和截面两种分类方式
         - 可调节波动率计算窗口和分位数参数
         
+        **按年度权重回测** (`show_yearly_backtest`)
+        - 根据权重数据按年度进行回测分析
+        - 对比不同年份的策略表现差异
+        - 包含全部年份作为基准进行对比分析
+        - 支持自定义回测参数和权重类型
+        
+        **权重阈值回测** (`show_backtest_by_thresholds`)
+        - 根据权重阈值进行回测对比分析
+        - 基于样本内权重分位数设定阈值
+        - 分析不同阈值下的策略表现
+        - 支持样本内外数据分割和权重使用统计
+        
         **高级案例分析**
         - 市场环境分类高级案例：参数敏感性分析、多策略对比、自定义测试
         - 波动率分类高级案例：窗口期分析、分位数对比、分类方式对比、综合测试
+        - 权重阈值回测高级案例：分位数敏感性、样本期对比、成本影响分析、综合优化
         """
         )
 
@@ -595,11 +898,13 @@ def main():
             "换手率分析",
             "策略绩效对比",
             "品种基准分析",
+            "按年度权重回测",
+            "权重阈值回测",
         ]
     elif demo_category == "市场环境分析":
         demo_options = ["市场环境分类", "波动率分类"]
     else:  # 高级案例分析
-        demo_options = ["市场环境分类-高级案例", "波动率分类-高级案例"]
+        demo_options = ["市场环境分类-高级案例", "波动率分类-高级案例", "权重阈值回测-高级案例"]
 
     demo_type = st.sidebar.selectbox("选择具体演示", demo_options)
 
@@ -616,6 +921,9 @@ def main():
         "波动率分类": show_volatility_classify_demo,
         "市场环境分类-高级案例": show_cta_periods_classify_advanced_demo,
         "波动率分类-高级案例": show_volatility_classify_advanced_demo,
+        "按年度权重回测": show_yearly_backtest_demo,
+        "权重阈值回测": show_backtest_by_thresholds_demo,
+        "权重阈值回测-高级案例": show_backtest_by_thresholds_advanced_demo,
     }
 
     # 调用相应的演示函数

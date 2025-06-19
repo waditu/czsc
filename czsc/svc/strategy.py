@@ -452,9 +452,35 @@ def show_multi_backtest(wbs: dict, **kwargs):
 
     df_stats = pd.DataFrame(rows)
     df_stats = df_stats.sort_values("策略名称", ascending=False)
-
+    # st.write(df_stats.columns.to_list())
+    cols = [
+        "策略名称",
+        "开始日期",
+        "结束日期",
+        "绝对收益",
+        "年化",
+        "夏普",
+        "最大回撤",
+        "卡玛",
+        "年化波动率",
+        "下行波动率",
+        "非零覆盖",
+        "新高间隔",
+        "新高占比",
+        "回撤风险",
+        "交易胜率",
+        "单笔收益",
+        "持仓K线数",
+        "多头占比",
+        "空头占比",
+        "与基准相关性",
+        "波动比",
+        "与基准波动相关性",
+        "品种数量",
+    ]
+    df_stats = df_stats[cols].copy()
     with st.container(border=True):
-        st.markdown("#### :red[策略绩效分析]")
+        st.markdown("#### :orange[策略绩效对比]")
 
         st.dataframe(apply_stats_style(df_stats))
 
@@ -468,9 +494,8 @@ def show_multi_backtest(wbs: dict, **kwargs):
     if kwargs.get("show_describe", False):
         with st.container(border=True):
             st.markdown("#### :red[主要统计指标分布]")
-
-        # 绘制单笔收益、持仓K线数、夏普的分布
-        show_describe(df_stats[["单笔收益", "持仓K线数", "夏普"]])
+            # 绘制单笔收益、持仓K线数、夏普的分布
+            show_describe(df_stats[["单笔收益", "持仓K线数", "夏普", "年化"]])
 
     return df_stats, df_dailys
 

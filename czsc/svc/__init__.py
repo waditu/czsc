@@ -53,6 +53,8 @@ from .backtest import (
     show_weight_backtest,
     show_holds_backtest,
     show_stoploss_by_direction,
+    show_backtest_by_thresholds,
+    show_yearly_backtest,
 )
 
 from .statistics import (
@@ -119,6 +121,8 @@ __all__ = [
     "show_weight_backtest",
     "show_holds_backtest",
     "show_stoploss_by_direction",
+    "show_backtest_by_thresholds",
+    "show_yearly_backtest",
     # 统计分析
     "show_splited_daily",
     "show_yearly_stats",
