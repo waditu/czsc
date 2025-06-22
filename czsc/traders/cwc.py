@@ -15,11 +15,12 @@ describe: 基于 clickhouse 的策略持仓权重管理，cwc 为 clickhouse wei
 """
 # pip install clickhouse_connect -i https://pypi.tuna.tsinghua.edu.cn/simple
 import os
+from typing import Optional
+
+import clickhouse_connect as ch
 import loguru
 import pandas as pd
-import clickhouse_connect as ch
 from clickhouse_connect.driver.client import Client
-from typing import Optional
 
 
 def __db_from_env():
@@ -276,9 +277,10 @@ def get_strategy_weights(
         query += f""" AND symbol IN ({symbol_str})"""
 
     df = db.query_df(query)
-    df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
-    df["dt"] = df["dt"].dt.tz_localize(None)
-    df["update_time"] = df["update_time"].dt.tz_localize(None)
+    if not df.empty:
+        df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
+        df["dt"] = df["dt"].dt.tz_localize(None)
+        df["update_time"] = df["update_time"].dt.tz_localize(None)
     return df
 
 
