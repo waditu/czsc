@@ -451,7 +451,6 @@ def show_multi_backtest(wbs: dict, **kwargs):
         dailys.append(daily[["dt", "strategy", "return"]])
 
     df_stats = pd.DataFrame(rows)
-    df_stats = df_stats.sort_values("策略名称", ascending=False)
     # st.write(df_stats.columns.to_list())
     cols = [
         "策略名称",

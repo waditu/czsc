@@ -7,7 +7,6 @@ create_dt: 2019/10/29 15:01
 from rs_czsc import (
     daily_performance,
     top_drawdowns,
-
     # python版本：from czsc.traders.weight_backtest import WeightBacktest
     WeightBacktest,
 )
@@ -19,6 +18,7 @@ from czsc import traders
 from czsc import sensors
 from czsc import aphorism
 from czsc import svc
+from czsc import mock
 from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.analyze import CZSC
@@ -40,10 +40,8 @@ from czsc.traders import (
     SignalsParser,
     get_signals_config,
     get_signals_freqs,
-
     stoploss_by_direction,
     get_ensemble_weight,
-
     OpensOptimize,
     ExitsOptimize,
 )
@@ -63,9 +61,7 @@ from czsc.utils import (
     mac_address,
     overlap,
     to_arrow,
-
     format_standard_kline,
-
     KlineChart,
     BarGenerator,
     freq_end_time,
@@ -73,7 +69,6 @@ from czsc.utils import (
     is_trading_time,
     get_intraday_times,
     check_freq_and_market,
-
     dill_dump,
     dill_load,
     read_json,
@@ -90,7 +85,6 @@ from czsc.utils import (
     update_nxb,
     risk_free_returns,
     resample_to_daily,
-
     cross_sectional_ranker,
     cross_sectional_ic,
     # daily_performance,
@@ -99,7 +93,6 @@ from czsc.utils import (
     subtract_fee,
     # top_drawdowns,
     psi,
-
     home_path,
     DiskCache,
     disk_cache,
@@ -109,12 +102,10 @@ from czsc.utils import (
     empty_cache_path,
     print_df_sample,
     index_composition,
-
     AliyunOSS,
     DataClient,
     set_url_token,
     get_url_token,
-
     generate_fernet_key,
     fernet_encrypt,
     fernet_decrypt,
@@ -222,7 +213,9 @@ from czsc.utils.portfolio import (
 )
 
 from czsc.eda import (
-    remove_beta_effects, vwap, twap,
+    remove_beta_effects,
+    vwap,
+    twap,
     cross_sectional_strategy,
     judge_factor_direction,
     monotonicity,
@@ -244,10 +237,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.9.68"
+__version__ = "0.9.69"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250514"
+__date__ = "20250624"
 
 
 def welcome():
@@ -258,9 +251,7 @@ def welcome():
     aphorism.print_one()
 
     print(
-        f"CZSC环境变量："
-        f"czsc_min_bi_len = {envs.get_min_bi_len()}; "
-        f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
+        f"CZSC环境变量：" f"czsc_min_bi_len = {envs.get_min_bi_len()}; " f"czsc_max_bi_num = {envs.get_max_bi_num()}; "
     )
     if get_dir_size(home_path) > pow(1024, 3):
         print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")
