@@ -7,6 +7,177 @@ import pandas as pd
 from czsc.utils.cache import disk_cache
 
 
+def generate_symbol_kines(symbol, freq, sdt="20100101", edt="20250101", seed=42):
+    """生成单个品种指定频率的K线数据
+
+    Args:
+        symbol: 品种代码，如 'AAPL', '000001.SH' 等
+        freq: K线频率，支持 '1分钟', '5分钟', '15分钟', '30分钟', '日线'
+        sdt: 开始日期，格式为 'YYYYMMDD'，默认 "20100101"
+        edt: 结束日期，格式为 'YYYYMMDD'，默认 "20250101"
+        seed: 随机数种子，确保结果可重现，默认42
+
+    Returns:
+        pd.DataFrame: 包含K线数据的DataFrame，列包括dt、symbol、open、close、high、low、vol、amount
+    """
+    # 设置随机数种子确保结果可重现
+    np.random.seed(seed + hash(symbol) % 1000)
+
+    # 转换日期格式
+    start_date = pd.to_datetime(sdt, format="%Y%m%d")
+    end_date = pd.to_datetime(edt, format="%Y%m%d")
+
+    # 根据频率生成时间序列
+    if freq == "日线":
+        dates = pd.date_range(start=start_date, end=end_date, freq="D")
+    elif freq in ["1分钟", "5分钟", "15分钟", "30分钟"]:
+        # 先生成日期范围
+        trading_days = pd.date_range(start=start_date, end=end_date, freq="D")
+        dates = []
+
+        # 获取分钟数
+        freq_minutes = int(freq.replace("分钟", ""))
+
+        # A股交易时间段
+        morning_start = "09:30"
+        morning_end = "11:30"
+        afternoon_start = "13:00"
+        afternoon_end = "15:00"
+
+        for day in trading_days:
+            # 上午交易时间
+            morning_times = pd.date_range(
+                start=f"{day.strftime('%Y-%m-%d')} {morning_start}",
+                end=f"{day.strftime('%Y-%m-%d')} {morning_end}",
+                freq=f"{freq_minutes}T",
+            )
+
+            # 下午交易时间
+            afternoon_times = pd.date_range(
+                start=f"{day.strftime('%Y-%m-%d')} {afternoon_start}",
+                end=f"{day.strftime('%Y-%m-%d')} {afternoon_end}",
+                freq=f"{freq_minutes}T",
+            )
+
+            dates.extend(morning_times.tolist())
+            dates.extend(afternoon_times.tolist())
+
+        dates = pd.DatetimeIndex(dates)
+    else:
+        raise ValueError(f"不支持的频率: {freq}。支持的频率: 1分钟, 5分钟, 15分钟, 30分钟, 日线")
+
+    # 定义不同的市场阶段，模拟真实市场的周期性变化
+    phases = [
+        {"name": "熊市", "trend": -0.0008, "volatility": 0.025, "length": 0.3},
+        {"name": "震荡", "trend": 0.0002, "volatility": 0.015, "length": 0.2},
+        {"name": "牛市", "trend": 0.0012, "volatility": 0.02, "length": 0.3},
+        {"name": "调整", "trend": -0.0005, "volatility": 0.02, "length": 0.2},
+    ]
+
+    # 初始价格
+    base_price = 100.0
+
+    # 市场阶段控制变量
+    total_periods = len(dates)
+    phase_idx = 0
+    phase_periods = 0
+    current_phase = phases[phase_idx]
+
+    data = []
+
+    for i, dt in enumerate(dates):
+        # 切换市场阶段
+        if phase_periods >= total_periods * current_phase["length"]:
+            phase_idx = (phase_idx + 1) % len(phases)
+            current_phase = phases[phase_idx]
+            phase_periods = 0
+
+        # 当前阶段的趋势和波动
+        trend = current_phase["trend"]
+        volatility = current_phase["volatility"]
+
+        # 对于分钟级数据，调整趋势和波动率
+        if freq != "日线":
+            freq_minutes = int(freq.replace("分钟", ""))
+            # 按分钟级别调整趋势和波动，使日内波动更合理
+            trend = trend / (240 / freq_minutes)  # 240是一天的交易分钟数
+            volatility = volatility / (240 / freq_minutes) ** 0.5
+
+        # 添加周期性波动，模拟季节性等因素
+        if freq == "日线":
+            cycle_factor = np.sin(i / 30) * 0.001  # 30天周期
+            annual_cycle = np.sin(i / 365) * 0.0005  # 年度周期
+        else:
+            # 分钟级别的周期性波动
+            cycle_factor = np.sin(i / 120) * 0.0005  # 120分钟周期
+            annual_cycle = np.sin(i / (365 * 240)) * 0.0002  # 年度周期
+
+        # 随机噪音
+        noise = np.random.normal(0, volatility)
+
+        # 计算开盘价和收盘价
+        open_price = base_price
+        close_price = base_price * (1 + trend + cycle_factor + annual_cycle + noise)
+
+        # 确保价格不会变为负数
+        if close_price <= 0:
+            close_price = base_price * 0.95
+
+        # 计算日内波动范围，考虑市场波动的合理性
+        price_change_ratio = abs(close_price - open_price) / open_price
+        if freq == "日线":
+            daily_range = base_price * (price_change_ratio + np.random.uniform(0.01, 0.04))
+        else:
+            # 分钟级别的波动范围更小
+            daily_range = base_price * (price_change_ratio + np.random.uniform(0.001, 0.01))
+
+        if close_price > open_price:  # 阳线
+            high_price = close_price + daily_range * np.random.uniform(0.1, 0.5)
+            low_price = open_price - daily_range * np.random.uniform(0.1, 0.3)
+        else:  # 阴线
+            high_price = open_price + daily_range * np.random.uniform(0.1, 0.3)
+            low_price = close_price - daily_range * np.random.uniform(0.1, 0.5)
+
+        # 确保价格关系正确：high >= max(open, close), low <= min(open, close)
+        high_price = max(high_price, open_price, close_price)
+        low_price = min(low_price, open_price, close_price)
+
+        # 模拟成交量 - 价格波动大的时候成交量通常也大
+        if freq == "日线":
+            base_volume = np.random.uniform(100000, 300000)
+        else:
+            # 分钟级别的成交量更小
+            freq_minutes = int(freq.replace("分钟", ""))
+            base_volume = np.random.uniform(10000, 50000) * (freq_minutes / 5)  # 基于5分钟调整
+
+        volatility_factor = price_change_ratio * 5  # 波动率影响成交量
+        volume_multiplier = 1 + volatility_factor + np.random.uniform(-0.2, 0.2)
+        volume = int(base_volume * max(volume_multiplier, 0.3))  # 确保成交量不会过小
+
+        # 计算成交金额（使用平均价格）
+        avg_price = (high_price + low_price + open_price + close_price) / 4
+        amount = volume * avg_price
+
+        data.append(
+            {
+                "dt": dt,
+                "symbol": symbol,
+                "open": round(open_price, 2),
+                "close": round(close_price, 2),
+                "high": round(high_price, 2),
+                "low": round(low_price, 2),
+                "vol": volume,
+                "amount": round(amount, 2),
+            }
+        )
+
+        # 更新基准价格为收盘价
+        base_price = close_price
+        phase_periods += 1
+
+    return pd.DataFrame(data)
+
+
 @disk_cache(ttl=3600 * 24)
 def generate_klines(seed=42):
     """生成K线数据，包含完整的OHLCVA信息（开高低收量额）
