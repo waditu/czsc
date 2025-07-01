@@ -15,6 +15,7 @@ from tqdm import tqdm
 from pathlib import Path
 from datetime import datetime
 from czsc import RawBar, Freq
+from typing import Dict, List, Any
 
 # 首次使用需要打开一个python终端按如下方式设置 token或者在环境变量中设置 CZSC_TOKEN
 # czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
@@ -494,3 +495,370 @@ def get_strategy_weights(strategy="FCS001", sdt="20240101", edt=None, logger=log
     df = __update_strategy_weights(file_cache, strategy, logger=logger)
     dfd = df[(df["dt"] >= pd.Timestamp(sdt)) & (df["dt"] <= pd.Timestamp(edt))].copy()
     return dfd
+
+
+class StrategyClient:
+    """CZSC策略管理API客户端"""
+
+    def __init__(self, base_url: str, token: str = None, logger=loguru.logger):
+        """
+        初始化客户端
+
+        Args:
+            base_url: API基础URL
+            token: 访问令牌，可后续通过set_token设置
+        """
+        self.base_url = base_url.rstrip("/")
+        self.token = token
+        self.session = requests.Session()
+        self._setup_headers()
+        self.logger = logger
+
+    def _setup_headers(self):
+        """设置请求头"""
+        self.session.headers.update({"Content-Type": "application/json", "Accept": "application/json"})
+        if self.token:
+            self.session.headers["Authorization"] = f"Bearer {self.token}"
+
+    def set_token(self, token: str):
+        """
+        设置访问令牌
+
+        Args:
+            token: 访问令牌
+        """
+        self.token = token
+        self._setup_headers()
+        self.logger.info("访问令牌已更新")
+
+    def _make_request(self, method: str, endpoint: str, data: Dict = None) -> Dict:
+        """
+        发送HTTP请求
+
+        Args:
+            method: 请求方法
+            endpoint: 接口端点
+            data: 请求数据
+
+        Returns:
+            响应数据字典
+        """
+        url = f"{self.base_url}{endpoint}"
+
+        try:
+            if method.upper() == "GET":
+                response = self.session.get(url, params=data)
+            else:
+                response = self.session.post(url, json=data)
+
+            response.raise_for_status()
+            result = response.json()
+
+            self.logger.debug(f"API请求成功: {method} {endpoint}")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"API请求失败: {method} {endpoint}, 错误: {e}")
+            raise
+        except ValueError as e:
+            self.logger.error(f"响应解析失败: {e}")
+            raise
+
+    def get_all_strategy_metadata(self) -> List[Dict]:
+        """
+        获取所有策略元数据
+
+        Returns:
+            策略元数据列表
+        """
+        data = {"token": self.token}
+        result = self._make_request("POST", "/get_all_strategy_metadata", data)
+
+        if result.get("code") == 0:
+            self.logger.info(f"成功获取{len(result.get('data', []))}个策略元数据")
+            return result.get("data", [])
+        else:
+            self.logger.error(f"获取策略元数据失败: {result.get('msg', '未知错误')}")
+            return []
+
+    def add_strategy_meta(
+        self,
+        strategy_name: str,
+        base_freq: str,
+        description: str,
+        author_id: int,
+        outsample_sdt: str,
+        weight_type: str,
+        memo: str = "",
+    ) -> bool:
+        """
+        添加策略元数据
+
+        Args:
+            strategy_name: 策略名称
+            base_freq: 基础频率
+            description: 策略描述
+            author_id: 作者ID
+            outsample_sdt: 样本外开始日期
+            weight_type: 权重类型
+            memo: 备注信息
+
+        Returns:
+            是否添加成功
+        """
+        data = {
+            "token": self.token,
+            "strategy_name": strategy_name,
+            "meta": {
+                "base_freq": base_freq,
+                "description": description,
+                "author_id": author_id,
+                "outsample_sdt": outsample_sdt,
+                "weight_type": weight_type,
+                "memo": memo,
+            },
+        }
+
+        result = self._make_request("POST", "/add_strategy_meta", data)
+
+        if result.get("code") == 200:
+            self.logger.info(f"成功添加策略元数据: {strategy_name}")
+            return True
+        else:
+            self.logger.error(f"添加策略元数据失败: {result.get('msg', '未知错误')}")
+            return False
+
+    def update_strategy_meta(
+        self,
+        strategy_name: str,
+        base_freq: str = None,
+        description: str = None,
+        author_id: int = None,
+        outsample_sdt: str = None,
+        weight_type: str = None,
+        memo: str = None,
+    ) -> bool:
+        """
+        更新策略元数据
+
+        Args:
+            strategy_name: 策略名称
+            base_freq: 基础频率
+            description: 策略描述
+            author_id: 作者ID (仅管理员可更改)
+            outsample_sdt: 样本外开始日期
+            weight_type: 权重类型
+            memo: 备注信息
+
+        Returns:
+            是否更新成功
+        """
+        meta = {}
+        for key, value in [
+            ("base_freq", base_freq),
+            ("description", description),
+            ("author_id", author_id),
+            ("outsample_sdt", outsample_sdt),
+            ("weight_type", weight_type),
+            ("memo", memo),
+        ]:
+            if value is not None:
+                meta[key] = value
+
+        data = {"token": self.token, "strategy_name": strategy_name, "meta": meta}
+
+        result = self._make_request("POST", "/update_strategy_meta", data)
+
+        if result.get("code") == 200:
+            self.logger.info(f"成功更新策略元数据: {strategy_name}")
+            return True
+        else:
+            self.logger.error(f"更新策略元数据失败: {result.get('msg', '未知错误')}")
+            return False
+
+    def delete_strategy_meta(self, strategy_name: str) -> bool:
+        """
+        删除策略元数据（软删除）
+
+        Args:
+            strategy_name: 策略名称
+
+        Returns:
+            是否删除成功
+        """
+        data = {"token": self.token, "strategy_name": strategy_name, "meta": {}}
+
+        result = self._make_request("POST", "/delete_strategy_meta", data)
+
+        if result.get("code") == 200:
+            self.logger.info(f"成功删除策略元数据: {strategy_name}")
+            return True
+        else:
+            self.logger.error(f"删除策略元数据失败: {result.get('msg', '未知错误')}")
+            return False
+
+    def get_all_strategy_latest_weights(self) -> List[Dict]:
+        """
+        获取所有策略的最新持仓权重
+
+        Returns:
+            策略权重数据列表
+        """
+        data = {"token": self.token}
+        result = self._make_request("POST", "/get_all_strategy_latest_weights", data)
+
+        if result.get("code") == 0:
+            self.logger.info(f"成功获取{len(result.get('data', []))}条最新权重数据")
+            return result.get("data", [])
+        else:
+            self.logger.error(f"获取最新权重数据失败: {result.get('msg', '未知错误')}")
+            return []
+
+    def query_strategy_weight(self, strategy: str, sdt: str = "", edt: str = "", symbols: List[str] = None) -> Dict:
+        """
+        查询单个策略的持仓权重
+
+        Args:
+            strategy: 策略名称
+            sdt: 开始日期，可选
+            edt: 结束日期，可选
+            symbols: 股票代码列表，可选
+
+        Returns:
+            包含meta和weights的字典
+        """
+        data = {"token": self.token, "strategy": strategy, "sdt": sdt, "edt": edt, "symbols": symbols or []}
+
+        result = self._make_request("POST", "/query_strategy_weight", data)
+
+        if result.get("code") == 0:
+            data_result = result.get("data", {})
+            weights_count = len(data_result.get("weights", []))
+            self.logger.info(f"成功查询策略 {strategy} 的权重数据，共{weights_count}条记录")
+            return data_result
+        else:
+            self.logger.error(f"查询策略权重失败: {result.get('msg', '未知错误')}")
+            return {}
+
+    def delete_strategy(self, strategy: str) -> bool:
+        """
+        删除策略（彻底删除持仓权重及元数据）
+
+        Args:
+            strategy: 策略名称
+
+        Returns:
+            是否删除成功
+        """
+        data = {"token": self.token, "strategy": strategy}
+
+        result = self._make_request("POST", "/delete_strategy", data)
+
+        if result.get("code") == 200:
+            self.logger.info(f"成功删除策略: {strategy}")
+            return True
+        else:
+            self.logger.error(f"删除策略失败: {result.get('msg', '未知错误')}")
+            return False
+
+    def clear_cache(self, tokens: List[str] = None, roles: List[int] = None) -> bool:
+        """
+        清除接口缓存
+
+        Args:
+            tokens: token列表
+            roles: 角色ID列表
+
+        Returns:
+            是否清除成功
+        """
+        data = {"tokens": tokens or [], "roles": roles or []}
+
+        result = self._make_request("POST", "/clear_cache", data)
+
+        if result.get("code", 200) == 200:
+            self.logger.info("成功清除缓存")
+            return True
+        else:
+            self.logger.error("清除缓存失败")
+            return False
+
+    def upload_strategy_weights(
+        self,
+        df: Any,
+        strategy_name: str,
+        description: str,
+        base_freq: str,
+        author: str,
+        outsample_sdt: str,
+        upload_token: str = None,
+    ) -> Dict:
+        """
+        上传策略权重数据
+
+        Args:
+            df: 策略权重数据DataFrame，必须包含 dt, symbol, weight 三列
+            strategy_name: 策略名称
+            description: 策略描述
+            base_freq: 基础频率
+            author: 作者
+            outsample_sdt: 样本外开始日期
+            upload_token: 上传凭证码，如果不提供则从环境变量CZSC_TOKEN获取
+
+        Returns:
+            上传结果字典
+        """
+        import pandas as pd
+        import os
+
+        # 数据预处理
+        df_copy = df.copy()
+        df_copy["dt"] = pd.to_datetime(df_copy["dt"])
+
+        self.logger.info(f"输入数据中有 {len(df_copy)} 条权重信号")
+
+        # 去除单个品种下相邻时间权重相同的数据
+        _res = []
+        for _, dfg in df_copy.groupby("symbol"):
+            dfg = dfg.sort_values("dt", ascending=True).reset_index(drop=True)
+            dfg = dfg[dfg["weight"].diff().fillna(1) != 0].copy()
+            _res.append(dfg)
+
+        df_processed = pd.concat(_res, ignore_index=True)
+        df_processed = df_processed.sort_values(["dt"]).reset_index(drop=True)
+        df_processed["dt"] = df_processed["dt"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        self.logger.info(f"去除单个品种下相邻时间权重相同的数据后，剩余 {len(df_processed)} 条权重信号")
+
+        # 构造元数据
+        meta = {
+            "name": strategy_name,
+            "description": description,
+            "base_freq": base_freq,
+            "author": author,
+            "outsample_sdt": outsample_sdt,
+        }
+
+        # 构造上传数据
+        data = {
+            "weights": df_processed[["dt", "symbol", "weight"]].to_json(orient="split"),
+            "token": upload_token or os.getenv("CZSC_TOKEN"),
+            "strategy_name": strategy_name,
+            "meta": meta,
+        }
+
+        # 使用专门的上传接口
+        upload_url = "http://zbczsc.com:9106/upload_strategy"
+
+        try:
+            response = self.session.post(upload_url, json=data)
+            response.raise_for_status()
+            result = response.json()
+
+            self.logger.info(f"成功上传策略权重: {strategy_name}")
+            self.logger.debug(f"上传接口返回: {result}")
+            return result
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"上传策略权重失败: {strategy_name}, 错误: {e}")
+            raise
