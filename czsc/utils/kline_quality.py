@@ -39,7 +39,7 @@ def check_data_types(df):
         "close": "float",
         "high": "float",
         "low": "float",
-        "vol": "float",
+        "vol": "int_or_float",
         "amount": "float",
     }
     type_mismatches = {}
@@ -57,6 +57,17 @@ def check_data_types(df):
                     [mismatch_rows, df[df[column].apply(lambda x: not pd.api.types.is_datetime64_any_dtype([x]))]],
                     ignore_index=True,
                 )
+        elif expected == "int_or_float":
+            if not (pd.api.types.is_float_dtype(df[column]) or pd.api.types.is_integer_dtype(df[column])):
+                type_mismatches[column] = f"期望类型 int 或 float，但实际类型 {actual_type}"
+                mismatch_rows = pd.concat(
+                    [
+                        mismatch_rows,
+                        df[df[column].apply(lambda x: not isinstance(x, (int, float, np.integer, np.floating)))],
+                    ],
+                    ignore_index=True,
+                )
+
         elif expected.startswith("float"):
             if not pd.api.types.is_float_dtype(df[column]):
                 type_mismatches[column] = f"期望类型 {expected}，但实际类型 {actual_type}"
