@@ -12,6 +12,7 @@ import czsc
 import glob
 import pandas as pd
 from datetime import datetime
+from pathlib import Path
 
 
 # 投研共享数据的本地缓存路径，需要根据实际情况修改
@@ -59,7 +60,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     """
     raw_bars = kwargs.get("raw_bars", True)
     kwargs["fq"] = fq
-    file = glob.glob(os.path.join(cache_path, "*", f"{symbol}.parquet"))[0]
+    file = list(Path(cache_path).rglob(f"{symbol}.parquet"))[0]
     freq = czsc.Freq(freq)
     kline = pd.read_parquet(file)
     if "dt" not in kline.columns:
