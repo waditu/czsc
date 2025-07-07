@@ -458,8 +458,10 @@ def get_strategy_returns(
     SELECT * FROM {database}.returns final WHERE strategy = '{strategy}'
     """
     if sdt:
+        sdt = pd.to_datetime(sdt).strftime("%Y-%m-%d 00:00:00")
         query += f" AND dt >= '{sdt}'"
     if edt:
+        edt = pd.to_datetime(edt).strftime("%Y-%m-%d 23:59:59")
         query += f" AND dt <= '{edt}'"
     if symbols:
         if isinstance(symbols, str):

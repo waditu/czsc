@@ -159,7 +159,7 @@ def ensure_datetime_index(df, dt_col="dt"):
     """确保DataFrame的索引是datetime64[ns]类型"""
     if not df.index.dtype == "datetime64[ns]":
         if dt_col in df.columns:
-            df[dt_col] = pd.to_datetime(df[dt_col])
+            df[dt_col] = pd.to_datetime(df[dt_col]).astype('datetime64[ns]')
             df.set_index(dt_col, inplace=True)
         else:
             raise ValueError(f"DataFrame必须有datetime64[ns]类型的索引或包含'{dt_col}'列")
