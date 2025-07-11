@@ -1,3 +1,113 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/czsc",
+    "/tests", 
+    "/docs",
+    "/README.md"
+]
+exclude = [
+    "/.git",
+    "/.github",
+    "/docs/_build",
+]
+
+
+[project]
+name = "czsc"
+version = "0.9.69"
+description = "缠中说禅技术分析工具"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "zengbin93", email = "zeng_bin8888@163.com" }
+]
+keywords = ["缠论", "技术分析", "A股", "期货", "缠中说禅", "量化", "QUANT", "程序化交易"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.10"
+dependencies = [
+    # 核心数据处理
+    "pandas>=1.0.0",
+    "numpy",
+    "pyarrow",
+    "openpyxl",
+    
+    # 网络请求
+    "requests>=2.24.0",
+    "requests_toolbelt",
+    
+    # 数据库连接
+    "redis",
+    "clickhouse_connect",
+    
+    # 云存储
+    "oss2",
+    
+    # 数学计算和统计
+    "scipy",
+    "statsmodels",
+    "scikit-learn",
+    
+    # 技术分析
+    "ta-lib-everywhere",
+    "rs_czsc>=0.1.6",
+    
+    # 图表和可视化
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "pyecharts>=1.9.1",
+    "lightweight-charts",
+    
+    # 工具库
+    "tqdm>=4.66.4",
+    "loguru",
+    "dill",
+    "tenacity",
+    "parse",
+    "Deprecated",
+    "cryptography",
+    "pytz",
+    "streamlit"
+]
+
+[project.optional-dependencies]
+# 测试依赖
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+# 开发工具
+dev = [
+    "ipython",  # 用于开发和演示界面
+]
+
+# 完整开发环境（包含测试和开发工具）
+all = [
+    "czsc[test,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/waditu/czsc"
+Repository = "https://github.com/waditu/czsc"
+
+[tool.hatch.build.targets.wheel]
+packages = ["czsc"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"czsc/utils/china_calendar.feather" = "czsc/utils/china_calendar.feather"
+"czsc/utils/minutes_split.feather" = "czsc/utils/minutes_split.feather"
+
 [tool.black]
 line-length = 120
 exclude = '''
