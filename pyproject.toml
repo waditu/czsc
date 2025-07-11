@@ -18,7 +18,7 @@ exclude = [
 
 [project]
 name = "czsc"
-version = "0.9.69"
+dynamic = ["version"]
 description = "缠中说禅技术分析工具"
 readme = "README.md"
 license = "Apache-2.0"
@@ -67,7 +67,8 @@ dependencies = [
     "plotly",
     "pyecharts>=1.9.1",
     "lightweight-charts",
-    
+    "streamlit",
+
     # 工具库
     "tqdm>=4.66.4",
     "loguru",
@@ -77,7 +78,6 @@ dependencies = [
     "Deprecated",
     "cryptography",
     "pytz",
-    "streamlit"
 ]
 
 [project.optional-dependencies]
@@ -89,12 +89,22 @@ test = [
 
 # 开发工具
 dev = [
-    "ipython",  # 用于开发和演示界面
+    "ipython",
+    "jupyter",
+    "black",
+    "isort",
+    "flake8",
+]
+
+# 版本管理工具
+release = [
+    "twine",
+    "build",
 ]
 
 # 完整开发环境（包含测试和开发工具）
 all = [
-    "czsc[test,dev]",
+    "czsc[test,dev,release]",
 ]
 
 [project.urls]
@@ -107,6 +117,9 @@ packages = ["czsc"]
 [tool.hatch.build.targets.wheel.force-include]
 "czsc/utils/china_calendar.feather" = "czsc/utils/china_calendar.feather"
 "czsc/utils/minutes_split.feather" = "czsc/utils/minutes_split.feather"
+
+[tool.hatch.version]
+path = "czsc/__init__.py"
 
 [tool.black]
 line-length = 120

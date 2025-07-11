@@ -55,24 +55,6 @@
 - `publish-to-pypi`: 发布到正式 PyPI
 - `create-github-release`: 创建 GitHub Release 并上传文件
 
-## UV 集成优势
-
-### 🚀 性能提升
-- 依赖安装速度比传统 pip 快 10-100 倍
-- 并行处理多个 Python 版本
-
-### 🔒 可重现性
-- 锁定文件确保环境一致性
-- 精确的依赖版本控制
-
-### 🛠️ 现代化工具链
-- 基于 pyproject.toml 标准
-- 一体化包管理解决方案
-
-### 📦 简化的构建流程
-- 无需复杂的 setup.py 配置
-- 自动化的包构建和发布
-
 ## 开发者使用指南
 
 ### 本地开发环境设置
@@ -141,20 +123,145 @@ uv build
 
 ### 环境配置
 
-项目需要在 GitHub 中配置以下环境和密钥：
+项目需要在 GitHub 和 PyPI 中进行配置，以支持自动化发布流程。
 
-#### 环境 (Environments)
-- `testpypi`: 用于测试发布
-- `pypi`: 用于正式发布
+#### 🔧 必需配置
 
-#### 权限 (Permissions)
-- `id-token: write`: 用于 Trusted Publishing
-- `contents: write`: 用于 GitHub Release
+##### 1. PyPI Trusted Publishing 配置 ⭐ 推荐
+**最安全的方式，无需在 GitHub 中存储 PyPI 密钥**
 
-#### 推荐的 PyPI 配置
-使用 Trusted Publishing 替代传统的用户名/密码：
-1. 在 PyPI 项目设置中配置 Trusted Publisher
-2. 指定 GitHub 仓库和工作流文件
+**配置步骤**：
+1. 登录 [PyPI](https://pypi.org/)
+2. 进入项目 `czsc` 的管理页面
+3. 点击 "Settings" → "Publishing" 
+4. 点击 "Add a new publisher"
+5. 填写以下信息：
+   ```
+   PyPI project name: czsc
+   Owner: waditu
+   Repository name: czsc  
+   Workflow name: python-publish.yml
+   Environment name: pypi
+   ```
+6. 保存配置
+
+**可选：TestPyPI 配置**（用于测试发布）：
+1. 登录 [TestPyPI](https://test.pypi.org/)
+2. 重复上述步骤，环境名设为 `testpypi`
+
+##### 2. GitHub 环境 (Environments) 配置
+
+**操作路径**：`https://github.com/waditu/czsc/settings/environments`
+
+**创建环境**：
+1. 点击 "New environment"
+2. 创建以下环境：
+   - `pypi` - 用于正式发布到 PyPI
+   - `testpypi` - 用于测试发布（可选）
+3. 保存配置
+
+**环境保护规则**（可选）：
+- 设置必需的审查者
+- 限制特定分支才能部署
+- 设置等待时间
+
+#### 🔐 可选的 Secrets 配置
+
+##### 1. Codecov Token（推荐）
+**用途**：代码覆盖率报告集成
+
+**配置步骤**：
+1. 访问 [Codecov](https://codecov.io/)
+2. 使用 GitHub 账号登录
+3. 添加仓库 `waditu/czsc`
+4. 复制提供的 token
+5. 在 GitHub 仓库中添加 Secret：
+   ```
+   路径：Settings → Secrets and variables → Actions → New repository secret
+   Name: CODECOV_TOKEN
+   Value: [从 Codecov 复制的 token]
+   ```
+
+##### 2. 备用方案：传统 PyPI API Token（不推荐）
+**仅在无法使用 Trusted Publishing 时使用**
+
+| Secret 名称 | 获取方式 | 说明 |
+|------------|----------|------|
+| `PYPI_API_TOKEN` | PyPI 账户设置 → API tokens | 正式发布用 |
+| `TEST_PYPI_API_TOKEN` | TestPyPI 账户设置 → API tokens | 测试发布用 |
+
+#### ⚙️ 权限配置
+
+工作流需要以下权限（已在 workflow 文件中配置）：
+
+| 权限 | 用途 | 状态 |
+|------|------|------|
+| `id-token: write` | Trusted Publishing 身份验证 | ✅ 已配置 |
+| `contents: write` | GitHub Release 文件上传 | ✅ 已配置 |
+| `packages: write` | GitHub Packages 发布（如需要） | 可选 |
+
+#### 🔍 配置验证
+
+##### 验证配置是否正确
+```bash
+# 1. 本地构建测试
+uv build
+uv run twine check dist/*
+
+# 2. 手动触发测试发布
+# GitHub Actions → Build & Publish → Run workflow → 选择 "TestPyPI"
+
+# 3. 创建测试 Release
+git tag v0.9.69-test
+git push origin v0.9.69-test
+# 在 GitHub 创建 pre-release 验证完整流程
+```
+
+##### 配置检查清单
+- [ ] PyPI Trusted Publishing 已配置
+- [ ] GitHub 环境 `pypi` 已创建
+- [ ] GitHub 环境 `testpypi` 已创建（可选）
+- [ ] Codecov token 已添加（可选）
+- [ ] 工作流权限正确配置
+- [ ] 测试发布流程正常
+
+#### 🚨 安全提醒
+
+**✅ 推荐使用**：
+- Trusted Publishing（无需存储密钥）
+- GitHub Environment 保护
+- 自动 token 生成
+
+**❌ 避免使用**（旧方式）：
+- `PYPI_USERNAME` / `PYPI_PASSWORD`
+- `TWINE_USERNAME` / `TWINE_PASSWORD`  
+- 长期有效的 API tokens
+
+#### 🆘 常见问题
+
+**Q: Trusted Publishing 配置失败**
+```bash
+# 检查配置信息是否完全匹配：
+Repository: waditu/czsc
+Workflow file: python-publish.yml
+Environment: pypi（区分大小写）
+```
+
+**Q: 环境访问被拒绝**
+```bash
+# 确保：
+1. 环境名称正确（pypi/testpypi）
+2. workflow 文件中的 environment 配置匹配
+3. 分支保护规则允许该操作
+```
+
+**Q: 发布时权限错误**
+```bash
+# 检查 workflow 文件中的权限配置：
+permissions:
+  id-token: write  # 必需用于 Trusted Publishing
+  contents: write  # 用于 GitHub Release
+```
 
 ## 故障排除
 
