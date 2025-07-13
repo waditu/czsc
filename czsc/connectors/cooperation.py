@@ -211,14 +211,25 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
 def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     """获取全市场A股的日线数据"""
     adj = kwargs.get("adj", "hfq")
-    sdt = pd.to_datetime(sdt).year
-    edt = pd.to_datetime(edt).year
-    years = [str(year) for year in range(sdt, edt + 1)]
+    
+    # 转换为 datetime 对象
+    start_dt = pd.to_datetime(sdt)
+    end_dt = pd.to_datetime(edt)
+    
+    # 计算 sdt 和 edt 之间的每个月1号
+    date_spans = []
+    current = start_dt.replace(day=1)  # 从月初开始
+    while current <= end_dt:    
+        sdt_ = current.strftime("%Y%m%d")
+        edt_ = (current + pd.DateOffset(months=1)).replace(day=1).strftime("%Y%m%d")
+        date_spans.append((sdt_, edt_))
+        current = (current + pd.DateOffset(months=1)).replace(day=1)
 
     res = []
-    for year in years:
-        ttl = 3600 * 6 if year == str(datetime.now().year) else -1
-        kline = dc.pro_bar(trade_year=year, adj=adj, v=2, ttl=ttl)
+    for sdt_, edt_ in date_spans:
+        # 当前月份使用较短缓存时间，历史月份使用长期缓存
+        ttl = 3600 * 6 if edt_ < pd.Timestamp.now().strftime("%Y%m%d") else -1
+        kline = dc.pro_bar(sdt=sdt_, edt=edt_, adj=adj, v=2, ttl=ttl)
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
@@ -228,6 +239,7 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
         dfk = dfk[~dfk["code"].str.endswith(".BJ")].reset_index(drop=True)
 
     dfk = dfk.rename(columns={"code": "symbol"})
+    dfk = dfk.drop_duplicates(subset=["symbol", "dt"], keep="last").reset_index(drop=True)
     dfk["price"] = dfk["close"]
     nxb = kwargs.get("nxb", [1, 2, 5, 10, 20, 30, 60])
     if nxb:
