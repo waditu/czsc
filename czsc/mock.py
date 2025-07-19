@@ -534,3 +534,56 @@ def generate_event_data(seed=42):
             )
 
     return pd.DataFrame(data)
+
+@disk_cache(ttl=3600 * 24)
+def generate_weights(seed=42):
+    """生成权重数据
+
+    Args:
+        seed: 随机数种子，确保结果可重现，默认42
+
+    Returns:
+        pd.DataFrame: 包含权重数据的DataFrame，列包括dt、symbol、weight
+    """
+    # 设置随机数种子确保结果可重现
+    np.random.seed(seed)
+
+    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
+    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+
+    data = []
+    for dt in dates:
+        # 生成随机权重，每日权重和为1
+        weights = np.random.random(len(symbols))
+        weights = weights / weights.sum()
+
+        for i, symbol in enumerate(symbols):
+            data.append({"dt": dt, "symbol": symbol, "weight": weights[i]})
+
+    return pd.DataFrame(data)
+
+
+@disk_cache(ttl=3600 * 24)
+def generate_price_data(seed=42):
+    """生成价格数据
+
+    Args:
+        seed: 随机数种子，确保结果可重现，默认42
+
+    Returns:
+        pd.DataFrame: 包含价格数据的DataFrame，列包括symbol、dt、price
+    """
+    # 设置随机数种子确保结果可重现
+    np.random.seed(seed)
+
+    dates = pd.date_range(start="2010-01-01", end="2025-06-08", freq="D")
+    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+
+    data = []
+    for symbol in symbols:
+        price = 100.0
+        for dt in dates:
+            price *= 1 + np.random.normal(0.0005, 0.02)
+            data.append({"symbol": symbol, "dt": dt, "price": price})
+
+    return pd.DataFrame(data)
