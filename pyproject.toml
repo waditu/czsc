@@ -40,27 +40,21 @@ dependencies = [
     "numpy",
     "pyarrow",
     "openpyxl",
-    
     # 网络请求
     "requests>=2.24.0",
     "requests_toolbelt",
-    
     # 数据库连接
     "redis",
     "clickhouse_connect",
-    
     # 云存储
     "oss2",
-    
     # 数学计算和统计
     "scipy",
     "statsmodels",
     "scikit-learn",
-    
     # 技术分析
     "ta-lib-everywhere",
-    "rs_czsc>=0.1.6",
-    
+    "rs-czsc>=0.1.8",
     # 图表和可视化
     "matplotlib",
     "seaborn",
@@ -68,7 +62,6 @@ dependencies = [
     "pyecharts>=1.9.1",
     "lightweight-charts",
     "streamlit",
-
     # 工具库
     "tqdm>=4.66.4",
     "loguru",

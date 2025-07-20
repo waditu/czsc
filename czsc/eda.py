@@ -315,6 +315,8 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
         - price_type: str, 交易价格类型，默认为 close，可选值为 close 或 next_open
         - strict: bool, 是否严格模式，默认为 True, 严格模式下，计算因子出错会抛出异常
         - timeout: int, 超时时间，默认为 300 秒
+        - sort: bool, 是否对数据进行排序，默认为 True, 按照 symbol 和 dt 升序排序,
+            如果输入数据是有序的，可以设置为 False，避免重复排序，提高性能
 
     :return: dff, pd.DataFrame, 计算后的因子数据
     """
@@ -324,15 +326,18 @@ def cal_symbols_factor(dfk: pd.DataFrame, factor_function: Callable, **kwargs):
     price_type = kwargs.get("price_type", "close")
     strict = kwargs.get("strict", True)
     timeout = kwargs.get("timeout", 300)
+    sort = kwargs.get("sort", True)
 
     start_time = time.time()
 
     symbols = dfk["symbol"].unique().tolist()
     factor_name = factor_function.__name__
+    if sort:
+        dfk = dfk.sort_values(["symbol", "dt"], ascending=True).reset_index(drop=True)
 
     def __one_symbol(symbol):
         df = dfk[(dfk["symbol"] == symbol)].copy()
-        df = df.sort_values("dt", ascending=True).reset_index(drop=True)
+        # df = df.sort_values("dt", ascending=True).reset_index(drop=True)
         if len(df) < min_klines:
             logger.warning(f"{symbol} 数据量过小，跳过；仅有 {len(df)} 条数据，需要 {min_klines} 条数据")
             return None

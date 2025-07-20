@@ -309,7 +309,7 @@ def holds_performance(df, **kwargs):
     sdt = df["dt"].min()
     df_turns.loc[(df_turns["date"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].sum()
 
-    df_edge = df.groupby("dt").apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
+    df_edge = df.groupby("dt")[['weight', 'n1b']].apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
     df_edge.columns = ["date", "edge_pre_fee"]
     dfr = pd.merge(df_turns, df_edge, on="date", how="left")
     dfr["cost"] = dfr["change"] * fee / 10000  # 换手成本
