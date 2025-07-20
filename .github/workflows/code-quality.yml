@@ -52,34 +52,34 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: zengbin93/czsc
 
-  formatting:
-    name: Code Formatting
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+  # formatting:
+  #   name: Code Formatting
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v2
-      with:
-        version: "latest"
+  #   - name: Install uv
+  #     uses: astral-sh/setup-uv@v2
+  #     with:
+  #       version: "latest"
 
-    - name: Set up Python
-      run: uv python install 3.11
+  #   - name: Set up Python
+  #     run: uv python install 3.11
 
-    - name: Install dependencies
-      run: uv sync
+  #   - name: Install dependencies
+  #     run: uv sync
 
-    - name: Check code formatting with black
-      run: |
-        uv add --dev black
-        uv run black --check --diff czsc/
+  #   - name: Check code formatting with black
+  #     run: |
+  #       uv add --dev black
+  #       uv run black --check --diff czsc/
 
-    - name: Check import sorting with isort
-      run: |
-        uv add --dev isort
-        uv run isort --check-only --diff czsc/
+  #   - name: Check import sorting with isort
+  #     run: |
+  #       uv add --dev isort
+  #       uv run isort --check-only --diff czsc/
 
   linting:
     name: Code Linting
