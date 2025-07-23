@@ -741,6 +741,7 @@ dependencies = [
     { name = "scipy", version = "1.16.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "seaborn" },
     { name = "statsmodels" },
+    { name = "streamlit" },
     { name = "ta-lib-everywhere" },
     { name = "tenacity" },
     { name = "tqdm" },
@@ -757,7 +758,6 @@ all = [
     { name = "jupyter" },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "streamlit" },
     { name = "twine" },
 ]
 dev = [
@@ -767,7 +767,6 @@ dev = [
     { name = "ipython", version = "9.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "isort" },
     { name = "jupyter" },
-    { name = "streamlit" },
 ]
 release = [
     { name = "build" },
@@ -815,13 +814,12 @@ requires-dist = [
     { name = "redis" },
     { name = "requests", specifier = ">=2.24.0" },
     { name = "requests-toolbelt" },
-    { name = "rs-czsc", specifier = ">=0.1.6" },
+    { name = "rs-czsc", specifier = ">=0.1.8" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
     { name = "statsmodels" },
-    { name = "streamlit", marker = "extra == 'all'" },
-    { name = "streamlit", marker = "extra == 'dev'" },
+    { name = "streamlit" },
     { name = "ta-lib-everywhere" },
     { name = "tenacity" },
     { name = "tqdm", specifier = ">=4.66.4" },
@@ -3318,13 +3316,13 @@ wheels = [
 
 [[package]]
 name = "rs-czsc"
-version = "0.1.7"
+version = "0.1.8"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/43/f003b0a7daf2c99f48f56ebba66b35921e22ebd211efe12ffee28c46d570/rs_czsc-0.1.7-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:a37ff8e165c35ee5dd0bffe45c9c5b0391afe1bf2d61f9667a783ff182788363", size = 9215007, upload-time = "2025-06-09T09:56:18.245Z" },
-    { url = "https://files.pythonhosted.org/packages/d6/86/ed8d646c605d679fe2807d8217025580903d3f29b0803dd6826013792d14/rs_czsc-0.1.7-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:8bf73c21819e16167b2ab77071a8a6b5ea0f108932ef732c813f52dd37cecbed", size = 7977611, upload-time = "2025-06-09T09:57:26.085Z" },
-    { url = "https://files.pythonhosted.org/packages/10/99/d6b8377ed673eb6d304a38fb4cba4d1761c57931d59e91a0102f63c308ce/rs_czsc-0.1.7-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6fe4af2811784d37f82e1b1b43c58150e832b8e1225716cbc722427048fa5922", size = 9380246, upload-time = "2025-06-09T10:01:48.452Z" },
-    { url = "https://files.pythonhosted.org/packages/30/4f/15b740b4cc801418ddf5ff1ee1854a47e1c6c8b99b363c2a194525cfbb8b/rs_czsc-0.1.7-cp38-abi3-win_amd64.whl", hash = "sha256:0966e99af720798b345a4e3cd14de9070b9442b94bc02b9de271c930ff36cc71", size = 10307684, upload-time = "2025-06-09T10:09:02.538Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/75/2e5215fc6b93361e1c81a76d42c041d09fd96df4bf6a3f30631109d66383/rs_czsc-0.1.8-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9992396c3651d62fe886511e6d660ce011b5538a913d9f2d483415132f860dea", size = 9201401, upload-time = "2025-07-19T03:27:07.241Z" },
+    { url = "https://files.pythonhosted.org/packages/27/2d/91a7d9d1e47b83a343623ca0d0e2f166641de371a6ebc5aeb5a27fa2d7dc/rs_czsc-0.1.8-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:18f46815698ed2b5087ab390ec8659ce490f5f55e67ba733b576f659707c7760", size = 7966475, upload-time = "2025-07-19T03:28:39.647Z" },
+    { url = "https://files.pythonhosted.org/packages/00/bb/41c6402ad2ba3e5f479c247c7d350d87abe2baa920051467820732ebd317/rs_czsc-0.1.8-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c6a8e09eb9fa672ebd461fde34712cd4f377be9c2b33332c8094e43f99d8110c", size = 9355020, upload-time = "2025-07-19T03:31:51.017Z" },
+    { url = "https://files.pythonhosted.org/packages/68/10/41482d1192ed1aab0142eb845535b4ff24c06de73779981bc172fb7e9529/rs_czsc-0.1.8-cp38-abi3-win_amd64.whl", hash = "sha256:1c1e4b1b9deb6f20a8f88089c682ab99151431a70077bdac48d06100befaa09c", size = 10291621, upload-time = "2025-07-19T03:38:17.526Z" },
 ]
 
 [[package]]

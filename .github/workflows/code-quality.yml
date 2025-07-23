@@ -2,14 +2,60 @@ name: Code Quality
 
 on:
   push:
-    branches: [ master, 'V0.9.68' ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
 jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxml2-dev libxslt-dev
+
+    - name: Install project dependencies
+      run: |
+        uv sync --extra all
+
+    - name: Check project can be imported
+      run: |
+        uv run python -c "import czsc; print(f'CZSC version: {czsc.__version__}')"
+
+    - name: Run tests with pytest
+      run: |
+        uv run pytest test/ -v --cov=czsc --cov-report=xml --cov-report=term
+
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: zengbin93/czsc
+
   formatting:
     name: Code Formatting
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -38,6 +84,7 @@ jobs:
   linting:
     name: Code Linting
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -69,6 +116,7 @@ jobs:
   security:
     name: Security Audit
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -106,6 +154,7 @@ jobs:
   dependency-check:
     name: Dependency Analysis
     runs-on: ubuntu-latest
+    needs: test
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
