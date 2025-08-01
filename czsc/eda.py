@@ -733,8 +733,13 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         'is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period'
         'is_worst_period', 'is_worst_up_period', 'is_worst_down_period'
     """
-    from czsc.analyze import CZSC
-    from czsc.utils.bar_generator import format_standard_kline
+    rs = kwargs.get("rs", True)
+    
+    if rs:
+        from rs_czsc import CZSC, format_standard_kline
+    else:
+        from czsc.analyze import CZSC
+        from czsc.utils.bar_generator import format_standard_kline
 
     q1 = kwargs.get("q1", 0.15)
     q2 = kwargs.get("q2", 0.4)
@@ -761,9 +766,9 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
             bi_stats.append(
                 {
                     "symbol": symbol,
-                    "sdt": bi.sdt,
-                    "edt": bi.edt,
-                    "direction": bi.direction.value,
+                    "sdt": bi.sdt if not rs else bi.sdt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "edt": bi.edt if not rs else bi.edt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "direction": bi.direction.value if not rs else bi.direction,
                     "power_price": abs(bi.change),
                     "length": bi.length,
                     "rsq": bi.rsq,

@@ -16,10 +16,29 @@ from czsc.traders import generate_czsc_signals
 def test_czsc_strategy_example2():
     """测试策略示例2：仅传入Positions构建策略"""
     from czsc.strategies import CzscStrategyExample2
+    from czsc import mock
+    from czsc.objects import RawBar
 
-    bars = read_1min()
-    df = pd.DataFrame(bars)
-    bars = resample_bars(df, Freq.F15)
+    # 使用mock数据替代hardcoded data
+    df = mock.generate_symbol_kines("000001", "1分钟", sdt="20240101", edt="20240110", seed=42)
+    bars_raw = []
+    for i, row in df.iterrows():
+        bar = RawBar(
+            symbol=row['symbol'], 
+            id=i, 
+            freq=Freq.F1, 
+            open=row['open'], 
+            dt=row['dt'],
+            close=row['close'], 
+            high=row['high'], 
+            low=row['low'], 
+            vol=row['vol'], 
+            amount=row['amount']
+        )
+        bars_raw.append(bar)
+    
+    df_bars = pd.DataFrame([bar.__dict__ for bar in bars_raw])
+    bars = resample_bars(df_bars, Freq.F15)
 
     strategy = CzscStrategyExample2(symbol="000001.SH")
 

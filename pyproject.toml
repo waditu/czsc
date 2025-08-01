@@ -73,6 +73,10 @@ dependencies = [
     "pytz",
 ]
 
+[[tool.uv.index]]
+url = "http://mirrors.aliyun.com/pypi/simple/"
+default = true
+
 [project.optional-dependencies]
 # 测试依赖
 test = [
@@ -103,6 +107,12 @@ all = [
 [project.urls]
 Homepage = "https://github.com/waditu/czsc"
 Repository = "https://github.com/waditu/czsc"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.37.0",
+    "pytest>=8.4.1",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["czsc"]

@@ -273,8 +273,6 @@ def test_cross_sectional_strategy():
 def test_mock_klines_data_quality():
     """测试优化后的mock klines数据质量"""
     from czsc import mock
-    import numpy as np
-
     # 生成数据
     df = mock.generate_klines(seed=42)
 
@@ -355,3 +353,14 @@ def test_mock_data_consistency():
     assert df1["symbol"].nunique() == df3["symbol"].nunique(), "股票数量应该相同"
 
     print("Mock数据一致性测试通过")
+
+
+def test_mark_cta_periods():
+    from czsc import mock
+    from czsc.eda import mark_cta_periods
+    
+    df = mock.generate_klines(seed=42)
+    df1 = mark_cta_periods(df.copy(), rs=True, q1=0.15, q2=0.4, verbose=False)
+    df2 = mark_cta_periods(df.copy(), rs=False, q1=0.15, q2=0.4, verbose=False)
+    
+    

@@ -32,32 +32,26 @@ def test_fernet():
 
 
 def test_find_most_similarity():
+    """测试相似度查找功能"""
     from czsc.utils.features import find_most_similarity
 
-    # 创建一个向量和一个矩阵
+    # 使用固定种子创建确定性的测试数据
+    np.random.seed(42)
     vector = pd.Series(np.random.rand(10))
     matrix = pd.DataFrame(np.random.rand(10, 100))
 
-    # 调用函数
     result = find_most_similarity(vector, matrix, n=5, metric="cosine")
 
-    # 检查结果的类型
-    assert isinstance(result, pd.Series)
-
-    # 检查结果的长度im
-    assert len(result) == 5
-
-    # 检查结果的索引
-    assert all(isinstance(index, int) for index in result.index)
-
-    # 检查结果的值
-    assert all(0 <= value <= 1 for value in result.values)
+    assert isinstance(result, pd.Series), "结果应该是pandas Series"
+    assert len(result) == 5, "结果长度应该是5"
+    assert all(isinstance(index, int) for index in result.index), "索引应该都是整数"
+    assert all(0 <= value <= 1 for value in result.values), "相似度值应该在0-1之间"
 
 
 def test_overlap():
+    """测试重叠检测功能"""
     from czsc.utils import overlap
 
-    # 创建一个测试 DataFrame
     df = pd.DataFrame(
         {
             "dt": pd.date_range(start="1/1/2022", periods=5),
@@ -66,26 +60,26 @@ def test_overlap():
         }
     )
 
-    # 调用 overlap 函数
     result = overlap(df, "col")
 
-    # 验证结果
-    assert result["col_overlap"].tolist() == [1, 2, 1, 2, 1]
+    assert result["col_overlap"].tolist() == [1, 2, 1, 2, 1], "重叠检测结果不正确"
 
 
 def test_timeout_decorator_success():
+    """测试超时装饰器正常情况"""
     @timeout_decorator(2)
     def fast_function():
         time.sleep(1)
         return "Completed"
 
-    assert fast_function() == "Completed"
+    assert fast_function() == "Completed", "快速函数应该正常返回结果"
 
 
 def test_timeout_decorator_timeout():
+    """测试超时装饰器超时情况"""
     @timeout_decorator(1)
     def slow_function():
         time.sleep(5)
         return "Completed"
 
-    assert slow_function() is None
+    assert slow_function() is None, "慢函数应该超时返回None"
