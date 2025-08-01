@@ -8,12 +8,12 @@ describe: 测试交易价格计算
 import czsc
 import pandas as pd
 import numpy as np
-from test.test_analyze import read_1min
+from czsc import mock
 
 
 def test_trade_price():
-    bars = read_1min()
-    df = pd.DataFrame(bars)
+    """测试交易价格计算功能"""
+    df = mock.generate_symbol_kines("000001", "1分钟", sdt="20240101", edt="20240102", seed=42)
     df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol']].copy()
     df = czsc.cal_trade_price(df, digits=3)
 

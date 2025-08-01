@@ -124,6 +124,18 @@ packages = ["czsc"]
 [tool.hatch.version]
 path = "czsc/__init__.py"
 
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -v"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::FutureWarning:.*'T' is deprecated.*",
+    "ignore::RuntimeWarning:.*invalid value encountered in divide.*",
+]
+
 [tool.black]
 line-length = 120
 exclude = '''

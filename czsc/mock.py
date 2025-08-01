@@ -49,14 +49,14 @@ def generate_symbol_kines(symbol, freq, sdt="20100101", edt="20250101", seed=42)
             morning_times = pd.date_range(
                 start=f"{day.strftime('%Y-%m-%d')} {morning_start}",
                 end=f"{day.strftime('%Y-%m-%d')} {morning_end}",
-                freq=f"{freq_minutes}T",
+                freq=f"{freq_minutes}min",
             )
 
             # 下午交易时间
             afternoon_times = pd.date_range(
                 start=f"{day.strftime('%Y-%m-%d')} {afternoon_start}",
                 end=f"{day.strftime('%Y-%m-%d')} {afternoon_end}",
-                freq=f"{freq_minutes}T",
+                freq=f"{freq_minutes}min",
             )
 
             dates.extend(morning_times.tolist())

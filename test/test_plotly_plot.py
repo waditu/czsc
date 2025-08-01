@@ -8,12 +8,31 @@ describe: 测试绘图
 import os
 import pandas as pd
 from czsc import CZSC, KlineChart
-from test.test_analyze import read_daily
+from czsc import mock
+from czsc.objects import RawBar
+from czsc.enum import Freq
 
 
 def test_kline_chart():
     """测试K线图"""
-    bars = read_daily()
+    # 使用mock数据替代硬编码数据文件
+    df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
+    bars = []
+    for i, row in df.iterrows():
+        bar = RawBar(
+            symbol=row['symbol'], 
+            id=i, 
+            freq=Freq.D, 
+            open=row['open'], 
+            dt=row['dt'],
+            close=row['close'], 
+            high=row['high'], 
+            low=row['low'], 
+            vol=row['vol'], 
+            amount=row['amount']
+        )
+        bars.append(bar)
+    
     c = CZSC(bars, max_bi_num=50)
 
     df = pd.DataFrame(c.bars_raw)
