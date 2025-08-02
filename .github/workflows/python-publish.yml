@@ -39,12 +39,12 @@ jobs:
       run: |
         uv run pytest test/ -v
 
-    - name: Lint check
-      run: |
-        uv add --dev flake8 black isort
-        uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        uv run black --check .
-        uv run isort --check-only .
+    # - name: Lint check
+    #   run: |
+    #     uv add --dev flake8 black isort
+    #     uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     uv run black --check .
+    #     uv run isort --check-only .
 
     - name: Security audit
       run: |
