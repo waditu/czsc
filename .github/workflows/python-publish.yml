@@ -206,22 +206,28 @@ jobs:
         # 检查 Release 是否已存在
         if ! gh release view "$TAG_NAME" > /dev/null 2>&1; then
           echo "Creating release for $TAG_NAME..."
-          gh release create "$TAG_NAME" \
-            --title "Release $VERSION" \
-            --notes "🚀 czsc $VERSION
+          
+          # 创建发布说明
+          cat > release_notes.md << 'EOF'
+🚀 czsc $VERSION
 
 ### 更新内容
 - 更新到版本 $VERSION
-- 详细变更请查看 [提交历史](https://github.com/${{ github.repository }}/compare/$TAG_NAME)
+- 详细变更请查看提交历史
 
 ### 安装方式
-\`\`\`bash
+```bash
 pip install czsc==$VERSION
-\`\`\`
+```
 
 ### 文档
-- [项目文档](https://github.com/${{ github.repository }})
-- [API 参考](https://github.com/${{ github.repository }}/blob/$TAG_NAME/README.md)" \
+- 项目文档: README.md
+- API 参考文档请查看源码
+EOF
+          
+          gh release create "$TAG_NAME" \
+            --title "Release $VERSION" \
+            --notes-file release_notes.md \
             --draft=false \
             --prerelease=false
         else

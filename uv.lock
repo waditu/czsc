@@ -935,6 +935,7 @@ dev = [
     { name = "ipython", version = "8.37.0", source = { registry = "http://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.4.0", source = { registry = "http://mirrors.aliyun.com/pypi/simple/" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -992,6 +993,7 @@ provides-extras = ["all", "dev", "release", "test"]
 dev = [
     { name = "ipython", specifier = ">=8.37.0" },
     { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
 ]
 
 [[package]]
