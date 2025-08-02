@@ -208,22 +208,22 @@ jobs:
           echo "Creating release for $TAG_NAME..."
           
           # 创建发布说明
-          cat > release_notes.md << 'EOF'
-🚀 czsc $VERSION
+          cat > release_notes.md << EOF
+        🚀 czsc $VERSION
 
-### 更新内容
-- 更新到版本 $VERSION
-- 详细变更请查看提交历史
+        ### 更新内容
+        - 更新到版本 $VERSION
+        - 详细变更请查看提交历史
 
-### 安装方式
-```bash
-pip install czsc==$VERSION
-```
+        ### 安装方式
+        \`\`\`bash
+        pip install czsc==$VERSION
+        \`\`\`
 
-### 文档
-- 项目文档: README.md
-- API 参考文档请查看源码
-EOF
+        ### 文档
+        - 项目文档: README.md
+        - API 参考文档请查看源码
+        EOF
           
           gh release create "$TAG_NAME" \
             --title "Release $VERSION" \
