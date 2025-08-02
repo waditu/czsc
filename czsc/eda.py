@@ -736,7 +736,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
     rs = kwargs.get("rs", True)
     
     if rs:
-        from rs_czsc import CZSC, format_standard_kline
+        from rs_czsc import CZSC, format_standard_kline, Direction
     else:
         from czsc.analyze import CZSC
         from czsc.utils.bar_generator import format_standard_kline
@@ -752,6 +752,14 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
     verbose = kwargs.get("verbose", False)
     logger = kwargs.get("logger", loguru.logger)
 
+    def __convert_rs_direction(x):
+        if x == Direction.Up:
+            return "向上"
+        elif x == Direction.Down:
+            return "向下"
+        else:
+            raise ValueError
+        
     rows = []
     for symbol, dfg in df.groupby("symbol"):
         if verbose:
@@ -766,9 +774,9 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
             bi_stats.append(
                 {
                     "symbol": symbol,
-                    "sdt": bi.sdt if not rs else bi.sdt.strftime("%Y-%m-%d %H:%M:%S"),
-                    "edt": bi.edt if not rs else bi.edt.strftime("%Y-%m-%d %H:%M:%S"),
-                    "direction": bi.direction.value if not rs else bi.direction,
+                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit='s'),
+                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit='s'),
+                    "direction": bi.direction.value if not rs else __convert_rs_direction(bi.direction),
                     "power_price": abs(bi.change),
                     "length": bi.length,
                     "rsq": bi.rsq,
@@ -777,7 +785,6 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
             )
         bi_stats = pd.DataFrame(bi_stats)
 
-        logger.info(f"symbol: {symbol} 共 {len(bi_stats)} 笔")
         bi_stats["power_price_rank"] = (
             bi_stats["power_price"].rolling(window=100, min_periods=10).rank(method="min", ascending=True, pct=True)
         )
@@ -795,6 +802,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         worst_periods = bi_stats[bi_stats["rank"] > 1 - q2]
 
         if verbose:
+            logger.info(f"symbol: {symbol} 共 {len(bi_stats)} 笔")
             logger.info(
                 f"最容易赚钱的笔：{len(best_periods)} 个，样例：\n{best_periods.sort_values('rank', ascending=False).head(10)}"
             )

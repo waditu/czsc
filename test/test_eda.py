@@ -361,8 +361,15 @@ def test_mark_cta_periods():
     from czsc.eda import mark_cta_periods
     
     df = mock.generate_klines(seed=42)
+    # df = mock.generate_symbol_kines("BTC", freq='1分钟', sdt="20170101", edt="20250101", seed=42)
     # 确保dt列是datetime类型
     df['dt'] = pd.to_datetime(df['dt'])
+
+    # 如果可能的话，也测试rs=True，但要处理可能的错误
+    # try:
+    df1 = mark_cta_periods(df.copy(), rs=True, q1=0.15, q2=0.4, verbose=False)
+    assert isinstance(df1, pd.DataFrame), "rs=True时返回值应该是DataFrame"
+    assert len(df1) == len(df), "rs=True时处理后数据长度应该保持一致"
     
     # 先测试rs=False，避免rs-czsc库的复杂性
     df2 = mark_cta_periods(df.copy(), rs=False, q1=0.15, q2=0.4, verbose=False)
@@ -371,12 +378,21 @@ def test_mark_cta_periods():
     assert isinstance(df2, pd.DataFrame), "返回值应该是DataFrame"
     assert len(df2) == len(df), "处理后数据长度应该保持一致"
     
-    # 如果可能的话，也测试rs=True，但要处理可能的错误
-    try:
-        df1 = mark_cta_periods(df.copy(), rs=True, q1=0.15, q2=0.4, verbose=False)
-        assert isinstance(df1, pd.DataFrame), "rs=True时返回值应该是DataFrame"
-        assert len(df1) == len(df), "rs=True时处理后数据长度应该保持一致"
-    except (ImportError, AttributeError) as e:
-        # 如果rs-czsc库不可用或有兼容性问题，跳过这部分测试
-        print(f"跳过rs=True测试: {e}")
-        pass
+
+    # 对比 python 版本和 rust 版本的结果
+    assert df1.shape == df2.shape, "rs=True和rs=False的结果应该有相同的形状"
+    assert df1.columns.equals(df2.columns), "rs=True和rs=False的列结构应该相同"
+    assert df1['symbol'].equals(df2['symbol']), "rs=True和rs=False的symbol列应该相同"
+    assert df1['dt'].equals(df2['dt']), "rs=True和rs=False的dt列应该相同"
+    cols = ['is_best_period', 'is_best_up_period', 'is_best_down_period', 
+            'is_worst_period', 'is_worst_up_period', 'is_worst_down_period', 'is_normal_period']
+    
+    for col in cols:
+        print(f"\n\n{'=' * 20}")
+        print(f"对比 {col} 列:")
+        print(f"rs=True: {df1[col].value_counts()}")
+        print(f"rs=False: {df2[col].value_counts()}")
+        dfx = df1[df1[col] != df2[col]].copy()
+        mis_rate = len(dfx) / len(df1) if len(df1) > 0 else 0
+        print(f"rs=True和rs=False在{col}列不一致的比例: {mis_rate:.2%}")
+        assert mis_rate < 0.1, f"{col} 列在rs=True和rs=False结果中不一致的比例过高: {mis_rate:.2%}"
