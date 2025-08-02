@@ -89,7 +89,7 @@ jobs:
 
   publish-to-testpypi:
     name: Publish to TestPyPI
-    if: github.event.inputs.publish_to_testpypi == 'true' || github.event_name == 'workflow_dispatch'
+    if: github.event.inputs.publish_to_testpypi == 'true'
     needs: build
     runs-on: ubuntu-latest
     environment:
