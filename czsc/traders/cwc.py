@@ -29,20 +29,31 @@ def __db_from_env():
     port = int(port_str) if port_str else None
     user = os.getenv("CLICKHOUSE_USER")
     password = os.getenv("CLICKHOUSE_PASS")
+    # 建立连接的超时时间（秒）
+    connect_timeout = int(os.getenv("CLICKHOUSE_CONNECT_TIMEOUT", 10))
+    # 发送/接收（读写）的超时时间（秒）
+    send_receive_timeout = int(os.getenv("CLICKHOUSE_SEND_RECEIVE_TIMEOUT", 60))
 
     if not (host and port and user and password):
         raise ValueError(
             """
-        请设置环境变量：CLICKHOUSE_HOST, CLICKHOUSE_PORT, CLICKHOUSE_USER, CLICKHOUSE_PASS
+        请设置环境变量：
         
+        # 必须
         - CLICKHOUSE_HOST: 服务器地址，如 127.0.0.1
         - CLICKHOUSE_PORT: 服务器端口，如 9000
         - CLICKHOUSE_USER: 用户名, 如 default
         - CLICKHOUSE_PASS: 密码, 如果没有密码，可以设置为空字符串
+        
+        # 可选
+        - CLICKHOUSE_CONNECT_TIMEOUT: 建立连接的超时时间（秒），默认为 10
+        - CLICKHOUSE_SEND_RECEIVE_TIMEOUT: 发送/接收（读写）的超时时间（秒），默认为 60
         """
         )
 
-    db = ch.get_client(host=host, port=port, user=user, password=password)
+    db = ch.get_client(host=host, port=port, user=user, password=password,
+                       connect_timeout=connect_timeout, 
+                       send_receive_timeout=send_receive_timeout)
     return db
 
 
