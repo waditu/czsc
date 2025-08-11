@@ -7,6 +7,8 @@
 5. [常用命令参考](#常用命令参考)
 6. [发布流程](#发布流程)
 7. [常见问题解决](#常见问题解决)
+8. [UV 启动脚本慢的分析方法](#uv-启动脚本慢的分析方法)
+9. [按操作系统控制依赖（PEP 508）](#按操作系统控制依赖pep-508)
 
 ## 安装 UV
 
@@ -305,6 +307,59 @@ uv sync --extra test
 # CI/CD 环境：使用锁定文件确保一致性
 uv sync --frozen
 ```
+
+### 4. 按操作系统控制依赖（PEP 508）
+
+UV 支持使用 PEP 508 环境标记按操作系统/架构/解释器自动选择依赖，安装与运行时会自动生效。
+
+- 在核心依赖中使用标记
+```toml
+[project]
+dependencies = [
+    # 非 Windows 使用 uvloop
+    "uvloop>=0.19; sys_platform != 'win32'",
+    # 仅 Windows
+    "pywin32>=306; sys_platform == 'win32'",
+    # 仅 macOS 且 arm64
+    "tensorflow-macos; platform_system == 'Darwin' and platform_machine == 'arm64'",
+    # 仅 CPython
+    "orjson; platform_python_implementation == 'CPython'",
+    # 针对特定 Python 版本
+    "protobuf<5; python_version < '3.13'",
+]
+```
+
+- 在可选依赖组中使用标记
+```toml
+[project.optional-dependencies]
+cli = [
+    "colorama; sys_platform == 'win32'",
+    "readline; sys_platform != 'win32'",
+]
+```
+
+- 带直连引用也可加标记
+```toml
+[project]
+dependencies = [
+    "my-private-pkg @ git+https://github.com/org/repo.git; sys_platform == 'linux'",
+]
+```
+
+- 使用 uv 命令添加带标记依赖
+```bash
+uv add "pywin32>=306; sys_platform == 'win32'"
+uv add "uvloop>=0.19; sys_platform != 'win32'"
+```
+
+常用标记键：
+- sys_platform, platform_system, platform_machine
+- python_version, platform_python_implementation
+- extra（用于可选依赖组）
+
+说明：
+- 建议用标记而非手写条件安装脚本，锁定与安装更稳定。
+- 标记会在锁定与安装时正确解析，无需额外配置。
 
 ## 常用命令参考
 
@@ -659,14 +714,63 @@ PYTHONPATH = "src"
 DEBUG = "1"
 ```
 
-## 总结
 
-UV 迁移的关键要点：
+## UV 启动脚本慢的分析方法
 
-1. **逐步迁移**: 先完善 pyproject.toml，再逐步替换工作流
-2. **依赖分类**: 合理区分核心依赖和可选依赖
-3. **版本管理**: 使用适当的版本约束策略
-4. **测试验证**: 每个步骤都要验证功能正常
-5. **团队协作**: 更新开发文档，确保团队成员了解新流程
+目标：判断慢在 uv 的环境解析/同步，还是 Python 本身的导入/IO。
 
-通过 UV，您可以享受到现代 Python 包管理的所有优势：更快的安装速度、更可靠的依赖解析、更简洁的配置文件。这将大大提升您的开发效率和项目的可维护性。
+- 1) 基线对比（先看 uv 带来的额外开销）
+```bash
+# 纯 Python
+time python -c "pass"
+
+# uv，不同步环境（只测 uv 调度 + 启动）
+time uv run --no-sync python -c "pass"
+
+# 基准测试（可选）
+hyperfine "python -c 'pass'" "uv run --no-sync python -c 'pass'"
+```
+
+- 2) 排除依赖解析/同步
+```bash
+# 锁定并一次性同步
+uv lock
+uv sync
+
+# 运行时跳过同步
+uv run --no-sync python your_script.py
+
+# 观察是否在做解析/安装
+uv run -vv python your_script.py
+```
+
+- 3) 固定解释器，避免解释器探测耗时
+```bash
+uv run --no-sync --python 3.11 python your_script.py
+```
+
+- 4) 分析 Python 导入开销（多数“启动慢”在这里）
+```bash
+# 打印各模块导入耗时
+uv run --no-sync python -X importtime your_script.py 2> import.log
+# 关注 import.log 顶部最慢的模块，做延迟导入或精简依赖
+```
+
+- 5) 系统层 IO/杀毒排查
+```bash
+# Linux
+strace -f -tt -o trace.log uv run --no-sync python -c "pass"
+
+# macOS（需要 sudo）
+sudo dtruss -t wallclock uv run --no-sync python -c "pass"
+
+# Windows
+# 使用 Process Monitor 观察磁盘/杀毒拦截；将项目/.venv/.uv 加入 Defender 排除
+```
+
+- 6) 常见原因与对策
+  - 首次运行/未锁定导致解析与安装：先 uv lock && uv sync，再 uv run --no-sync
+  - 解释器探测慢：使用 --python 指定版本
+  - 脚本大量/重量级导入：用 -X importtime 找到热点，做延迟导入、移除未用库
+  - 磁盘/杀毒干扰：排除 .venv、.uv、项目目录；避免网络盘，改用本地 SSD
+  - 频繁变更依赖：在 CI/生产使用 uv sync --frozen，开发期尽量减少每次运行触发的同步

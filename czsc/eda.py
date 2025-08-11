@@ -856,6 +856,171 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
 
     return dfr
 
+def mark_v_reversal(df: pd.DataFrame, **kwargs):
+    """【后验，有未来信息，不能用于实盘】标记V字反转模式
+    
+    V字反转大概的识别逻辑：
+    1. 任意一个有力度的向上笔或者向下笔走势
+    2. 后续的一个笔的走势，吞没前面一笔走势的50%以上，而且速度很快
+    
+    关于笔的力度定义，可以参考 mark_cta_periods 函数中的笔走势的绝对收益、R平方、波动率等指标
+    
+    :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
+    :param kwargs: 其他参数
+        - copy: 是否复制数据，默认True
+        - verbose: 是否打印日志，默认False
+        - logger: 日志记录器
+        - rs: 是否使用rs_czsc，默认True
+        - min_power_percentile: 第一个笔的最小力度百分位数，默认0.7（即前30%）
+        - min_retracement: 最小回撤比例，默认0.5
+        - min_speed_ratio: 第二个笔相对第一个笔的最小速度比例，默认1.5
+        - power_window: 计算力度排名的滚动窗口，默认50
+    :return: 带有V字反转标记的K线数据，新增列
+        'is_v_reversal_up', 'is_v_reversal_down', 'is_v_reversal'
+    """
+    rs = kwargs.get("rs", True)
+    
+    if rs:
+        from rs_czsc import CZSC, format_standard_kline, Direction
+    else:
+        from czsc.analyze import CZSC
+        from czsc.utils.bar_generator import format_standard_kline
+
+    # 参数设置
+    min_power_percentile = kwargs.get("min_power_percentile", 0.7)
+    min_retracement = kwargs.get("min_retracement", 0.5)
+    min_speed_ratio = kwargs.get("min_speed_ratio", 1.5)
+    power_window = kwargs.get("power_window", 50)
+    
+    if kwargs.get("copy", True):
+        df = df.copy()
+
+    verbose = kwargs.get("verbose", False)
+    logger = kwargs.get("logger", loguru.logger)
+
+    def __convert_rs_direction(x):
+        if x == Direction.Up:
+            return "向上"
+        elif x == Direction.Down:
+            return "向下"
+        else:
+            raise ValueError
+        
+    rows = []
+    for symbol, dfg in df.groupby("symbol"):
+        if verbose:
+            logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
+
+        dfg = dfg.sort_values("dt").copy().reset_index(drop=True)
+        bars = format_standard_kline(dfg, freq="30分钟")
+        c = CZSC(bars, max_bi_num=len(bars))
+
+        # 提取笔的统计信息
+        bi_stats = []
+        for bi in c.bi_list:
+            bi_stats.append(
+                {
+                    "symbol": symbol,
+                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit='s'),
+                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit='s'),
+                    "direction": bi.direction.value if not rs else __convert_rs_direction(bi.direction),
+                    "power_price": abs(bi.change),
+                    "length": bi.length,
+                    "rsq": bi.rsq,
+                    "power_volume": bi.power_volume,
+                }
+            )
+        
+        if len(bi_stats) < 2:
+            if verbose:
+                logger.warning(f"symbol: {symbol} 笔数量不足，跳过V字反转识别")
+            dfg["is_v_reversal_up"] = 0
+            dfg["is_v_reversal_down"] = 0
+            dfg["is_v_reversal"] = 0
+            rows.append(dfg)
+            continue
+            
+        bi_stats = pd.DataFrame(bi_stats)
+
+        # 计算笔的力度综合评分
+        bi_stats["power_price_rank"] = (
+            bi_stats["power_price"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
+        )
+        bi_stats["rsq_rank"] = (
+            bi_stats["rsq"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
+        )
+        bi_stats["power_volume_rank"] = (
+            bi_stats["power_volume"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
+        )
+
+        bi_stats["power_score"] = bi_stats["power_price_rank"] + bi_stats["rsq_rank"] + bi_stats["power_volume_rank"]
+        bi_stats["speed"] = bi_stats["power_price"] / bi_stats["length"]  # 速度：单位长度的价格变化
+
+        # 识别V字反转
+        v_reversals_up = []  # 向上V字反转
+        v_reversals_down = []  # 向下V字反转
+        
+        for i in range(len(bi_stats) - 1):
+            bi1 = bi_stats.iloc[i]
+            bi2 = bi_stats.iloc[i + 1]
+            
+            # 检查方向是否相反
+            if bi1["direction"] == bi2["direction"]:
+                continue
+                
+            # 检查第一个笔的力度是否足够
+            if pd.isna(bi1["power_score"]) or bi1["power_score"] < bi1["power_price_rank"] * 3 * min_power_percentile:
+                continue
+                
+            # 计算回撤比例
+            retracement_ratio = abs(bi2["power_price"]) / abs(bi1["power_price"])
+            
+            # 检查回撤比例是否足够
+            if retracement_ratio < min_retracement:
+                continue
+                
+            # 检查第二个笔的速度是否足够快
+            if bi1["speed"] > 0 and bi2["speed"] / bi1["speed"] < min_speed_ratio:
+                continue
+                
+            # 判断V字反转类型
+            if bi1["direction"] == "向下" and bi2["direction"] == "向上":
+                # 向上V字反转：先下跌后上涨
+                v_reversals_up.append((bi1["sdt"], bi2["edt"]))
+            elif bi1["direction"] == "向上" and bi2["direction"] == "向下":
+                # 向下V字反转：先上涨后下跌
+                v_reversals_down.append((bi1["sdt"], bi2["edt"]))
+
+        if verbose:
+            logger.info(f"symbol: {symbol} 识别出 {len(v_reversals_up)} 个向上V字反转，{len(v_reversals_down)} 个向下V字反转")
+
+        # 标记V字反转
+        dfg["is_v_reversal_up"] = 0
+        dfg["is_v_reversal_down"] = 0
+        
+        for sdt, edt in v_reversals_up:
+            dfg.loc[(dfg["dt"] >= sdt) & (dfg["dt"] <= edt), "is_v_reversal_up"] = 1
+            
+        for sdt, edt in v_reversals_down:
+            dfg.loc[(dfg["dt"] >= sdt) & (dfg["dt"] <= edt), "is_v_reversal_down"] = 1
+            
+        dfg["is_v_reversal"] = dfg["is_v_reversal_up"] | dfg["is_v_reversal_down"]
+        
+        rows.append(dfg)
+
+    dfr = pd.concat(rows, ignore_index=True)
+    
+    if verbose:
+        v_up_coverage = dfr['is_v_reversal_up'].sum() / len(dfr) if len(dfr) > 0 else 0
+        v_down_coverage = dfr['is_v_reversal_down'].sum() / len(dfr) if len(dfr) > 0 else 0
+        v_total_coverage = dfr['is_v_reversal'].sum() / len(dfr) if len(dfr) > 0 else 0
+        logger.info(
+            f"处理完成，向上V字反转覆盖率：{v_up_coverage:.2%}, "
+            f"向下V字反转覆盖率：{v_down_coverage:.2%}, "
+            f"总V字反转覆盖率：{v_total_coverage:.2%}"
+        )
+
+    return dfr
 
 def mark_volatility(df: pd.DataFrame, kind="ts", **kwargs):
     """【后验，有未来信息，不能用于实盘】标记时序/截面波动率最大/最小的N个时间段

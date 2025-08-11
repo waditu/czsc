@@ -4,7 +4,8 @@
     "allow": [
       "Bash(uv run pytest:*)",
       "Bash(uv run:*)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }
