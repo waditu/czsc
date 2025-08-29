@@ -1,0 +1,189 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libxml2-dev libxslt-dev
+
+    - name: Install project dependencies
+      run: |
+        uv sync --extra all
+
+    - name: Check project can be imported
+      run: |
+        uv run python -c "import czsc; print(f'CZSC version: {czsc.__version__}')"
+
+    - name: Run tests with pytest
+      run: |
+        uv run pytest test/ -v --cov=czsc --cov-report=xml --cov-report=term
+
+    - name: Upload coverage to Codecov
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: zengbin93/czsc
+
+  # formatting:
+  #   name: Code Formatting
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #   - name: Checkout code
+  #     uses: actions/checkout@v4
+
+  #   - name: Install uv
+  #     uses: astral-sh/setup-uv@v2
+  #     with:
+  #       version: "latest"
+
+  #   - name: Set up Python
+  #     run: uv python install 3.11
+
+  #   - name: Install dependencies
+  #     run: uv sync
+
+  #   - name: Check code formatting with black
+  #     run: |
+  #       uv add --dev black
+  #       uv run black --check --diff czsc/
+
+  #   - name: Check import sorting with isort
+  #     run: |
+  #       uv add --dev isort
+  #       uv run isort --check-only --diff czsc/
+
+  linting:
+    name: Code Linting
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Lint with flake8
+      run: |
+        uv add --dev flake8
+        # stop the build if there are Python syntax errors or undefined names
+        uv run flake8 czsc/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 120 chars wide
+        uv run flake8 czsc/ --count --exit-zero --max-complexity=30 --max-line-length=120 --statistics
+
+    - name: Type checking with mypy
+      run: |
+        uv add --dev mypy types-requests
+        uv run mypy czsc/ --ignore-missing-imports || true
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Security audit with safety
+      run: |
+        uv add --dev safety
+        uv run safety check --json || true
+
+    - name: Check for security issues with bandit
+      run: |
+        uv add --dev bandit[toml]
+        uv run bandit -r czsc/ -f json -o bandit-report.json || true
+
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+        retention-days: 7
+
+  dependency-check:
+    name: Dependency Analysis
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Check for outdated dependencies
+      run: |
+        uv tree --outdated || true
+
+    - name: Audit dependency licenses
+      run: |
+        uv add --dev pip-licenses
+        uv run pip-licenses --format=json --output-file=licenses.json || true
+
+    - name: Upload dependency reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: dependency-reports
+        path: |
+          licenses.json
+        retention-days: 7 

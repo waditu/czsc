@@ -1,32 +1,249 @@
-# This workflows will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
+# This workflow will build and upload a Python Package using UV when a release is created
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Upload Python Package
+name: Build & Publish Python Package
 
 on:
+  push:
+    tags:
+      - 'v*'  # 监听所有 v* 格式的标签，如 v1.0.0, v0.9.70
   release:
-    types: [created]
+    types: [published]
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      publish_to_testpypi:
+        description: 'Publish to TestPyPI instead of PyPI'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  deploy:
-
+  pre-publish-checks:
     runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync --extra all
+
+    - name: Run tests
+      run: |
+        uv run pytest test/ -v
+
+    # - name: Lint check
+    #   run: |
+    #     uv add --dev flake8 black isort
+    #     uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     uv run black --check .
+    #     uv run isort --check-only .
+
+    - name: Security audit
+      run: |
+        uv add --dev safety
+        uv run safety check
+
+  build:
+    needs: pre-publish-checks
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
+
+    - name: Set up Python
+      run: uv python install 3.11
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Build package
+      run: uv build
+
+    - name: Check package metadata
+      run: |
+        uv add --dev twine
+        uv run twine check dist/*
+
+    - name: List build artifacts
+      run: ls -la dist/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+        retention-days: 30
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    if: github.event.inputs.publish_to_testpypi == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/czsc
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
       with:
-        python-version: '3.x'
-    - name: Install dependencies
+        name: python-package-distributions
+        path: dist/
+
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+        verbose: true
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/czsc
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+    - name: Extract version from tag
+      id: extract_version
       run: |
-        python -m pip install --upgrade pip
-        pip install setuptools wheel twine pandas pyecharts mplfinance tushare matplotlib
-        pip install -r requirements.txt
-    - name: Build and publish
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
+          echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Verify version consistency
+      run: |
+        # 验证构建的包版本与 tag 版本一致
+        BUILT_VERSION=$(ls dist/*.whl | grep -oP 'czsc-\K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        TAG_VERSION=${{ steps.extract_version.outputs.version }}
+        
+        echo "Built version: $BUILT_VERSION"
+        echo "Tag version: $TAG_VERSION"
+        
+        if [ "$BUILT_VERSION" != "$TAG_VERSION" ]; then
+          echo "❌ Version mismatch: built $BUILT_VERSION != tag $TAG_VERSION"
+          exit 1
+        else
+          echo "✅ Version consistency verified"
+        fi
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        verbose: true
+
+  create-github-release:
+    name: Sign and upload to GitHub Release
+    if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    needs: publish-to-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write  # IMPORTANT: mandatory for sigstore
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+    - name: Extract version info
+      id: version_info
+      run: |
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${GITHUB_REF#refs/tags/v}
+        elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
+          TAG_NAME=${{ github.event.release.tag_name }}
+          VERSION=${TAG_NAME#v}
+        fi
+        
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Create Release (if tag push)
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
-        python setup.py sdist bdist_wheel
-        twine upload dist/*
+        TAG_NAME=${{ steps.version_info.outputs.tag_name }}
+        VERSION=${{ steps.version_info.outputs.version }}
+        
+        # 检查 Release 是否已存在
+        if ! gh release view "$TAG_NAME" > /dev/null 2>&1; then
+          echo "Creating release for $TAG_NAME..."
+          
+          # 创建发布说明
+          cat > release_notes.md << EOF
+        🚀 czsc $VERSION
+
+        ### 更新内容
+        - 更新到版本 $VERSION
+        - 详细变更请查看提交历史
+
+        ### 安装方式
+        \`\`\`bash
+        pip install czsc==$VERSION
+        \`\`\`
+
+        ### 文档
+        - 项目文档: README.md
+        - API 参考文档请查看源码
+        EOF
+          
+          gh release create "$TAG_NAME" \
+            --title "Release $VERSION" \
+            --notes-file release_notes.md \
+            --draft=false \
+            --prerelease=false
+        else
+          echo "Release $TAG_NAME already exists"
+        fi
+
+    - name: Sign the dists with Sigstore
+      uses: sigstore/gh-action-sigstore-python@v2.1.1
+      with:
+        inputs: >-
+          ./dist/*.tar.gz
+          ./dist/*.whl
+
+    - name: Upload to GitHub Release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        TAG_NAME=${{ steps.version_info.outputs.tag_name }}
+        gh release upload "$TAG_NAME" dist/** --clobber

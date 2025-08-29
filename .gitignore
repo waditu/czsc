@@ -2,14 +2,17 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+*/docs/source/api
+*/gmcache
 .idea/
+manuscrips/
 *.xlsx
 *.html
 *.png
 */.ipynb_checkpoints/
 # C extensions
 *.so
+*api/
 
 # Distribution / packaging
 .Python

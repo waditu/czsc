@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CZSC手工交易训练</title>
+    <script src="https://cdn.bootcss.com/jquery/3.0.0/jquery.min.js"></script>
+    <script type="text/javascript" src="https://assets.pyecharts.org/assets/echarts.min.js"></script>
+</head>
+<body>
+    <style>
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 12px 16px;
+            transition: 0.3s;
+        }
+
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        .tab button.active {
+            background-color: #ccc;
+        }
+
+        .chart-container {
+            padding: 6px 12px;
+            border-top: none;
+        }
+        #op-evaluate{
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+        #op-evaluate div{
+            width: 200px;
+        }
+    </style>
+
+    <div class="tab"></div>
+    <div class="box"></div>
+    <div>
+        Symbol: <select name="symbol" style="margin-right: 10px;"></select>
+        周期：<span name="freqs" style="margin-right: 10px;"></span>
+        数量：<input type="number" name="counts" style="margin-right: 10px;"/>
+        <button onclick="page.handleSubmit()">开始训练</button>
+    </div>
+    <div id="op-container" style="margin-top: 10px;"></div>
+    <div id="op-evaluate" style="margin-top: 10px;"></div>
+
+<script>
+
+    function showChart(evt, chartID) {
+        let containers = document.getElementsByClassName("chart-container");
+        for (let i = 0; i < containers.length; i++) {
+            containers[i].style.display = "none";
+        }
+
+        let tablinks = document.getElementsByClassName("tablinks");
+        for (let i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = "tablinks";
+        }
+
+        document.getElementById(chartID).style.display = "block";
+        evt.target.className += " active";
+    }
+
+    const API_PREFIX = location.origin
+    const FREQ_OPTIONS = ['1分钟', '5分钟', '15分钟', '30分钟', '60分钟', '日线', '周线', '月线']
+    let page = {
+        freqs: FREQ_OPTIONS,
+        counts: 300,
+        async init(){
+            let param = this.parseURLParams()
+            this.counts = param.counts || this.counts
+            this.freqs = param.freqs || this.freqs
+            $('input[name=counts]').val(this.counts)
+            $('span[name=freqs]').html(FREQ_OPTIONS.map(it=>`<input  type="checkbox" id="freq_${it}"/>
+                <label for="freq_${it}">${it}</label>`))
+            this.freqs.forEach(it=>$(`#freq_${it}`)[0].checked = true)
+
+            let rs = await $.ajax({
+                type: "GET",
+                url: API_PREFIX + '/symbols',
+                dataType: 'json',
+            })
+            $('select[name=symbol]').html(rs.symbols.map(it=>`<option value ="${it}">${it}</option>`))
+            $('select[name=symbol]').val(param.symbol)
+
+            $('.tab').html(this.freqs.map(it=>`<button class="tablinks" onclick="showChart(event,
+                 '${it}')">${it}</button>`))
+            $('.box').html(this.freqs.map(it=>`<div id="${it}" class="chart-container"
+                 style="width:100%; height:580px;"></div>`))
+
+            this.initCharts()
+            this.initOps()
+        },
+        async initCharts(){
+            let rs = await $.ajax({
+                type: "GET",
+                url: API_PREFIX + '/next_bar',
+                dataType: 'json',
+            })
+            rs.tabs.forEach((it,index)=>{
+                let chartId = this.freqs[index]
+                window[`chart_${chartId}`] = echarts.init(
+                    document.getElementById(chartId), 'white', {renderer: 'canvas'})
+                window[`option_${chartId}`] = JSON.parse(it)
+                window[`chart_${chartId}`].setOption(window[`option_${chartId}`])
+            })
+            $('.tablinks').eq(0).click()
+        },
+        initOps(){
+            let ops = [
+                {label:'观望', onclick:'nextK'},
+                {label:'开多', onclick:'buyLong'},
+                {label:'平多', onclick:'sellLong'},
+                {label:'开空', onclick:'buyShort'},
+                {label:'平空', onclick:'sellShort'},
+            ]
+            let buttons = ops.map(it=> `<button style="margin-left:10px;" onclick="trader.${it.onclick}()">${it.label}</button>`)
+            buttons.unshift(`<input type="checkbox" onclick="trader.auto()">自动</input>`)
+            $('#op-container').html(buttons.join(''))
+        },
+        handleSubmit(){
+            let freqs =  FREQ_OPTIONS.filter(it=>$(`#freq_${it}`)[0].checked)
+            let symbol =  $('select[name=symbol]').val()
+            let counts =  $('input[name=counts]').val()
+            let param = {
+                freqs: freqs.join(','),
+                symbol,
+                counts
+            }
+            let search = []
+            for(let i in param){
+                param[i] && search.push([i, encodeURIComponent(param[i])].join('='))
+            }
+            location.search = search.join('&')
+        },
+        parseURLParams() {
+            let search = location.search.replace('?', '')
+            if (!search) return {};
+            let rs = {}
+            let params = search.split('&')
+            params.forEach(it => {
+                let tokens = it.split('=')
+                let val = decodeURIComponent(tokens[1])
+                if(val && val.indexOf(',') > 0){ //include ',' => array
+                    val = val.split(',')
+                }
+                rs[tokens[0]] = val
+            })
+            return rs
+        },
+    }
+    let trader = {
+        interval: 0,
+        remains: 0,
+        ops:[], // buy/sell ops
+        setRemains(remains){
+            this.remains = remains
+        },
+        auto(e){
+            clearInterval(trader.interval)
+            if(!this.isAuto()){
+                trader.interval = 0
+            }
+            else{
+                trader.interval = setInterval(()=>trader.nextK(), 1000)
+            }
+        },
+        isAuto(){
+            return $('input[onclick="trader.auto()"]')[0].checked
+        },
+        async nextK(e){
+            if(this.remains <= 0){
+                alert('已训练完毕，请重新选择参数')
+                // from auto
+                if(this.isAuto()){
+                    clearInterval(trader.interval)
+                    trader.interval = 0
+                }
+                return
+            }
+            let rs = await $.ajax({
+                type: "GET",
+                url: API_PREFIX + '/next_bar',
+                dataType: 'json',
+            })
+            rs.tabs.forEach((it,index)=>{
+                let chartId = page.freqs[index]
+                window[`option_${chartId}`] = JSON.parse(it)
+                window[`chart_${chartId}`].setOption(window[`option_${chartId}`])
+            })
+            this.remains--
+            this.redrawChart()
+        },
+        buyLong(e){
+            this._addOp('BL')
+        },
+        sellLong(e){
+            this._addOp('SL')
+        },
+        buyShort(e){
+            this._addOp('BS')
+        },
+        sellShort(e){
+            this._addOp('SS')
+        },
+        async _addOp(type){
+            let [date, kline] = this.getCurrentKline()
+            this.ops.push({type, date, kline})
+            this.nextK()
+
+            let rs = await $.ajax({
+                type: "POST",
+                url: API_PREFIX + '/evaluates',
+                dataType: 'json',
+                data: JSON.stringify({ops: this.ops})
+            })
+            let evaluates = Object.keys(rs.evaluates).map(it=>
+                `<div>${it}：${rs.evaluates[it]}</div>`)
+            $('#op-evaluate').html(evaluates.join(''))
+        },
+        getCurrentKline(){
+            let {xAxis, series} = this.getChartOption()
+            let dates = xAxis[0].data
+            let klines = series.find(it=> it.type == 'candlestick').data
+            let curDate = dates[dates.length-1]
+            let curKline = klines[klines.length-1]
+            return [curDate, curKline]
+        },
+        redrawChart(){
+            let options = this.getChartOption()
+            let {ops} = this
+            if(ops.length > 0){
+                options.series.find(it=> it.type == 'candlestick').markPoint = {
+                    symbol: 'triangle',
+                    symbolSize: 10,
+                    data: ops.map(it=>{
+                        let {type, date, kline} = it
+                        let isBuy = type.startsWith('B')
+                        let value = isBuy ? kline.value[2] : kline.value[3] //buy-low, sell-high
+                        return {
+                            name: type,
+                            coord: [date, value],
+                            value: value,
+                            symbolOffset: [0, isBuy ? 20 : -20],
+                            symbolRotate: isBuy ? 0 : 180,
+                            itemStyle:{
+                                color: isBuy ? 'yellow' : 'red',
+                            },
+                            label:{
+                                position: !isBuy ? 'bottom' : 'top',
+                                distance: -25,
+                                formatter: function (param) {
+                                    return '<br/>' + param != null ? param.name : '';
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+            window[`chart_${this.getChartId()}`].setOption(options)
+        },
+        getChartOption(){ //get current chart option
+            return window[`option_${this.getChartId()}`]
+        },
+        getChartId(){ //get current chart id
+            return page.freqs[0]
+        },
+    }
+    $(()=>{
+        page.init()
+        trader.setRemains(page.counts - 1)
+    })
+
+</script>
+</body>
+</html>

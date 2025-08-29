@@ -1,0 +1,5 @@
+[flake8]
+ignore = D203
+exclude = .git,__pycache__,docs/source/conf.py,old,build,dist,examples,*/__init__.py
+max-complexity = 10
+max-line-length = 120

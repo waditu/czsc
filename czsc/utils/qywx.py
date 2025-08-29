@@ -20,8 +20,27 @@ def push_text(content: str, key: str) -> None:
     try:
         response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
-    except:
-        print(f"{data} - 文本消息推送失败")
+    except Exception as e:
+        print(f"{data} - 文本消息推送失败: {e}")
+
+
+def push_markdown(content: str, key: str) -> None:
+    """推送 Markdown 消息到企业微信群
+
+    API介绍： https://work.weixin.qq.com/api/doc/90000/90136/91770
+
+    :param content: Markdown 内容
+    :param key: 企业微信群聊机器人的key
+    :return: None
+    """
+    api_send = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={}".format(key)
+    data = {"msgtype": "markdown", "markdown": {"content": content}}
+    try:
+        response = requests.post(api_send, json=data)
+        assert response.json()['errmsg'] == 'ok'
+    except Exception as e:
+        print(f"{data} - Markdown 消息推送失败: {e}")
+
 
 def push_file(file: str, key: str):
     """推送文件到企业微信群聊
@@ -42,8 +61,8 @@ def push_file(file: str, key: str):
         data = {"msgtype": "file", "file": {"media_id": mid}}
         r2 = requests.post(api_send, json=data)
         assert r2.json()['errmsg'] == 'ok', str(r2.json())
-    except:
-        print(f"推送文件{file_name}到企业微信群失败")
+    except Exception as e:
+        print(f"推送文件{file_name}到企业微信群失败: {e}")
 
 
 def push_msg(msg_type, content, key):
@@ -56,6 +75,5 @@ def push_msg(msg_type, content, key):
     try:
         response = requests.post(api_send, json=data)
         assert response.json()['errmsg'] == 'ok'
-    except:
-        print("消息推送失败")
-
+    except Exception as e:
+        print(f"消息推送失败: {e}")

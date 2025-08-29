@@ -1,0 +1,156 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/czsc",
+    "/tests", 
+    "/docs",
+    "/README.md"
+]
+exclude = [
+    "/.git",
+    "/.github",
+    "/docs/_build",
+]
+
+
+[project]
+name = "czsc"
+dynamic = ["version"]
+description = "缠中说禅技术分析工具"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "zengbin93", email = "zeng_bin8888@163.com" }
+]
+keywords = ["缠论", "技术分析", "A股", "期货", "缠中说禅", "量化", "QUANT", "程序化交易"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.10"
+dependencies = [
+    # 核心数据处理
+    "pandas>=1.0.0",
+    "numpy",
+    "pyarrow",
+    "openpyxl",
+    # 网络请求
+    "requests>=2.24.0",
+    "requests_toolbelt",
+    # 数据库连接
+    "redis",
+    "clickhouse_connect",
+    # 云存储
+    "oss2",
+    # 数学计算和统计
+    "scipy",
+    "statsmodels",
+    "scikit-learn",
+    # 技术分析
+    "ta-lib-everywhere",
+    "rs-czsc>=0.1.8",
+    # 图表和可视化
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "pyecharts>=1.9.1",
+    "lightweight-charts",
+    "streamlit",
+    # 工具库
+    "tqdm>=4.66.4",
+    "loguru",
+    "dill",
+    "tenacity",
+    "parse",
+    "Deprecated",
+    "cryptography",
+    "pytz",
+]
+
+[[tool.uv.index]]
+url = "http://mirrors.aliyun.com/pypi/simple/"
+default = true
+
+[project.optional-dependencies]
+# 测试依赖
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+# 开发工具
+dev = [
+    "ipython",
+    "jupyter",
+    "black",
+    "isort",
+    "flake8",
+]
+
+# 版本管理工具
+release = [
+    "twine",
+    "build",
+]
+
+# 完整开发环境（包含测试和开发工具）
+all = [
+    "czsc[test,dev,release]",
+]
+
+[project.urls]
+Homepage = "https://github.com/waditu/czsc"
+Repository = "https://github.com/waditu/czsc"
+
+[dependency-groups]
+dev = [
+    "ipython>=8.37.0",
+    "pytest>=8.4.1",
+    "pyyaml>=6.0.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["czsc"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"czsc/utils/china_calendar.feather" = "czsc/utils/china_calendar.feather"
+"czsc/utils/minutes_split.feather" = "czsc/utils/minutes_split.feather"
+
+[tool.hatch.version]
+path = "czsc/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -v"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::FutureWarning:.*'T' is deprecated.*",
+    "ignore::RuntimeWarning:.*invalid value encountered in divide.*",
+]
+
+[tool.black]
+line-length = 120
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | setup.py
+)/
+'''
