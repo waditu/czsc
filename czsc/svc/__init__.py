@@ -10,18 +10,9 @@ Streamlit Visualize Components (SVC) - 缠中说禅可视化组件库
 - backtest: 回测相关组件
 - statistics: 统计分析组件
 - utils: 工具类组件
-
-使用方法：
-```python
-import czsc
-from czsc.svc import show_daily_return, show_weight_backtest
-
-# 或者导入整个子模块
-from czsc.svc import returns, backtest
-```
+- forms: 用户输入表单组件
 """
 
-# 导入所有子模块的函数，保持向后兼容性
 from .returns import (
     show_daily_return,
     show_cumulative_returns,
@@ -48,6 +39,8 @@ from .factor import (
     show_event_features,
 )
 
+
+# TODO: 读取文件，修复导入，要求所有 show_ 开头的函数都能导入
 from .backtest import (
     show_weight_distribution,
     show_weight_backtest,
@@ -55,6 +48,11 @@ from .backtest import (
     show_stoploss_by_direction,
     show_backtest_by_thresholds,
     show_yearly_backtest,
+    show_backtest_by_year,
+    show_backtest_by_symbol,
+    show_long_short_backtest,
+    show_comprehensive_weight_backtest,
+    run_weight_backtest_app,
 )
 
 from .statistics import (
@@ -71,7 +69,7 @@ from .statistics import (
 )
 
 from .utils import (
-    show_code_editor,
+    streamlit_run,
 )
 
 from .price_analysis import (
@@ -93,6 +91,13 @@ from .strategy import (
     show_symbol_penalty,
     show_multi_backtest,
 )
+
+# 从 forms.py 导入所有表单函数
+from .forms import (
+    weight_backtest_form,
+    code_editor_form
+)
+
 
 # 将所有函数添加到 __all__ 中
 __all__ = [
@@ -123,6 +128,11 @@ __all__ = [
     "show_stoploss_by_direction",
     "show_backtest_by_thresholds",
     "show_yearly_backtest",
+    "show_backtest_by_year",
+    "show_backtest_by_symbol",
+    "show_long_short_backtest",
+    "show_comprehensive_weight_backtest",
+    "run_weight_backtest_app",
     # 统计分析
     "show_splited_daily",
     "show_yearly_stats",
@@ -152,4 +162,6 @@ __all__ = [
     "show_code_editor",
     # 价格敏感性分析
     "show_price_sensitive",
+    # 表单组件
+    "weight_backtest_form",
 ]

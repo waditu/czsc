@@ -5,7 +5,8 @@
       "Bash(uv run pytest:*)",
       "Bash(uv run:*)",
       "Bash(git tag:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
