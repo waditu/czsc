@@ -487,7 +487,7 @@ def show_yearly_backtest_demo():
     df_klines_weights = generate_klines_with_weights()
 
     # 使用策略分析组件
-    from czsc.svc import show_yearly_backtest
+    from czsc.svc import show_backtest_by_year
 
     st.subheader("📊 年度回测分析")
 
@@ -504,7 +504,7 @@ def show_yearly_backtest_demo():
         )
 
     st.markdown("#### 📈 年度回测结果")
-    show_yearly_backtest(df_klines_weights, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
+    show_backtest_by_year(df_klines_weights, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
     # 添加说明信息
     with st.expander("📋 数据和参数说明", expanded=False):
