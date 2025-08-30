@@ -11,7 +11,7 @@ def test_daily_performance():
 
 def test_weight_backtest():
     """测试权重回测功能"""
-    from czsc import WeightBacktest
+    from rs_czsc import WeightBacktest
     from czsc import mock
 
     # 使用mock数据替代硬编码数据文件
@@ -36,5 +36,5 @@ def test_czsc():
 
     c = CZSC(bars)
     bi = c.bi_list[-1]
-    sdt = pd.Timestamp.fromtimestamp(bi.sdt)
+    print(bi)
     
