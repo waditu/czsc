@@ -57,6 +57,76 @@ def __db_from_env():
     return db
 
 
+def init_latest_weights_view(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
+    """
+    策略类型有 cs 和 ts，这两种策略对应的写入逻辑有所区别，需要单独创建最新持仓的视图，然后再合并。
+    """
+    db = db or __db_from_env()
+    logger = kwargs.get('logger', loguru.logger)
+    
+    # 创建截面策略的最新持仓视图
+    cs_view_sql = f"""
+    CREATE VIEW IF NOT EXISTS {database}.cs_latest_weights AS
+    WITH latest_dates AS (
+        SELECT 
+            strategy,
+            MAX(dt) AS latest_dt
+        FROM {database}.weights
+        GROUP BY strategy
+    )
+    SELECT 
+        w.dt as dt,
+        w.symbol as symbol,
+        w.weight as weight,
+        w.strategy as strategy,
+        w.update_time as update_time
+    FROM {database}.weights w
+    JOIN latest_dates ld ON w.strategy = ld.strategy AND w.dt = ld.latest_dt
+    JOIN {database}.metas m ON w.strategy = m.strategy
+    WHERE m.weight_type = 'cs'
+    """
+    db.command(cs_view_sql)
+    logger.info("cs_latest_weights 视图初始化完成")
+
+    # 创建时序策略的最新持仓视图
+    ts_view_sql = f"""
+    CREATE VIEW IF NOT EXISTS {database}.ts_latest_weights AS
+    WITH latest_records AS (
+        SELECT 
+            strategy,
+            symbol,
+            MAX(dt) AS latest_dt
+        FROM {database}.weights
+        GROUP BY strategy, symbol
+    )
+    SELECT 
+        w.dt as dt,
+        w.symbol as symbol,
+        w.weight as weight,
+        w.strategy as strategy,
+        w.update_time as update_time
+    FROM {database}.weights w
+    JOIN latest_records lr ON w.strategy = lr.strategy 
+                          AND w.symbol = lr.symbol 
+                          AND w.dt = lr.latest_dt
+    JOIN {database}.metas m ON w.strategy = m.strategy
+    WHERE m.weight_type = 'ts'
+    """
+    db.command(ts_view_sql)
+    logger.info("ts_latest_weights 视图初始化完成")
+
+    # 创建合并的最新持仓视图
+    latest_view_sql = f"""
+    CREATE VIEW IF NOT EXISTS {database}.latest_weights AS
+    SELECT * FROM {database}.ts_latest_weights
+    UNION ALL
+    SELECT * FROM {database}.cs_latest_weights
+    """
+    db.command(latest_view_sql)
+    logger.info("latest_weights 视图初始化完成")
+    
+    logger.info("所有最新持仓权重视图初始化完成")
+
 def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
     """
     创建数据库表
@@ -100,19 +170,7 @@ def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs)
     ENGINE = ReplacingMergeTree()
     ORDER BY (strategy, dt, symbol);
     """
-
-    latest_weights_view = f"""
-    CREATE VIEW IF NOT EXISTS {database}.latest_weights AS
-        SELECT
-           strategy,
-           symbol,
-           argMax(dt, dt) as latest_dt,
-           argMax(weight, dt) as latest_weight,
-           argMax(update_time, dt) as latest_update_time
-        FROM {database}.weights
-        GROUP BY strategy, symbol;
-    """
-
+    
     returns_table = f"""
     CREATE TABLE IF NOT EXISTS {database}.returns (
         dt DateTime,                     -- 时间
@@ -127,7 +185,6 @@ def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs)
 
     db.command(metas_table)
     db.command(weights_table)
-    db.command(latest_weights_view)
     db.command(returns_table)
 
     print("数据表创建成功！")

@@ -219,7 +219,7 @@ class OpensOptimize:
         :param kwargs: 其他参数
 
             - symbols: 优化标的列表
-            - candidate_events: 优化出场信号列表
+            - candidate_events: 候选信号列表
             - results_path: 优化结果保存路径
             - files_position: 优化入场信号文件路径列表
             - signals_module_name: 信号模块名

@@ -8,7 +8,6 @@
 6. [发布流程](#发布流程)
 7. [常见问题解决](#常见问题解决)
 8. [UV 启动脚本慢的分析方法](#uv-启动脚本慢的分析方法)
-9. [按操作系统控制依赖（PEP 508）](#按操作系统控制依赖pep-508)
 
 ## 安装 UV
 
@@ -307,59 +306,6 @@ uv sync --extra test
 # CI/CD 环境：使用锁定文件确保一致性
 uv sync --frozen
 ```
-
-### 4. 按操作系统控制依赖（PEP 508）
-
-UV 支持使用 PEP 508 环境标记按操作系统/架构/解释器自动选择依赖，安装与运行时会自动生效。
-
-- 在核心依赖中使用标记
-```toml
-[project]
-dependencies = [
-    # 非 Windows 使用 uvloop
-    "uvloop>=0.19; sys_platform != 'win32'",
-    # 仅 Windows
-    "pywin32>=306; sys_platform == 'win32'",
-    # 仅 macOS 且 arm64
-    "tensorflow-macos; platform_system == 'Darwin' and platform_machine == 'arm64'",
-    # 仅 CPython
-    "orjson; platform_python_implementation == 'CPython'",
-    # 针对特定 Python 版本
-    "protobuf<5; python_version < '3.13'",
-]
-```
-
-- 在可选依赖组中使用标记
-```toml
-[project.optional-dependencies]
-cli = [
-    "colorama; sys_platform == 'win32'",
-    "readline; sys_platform != 'win32'",
-]
-```
-
-- 带直连引用也可加标记
-```toml
-[project]
-dependencies = [
-    "my-private-pkg @ git+https://github.com/org/repo.git; sys_platform == 'linux'",
-]
-```
-
-- 使用 uv 命令添加带标记依赖
-```bash
-uv add "pywin32>=306; sys_platform == 'win32'"
-uv add "uvloop>=0.19; sys_platform != 'win32'"
-```
-
-常用标记键：
-- sys_platform, platform_system, platform_machine
-- python_version, platform_python_implementation
-- extra（用于可选依赖组）
-
-说明：
-- 建议用标记而非手写条件安装脚本，锁定与安装更稳定。
-- 标记会在锁定与安装时正确解析，无需额外配置。
 
 ## 常用命令参考
 
