@@ -7,6 +7,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+import czsc
 from loguru import logger
 from .base import safe_import_weight_backtest, safe_import_daily_performance
 
@@ -530,3 +531,191 @@ def show_yearly_backtest(df: pd.DataFrame, **kwargs):
     st.caption(f"回测参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
     show_multi_backtest(wbs, show_describe=False)
     return wbs
+
+
+def show_yearly_backtest_by_year(df: pd.DataFrame, **kwargs):
+    """
+    按照年份进行回测
+    """
+    yearly_days = kwargs.get("yearly_days", 252)
+    digits = kwargs.get("digits", 2)
+    fee_rate = kwargs.get("fee_rate", 0.0)
+    weight_type = kwargs.get("weight_type", "ts")
+
+    df = df[["dt", "symbol", "weight", "price"]].copy()
+    df["year"] = df["dt"].dt.year
+    wbs = {}
+    for year, dfy in df.groupby("year"):
+        dfy = dfy.copy().sort_values(["symbol", "dt"]).reset_index(drop=True)
+        wbs[f"{year}年"] = czsc.WeightBacktest(
+            dfy, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        )
+
+    czsc.svc.show_multi_backtest(wbs)
+    return wbs
+
+
+def show_symbol_backtest_by_symbol(df: pd.DataFrame, **kwargs):
+    """
+    按照交易标的进行回测
+    """
+    digits = kwargs.get("digits", 2)
+    fee_rate = kwargs.get("fee_rate", 0.0)
+    weight_type = kwargs.get("weight_type", "ts")
+    yearly_days = kwargs.get("yearly_days", 252)
+
+    df = df[["dt", "symbol", "weight", "price"]].copy()
+
+    wbs = {}
+    for symbol, dfs in df.groupby("symbol"):
+        dfs = dfs.copy().sort_values(["dt"]).reset_index(drop=True)
+        wbs[symbol] = czsc.WeightBacktest(
+            dfs, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        )
+
+    czsc.svc.show_multi_backtest(wbs)
+    return wbs
+
+
+def show_long_short_backtest_analysis(df: pd.DataFrame, **kwargs):
+    """
+    分析多头、空头的收益
+    """
+    yearly_days = kwargs.get("yearly_days", 252)
+    digits = kwargs.get("digits", 2)
+    fee_rate = kwargs.get("fee_rate", 0.0)
+    weight_type = kwargs.get("weight_type", "ts")
+
+    df = df[["dt", "symbol", "weight", "price"]].copy()
+
+    dfl = df.copy()
+    dfl["weight"] = dfl["weight"].clip(lower=0)
+
+    dfs = df.copy()
+    dfs["weight"] = dfs["weight"].clip(upper=0)
+
+    wbs = {
+        "原始策略": czsc.WeightBacktest(
+            df, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+        "策略多头": czsc.WeightBacktest(
+            dfl, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+        "策略空头": czsc.WeightBacktest(
+            dfs, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+    }
+    czsc.svc.show_multi_backtest(wbs)
+    return wbs
+
+
+def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
+    """综合权重回测可视化展示"""
+    yearly_days = kwargs.get("yearly_days", 252)
+    fee = kwargs.get("fee", 0.0)
+    digits = kwargs.get("digits", 2)
+    weight_type = kwargs.get("weight_type", "ts")
+
+    fee_rate = fee / 10000
+
+    tabs = st.tabs(["整体回测", "标的基准", "年度回测", "标的回测", "多空回测", "下载数据"])
+    with tabs[0]:
+        wb = czsc.svc.show_weight_backtest(
+            df,
+            fee=fee,
+            digits=digits,
+            yearly_days=yearly_days,
+            show_drawdowns=True,
+            show_splited_daily=True,
+            weight_type=weight_type,
+        )
+    with tabs[1]:
+        czsc.svc.show_symbols_bench(df[["dt", "symbol", "price"]].copy())
+
+    with tabs[2]:
+        show_yearly_backtest_by_year(
+            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
+        )
+
+    with tabs[3]:
+        show_symbol_backtest_by_symbol(
+            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
+        )
+
+    with tabs[4]:
+        show_long_short_backtest_analysis(
+            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
+        )
+
+    with tabs[5]:
+        st.download_button(
+            "下载原始数据",
+            data=df.to_csv(index=False),
+            on_click="ignore",
+            file_name="original_weigts_data.csv",
+            mime="text/csv",
+        )
+        st.download_button(
+            "下载策略收益",
+            data=wb.daily_return.to_csv(index=False),
+            on_click="ignore",
+            file_name="strategy_returns.csv",
+            mime="text/csv",
+        )
+        st.download_button(
+            "下载多头收益",
+            data=wb.long_daily_return.to_csv(index=False),
+            on_click="ignore",
+            file_name="long_strategy_returns.csv",
+            mime="text/csv",
+        )
+        st.download_button(
+            "下载空头收益",
+            data=wb.short_daily_return.to_csv(index=False),
+            on_click="ignore",
+            file_name="short_strategy_returns.csv",
+            mime="text/csv",
+        )
+    return wb
+
+
+def create_weight_backtest_form():
+    """创建权重回测用户输入表单"""
+    file = st.file_uploader("上传文件", type=["csv", "feather"], accept_multiple_files=False)
+    if not file:
+        st.warning("请上传文件")
+        st.stop()
+
+    if file.name.endswith(".csv"):
+        df = pd.read_csv(file)
+    elif file.name.endswith(".feather"):
+        df = pd.read_feather(file)
+    else:
+        raise ValueError(f"不支持的文件类型: {file.name}")
+
+    symbols = df["symbol"].unique()
+    with st.form(key="my_form"):
+        sel_symbols = st.multiselect("选择品种", symbols, default=symbols)
+        c1, c2, c3, c4 = st.columns([1, 1, 1, 1])
+        fee = c1.number_input("单边费率（BP）", value=2.0, step=0.1, min_value=-100.0, max_value=100.0)
+        digits = c2.number_input("小数位数", value=2, step=1, min_value=0, max_value=10)
+        delay = c3.number_input("延迟执行", value=0, step=1, min_value=0, max_value=100, help="测试策略对执行是否敏感")
+        only_direction = c4.selectbox("按方向测试", [False, True], index=0)
+        submit_button = st.form_submit_button(label="开始测试")
+
+    if not submit_button:
+        st.warning("请选择品种和参数")
+        st.stop()
+
+    df = df[df["symbol"].isin(sel_symbols)].copy().reset_index(drop=True)
+    df["dt"] = pd.to_datetime(df["dt"])
+    df = df.sort_values(["symbol", "dt"]).reset_index(drop=True)
+
+    if delay > 0:
+        for _, dfg in df.groupby("symbol"):
+            df.loc[dfg.index, "weight"] = dfg["weight"].shift(delay).fillna(0)
+
+    if only_direction:
+        df["weight"] = np.sign(df["weight"])
+
+    return df, fee, digits
