@@ -1,5 +1,6 @@
 # coding: utf-8
 from enum import Enum
+from rs_czsc import Mark, Direction, Freq
 
 
 class Operate(Enum):
@@ -20,42 +21,42 @@ class Operate(Enum):
         return self.value
 
 
-class Mark(Enum):
-    D = "底分型"
-    G = "顶分型"
+# class Mark(Enum):
+#     D = "底分型"
+#     G = "顶分型"
 
-    def __str__(self):
-        return self.value
-
-
-class Direction(Enum):
-    Up = "向上"
-    Down = "向下"
-
-    def __str__(self):
-        return self.value
+#     def __str__(self):
+#         return self.value
 
 
-class Freq(Enum):
-    Tick = "Tick"
-    F1 = "1分钟"
-    F2 = "2分钟"
-    F3 = "3分钟"
-    F4 = "4分钟"
-    F5 = "5分钟"
-    F6 = "6分钟"
-    F10 = "10分钟"
-    F12 = "12分钟"
-    F15 = "15分钟"
-    F20 = "20分钟"
-    F30 = "30分钟"
-    F60 = "60分钟"
-    F120 = "120分钟"
-    D = "日线"
-    W = "周线"
-    M = "月线"
-    S = "季线"
-    Y = "年线"
+# class Direction(Enum):
+#     Up = "向上"
+#     Down = "向下"
 
-    def __str__(self):
-        return self.value
+#     def __str__(self):
+#         return self.value
+
+
+# class Freq(Enum):
+#     Tick = "Tick"
+#     F1 = "1分钟"
+#     F2 = "2分钟"
+#     F3 = "3分钟"
+#     F4 = "4分钟"
+#     F5 = "5分钟"
+#     F6 = "6分钟"
+#     F10 = "10分钟"
+#     F12 = "12分钟"
+#     F15 = "15分钟"
+#     F20 = "20分钟"
+#     F30 = "30分钟"
+#     F60 = "60分钟"
+#     F120 = "120分钟"
+#     D = "日线"
+#     W = "周线"
+#     M = "月线"
+#     S = "季线"
+#     Y = "年线"
+
+#     def __str__(self):
+#         return self.value
