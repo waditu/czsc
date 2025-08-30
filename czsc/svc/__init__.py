@@ -40,19 +40,17 @@ from .factor import (
 )
 
 
-# TODO: 读取文件，修复导入，要求所有 show_ 开头的函数都能导入
+# 回测相关组件
 from .backtest import (
     show_weight_distribution,
     show_weight_backtest,
     show_holds_backtest,
     show_stoploss_by_direction,
     show_backtest_by_thresholds,
-    show_yearly_backtest,
     show_backtest_by_year,
     show_backtest_by_symbol,
     show_long_short_backtest,
     show_comprehensive_weight_backtest,
-    run_weight_backtest_app,
 )
 
 from .statistics import (
@@ -127,7 +125,6 @@ __all__ = [
     "show_holds_backtest",
     "show_stoploss_by_direction",
     "show_backtest_by_thresholds",
-    "show_yearly_backtest",
     "show_backtest_by_year",
     "show_backtest_by_symbol",
     "show_long_short_backtest",
@@ -159,9 +156,10 @@ __all__ = [
     "show_symbol_penalty",
     "show_multi_backtest",
     # 工具类
-    "show_code_editor",
+    "streamlit_run",
     # 价格敏感性分析
     "show_price_sensitive",
     # 表单组件
     "weight_backtest_form",
+    "code_editor_form",
 ]

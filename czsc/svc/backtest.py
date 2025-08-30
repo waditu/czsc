@@ -582,14 +582,3 @@ def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
         )
     return wb
 
-
-def run_weight_backtest_app():
-    """运行权重回测应用的主函数"""
-    from .forms import weight_backtest_form
-    
-    st.title("持仓权重测试")
-    st.divider()
-
-    df, fee, digits = weight_backtest_form()
-    show_comprehensive_weight_backtest(df, fee=fee, digits=digits)
-

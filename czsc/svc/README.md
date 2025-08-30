@@ -9,7 +9,7 @@ CZSC SVC (Streamlit Visualize Components) 是一个专为金融数据分析设�
 
 ```
 czsc/svc/
-├── __init__.py          # 主入口，提供向后兼容的导入
+├── __init__.py          # 主入口
 ├── base.py              # 基础功能模块，统一处理导入和样式
 ├── returns.py           # 收益相关可视化组件
 ├── correlation.py       # 相关性分析组件
