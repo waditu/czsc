@@ -7,7 +7,9 @@ describe: 测试绘图
 """
 import os
 import pandas as pd
-from czsc import CZSC, KlineChart
+import pylab as p
+from rs_czsc import CZSC
+from czsc import KlineChart
 from czsc import mock
 from czsc.objects import RawBar
 from czsc.enum import Freq
@@ -35,7 +37,8 @@ def test_kline_chart():
     
     c = CZSC(bars, max_bi_num=50)
 
-    df = pd.DataFrame(c.bars_raw)
+    df = c.bars_raw_df
+    print(df)
     df['text'] = "测试"
     kline = KlineChart(n_rows=3)
     kline.add_kline(df, name="K线")
