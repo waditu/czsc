@@ -88,7 +88,7 @@ def test_czsc_basic():
 def test_czsc_signals():
     """测试CZSC信号计算"""
     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
-    c = CZSC(bars, get_signals=None)
+    c = CZSC(bars)
     
     assert isinstance(c.signals, dict), "signals应该是字典类型"
 

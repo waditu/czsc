@@ -49,6 +49,7 @@ class CzscSignals:
             self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
             last_bar = self.kas[self.base_freq].bars_raw[-1]
+            print(last_bar)
             self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
             self.s = OrderedDict()
             self.s.update(self.get_signals_by_conf())

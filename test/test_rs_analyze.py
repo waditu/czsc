@@ -68,7 +68,6 @@ def test_czsc_ubi_properties():
     c = CZSC(bars)
     
     ubi = c.ubi
-    print(ubi.direction)
     assert 'direction' in ubi, "ubi应该包含direction字段"
     assert 'high_bar' in ubi, "ubi应该包含high_bar字段"
     assert 'low_bar' in ubi, "ubi应该包含low_bar字段"
