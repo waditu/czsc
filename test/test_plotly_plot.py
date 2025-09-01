@@ -35,7 +35,8 @@ def test_kline_chart():
     
     c = CZSC(bars, max_bi_num=50)
 
-    df = pd.DataFrame(c.bars_raw)
+    # df = pd.DataFrame(c.bars_raw)
+    df = c.bars_raw_df.copy()
     df['text'] = "测试"
     kline = KlineChart(n_rows=3)
     kline.add_kline(df, name="K线")
