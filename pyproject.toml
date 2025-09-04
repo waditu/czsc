@@ -53,7 +53,7 @@ dependencies = [
     "statsmodels",
     "scikit-learn",
     # 技术分析
-    "ta-lib-everywhere",
+    "TA-Lib>=0.6",
     "rs-czsc>=0.1.8",
     # 图表和可视化
     "matplotlib",
@@ -76,6 +76,9 @@ dependencies = [
 [[tool.uv.index]]
 url = "http://mirrors.aliyun.com/pypi/simple/"
 default = true
+
+[tool.uv.sources]
+rs-czsc = { path = "../../offline/rs_czsc/target/wheels/rs_czsc-0.1.13.post250902-cp38-abi3-win_amd64.whl" }
 
 [project.optional-dependencies]
 # 测试依赖

@@ -978,7 +978,7 @@ requires-dist = [
     { name = "redis" },
     { name = "requests", specifier = ">=2.24.0" },
     { name = "requests-toolbelt" },
-    { name = "rs-czsc", specifier = ">=0.1.8" },
+    { name = "rs-czsc", path = "../../offline/rs_czsc/target/wheels/rs_czsc-0.1.13.post250902-cp38-abi3-win_amd64.whl" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
@@ -3618,19 +3618,29 @@ wheels = [
 
 [[package]]
 name = "rs-czsc"
-version = "0.1.13"
-source = { registry = "http://mirrors.aliyun.com/pypi/simple/" }
+version = "0.1.13.post250902"
+source = { path = "../../offline/rs_czsc/target/wheels/rs_czsc-0.1.13.post250902-cp38-abi3-win_amd64.whl" }
 dependencies = [
     { name = "czsc" },
     { name = "pandas" },
     { name = "pyarrow" },
 ]
 wheels = [
-    { url = "http://mirrors.aliyun.com/pypi/packages/27/46/65c69988e71013e41942907abf9f43eeecf5ed33ffc6cef2e8510439562d/rs_czsc-0.1.13-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:d4e8e69d684795c2f6c4341a75d762099a092e5e472a1dbc15804dba9fa8a57d" },
-    { url = "http://mirrors.aliyun.com/pypi/packages/7a/3b/7f18e41f446d8f8dce44b2cae20ea4daee480a55929233a2e9f4710b3bf7/rs_czsc-0.1.13-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:40a80b4cb61eb449719b074db7d29f68fba7f5fe626f7cbe4fecc7e403516daa" },
-    { url = "http://mirrors.aliyun.com/pypi/packages/93/57/3b6ce686d809db542cb405408a6ffca85b59da4d9b3d9f6d4825553573dc/rs_czsc-0.1.13-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:80b4f10d9e2e159ade615148b450b93d54d2d902453f6fd13813bbcd6532a7b7" },
-    { url = "http://mirrors.aliyun.com/pypi/packages/1c/00/69fdc9b3af6374f92f8f42fd0f7bb1ab411ec049bbecc9ccda6882753fa8/rs_czsc-0.1.13-cp38-abi3-win_amd64.whl", hash = "sha256:071772acf13590a031a466d748e5c136c270c83ec06f36429afec33eb3eda6e4" },
+    { filename = "rs_czsc-0.1.13.post250902-cp38-abi3-win_amd64.whl", hash = "sha256:5ca5fbddae5faef31b3f56fa26631dc64a306758e3e73471080c41fb587a7529" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "czsc", specifier = ">=0.9.68" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
+    { name = "pandas" },
+    { name = "pyarrow", specifier = ">=18" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
+    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=5.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0.0" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "scikit-learn"
