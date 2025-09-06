@@ -77,9 +77,6 @@ dependencies = [
 url = "http://mirrors.aliyun.com/pypi/simple/"
 default = true
 
-[tool.uv.sources]
-rs-czsc = { path = "../../offline/rs_czsc/target/wheels/rs_czsc-0.1.13.post250902-cp38-abi3-win_amd64.whl" }
-
 [project.optional-dependencies]
 # 测试依赖
 test = [
