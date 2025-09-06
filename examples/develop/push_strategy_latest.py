@@ -39,27 +39,14 @@ def calculate_recent_returns(wb: czsc.WeightBacktest, days: int = 10) -> pd.Data
     """
     # 获取每日收益数据
     daily_returns = wb.daily_return
-    
+    daily_returns.rename(columns={'date': 'dt'}, inplace=True)
+    daily_returns['dt'] = pd.to_datetime(daily_returns['dt'])
     # 获取最近N个交易日
     recent_dates = sorted(daily_returns['dt'].unique())[-days:]
     recent_data = daily_returns[daily_returns['dt'].isin(recent_dates)]
-    
-    # 计算每个品种的收益
-    pivot_data = recent_data.pivot_table(
-        index='dt', 
-        columns='symbol', 
-        values='return',
-        aggfunc='mean'
-    ).round(4)
-
-    if 'total' not in pivot_data.columns:
-        # 计算整体策略等权收益
-        pivot_data['total'] = pivot_data.mean(axis=1)
-
-    # 转换为百分比形式
-    pivot_data = pivot_data * 100
-    
-    return pivot_data
+    recent_data.set_index('dt', inplace=True)
+    recent_data = recent_data.sort_index()
+    return recent_data
 
 
 def get_out_sample_curve(wb: czsc.WeightBacktest, out_sample_sdt: str) -> Dict[str, List]:
@@ -70,13 +57,16 @@ def get_out_sample_curve(wb: czsc.WeightBacktest, out_sample_sdt: str) -> Dict[s
     :return: 图表数据字典
     """
     # 获取样本外数据
-    returns_df = wb.results['品种等权']
-    out_sample_data = returns_df[returns_df.index >= pd.to_datetime(out_sample_sdt)]
+    returns_df = wb.daily_return[['date', "total"]].copy()
+    returns_df['date'] = pd.to_datetime(returns_df['date'])
+    returns_df.set_index('date', inplace=True)
+    out_sample_data = returns_df[returns_df.index >= pd.to_datetime(out_sample_sdt)].copy()
     
-    # 准备图表数据
+    out_sample_data['累计收益率'] = out_sample_data['total'].cumsum()
+    # 准备图表数据，转换为百分比格式
     chart_data = {
         "dates": out_sample_data.index.strftime('%Y-%m-%d').tolist(),
-        "values": (out_sample_data['累计收益率'] * 100).round(2).tolist()
+        "values": (out_sample_data['累计收益率'] * 100).round(2).tolist()  # 转换为百分比
     }
     
     return chart_data
@@ -112,32 +102,6 @@ def create_feishu_card(strategy: str, out_sample_sdt: str,
             })
         table_rows.append(row_cells)
     
-    # 构建图表配置
-    chart_spec = {
-        "type": "line",
-        "data": {
-            "labels": curve_data["dates"],
-            "datasets": [{
-                "label": "累计收益率(%)",
-                "data": curve_data["values"],
-                "borderColor": "rgba(54, 162, 235, 1)",
-                "backgroundColor": "rgba(54, 162, 235, 0.1)",
-                "fill": True
-            }]
-        },
-        "options": {
-            "responsive": True,
-            "maintainAspectRatio": False,
-            "scales": {
-                "y": {
-                    "beginAtZero": True,
-                    "ticks": {
-                        "callback": "function(value) { return value + '%'; }"
-                    }
-                }
-            }
-        }
-    }
     
     # 构建飞书卡片JSON 2.0结构
     card = {
@@ -188,11 +152,12 @@ def create_feishu_card(strategy: str, out_sample_sdt: str,
                 },
                 {
                     "tag": "markdown",
-                    "content": f"**最新累计收益率**: {curve_data['values'][-1]:.2f}%\n\n"
+                    "content": f"**最新累计收益率**: {curve_data['values'][-1]:.2f}%"
                 },
                 {
-                    "tag": "markdown",
-                    "content": _format_curve_chart(curve_data)
+                    "tag": "chart",
+                    "aspect_ratio": "16:9",
+                    "chart_spec": _create_chart_spec(curve_data)
                 }
             ]
         }
@@ -228,32 +193,34 @@ def _format_returns_table(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
-def _format_curve_chart(curve_data: Dict[str, List]) -> str:
-    """格式化累计收益曲线的简单文本表示
+def _create_chart_spec(curve_data: Dict[str, List]) -> Dict[str, Any]:
+    """创建VChart规格的累计收益曲线图表，完全按照飞书文档格式
     
     :param curve_data: 曲线数据
-    :return: 文本图表
+    :return: VChart图表配置
     """
-    values = curve_data['values']
-    dates = curve_data['dates']
+    # 构建VChart数据格式，按照文档使用 time 和 value 字段
+    chart_data = []
+    for date, value in zip(curve_data['dates'], curve_data['values']):
+        chart_data.append({
+            "time": date,  # 使用 time 字段，与文档示例一致
+            "value": value
+        })
     
-    # 只显示关键点
-    n_points = min(10, len(values))
-    step = max(1, len(values) // n_points)
+    # VChart折线图配置，完全按照飞书文档格式
+    chart_spec = {
+        "type": "line",
+        "title": {
+            "text": "累计收益曲线"
+        },
+        "data": {
+            "values": chart_data
+        },
+        "xField": "time",  # 对应 time 字段
+        "yField": "value"  # 对应 value 字段
+    }
     
-    lines = []
-    for i in range(0, len(values), step):
-        date = dates[i]
-        value = values[i]
-        bar_length = int(abs(value) / 2)  # 简单的比例转换
-        bar = "█" * bar_length
-        
-        if value >= 0:
-            lines.append(f"{date}: {'':>20} | {bar} +{value:.2f}%")
-        else:
-            lines.append(f"{date}: {bar:>20} | {value:.2f}%")
-    
-    return "```\n" + "\n".join(lines) + "\n```"
+    return chart_spec
 
 
 def send_to_feishu(card: Dict[str, Any], webhook_key: str) -> bool:
@@ -338,7 +305,6 @@ def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key:str, out_s
         traceback.print_exc()
         return False
 
-
 def test_push_strategy_latest():
     """测试推送策略最新表现到飞书群"""
     dfw = czsc.mock.generate_klines_with_weights(seed=1234)
@@ -347,4 +313,6 @@ def test_push_strategy_latest():
 
 
 if __name__ == '__main__':
+    # For testing, you can uncomment the line below
     test_push_strategy_latest()
+    print("Push strategy script ready. Import and use push_strategy_latest() function.")
