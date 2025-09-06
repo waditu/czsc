@@ -53,7 +53,7 @@ dependencies = [
     "statsmodels",
     "scikit-learn",
     # 技术分析
-    "ta-lib-everywhere",
+    "TA-Lib>=0.6",
     "rs-czsc>=0.1.8",
     # 图表和可视化
     "matplotlib",

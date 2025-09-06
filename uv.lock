@@ -898,7 +898,7 @@ dependencies = [
     { name = "seaborn" },
     { name = "statsmodels" },
     { name = "streamlit" },
-    { name = "ta-lib-everywhere" },
+    { name = "ta-lib" },
     { name = "tenacity" },
     { name = "tqdm" },
 ]
@@ -984,7 +984,7 @@ requires-dist = [
     { name = "seaborn" },
     { name = "statsmodels" },
     { name = "streamlit" },
-    { name = "ta-lib-everywhere" },
+    { name = "ta-lib", specifier = ">=0.6" },
     { name = "tenacity" },
     { name = "tqdm", specifier = ">=4.66.4" },
     { name = "twine", marker = "extra == 'all'" },
@@ -4078,18 +4078,6 @@ wheels = [
     { url = "http://mirrors.aliyun.com/pypi/packages/d0/83/395295d10dcce8c556b5a0af871879fcbc3b954a03705c63889f6db61107/ta_lib-0.6.6-cp313-cp313-win32.whl", hash = "sha256:b1fed90923ccfe9e0f0ea4cc4416aa137ccb6f70cf0ff890ac690398c3b35fe4" },
     { url = "http://mirrors.aliyun.com/pypi/packages/2d/12/9bf0b726414bb980ab2f596ff7da03e20c045d7172dca39ad336c4806eea/ta_lib-0.6.6-cp313-cp313-win_amd64.whl", hash = "sha256:7e29c4122683c20bd805ae01e1ff470175b7c504be903cb0727cb63705f08d9b" },
     { url = "http://mirrors.aliyun.com/pypi/packages/8e/5b/e4ccc44b9d8bee5d3308e20cbcb4cf9aa4733fec1737a55dc96e84d7faf1/ta_lib-0.6.6-cp313-cp313-win_arm64.whl", hash = "sha256:dc23ac8f062548f16a958dc8a53a098a75263e14437db438ad1759921ac1a7ed" },
-]
-
-[[package]]
-name = "ta-lib-everywhere"
-version = "1.0.1"
-source = { registry = "http://mirrors.aliyun.com/pypi/simple/" }
-dependencies = [
-    { name = "ta-lib" },
-]
-sdist = { url = "http://mirrors.aliyun.com/pypi/packages/0d/0c/fc3f726b767b5851d2ced8e0719fea95f58732b8f4061a728ca8f75c9849/ta_lib_everywhere-1.0.1.tar.gz", hash = "sha256:375b1801037203671415ad267a575c53c3dbfc341ad0679210739e3e48a33f5d" }
-wheels = [
-    { url = "http://mirrors.aliyun.com/pypi/packages/24/bf/a21d07f82109ed71f0d03709ae9a066e082d40249c5b3454ba783bbae401/ta_lib_everywhere-1.0.1-py3-none-any.whl", hash = "sha256:75449ec64f82a4a7f6205b5009c81fd1252311b2cb7c18ef946237d578747a37" },
 ]
 
 [[package]]

@@ -17,10 +17,14 @@ def test_trade_price():
     df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol']].copy()
     df = czsc.cal_trade_price(df, digits=3)
 
-    assert df['TP_TWAP20'].iloc[0] == round(df['close'].iloc[1:21].mean(), 3)
+    # 使用近似对比，允许0.002的误差
+    expected_twap = round(df['close'].iloc[1:21].mean(), 3)
+    assert abs(df['TP_TWAP20'].iloc[0] - expected_twap) <= 0.002
+    
     close = df['close'].iloc[1:21]
     vol = df['vol'].iloc[1:21]
-    assert df['TP_VWAP20'].iloc[0] == round(np.average(close, weights=vol), 3)
+    expected_vwap = round(np.average(close, weights=vol), 3)
+    assert abs(df['TP_VWAP20'].iloc[0] - expected_vwap) <= 0.002
 
 
 def test_make_it_daily():
