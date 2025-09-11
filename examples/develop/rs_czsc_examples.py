@@ -1,51 +1,52 @@
-from rs_czsc import CZSC
-
 """
 测试CZSC Python绑定功能
+
+pip install rs-czsc==0.1.8 czsc==0.9.54
 """
 import pandas as pd
 from datetime import datetime, timedelta
-from rs_czsc import RawBar, Freq, CZSC, Direction, Mark
+from rs_czsc import RawBar, Freq, CZSC, Direction, Mark, format_standard_kline
 
 
-def format_standard_kline(df: pd.DataFrame, freq: Freq = Freq.F5):
-    """格式化标准K线数据为 CZSC 标准数据结构 RawBar 列表
+# def format_standard_kline(df: pd.DataFrame, freq: Freq = Freq.F5):
+#     """格式化标准K线数据为 CZSC 标准数据结构 RawBar 列表
 
-    :param df: 标准K线数据，DataFrame结构
+#     :param df: 标准K线数据，DataFrame结构
 
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
-        dt                   symbol       open    close    high    low          vol       amount
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
-        2023-11-17 00:00:00  689009.SH   33.52    33.41   33.69  33.38  1.97575e+06  6.61661e+07
-        2023-11-20 00:00:00  689009.SH   33.4     32.91   33.45  32.25  5.15016e+06  1.68867e+08
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         dt                   symbol       open    close    high    low          vol       amount
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         2023-11-17 00:00:00  689009.SH   33.52    33.41   33.69  33.38  1.97575e+06  6.61661e+07
+#         2023-11-20 00:00:00  689009.SH   33.4     32.91   33.45  32.25  5.15016e+06  1.68867e+08
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
 
-    :param freq: K线级别
-    :return: list of RawBar
-    """
-    bars = []
-    for i, row in df.iterrows():
-        bar = RawBar(
-            id=i,
-            symbol=row["symbol"],
-            dt=row["dt"],
-            open=row["open"],
-            close=row["close"],
-            high=row["high"],
-            low=row["low"],
-            vol=row["vol"],
-            amount=row["amount"],
-            freq=freq,
-        )
-        bars.append(bar)
-    return bars
+#     :param freq: K线级别
+#     :return: list of RawBar
+#     """
+#     bars = []
+#     for i, row in df.iterrows():
+#         bar = RawBar(
+#             id=i,
+#             dt=row["dt"],
+#             open=row["open"],
+#             close=row["close"],
+#             high=row["high"],
+#             low=row["low"],
+#             vol=row["vol"],
+#             amount=row["amount"],
+#             freq=freq,
+#         )
+#         bars.append(bar)
+#     return bars
 
 
 def create_test_bars(count=1000):
     """创建测试用的K线数据"""
-    from czsc import mock
+    # from czsc import mock
 
-    df = mock.generate_klines()
+    # df = mock.generate_klines()
+    df = pd.read_feather(r"A:\桌面临时数据\行情数据\BTCUSDT5分钟行情.feather")
+    df = df.reset_index(drop=True)
     bars = format_standard_kline(df.tail(count))
     return bars
 
