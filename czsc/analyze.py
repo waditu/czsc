@@ -5,18 +5,15 @@ email: zeng_bin8888@163.com
 create_dt: 2021/3/10 11:21
 describe: 缠论分型、笔的识别
 """
-import os
-import webbrowser
 from loguru import logger
 from typing import List
-from collections import OrderedDict
 from czsc.enum import Mark, Direction
 from czsc.objects import BI, FX, RawBar, NewBar
 from czsc.utils.echarts_plot import kline_pro
 from czsc import envs
 from rs_czsc import CZSC
 
-__all__ = ['remove_include', 'check_fx', 'check_fxs', 'check_bi', 'plot_bi', 'CZSC', 'kline_pro']
+__all__ = ['remove_include', 'check_fx', 'check_fxs', 'check_bi', 'CZSC', 'kline_pro']
 
 logger.disable('czsc.analyze')
 
