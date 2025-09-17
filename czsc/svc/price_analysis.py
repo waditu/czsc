@@ -35,7 +35,6 @@ def show_price_sensitive(df: pd.DataFrame,
             - symbol: 合约代码
             - dt: 日期时间
             - weight: 仓位权重
-            - price: 基准价格
             - TP*: 以TP开头的交易价格列（如TP_open, TP_high等）
         fee: 单边费率（BP），默认2.0
         digits: 小数位数，默认2
@@ -70,7 +69,7 @@ def show_price_sensitive(df: pd.DataFrame,
     show_detailed_stats = kwargs.get("show_detailed_stats", False)
     
     # 数据验证
-    required_cols = ["symbol", "dt", "weight", "price"]
+    required_cols = ["symbol", "dt", "weight"]
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         error_msg = f"缺少必要的列: {missing_cols}"

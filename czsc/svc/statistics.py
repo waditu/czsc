@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import plotly.express as px
+from deprecated import deprecated
 from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index
 
 
@@ -447,6 +448,7 @@ def show_describe(df: pd.DataFrame, **kwargs):
     st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
 
 
+@deprecated(reason="建议直接使用 show_describe 函数")
 def show_df_describe(df: pd.DataFrame):
     """展示 DataFrame 的描述性统计信息
 
