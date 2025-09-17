@@ -12,17 +12,17 @@ import os
 # 添加当前项目路径到sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.dirname(current_dir)
-sys.path.insert(0, project_dir)
+sys.path.insert(0, r"A:\ZB\git_repo\waditu\czsc")
 
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from czsc.utils.echarts_plot import trading_view_kline
 from czsc.objects import Operate, RawBar
-from czsc.analyze import CZSC
+# from czsc.analyze import CZSC
 from czsc.enum import Freq
 from loguru import logger
-
+from rs_czsc import CZSC, format_standard_kline
 
 def generate_realistic_kline_data(start_date="2010-01-01", end_date="2025-06-08", symbol="测试股票"):
     """生成符合真实市场的K线数据（有涨有跌）
@@ -132,8 +132,10 @@ def test_trading_view_kline():
     try:
         # 生成模拟数据
         logger.info("生成真实市场K线数据...")
-        raw_bars = generate_realistic_kline_data("2010-01-01", "2025-06-08")
-
+        # raw_bars = generate_realistic_kline_data("2010-01-01", "2025-06-08")
+        df = pd.read_feather(r"A:\桌面临时数据\行情数据\BTCUSDT5分钟行情.feather")
+        df = df.reset_index(drop=True)
+        raw_bars = format_standard_kline(df.tail(3000))
         logger.info("使用CZSC分析K线数据...")
         # 使用CZSC类分析K线数据
         czsc = CZSC(raw_bars, max_bi_num=10000)
@@ -156,17 +158,17 @@ def test_trading_view_kline():
 
         # 生成一些模拟买卖点用于测试
         bs_data = []
-        if czsc.bi_list and len(czsc.bi_list) >= 4:
-            # 在一些笔的端点添加买卖点标记
-            for i, bi in enumerate(czsc.bi_list[::2]):  # 每隔一笔添加买卖点
-                if i % 2 == 0:  # 买入
-                    bs_data.append(
-                        {"dt": bi.fx_a.dt, "price": bi.fx_a.fx, "op": Operate.LO, "op_desc": f"买入开仓-{i+1}"}
-                    )
-                else:  # 卖出
-                    bs_data.append(
-                        {"dt": bi.fx_a.dt, "price": bi.fx_a.fx, "op": Operate.LE, "op_desc": f"卖出平仓-{i+1}"}
-                    )
+        # if czsc.bi_list and len(czsc.bi_list) >= 4:
+        #     # 在一些笔的端点添加买卖点标记
+        #     for i, bi in enumerate(czsc.bi_list[10:][::2]):  # 每隔一笔添加买卖点
+        #         if i % 2 == 0:  # 买入
+        #             bs_data.append(
+        #                 {"dt": bi.fx_a.dt, "price": bi.fx_a.fx, "op": Operate.LO, "op_desc": f"买入开仓-{i+1}"}
+        #             )
+        #         else:  # 卖出
+        #             bs_data.append(
+        #                 {"dt": bi.fx_a.dt, "price": bi.fx_a.fx, "op": Operate.LE, "op_desc": f"卖出平仓-{i+1}"}
+        #             )
 
         logger.info("数据转换完成，开始调用 trading_view_kline 函数...")
 

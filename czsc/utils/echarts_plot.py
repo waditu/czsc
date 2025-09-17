@@ -769,7 +769,7 @@ def _add_trade_signals(chart: Chart, bs: List[dict]) -> None:
 
         logger.info(f"成功添加{len(bs)}个买卖点标记")
     except Exception as e:
-        logger.warning(f"添加买卖点标记失败: {e}")
+        logger.exception(f"添加买卖点标记失败: {e}")
 
 
 def _setup_chart_style(chart: Chart, title: str) -> None:
