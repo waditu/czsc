@@ -5,157 +5,32 @@ email: zeng_bin8888@163.com
 create_dt: 2021/3/10 12:21
 describe: 常用对象结构
 """
-import math
 import hashlib
-import numpy as np
 import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass, field
-from datetime import datetime
 from loguru import logger
 from deprecated import deprecated
-from typing import List, Callable, Dict
+from typing import List, Dict
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
-from rs_czsc._rs_czsc import FakeBI, RawBar, NewBar, CZSC, BI, FX
+from rs_czsc._rs_czsc import FakeBI, RawBar, NewBar, BI, FX
 
-
-@deprecated(version="1.0.0", reason="请使用 RawBar")
-@dataclass
-class Tick:
-    symbol: str
-    name: str = ""
-    price: float = 0
-    vol: float = 0
-
-
-# @dataclass
-# class RawBar:
-#     """原始K线元素"""
-
-#     symbol: str
-#     id: int  # id 必须是升序
-#     dt: datetime
-#     freq: Freq
-#     open: float
-#     close: float
-#     high: float
-#     low: float
-#     vol: float
-#     amount: float
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存，一个最常见的场景是缓存技术指标计算结果
-
-#     @property
-#     def upper(self):
-#         """上影"""
-#         return self.high - max(self.open, self.close)
-
-#     @property
-#     def lower(self):
-#         """下影"""
-#         return min(self.open, self.close) - self.low
-
-#     @property
-#     def solid(self):
-#         """实体"""
-#         return abs(self.open - self.close)
-
-
-# @dataclass
-# class NewBar:
-#     """去除包含关系后的K线元素"""
-
-#     symbol: str
-#     id: int  # id 必须是升序
-#     dt: datetime
-#     freq: Freq
-#     open: float
-#     close: float
-#     high: float
-#     low: float
-#     vol: float
-#     amount: float
-#     elements: List = field(default_factory=list)  # 存入具有包含关系的原始K线
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存
-
-#     @property
-#     def raw_bars(self):
-#         return self.elements
-
-
-# @dataclass
-# class FX:
-#     symbol: str
-#     dt: datetime
-#     mark: Mark
-#     high: float
-#     low: float
-#     fx: float
-#     elements: List = field(default_factory=list)
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存
-
-#     @property
-#     def new_bars(self):
-#         """构成分型的无包含关系K线"""
-#         return self.elements
-
-#     @property
-#     def raw_bars(self):
-#         """构成分型的原始K线"""
-#         res = []
-#         for e in self.elements:
-#             res.extend(e.raw_bars)
-#         return res
-
-#     @property
-#     def power_str(self):
-#         assert len(self.elements) == 3
-#         k1, k2, k3 = self.elements
-
-#         if self.mark == Mark.D:
-#             if k3.close > k1.high:
-#                 x = "强"
-#             elif k3.close > k2.high:
-#                 x = "中"
-#             else:
-#                 x = "弱"
-#         else:
-#             assert self.mark == Mark.G
-#             if k3.close < k1.low:
-#                 x = "强"
-#             elif k3.close < k2.low:
-#                 x = "中"
-#             else:
-#                 x = "弱"
-#         return x
-
-#     @property
-#     def power_volume(self):
-#         """成交量力度"""
-#         assert len(self.elements) == 3
-#         return sum([x.vol for x in self.elements])
-
-#     @property
-#     def has_zs(self):
-#         """构成分型的三根无包含K线是否有重叠中枢"""
-#         assert len(self.elements) == 3
-#         zd = max([x.low for x in self.elements])
-#         zg = min([x.high for x in self.elements])
-#         return zg >= zd
-
-
-# @dataclass
-# class FakeBI:
-#     """虚拟笔：主要为笔的内部分析提供便利"""
-
-#     symbol: str
-#     sdt: datetime
-#     edt: datetime
-#     direction: Direction
-#     high: float
-#     low: float
-#     power: float
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存
+__all__ = [
+    "RawBar",
+    "NewBar",
+    "FakeBI",
+    "BI",
+    "FX",
+    "ZS",
+    "Signal",
+    "Factor",
+    "Event",
+    "Position",
+    "cal_break_even_point",
+    "single_linear",
+    "Freq",
+]
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -196,174 +71,6 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
             raise ValueError
         fake_bis.append(fake_bi)
     return fake_bis
-
-
-# @dataclass
-# class BI:
-#     symbol: str
-#     fx_a: FX    # 笔开始的分型
-#     fx_b: FX    # 笔结束的分型
-#     fxs: List   # 笔内部的分型列表
-#     direction: Direction
-#     bars: List[NewBar] = field(default_factory=list)
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存
-
-#     def __post_init__(self):
-#         self.sdt = self.fx_a.dt
-#         self.edt = self.fx_b.dt
-
-#     def __repr__(self):
-#         return (
-#             f"BI(symbol={self.symbol}, sdt={self.sdt}, edt={self.edt}, "
-#             f"direction={self.direction}, high={self.high}, low={self.low})"
-#         )
-
-#     def get_cache_with_default(self, key, default: Callable):
-#         """带有默认值计算的缓存读取
-
-#         :param key: 缓存 key
-#         :param default: 如果没有缓存数据，用来计算默认值并更新缓存的函数
-#         :return:
-#         """
-#         cache = self.cache if self.cache else {}
-#         value = cache.get(key, None)
-#         if not value:
-#             value = default()
-#             cache[key] = value
-#             self.cache = cache
-#         return value
-
-#     def get_price_linear(self, price_key="close"):
-#         """计算 price 的单变量线性回归特征
-
-#         :param price_key: 指定价格类型，可选值 open close high low
-#         :return value: 单变量线性回归特征，样例如下
-#             {'slope': 1.565, 'intercept': 67.9783, 'r2': 0.9967}
-
-#             slope       标识斜率
-#             intercept   截距
-#             r2          拟合优度
-#         """
-#         cache = self.cache if self.cache else {}
-#         key = f"{price_key}_linear_info"
-#         value = cache.get(key, None)
-
-#         if not value:
-#             value = single_linear([x.__dict__[price_key] for x in self.raw_bars])
-#             cache[key] = value
-#             self.cache = cache
-#         return value
-
-#     # 定义一些附加属性，用的时候才会计算，提高效率
-#     # ======================================================================
-#     @property
-#     def fake_bis(self):
-#         """笔的内部分型连接得到近似次级别笔列表"""
-
-#         def __default():
-#             return create_fake_bis(self.fxs)
-
-#         return self.get_cache_with_default("fake_bis", __default)
-
-#     @property
-#     def high(self):
-#         def __default():
-#             return max(self.fx_a.high, self.fx_b.high)
-
-#         return self.get_cache_with_default("high", __default)
-
-#     @property
-#     def low(self):
-#         return min(self.fx_a.low, self.fx_b.low)
-
-#     @property
-#     def power(self):
-#         return self.power_price
-
-#     @property
-#     def power_price(self):
-#         """价差力度"""
-#         return round(abs(self.fx_b.fx - self.fx_a.fx), 2)
-
-#     @property
-#     def power_volume(self):
-#         """成交量力度"""
-#         return sum([x.vol for x in self.bars[1:-1]])
-
-#     @property
-#     def power_snr(self):
-#         """SNR 度量力度
-
-#         SNR越大，说明内部走势越顺畅，力度也就越大
-#         """
-#         return round(self.SNR, 4)
-
-#     @property
-#     def change(self):
-#         """笔的涨跌幅"""
-#         c = round((self.fx_b.fx - self.fx_a.fx) / self.fx_a.fx, 4)
-#         return c
-
-#     @property
-#     def SNR(self):
-#         """笔内部的信噪比"""
-#         bars = self.raw_bars
-#         total_change = abs(bars[-1].close - bars[0].open)
-#         diff_abs_change = sum([abs(x.close - x.open) for x in bars])
-#         return total_change / diff_abs_change
-
-#     @property
-#     def slope(self):
-#         """笔内部高低点之间的斜率"""
-#         bars = self.raw_bars
-#         c = [x.close for x in bars]
-#         slope = np.polyfit(range(len(c)), c, 1)[0]
-#         return slope
-
-#     @property
-#     def acceleration(self):
-#         """笔内部价格的加速度
-
-#         负号表示开口向下；正号表示开口向上。数值越大，表示加速度越大。
-#         """
-#         bars = self.raw_bars
-#         c = [x.close for x in bars]
-#         acc = np.polyfit(range(len(c)), c, 2)[0]
-#         return acc
-
-#     @property
-#     def length(self):
-#         """笔的无包含关系K线数量"""
-#         return len(self.bars)
-
-#     @property
-#     def rsq(self):
-#         """笔的原始K线 close 单变量线性回归 r2"""
-#         value = self.get_price_linear("close")
-#         return round(value["r2"], 4)
-
-#     @property
-#     def raw_bars(self):
-#         """构成笔的原始K线序列，不包含首尾分型的首根K线"""
-
-#         def __default():
-#             value = []
-#             # 去掉首尾分型的第一根K线
-#             for bar in self.bars[1:-1]:
-#                 value.extend(bar.raw_bars)
-#             return value
-
-#         return self.get_cache_with_default("raw_bars", __default)
-
-#     @property
-#     def hypotenuse(self):
-#         """笔的斜边长度"""
-#         return pow(pow(self.power_price, 2) + pow(len(self.raw_bars), 2), 1 / 2)
-
-#     @property
-#     def angle(self):
-#         """笔的斜边与竖直方向的夹角，角度越大，力度越大"""
-#         return round(math.asin(self.power_price / self.hypotenuse) * 180 / 3.14, 2)
 
 
 @dataclass
