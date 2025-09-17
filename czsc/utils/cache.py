@@ -176,7 +176,12 @@ def disk_cache(path: Union[AnyStr, Path] = home_path, suffix: str = "pkl", ttl: 
             ttl1 = kwargs.pop("ttl", ttl)
 
             hash_str = f"{func.__name__}{args}{kwargs}"
-            code_str = inspect.getsource(func)
+            
+            try:
+                code_str = inspect.getsource(func)
+            except OSError:
+                code_str = func.__name__
+            
             k = hashlib.md5((code_str + hash_str).encode("utf-8")).hexdigest().upper()[:8]
             k = f"{k}_{func.__name__}"
 
