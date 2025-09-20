@@ -129,6 +129,10 @@ from czsc.utils.trade import (
     adjust_holding_weights,
 )
 
+from czsc.utils.log import (
+    log_strategy_info,
+)
+
 # streamlit 量化分析组件
 from czsc.utils.st_components import (
     show_daily_return,
