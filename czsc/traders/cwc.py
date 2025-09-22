@@ -478,8 +478,8 @@ def publish_returns(
         for symbol, dfg in df.groupby("symbol"):
             if symbol in symbol_dt:
                 # 允许覆盖同一天的数据
-                dfg = dfg[dfg["dt"] >= symbol_dt[symbol]]
-                rows.append(dfg)
+                dfg = dfg[dfg["dt"] >= symbol_dt[symbol]].copy()
+            rows.append(dfg)
         if rows:
             df = pd.concat(rows, ignore_index=True)
 
