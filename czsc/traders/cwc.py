@@ -410,8 +410,9 @@ def publish_weights(
         rows = []
         for symbol, dfg in df.groupby("symbol"):
             if symbol in symbol_dt:
-                dfg = dfg[dfg["dt"] > symbol_dt[symbol]]
-                rows.append(dfg)
+                dfg = dfg[dfg["dt"] > symbol_dt[symbol]].copy().reset_index(drop=True)
+            rows.append(dfg)
+        
         if rows:
             df = pd.concat(rows, ignore_index=True)
 
