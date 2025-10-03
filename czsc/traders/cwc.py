@@ -5,6 +5,8 @@ email: zeng_bin8888@163.com
 create_dt: 2024/12/30 15:19
 describe: 基于 clickhouse 的策略持仓权重管理，cwc 为 clickhouse weights client 的缩写
 
+时区标记：https://clockhub.app/zh-CN/timezone
+
 推荐在环境变量中设置 clickhouse 的连接信息，如下：
 
 - CLICKHOUSE_HOST: 服务器地址，如 127.0.0.1
