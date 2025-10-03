@@ -449,7 +449,7 @@ def get_strategy_weights(
 
     df = db.query_df(query)
     if not df.empty:
-        df = _localize_dataframe_columns(df, ["dt", "update_time"])
+        df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
         df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
     return df
 
@@ -471,7 +471,7 @@ def get_latest_weights(db: Optional[Client] = None, strategy=None, database="czs
     df = db.query_df(query)
     df = df.rename(columns={"latest_dt": "dt", "latest_weight": "weight", "latest_update_time": "update_time"})
     if not df.empty:
-        df = _localize_dataframe_columns(df, ["dt", "update_time"])
+        df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
         df = df.sort_values(["strategy", "dt", "symbol"]).reset_index(drop=True)
     return df
 
@@ -647,7 +647,7 @@ def get_strategy_returns(
 
     df = db.query_df(query)
     if not df.empty:
-        df = _localize_dataframe_columns(df, ["dt", "update_time"])
+        df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
         df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
     return df
 
@@ -706,7 +706,7 @@ def get_strategies_by_status(status=None, db: Optional[Client] = None, database=
 
     df = db.query_df(query)
     if not df.empty:
-        df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"])
+        df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"], tz=tz)
     return df
 
 
