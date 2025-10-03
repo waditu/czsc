@@ -16,76 +16,27 @@ describe: 基于 clickhouse 的策略持仓权重管理，cwc 为 clickhouse wei
 
 - CLICKHOUSE_CONNECT_TIMEOUT: 建立连接的超时时间（秒），默认为 10
 - CLICKHOUSE_SEND_RECEIVE_TIMEOUT: 发送/接收（读写）的超时时间（秒），默认为 60
-- CZSC_TIMEZONE: 时区名称，例如 Asia/Shanghai，默认使用系统本地时区；若系统不支持该时区，则回退到 UTC
-
 """
 # pip install clickhouse_connect -i https://pypi.tuna.tsinghua.edu.cn/simple
 import os
-from datetime import datetime
 from typing import Optional
 
 import clickhouse_connect as ch
 import loguru
 import pandas as pd
 from clickhouse_connect.driver.client import Client
-from pandas.api.types import is_datetime64tz_dtype
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 
-def _detect_system_timezone():
-    """获取系统本地时区信息。"""
+def _ensure_timestamp(value, tz=ZoneInfo("Asia/Shanghai")):
+    """将任意时间对象转换为带时区的 Timestamp。
 
-    local_now = datetime.now().astimezone()
-    local_tz = local_now.tzinfo
-    if local_tz is None:
-        return ZoneInfo("UTC"), "UTC"
-
-    if isinstance(local_tz, ZoneInfo):
-        tz_key = getattr(local_tz, "key", None) or local_tz.tzname(local_now) or "UTC"
-        return local_tz, tz_key
-
-    tz_name = None
-    if hasattr(local_tz, "tzname"):
-        try:
-            tz_name = local_tz.tzname(local_now)
-        except Exception:  # pragma: no cover - 极端情况下忽略
-            tz_name = None
-
-    if tz_name:
-        try:
-            return ZoneInfo(tz_name), tz_name
-        except ZoneInfoNotFoundError:
-            pass
-
-    return local_tz, tz_name or str(local_tz) or "UTC"
-
-
-ENV_TZ_NAME = os.getenv("CZSC_TIMEZONE")
-if ENV_TZ_NAME:
-    try:
-        DEFAULT_TZ = ZoneInfo(ENV_TZ_NAME)
-        DEFAULT_TZ_NAME = ENV_TZ_NAME
-    except ZoneInfoNotFoundError:
-        DEFAULT_TZ, DEFAULT_TZ_NAME = _detect_system_timezone()
-        loguru.logger.warning(
-            "无法识别时区 %s，已回退到系统本地时区 %s，请确认系统支持该时区",
-            ENV_TZ_NAME,
-            DEFAULT_TZ_NAME,
-        )
-else:
-    DEFAULT_TZ, DEFAULT_TZ_NAME = _detect_system_timezone()
-
-if DEFAULT_TZ is None:
-    DEFAULT_TZ_NAME = "UTC"
-    DEFAULT_TZ = ZoneInfo("UTC")
-
-
-def _ensure_timestamp(value, tz=DEFAULT_TZ):
-    """将任意时间对象转换为带时区的 Timestamp。"""
-
+    :param value: 时间值
+    :param tz: 时区，默认 Asia/Shanghai
+    :return: 带时区的 Timestamp
+    """
     if value is None:
         return pd.NaT
-
     if isinstance(value, str) and not value.strip():
         return pd.NaT
 
@@ -93,14 +44,19 @@ def _ensure_timestamp(value, tz=DEFAULT_TZ):
     if pd.isna(ts):
         return pd.NaT
 
-    tzinfo = getattr(ts, "tzinfo", None)
-    if tzinfo is None:
+    if ts.tzinfo is None:
         return ts.tz_localize(tz)
     return ts.tz_convert(tz)
 
 
-def _ensure_series_tz(series: pd.Series, tz=DEFAULT_TZ) -> pd.Series:
-    """确保 Series 中的时间字段带有指定时区。"""
+def _ensure_series_tz(series: pd.Series, tz=ZoneInfo("Asia/Shanghai")) -> pd.Series:
+    """确保 Series 中的时间字段带有指定时区。
+
+    :param series: 时间序列
+    :param tz: 时区，默认 Asia/Shanghai
+    :return: 带时区的 Series
+    """
+    from pandas.api.types import is_datetime64tz_dtype
 
     ser = pd.to_datetime(series, errors="coerce")
     if is_datetime64tz_dtype(ser):
@@ -108,17 +64,27 @@ def _ensure_series_tz(series: pd.Series, tz=DEFAULT_TZ) -> pd.Series:
     return ser.dt.tz_localize(tz)
 
 
-def _format_for_db(value, tz=DEFAULT_TZ) -> Optional[str]:
-    """将带时区的时间对象格式化为 ClickHouse 兼容的字符串。"""
+def _format_for_db(value, tz=ZoneInfo("Asia/Shanghai")) -> Optional[str]:
+    """将带时区的时间对象格式化为 ClickHouse 兼容的字符串。
 
+    :param value: 时间值
+    :param tz: 时区，默认 Asia/Shanghai
+    :return: 格式化的时间字符串
+    """
     ts = _ensure_timestamp(value, tz=tz)
     if pd.isna(ts):
         return None
-    localized = ts.astimezone(tz)
-    return localized.replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
+    return ts.astimezone(tz).replace(tzinfo=None).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _localize_dataframe_columns(df: pd.DataFrame, columns, tz=DEFAULT_TZ) -> pd.DataFrame:
+def _localize_dataframe_columns(df: pd.DataFrame, columns, tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
+    """将 DataFrame 中指定列本地化为指定时区。
+
+    :param df: DataFrame
+    :param columns: 需要转换的列名列表
+    :param tz: 时区，默认 Asia/Shanghai
+    :return: 转换后的 DataFrame
+    """
     for col in columns:
         if col in df.columns:
             df[col] = _ensure_series_tz(df[col], tz=tz)
@@ -249,41 +215,41 @@ def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs)
 
     metas_table = f"""
     CREATE TABLE IF NOT EXISTS {database}.metas (
-        strategy String NOT NULL,                      -- 策略名（唯一且不能为空）
-        base_freq String,                              -- 周期
-        description String,                            -- 描述
-        author String,                                 -- 作者
-        outsample_sdt DateTime,                        -- 样本外起始时间
-        create_time DateTime,                          -- 策略入库时间
-        update_time DateTime,                          -- 策略更新时间
-        heartbeat_time DateTime,                       -- 最后一次心跳时间
-        weight_type String,                            -- 策略上传的权重类型，ts 或 cs
-        status String DEFAULT '实盘',                   -- 策略状态：实盘、废弃
-        memo String                                    -- 策略备忘信息
-    ) 
+        strategy String NOT NULL,                              -- 策略名（唯一且不能为空）
+        base_freq String,                                      -- 周期
+        description String,                                    -- 描述
+        author String,                                         -- 作者
+        outsample_sdt DateTime('Asia/Shanghai'),               -- 样本外起始时间
+        create_time DateTime('Asia/Shanghai'),                 -- 策略入库时间
+        update_time DateTime('Asia/Shanghai'),                 -- 策略更新时间
+        heartbeat_time DateTime('Asia/Shanghai'),              -- 最后一次心跳时间
+        weight_type String,                                    -- 策略上传的权重类型，ts 或 cs
+        status String DEFAULT '实盘',                           -- 策略状态：实盘、废弃
+        memo String                                            -- 策略备忘信息
+    )
     ENGINE = ReplacingMergeTree()
     ORDER BY strategy;
     """
 
     weights_table = f"""
     CREATE TABLE IF NOT EXISTS {database}.weights (
-        dt DateTime,                     -- 持仓权重时间
-        symbol String,                   -- 符号（例如，股票代码或其他标识符）
-        weight Float64,                  -- 策略持仓权重值
-        strategy String,                 -- 策略名称
-        update_time DateTime             -- 持仓权重更新时间
-    ) 
+        dt DateTime('Asia/Shanghai'),            -- 持仓权重时间
+        symbol String,                           -- 符号（例如，股票代码或其他标识符）
+        weight Float64,                          -- 策略持仓权重值
+        strategy String,                         -- 策略名称
+        update_time DateTime('Asia/Shanghai')    -- 持仓权重更新时间
+    )
     ENGINE = ReplacingMergeTree()
     ORDER BY (strategy, dt, symbol);
     """
-    
+
     returns_table = f"""
     CREATE TABLE IF NOT EXISTS {database}.returns (
-        dt DateTime,                     -- 时间
-        symbol String,                   -- 符号（例如，股票代码或其他标识符）
-        returns Float64,                 -- 策略收益，从上一个 dt 到当前 dt 的收益
-        strategy String,                 -- 策略名称
-        update_time DateTime             -- 更新时间
+        dt DateTime('Asia/Shanghai'),            -- 时间
+        symbol String,                           -- 符号（例如，股票代码或其他标识符）
+        returns Float64,                         -- 策略收益，从上一个 dt 到当前 dt 的收益
+        strategy String,                         -- 策略名称
+        update_time DateTime('Asia/Shanghai')    -- 更新时间
     )
     ENGINE = ReplacingMergeTree()
     ORDER BY (strategy, dt, symbol);
@@ -310,41 +276,50 @@ def initialize(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
     init_latest_weights_view(db=db, database=database, **kwargs)
 
 
-def get_meta(strategy, db: Optional[Client] = None, database="czsc_strategy", logger=loguru.logger) -> dict:
+def get_meta(
+    strategy,
+    db: Optional[Client] = None,
+    database="czsc_strategy",
+    logger=loguru.logger,
+    tz=ZoneInfo("Asia/Shanghai")
+) -> dict:
     """获取策略元数据
 
-    :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称
+    :param db: clickhouse_connect.driver.Client, 数据库连接
     :param database: str, 数据库名称
     :param logger: loguru.logger, 日志记录器
-    :return: pd.DataFrame
+    :param tz: 时区，默认 Asia/Shanghai
+    :return: dict
     """
     db = db or __db_from_env()
+    df = db.query_df(f"SELECT * FROM {database}.metas final WHERE strategy = '{strategy}'")
 
-    query = f"""
-    SELECT * FROM {database}.metas final WHERE strategy = '{strategy}'
-    """
-    df = db.query_df(query)
     if df.empty:
         logger.warning(f"策略 {strategy} 不存在元数据")
         return {}
-    else:
-        assert len(df) == 1, f"策略 {strategy} 存在多条元数据，请检查"
-        df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"])
-        return df.iloc[0].to_dict()
+
+    assert len(df) == 1, f"策略 {strategy} 存在多条元数据，请检查"
+    df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"], tz=tz)
+    return df.iloc[0].to_dict()
 
 
-def get_all_metas(db: Optional[Client] = None, database="czsc_strategy") -> pd.DataFrame:
+def get_all_metas(
+    db: Optional[Client] = None,
+    database="czsc_strategy",
+    tz=ZoneInfo("Asia/Shanghai")
+) -> pd.DataFrame:
     """获取所有策略元数据
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param database: str, 数据库名称
+    :param tz: 时区，默认 Asia/Shanghai
     :return: pd.DataFrame
     """
     db = db or __db_from_env()
     df = db.query_df(f"SELECT * FROM {database}.metas final")
     if not df.empty:
-        df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"])
+        df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"], tz=tz)
     return df
 
 
@@ -361,6 +336,7 @@ def set_meta(
     overwrite=False,
     database="czsc_strategy",
     db: Optional[Client] = None,
+    tz=ZoneInfo("Asia/Shanghai"),
 ):
     """设置策略元数据
 
@@ -376,20 +352,20 @@ def set_meta(
     :param overwrite: bool, 是否覆盖已有元数据
     :param database: str, 数据库名称
     :param db: clickhouse_connect.driver.Client, 数据库连接
+    :param tz: 时区，默认 Asia/Shanghai
     :return: None
     """
     db = db or __db_from_env()
 
-    outsample_sdt = _ensure_timestamp(outsample_sdt)
-    current_time = pd.Timestamp.now(tz=DEFAULT_TZ)
-    meta = get_meta(db=db, strategy=strategy, database=database)
+    outsample_sdt = _ensure_timestamp(outsample_sdt, tz=tz)
+    current_time = pd.Timestamp.now(tz=tz)
+    meta = get_meta(db=db, strategy=strategy, database=database, tz=tz)
 
     if not overwrite and meta:
         logger.warning(f"策略 {strategy} 已存在元数据，如需更新请设置 overwrite=True")
         return
 
-    # create_time 在任何情况下都不会被覆盖，只有元数据不存在时才会设置
-    create_time = current_time if not meta else _ensure_timestamp(meta.get("create_time"))
+    create_time = current_time if not meta else _ensure_timestamp(meta.get("create_time"), tz=tz)
 
     # 构建DataFrame用于插入
     df = pd.DataFrame(
@@ -413,34 +389,34 @@ def set_meta(
     logger.info(f"{strategy} set_metadata: {res.summary}")
 
 
-def __send_heartbeat(db: Client, strategy, logger=loguru.logger, database="czsc_strategy"):
+def __send_heartbeat(db: Client, strategy, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")):
     """发送心跳
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
     :param strategy: str, 策略名称
-    :param database: str, 数据库名称
     :param logger: loguru.logger, 日志记录器
+    :param database: str, 数据库名称
+    :param tz: 时区，默认 Asia/Shanghai
     :return: None
     """
     try:
-        meta = get_meta(db=db, strategy=strategy, database=database, logger=logger)
+        meta = get_meta(db=db, strategy=strategy, database=database, logger=logger, tz=tz)
         if not meta:
             logger.warning(f"策略 {strategy} 不存在元数据，无法发送心跳")
             return
 
-        current_time = _format_for_db(pd.Timestamp.now(tz=DEFAULT_TZ))
+        current_time = _format_for_db(pd.Timestamp.now(tz=tz), tz=tz)
         db.command(
             f"ALTER TABLE {database}.metas UPDATE heartbeat_time = '{current_time}' WHERE strategy = '{strategy}'"
         )
         logger.info(f"策略 {strategy} 发送心跳成功")
-
     except Exception as e:
         logger.error(f"发送心跳失败: {e}")
         raise
 
 
 def get_strategy_weights(
-    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy"
+    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """获取策略持仓权重
 
@@ -478,7 +454,7 @@ def get_strategy_weights(
     return df
 
 
-def get_latest_weights(db: Optional[Client] = None, strategy=None, database="czsc_strategy") -> pd.DataFrame:
+def get_latest_weights(db: Optional[Client] = None, strategy=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
     """获取策略最新持仓权重时间
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -507,6 +483,7 @@ def publish_weights(
     logger=loguru.logger,
     db: Optional[Client] = None,
     database="czsc_strategy",
+    tz=ZoneInfo("Asia/Shanghai"),
 ):
     """发布策略持仓权重
 
@@ -520,15 +497,15 @@ def publish_weights(
     """
     db = db or __db_from_env()
 
-    __send_heartbeat(db, strategy, database=database, logger=logger)
+    __send_heartbeat(db, strategy, database=database, logger=logger, tz=tz)
     df = df[["dt", "symbol", "weight"]].copy()
     df["strategy"] = strategy
-    df["dt"] = _ensure_series_tz(df["dt"])
+    df["dt"] = _ensure_series_tz(df["dt"], tz=tz)
 
-    dfl = get_latest_weights(db, strategy, database=database)
+    dfl = get_latest_weights(db, strategy, tz=tz, database=database)
 
     if not dfl.empty:
-        dfl = _localize_dataframe_columns(dfl, ["dt"])
+        dfl = _localize_dataframe_columns(dfl, ["dt"], tz=tz)
         symbol_dt = dfl.set_index("symbol")["dt"].to_dict()
         logger.info(f"策略 {strategy} 最新时间：{dfl['dt'].max()}")
 
@@ -544,7 +521,7 @@ def publish_weights(
         logger.info(f"策略 {strategy} 共 {len(df)} 条新信号")
 
     df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
-    df["update_time"] = pd.Timestamp.now(tz=DEFAULT_TZ)
+    df["update_time"] = pd.Timestamp.now(tz=tz)
     df = df[["strategy", "symbol", "dt", "weight", "update_time"]].copy()
     df = df.drop_duplicates(["symbol", "dt", "strategy"], keep="last").reset_index(drop=True)
     df["weight"] = df["weight"].astype(float)
@@ -555,7 +532,7 @@ def publish_weights(
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i : i + batch_size]
         res = db.insert_df(f"{database}.weights", batch_df)
-        __send_heartbeat(db, strategy)
+        __send_heartbeat(db, strategy, tz=tz)
 
         if res:
             logger.info(f"完成批次 {i//batch_size + 1}, 发布 {len(batch_df)} 条信号")
@@ -564,7 +541,7 @@ def publish_weights(
             return
 
     logger.info(f"完成所有信号发布, 共 {len(df)} 条")
-    __send_heartbeat(db, strategy)
+    __send_heartbeat(db, strategy, tz=tz)
 
 
 def publish_returns(
@@ -574,6 +551,7 @@ def publish_returns(
     logger=loguru.logger,
     database="czsc_strategy",
     db: Optional[Client] = None,
+    tz=ZoneInfo("Asia/Shanghai"),
 ):
     """发布策略日收益
 
@@ -588,7 +566,7 @@ def publish_returns(
 
     df = df[["dt", "symbol", "returns"]].copy()
     df["strategy"] = strategy
-    df["dt"] = _ensure_series_tz(df["dt"])
+    df["dt"] = _ensure_series_tz(df["dt"], tz=tz)
 
     # 查询 czsc_strategy.returns 表中，每个品种最新的时间
     dfl = db.query_df(
@@ -596,7 +574,7 @@ def publish_returns(
     )
 
     if not dfl.empty:
-        dfl["dt"] = _ensure_series_tz(dfl["dt"])
+        dfl["dt"] = _ensure_series_tz(dfl["dt"], tz=tz)
         symbol_dt = dfl.set_index("symbol")["dt"].to_dict()
         logger.info(f"策略 {strategy} 最新时间：{dfl['dt'].max()}")
 
@@ -612,7 +590,7 @@ def publish_returns(
         logger.info(f"策略 {strategy} 共 {len(df)} 条新日收益")
 
     df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
-    df["update_time"] = pd.Timestamp.now(tz=DEFAULT_TZ)
+    df["update_time"] = pd.Timestamp.now(tz=tz)
     df = df[["strategy", "symbol", "dt", "returns", "update_time"]].copy()
     df = df.drop_duplicates(["symbol", "dt", "strategy"], keep="last").reset_index(drop=True)
     df["returns"] = df["returns"].astype(float)
@@ -634,7 +612,7 @@ def publish_returns(
 
 
 def get_strategy_returns(
-    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy"
+    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """获取策略日收益
 
@@ -652,12 +630,12 @@ def get_strategy_returns(
     SELECT * FROM {database}.returns final WHERE strategy = '{strategy}'
     """
     if sdt:
-        sdt_ts = _ensure_timestamp(sdt).tz_convert(DEFAULT_TZ)
+        sdt_ts = _ensure_timestamp(sdt).tz_convert(tz)
         sdt_ts = sdt_ts.replace(hour=0, minute=0, second=0, microsecond=0)
         sdt_str = _format_for_db(sdt_ts)
         query += f" AND dt >= '{sdt_str}'"
     if edt:
-        edt_ts = _ensure_timestamp(edt).tz_convert(DEFAULT_TZ)
+        edt_ts = _ensure_timestamp(edt).tz_convert(tz)
         edt_ts = edt_ts.replace(hour=23, minute=59, second=59, microsecond=0)
         edt_str = _format_for_db(edt_ts)
         query += f" AND dt <= '{edt_str}'"
@@ -675,7 +653,7 @@ def get_strategy_returns(
 
 
 def update_strategy_status(
-    strategy, status, db: Optional[Client] = None, logger=loguru.logger, database="czsc_strategy"
+    strategy, status, db: Optional[Client] = None, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """更新策略状态
 
@@ -694,12 +672,12 @@ def update_strategy_status(
         raise ValueError(f"无效的策略状态: {status}，有效状态为: {valid_statuses}")
 
     # 检查策略是否存在
-    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger)
+    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger, tz=tz)
     if not meta:
         logger.warning(f"策略 {strategy} 不存在，无法更新状态")
         return
 
-    current_time = _format_for_db(pd.Timestamp.now(tz=DEFAULT_TZ))
+    current_time = _format_for_db(pd.Timestamp.now(tz=tz), tz=tz)
 
     # 更新策略状态和更新时间
     query = f"""
@@ -712,7 +690,7 @@ def update_strategy_status(
     logger.info(f"策略 {strategy} 状态已更新为: {status}")
 
 
-def get_strategies_by_status(status=None, db: Optional[Client] = None, database="czsc_strategy") -> pd.DataFrame:
+def get_strategies_by_status(status=None, db: Optional[Client] = None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
     """根据状态获取策略列表
 
     :param status: str, 策略状态，实盘 或 废弃，None 表示获取所有状态
@@ -733,7 +711,7 @@ def get_strategies_by_status(status=None, db: Optional[Client] = None, database=
 
 
 def clear_strategy(
-    strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy"
+    strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """清空策略
 
@@ -747,7 +725,7 @@ def clear_strategy(
     db = db or __db_from_env()
 
     # 删除前，先查询跟这个策略相关的数据情况
-    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger)
+    meta = get_meta(db=db, strategy=strategy, database=database, logger=logger, tz=tz)
     if not meta:
         logger.warning(f"策略 {strategy} 不存在，无需清空")
         return
@@ -790,7 +768,7 @@ def clear_strategy(
         logger.info(f"  - 权重数据: {weights_count:,} 条")
 
         if not weights_time_range.empty:
-            weights_time_range = _localize_dataframe_columns(weights_time_range, ["min_dt", "max_dt"])
+            weights_time_range = _localize_dataframe_columns(weights_time_range, ["min_dt", "max_dt"], tz=tz)
         if not weights_time_range.empty and weights_time_range.iloc[0]["min_dt"] is not None:
             min_dt = weights_time_range.iloc[0]["min_dt"]
             max_dt = weights_time_range.iloc[0]["max_dt"]
@@ -799,7 +777,7 @@ def clear_strategy(
         logger.info(f"  - 收益数据: {returns_count:,} 条")
 
         if not returns_time_range.empty:
-            returns_time_range = _localize_dataframe_columns(returns_time_range, ["min_dt", "max_dt"])
+            returns_time_range = _localize_dataframe_columns(returns_time_range, ["min_dt", "max_dt"], tz=tz)
         if not returns_time_range.empty and returns_time_range.iloc[0]["min_dt"] is not None:
             min_dt = returns_time_range.iloc[0]["min_dt"]
             max_dt = returns_time_range.iloc[0]["max_dt"]
