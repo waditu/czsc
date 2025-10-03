@@ -532,7 +532,7 @@ def publish_weights(
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i : i + batch_size]
         res = db.insert_df(f"{database}.weights", batch_df)
-        __send_heartbeat(db, strategy, tz=tz)
+        __send_heartbeat(db, strategy, tz=tz, database=database, logger=logger)
 
         if res:
             logger.info(f"完成批次 {i//batch_size + 1}, 发布 {len(batch_df)} 条信号")
@@ -541,7 +541,7 @@ def publish_weights(
             return
 
     logger.info(f"完成所有信号发布, 共 {len(df)} 条")
-    __send_heartbeat(db, strategy, tz=tz)
+    __send_heartbeat(db, strategy, tz=tz, database=database, logger=logger)
 
 
 def publish_returns(
