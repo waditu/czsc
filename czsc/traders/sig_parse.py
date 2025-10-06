@@ -106,7 +106,9 @@ class SignalsParser:
         :return: 信号函数名称
         """
         sig_name_map = self.sig_name_map
-        _signal = Signal(signal)
+        k1, k2, k3, v1, v2, v3, score = signal.split("_")
+        _signal = Signal(key=f"{k1}_{k2}_{k3}", value=f"{v1}_{v2}_{v3}_{score}")
+        # _signal = Signal(signal)
         _k3_match = list({k for k, v in sig_name_map.items() if v[0].k3 == _signal.k3})
 
         if len(_k3_match) == 1:
