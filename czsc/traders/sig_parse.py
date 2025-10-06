@@ -73,7 +73,11 @@ class SignalsParser:
         :param signal: 需要解析的信号, 如：15分钟_D1K_量柱V221218_低量柱_6K_任意_0
         :return:
         """
-        key = Signal(signal).key
+        if isinstance(signal, str):
+            k1, k2, k3, v1, v2, v3, score = signal.split("_")
+            key = f"{k1}_{k2}_{k3}"
+        else:
+            key = Signal(signal).key
         pats = self.sig_pats_map.get(name, None)
         if not pats:
             return None

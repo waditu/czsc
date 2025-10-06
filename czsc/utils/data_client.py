@@ -110,6 +110,16 @@ class DataClient:
                 res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
                 if res.status_code == 200:
                     return res
+                else:
+                    # 处理非200状态码
+                    if attempt == retries - 1:
+                        logger.error(f"API请求失败(最后一次重试): {api_name}；参数：{kwargs}；状态码：{res.status_code}；响应：{res.text}")
+                        return None
+                    else:
+                        logger.warning(f"API请求失败(第{attempt+1}次重试): {api_name}；状态码：{res.status_code}；响应：{res.text}")
+                        time.sleep(0.5 * (attempt + 1))  # 递增延迟
+                        continue
+                
             except requests.RequestException as e:
                 if attempt == retries - 1:
                     logger.error(f"请求API失败(最后一次重试): {api_name}；参数：{kwargs}；错误: {e}")
@@ -117,6 +127,7 @@ class DataClient:
                 else:
                     logger.warning(f"请求API失败(第{attempt+1}次重试): {api_name}；错误: {e}")
                     time.sleep(0.5 * (attempt + 1))  # 递增延迟
+                    
             except Exception as e:
                 logger.error(f"请求API失败: {api_name}；参数：{kwargs}；错误: {e}")
                 return None

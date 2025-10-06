@@ -22,7 +22,7 @@ from czsc import mock
 from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.analyze import CZSC
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
+from czsc.objects import Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector
@@ -127,6 +127,10 @@ from czsc.utils.calendar import (
 
 from czsc.utils.trade import (
     adjust_holding_weights,
+)
+
+from czsc.utils.log import (
+    log_strategy_info,
 )
 
 # streamlit 量化分析组件
@@ -237,10 +241,10 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.10.1"
+__version__ = "0.10.3"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20250914"
+__date__ = "20251003"
 
 
 def welcome():

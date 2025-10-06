@@ -80,12 +80,13 @@ jobs:
     - name: List build artifacts
       run: ls -la dist/
 
-    - name: Upload build artifacts
+    - name: Upload build artifacts  
       uses: actions/upload-artifact@v4
       with:
         name: python-package-distributions
         path: dist/
         retention-days: 30
+        if-no-files-found: error
 
   publish-to-testpypi:
     name: Publish to TestPyPI

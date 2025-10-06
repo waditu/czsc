@@ -10,7 +10,7 @@ from copy import deepcopy
 from czsc.utils.cache import home_path
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
-from czsc.objects import Signal, Factor, Event, Operate, Position
+from czsc.objects import Signal, Event, Operate, Position
 from czsc import mock
 from czsc.objects import RawBar
 from czsc.enum import Freq
@@ -40,16 +40,12 @@ def test_object_position():
         bg.update(bar)
 
     opens = [
-        Event(name='开多', operate=Operate.LO, factors=[
-            Factor(name="站上SMA5", signals_all=[
-                Signal("日线_D1B_BUY1_一买_任意_任意_0"),
-            ])
-        ]),
-        Event(name='开空', operate=Operate.SO, factors=[
-            Factor(name="跌破SMA5", signals_all=[
-                Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
-            ])
-        ]),
+        Event(name='开多', operate=Operate.LO, signals_all=[
+                Signal(key="日线_D1B_BUY1", value="一买_任意_任意_0"),
+            ]),
+        Event(name='开空', operate=Operate.SO, signals_all=[
+                Signal(key="日线_D1B_BUY1", value="一卖_任意_任意_0"),
+            ]),
     ]
 
     # 没有出场条件的测试
@@ -72,16 +68,12 @@ def test_object_position():
     assert len(cs.s) > 0  # 信号数量应该大于0
 
     exits = [
-        Event(name='平多', operate=Operate.LE, factors=[
-            Factor(name="跌破SMA5", signals_all=[
-                Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
-            ])
-        ]),
-        Event(name='平空', operate=Operate.SE, factors=[
-            Factor(name="站上SMA5", signals_all=[
-                Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
-            ])
-        ]),
+        Event(name='平多', operate=Operate.LE, signals_all=[
+                Signal(key="日线_D0停顿分型_BE辅助V230106", value="看空_强_任意_0"),
+            ]),
+        Event(name='平空', operate=Operate.SE, signals_all=[
+                Signal(key="日线_D0停顿分型_BE辅助V230106", value="看多_强_任意_0"),
+            ]),
     ]
 
     pos = Position(name="测试B", symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=300)
@@ -210,29 +202,21 @@ def test_czsc_trader():
 
     def __create_sma5_pos():
         opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D1B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D1B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
+            Event(name='开多', operate="开多", signals_all=[
+                    Signal(key="日线_D1B_BUY1", value="一买_任意_任意_0"),
+                ]),
+            Event(name='开空', operate=Operate.SO, signals_all=[
+                    Signal(key="日线_D1B_BUY1", value="一卖_任意_任意_0"),
+                ]),
         ]
 
         exits = [
-            Event(name='平多', operate=Operate.LE, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
-                ])
-            ]),
-            Event(name='平空', operate=Operate.SE, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
-                ])
-            ]),
+            Event(name='平多', operate=Operate.LE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看空_强_任意_0"),
+                ]),
+            Event(name='平空', operate=Operate.SE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看多_强_任意_0"),
+                ]),
         ]
 
         pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试A")
@@ -241,29 +225,21 @@ def test_czsc_trader():
 
     def __create_sma10_pos():
         opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D2B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D2B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
+            Event(name='开多', operate=Operate.LO, signals_all=[
+                    Signal(key="日线_D2B_BUY1", value="一买_任意_任意_0"),
+                ]),
+            Event(name='开空', operate=Operate.SO, signals_all=[
+                    Signal(key="日线_D2B_BUY1", value="一卖_任意_任意_0"),
+                ]),
         ]
 
         exits = [
-            Event(name='平多', operate=Operate.LE, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
-                ])
-            ]),
-            Event(name='平空', operate=Operate.SE, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
-                ])
-            ]),
+            Event(name='平多', operate=Operate.LE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看空_强_任意_0"),
+                ]),
+            Event(name='平空', operate=Operate.SE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看多_强_任意_0"),
+                ]),
         ]
 
         pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试B")
@@ -271,29 +247,21 @@ def test_czsc_trader():
 
     def __create_sma20_pos():
         opens = [
-            Event(name='开多', operate=Operate.LO, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D3B_BUY1_一买_任意_任意_0"),
-                ])
-            ]),
-            Event(name='开空', operate=Operate.SO, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D3B_BUY1_一卖_任意_任意_0"),
-                ])
-            ]),
+            Event(name='开多', operate=Operate.LO, signals_all=[
+                    Signal(key="日线_D3B_BUY1", value="一买_任意_任意_0"),
+                ]),
+            Event(name='开空', operate=Operate.SO, signals_all=[
+                    Signal(key="日线_D3B_BUY1", value="一卖_任意_任意_0"),
+                ]),
         ]
 
         exits = [
-            Event(name='平多', operate=Operate.LE, factors=[
-                Factor(name="跌破SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看空_强_任意_0"),
-                ])
-            ]),
-            Event(name='平空', operate=Operate.SE, factors=[
-                Factor(name="站上SMA5", signals_all=[
-                    Signal("日线_D0停顿分型_BE辅助V230106_看多_强_任意_0"),
-                ])
-            ]),
+            Event(name='平多', operate=Operate.LE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看空_强_任意_0"),
+                ]),
+            Event(name='平空', operate=Operate.SE, signals_all=[
+                    Signal(key="日线_D0停顿分型_BE辅助V230106", value="看多_强_任意_0"),
+                ]),
         ]
 
         pos = Position(symbol=bg.symbol, opens=opens, exits=exits, interval=0, timeout=20, stop_loss=100, name="测试C")
