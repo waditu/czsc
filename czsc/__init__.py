@@ -22,7 +22,7 @@ from czsc import mock
 from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.analyze import CZSC
-from czsc.objects import Freq, Operate, Direction, Signal, Factor, Event, RawBar, NewBar, Position, ZS
+from czsc.objects import Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector
