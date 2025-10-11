@@ -202,7 +202,7 @@ def test_czsc_trader():
 
     def __create_sma5_pos():
         opens = [
-            Event(name='开多', operate="开多", signals_all=[
+            Event(name='开多', operate=Operate.LO, signals_all=[
                     Signal(key="日线_D1B_BUY1", value="一买_任意_任意_0"),
                 ]),
             Event(name='开空', operate=Operate.SO, signals_all=[
