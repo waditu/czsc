@@ -41,6 +41,26 @@ __all__ = [
     "Freq",
 ]
 
+def cal_break_even_point(seq: List[float]) -> float:
+    """计算单笔收益序列的盈亏平衡点
+
+    :param seq: 单笔收益序列
+    :return: 盈亏平衡点
+    """
+    if len(seq) <= 0 or sum(seq) < 0:
+        return 1.0
+
+    seq = sorted(seq)
+    sub_ = 0
+    sub_i = 0
+    for i, s_ in enumerate(seq):
+        sub_ += s_
+        sub_i = i + 1
+        if sub_ >= 0:
+            break
+
+    return sub_i / len(seq)
+
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
     """创建 fake_bis 列表
@@ -193,25 +213,7 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         return e
 
 
-# def cal_break_even_point(seq: List[float]) -> float:
-#     """计算单笔收益序列的盈亏平衡点
 
-#     :param seq: 单笔收益序列
-#     :return: 盈亏平衡点
-#     """
-#     if len(seq) <= 0 or sum(seq) < 0:
-#         return 1.0
-
-#     seq = sorted(seq)
-#     sub_ = 0
-#     sub_i = 0
-#     for i, s_ in enumerate(seq):
-#         sub_ += s_
-#         sub_i = i + 1
-#         if sub_ >= 0:
-#             break
-
-#     return sub_i / len(seq)
 
 
 # class Position:
