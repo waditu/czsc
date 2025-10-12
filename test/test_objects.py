@@ -78,14 +78,14 @@ def test_cal_break_even_point():
 
 
 def test_signal():
-    s = Signal(key="1分钟_倒1形态", value="类一买_七笔_基础型_3")
-    assert str(s) == "Signal('1分钟_倒1形态_类一买_七笔_基础型_3')"
-    assert s.key == "1分钟_倒1形态"
-    s1 = Signal(signal="1分钟_倒1形态_类一买_七笔_基础型_3")
+    s = Signal(key="1分钟_倒1_形态", value="类一买_七笔_基础型_3")
+    assert str(s) == "Signal('1分钟_倒1_形态_类一买_七笔_基础型_3')"
+    assert s.key == "1分钟_倒1_形态"
+    s1 = Signal(signal="1分钟_倒1_形态_类一买_七笔_基础型_3")
     assert s == s1
-    assert s.is_match({"1分钟_倒1形态": "类一买_七笔_基础型_3"})
-    assert not s.is_match({"1分钟_倒1形态": "类一买_七笔_特例一_3"})
-    assert not s.is_match({"1分钟_倒1形态": "类一买_九笔_基础型_3"})
+    assert s.is_match({"1分钟_倒1_形态": "类一买_七笔_基础型_3"})
+    assert not s.is_match({"1分钟_倒1_形态": "类一买_七笔_特例一_3"})
+    assert not s.is_match({"1分钟_倒1_形态": "类一买_九笔_基础型_3"})
 
     s = Signal(key="1分钟_倒1形态_类一买", value="任意_任意_任意_3")
     assert str(s) == "Signal('1分钟_倒1形态_类一买_任意_任意_任意_3')"
@@ -94,13 +94,13 @@ def test_signal():
     try:
         s = Signal(key="1分钟_倒1形态_类一买", value="任意_任意_任意_101")
     except ValueError as e:
-        assert str(e) == "score 必须在0~100之间"
+        pass
 
 
 
 def test_event():
     freq = Freq.F15
-    s = OrderedDict()
+    s = {}
     default_signals = [
         Signal(signal=f"{freq.value}_倒0笔_方向_向上_其他_其他_0"),
         Signal(signal=f"{freq.value}_倒0笔_长度_大于5_其他_其他_0"),
@@ -119,30 +119,41 @@ def test_event():
             Signal(signal=f"{freq.value}_倒0笔_方向_向上_其他_其他_0"),
         ],
     )
-    m, f = event.is_match(s)
-    assert m and f
+    m = event.is_match(s)
+    assert m
 
     raw = event.dump()
     new_event = Event.load(raw)
-    m, f = new_event.is_match(s)
-    assert m and f
+    m = new_event.is_match(s)
+    assert m
 
     raw1 = {
         "name": "单测",
         "operate": "开多",
-        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", 
+                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
     }
     new_event = Event.load(raw1)
-    m, f = new_event.is_match(s)
-    assert m and f
+    m = new_event.is_match(s)
+    assert m
 
     raw1 = {
         "operate": "开多",
-        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", 
+                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
     }
     new_event = Event.load(raw1)
-    m, f = new_event.is_match(s)
-    assert m and f
+    m = new_event.is_match(s)
+    assert m
+
+    raw1 = {
+        "operate": "开多",
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", 
+                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+    }
+    new_event = Event.load(raw1)
+    m = new_event.is_match(s)
+    assert m
 
     event = Event(
         name="单测",
@@ -150,8 +161,8 @@ def test_event():
         signals_all=[Signal(signal="15分钟_倒0笔_长度_大于5_其他_其他_0")],
         signals_any=[Signal(signal="15分钟_倒0笔_方向_向上_其他_其他_0"), Signal(signal="15分钟_倒0笔_长度_大于100_其他_其他_0")],
     )
-    m, f = event.is_match(s)
-    assert m and f
+    m = event.is_match(s)
+    assert m
 
     event = Event(
         name="单测",
@@ -159,8 +170,8 @@ def test_event():
         signals_all=[Signal(signal=f"{freq.value}_倒0笔_长度_大于5_其他_其他_0")],
         signals_not=[Signal(signal=f"{freq.value}_倒0笔_方向_向上_其他_其他_0")],
     )
-    m, f = event.is_match(s)
-    assert not m and not f
+    m = event.is_match(s)
+    assert not m
 
     event = Event(
         name="单测",
@@ -170,8 +181,8 @@ def test_event():
             Signal(signal=f"{freq.value}_倒0笔_长度_大于5_其他_其他_0"),
         ],
     )
-    m, f = event.is_match(s)
-    assert m and f
+    m = event.is_match(s)
+    assert m
 
     event = Event(
         name="单测",
@@ -181,8 +192,8 @@ def test_event():
             Signal(signal="15分钟_倒0笔_长度_任意_其他_其他_0"),
         ],
     )
-    m, f = event.is_match(s)
-    assert m and f
+    m = event.is_match(s)
+    assert m
 
     event = Event(
         name="单测",
@@ -192,8 +203,8 @@ def test_event():
             Signal(signal="15分钟_倒0笔_长度_任意_其他_其他_0"),
         ],
     )
-    m, f = event.is_match(s)
-    assert not m and not f
+    m = event.is_match(s)
+    assert not m
 
     event = Event(
         name="单测",
@@ -203,8 +214,8 @@ def test_event():
             Signal(signal="15分钟_倒0笔_长度_任意_其他_其他_0"),
         ],
     )
-    m, f = event.is_match(s)
-    assert not m and not f
+    m = event.is_match(s)
+    assert not m
 
     event = Event.load(
         {

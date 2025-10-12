@@ -14,7 +14,17 @@ from deprecated import deprecated
 from typing import List, Dict
 from czsc.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
-from rs_czsc._rs_czsc import FakeBI, RawBar, NewBar, BI, FX, ZS, Signal, Event, Position
+from rs_czsc import (
+    FakeBI, 
+    RawBar, 
+    NewBar, 
+    BI, 
+    FX, 
+    ZS, 
+    Signal, 
+    Event, 
+    Position
+)
 
 __all__ = [
     "RawBar",
@@ -24,13 +34,32 @@ __all__ = [
     "FX",
     "ZS",
     "Signal",
-    # "Factor",
     "Event",
     "Position",
     "cal_break_even_point",
     "single_linear",
     "Freq",
 ]
+
+def cal_break_even_point(seq: List[float]) -> float:
+    """计算单笔收益序列的盈亏平衡点
+
+    :param seq: 单笔收益序列
+    :return: 盈亏平衡点
+    """
+    if len(seq) <= 0 or sum(seq) < 0:
+        return 1.0
+
+    seq = sorted(seq)
+    sub_ = 0
+    sub_i = 0
+    for i, s_ in enumerate(seq):
+        sub_ += s_
+        sub_i = i + 1
+        if sub_ >= 0:
+            break
+
+    return sub_i / len(seq)
 
 
 def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
@@ -73,274 +102,10 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
     return fake_bis
 
 
-# @dataclass
-# class ZS:
-#     """中枢对象，主要用于辅助信号函数计算"""
-
-#     bis: List[BI]
-#     cache: dict = field(default_factory=dict)  # cache 用户缓存
-
-#     def __post_init__(self):
-#         self.symbol = self.bis[0].symbol
-
-#     @property
-#     def sdt(self):
-#         """中枢开始时间"""
-#         return self.bis[0].sdt
-
-#     @property
-#     def edt(self):
-#         """中枢结束时间"""
-#         return self.bis[-1].edt
-
-#     @property
-#     def sdir(self):
-#         """中枢第一笔方向，sdir 是 start direction 的缩写"""
-#         return self.bis[0].direction
-
-#     @property
-#     def edir(self):
-#         """中枢倒一笔方向，edir 是 end direction 的缩写"""
-#         return self.bis[-1].direction
-
-#     @property
-#     def zz(self):
-#         """中枢中轴"""
-#         return self.zd + (self.zg - self.zd) / 2
-
-#     @property
-#     def gg(self):
-#         """中枢最高点"""
-#         return max([x.high for x in self.bis])
-
-#     @property
-#     def zg(self):
-#         """中枢上沿"""
-#         return min([x.high for x in self.bis[:3]])
-
-#     @property
-#     def dd(self):
-#         """中枢最低点"""
-#         return min([x.low for x in self.bis])
-
-#     @property
-#     def zd(self):
-#         """中枢下沿"""
-#         return max([x.low for x in self.bis[:3]])
-
-#     @property
-#     def is_valid(self):
-#         """中枢是否有效"""
-#         if self.zg < self.zd:
-#             return False
-
-#         for bi in self.bis:
-#             # 中枢内的笔必须与中枢的上下沿有交集
-#             if (
-#                 self.zg >= bi.high >= self.zd
-#                 or self.zg >= bi.low >= self.zd
-#                 or bi.high >= self.zg > self.zd >= bi.low
-#             ):
-#                 continue
-#             else:
-#                 return False
-
-#         return True
-
-#     def __repr__(self):
-#         return (
-#             f"ZS(sdt={self.sdt}, sdir={self.sdir}, edt={self.edt}, edir={self.edir}, "
-#             f"len_bis={len(self.bis)}, zg={self.zg}, zd={self.zd}, "
-#             f"gg={self.gg}, dd={self.dd}, zz={self.zz})"
-#         )
-
-
-# @dataclass
-# class Signal:
-#     signal: str = ""
-
-#     # score 取值在 0~100 之间，得分越高，信号越强
-#     score: int = 0
-
-#     # k1, k2, k3 是信号名称
-#     k1: str = "任意"  # k1 一般是指明信号计算的K线周期，如 60分钟，日线，周线等
-#     k2: str = "任意"  # k2 一般是记录信号计算的参数
-#     k3: str = "任意"  # k3 用于区分信号，必须具有唯一性，推荐使用信号分类和开发日期进行标记
-
-#     # v1, v2, v3 是信号取值
-#     v1: str = "任意"
-#     v2: str = "任意"
-#     v3: str = "任意"
-
-#     # 任意 出现在模板信号中可以指代任何值
-
-#     def __post_init__(self):
-#         if not self.signal:
-#             self.signal = f"{self.k1}_{self.k2}_{self.k3}_{self.v1}_{self.v2}_{self.v3}_{self.score}"
-#         else:
-#             (
-#                 self.k1,
-#                 self.k2,
-#                 self.k3,
-#                 self.v1,
-#                 self.v2,
-#                 self.v3,
-#                 score,
-#             ) = self.signal.split("_")
-#             self.score = int(score)
-
-#         if self.score > 100 or self.score < 0:
-#             raise ValueError("score 必须在0~100之间")
-
-#     def __repr__(self):
-#         return f"Signal('{self.signal}')"
-
-#     @property
-#     def key(self) -> str:
-#         """获取信号名称"""
-#         key = ""
-#         for k in [self.k1, self.k2, self.k3]:
-#             if k != "任意":
-#                 key += k + "_"
-#         return key.strip("_")
-
-#     @property
-#     def value(self) -> str:
-#         """获取信号值"""
-#         return f"{self.v1}_{self.v2}_{self.v3}_{self.score}"
-
-#     def is_match(self, s: dict) -> bool:
-#         """判断信号是否与信号列表中的值匹配
-
-#         代码的执行逻辑如下：
-
-#         接收一个字典 s 作为参数，该字典包含了所有信号的信息。从字典 s 中获取名称为 key 的信号的值 v。
-#         如果 v 不存在，则抛出异常。从信号的值 v 中解析出 v1、v2、v3 和 score 四个变量。
-
-#         如果当前信号的得分 score 大于等于目标信号的得分 self.score，则继续执行，否则返回 False。
-#         如果当前信号的第一个值 v1 等于目标信号的第一个值 self.v1 或者目标信号的第一个值为 "任意"，则继续执行，否则返回 False。
-#         如果当前信号的第二个值 v2 等于目标信号的第二个值 self.v2 或者目标信号的第二个值为 "任意"，则继续执行，否则返回 False。
-#         如果当前信号的第三个值 v3 等于目标信号的第三个值 self.v3 或者目标信号的第三个值为 "任意"，则返回 True，否则返回 False。
-
-#         :param s: 所有信号字典
-#         :return: bool
-#         """
-#         key = self.key
-#         v = s.get(key, None)
-#         if not v:
-#             raise ValueError(f"{key} 不在信号列表中")
-
-#         v1, v2, v3, score = v.split("_")
-#         if int(score) >= self.score:
-#             if v1 == self.v1 or self.v1 == "任意":
-#                 if v2 == self.v2 or self.v2 == "任意":
-#                     if v3 == self.v3 or self.v3 == "任意":
-#                         return True
-#         return False
-
-
-# @dataclass
-# class Factor:
-#     # signals_all 必须全部满足的信号，至少需要设定一个信号
-#     signals_all: List[Signal]
-
-#     # signals_any 满足其中任一信号，允许为空
-#     signals_any: List[Signal] = field(default_factory=list)
-
-#     # signals_not 不能满足其中任一信号，允许为空
-#     signals_not: List[Signal] = field(default_factory=list)
-
-#     name: str = ""
-
-#     def __post_init__(self):
-#         if not self.signals_all:
-#             raise ValueError("signals_all 不能为空")
-#         _fatcor = self.dump()
-#         _fatcor.pop("name")
-#         sha256 = hashlib.sha256(str(_fatcor).encode("utf-8")).hexdigest().upper()[:4]
-
-#         if self.name:
-#             self.name = self.name.split("#")[0] + f"#{sha256}"
-#         else:
-#             self.name = f"#{sha256}"
-#         # self.name = f"{self.name}#{sha256}" if self.name else sha256
-
-#     @property
-#     def unique_signals(self) -> List[str]:
-#         """获取 Factor 的唯一信号列表"""
-#         signals = []
-#         signals.extend(self.signals_all)
-#         if self.signals_any:
-#             signals.extend(self.signals_any)
-#         if self.signals_not:
-#             signals.extend(self.signals_not)
-#         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
-#         return list(signals)
-
-#     def is_match(self, s: dict) -> bool:
-#         """判断 factor 是否满足"""
-#         if self.signals_not:
-#             for signal in self.signals_not:
-#                 if signal.is_match(s):
-#                     return False
-
-#         for signal in self.signals_all:
-#             if not signal.is_match(s):
-#                 return False
-
-#         if not self.signals_any:
-#             return True
-
-#         for signal in self.signals_any:
-#             if signal.is_match(s):
-#                 return True
-#         return False
-
-#     def dump(self) -> dict:
-#         """将 Factor 对象转存为 dict"""
-#         signals_all = [x.signal for x in self.signals_all]
-#         signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
-#         signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
-
-#         raw = {
-#             "name": self.name,
-#             "signals_all": signals_all,
-#             "signals_any": signals_any,
-#             "signals_not": signals_not,
-#         }
-#         return raw
-
-#     @classmethod
-#     def load(cls, raw: dict):
-#         """从 dict 中创建 Factor
-
-#         :param raw: 样例如下
-#             {'name': '单测',
-#             'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0', '15分钟_倒0笔_长度_大于5_其他_其他_0'],
-#             'signals_any': [],
-#             'signals_not': []}
-
-#         :return:
-#         """
-#         signals_any = [Signal(x) for x in raw.get("signals_any", [])]
-#         signals_not = [Signal(x) for x in raw.get("signals_not", [])]
-
-#         fa = Factor(
-#             name=raw.get("name", ""),
-#             signals_all=[Signal(x) for x in raw["signals_all"]],
-#             signals_any=signals_any,
-#             signals_not=signals_not,
-#         )
-#         return fa
-
 
 # @dataclass
 # class Event:
 #     operate: Operate
-
-#     # 多个信号组成一个因子，多个因子组成一个事件。
-#     # 单个事件是一系列同类型因子的集合，事件中的任一因子满足，则事件为真。
-#     factors: List[Factor]
 
 #     # signals_all 必须全部满足的信号，允许为空
 #     signals_all: List[Signal] = field(default_factory=list)
@@ -354,8 +119,6 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #     name: str = ""
 
 #     def __post_init__(self):
-#         if not self.factors:
-#             raise ValueError("factors 不能为空")
 #         _event = self.dump()
 #         _event.pop("name")
 
@@ -378,10 +141,7 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         if self.signals_not:
 #             signals.extend(self.signals_not)
 
-#         for factor in self.factors:
-#             signals.extend(factor.unique_signals)
-
-#         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
+#         signals = {x.to_string() if isinstance(x, Signal) else x for x in signals}
 #         return list(signals)
 
 #     def get_signals_config(self, signals_module: str = "czsc.signals") -> List[Dict]:
@@ -402,34 +162,27 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         5. 如果遍历完所有因子都没有找到满足的因子，则返回 False，表示事件不满足。
 #         """
 #         if self.signals_not and any(signal.is_match(s) for signal in self.signals_not):
-#             return False, None
+#             return False
 
 #         if self.signals_all and not all(signal.is_match(s) for signal in self.signals_all):
-#             return False, None
+#             return False
 
 #         if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
-#             return False, None
+#             return False
 
-#         for factor in self.factors:
-#             if factor.is_match(s):
-#                 return True, factor.name
-
-#         return False, None
+#         return True
 
 #     def dump(self) -> dict:
 #         """将 Event 对象转存为 dict"""
-#         signals_all = [x.signal for x in self.signals_all] if self.signals_all else []
-#         signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
-#         signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
-#         factors = [x.dump() for x in self.factors]
-
+#         signals_all = [x.to_string() for x in self.signals_all] if self.signals_all else []
+#         signals_any = [x.to_string() for x in self.signals_any] if self.signals_any else []
+#         signals_not = [x.to_string() for x in self.signals_not] if self.signals_not else []
 #         raw = {
 #             "name": self.name,
 #             "operate": self.operate.value,
 #             "signals_all": signals_all,
 #             "signals_any": signals_any,
 #             "signals_not": signals_not,
-#             "factors": factors,
 #         }
 #         return raw
 
@@ -440,10 +193,6 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         :param raw: 样例如下
 #                         {'name': '单测',
 #                          'operate': '开多',
-#                          'factors': [{'name': '测试',
-#                              'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0'],
-#                              'signals_any': [],
-#                              'signals_not': []}],
 #                          'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
 #                          'signals_any': [],
 #                          'signals_not': []}
@@ -453,12 +202,10 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         assert (
 #             raw["operate"] in Operate.__dict__["_value2member_map_"]
 #         ), f"operate {raw['operate']} not in Operate"
-#         assert raw["factors"], "factors can not be empty"
-
+        
 #         e = Event(
 #             name=raw.get("name", ""),
 #             operate=Operate.__dict__["_value2member_map_"][raw["operate"]],
-#             factors=[Factor.load(x) for x in raw["factors"]],
 #             signals_all=[Signal(x) for x in raw.get("signals_all", [])],
 #             signals_any=[Signal(x) for x in raw.get("signals_any", [])],
 #             signals_not=[Signal(x) for x in raw.get("signals_not", [])],
@@ -466,25 +213,7 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 #         return e
 
 
-def cal_break_even_point(seq: List[float]) -> float:
-    """计算单笔收益序列的盈亏平衡点
 
-    :param seq: 单笔收益序列
-    :return: 盈亏平衡点
-    """
-    if len(seq) <= 0 or sum(seq) < 0:
-        return 1.0
-
-    seq = sorted(seq)
-    sub_ = 0
-    sub_i = 0
-    for i, s_ in enumerate(seq):
-        sub_ += s_
-        sub_i = i + 1
-        if sub_ >= 0:
-            break
-
-    return sub_i / len(seq)
 
 
 # class Position:
@@ -776,7 +505,7 @@ def cal_break_even_point(seq: List[float]) -> float:
 #             m, f = event.is_match(s)
 #             if m:
 #                 op = event.operate
-#                 op_desc = f"{event.name}@{f}"
+#                 op_desc = event.name
 #                 break
 
 #         symbol, dt, price, bid = s["symbol"], s["dt"], s["close"], s["id"]
