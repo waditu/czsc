@@ -14,27 +14,29 @@ from czsc.objects import Signal, Event, Operate, Position
 from czsc import mock
 from czsc.objects import RawBar
 from czsc.enum import Freq
+from czsc import format_standard_kline
 
 
 def test_object_position():
     """测试Position对象功能"""
     # 使用mock数据替代硬编码数据文件
     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
-    bars = []
-    for i, row in df.iterrows():
-        bar = RawBar(
-            symbol=row['symbol'], 
-            id=i, 
-            freq=Freq.D, 
-            open=row['open'], 
-            dt=row['dt'],
-            close=row['close'], 
-            high=row['high'], 
-            low=row['low'], 
-            vol=row['vol'], 
-            amount=row['amount']
-        )
-        bars.append(bar)
+    bars = format_standard_kline(df, freq=Freq.D)
+    # bars = []
+    # for i, row in df.iterrows():
+    #     bar = RawBar(
+    #         symbol=row['symbol'], 
+    #         id=i, 
+    #         freq=Freq.D, 
+    #         open=row['open'], 
+    #         dt=row['dt'],
+    #         close=row['close'], 
+    #         high=row['high'], 
+    #         low=row['low'], 
+    #         vol=row['vol'], 
+    #         amount=row['amount']
+    #     )
+    #     bars.append(bar)
     bg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
     for bar in bars[:1000]:
         bg.update(bar)

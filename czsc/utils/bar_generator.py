@@ -11,6 +11,10 @@ from typing import List, Union, AnyStr, Optional
 from czsc.objects import RawBar, Freq
 from pathlib import Path
 from loguru import logger
+from rs_czsc import format_standard_kline
+from rs_czsc import BarGenerator
+# from rs_czsc import is_trading_time
+# from rs_czsc import check_freq_and_market
 
 
 mss = pd.read_feather(Path(__file__).parent / "minutes_split.feather")
@@ -40,38 +44,38 @@ def get_intraday_times(freq="1分钟", market="A股"):
     return freq_market_times[f"{freq}_{market}"]
 
 
-def format_standard_kline(df: pd.DataFrame, freq: str):
-    """格式化标准K线数据为 CZSC 标准数据结构 RawBar 列表
+# def format_standard_kline(df: pd.DataFrame, freq: str):
+#     """格式化标准K线数据为 CZSC 标准数据结构 RawBar 列表
 
-    :param df: 标准K线数据，DataFrame结构
+#     :param df: 标准K线数据，DataFrame结构
 
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
-        dt                   symbol       open    close    high    low          vol       amount
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
-        2023-11-17 00:00:00  689009.SH   33.52    33.41   33.69  33.38  1.97575e+06  6.61661e+07
-        2023-11-20 00:00:00  689009.SH   33.4     32.91   33.45  32.25  5.15016e+06  1.68867e+08
-        ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         dt                   symbol       open    close    high    low          vol       amount
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
+#         2023-11-17 00:00:00  689009.SH   33.52    33.41   33.69  33.38  1.97575e+06  6.61661e+07
+#         2023-11-20 00:00:00  689009.SH   33.4     32.91   33.45  32.25  5.15016e+06  1.68867e+08
+#         ===================  =========  ======  =======  ======  =====  ===========  ===========
 
-    :param freq: K线级别
-    :return: list of RawBar
-    """
-    # from czsc.objects import RawBar, Freq
-    bars = []
-    for i, row in df.iterrows():
-        bar = RawBar(
-            id=i,
-            symbol=row["symbol"],
-            dt=row["dt"],
-            open=row["open"],
-            close=row["close"],
-            high=row["high"],
-            low=row["low"],
-            vol=row["vol"],
-            amount=row["amount"],
-            freq=Freq(freq),
-        )
-        bars.append(bar)
-    return bars
+#     :param freq: K线级别
+#     :return: list of RawBar
+#     """
+#     # from czsc.objects import RawBar, Freq
+#     bars = []
+#     for i, row in df.iterrows():
+#         bar = RawBar(
+#             id=i,
+#             symbol=row["symbol"],
+#             dt=row["dt"],
+#             open=row["open"],
+#             close=row["close"],
+#             high=row["high"],
+#             low=row["low"],
+#             vol=row["vol"],
+#             amount=row["amount"],
+#             freq=Freq(freq),
+#         )
+#         bars.append(bar)
+#     return bars
 
 
 def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None):
@@ -263,153 +267,153 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
         return dfk1
 
 
-class BarGenerator:
+# class BarGenerator:
 
-    version = "V231008"
+#     version = "V231008"
 
-    def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000, market="默认"):
-        self.symbol = None
-        self.end_dt = None
-        self.market = market
-        self.base_freq = base_freq
-        self.max_count = max_count
-        self.freqs = freqs
-        self.bars = {v: [] for v in self.freqs}
-        self.bars.update({base_freq: []})
-        self.freq_map = {f.value: f for _, f in Freq.__members__.items()}
-        self.__validate_freqs()
+#     def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000, market="默认"):
+#         self.symbol = None
+#         self.end_dt = None
+#         self.market = market
+#         self.base_freq = base_freq
+#         self.max_count = max_count
+#         self.freqs = freqs
+#         self.bars = {v: [] for v in self.freqs}
+#         self.bars.update({base_freq: []})
+#         self.freq_map = {f.value: f for _, f in Freq.__members__.items()}
+#         self.__validate_freqs()
 
-    def __validate_freqs(self):
-        from czsc.utils import sorted_freqs
+#     def __validate_freqs(self):
+#         from czsc.utils import sorted_freqs
 
-        if self.base_freq not in sorted_freqs:
-            raise ValueError(f"base_freq is not in sorted_freqs: {self.base_freq}")
+#         if self.base_freq not in sorted_freqs:
+#             raise ValueError(f"base_freq is not in sorted_freqs: {self.base_freq}")
 
-        i = sorted_freqs.index(self.base_freq)
-        f = sorted_freqs[i:]
-        for freq in self.freqs:
-            if freq not in f:
-                raise ValueError(f"freqs中包含不支持的周期：{freq}")
+#         i = sorted_freqs.index(self.base_freq)
+#         f = sorted_freqs[i:]
+#         for freq in self.freqs:
+#             if freq not in f:
+#                 raise ValueError(f"freqs中包含不支持的周期：{freq}")
 
-    def init_freq_bars(self, freq: str, bars: List[RawBar]):
-        """初始化某个周期的K线序列
+#     def init_freq_bars(self, freq: str, bars: List[RawBar]):
+#         """初始化某个周期的K线序列
 
-        函数计算逻辑：
+#         函数计算逻辑：
 
-        1. 首先，它断言`freq`必须是`self.bars`的键之一。如果`freq`不在`self.bars`的键中，代码会抛出一个断言错误。
-        2. 然后，它断言`self.bars[freq]`必须为空。如果`self.bars[freq]`不为空，代码会抛出一个断言错误，并显示一条错误消息。
-        3. 如果以上两个断言都通过，它会将`bars`赋值给`self.bars[freq]`，从而初始化指定频率的K线序列。
-        4. 最后，它会将`bars`列表中的最后一个`RawBar`对象的`symbol`属性赋值给`self.symbol`。
+#         1. 首先，它断言`freq`必须是`self.bars`的键之一。如果`freq`不在`self.bars`的键中，代码会抛出一个断言错误。
+#         2. 然后，它断言`self.bars[freq]`必须为空。如果`self.bars[freq]`不为空，代码会抛出一个断言错误，并显示一条错误消息。
+#         3. 如果以上两个断言都通过，它会将`bars`赋值给`self.bars[freq]`，从而初始化指定频率的K线序列。
+#         4. 最后，它会将`bars`列表中的最后一个`RawBar`对象的`symbol`属性赋值给`self.symbol`。
 
-        :param freq: 周期名称
-        :param bars: K线序列
-        """
-        assert freq in self.bars.keys()
-        assert not self.bars[freq], f"self.bars['{freq}'] 不为空，不允许执行初始化"
-        self.bars[freq] = bars
-        self.symbol = bars[-1].symbol
+#         :param freq: 周期名称
+#         :param bars: K线序列
+#         """
+#         assert freq in self.bars.keys()
+#         assert not self.bars[freq], f"self.bars['{freq}'] 不为空，不允许执行初始化"
+#         self.bars[freq] = bars
+#         self.symbol = bars[-1].symbol
 
-    def __repr__(self):
-        return f"<BarGenerator for {self.symbol} @ {self.end_dt}>"
+#     def __repr__(self):
+#         return f"<BarGenerator for {self.symbol} @ {self.end_dt}>"
 
-    def _update_freq(self, bar: RawBar, freq: Freq) -> None:
-        """更新指定周期K线
+#     def _update_freq(self, bar: RawBar, freq: Freq) -> None:
+#         """更新指定周期K线
 
-        函数计算逻辑：
+#         函数计算逻辑：
 
-        1. 计算目标频率的结束时间`freq_edt`。
-        2. 检查`self.bars`中是否已经有目标频率的K线。如果没有，创建一个新的`RawBar`对象，并将其添加到`self.bars`中，然后返回。
-        3. 如果已经有目标频率的K线，获取最后一根K线`last`。
-        4. 检查`freq_edt`是否不等于最后一根K线的日期时间。如果不等于，创建一个新的`RawBar`对象，并将其添加到`self.bars`中。
-        5. 如果`freq_edt`等于最后一根K线的日期时间，创建一个新的`RawBar`对象，其开盘价为最后一根K线的开盘价，
-            收盘价为当前K线的收盘价，最高价为最后一根K线和当前K线的最高价中的最大值，最低价为最后一根K线和当前K线的最低价中的最小值，
-            成交量和成交金额为最后一根K线和当前K线的成交量和成交金额的和。然后用这个新的`RawBar`对象替换`self.bars`中的最后一根K线。
+#         1. 计算目标频率的结束时间`freq_edt`。
+#         2. 检查`self.bars`中是否已经有目标频率的K线。如果没有，创建一个新的`RawBar`对象，并将其添加到`self.bars`中，然后返回。
+#         3. 如果已经有目标频率的K线，获取最后一根K线`last`。
+#         4. 检查`freq_edt`是否不等于最后一根K线的日期时间。如果不等于，创建一个新的`RawBar`对象，并将其添加到`self.bars`中。
+#         5. 如果`freq_edt`等于最后一根K线的日期时间，创建一个新的`RawBar`对象，其开盘价为最后一根K线的开盘价，
+#             收盘价为当前K线的收盘价，最高价为最后一根K线和当前K线的最高价中的最大值，最低价为最后一根K线和当前K线的最低价中的最小值，
+#             成交量和成交金额为最后一根K线和当前K线的成交量和成交金额的和。然后用这个新的`RawBar`对象替换`self.bars`中的最后一根K线。
 
-        :param bar: 基础周期已完成K线
-        :param freq: 目标周期
-        """
-        freq_edt = freq_end_time(bar.dt, freq, self.market)
+#         :param bar: 基础周期已完成K线
+#         :param freq: 目标周期
+#         """
+#         freq_edt = freq_end_time(bar.dt, freq, self.market)
 
-        if not self.bars[freq.value]:
-            bar_ = RawBar(
-                symbol=bar.symbol,
-                freq=freq,
-                dt=freq_edt,
-                id=0,
-                open=bar.open,
-                close=bar.close,
-                high=bar.high,
-                low=bar.low,
-                vol=bar.vol,
-                amount=bar.amount,
-            )
-            self.bars[freq.value].append(bar_)
-            return
+#         if not self.bars[freq.value]:
+#             bar_ = RawBar(
+#                 symbol=bar.symbol,
+#                 freq=freq,
+#                 dt=freq_edt,
+#                 id=0,
+#                 open=bar.open,
+#                 close=bar.close,
+#                 high=bar.high,
+#                 low=bar.low,
+#                 vol=bar.vol,
+#                 amount=bar.amount,
+#             )
+#             self.bars[freq.value].append(bar_)
+#             return
 
-        last: RawBar = self.bars[freq.value][-1]
-        if freq_edt != self.bars[freq.value][-1].dt:
-            bar_ = RawBar(
-                symbol=bar.symbol,
-                freq=freq,
-                dt=freq_edt,
-                id=last.id + 1,
-                open=bar.open,
-                close=bar.close,
-                high=bar.high,
-                low=bar.low,
-                vol=bar.vol,
-                amount=bar.amount,
-            )
-            self.bars[freq.value].append(bar_)
+#         last: RawBar = self.bars[freq.value][-1]
+#         if freq_edt != self.bars[freq.value][-1].dt:
+#             bar_ = RawBar(
+#                 symbol=bar.symbol,
+#                 freq=freq,
+#                 dt=freq_edt,
+#                 id=last.id + 1,
+#                 open=bar.open,
+#                 close=bar.close,
+#                 high=bar.high,
+#                 low=bar.low,
+#                 vol=bar.vol,
+#                 amount=bar.amount,
+#             )
+#             self.bars[freq.value].append(bar_)
 
-        else:
-            bar_ = RawBar(
-                symbol=bar.symbol,
-                freq=freq,
-                dt=freq_edt,
-                id=last.id,
-                open=last.open,
-                close=bar.close,
-                high=max(last.high, bar.high),
-                low=min(last.low, bar.low),
-                vol=last.vol + bar.vol,
-                amount=last.amount + bar.amount,
-            )
-            self.bars[freq.value][-1] = bar_
+#         else:
+#             bar_ = RawBar(
+#                 symbol=bar.symbol,
+#                 freq=freq,
+#                 dt=freq_edt,
+#                 id=last.id,
+#                 open=last.open,
+#                 close=bar.close,
+#                 high=max(last.high, bar.high),
+#                 low=min(last.low, bar.low),
+#                 vol=last.vol + bar.vol,
+#                 amount=last.amount + bar.amount,
+#             )
+#             self.bars[freq.value][-1] = bar_
 
-    def update(self, bar: RawBar) -> None:
-        """更新各周期K线
+#     def update(self, bar: RawBar) -> None:
+#         """更新各周期K线
 
-        函数计算逻辑：
+#         函数计算逻辑：
 
-        1. 首先，它获取基准频率`base_freq`，并断言`bar`的频率值等于`base_freq`。
-        2. 然后，它将`bar`的符号和日期时间设置为`self.symbol`和`self.end_dt`。
-        3. 接下来，它检查是否已经有一个与`bar`日期时间相同的K线存在于`self.bars[base_freq]`中。
-            如果存在，它会记录一个警告并返回，不进行任何更新。
-        4. 如果不存在重复的K线，它会遍历`self.bars`的所有键（即所有的频率），并对每个频率调用`self._update_freq`方法来更新该频率的K线。
-        5. 最后，它会限制在内存中的K线数量，确保每个频率的K线数量不超过`self.max_count`。
+#         1. 首先，它获取基准频率`base_freq`，并断言`bar`的频率值等于`base_freq`。
+#         2. 然后，它将`bar`的符号和日期时间设置为`self.symbol`和`self.end_dt`。
+#         3. 接下来，它检查是否已经有一个与`bar`日期时间相同的K线存在于`self.bars[base_freq]`中。
+#             如果存在，它会记录一个警告并返回，不进行任何更新。
+#         4. 如果不存在重复的K线，它会遍历`self.bars`的所有键（即所有的频率），并对每个频率调用`self._update_freq`方法来更新该频率的K线。
+#         5. 最后，它会限制在内存中的K线数量，确保每个频率的K线数量不超过`self.max_count`。
 
-        :param bar: 必须是已经结束的Bar
-        :return: None
-        """
-        base_freq = self.base_freq
-        if bar.freq.value != base_freq:
-            raise ValueError(
-                f"Input bar frequency does not match base frequency. Expected {base_freq}, got {bar.freq.value}"
-            )
-        self.symbol = bar.symbol
-        self.end_dt = bar.dt
+#         :param bar: 必须是已经结束的Bar
+#         :return: None
+#         """
+#         base_freq = self.base_freq
+#         if bar.freq.value != base_freq:
+#             raise ValueError(
+#                 f"Input bar frequency does not match base frequency. Expected {base_freq}, got {bar.freq.value}"
+#             )
+#         self.symbol = bar.symbol
+#         self.end_dt = bar.dt
 
-        if self.bars[base_freq] and self.bars[base_freq][-1].dt == bar.dt:
-            logger.warning(
-                f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; \n\n输入K线为{bar};\n\n 上一根K线为{self.bars[base_freq][-1]}"
-            )
-            return
+#         if self.bars[base_freq] and self.bars[base_freq][-1].dt == bar.dt:
+#             logger.warning(
+#                 f"BarGenerator.update: 输入重复K线，基准周期为{base_freq}; \n\n输入K线为{bar};\n\n 上一根K线为{self.bars[base_freq][-1]}"
+#             )
+#             return
 
-        for freq in self.bars.keys():
-            self._update_freq(bar, self.freq_map[freq])
+#         for freq in self.bars.keys():
+#             self._update_freq(bar, self.freq_map[freq])
 
-        # 限制存在内存中的K限制数量
-        for f, b in self.bars.items():
-            if len(b) > self.max_count:
-                self.bars[f] = b[-self.max_count :]
+#         # 限制存在内存中的K限制数量
+#         for f, b in self.bars.items():
+#             if len(b) > self.max_count:
+#                 self.bars[f] = b[-self.max_count :]

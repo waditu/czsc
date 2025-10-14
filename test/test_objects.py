@@ -4,28 +4,50 @@ from collections import OrderedDict
 from czsc.utils import x_round
 from czsc.objects import Signal, Event, Freq, Operate
 from czsc.objects import cal_break_even_point
+from loguru import logger
 
 
-# def test_raw_bar():
-#     from test.test_analyze import read_daily
-#     from czsc.utils.ta import SMA
-#     bars = read_daily()
-#     ma = SMA(np.array([x.close for x in bars]), 5)
-#     key = "SMA5"
-#
-#     # 技术指标的全部更新
-#     for i in range(1, len(bars) + 1):
-#         c = dict(bars[-i].cache) if bars[-i].cache else dict()
-#         c.update({key: ma[-i]})
-#         bars[-i].cache = c
-#     assert np.array([x.cache[key] for x in bars]).sum() == ma.sum()
-#
-#     # 技术指标的部分更新
-#     for i in range(1, 101):
-#         c = dict(bars[-i].cache) if bars[-i].cache else dict()
-#         c.update({key: ma[-i] + 2})
-#         bars[-i].cache = c
-#     assert np.array([x.cache[key] for x in bars]).sum() == ma.sum() + 200
+def test_operate():
+    """测试 Operate 对象"""
+    lo = Operate.LO
+    assert lo.value == "开多"
+    
+    le = Operate.LE
+    assert le.value == "平多"
+
+
+def test_raw_bar():
+    from czsc import mock, Freq
+    from czsc.utils.ta import SMA
+    from rs_czsc import format_standard_kline
+
+    # 使用mock数据替代硬编码数据文件
+    df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
+    bars = format_standard_kline(df, freq=Freq.D)
+    ma = SMA(np.array([x.close for x in bars]), 5)
+    key = "SMA5"
+    logger.info(ma)
+    # 技术指标的全部更新
+    for i in range(1, len(bars) + 1):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c.update({key: ma[-i]})
+        bars[-i].cache = c
+    # 使用 nansum 处理可能存在的 NaN 值（ta-lib 的 SMA 在数据不足时会返回 NaN）
+    cache_sum = np.nansum([x.cache[key] for x in bars])
+    ma_sum = np.nansum(ma)
+    logger.info(f"cache sum: {cache_sum}, ma sum: {ma_sum}, diff: {abs(cache_sum - ma_sum)}")
+    assert np.allclose(cache_sum, ma_sum), f"Mismatch: cache_sum={cache_sum}, ma_sum={ma_sum}"
+
+    # 技术指标的部分更新
+    for i in range(1, 101):
+        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        # 处理 NaN：如果 ma[-i] 是 NaN，保持为 NaN；否则加 2
+        c.update({key: ma[-i] + 2 if not np.isnan(ma[-i]) else ma[-i]})
+        bars[-i].cache = c
+    cache_sum2 = np.nansum([x.cache[key] for x in bars])
+    expected_sum = ma_sum + 200
+    logger.info(f"cache sum2: {cache_sum2}, expected: {expected_sum}, diff: {abs(cache_sum2 - expected_sum)}")
+    assert np.allclose(cache_sum2, expected_sum), f"Mismatch: cache_sum2={cache_sum2}, expected={expected_sum}"
 
 
 def test_zs():
@@ -34,6 +56,7 @@ def test_zs():
     from czsc.objects import ZS, RawBar
     from czsc.analyze import CZSC
     from czsc.enum import Freq
+    from rs_czsc import format_standard_kline
 
     # 使用mock数据替代硬编码数据文件
     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
