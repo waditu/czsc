@@ -16,7 +16,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Callable, Union, List, AnyStr
 from czsc.strategies import CzscStrategyBase
-from czsc.objects import Position, Event
+from czsc.objects import Position, Event, Signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
@@ -30,6 +30,8 @@ class CzscOpenOptimStrategy(CzscStrategyBase):
         if isinstance(open_signals_all, str):
             open_signals_all = [open_signals_all]
 
+        open_signals_all = [Signal(s) for s in open_signals_all]
+        open_signals_all = [{"key": s.key, "value": s.value} for s in open_signals_all]
         pos_dict = pos.dump()
         sig_hash = hashlib.md5(f"{open_signals_all}".encode('utf-8')).hexdigest()[:8].upper()
         pos_dict['name'] = f"{pos.name}#{sig_hash}"

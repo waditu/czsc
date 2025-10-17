@@ -96,6 +96,8 @@ def test_object_position():
     else:
         # mock数据可能不会产生任何交易对，这是正常的
         assert isinstance(pos.pairs, list)  # pairs应该是列表类型
+        
+    assert pos.holds is not None
     
     assert len(cs.s) > 0  # 信号数量应该大于0
 
