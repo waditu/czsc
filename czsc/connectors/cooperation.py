@@ -46,25 +46,25 @@ def get_symbols(name, **kwargs):
         return symbols
 
     if name == "ETF":
-        df = dc.etf_basic(v=2, fields="code,name", ttl=3600 * 6)
-        dfk = dc.pro_bar(trade_date="2024-04-02", asset="e", v=2)
+        df = dc.etf_basic(v="2", fields="code,name", ttl=3600 * 6)
+        dfk = dc.pro_bar(trade_date="2024-04-02", asset="e", v="2")
         df = df[df["code"].isin(dfk["code"])].reset_index(drop=True)
         symbols = [f"{row['code']}#ETF" for _, row in df.iterrows()]
         return symbols
 
     if name == "A股指数":
         # 指数 https://s0cqcxuy3p.feishu.cn/wiki/KuSAweAAhicvsGk9VPTc1ZWKnAd
-        df = dc.index_basic(v=2, market="SSE,SZSE", ttl=3600 * 6)
+        df = dc.index_basic(v="2", market="SSE,SZSE", ttl=3600 * 6)
         symbols = [f"{row['code']}#INDEX" for _, row in df.iterrows()]
         return symbols
 
     if name == "南华指数":
-        df = dc.index_basic(v=2, market="NH", ttl=3600 * 6)
+        df = dc.index_basic(v="2", market="NH", ttl=3600 * 6)
         symbols = [row["code"] for _, row in df.iterrows()]
         return symbols
 
     if name == "期货主力":
-        kline = dc.future_klines(v=2, trade_date="20240402", ttl=-1)
+        kline = dc.future_klines(v="2", trade_date="20240402", ttl=-1)
         return kline["code"].unique().tolist()
 
     if name.upper() == "ALL":
@@ -96,7 +96,7 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
             break
 
         ttl = kwargs.get("ttl", 60 * 60) if pd.to_datetime(edt_).date() >= datetime.now().date() else -1
-        df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl, v=2)
+        df = dc.future_klines(code=code, sdt=sdt_, edt=edt_, freq=freq, ttl=ttl, v="2")
         if df.empty:
             continue
         logger.info(f"{code}获取K线范围：{df['dt'].min()} - {df['dt'].max()}")
@@ -165,7 +165,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
 
         else:
-            df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd, ttl=ttl, v=2)
+            df = dc.future_klines(code=symbol, sdt=sdt, edt=edt, freq=freq_rd, ttl=ttl, v="2")
             if df.empty:
                 return df
 
@@ -180,7 +180,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     if symbol.endswith(".NH"):
         if freq != Freq.D:
             raise ValueError("南华指数只支持日线数据")
-        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl, v=2)
+        df = dc.nh_daily(code=symbol, sdt=sdt, edt=edt, ttl=ttl, v="2")
         df.rename(columns={"code": "symbol", "volume": "vol"}, inplace=True)
         df["dt"] = pd.to_datetime(df["dt"])
         return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
@@ -192,14 +192,14 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
         code, asset = symbol.split("#")
 
         if freq.value.endswith("分钟"):
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="min", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="min", adj=adj, asset=asset[0].lower(), v="2", ttl=ttl)
             df = df[~df["dt"].str.endswith("09:30:00")].reset_index(drop=True)
             df.rename(columns={"code": "symbol"}, inplace=True)
             df["dt"] = pd.to_datetime(df["dt"])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars, base_freq="1分钟")
 
         else:
-            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="day", adj=adj, asset=asset[0].lower(), v=2, ttl=ttl)
+            df = dc.pro_bar(code=code, sdt=sdt, edt=edt, freq="day", adj=adj, asset=asset[0].lower(), v="2", ttl=ttl)
             df.rename(columns={"code": "symbol"}, inplace=True)
             df["dt"] = pd.to_datetime(df["dt"])
             return czsc.resample_bars(df, target_freq=freq, raw_bars=raw_bars)
@@ -229,7 +229,7 @@ def stocks_daily_klines(sdt="20170101", edt="20240101", **kwargs):
     for sdt_, edt_ in date_spans:
         # 当前月份使用较短缓存时间，历史月份使用长期缓存
         ttl = 3600 * 6 if edt_ < pd.Timestamp.now().strftime("%Y%m%d") else -1
-        kline = dc.pro_bar(sdt=sdt_, edt=edt_, adj=adj, v=2, ttl=ttl)
+        kline = dc.pro_bar(sdt=sdt_, edt=edt_, adj=adj, v="2", ttl=ttl)
         res.append(kline)
 
     dfk = pd.concat(res, ignore_index=True)
@@ -318,7 +318,7 @@ def get_stk_strategy(name="STK_001", **kwargs):
         edt: str, optional
             结束日期，默认为当前日期
     """
-    dfw = dc.post_request(api_name=name, v=2, hist=1, ttl=kwargs.get("ttl", 3600 * 6))
+    dfw = dc.post_request(api_name=name, v="2", hist=1, ttl=kwargs.get("ttl", 3600 * 6))
     dfw["dt"] = pd.to_datetime(dfw["dt"])
     sdt = kwargs.get("sdt", "20170101")
     edt = pd.Timestamp.now().strftime("%Y%m%d")
@@ -360,7 +360,7 @@ def get_all_strategies(ttl=3600 * 24 * 7, logger=loguru.logger, path=cache_path)
 
     else:
         logger.info("【全量刷新】获取所有策略的元数据并刷新缓存")
-        dfm = dc.get_all_strategies(v=2, ttl=0)
+        dfm = dc.get_all_strategies(v="2", ttl=0)
         dfm.to_feather(file_metas)
 
     return dfm
@@ -376,14 +376,14 @@ def __update_strategy_dailys(file_cache, strategy, logger=loguru.logger):
         cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
         logger.info(f"【增量刷新缓存】获取策略 {strategy} 的日收益数据：{cache_sdt} - {cache_edt}")
 
-        dfc = dc.sub_strategy_dailys(strategy=strategy, v=2, sdt=cache_sdt, edt=cache_edt, ttl=0)
+        dfc = dc.sub_strategy_dailys(strategy=strategy, v="2", sdt=cache_sdt, edt=cache_edt, ttl=0)
         dfc["dt"] = pd.to_datetime(dfc["dt"])
         df = pd.concat([df, dfc]).drop_duplicates(["dt", "symbol", "strategy"], keep="last")
 
     else:
         cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
         logger.info(f"【全量刷新缓存】获取策略 {strategy} 的日收益数据：20170101 - {cache_edt}")
-        df = dc.sub_strategy_dailys(strategy=strategy, v=2, sdt="20170101", edt=cache_edt, ttl=0)
+        df = dc.sub_strategy_dailys(strategy=strategy, v="2", sdt="20170101", edt=cache_edt, ttl=0)
 
     df = df.reset_index(drop=True)
     df["dt"] = pd.to_datetime(df["dt"])
@@ -450,7 +450,7 @@ def __update_strategy_weights(file_cache, strategy, logger=loguru.logger):
         cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
         logger.info(f"【增量刷新缓存】获取策略 {strategy} 的持仓权重数据：{cache_sdt} - {cache_edt}")
 
-        dfc = dc.post_request(api_name=strategy, v=2, sdt=cache_sdt, edt=cache_edt, hist=1, ttl=0)
+        dfc = dc.post_request(api_name=strategy, v="2", sdt=cache_sdt, edt=cache_edt, hist=1, ttl=0)
         dfc["dt"] = pd.to_datetime(dfc["dt"])
         dfc["strategy"] = strategy
 
@@ -459,7 +459,7 @@ def __update_strategy_weights(file_cache, strategy, logger=loguru.logger):
     else:
         cache_edt = (pd.Timestamp.now() + pd.Timedelta(days=1)).strftime("%Y%m%d")
         logger.info(f"【全量刷新缓存】获取策略 {strategy} 的持仓权重数据：20170101 - {cache_edt}")
-        df = dc.post_request(api_name=strategy, v=2, sdt="20170101", edt=cache_edt, hist=1, ttl=0)
+        df = dc.post_request(api_name=strategy, v="2", sdt="20170101", edt=cache_edt, hist=1, ttl=0)
         df["dt"] = pd.to_datetime(df["dt"])
         df["strategy"] = strategy
 
