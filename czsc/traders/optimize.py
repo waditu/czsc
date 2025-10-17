@@ -151,17 +151,18 @@ def one_symbol_optim(symbol, read_bars: Callable, path: str, **kwargs):
 
     for pos in trader.positions:            # type: ignore
         try:
-            file_pairs = os.path.join(symbol_path, f"{pos.name}.pairs")
-            file_holds = os.path.join(symbol_path, f"{pos.name}.holds")
+            file_pairs = os.path.join(symbol_path, f"{pos.name}.pairs.feather")
+            file_holds = os.path.join(symbol_path, f"{pos.name}.holds.feather")
 
             pairs = pd.DataFrame(pos.pairs)
-            pairs.to_parquet(file_pairs)
+            pairs.to_feather(file_pairs)
 
             dfh = pd.DataFrame(pos.holds)
-            dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
-            dfh.fillna(0, inplace=True)
-            dfh['symbol'] = pos.symbol
-            dfh.to_parquet(file_holds)
+            if not dfh.empty:   
+                dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
+                dfh.fillna(0, inplace=True)
+                dfh['symbol'] = pos.symbol
+            dfh.to_feather(file_holds)
         except Exception as e:
             logger.debug(f"{symbol} {pos.name} 保存失败，原因：{e}")
 
@@ -171,13 +172,13 @@ def one_symbol_optim(symbol, read_bars: Callable, path: str, **kwargs):
 def one_position_stats(path, pos_name):
     """分析单个 pos 的表现"""
     path = Path(path)
-    files_p = path.glob(f"**/{pos_name}.pairs")
-    files_h = path.glob(f"**/{pos_name}.holds")
+    files_p = path.glob(f"**/{pos_name}.pairs.feather")
+    files_h = path.glob(f"**/{pos_name}.holds.feather")
 
     pos_pairs = []
     for file_p in files_p:
         try:
-            dfp = pd.read_parquet(file_p)
+            dfp = pd.read_feather(file_p)
             pos_pairs.append(dfp)
         except Exception as e:
             logger.debug(f"{file_p} 读取失败，原因：{e}")
@@ -185,7 +186,7 @@ def one_position_stats(path, pos_name):
     pos_holds = []
     for file_h in files_h:
         try:
-            dfh = pd.read_parquet(file_h)
+            dfh = pd.read_feather(file_h)
             pos_holds.append(dfh)
         except Exception as e:
             logger.debug(f"{file_h} 读取失败，原因：{e}")

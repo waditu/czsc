@@ -7,6 +7,7 @@ create_dt: 2021/11/7 21:07
 import os
 import pandas as pd
 from copy import deepcopy
+from loguru import logger
 from czsc.utils.cache import home_path
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
@@ -22,21 +23,6 @@ def test_object_position():
     # 使用mock数据替代硬编码数据文件
     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
     bars = format_standard_kline(df, freq=Freq.D)
-    # bars = []
-    # for i, row in df.iterrows():
-    #     bar = RawBar(
-    #         symbol=row['symbol'], 
-    #         id=i, 
-    #         freq=Freq.D, 
-    #         open=row['open'], 
-    #         dt=row['dt'],
-    #         close=row['close'], 
-    #         high=row['high'], 
-    #         low=row['low'], 
-    #         vol=row['vol'], 
-    #         amount=row['amount']
-    #     )
-    #     bars.append(bar)
     bg = BarGenerator(base_freq='日线', freqs=['周线', '月线'])
     for bar in bars[:1000]:
         bg.update(bar)
@@ -89,6 +75,8 @@ def test_object_position():
         cs.update_signals(bar)
         pos.update(cs.s)
 
+    logger.info(f"pairs: {pos.pairs}")
+
     # 检查pairs是否为空，如果为空则跳过形状检查
     if pos.pairs:
         df = pd.DataFrame(pos.pairs)
@@ -96,7 +84,8 @@ def test_object_position():
     else:
         # mock数据可能不会产生任何交易对，这是正常的
         assert isinstance(pos.pairs, list)  # pairs应该是列表类型
-        
+    
+    logger.info(f"holds: {pos.holds}")
     assert pos.holds is not None
     
     assert len(cs.s) > 0  # 信号数量应该大于0
