@@ -597,7 +597,9 @@ class CzscTrader(CzscSignals):
 
         method = kwargs.get("method", self.__ensemble_method)
         digits = kwargs.get("digits", 2)
-        fee_rate = kwargs.get("fee_rate", 0.0002)
+        fee_rate = kwargs.get("fee_rate", 0.000)
         dfw = self.get_ensemble_weight(method)
+        dfw['dt'] = pd.to_datetime(dfw['dt'])
+        dfw = dfw[['dt', 'symbol', 'weight', 'price']].copy()
         wb = WeightBacktest(dfw, digits=digits, fee_rate=fee_rate)
         return wb
