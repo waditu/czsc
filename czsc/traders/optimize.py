@@ -201,9 +201,9 @@ def one_position_stats(path, pos_name):
         pp = czsc.PairsPerformance(pairs)
         stats = dict(pp.basic_info)
         # 加入截面等权评价
-        cross = holds.groupby('dt').apply(lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1)).sum()
+        cross = holds.groupby('dt', group_keys=False).apply(lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1), include_groups=False).sum()
         stats['截面等权收益'] = cross
-        cross1 = holds.groupby('dt').apply(lambda x: (x['n1b'] * x['pos']).mean()).sum()
+        cross1 = holds.groupby('dt', group_keys=False).apply(lambda x: (x['n1b'] * x['pos']).mean(), include_groups=False).sum()
         stats['截面品种等权'] = cross1
         stats['pos_name'] = pos_name
         return stats
