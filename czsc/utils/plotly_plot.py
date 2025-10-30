@@ -8,6 +8,7 @@ describe: 使用 Plotly 构建绘图模块
 import os
 import numpy as np
 import pandas as pd
+from rs_czsc import CZSC
 from plotly import graph_objects as go
 
 
@@ -90,7 +91,7 @@ class KlineChart:
             hoverlabel=dict(bgcolor="rgba(255,255,255,0.1)", font=dict(size=20)),  # 透明，更容易看清后面k线
             dragmode="pan",
             legend_title_font_color="red",
-            height=kwargs.get("height", 300),
+            height=kwargs.get("height", 600),
         )
 
         self.fig = fig
@@ -434,6 +435,14 @@ class KlineChart:
         self.fig.update_layout(**kwargs)
         self.fig.write_html(file_name)
         webbrowser.open(file_name)
+        
+    def show(self, **kwargs):
+        """显示图表
+        
+        支持所有 plotly layout 参数，详见：https://plotly.com/python/reference/layout/
+        """
+        self.fig.update_layout(**kwargs)
+        self.fig.show()
 
 
 def plot_nx_graph(g, **kwargs) -> go.Figure:
@@ -529,3 +538,33 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
     )
 
     return fig
+
+
+def plot_czsc_chart(czsc_obj: CZSC, **kwargs) -> KlineChart:
+    """使用 plotly 绘制 CZSC 对象
+    
+    :param czsc_obj: CZSC 对象
+    :param kwargs:
+        - height: 图表高度，默认 800
+    :return: KlineChart 对象
+    """    
+    height = kwargs.get('height', 800)
+
+    bi_list = czsc_obj.bi_list
+    df = pd.DataFrame([x.__dict__ for x in czsc_obj.bars_raw])
+    df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol', 'amount']]
+    chart = KlineChart(n_rows=3, title="{}-{}".format(czsc_obj.symbol, czsc_obj.freq.value), height=height)
+    chart.add_kline(df, name="")
+    chart.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1.2)
+    chart.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
+    chart.add_vol(df, row=2)
+    chart.add_macd(df, row=3)
+
+    if len(bi_list) > 0:
+        bi1 = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value.replace("分型", "")} for x in bi_list]
+        bi2 = [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
+        bi = pd.DataFrame(bi1 + bi2)
+        fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in czsc_obj.fx_list])
+        chart.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
+        chart.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
+    return chart
