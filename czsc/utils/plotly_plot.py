@@ -548,15 +548,16 @@ def plot_czsc_chart(czsc_obj: CZSC, **kwargs) -> KlineChart:
         - height: 图表高度，默认 800
     :return: KlineChart 对象
     """    
-    height = kwargs.get('height', 800)
+    height = kwargs.get('height', 600)
+    ma_system = kwargs.get('ma_system', (5, 10, 21, 34, 55, 89, 144))
 
     bi_list = czsc_obj.bi_list
     df = pd.DataFrame([x.__dict__ for x in czsc_obj.bars_raw])
     df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol', 'amount']]
     chart = KlineChart(n_rows=3, title="{}-{}".format(czsc_obj.symbol, czsc_obj.freq.value), height=height)
     chart.add_kline(df, name="")
-    chart.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1.2)
-    chart.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
+    chart.add_sma(df, ma_seq=[ma_system[0]], row=1, visible=True, line_width=1.2)
+    chart.add_sma(df, ma_seq=ma_system[1:], row=1, visible=False, line_width=1.2)
     chart.add_vol(df, row=2)
     chart.add_macd(df, row=3)
 
@@ -565,6 +566,8 @@ def plot_czsc_chart(czsc_obj: CZSC, **kwargs) -> KlineChart:
         bi2 = [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
         bi = pd.DataFrame(bi1 + bi2)
         fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in czsc_obj.fx_list])
-        chart.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
-        chart.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
+        
+        # 分型用虚线表示
+        chart.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.8, line_dash='dash')
+        chart.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.8)
     return chart
