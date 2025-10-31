@@ -62,7 +62,6 @@ from czsc.utils import (
     overlap,
     to_arrow,
     format_standard_kline,
-    KlineChart,
     BarGenerator,
     freq_end_time,
     resample_bars,
@@ -208,6 +207,10 @@ from czsc.features.utils import (
     feature_sectional_corr,
 )
 
+from czsc.utils.plotly_plot import (
+    plot_czsc_chart,
+    KlineChart
+)
 
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.traders import cwc
