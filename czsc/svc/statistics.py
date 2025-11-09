@@ -59,7 +59,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     
     dfv = pd.DataFrame(rows).set_index("收益名称")
     dfv_styled = apply_stats_style(dfv)
-    st.dataframe(dfv_styled, use_container_width=True)
+    st.dataframe(dfv_styled, width='stretch')
 
 
 def show_yearly_stats(df, ret_col, **kwargs):
@@ -92,7 +92,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-    st.dataframe(stats_styled, use_container_width=True)
+    st.dataframe(stats_styled, width='stretch')
 
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
@@ -148,7 +148,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
         "卡玛": "{:.2f}", "年化": "{:.2%}", "夏普": "{:.2f}", "非零覆盖": "{:.2%}",
         "日胜率": "{:.2%}", "新高间隔": "{:.2f}", "回撤风险": "{:.2f}", "新高占比": "{:.2%}",
     })
-    st.dataframe(df_stats_styled, use_container_width=True, hide_index=True)
+    st.dataframe(df_stats_styled, width='stretch', hide_index=True)
 
 
 def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
@@ -191,7 +191,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
         st.divider()
         dfd = dfx[["dt", "returns"]].copy()
         dfd.set_index("dt", inplace=True)
-        st.line_chart(dfd["returns"].cumsum(), color="#B22222", use_container_width=True)
+        st.line_chart(dfd["returns"].cumsum(), color="#B22222", width='stretch')
 
     if outsample_sdt2 is not None:
         outsample_sdt2 = pd.to_datetime(outsample_sdt2).strftime("%Y-%m-%d")
@@ -293,7 +293,7 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
         fig.update_xaxes(title=None)
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     dfg_styled = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
     dfg_styled = dfg_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
@@ -302,7 +302,7 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         "count": "{:.0f}", "mean": "{:.4f}", "std": "{:.2%}",
         "min": "{:.4f}", "25%": "{:.4f}", "50%": "{:.4f}", "75%": "{:.4f}", "max": "{:.4f}",
     })
-    st.dataframe(dfg_styled, use_container_width=True)
+    st.dataframe(dfg_styled, width='stretch')
 
 
 def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
@@ -444,7 +444,7 @@ def show_describe(df: pd.DataFrame, **kwargs):
         format_dict[q] = f"{{:.{digits}f}}"
     
     df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, use_container_width=True)
+    st.dataframe(df_styled, width='stretch')
     st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
 
 
@@ -470,4 +470,4 @@ def show_df_describe(df: pd.DataFrame):
         format_dict[q] = "{:.4f}"
 
     df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, use_container_width=True) 
+    st.dataframe(df_styled, width='stretch') 

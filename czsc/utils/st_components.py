@@ -107,24 +107,24 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     
     if kwargs.get("show_dailys", False):
         with st.expander("日收益数据详情", expanded=False):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
     
     if stat_hold_days:
         with st.expander("交易日绩效指标", expanded=True):
             if use_st_table:
                 st.table(_stats(df, type_="交易日"))
             else:
-                st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
+                st.dataframe(_stats(df, type_="交易日"), width='stretch')
             st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
     else:
         if use_st_table:
             st.table(_stats(df, type_="交易日"))
         else:
-            st.dataframe(_stats(df, type_="交易日"), use_container_width=True)
+            st.dataframe(_stats(df, type_="交易日"), width='stretch')
 
     if stat_hold_days:
         with st.expander("持有日绩效指标", expanded=False):
-            st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+            st.dataframe(_stats(df, type_="持有日"), width='stretch')
             st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
     if plot_cumsum:
@@ -141,7 +141,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             fig.update_traces(visible="legendonly", selector=dict(name=col))
         # fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
         fig.update_layout(margin=dict(l=0, r=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_cumulative_returns(df, **kwargs):
@@ -183,9 +183,9 @@ def show_cumulative_returns(df, **kwargs):
             xanchor="center",
             x=0.5
         ), margin=dict(l=0, r=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
 
 def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **kwargs):
@@ -225,9 +225,9 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     monthly = monthly.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=month_cols)
     monthly = monthly.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年收益"])
     monthly = monthly.format("{:.2%}", na_rep="-")
-    st.dataframe(monthly, use_container_width=True)
+    st.dataframe(monthly, width='stretch')
     dfy = dfy.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.2%}", na_rep="-")
-    st.dataframe(dfy, use_container_width=True)
+    st.dataframe(dfy, width='stretch')
     st.caption(
         "注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10"
     )
@@ -242,7 +242,7 @@ def show_correlation(df, cols=None, method="pearson", **kwargs):
     :param kwargs:
 
         - use_st_table: bool，是否使用 st.table 展示相关性，默认为 False
-        - use_container_width: bool，是否使用容器宽度，默认为 True
+        - width: str，图表宽度，可选 'stretch'（默认）或 'content'
 
     """
     cols = cols or df.columns.to_list()
@@ -255,7 +255,8 @@ def show_correlation(df, cols=None, method="pearson", **kwargs):
     if kwargs.get("use_st_table", False):
         st.table(dfr)
     else:
-        st.dataframe(dfr, use_container_width=kwargs.get("use_container_width", True))
+        width = kwargs.get("width", 'stretch')
+    st.dataframe(dfr, width=width)
 
 
 def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
@@ -296,12 +297,12 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
     col4.write("月度IC分析结果：")
     col4.dataframe(
         dfm.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS"),
-        use_container_width=True,
+        width='stretch',
     )
 
     if kwargs.get("show_factor_histgram", False):
         fig = px.histogram(df, x=x_col, marginal="box", title="因子数据分布图")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     if kwargs.get("show_cumsum_ic", True):
         dfc["ic_cumsum"] = dfc["ic"].cumsum()
@@ -316,7 +317,7 @@ def show_sectional_ic(df, x_col, y_col, method="pearson", **kwargs):
             title="截面IC曲线",
             margin=dict(l=0, r=0, b=0),
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_feature_returns(df, factor, target="n1b", **kwargs):
@@ -359,7 +360,7 @@ def show_feature_returns(df, factor, target="n1b", **kwargs):
         title=fig_title,
         margin=dict(l=0, r=0, b=0),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_factor_layering(df, factor, target="n1b", **kwargs):
@@ -395,7 +396,7 @@ def show_factor_layering(df, factor, target="n1b", **kwargs):
         color_continuous_scale="RdYlGn_r",
         text="text",
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     show_daily_return(
         mrr,
@@ -471,7 +472,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("show_weight_backtest :: 持仓权重数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], width='stretch')
         st.stop()
 
     wb = WeightBacktest(
@@ -501,7 +502,7 @@ def show_weight_backtest(dfw, **kwargs):
         dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
         dfx.index = ["多头", "空头"]
         dfx.index.name = "交易方向"
-        st.dataframe(dfx.T.astype(str), use_container_width=True)
+        st.dataframe(dfx.T.astype(str), width='stretch')
 
     dret = wb.daily_return.copy()
     dret["dt"] = pd.to_datetime(dret["date"])
@@ -515,10 +516,10 @@ def show_weight_backtest(dfw, **kwargs):
     #     c1, c2 = st.columns([1, 1])
     #     with c1.expander("品种等权日收益", expanded=False):
     #         df_ = wb.daily_return.copy()
-    #         st.dataframe(df_.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}"), use_container_width=True)
+    #         st.dataframe(df_.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}"), width='stretch')
     #     # with c2.expander("查看开平交易对", expanded=False):
     #     # dfp = pd.concat([v["pairs"] for k, v in wb.results.items() if k in wb.symbols], ignore_index=True)
-    #     # st.dataframe(dfp, use_container_width=True)
+    #     # st.dataframe(dfp, width='stretch')
 
     if kwargs.get("show_splited_daily", False):
         with st.expander("品种等权日收益分段表现", expanded=False):
@@ -589,7 +590,7 @@ def show_splited_daily(df, ret_col, **kwargs):
         rows.append(row)
     dfv = pd.DataFrame(rows).set_index("收益名称")
     dfv = __stats_style(dfv)
-    st.dataframe(dfv, use_container_width=True)
+    st.dataframe(dfv, width='stretch')
 
 
 def show_yearly_stats(df, ret_col, **kwargs):
@@ -626,7 +627,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-    st.dataframe(stats, use_container_width=True)
+    st.dataframe(stats, width='stretch')
 
 
 def show_ts_rolling_corr(df, col1, col2, **kwargs):
@@ -685,7 +686,7 @@ def show_ts_rolling_corr(df, col1, col2, **kwargs):
         ],
     )
     fig = go.Figure(data=[line], layout=layout)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_ts_self_corr(df, col, **kwargs):
@@ -725,7 +726,7 @@ def show_ts_self_corr(df, col, **kwargs):
         lower = go.Scatter(x=list(range(len(acf_result))), y=conf_int[:, 0], mode="lines", name="95%置信区间下界")
         layout = go.Layout(title=method.upper(), xaxis=dict(title="滞后阶数"), yaxis=dict(title="自相关系数"))
         fig = go.Figure(data=[bar, upper, lower], layout=layout)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     with col2:
         sub_title = f"滞后N阶滑动相关性（{col}）"
@@ -779,7 +780,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
                 rows.append(row)
     dfr = pd.DataFrame(rows)
     with st.expander("逐笔止损点", expanded=False):
-        st.dataframe(dfr, use_container_width=True)
+        st.dataframe(dfr, width='stretch')
 
     if kwargs.pop("show_detail", False):
         cols = [
@@ -796,7 +797,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         ]
         dfs = dfw1[dfw1["is_stop"]][cols].copy()
         with st.expander("止损点详情", expanded=False):
-            st.dataframe(dfs, use_container_width=True)
+            st.dataframe(dfs, width='stretch')
 
     show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
 
@@ -825,7 +826,7 @@ def show_cointegration(df, col1, col2, **kwargs):
     df = df[[col1, col2]].copy()
     if df.isnull().sum().sum() > 0:
         st.warning(f"列 {col1} 或 {col2} 中存在缺失值，请先处理缺失值！！！")
-        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], width='stretch')
         return
 
     sub_header = kwargs.get("sub_header", "")
@@ -858,7 +859,7 @@ def show_cointegration(df, col1, col2, **kwargs):
     )
     fig = px.line(df, x=df.index, y=[col1, col2])
     fig.update_layout(title=f"{col1} 与 {col2} 的曲线图对比", xaxis_title="", yaxis_title="value")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
@@ -937,7 +938,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
             "新高占比": "{:.2%}",
         }
     )
-    st.dataframe(df_stats, use_container_width=True, hide_index=True)
+    st.dataframe(df_stats, width='stretch', hide_index=True)
 
 
 def show_optuna_study(study, **kwargs):
@@ -967,14 +968,14 @@ def show_optuna_study(study, **kwargs):
         st.subheader(sub_title, divider="rainbow", anchor=anchor)
 
     fig = optuna.visualization.plot_contour(study)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     fig = optuna.visualization.plot_slice(study)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     with st.expander("最佳参数列表", expanded=False):
         params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
-        st.dataframe(params, use_container_width=True)
+        st.dataframe(params, width='stretch')
     return study
 
 
@@ -1043,7 +1044,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
 
     fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
     fig.update_layout(title="", xaxis_title="", yaxis_title="净值回撤", legend_title="回撤分析", height=300)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     if top is not None:
         with st.expander(f"TOP{top} 最大回撤详情", expanded=False):
@@ -1058,7 +1059,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
                     "新高间隔": "{:.0f}",
                 }
             )
-            st.dataframe(dft, use_container_width=True)
+            st.dataframe(dft, width='stretch')
 
 
 def show_rolling_daily_performance(df, ret_col, **kwargs):
@@ -1092,7 +1093,7 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     cols = [x for x in dfr.columns if x not in ["sdt", "edt"]]
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普"))
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_event_return(df, factor, **kwargs):
@@ -1170,7 +1171,7 @@ def show_event_return(df, factor, **kwargs):
         return dfy
 
     dfy1 = __markout(df.copy(), [factor, "overlap"])
-    st.dataframe(dfy1, use_container_width=True)
+    st.dataframe(dfy1, width='stretch')
 
 
 def show_psi(df, factor, segment, **kwargs):
@@ -1228,7 +1229,7 @@ def show_holds_backtest(df, **kwargs):
     digits = kwargs.get("digits", 2)
     if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
         st.warning("show_holds_backtest :: 数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], width='stretch')
         st.stop()
 
     # 计算每日收益、交易成本、净收益
@@ -1280,7 +1281,7 @@ def show_symbols_corr(df, factor, target="n1b", method="pearson", **kwargs):
     dfr = dfr.sort_values("corr", ascending=False)
     fig_title = kwargs.get("fig_title", f"{factor} 在品种上的相关性分布")
     fig = px.bar(dfr, x="symbol", y="corr", title=fig_title, orientation="v")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_czsc_trader(trader, max_k_num=300, **kwargs):
@@ -1382,7 +1383,7 @@ def show_czsc_trader(trader, max_k_num=300, **kwargs):
                     "hoverCompareCartesian",
                 ],
             }
-            st.plotly_chart(kline.fig, use_container_width=True, config=config)
+            st.plotly_chart(kline.fig, width='stretch', config=config)
 
     with tabs[-1]:
         with st.expander("查看最新信号", expanded=False):
@@ -1429,7 +1430,7 @@ def show_strategies_recent(df, **kwargs):
 
     st.dataframe(
         n_rets.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}", na_rep="-"),
-        use_container_width=True,
+        width='stretch',
         hide_index=False,
     )
 
@@ -1438,7 +1439,7 @@ def show_strategies_recent(df, **kwargs):
     win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
     dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
-    st.dataframe(dfs, use_container_width=True)
+    st.dataframe(dfs, width='stretch')
     st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
 
 
@@ -1489,7 +1490,7 @@ def show_factor_value(df, factor, **kwargs):
             "hoverCompareCartesian",
         ],
     }
-    st.plotly_chart(chart.fig, use_container_width=True, config=plotly_config)
+    st.plotly_chart(chart.fig, width='stretch', config=plotly_config)
 
 
 def show_code_editor(default: str = "", **kwargs):
@@ -1604,7 +1605,7 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
         fig.update_xaxes(title=None)
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     dfg = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
     dfg = dfg.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
@@ -1621,7 +1622,7 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
             "max": "{:.4f}",
         }
     )
-    st.dataframe(dfg, use_container_width=True)
+    st.dataframe(dfg, width='stretch')
 
 
 def show_corr_graph(df, columns=None, threshold=0.2, **kwargs):
@@ -1662,14 +1663,14 @@ def show_corr_graph(df, columns=None, threshold=0.2, **kwargs):
                     G.add_edge(col1, col2, weight=dfr.iat[i, j])
 
     fig = plot_nx_graph(G, node_marker_size=15)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     with st.expander("相关性矩阵"):
         # 将 dfr 对角线上的 1 填充为 0
         dfr = dfr.copy().where(~np.eye(dfr.shape[0], dtype=bool))
         dfr["average"] = dfr.sum(axis=1) / (len(columns) - 1)
 
         dfr = dfr.style.background_gradient(cmap="RdYlGn_r", axis=None).format("{:.4f}", na_rep="MISS")
-        st.dataframe(dfr, use_container_width=True)
+        st.dataframe(dfr, width='stretch')
 
 
 def show_df_describe(df: pd.DataFrame):
@@ -1693,7 +1694,7 @@ def show_df_describe(df: pd.DataFrame):
         format_dict[q] = "{:.4f}"
 
     df = df.format(format_dict)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
 
 
 def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
@@ -1849,7 +1850,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
         st.divider()
         dfd = dfx[["dt", "returns"]].copy()
         dfd.set_index("dt", inplace=True)
-        st.line_chart(dfd["returns"].cumsum(), color="#B22222", use_container_width=True)
+        st.line_chart(dfd["returns"].cumsum(), color="#B22222", width='stretch')
 
     if outsample_sdt2 is not None:
         outsample_sdt2 = pd.to_datetime(outsample_sdt2).strftime("%Y-%m-%d")
@@ -2070,7 +2071,7 @@ def show_quarterly_effect(returns: pd.Series):
             
         fig.update_layout(annotations=annotations)
         
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     c1, c2 = st.columns(2)
     with c1.container(border=True):
@@ -2339,14 +2340,14 @@ def show_turnover_rate(df: pd.DataFrame):
     df_daily['change'] = df_daily['change'].cumsum()
     fig = px.line(df_daily, x='dt', y='change', title='日换手累计曲线')
     fig.update_xaxes(title_text='')
-    p1.plotly_chart(fig, use_container_width=True)
+    p1.plotly_chart(fig, width='stretch')
 
     # 月换手的柱状图
     df_monthly = dfc.copy()
     df_monthly = df_monthly.set_index('dt').resample('M').sum().reset_index()
     fig = px.bar(df_monthly, x='dt', y='change', title='月换手变化')
     fig.update_xaxes(title_text='')
-    p2.plotly_chart(fig, use_container_width=True)
+    p2.plotly_chart(fig, width='stretch')
 
     # 年换手的柱状图
     df_yearly = dfc.copy()
@@ -2355,7 +2356,7 @@ def show_turnover_rate(df: pd.DataFrame):
     df_yearly['change'] = df_yearly['change'].round(0)
     fig = px.bar(df_yearly, x='dt', y='change', title='年换手变化', hover_data=['change'])
     fig.update_xaxes(title_text='')
-    p3.plotly_chart(fig, use_container_width=True)
+    p3.plotly_chart(fig, width='stretch')
 
     st.caption("说明：以单边换手率计算")
 
@@ -2396,7 +2397,7 @@ def show_describe(df: pd.DataFrame, **kwargs):
         format_dict[q] = f"{{:.{digits}f}}"
     
     df = df.format(format_dict)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
     st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
 
 
@@ -2534,7 +2535,7 @@ def show_stats_compare(df: pd.DataFrame, **kwargs):
             "持仓K线数": "{:.2f}",
         }
     )
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
 
 
 def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):

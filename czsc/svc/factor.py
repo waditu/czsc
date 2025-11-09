@@ -61,14 +61,14 @@ def show_feature_returns(df, features, ret_col="returns", **kwargs):
     corr_styled = corr_df.style.background_gradient(cmap="RdYlGn_r", subset=["相关系数"])
     corr_styled = corr_styled.background_gradient(cmap="RdYlGn_r", subset=["绝对相关系数"])
     corr_styled = corr_styled.format({"相关系数": "{:.4f}", "绝对相关系数": "{:.4f}", "样本数": "{:.0f}"})
-    st.dataframe(corr_styled, use_container_width=True, hide_index=True)
+    st.dataframe(corr_styled, width='stretch', hide_index=True)
 
     # 绘制相关性条形图
     fig = px.bar(corr_df, x="特征", y="相关系数", 
                  title=f"特征与{ret_col}的相关性",
                  color="相关系数", color_continuous_scale="RdYlGn_r")
     fig.update_xaxes(tickangle=45)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示特征间相关性热力图
     if show_correlation and len(features) > 1:
@@ -88,7 +88,7 @@ def show_feature_returns(df, features, ret_col="returns", **kwargs):
         ))
         
         fig_heatmap.update_layout(title="特征间相关性热力图", width=600, height=500)
-        st.plotly_chart(fig_heatmap, use_container_width=True)
+        st.plotly_chart(fig_heatmap, width='stretch')
 
 
 def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
@@ -145,14 +145,14 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
     # 显示分层统计
     st.subheader(f"{factor_col} 分层收益分析")
     stats_styled = apply_stats_style(stats_df)
-    st.dataframe(stats_styled, use_container_width=True)
+    st.dataframe(stats_styled, width='stretch')
 
     # 显示分层收益对比
     layer_returns = data.groupby("layer")[ret_col].mean()
     fig_bar = px.bar(x=layer_returns.index.astype(str), y=layer_returns.values,
                      title="各层平均收益对比",
                      labels={"x": "分层", "y": "平均收益"})
-    st.plotly_chart(fig_bar, use_container_width=True)
+    st.plotly_chart(fig_bar, width='stretch')
 
     # 显示累计收益曲线（如果有时间信息）
     if show_cumulative and "dt" in df.columns:
@@ -180,14 +180,14 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
         if cumulative_returns:
             cumret_df = pd.concat(cumulative_returns, axis=1).fillna(method="ffill")
             fig_cumret = px.line(cumret_df, title="分层累计收益曲线")
-            st.plotly_chart(fig_cumret, use_container_width=True)
+            st.plotly_chart(fig_cumret, width='stretch')
 
     # 显示因子分布
     if show_distribution:
         st.subheader(f"{factor_col} 分布分析")
         fig_hist = px.histogram(data, x=factor_col, color="layer", 
                                title=f"{factor_col} 在各层的分布")
-        st.plotly_chart(fig_hist, use_container_width=True)
+        st.plotly_chart(fig_hist, width='stretch')
 
 
 def show_factor_value(df, factor_col, bins=50, **kwargs):
@@ -229,7 +229,7 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
     })
     
     with st.expander("分位数分布", expanded=False):
-        st.dataframe(quantile_df.style.format({"数值": "{:.4f}"}), use_container_width=True, hide_index=True)
+        st.dataframe(quantile_df.style.format({"数值": "{:.4f}"}), width='stretch', hide_index=True)
 
     # 绘制直方图和箱线图
     col1, col2 = st.columns(2)
@@ -238,13 +238,13 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
         fig_hist = px.histogram(df, x=factor_col, nbins=bins, 
                                title=f"{factor_col} 直方图")
         fig_hist.update_layout(showlegend=False)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        st.plotly_chart(fig_hist, width='stretch')
     
     with col2:
         fig_box = px.box(df, y=factor_col, title=f"{factor_col} 箱线图")
         if not show_outliers:
             fig_box.update_traces(boxpoints=False)
-        st.plotly_chart(fig_box, use_container_width=True)
+        st.plotly_chart(fig_box, width='stretch')
 
     # 异常值分析
     if show_outliers:
@@ -265,7 +265,7 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
                         "序号": range(1, len(outliers)+1),
                         "异常值": outliers.values
                     })
-                    st.dataframe(outlier_df.style.format({"异常值": "{:.4f}"}), use_container_width=True, hide_index=True)
+                    st.dataframe(outlier_df.style.format({"异常值": "{:.4f}"}), width='stretch', hide_index=True)
 
 
 def show_event_return(df, event_col, ret_col, **kwargs):
@@ -380,7 +380,7 @@ def show_event_return(df, event_col, ret_col, **kwargs):
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示统计信息
     pre_event_return = mean_returns[pre_periods-1] if pre_periods > 0 else 0
@@ -473,7 +473,7 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
         "P值": "{:.4f}"
     })
     
-    st.dataframe(results_styled, use_container_width=True, hide_index=True)
+    st.dataframe(results_styled, width='stretch', hide_index=True)
     st.caption(f"检验方法: {test_name}, 显著性水平: {alpha}")
 
     # 绘制特征分布对比
@@ -503,7 +503,7 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
                     xaxis_title=feature,
                     yaxis_title="频数"
                 )
-                st.plotly_chart(fig_hist, use_container_width=True)
+                st.plotly_chart(fig_hist, width='stretch')
             
             with col2:
                 # 箱线图对比
@@ -514,4 +514,4 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
                 
                 fig_box = px.box(comparison_df, x="group", y="value", 
                                 title=f"{feature} 箱线图对比")
-                st.plotly_chart(fig_box, use_container_width=True) 
+                st.plotly_chart(fig_box, width='stretch') 

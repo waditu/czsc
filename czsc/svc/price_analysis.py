@@ -190,7 +190,7 @@ def show_price_sensitive(df: pd.DataFrame,
         
         # 应用样式
         dfr_styled = apply_stats_style(dfr_display)
-        st.dataframe(dfr_styled, use_container_width=True)
+        st.dataframe(dfr_styled, width='stretch')
     
     # 累计收益对比
     c2 = st.container(border=True)

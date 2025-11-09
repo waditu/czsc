@@ -59,7 +59,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
     # 显示数据详情
     if kwargs.get("show_dailys", False):
         with st.expander("日收益数据详情", expanded=False):
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
     
     # 显示交易日绩效
     if stat_hold_days:
@@ -68,19 +68,19 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             if use_st_table:
                 st.table(stats)
             else:
-                st.dataframe(stats, use_container_width=True)
+                st.dataframe(stats, width='stretch')
             st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
     else:
         stats = _stats(df, type_="交易日")
         if use_st_table:
             st.table(stats)
         else:
-            st.dataframe(stats, use_container_width=True)
+            st.dataframe(stats, width='stretch')
 
     # 显示持有日绩效
     if stat_hold_days:
         with st.expander("持有日绩效指标", expanded=False):
-            st.dataframe(_stats(df, type_="持有日"), use_container_width=True)
+            st.dataframe(_stats(df, type_="持有日"), width='stretch')
             st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
     # 显示累计收益曲线
@@ -100,7 +100,7 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             fig.update_traces(visible="legendonly", selector=dict(name=col))
         
         fig.update_layout(margin=dict(l=0, r=0, b=0))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_cumulative_returns(df, **kwargs):
@@ -138,7 +138,7 @@ def show_cumulative_returns(df, **kwargs):
             orientation="h", y=-0.1, xanchor="center", x=0.5
         ), margin=dict(l=0, r=0, b=0))
         
-    st.plotly_chart(fig, use_container_width=True, 
+    st.plotly_chart(fig, width='stretch', 
                    config={"displayModeBar": not display_legend})
 
 
@@ -177,12 +177,12 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     monthly_styled = monthly_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年收益"])
     monthly_styled = monthly_styled.format("{:.2%}", na_rep="-")
     
-    st.dataframe(monthly_styled, use_container_width=True)
+    st.dataframe(monthly_styled, width='stretch')
     
     # 显示统计信息
     dfy = pd.DataFrame([win_rate, ykb, mean_ret], index=["胜率", "盈亏比", "平均收益"])
     dfy_styled = dfy.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.2%}", na_rep="-")
-    st.dataframe(dfy_styled, use_container_width=True)
+    st.dataframe(dfy_styled, width='stretch')
     
     st.caption("注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10")
 
@@ -243,7 +243,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         xaxis_title="", yaxis_title="净值回撤", 
         legend_title="回撤分析", height=300
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示回撤详情
     top = kwargs.get("top", 10)
@@ -256,7 +256,7 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
                 "净值回撤": "{:.2%}", "回撤天数": "{:.0f}", 
                 "恢复天数": "{:.0f}", "新高间隔": "{:.0f}"
             })
-            st.dataframe(dft_styled, use_container_width=True)
+            st.dataframe(dft_styled, width='stretch')
 
 
 def show_rolling_daily_performance(df, ret_col, **kwargs):
@@ -289,4 +289,4 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     
     # 绘图
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
-    st.plotly_chart(fig, use_container_width=True) 
+    st.plotly_chart(fig, width='stretch') 

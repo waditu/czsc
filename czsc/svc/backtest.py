@@ -74,7 +74,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("权重数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], width='stretch')
         st.stop()
 
     wb = WeightBacktest(
@@ -107,7 +107,7 @@ def show_weight_backtest(dfw, **kwargs):
         dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
         dfx.index = ["多头", "空头"]
         dfx.index.name = "交易方向"
-        st.dataframe(dfx.T.astype(str), use_container_width=True)
+        st.dataframe(dfx.T.astype(str), width='stretch')
 
     # 显示日收益
     dret = wb.daily_return.copy()
@@ -170,7 +170,7 @@ def show_holds_backtest(df, **kwargs):
 
     if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
         st.warning("数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(df[df.isnull().sum(axis=1) > 0], use_container_width=True)
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], width='stretch')
         st.stop()
 
     # 计算每日收益、交易成本、净收益
@@ -241,7 +241,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
 
     dfr = pd.DataFrame(rows)
     with st.expander("逐笔止损点", expanded=False):
-        st.dataframe(dfr, use_container_width=True)
+        st.dataframe(dfr, width='stretch')
 
     if kwargs.pop("show_detail", False):
         cols = [
@@ -258,7 +258,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         ]
         dfs = dfw1[dfw1["is_stop"]][cols].copy()
         with st.expander("止损点详情", expanded=False):
-            st.dataframe(dfs, use_container_width=True)
+            st.dataframe(dfs, width='stretch')
 
     show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
 
@@ -412,7 +412,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
             )
 
         usage_df = pd.DataFrame(usage_stats)
-        st.dataframe(usage_df, use_container_width=True)
+        st.dataframe(usage_df, width='stretch')
 
     return wbs
 

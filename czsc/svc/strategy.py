@@ -49,14 +49,14 @@ def show_optuna_study(study, **kwargs):
         st.subheader(sub_title, divider="rainbow", anchor=anchor)
 
     fig = optuna.visualization.plot_contour(study)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     fig = optuna.visualization.plot_slice(study)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     with st.expander("最佳参数列表", expanded=False):
         params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
-        st.dataframe(params, use_container_width=True)
+        st.dataframe(params, width='stretch')
     return study
 
 
@@ -159,7 +159,7 @@ def show_czsc_trader(trader, max_k_num=300, **kwargs):
                     "hoverCompareCartesian",
                 ],
             }
-            st.plotly_chart(kline.fig, use_container_width=True, config=config)
+            st.plotly_chart(kline.fig, width='stretch', config=config)
 
     with tabs[-1]:
         with st.expander("查看最新信号", expanded=False):
@@ -206,7 +206,7 @@ def show_strategies_recent(df, **kwargs):
 
     st.dataframe(
         n_rets.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}", na_rep="-"),
-        use_container_width=True,
+        width='stretch',
         hide_index=False,
     )
 
@@ -215,7 +215,7 @@ def show_strategies_recent(df, **kwargs):
     win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
     dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
-    st.dataframe(dfs, use_container_width=True)
+    st.dataframe(dfs, width='stretch')
     st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
 
 
@@ -407,7 +407,7 @@ def show_quarterly_effect(returns: pd.Series):
 
         fig.update_layout(annotations=annotations)
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
     c1, c2 = st.columns(2)
     with c1.container(border=True):
@@ -780,14 +780,14 @@ def show_turnover_rate(df: pd.DataFrame):
     df_daily["change"] = df_daily["change"].cumsum()
     fig = px.line(df_daily, x="dt", y="change", title="日换手累计曲线")
     fig.update_xaxes(title_text="")
-    p1.plotly_chart(fig, use_container_width=True)
+    p1.plotly_chart(fig, width='stretch')
 
     # 月换手的柱状图
     df_monthly = dfc.copy()
     df_monthly = df_monthly.set_index("dt").resample("ME").sum().reset_index()
     fig = px.bar(df_monthly, x="dt", y="change", title="月换手变化")
     fig.update_xaxes(title_text="")
-    p2.plotly_chart(fig, use_container_width=True)
+    p2.plotly_chart(fig, width='stretch')
 
     # 年换手的柱状图
     df_yearly = dfc.copy()
@@ -796,7 +796,7 @@ def show_turnover_rate(df: pd.DataFrame):
     df_yearly["change"] = df_yearly["change"].round(0)
     fig = px.bar(df_yearly, x="dt", y="change", title="年换手变化", hover_data=["change"])
     fig.update_xaxes(title_text="")
-    p3.plotly_chart(fig, use_container_width=True)
+    p3.plotly_chart(fig, width='stretch')
 
     st.caption("说明：以单边换手率计算")
 
@@ -842,7 +842,7 @@ def show_stats_compare(df: pd.DataFrame, **kwargs):
 
     # 应用样式
     df = apply_stats_style(df)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df, width='stretch')
 
 
 def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):

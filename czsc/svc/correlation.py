@@ -57,7 +57,7 @@ def show_correlation(df, **kwargs):
         height=500
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示统计信息
     with st.expander("相关性统计信息", expanded=False):
@@ -70,7 +70,7 @@ def show_correlation(df, **kwargs):
         c2.metric("最大相关性", f"{corr_values.max():.3f}")
         c3.metric("最小相关性", f"{corr_values.min():.3f}")
         
-        st.dataframe(corr_matrix.style.background_gradient(cmap=cmap, vmin=-1, vmax=1), use_container_width=True)
+        st.dataframe(corr_matrix.style.background_gradient(cmap=cmap, vmin=-1, vmax=1), width='stretch')
 
 
 def show_sectional_ic(df, factors, target_col, **kwargs):
@@ -123,13 +123,13 @@ def show_sectional_ic(df, factors, target_col, **kwargs):
     # 显示IC统计
     ic_stats = df_ic.describe()
     st.subheader("IC统计信息")
-    st.dataframe(ic_stats.style.background_gradient(cmap="RdYlGn_r"), use_container_width=True)
+    st.dataframe(ic_stats.style.background_gradient(cmap="RdYlGn_r"), width='stretch')
 
     # 绘制IC时序图
     fig = px.line(df_ic.reset_index(), x="dt", y=factors, title="IC时序图")
     fig.update_xaxes(title="")
     fig.update_yaxes(title="IC值")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示累计IC
     if show_cumsum_ic:
@@ -137,7 +137,7 @@ def show_sectional_ic(df, factors, target_col, **kwargs):
         fig_cumsum = px.line(df_cumsum_ic.reset_index(), x="dt", y=factors, title="累计IC")
         fig_cumsum.update_xaxes(title="")
         fig_cumsum.update_yaxes(title="累计IC")
-        st.plotly_chart(fig_cumsum, use_container_width=True)
+        st.plotly_chart(fig_cumsum, width='stretch')
 
 
 def show_ts_rolling_corr(df, col1, col2, window=60, **kwargs):
@@ -178,7 +178,7 @@ def show_ts_rolling_corr(df, col1, col2, window=60, **kwargs):
     fig.add_hline(y=0.5, line_dash="dash", line_color="green", opacity=0.5)
     fig.add_hline(y=-0.5, line_dash="dash", line_color="red", opacity=0.5)
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 显示统计信息
     c1, c2, c3, c4 = st.columns(4)
@@ -229,7 +229,7 @@ def show_ts_self_corr(df, col, max_lag=20, **kwargs):
                   annotation_text=f"95%置信下界 ({-confidence_interval:.3f})")
     
     fig.update_layout(title="自相关函数 (ACF)", xaxis_title="滞后期", yaxis_title="自相关系数")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # 偏自相关
     if show_partial:
@@ -240,7 +240,7 @@ def show_ts_self_corr(df, col, max_lag=20, **kwargs):
         fig_pacf.add_hline(y=confidence_interval, line_dash="dash", line_color="red")
         fig_pacf.add_hline(y=-confidence_interval, line_dash="dash", line_color="red")
         fig_pacf.update_layout(title="偏自相关函数 (PACF)", xaxis_title="滞后期", yaxis_title="偏自相关系数")
-        st.plotly_chart(fig_pacf, use_container_width=True)
+        st.plotly_chart(fig_pacf, width='stretch')
 
 
 def show_cointegration(df, col1, col2, **kwargs):
@@ -285,7 +285,7 @@ def show_cointegration(df, col1, col2, **kwargs):
     # 显示临界值
     st.write("**临界值:**")
     crit_df = pd.DataFrame([critical_values], columns=["1%", "5%", "10%"])
-    st.dataframe(crit_df, use_container_width=True)
+    st.dataframe(crit_df, width='stretch')
     
     # 显示价差序列
     if show_spread:
@@ -306,7 +306,7 @@ def show_cointegration(df, col1, col2, **kwargs):
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
         fig.add_hline(y=spread.std(), line_dash="dash", line_color="red", opacity=0.5)
         fig.add_hline(y=-spread.std(), line_dash="dash", line_color="red", opacity=0.5)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_corr_graph(df, threshold=0.3, **kwargs):
@@ -409,7 +409,7 @@ def show_corr_graph(df, threshold=0.3, **kwargs):
                      xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
     
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def show_symbols_corr(df, symbols, **kwargs):
