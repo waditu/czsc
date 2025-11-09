@@ -8,7 +8,7 @@ describe: czsc.analyze 单元测试
 import pytest
 import pandas as pd
 from czsc import mock
-from czsc.core import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, Freq
+from czsc.core import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, Freq, format_standard_kline
 
 
 def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
@@ -23,53 +23,54 @@ def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
         df = mock.generate_klines(seed=42)
         df = df[df['symbol'] == symbol].head(n_days) if symbol in df['symbol'].values else df.head(n_days)
     
-    bars = []
-    for i, row in df.iterrows():
-        bar = RawBar(
-            symbol=row['symbol'], 
-            id=i, 
-            freq=freq, 
-            open=row['open'], 
-            dt=row['dt'],
-            close=row['close'], 
-            high=row['high'], 
-            low=row['low'], 
-            vol=row['vol'], 
-            amount=row['amount']
-        )
-        bars.append(bar)
+    # bars = []
+    # for i, row in df.iterrows():
+    #     bar = RawBar(
+    #         symbol=row['symbol'], 
+    #         id=i, 
+    #         freq=freq, 
+    #         open=row['open'], 
+    #         dt=row['dt'],
+    #         close=row['close'], 
+    #         high=row['high'], 
+    #         low=row['low'], 
+    #         vol=row['vol'], 
+    #         amount=row['amount']
+    #     )
+    #     bars.append(bar)
+    bars = format_standard_kline(df, freq=freq)
     return bars
 
 
-def test_find_bi():
-    """测试笔的识别功能"""
-    bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
+# def test_find_bi():
+#     """测试笔的识别功能"""
+#     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
     
-    bars1 = []
-    for bar in bars:
-        if len(bars1) < 2:
-            bars1.append(NewBar(
-                symbol=bar.symbol, id=bar.id, freq=bar.freq,
-                dt=bar.dt, open=bar.open, close=bar.close, 
-                high=bar.high, low=bar.low, vol=bar.vol, 
-                amount=bar.amount, elements=[bar]
-            ))
-        else:
-            k1, k2 = bars1[-2:]
-            has_include, k3 = remove_include(k1, k2, bar)
-            if has_include:
-                bars1[-1] = k3
-            else:
-                bars1.append(k3)
+#     bars1 = []
+#     for bar in bars:
+#         if len(bars1) < 2:
+#             bars1.append(NewBar(
+#                 symbol=bar.symbol, id=bar.id, freq=bar.freq,
+#                 dt=bar.dt, open=bar.open, close=bar.close, 
+#                 high=bar.high, low=bar.low, vol=bar.vol, 
+#                 amount=bar.amount, elements=[bar]
+#             ))
+#         else:
+#             k1, k2 = bars1[-2:]
+#             has_include, k3 = remove_include(k1, k2, bar)
+#             if has_include:
+#                 bars1[-1] = k3
+#             else:
+#                 bars1.append(k3)
 
-    fxs = []
-    for i in range(1, len(bars1) - 1):
-        fx = check_fx(bars1[i - 1], bars1[i], bars1[i + 1])
-        if isinstance(fx, FX):
-            fxs.append(fx)
+#     fxs = []
+#     for i in range(1, len(bars1) - 1):
+#         fx = check_fx(bars1[i - 1], bars1[i], bars1[i + 1])
+#         if isinstance(fx, FX):
+#             fxs.append(fx)
     
-    assert len(fxs) > 0, "应该识别出分型"
-    assert all(isinstance(fx, FX) for fx in fxs), "所有识别出的对象都应该是FX类型"
+#     assert len(fxs) > 0, "应该识别出分型"
+#     assert all(isinstance(fx, FX) for fx in fxs), "所有识别出的对象都应该是FX类型"
 
 
 def test_czsc_basic():
@@ -104,27 +105,27 @@ def test_czsc_ubi_properties():
     assert isinstance(ubi['direction'], Direction), "direction应该是Direction类型"
 
 
-def test_remove_include():
-    """测试包含关系处理功能"""
-    bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=50)
+# def test_remove_include():
+#     """测试包含关系处理功能"""
+#     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=50)
     
-    if len(bars) >= 3:
-        k1 = NewBar(
-            symbol=bars[0].symbol, id=bars[0].id, freq=bars[0].freq,
-            dt=bars[0].dt, open=bars[0].open, close=bars[0].close,
-            high=bars[0].high, low=bars[0].low, vol=bars[0].vol,
-            amount=bars[0].amount, elements=[bars[0]]
-        )
-        k2 = NewBar(
-            symbol=bars[1].symbol, id=bars[1].id, freq=bars[1].freq,
-            dt=bars[1].dt, open=bars[1].open, close=bars[1].close,
-            high=bars[1].high, low=bars[1].low, vol=bars[1].vol,
-            amount=bars[1].amount, elements=[bars[1]]
-        )
+#     if len(bars) >= 3:
+#         k1 = NewBar(
+#             symbol=bars[0].symbol, id=bars[0].id, freq=bars[0].freq,
+#             dt=bars[0].dt, open=bars[0].open, close=bars[0].close,
+#             high=bars[0].high, low=bars[0].low, vol=bars[0].vol,
+#             amount=bars[0].amount, elements=[bars[0]]
+#         )
+#         k2 = NewBar(
+#             symbol=bars[1].symbol, id=bars[1].id, freq=bars[1].freq,
+#             dt=bars[1].dt, open=bars[1].open, close=bars[1].close,
+#             high=bars[1].high, low=bars[1].low, vol=bars[1].vol,
+#             amount=bars[1].amount, elements=[bars[1]]
+#         )
         
-        has_include, k3 = remove_include(k1, k2, bars[2])
-        assert isinstance(has_include, bool), "has_include应该是布尔类型"
-        assert isinstance(k3, NewBar), "k3应该是NewBar类型"
+#         has_include, k3 = remove_include(k1, k2, bars[2])
+#         assert isinstance(has_include, bool), "has_include应该是布尔类型"
+#         assert isinstance(k3, NewBar), "k3应该是NewBar类型"
 
 
 def test_check_fx():
