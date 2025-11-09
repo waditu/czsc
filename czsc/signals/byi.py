@@ -11,7 +11,7 @@ import numpy as np
 from typing import List
 from czsc import CZSC
 from collections import OrderedDict
-from czsc.objects import BI, Direction, Mark
+from czsc.core import BI, Direction, Mark
 from czsc.utils import get_sub_elements, create_single_signal
 from czsc.utils.sig import is_symmetry_zs
 from czsc.signals.tas import update_macd_cache, update_boll_cache_V230228, update_ma_cache

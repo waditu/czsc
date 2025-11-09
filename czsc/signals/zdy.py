@@ -11,7 +11,7 @@ from collections import OrderedDict
 from czsc.traders.base import CZSC, CzscTrader
 from czsc.signals.tas import update_macd_cache
 from czsc.utils import get_sub_elements, create_single_signal, sorted_freqs
-from czsc.objects import Direction, Mark, Operate, ZS
+from czsc.core import Direction, Mark, Operate, ZS
 
 
 def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:

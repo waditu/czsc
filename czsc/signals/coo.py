@@ -8,7 +8,7 @@ describe: coo 是 cooperation 的缩写，作为前缀代表信号开源协作�
 import numpy as np
 from deprecated import deprecated
 from collections import OrderedDict
-from czsc import CZSC
+from czsc.core import CZSC
 from czsc.utils import create_single_signal, get_sub_elements
 from czsc.signals.tas import update_ma_cache, update_sar_cache, update_kdj_cache, update_cci_cache
 

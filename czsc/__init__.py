@@ -4,12 +4,19 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
-from rs_czsc import (
-    daily_performance,
-    top_drawdowns,
-    # python版本：from czsc.traders.weight_backtest import WeightBacktest
-    WeightBacktest,
-)
+# 尝试从 rs_czsc 导入，失败则使用 Python 版本
+try:
+    from rs_czsc import (
+        daily_performance,
+        top_drawdowns,
+        # python版本：from czsc.traders.weight_backtest import WeightBacktest
+        WeightBacktest,
+    )
+except ImportError:
+    # 回退到 Python 版本
+    from czsc.core import WeightBacktest
+    # daily_performance 和 top_drawdown 在 Python 版本中的位置
+    from czsc.utils import daily_performance, top_drawdowns
 
 from czsc import envs
 from czsc import fsa
@@ -21,8 +28,7 @@ from czsc import svc
 from czsc import mock
 from czsc.traders import rwc
 from czsc.traders import cwc
-from czsc.analyze import CZSC
-from czsc.objects import Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS
+from czsc.core import CZSC, Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS, format_standard_kline
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
 from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
 from czsc.sensors.feature import FixedNumberSelector
@@ -61,13 +67,13 @@ from czsc.utils import (
     mac_address,
     overlap,
     to_arrow,
-    format_standard_kline,
-    BarGenerator,
-    freq_end_time,
-    resample_bars,
-    is_trading_time,
-    get_intraday_times,
-    check_freq_and_market,
+    # format_standard_kline,
+    # BarGenerator,
+    # freq_end_time,
+    # resample_bars,
+    # is_trading_time,
+    # get_intraday_times,
+    # check_freq_and_market,
     dill_dump,
     dill_load,
     read_json,
@@ -86,11 +92,8 @@ from czsc.utils import (
     resample_to_daily,
     cross_sectional_ranker,
     cross_sectional_ic,
-    # daily_performance,
     rolling_daily_performance,
     holds_performance,
-    subtract_fee,
-    # top_drawdowns,
     psi,
     home_path,
     DiskCache,
@@ -215,9 +218,6 @@ from czsc.utils.plotly_plot import (
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.traders import cwc
 
-from czsc.utils.portfolio import (
-    max_sharp,
-)
 
 from czsc.eda import (
     remove_beta_effects,

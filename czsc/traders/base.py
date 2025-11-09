@@ -18,11 +18,8 @@ from typing import Callable, List, AnyStr, Union, Optional
 from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
-from czsc.analyze import CZSC
-from czsc.objects import Position, RawBar, Signal
-from czsc.utils.bar_generator import BarGenerator
+from czsc.core import CZSC, Position, RawBar, Signal, BarGenerator
 from czsc.utils.cache import home_path
-from czsc.utils import sorted_freqs, import_by_name
 from czsc.traders.sig_parse import get_signals_freqs
 
 
@@ -87,6 +84,8 @@ class CzscSignals:
 
         :return: 信号字典
         """
+        from czsc.utils import import_by_name
+
         s = OrderedDict()
         if not self.signals_config:
             return s

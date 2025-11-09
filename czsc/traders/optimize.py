@@ -16,7 +16,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Callable, Union, List, AnyStr
 from czsc.strategies import CzscStrategyBase
-from czsc.objects import Position, Event, Signal
+from czsc.core import Position, Event, Signal
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 

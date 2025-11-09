@@ -11,11 +11,9 @@ from loguru import logger
 from czsc.utils.cache import home_path
 from czsc.traders.base import CzscSignals, BarGenerator, CzscTrader
 from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
-from czsc.objects import Signal, Event, Operate, Position
+from czsc.core import Signal, Event, Operate, Position
 from czsc import mock
-from czsc.objects import RawBar
-from czsc.enum import Freq
-from czsc import format_standard_kline
+from czsc.core import RawBar, Freq, format_standard_kline
 
 
 def test_object_position():

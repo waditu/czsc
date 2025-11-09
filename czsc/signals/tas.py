@@ -21,8 +21,7 @@ import pandas as pd
 import numpy as np
 from collections import OrderedDict
 from deprecated import deprecated
-from czsc.analyze import CZSC
-from czsc.objects import Signal, Direction, BI, RawBar, FX, Mark, ZS
+from czsc.core import CZSC, Signal, Direction, BI, RawBar, FX, Mark, ZS
 from czsc.traders.base import CzscSignals
 from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal, single_linear
 from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count

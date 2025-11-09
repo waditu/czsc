@@ -23,48 +23,6 @@ def cal_break_even_point(seq) -> float:
     return (np.sum(seq < 0) + 1) / len(seq)  # type: ignore
 
 
-@deprecated(reason="用不上了，策略回测统一用 rs_czsc.WeightBacktest 替代，支持扣费")
-def subtract_fee(df, fee=1):
-    """依据单品种持仓信号扣除手续费
-
-    函数执行逻辑：
-
-    1. 首先，函数对输入的df进行检查，确保其包含所需的列：'dt'（日期时间）和'pos'（持仓）。同时，检查'pos'列的值是否符合要求，即只能是0、1或-1。
-    2. 如果df中不包含'n1b'（名义收益率）列，函数会根据'price'列计算'n1b'列。
-    3. 然后，函数为输入的DataFrame df添加一个新列'date'，该列包含交易日期（从'dt'列中提取）。
-    4. 接下来，函数根据持仓（'pos'）和名义收益率（'n1b'）计算'edge_pre_fee'（手续费前收益）和'edge_post_fee'（手续费后收益）两列。
-    5. 函数根据持仓信号计算开仓和平仓的位置。
-        开仓位置（open_pos）是持仓信号发生变化的位置（即，当前持仓与前一个持仓不同），并且当前持仓不为0。
-        平仓位置（exit_pos）是持仓信号发生变化的位置（即，当前持仓与前一个持仓不同），并且前一个持仓不为0。
-    6. 根据手续费规则，开仓时在第一个持仓K线上扣除手续费，平仓时在最后一个持仓K线上扣除手续费。
-       函数通过将'edge_post_fee'列的值在开仓和平仓位置上分别减去手续费（fee）来实现这一逻辑。
-    7. 最后，函数返回修改后的DataFrame df。
-
-    :param df: 包含dt、pos、price、n1b列的DataFrame
-    :param fee: 手续费，单位：BP
-    :return: 修改后的DataFrame
-    """
-    assert "dt" in df.columns, "dt 列必须存在"
-    assert "pos" in df.columns, "pos 列必须存在"
-    assert all(x in [0, 1, -1] for x in df["pos"].unique()), "pos 列的值必须是 0, 1, -1 中的一个"
-
-    if "n1b" not in df.columns:
-        assert "price" in df.columns, "当n1b列不存在时，price 列必须存在"
-        df["n1b"] = (df["price"].shift(-1) / df["price"] - 1) * 10000
-
-    df["date"] = df["dt"].dt.date
-    df["edge_pre_fee"] = df["pos"] * df["n1b"]
-    df["edge_post_fee"] = df["pos"] * df["n1b"]
-
-    # 扣费规则, 开仓扣费在第一个持仓K线上，平仓扣费在最后一个持仓K线上
-    open_pos = (df["pos"].shift() != df["pos"]) & (df["pos"] != 0)
-    exit_pos = (df["pos"].shift(-1) != df["pos"]) & (df["pos"] != 0)
-    df.loc[open_pos, "edge_post_fee"] = df.loc[open_pos, "edge_post_fee"] - fee
-    df.loc[exit_pos, "edge_post_fee"] = df.loc[exit_pos, "edge_post_fee"] - fee
-    return df
-
-
-@deprecated(reason="请使用 rs_czsc.daily_performance 替代")
 def daily_performance(daily_returns, **kwargs):
     """采用单利计算日收益数据的各项指标
 
@@ -219,8 +177,6 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
     :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
     :return: 交易表现
     """
-    from czsc.objects import cal_break_even_point
-
     assert trade_dir in [
         "多头",
         "空头",

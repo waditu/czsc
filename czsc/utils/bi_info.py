@@ -8,8 +8,7 @@ describe: K线的笔特征计算
 import pandas as pd
 from tqdm import tqdm
 from typing import List
-from czsc.objects import RawBar
-from czsc.analyze import CZSC
+from czsc.core import CZSC, RawBar
 
 
 def calculate_bi_info(bars: List[RawBar], **kwargs) -> pd.DataFrame:

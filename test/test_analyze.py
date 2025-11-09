@@ -8,8 +8,7 @@ describe: czsc.analyze 单元测试
 import pytest
 import pandas as pd
 from czsc import mock
-from czsc.analyze import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, kline_pro
-from czsc.enum import Freq
+from czsc.core import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, Freq
 
 
 def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):

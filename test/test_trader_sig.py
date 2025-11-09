@@ -8,8 +8,7 @@ describe: 测试
 import czsc
 from czsc.traders.sig_parse import SignalsParser
 from czsc import mock
-from czsc.objects import RawBar
-from czsc.enum import Freq
+from czsc.core import RawBar, Freq
 
 
 def test_generate_signals_by_conf():

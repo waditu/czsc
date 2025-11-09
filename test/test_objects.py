@@ -2,8 +2,8 @@
 import numpy as np
 from collections import OrderedDict
 from czsc.utils import x_round
-from czsc.objects import Signal, Event, Freq, Operate
-from czsc.objects import cal_break_even_point
+from czsc.core import Signal, Event, Freq, Operate
+from czsc.utils.stats import cal_break_even_point
 from loguru import logger
 
 
@@ -53,10 +53,7 @@ def test_raw_bar():
 def test_zs():
     """测试中枢对象"""
     from czsc import mock
-    from czsc.objects import ZS, RawBar
-    from czsc.analyze import CZSC
-    from czsc.enum import Freq
-    from rs_czsc import format_standard_kline
+    from czsc.core import ZS, RawBar, CZSC, Freq
 
     # 使用mock数据替代硬编码数据文件
     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)

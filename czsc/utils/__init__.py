@@ -6,15 +6,12 @@ import pandas as pd
 from typing import List, Union
 from loguru import logger
 
-from . import qywx
 from . import ta
 from . import io
 from . import echarts_plot
 
 from .echarts_plot import kline_pro, trading_view_kline
 from .corr import nmi_matrix, single_linear, cross_sectional_ic
-# from .bar_generator import BarGenerator, freq_end_time, resample_bars, format_standard_kline
-# from .bar_generator import is_trading_time, get_intraday_times, check_freq_and_market
 from .io import dill_dump, dill_load, read_json, save_json
 from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
@@ -23,7 +20,6 @@ from .trade import update_nxb, update_bbars, update_tbars, risk_free_returns, re
 from .cross import cross_sectional_ranker
 from .stats import (
     daily_performance,
-    subtract_fee,
     holds_performance,
     top_drawdowns,
     rolling_daily_performance,

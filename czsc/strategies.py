@@ -17,12 +17,12 @@ from copy import deepcopy
 from datetime import timedelta, datetime
 from abc import ABC, abstractmethod
 from loguru import logger
-from czsc.objects import RawBar, List, Signal, Position
+from typing import List
 from czsc.traders.base import CzscTrader
 from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
-from czsc.utils import x_round, freqs_sorted, BarGenerator, dill_dump, save_json, read_json
-from czsc.utils import check_freq_and_market
-
+from czsc.utils.io import dill_dump, save_json, read_json
+from czsc.py.bar_generator import check_freq_and_market
+from czsc.core import RawBar, Signal, Position, BarGenerator
 
 class CzscStrategyBase(ABC):
     """
@@ -64,6 +64,8 @@ class CzscStrategyBase(ABC):
     @property
     def sorted_freqs(self):
         """排好序的 K 线周期列表"""
+        from czsc.utils import freqs_sorted
+        
         return freqs_sorted(self.freqs)
 
     @property
@@ -208,6 +210,8 @@ class CzscStrategyBase(ABC):
             refresh     是否刷新结果目录
         :return:
         """
+        from czsc.utils import x_round
+        
         if kwargs.get("refresh", False):
             shutil.rmtree(res_path, ignore_errors=True)
 

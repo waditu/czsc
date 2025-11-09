@@ -9,9 +9,8 @@ import webbrowser
 from loguru import logger
 from typing import List
 from collections import OrderedDict
-from czsc.enum import Mark, Direction
+from czsc.py.enum import Mark, Direction
 from czsc.py.objects import BI, FX, RawBar, NewBar
-from czsc.utils.echarts_plot import kline_pro
 from czsc import envs
 
 logger.disable('czsc.analyze')
@@ -310,6 +309,8 @@ class CZSC:
         :param bs: 交易标记，默认为空
         :return:
         """
+        from czsc.utils.echarts_plot import kline_pro
+
         kline = [x.__dict__ for x in self.bars_raw]
         if len(self.bi_list) > 0:
             bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + \

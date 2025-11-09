@@ -733,13 +733,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         'is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period'
         'is_worst_period', 'is_worst_up_period', 'is_worst_down_period'
     """
-    rs = kwargs.get("rs", True)
-    
-    if rs:
-        from rs_czsc import CZSC, format_standard_kline, Direction
-    else:
-        from czsc.analyze import CZSC
-        from czsc.utils.bar_generator import format_standard_kline
+    from czsc.core import CZSC, format_standard_kline, Direction
 
     q1 = kwargs.get("q1", 0.15)
     q2 = kwargs.get("q2", 0.4)
@@ -883,7 +877,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
     if rs:
         from rs_czsc import CZSC, format_standard_kline, Direction
     else:
-        from czsc.analyze import CZSC
+        from czsc.core import CZSC
         from czsc.utils.bar_generator import format_standard_kline
 
     # 参数设置

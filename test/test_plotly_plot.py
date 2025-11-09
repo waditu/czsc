@@ -7,10 +7,9 @@ describe: 测试绘图
 """
 import os
 import pandas as pd
-from czsc import CZSC, KlineChart
+from czsc import KlineChart
 from czsc import mock
-from czsc.objects import RawBar
-from czsc.enum import Freq
+from czsc.core import CZSC, RawBar, Freq
 
 
 def test_kline_chart():

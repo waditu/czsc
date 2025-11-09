@@ -11,7 +11,7 @@ from collections import OrderedDict
 from czsc.utils import create_single_signal, get_sub_elements
 from czsc.signals.tas import update_ma_cache
 from czsc.signals.jcc import check_szx
-from czsc import CZSC
+from czsc.core import CZSC
 
 
 def xl_bar_position_V240328(c: CZSC, **kwargs) -> OrderedDict:

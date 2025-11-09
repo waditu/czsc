@@ -30,9 +30,9 @@ if os.getenv('CZSC_USE_PYTHON', False) or not installed:
         # 分析函数
         remove_include, check_bi, check_fx, check_fxs,
         # K线生成器
-        BarGenerator, freq_end_time, is_trading_time,
+        BarGenerator, freq_end_time, is_trading_time, format_standard_kline,
         # 数据对象
-        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event,
+        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event, Position,
         # 回测
         WeightBacktest
     )
@@ -44,9 +44,9 @@ else:
         # 核心分析类
         CZSC,
         # K线生成器
-        BarGenerator,
+        BarGenerator, format_standard_kline,
         # 数据对象
-        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event,
+        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event, Position,
         # 回测
         WeightBacktest
     )
@@ -67,9 +67,9 @@ __all__ = [
     # 分析函数
     "remove_include", "check_bi", "check_fx", "check_fxs",
     # K线生成器
-    "BarGenerator", "freq_end_time", "is_trading_time",
+    "BarGenerator", "freq_end_time", "is_trading_time", "format_standard_kline",
     # 数据对象
-    "RawBar", "NewBar", "FX", "BI", "FakeBI", "ZS", "Signal", "Event",
+    "RawBar", "NewBar", "FX", "BI", "FakeBI", "ZS", "Signal", "Event", "Position",
     # 回测
     "WeightBacktest",
     # 工具函数

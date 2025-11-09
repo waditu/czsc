@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 from typing import List
 from collections import OrderedDict
-from czsc.analyze import CZSC, RawBar
+from czsc.core import CZSC, RawBar
 from czsc.utils.sig import get_sub_elements, create_single_signal
 
 

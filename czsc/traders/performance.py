@@ -73,7 +73,7 @@ class PairsPerformance:
         :param df_pairs:
         :return:
         """
-        from czsc.objects import cal_break_even_point
+        from czsc.core import cal_break_even_point
 
         if len(df_pairs) == 0:
             info = {

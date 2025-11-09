@@ -5,11 +5,11 @@ email: zeng_bin8888@163.com
 create_dt: 2023/4/14 19:27
 describe:
 """
-from czsc.analyze import CZSC
+from czsc.core import CZSC
 from collections import OrderedDict
 from czsc.traders.base import CzscTrader
 from czsc.utils import create_single_signal, get_sub_elements
-from czsc.objects import Operate, Direction, Mark
+from czsc.core import Operate, Direction, Mark
 from czsc.signals.tas import update_ma_cache
 
 

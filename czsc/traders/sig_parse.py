@@ -9,8 +9,7 @@ import re
 from loguru import logger
 from parse import parse
 from typing import List, Dict
-from czsc.objects import Signal
-from czsc.utils import import_by_name, sorted_freqs
+from czsc.core import Signal
 
 
 class SignalsParser:
@@ -32,6 +31,8 @@ class SignalsParser:
 
         :param signals_module: 指定信号函数所在模块
         """
+        from czsc.utils import import_by_name
+        
         self.signals_module = signals_module
         sig_name_map = {}
         sig_pats_map = {}
@@ -203,6 +204,8 @@ def get_signals_freqs(signals_seq: List) -> List[str]:
     :param signals_seq: 信号列表 / 信号函数配置列表
     :return: K线周期列表
     """
+    from czsc.utils import sorted_freqs
+    
     freqs = []
     for signal in signals_seq:
         _freqs = re.findall('|'.join(sorted_freqs), str(signal))

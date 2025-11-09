@@ -10,7 +10,7 @@ import shutil
 import pandas as pd
 from copy import deepcopy
 from loguru import logger
-from czsc.objects import Event
+from czsc.core import Event
 from typing import List, Dict, Callable, Any, Union
 from czsc.traders.sig_parse import get_signals_freqs
 from czsc.traders.base import generate_czsc_signals

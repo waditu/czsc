@@ -9,7 +9,7 @@ import numpy as np
 from typing import List
 from collections import OrderedDict
 from czsc import CZSC
-from czsc.objects import Signal, RawBar, Direction
+from czsc.core import Signal, RawBar, Direction
 from czsc.utils import get_sub_elements
 
 
