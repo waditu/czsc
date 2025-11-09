@@ -15,6 +15,7 @@ def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
     """获取mock K线数据并转换为RawBar对象"""
     if freq == Freq.F1:
         df = mock.generate_symbol_kines(symbol, "1分钟", sdt="20240101", edt="20240110", seed=42)
+    
     elif freq == Freq.F5:
         df = mock.generate_symbol_kines(symbol, "5分钟", sdt="20240101", edt="20240110", seed=42)
     elif freq == Freq.D:
