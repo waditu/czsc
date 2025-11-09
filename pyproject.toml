@@ -74,7 +74,7 @@ dependencies = [
 ]
 
 [[tool.uv.index]]
-url = "http://mirrors.aliyun.com/pypi/simple/"
+url = "https://pypi.python.org/simple"
 default = true
 
 [project.optional-dependencies]
