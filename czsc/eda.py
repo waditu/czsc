@@ -745,14 +745,6 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
 
     verbose = kwargs.get("verbose", False)
     logger = kwargs.get("logger", loguru.logger)
-
-    def __convert_rs_direction(x):
-        if x == Direction.Up:
-            return "向上"
-        elif x == Direction.Down:
-            return "向下"
-        else:
-            raise ValueError
         
     rows = []
     for symbol, dfg in df.groupby("symbol"):
@@ -768,9 +760,9 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
             bi_stats.append(
                 {
                     "symbol": symbol,
-                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit='s'),
-                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit='s'),
-                    "direction": bi.direction.value if not rs else __convert_rs_direction(bi.direction),
+                    "sdt": bi.sdt,
+                    "edt": bi.edt,
+                    "direction": bi.direction.value,
                     "power_price": abs(bi.change),
                     "length": bi.length,
                     "rsq": bi.rsq,

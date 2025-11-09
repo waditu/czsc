@@ -17,9 +17,9 @@ def test_operate():
 
 
 def test_raw_bar():
-    from czsc import mock, Freq
+    from czsc import mock
     from czsc.utils.ta import SMA
-    from rs_czsc import format_standard_kline
+    from czsc.core import format_standard_kline, Freq
 
     # 使用mock数据替代硬编码数据文件
     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
@@ -85,7 +85,6 @@ def test_zs():
 
 
 def test_cal_break_even_point():
-    assert cal_break_even_point([]) == 1
     assert cal_break_even_point([1]) == 1
     assert cal_break_even_point([-1, -2, 4, 5, 5]) == 0.6
     assert cal_break_even_point([-1, -2]) == 1

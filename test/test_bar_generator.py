@@ -393,7 +393,7 @@ def test_bg_on_d():
 
 def test_is_trading_time():
     from datetime import datetime
-    from czsc.utils.bar_generator import is_trading_time
+    from czsc.py.bar_generator import is_trading_time
 
     # Test for A股 market
     assert not is_trading_time(datetime(2022, 1, 3, 9, 30), market="A股")
@@ -412,7 +412,7 @@ def test_is_trading_time():
 
 
 def test_get_intraday_times():
-    from czsc.utils.bar_generator import get_intraday_times
+    from czsc.py.bar_generator import get_intraday_times
 
     assert get_intraday_times(freq='60分钟', market='A股') == ['10:30', '11:30', '14:00', '15:00']
     assert get_intraday_times(freq='120分钟', market='A股') == ['11:30', '15:00']
