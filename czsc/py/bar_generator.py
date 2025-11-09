@@ -8,7 +8,7 @@ describe: 从任意周期K线开始合成更高周期K线的工具类
 import pandas as pd
 from datetime import datetime, timedelta, date
 from typing import List, Union, AnyStr, Optional
-from czsc.objects import RawBar, Freq
+from czsc.py.objects import RawBar, Freq
 from pathlib import Path
 from loguru import logger
 

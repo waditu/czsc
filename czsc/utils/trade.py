@@ -22,7 +22,7 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
     :param year_returns: 年化收益率
     :return: pd.DataFrame
     """
-    from czsc.utils.calendar import get_trading_dates
+    from czsc.py.calendar import get_trading_dates
 
     trade_dates = get_trading_dates(start_date, end_date)  # type: ignore
     df = pd.DataFrame({"date": trade_dates, "returns": year_returns / 252})
@@ -130,7 +130,7 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     :param only_trade_date: 是否只保留交易日数据
     :return: pd.DataFrame
     """
-    from czsc.utils.calendar import get_trading_dates
+    from czsc.py.calendar import get_trading_dates
 
     df["dt"] = pd.to_datetime(df["dt"])
     sdt = df["dt"].min() if not sdt else pd.to_datetime(sdt)

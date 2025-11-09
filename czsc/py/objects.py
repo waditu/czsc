@@ -15,7 +15,7 @@ from datetime import datetime
 from loguru import logger
 from deprecated import deprecated
 from typing import List, Callable, Dict
-from czsc.enum import Mark, Direction, Freq, Operate
+from czsc.py.enum import Mark, Direction, Freq, Operate
 from czsc.utils.corr import single_linear
 
 
@@ -702,9 +702,6 @@ class Event:
         if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
             return False, None
 
-        for factor in self.factors:
-            if factor.is_match(s):
-                return True, factor.name
 
         return False, None
 

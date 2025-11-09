@@ -1,5 +1,5 @@
 import pandas as pd
-from czsc.utils.calendar import is_trading_date, next_trading_date, prev_trading_date
+from czsc.py.calendar import is_trading_date, next_trading_date, prev_trading_date
 
 
 def test_is_trading_date():
@@ -29,7 +29,7 @@ def test_prev_trading_date():
 
 
 def test_get_trading_dates():
-    from czsc.utils.calendar import get_trading_dates
+    from czsc.py.calendar import get_trading_dates
     dates = get_trading_dates('2023-09-08', '2023-09-12')
     assert dates == pd.to_datetime(['2023-09-08', '2023-09-11', '2023-09-12']).tolist()
     dates = get_trading_dates('2023-09-08 12:00', '2023-09-12 15:00')
