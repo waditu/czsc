@@ -54,7 +54,7 @@ dependencies = [
     "scikit-learn",
     # 技术分析
     "TA-Lib>=0.6",
-    "rs-czsc>=0.1.8",
+    "rs-czsc==0.1.17.post251110",
     # 图表和可视化
     "matplotlib",
     "seaborn",

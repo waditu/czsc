@@ -530,109 +530,9 @@ class Signal:
                         return True
         return False
 
-
-@dataclass
-class Factor:
-    # signals_all 必须全部满足的信号，至少需要设定一个信号
-    signals_all: List[Signal]
-
-    # signals_any 满足其中任一信号，允许为空
-    signals_any: List[Signal] = field(default_factory=list)
-
-    # signals_not 不能满足其中任一信号，允许为空
-    signals_not: List[Signal] = field(default_factory=list)
-
-    name: str = ""
-
-    def __post_init__(self):
-        if not self.signals_all:
-            raise ValueError("signals_all 不能为空")
-        _fatcor = self.dump()
-        _fatcor.pop("name")
-        sha256 = hashlib.sha256(str(_fatcor).encode("utf-8")).hexdigest().upper()[:4]
-
-        if self.name:
-            self.name = self.name.split("#")[0] + f"#{sha256}"
-        else:
-            self.name = f"#{sha256}"
-        # self.name = f"{self.name}#{sha256}" if self.name else sha256
-
-    @property
-    def unique_signals(self) -> List[str]:
-        """获取 Factor 的唯一信号列表"""
-        signals = []
-        signals.extend(self.signals_all)
-        if self.signals_any:
-            signals.extend(self.signals_any)
-        if self.signals_not:
-            signals.extend(self.signals_not)
-        signals = {x.signal if isinstance(x, Signal) else x for x in signals}
-        return list(signals)
-
-    def is_match(self, s: dict) -> bool:
-        """判断 factor 是否满足"""
-        if self.signals_not:
-            for signal in self.signals_not:
-                if signal.is_match(s):
-                    return False
-
-        for signal in self.signals_all:
-            if not signal.is_match(s):
-                return False
-
-        if not self.signals_any:
-            return True
-
-        for signal in self.signals_any:
-            if signal.is_match(s):
-                return True
-        return False
-
-    def dump(self) -> dict:
-        """将 Factor 对象转存为 dict"""
-        signals_all = [x.signal for x in self.signals_all]
-        signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
-        signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
-
-        raw = {
-            "name": self.name,
-            "signals_all": signals_all,
-            "signals_any": signals_any,
-            "signals_not": signals_not,
-        }
-        return raw
-
-    @classmethod
-    def load(cls, raw: dict):
-        """从 dict 中创建 Factor
-
-        :param raw: 样例如下
-            {'name': '单测',
-            'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0', '15分钟_倒0笔_长度_大于5_其他_其他_0'],
-            'signals_any': [],
-            'signals_not': []}
-
-        :return:
-        """
-        signals_any = [Signal(x) for x in raw.get("signals_any", [])]
-        signals_not = [Signal(x) for x in raw.get("signals_not", [])]
-
-        fa = Factor(
-            name=raw.get("name", ""),
-            signals_all=[Signal(x) for x in raw["signals_all"]],
-            signals_any=signals_any,
-            signals_not=signals_not,
-        )
-        return fa
-
-
 @dataclass
 class Event:
     operate: Operate
-
-    # 多个信号组成一个因子，多个因子组成一个事件。
-    # 单个事件是一系列同类型因子的集合，事件中的任一因子满足，则事件为真。
-    factors: List[Factor]
 
     # signals_all 必须全部满足的信号，允许为空
     signals_all: List[Signal] = field(default_factory=list)
@@ -646,15 +546,12 @@ class Event:
     name: str = ""
 
     def __post_init__(self):
-        if not self.factors:
-            raise ValueError("factors 不能为空")
         _event = self.dump()
         _event.pop("name")
 
         sha256 = hashlib.sha256(str(_event).encode("utf-8")).hexdigest().upper()[:4]
         if self.name:
             self.name = self.name.split("#")[0] + f"#{sha256}"
-            # self.name = f"{self.name}#{sha256}"
         else:
             self.name = f"{self.operate.value}#{sha256}"
         self.sha256 = sha256
@@ -669,10 +566,6 @@ class Event:
             signals.extend(self.signals_any)
         if self.signals_not:
             signals.extend(self.signals_not)
-
-        for factor in self.factors:
-            signals.extend(factor.unique_signals)
-
         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
         return list(signals)
 
@@ -702,15 +595,13 @@ class Event:
         if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
             return False, None
 
-
-        return False, None
+        return True, self.operate.name
 
     def dump(self) -> dict:
         """将 Event 对象转存为 dict"""
         signals_all = [x.signal for x in self.signals_all] if self.signals_all else []
         signals_any = [x.signal for x in self.signals_any] if self.signals_any else []
         signals_not = [x.signal for x in self.signals_not] if self.signals_not else []
-        factors = [x.dump() for x in self.factors]
 
         raw = {
             "name": self.name,
@@ -718,7 +609,6 @@ class Event:
             "signals_all": signals_all,
             "signals_any": signals_any,
             "signals_not": signals_not,
-            "factors": factors,
         }
         return raw
 
@@ -729,10 +619,6 @@ class Event:
         :param raw: 样例如下
                         {'name': '单测',
                          'operate': '开多',
-                         'factors': [{'name': '测试',
-                             'signals_all': ['15分钟_倒0笔_长度_大于5_其他_其他_0'],
-                             'signals_any': [],
-                             'signals_not': []}],
                          'signals_all': ['15分钟_倒0笔_方向_向上_其他_其他_0'],
                          'signals_any': [],
                          'signals_not': []}
@@ -747,7 +633,6 @@ class Event:
         e = Event(
             name=raw.get("name", ""),
             operate=Operate.__dict__["_value2member_map_"][raw["operate"]],
-            factors=[Factor.load(x) for x in raw["factors"]],
             signals_all=[Signal(x) for x in raw.get("signals_all", [])],
             signals_any=[Signal(x) for x in raw.get("signals_any", [])],
             signals_not=[Signal(x) for x in raw.get("signals_not", [])],
