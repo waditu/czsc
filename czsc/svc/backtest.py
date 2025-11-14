@@ -495,17 +495,19 @@ def show_long_short_backtest(df: pd.DataFrame, **kwargs):
 
     dfs = df.copy()
     dfs["weight"] = dfs["weight"].clip(upper=0)
-
+    
+    dfb = df.copy()
+    dfb['weight'] = 1
+    
     wbs = {
-        "原始策略": WeightBacktest(
-            df, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
-        ),
-        "策略多头": WeightBacktest(
-            dfl, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
-        ),
-        "策略空头": WeightBacktest(
-            dfs, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
-        ),
+        "原始策略": WeightBacktest(df, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
+        "策略多头": WeightBacktest(dfl, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
+        "策略空头": WeightBacktest(dfs, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
+        "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
     }
     show_multi_backtest(wbs)
     return wbs

@@ -24,7 +24,8 @@ def streamlit_run(file, port=8501, host="localhost"):
         str(file),
         "--server.port", str(port),
         "--server.address", host,
-        "--server.headless", "true"
+        "--server.headless", "true",
+        "--server.maxUploadSize", "2048"
     ]
 
     stcli.main()
