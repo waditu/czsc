@@ -45,14 +45,6 @@ def calculate_weight_stats(dfw: pd.DataFrame) -> pd.DataFrame:
         'net_total': net_total,
         'position_count': position_count
     }).fillna(0)
-
-    # data_dict = {
-    #     '多头仓位': long_total,
-    #     '空头仓位': short_total,  # 转为正值便于比较
-    #     '净仓位': net_total,
-    #     '绝对仓位': abs_total
-    # }
-    
     return weight_stats
 
 
