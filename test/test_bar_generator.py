@@ -8,8 +8,7 @@ describe: czsc.utils.bar_generator 单元测试
 import pytest
 import pandas as pd
 from czsc import mock
-from czsc.core import Freq, RawBar
-from czsc.py.bar_generator import BarGenerator, freq_end_time, resample_bars, check_freq_and_market, freq_market_times
+from czsc.py.bar_generator import BarGenerator, freq_end_time, resample_bars, check_freq_and_market, freq_market_times, Freq, RawBar
 
 
 def get_mock_1min_bars():
