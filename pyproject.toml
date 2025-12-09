@@ -120,8 +120,8 @@ dev = [
 packages = ["czsc"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"czsc/py/china_calendar.feather" = "czsc/utils/china_calendar.feather"
-"czsc/py/minutes_split.feather" = "czsc/utils/minutes_split.feather"
+"czsc/py/china_calendar.feather" = "czsc/py/china_calendar.feather"
+"czsc/py/minutes_split.feather" = "czsc/py/minutes_split.feather"
 
 [tool.hatch.version]
 path = "czsc/__init__.py"
