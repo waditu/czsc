@@ -1,28 +1,39 @@
-import czsc
 import pandas as pd
 from typing import Dict, List, Any
 
 
-class WeightBacktestCard:
+class StrategyCard:
     """策略回测结果飞书卡片构建类"""
     
-    def __init__(self, strategy_name: str, wb: czsc.WeightBacktest, out_sample_sdt: str = "20250101", describe: str = ""):
+    def __init__(self, strategy_name: str, dfw: pd.DataFrame, out_sample_sdt: str = "20250101", describe: str = "", **kwargs):
         """
         :param strategy_name: 策略名称
-        :param wb: WeightBacktest实例
+        :param dfw: 包含权重和价格数据的DataFrame，必须包含 'dt'、'symbol'、'weight'、'price' 四列
         :param out_sample_sdt: 样本外开始时间
         :param describe: 策略描述
         """
+        from czsc import WeightBacktest
+                
+        fee_rate = kwargs.get('fee_rate', 0.0)
+        digits = kwargs.get('digits', 3)
+        weight_type = kwargs.get('weight_type', 'ts')
+        yearly_days = kwargs.get('yearly_days', 252)
+        self.dfw = dfw[['dt', 'symbol', 'weight', 'price']].copy()
+        
         self.strategy_name = strategy_name
-        self.wb = wb
+        self.wb = WeightBacktest(dfw, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
         self.out_sample_sdt = out_sample_sdt
-        self.describe = describe if describe else f"{strategy_name} 在样本外时间 {out_sample_sdt} 之后的最新表现"
+        pre_describe = f"{strategy_name} 在样本外时间 {out_sample_sdt} 之后的最新表现；回测参数："
+        pre_describe += f"\n手续费率 {fee_rate}, 权重小数位数 {digits}, 权重类型 {weight_type}, 年交易日 {yearly_days}。"
+        self.describe = pre_describe + ("\n" + describe if describe else "")
+        self.latest_weights = dfw.sort_values("dt").groupby("symbol").tail(1).reset_index(drop=True)
         
     def build(self) -> Dict[str, Any]:
         """构建飞书卡片数据"""
         recent_returns = self._calculate_recent_returns()
         stats_df = self._get_strategy_stats()
         chart_data = self._get_out_sample_curve()
+        latest_positions = self._get_latest_positions()
         
         # 获取最新累计收益率
         latest_return = "N/A"
@@ -33,18 +44,22 @@ class WeightBacktestCard:
                     break
         
         elements = []
-        elements.append({"tag": "markdown", "content": f"**描述**: {self.describe}"})
+        elements.append({"tag": "markdown", "content": f"{self.describe}"})
         elements.append({"tag": "hr"})
         elements.append({"tag": "markdown", "content": "### 1.策略绩效指标"})
         elements.append(self._build_stats_section(stats_df))
         elements.append({"tag": "hr"})
         
-        elements.append({"tag": "markdown", "content": "### 2.累计收益曲线"})
+        elements.append({"tag": "markdown", "content": "### 2.最新持仓明细"})
+        elements.extend(self._build_positions_section(latest_positions))
+        elements.append({"tag": "hr"})
+        
+        elements.append({"tag": "markdown", "content": "### 3.累计收益曲线"})
         elements.append({"tag": "markdown", "content": f"**最新累计收益率**: {latest_return}"})
         elements.append(self._build_curve_section(chart_data))
         elements.append({"tag": "hr"})
 
-        elements.append({"tag": "markdown", "content": "### 3.最近10个交易日收益"})
+        elements.append({"tag": "markdown", "content": "### 4.最近10个交易日收益"})
         elements.extend(self._build_recent_returns_section(recent_returns))
         
         card = {
@@ -54,6 +69,19 @@ class WeightBacktestCard:
             "body": {"elements": elements}
         }
         return card
+
+    def _get_latest_positions(self) -> pd.DataFrame:
+        """获取最新持仓"""
+        df = self.dfw.copy()
+        if df.empty:
+            return pd.DataFrame(columns=['dt', 'symbol', 'weight', 'price'])
+            
+        # 每个品种的最新时间可能不一样，按品种分组取最新
+        latest_pos = df.sort_values('dt').groupby('symbol').tail(1)
+        
+        # 过滤掉权重为0的
+        latest_pos = latest_pos[latest_pos['weight'] != 0]
+        return latest_pos[['dt', 'symbol', 'weight', 'price']].reset_index(drop=True)
 
     def _calculate_recent_returns(self, days: int = 10) -> pd.DataFrame:
         """计算最近N个交易日的收益"""
@@ -113,7 +141,12 @@ class WeightBacktestCard:
             "最大回撤": "最大回撤",
             "卡玛": "卡玛比率",
             "日胜率": "日胜率",
-            "盈亏平衡点": "盈亏平衡点"
+            "年化波动率": "年化波动率",
+            "单笔收益": "单笔收益",
+            "持仓K线数": "持仓K线数",
+            "交易胜率": "交易胜率",
+            "多头占比": "多头占比",
+            "空头占比": "空头占比",
         }
         
         data = []
@@ -121,7 +154,7 @@ class WeightBacktestCard:
             if k in stats:
                 val = stats[k]
                 if isinstance(val, (int, float)):
-                    if k in ["年化", "最大回撤", "日胜率", "盈亏平衡点"]:
+                    if k in ["年化", "最大回撤", "日胜率", "年化波动率", "交易胜率", "多头占比", "空头占比"]:
                         val_str = f"{val*100:.2f}%"
                     else:
                         val_str = f"{val:.2f}"
@@ -164,12 +197,38 @@ class WeightBacktestCard:
             ]
         }]
 
+    def _build_positions_section(self, df: pd.DataFrame) -> List[Dict[str, Any]]:
+        """构建最新持仓表格部分"""
+        if df.empty:
+            return [{
+                "tag": "markdown",
+                "content": "当前无持仓"
+            }]
+            
+        return [{
+            "tag": "column_set",
+            "flex_mode": "stretch",
+            "columns": [
+                {
+                    "tag": "column",
+                    "width": "weighted",
+                    "weight": 1,
+                    "elements": [
+                        {
+                            "tag": "markdown",
+                            "content": self._format_positions_table(df)
+                        }
+                    ]
+                }
+            ]
+        }]
+
     def _build_stats_section(self, stats_df: pd.DataFrame) -> Dict[str, Any]:
         """构建绩效指标分栏展示"""
         columns = []
-        items_per_col = (len(stats_df) + 2) // 3
+        items_per_col = (len(stats_df) + 4) // 5
         
-        for i in range(3):
+        for i in range(5):
             start_idx = i * items_per_col
             end_idx = start_idx + items_per_col
             subset = stats_df.iloc[start_idx:end_idx]
@@ -225,6 +284,29 @@ class WeightBacktestCard:
                 else:
                     cells.append(str(value))
             lines.append("| " + " | ".join(cells) + " |")
+        return "\n".join(lines)
+
+    @staticmethod
+    def _format_positions_table(df: pd.DataFrame) -> str:
+        """将持仓DataFrame格式化为Markdown表格"""
+        lines = []
+        headers = ["时间", "标的", "权重", "价格"]
+        lines.append("| " + " | ".join(headers) + " |")
+        lines.append("| " + " | ".join(["---"] * len(headers)) + " |")
+        
+        for _, row in df.iterrows():
+            dt = row['dt'].strftime('%Y-%m-%d %H:%M') if isinstance(row['dt'], pd.Timestamp) else str(row['dt'])
+            symbol = row['symbol']
+            weight = row['weight']
+            price = row['price']
+            
+            weight_str = f"{weight:.4f}"
+            if weight > 0:
+                weight_str = f"<font color='red'>{weight_str}</font>"
+            elif weight < 0:
+                weight_str = f"<font color='green'>{weight_str}</font>"
+                
+            lines.append(f"| {dt} | {symbol} | {weight_str} | {price:.2f} |")
         return "\n".join(lines)
         
     @staticmethod
@@ -290,12 +372,10 @@ def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key: str, out_
     try:
         from czsc.fsa import push_card
         dfw['dt'] = pd.to_datetime(dfw['dt'])
-        
-        wb = czsc.WeightBacktest(dfw, **kwargs)
-        card_builder = WeightBacktestCard(strategy, wb, out_sample_sdt)
+
+        card_builder = StrategyCard(strategy, dfw, out_sample_sdt, **kwargs)
         card = card_builder.build()
         push_card(card=card, key=feishu_key)
-        # success = send_to_feishu(card, feishu_key)
         return True
         
     except Exception as e:
@@ -307,6 +387,7 @@ def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key: str, out_
 
 def test_push_strategy_latest():
     """测试推送策略最新表现到飞书群"""
+    import czsc
     dfw = czsc.mock.generate_klines_with_weights(seed=1234)
     feishu_key = "97ef04e5-1dea-9999-a99f-58ec30b05283"
     push_strategy_latest(strategy="测试策略", dfw=dfw, feishu_key=feishu_key)
