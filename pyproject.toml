@@ -54,7 +54,7 @@ dependencies = [
     "scikit-learn",
     # 技术分析
     "TA-Lib>=0.6",
-    "rs-czsc==0.1.17.post251110",
+    "rs-czsc>=0.1.17.post251110",
     # 图表和可视化
     "matplotlib",
     "seaborn",
@@ -113,14 +113,15 @@ dev = [
     "ipython>=8.37.0",
     "pytest>=8.4.1",
     "pyyaml>=6.0.2",
+    "tushare>=1.4.24",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["czsc"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"czsc/py/china_calendar.feather" = "czsc/utils/china_calendar.feather"
-"czsc/py/minutes_split.feather" = "czsc/utils/minutes_split.feather"
+"czsc/py/china_calendar.feather" = "czsc/py/china_calendar.feather"
+"czsc/py/minutes_split.feather" = "czsc/py/minutes_split.feather"
 
 [tool.hatch.version]
 path = "czsc/__init__.py"
