@@ -19,9 +19,10 @@ class StrategyCard:
         weight_type = kwargs.get('weight_type', 'ts')
         yearly_days = kwargs.get('yearly_days', 252)
         self.dfw = dfw[['dt', 'symbol', 'weight', 'price']].copy()
+        self.dfw = self.dfw[self.dfw['dt'] >= pd.to_datetime(out_sample_sdt)].copy().reset_index(drop=True)
         
         self.strategy_name = strategy_name
-        self.wb = WeightBacktest(dfw, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
+        self.wb = WeightBacktest(self.dfw.copy(), fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
         self.out_sample_sdt = out_sample_sdt
         pre_describe = f"{strategy_name} 在样本外时间 {out_sample_sdt} 之后的最新表现；回测参数："
         pre_describe += f"\n手续费率 {fee_rate}, 权重小数位数 {digits}, 权重类型 {weight_type}, 年交易日 {yearly_days}。"
@@ -147,6 +148,8 @@ class StrategyCard:
             "交易胜率": "交易胜率",
             "多头占比": "多头占比",
             "空头占比": "空头占比",
+            "开始日期": "开始日期",
+            "结束日期": "结束日期",
         }
         
         data = []
@@ -278,9 +281,9 @@ class StrategyCard:
                 value = row[col]
                 if isinstance(value, (int, float)):
                     if value >= 0:
-                        cells.append(f"<font color='green'>+{value:.2f}%</font>")
+                        cells.append(f"<font color='green'>+{value * 100:.2f}%</font>")
                     else:
-                        cells.append(f"<font color='red'>{value:.2f}%</font>")
+                        cells.append(f"<font color='red'>{value * 100:.2f}%</font>")
                 else:
                     cells.append(str(value))
             lines.append("| " + " | ".join(cells) + " |")
