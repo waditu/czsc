@@ -27,7 +27,7 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
     default_percentiles = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
     percentiles = kwargs.get("percentiles", default_percentiles)
 
-    dfs = dfw.groupby("symbol").apply(lambda x: x["weight"].describe(percentiles=percentiles)).reset_index()
+    dfs = dfw.groupby("symbol")["weight"].apply(lambda x: x.describe(percentiles=percentiles)).reset_index()
 
     # 使用 show_df_describe 来显示结果
     from .statistics import show_df_describe
