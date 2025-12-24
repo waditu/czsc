@@ -507,7 +507,7 @@ def show_long_short_backtest(df: pd.DataFrame, **kwargs):
         "策略空头": WeightBacktest(dfs, fee_rate=fee_rate, digits=digits, 
                                       weight_type=weight_type, yearly_days=yearly_days),
         "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, 
-                                      weight_type=weight_type, yearly_days=yearly_days),
+                                      weight_type="ts", yearly_days=yearly_days),
     }
     show_multi_backtest(wbs)
     return wbs
@@ -534,7 +534,7 @@ def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
             weight_type=weight_type,
         )
     with tabs[1]:
-        from .symbols import show_symbols_bench
+        from .strategy import show_symbols_bench
 
         show_symbols_bench(df[["dt", "symbol", "price"]].copy())
 
