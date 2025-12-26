@@ -248,7 +248,6 @@ def get_performance_metrics_cards(stats: dict) -> list:
     ]
     return metrics
 
-
 def plot_backtest_stats(
     dret: pd.DataFrame, 
     ret_col: str = "total", 
@@ -350,6 +349,126 @@ def plot_backtest_stats(
     fig.update_xaxes(title_text="日收益 (%)", row=2, col=1)
     fig.update_yaxes(title_text="频数", row=2, col=1)
     fig.update_yaxes(title_text="年份", row=2, col=2)
+    
+    if to_html:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
+    return fig
+
+
+def plot_colored_table(
+    df: pd.DataFrame,
+    title: str = "策略绩效统计",
+    template: str = "plotly_dark",
+    float_fmt: str = ".2f",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+    **kwargs
+) -> Union[go.Figure, str]:
+    """绘制带有列独立热力图颜色的表格
+    
+    :param df: 统计数据 DataFrame
+    :param title: 图表标题
+    :param template: plotly 模板
+    :param float_fmt: 浮点数格式化精度
+    :param to_html: 是否返回 HTML
+    :param include_plotlyjs: 是否包含 plotly.js
+    :param kwargs:
+        - good_high_columns: list, 指定哪些列是数值越大越好
+        - row_height: int, 行高，默认 30
+        - border_color: str, 边框颜色，默认 'darkgrey'
+        - header_bgcolor: str, 表头背景色，默认 'grey'
+    :return:
+    """
+    # 准备表头
+    headers = df.columns.tolist()
+    if df.index.name:
+        headers.insert(0, df.index.name)
+    else:
+        headers.insert(0, "Index")
+    
+    good_high_columns = kwargs.get("good_high_columns", None)
+    row_height = kwargs.get("row_height", 30)
+    border_color = kwargs.get("border_color", "darkgrey")
+    header_bgcolor = kwargs.get("header_bgcolor", "grey")
+    
+    # 准备数据和颜色
+    cell_values = []
+    cell_colors = []
+    
+    # 处理索引列
+    cell_values.append(df.index.tolist())
+    # 索引列背景色，使用模板默认背景或透明
+    cell_colors.append(['rgba(0,0,0,0)'] * len(df))
+    
+    # 处理数据列
+    for col in df.columns:
+        series = df[col]
+        
+        # 格式化数值
+        if pd.api.types.is_float_dtype(series):
+            # 简单的智能格式化：如果列名包含%，则转为百分比格式
+            if "%" in str(col) or "率" in str(col) or "比" in str(col):
+                formatted_vals = series.apply(lambda x: f"{x:.2%}")
+            else:
+                formatted_vals = series.apply(lambda x: f"{x:{float_fmt}}")
+            cell_values.append(formatted_vals)
+        else:
+            cell_values.append(series.tolist())
+            
+        # 计算颜色
+        if pd.api.types.is_numeric_dtype(series):
+            # 判断指标方向：默认越大越好（红），含有"回撤"、"风险"则越小越好（红）
+            # 注意：这里假设使用 RdYlGn 色标，且红色代表“好”（符合A股习惯）
+            # RdYlGn: 0=Red, 1=Green
+            
+            is_good_high = str(col) in good_high_columns if good_high_columns is not None else True
+            
+            min_val, max_val = series.min(), series.max()
+            if min_val == max_val:
+                colors = ['rgba(0,0,0,0)'] * len(series)
+            else:
+                norm = (series - min_val) / (max_val - min_val)
+                
+                # RdYlGn: 0=Red, 0.5=Yellow, 1=Green
+                # 我们希望：好=Red(0), 坏=Green(1)
+                
+                if is_good_high:
+                    # 越大越好：Max -> Red(0). input = 1 - norm
+                    sample_vals = 1 - norm
+                else:
+                    # 越小越好：Min -> Red(0). input = norm
+                    sample_vals = norm
+                
+                colors = px.colors.sample_colorscale("RdYlGn", sample_vals)
+            
+            cell_colors.append(colors)
+        else:
+            cell_colors.append(['rgba(0,0,0,0)'] * len(series))
+
+    fig = go.Figure(data=[go.Table(
+        header=dict(
+            values=headers,
+            fill_color=header_bgcolor,
+            align='center',
+            font=dict(color='white', size=12),
+            height=row_height,
+            line=dict(color=border_color, width=1)
+        ),
+        cells=dict(
+            values=cell_values,
+            fill_color=cell_colors,
+            align='center',
+            font=dict(color='white', size=12),
+            height=row_height,
+            line=dict(color=border_color, width=1)
+        )
+    )])
+    
+    fig.update_layout(
+        title=title,
+        template=template,
+        margin=dict(l=10, r=10, t=40, b=10)
+    )
     
     if to_html:
         return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
