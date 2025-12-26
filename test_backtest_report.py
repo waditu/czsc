@@ -3,7 +3,7 @@ import sys
 sys.path.append("..")
 sys.path.insert(0, ".")
 import czsc
-from czsc.utils.backtest_report import generate_weight_backtest_html
+from czsc.utils.backtest_report import generate_backtest_report
 
 
 
@@ -21,7 +21,7 @@ def test_generate_html_report():
     output_path = "test_backtest_report.html"
     
     try:
-        result_path = generate_weight_backtest_html(
+        result_path = generate_backtest_report(
             df=dfw,
             output_path=output_path,
             title="测试权重回测报告",
