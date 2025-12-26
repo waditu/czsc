@@ -17,7 +17,8 @@ from .plot_backtest import (
     plot_daily_return_distribution,
     plot_monthly_heatmap,
     get_performance_metrics_cards,
-    plot_backtest_stats
+    plot_backtest_stats,
+    plot_long_short_comparison
 )
 
 
@@ -62,7 +63,7 @@ def generate_backtest_report(
     
     # 提取数据
     metrics = _extract_metrics(wb)
-    charts = _generate_charts(wb)
+    charts = _generate_charts(wb, df, fee_rate, digits, weight_type, yearly_days)
     
     # 生成 HTML
     html_content = _build_html_template(
@@ -516,6 +517,11 @@ def _build_html_template(
                                 <i class="bi bi-grid-3x3-gap"></i> 月度热力图
                             </button>
                         </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#long-short" type="button" role="tab">
+                                <i class="bi bi-arrows-collapse"></i> 多空对比
+                            </button>
+                        </li>
                     </ul>
                     
                     <div class="tab-content">
@@ -542,6 +548,11 @@ def _build_html_template(
                         <div class="tab-pane fade" id="monthly-heatmap" role="tabpanel">
                             <div class="chart-body">
                                 {charts["monthly_heatmap"]}
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="long-short" role="tabpanel">
+                            <div class="chart-body">
+                                {charts["long_short_comparison"]}
                             </div>
                         </div>
                     </div>
@@ -609,10 +620,16 @@ def _extract_metrics(wb: WeightBacktest) -> list:
     return get_performance_metrics_cards(wb.stats)
 
 
-def _generate_charts(wb: WeightBacktest) -> dict:
+def _generate_charts(wb: WeightBacktest, df: pd.DataFrame, fee_rate: float, 
+                     digits: int, weight_type: str, yearly_days: int) -> dict:
     """生成所有图表
     
     :param wb: WeightBacktest 对象
+    :param df: 原始权重数据
+    :param fee_rate: 手续费率
+    :param digits: 权重小数位数
+    :param weight_type: 权重类型
+    :param yearly_days: 年交易日天数
     :return: 字典，包含所有图表的 HTML 片段
     """
     dret = wb.daily_return.copy()
@@ -634,6 +651,60 @@ def _generate_charts(wb: WeightBacktest) -> dict:
         "daily_return": fig3.to_html(include_plotlyjs=False, full_html=False, config=config),
         "monthly_heatmap": fig4.to_html(include_plotlyjs=False, full_html=False, config=config),
     }
+    
+    # 生成多空对比图表
+    try:
+        # 拆分数据创建多个回测（参考 show_long_short_backtest）
+        df_base = df[["dt", "symbol", "weight", "price"]].copy()
+        
+        dfl = df_base.copy()
+        dfl["weight"] = dfl["weight"].clip(lower=0)  # 只保留多头
+        
+        dfs = df_base.copy()
+        dfs["weight"] = dfs["weight"].clip(upper=0)  # 只保留空头
+        
+        dfb = df_base.copy()
+        dfb['weight'] = 1  # 基准等权
+        
+        # 创建多个回测实例
+        wbs = {
+            "原始策略": WeightBacktest(df_base, fee_rate=fee_rate, digits=digits, 
+                                       weight_type=weight_type, yearly_days=yearly_days),
+            "策略多头": WeightBacktest(dfl, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
+            "策略空头": WeightBacktest(dfs, fee_rate=fee_rate, digits=digits, 
+                                      weight_type=weight_type, yearly_days=yearly_days),
+            "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, 
+                                      weight_type="ts", yearly_days=yearly_days),
+        }
+        
+        # 汇总日收益数据（参考 show_multi_backtest）
+        dailys = []
+        for strategy, wb_obj in wbs.items():
+            daily = wb_obj.daily_return.copy()[["date", "total"]]
+            daily["strategy"] = strategy
+            daily["return"] = daily["total"]
+            daily["dt"] = daily["date"]
+            dailys.append(daily[["dt", "strategy", "return"]])
+        
+        dailys = pd.concat(dailys, axis=0)
+        dailys["dt"] = pd.to_datetime(dailys["dt"])
+        df_dailys = pd.pivot_table(dailys, index="dt", columns="strategy", values="return")
+        
+        # 汇总绩效指标
+        stats_rows = []
+        for strategy, wb_obj in wbs.items():
+            stats = {"策略名称": strategy}
+            stats.update(wb_obj.stats)
+            stats_rows.append(stats)
+        df_stats = pd.DataFrame(stats_rows)
+        
+        # 生成多空对比图表
+        fig_ls = plot_long_short_comparison(df_dailys, df_stats, title="多空收益对比", template="plotly")
+        charts["long_short_comparison"] = fig_ls.to_html(include_plotlyjs=False, full_html=False, config=config)
+    except Exception as e:
+        # 如果多空对比生成失败，不影响其他图表
+        charts["long_short_comparison"] = f"<div style='padding: 20px; text-align: center; color: red;'>多空对比图生成失败: {str(e)}</div>"
     
     return charts
 
