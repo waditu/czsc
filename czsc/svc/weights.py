@@ -4,6 +4,7 @@
 包含权重时序分析、分布分析、累积分布函数、绝对仓位分析等功能
 """
 import streamlit as st
+import plotly.graph_objects as go
 from .base import generate_component_key
 
 
@@ -24,6 +25,13 @@ def show_weight_ts(df, key=None, **kwargs):
     show_position_count = kwargs.get("show_position_count", True)
     
     fig = plot_weight_time_series(df, title=title, height=height, show_position_count=show_position_count)
+    
+    # 修复暗色主题支持
+    fig.update_layout(
+        plot_bgcolor=None,  # 使用 Streamlit 主题
+        paper_bgcolor=None,  # 使用 Streamlit 主题
+        font=dict(color=None)  # 使用 Streamlit 主题
+    )
     
     if key is None:
         key = generate_component_key(df, prefix="w_ts", title=title, show_position_count=show_position_count, height=height)
@@ -48,6 +56,13 @@ def show_weight_dist(df, key=None, **kwargs):
     width = kwargs.get("width", 900)
     
     fig = plot_weight_histogram_kde(df, title=title, height=height, width=width)
+    
+    # 修复暗色主题支持
+    fig.update_layout(
+        plot_bgcolor=None,  # 使用 Streamlit 主题
+        paper_bgcolor=None,  # 使用 Streamlit 主题
+        font=dict(color=None)  # 使用 Streamlit 主题
+    )
     
     if key is None:
         key = generate_component_key(df, prefix="w_dist", title=title, height=height, width=width)
@@ -74,6 +89,13 @@ def show_weight_cdf(df, key=None, **kwargs):
     show_percentiles = kwargs.get("show_percentiles", True)
     
     fig = plot_weight_cdf(df, title=title, height=height, width=width, show_percentiles=show_percentiles)
+    
+    # 修复暗色主题支持
+    fig.update_layout(
+        plot_bgcolor=None,  # 使用 Streamlit 主题
+        paper_bgcolor=None,  # 使用 Streamlit 主题
+        font=dict(color=None)  # 使用 Streamlit 主题
+    )
     
     if key is None:
         key = generate_component_key(df, prefix="w_cdf", title=title, show_percentiles=show_percentiles, height=height, width=width)
@@ -104,6 +126,13 @@ def show_weight_abs(df, key=None, **kwargs):
     fig = plot_absolute_position_analysis(
         df, title=title, height=height, width=width, 
         ma_windows=ma_windows, volatility_window=volatility_window
+    )
+    
+    # 修复暗色主题支持
+    fig.update_layout(
+        plot_bgcolor=None,  # 使用 Streamlit 主题
+        paper_bgcolor=None,  # 使用 Streamlit 主题
+        font=dict(color=None)  # 使用 Streamlit 主题
     )
     
     if key is None:
