@@ -9,15 +9,16 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index
+from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index, generate_component_key
 
 
-def show_feature_returns(df, features, ret_col="returns", **kwargs):
+def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):
     """展示特征收益分析
 
     :param df: pd.DataFrame, 数据源
     :param features: list, 特征列名列表
     :param ret_col: str, 收益列名，默认为 'returns'
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - method: str, 相关性计算方法，默认为 'spearman'
         - min_periods: int, 最小样本数，默认为100
@@ -63,12 +64,16 @@ def show_feature_returns(df, features, ret_col="returns", **kwargs):
     corr_styled = corr_styled.format({"相关系数": "{:.4f}", "绝对相关系数": "{:.4f}", "样本数": "{:.0f}"})
     st.dataframe(corr_styled, width='stretch', hide_index=True)
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="feat_ret", features=features, ret_col=ret_col, method=method)
+
     # 绘制相关性条形图
     fig = px.bar(corr_df, x="特征", y="相关系数", 
                  title=f"特征与{ret_col}的相关性",
                  color="相关系数", color_continuous_scale="RdYlGn_r")
     fig.update_xaxes(tickangle=45)
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, key=f"{key}_bar", width='stretch')
 
     # 显示特征间相关性热力图
     if show_correlation and len(features) > 1:
@@ -88,16 +93,17 @@ def show_feature_returns(df, features, ret_col="returns", **kwargs):
         ))
         
         fig_heatmap.update_layout(title="特征间相关性热力图", width=600, height=500)
-        st.plotly_chart(fig_heatmap, width='stretch')
+        st.plotly_chart(fig_heatmap, key=f"{key}_heatmap", width='stretch')
 
 
-def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
+def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs):
     """展示因子分层分析
 
     :param df: pd.DataFrame, 数据源
     :param factor_col: str, 因子列名
     :param ret_col: str, 收益列名
     :param n_layers: int, 分层数量，默认为5
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - method: str, 分层方法，'qcut'（等频）或'cut'（等距），默认为'qcut'
         - show_cumulative: bool, 是否显示累计收益，默认为True
@@ -147,12 +153,16 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
     stats_styled = apply_stats_style(stats_df)
     st.dataframe(stats_styled, width='stretch')
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="layer", factor_col=factor_col, ret_col=ret_col, n_layers=n_layers, method=method)
+
     # 显示分层收益对比
     layer_returns = data.groupby("layer")[ret_col].mean()
     fig_bar = px.bar(x=layer_returns.index.astype(str), y=layer_returns.values,
                      title="各层平均收益对比",
                      labels={"x": "分层", "y": "平均收益"})
-    st.plotly_chart(fig_bar, width='stretch')
+    st.plotly_chart(fig_bar, key=f"{key}_bar", width='stretch')
 
     # 显示累计收益曲线（如果有时间信息）
     if show_cumulative and "dt" in df.columns:
@@ -180,22 +190,23 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, **kwargs):
         if cumulative_returns:
             cumret_df = pd.concat(cumulative_returns, axis=1).fillna(method="ffill")
             fig_cumret = px.line(cumret_df, title="分层累计收益曲线")
-            st.plotly_chart(fig_cumret, width='stretch')
+            st.plotly_chart(fig_cumret, key=f"{key}_cumret", width='stretch')
 
     # 显示因子分布
     if show_distribution:
         st.subheader(f"{factor_col} 分布分析")
         fig_hist = px.histogram(data, x=factor_col, color="layer", 
                                title=f"{factor_col} 在各层的分布")
-        st.plotly_chart(fig_hist, width='stretch')
+        st.plotly_chart(fig_hist, key=f"{key}_hist", width='stretch')
 
 
-def show_factor_value(df, factor_col, bins=50, **kwargs):
+def show_factor_value(df, factor_col, bins=50, key=None, **kwargs):
     """展示因子数值分布
 
     :param df: pd.DataFrame, 数据源
     :param factor_col: str, 因子列名
     :param bins: int, 直方图箱数，默认为50
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - show_outliers: bool, 是否显示异常值，默认为True
         - percentiles: list, 分位数列表，默认为[0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]
@@ -231,6 +242,10 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
     with st.expander("分位数分布", expanded=False):
         st.dataframe(quantile_df.style.format({"数值": "{:.4f}"}), width='stretch', hide_index=True)
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="fact_val", factor_col=factor_col, bins=bins, show_outliers=show_outliers)
+
     # 绘制直方图和箱线图
     col1, col2 = st.columns(2)
     
@@ -238,13 +253,13 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
         fig_hist = px.histogram(df, x=factor_col, nbins=bins, 
                                title=f"{factor_col} 直方图")
         fig_hist.update_layout(showlegend=False)
-        st.plotly_chart(fig_hist, width='stretch')
+        st.plotly_chart(fig_hist, key=f"{key}_hist", width='stretch')
     
     with col2:
         fig_box = px.box(df, y=factor_col, title=f"{factor_col} 箱线图")
         if not show_outliers:
             fig_box.update_traces(boxpoints=False)
-        st.plotly_chart(fig_box, width='stretch')
+        st.plotly_chart(fig_box, key=f"{key}_box", width='stretch')
 
     # 异常值分析
     if show_outliers:
@@ -268,12 +283,13 @@ def show_factor_value(df, factor_col, bins=50, **kwargs):
                     st.dataframe(outlier_df.style.format({"异常值": "{:.4f}"}), width='stretch', hide_index=True)
 
 
-def show_event_return(df, event_col, ret_col, **kwargs):
+def show_event_return(df, event_col, ret_col, key=None, **kwargs):
     """展示事件收益分析
 
     :param df: pd.DataFrame, 数据源
     :param event_col: str, 事件列名（布尔类型或0/1）
     :param ret_col: str, 收益列名
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - pre_periods: int, 事件前观察期数，默认为5
         - post_periods: int, 事件后观察期数，默认为10
@@ -380,7 +396,12 @@ def show_event_return(df, event_col, ret_col, **kwargs):
         hovermode='x unified'
     )
     
-    st.plotly_chart(fig, width='stretch')
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="event_ret", event_col=event_col, ret_col=ret_col, 
+                                     pre_periods=pre_periods, post_periods=post_periods)
+    
+    st.plotly_chart(fig, key=key, width='stretch')
 
     # 显示统计信息
     pre_event_return = mean_returns[pre_periods-1] if pre_periods > 0 else 0
@@ -394,12 +415,13 @@ def show_event_return(df, event_col, ret_col, **kwargs):
     c4.metric("事件效应", f"{event_effect:.4f}")
 
 
-def show_event_features(df, event_col, feature_cols, **kwargs):
+def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
     """展示事件特征分析
 
     :param df: pd.DataFrame, 数据源
     :param event_col: str, 事件列名
     :param feature_cols: list, 特征列名列表
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - test_method: str, 统计检验方法，'ttest'或'mannwhitney'，默认为'ttest'
         - alpha: float, 显著性水平，默认为0.05
@@ -476,6 +498,10 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
     st.dataframe(results_styled, width='stretch', hide_index=True)
     st.caption(f"检验方法: {test_name}, 显著性水平: {alpha}")
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="event_feat", event_col=event_col, feature_cols=feature_cols, test_method=test_method)
+
     # 绘制特征分布对比
     for i, feature in enumerate(feature_cols[:4]):  # 最多显示4个特征
         if feature in results_df["特征"].values:
@@ -503,7 +529,7 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
                     xaxis_title=feature,
                     yaxis_title="频数"
                 )
-                st.plotly_chart(fig_hist, width='stretch')
+                st.plotly_chart(fig_hist, key=f"{key}_{feature}_hist", width='stretch')
             
             with col2:
                 # 箱线图对比
@@ -514,4 +540,4 @@ def show_event_features(df, event_col, feature_cols, **kwargs):
                 
                 fig_box = px.box(comparison_df, x="group", y="value", 
                                 title=f"{feature} 箱线图对比")
-                st.plotly_chart(fig_box, width='stretch') 
+                st.plotly_chart(fig_box, key=f"{key}_{feature}_box", width='stretch') 

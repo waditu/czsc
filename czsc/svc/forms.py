@@ -10,9 +10,15 @@ import pandas as pd
 import streamlit as st
 
 
-def weight_backtest_form():
-    """创建权重回测用户输入表单"""
-    file = st.file_uploader("上传文件", type=["csv", "feather"], accept_multiple_files=False)
+def weight_backtest_form(key=None):
+    """创建权重回测用户输入表单
+    
+    :param key: str, 可选，文件上传组件的唯一标识符，默认为 'weight_backtest_file'
+    """
+    if key is None:
+        key = "weight_backtest_file"
+    
+    file = st.file_uploader("上传文件", type=["csv", "feather"], accept_multiple_files=False, key=key)
     if not file:
         st.warning("请上传文件")
         st.stop()

@@ -4,6 +4,9 @@ SVC模块的基础功能模块
 提供统一的导入处理、样式配置等基础功能
 """
 
+import hashlib
+import json
+
 import pandas as pd
 import streamlit as st
 
@@ -166,3 +169,39 @@ def ensure_datetime_index(df, dt_col="dt"):
 
     assert df.index.dtype == "datetime64[ns]", f"index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     return df
+
+
+def generate_component_key(data, prefix="component", **kwargs):
+    """根据输入数据生成唯一的组件 key
+    
+    :param data: 输入数据（DataFrame, Figure, dict, str 等）
+    :param prefix: key 的前缀，建议使用函数名缩写
+    :param kwargs: 其他影响输出的参数
+    :return: str, 唯一的 hash key
+    """
+    key_parts = [prefix]
+    
+    if isinstance(data, pd.DataFrame):
+        key_parts.append(f"{data.shape}")
+        key_parts.append(f"{sorted(data.columns)}")
+        if len(data) > 0:
+            data_sample = data.head(3).to_dict()
+            key_parts.append(json.dumps(data_sample, sort_keys=True, default=str))
+    elif hasattr(data, 'to_json'):
+        try:
+            fig_json = data.to_json()
+            json_hash = hashlib.md5(fig_json.encode('utf-8')).hexdigest()[:8]
+            key_parts.append(json_hash)
+        except:
+            key_parts.append(str(type(data)))
+    elif isinstance(data, dict):
+        key_parts.append(json.dumps(data, sort_keys=True, default=str))
+    else:
+        key_parts.append(str(data))
+    
+    if kwargs:
+        key_parts.append(json.dumps(kwargs, sort_keys=True, default=str))
+    
+    key_str = "|".join(str(p) for p in key_parts)
+    hash_value = hashlib.md5(key_str.encode('utf-8')).hexdigest()[:8]
+    return f"{prefix}_{hash_value}"

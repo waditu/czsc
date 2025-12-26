@@ -661,7 +661,6 @@ def plot_absolute_position_analysis(dfw: pd.DataFrame,
     return fig_abs
 
 
-# 使用示例
 if __name__ == "__main__":
     import czsc
 
