@@ -62,6 +62,7 @@ dependencies = [
     "pyecharts>=1.9.1",
     "lightweight-charts",
     "streamlit",
+    "jinja2",
     # 工具库
     "tqdm>=4.66.4",
     "loguru",

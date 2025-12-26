@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -941,6 +941,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "deprecated" },
     { name = "dill" },
+    { name = "jinja2" },
     { name = "lightweight-charts" },
     { name = "loguru" },
     { name = "matplotlib" },
@@ -1024,6 +1025,7 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'dev'" },
     { name = "isort", marker = "extra == 'all'" },
     { name = "isort", marker = "extra == 'dev'" },
+    { name = "jinja2" },
     { name = "jupyter", marker = "extra == 'all'" },
     { name = "jupyter", marker = "extra == 'dev'" },
     { name = "lightweight-charts" },

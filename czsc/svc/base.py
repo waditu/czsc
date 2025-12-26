@@ -179,6 +179,8 @@ def generate_component_key(data, prefix="component", **kwargs):
     :param kwargs: 其他影响输出的参数
     :return: str, 唯一的 hash key
     """
+    import time
+    
     key_parts = [prefix]
     
     if isinstance(data, pd.DataFrame):
@@ -201,6 +203,10 @@ def generate_component_key(data, prefix="component", **kwargs):
     
     if kwargs:
         key_parts.append(json.dumps(kwargs, sort_keys=True, default=str))
+    
+    # 添加高精度时间戳确保唯一性（精确到纳秒）
+    timestamp = time.time_ns()
+    key_parts.append(str(timestamp))
     
     key_str = "|".join(str(p) for p in key_parts)
     hash_value = hashlib.md5(key_str.encode('utf-8')).hexdigest()[:8]
