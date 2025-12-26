@@ -97,12 +97,12 @@ def main():
         st.write(f"生成 **{days}** 个交易日，**{symbols}** 个品种的模拟持仓数据")
     
     with col2:
-        if st.button("🔄 重新生成数据", use_container_width=True):
+        if st.button("🔄 重新生成数据", width='stretch'):
             st.cache_data.clear()
             st.rerun()
     
     with col3:
-        if st.button("📥 导出数据", use_container_width=True):
+        if st.button("📥 导出数据", width='stretch'):
             st.session_state['export_data'] = True
     
     # 生成数据
@@ -129,7 +129,7 @@ def main():
     
     # 数据预览
     with st.expander("🔍 查看数据样本", expanded=False):
-        st.dataframe(df.head(100), use_container_width=True)
+        st.dataframe(df.head(100), width='stretch')
     
     # 导出数据
     if st.session_state.get('export_data', False):
