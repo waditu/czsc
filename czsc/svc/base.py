@@ -167,7 +167,7 @@ def ensure_datetime_index(df, dt_col="dt"):
         else:
             raise ValueError(f"DataFrame必须有datetime64[ns]类型的索引或包含'{dt_col}'列")
 
-    assert df.index.dtype == "datetime64[ns]", f"index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
+    assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
     return df
 
 
@@ -184,18 +184,8 @@ def generate_component_key(data, prefix="component", **kwargs):
     key_parts = [prefix]
     
     if isinstance(data, pd.DataFrame):
-        key_parts.append(f"{data.shape}")
-        key_parts.append(f"{sorted(data.columns)}")
-        if len(data) > 0:
-            data_sample = data.head(3).to_dict()
-            key_parts.append(json.dumps(data_sample, sort_keys=True, default=str))
-    elif hasattr(data, 'to_json'):
-        try:
-            fig_json = data.to_json()
-            json_hash = hashlib.md5(fig_json.encode('utf-8')).hexdigest()[:8]
-            key_parts.append(json_hash)
-        except:
-            key_parts.append(str(type(data)))
+        from pandas.util import hash_pandas_object
+        key_parts.append(str(hash_pandas_object(data).sum()))
     elif isinstance(data, dict):
         key_parts.append(json.dumps(data, sort_keys=True, default=str))
     else:
