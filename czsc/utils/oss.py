@@ -47,10 +47,6 @@ class AliyunOSS:
             return False
 
         headers = {}
-        if filepath.endswith('.html') or filepath.endswith('.htm'):
-            headers['Content-Type'] = 'text/html; charset=utf-8'
-            headers['Content-Disposition'] = 'inline'
-
         with open(filepath, "rb") as file:
             result = self.bucket.put_object(oss_key, file, headers=headers)
             if result.status == 200:
