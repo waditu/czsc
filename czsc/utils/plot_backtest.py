@@ -210,8 +210,12 @@ def plot_monthly_heatmap(
         x=['1月', '2月', '3月', '4月', '5月', '6月', 
            '7月', '8月', '9月', '10月', '11月', '12月'],
         y=pivot_table.index,
-        colorscale='RdYlGn',
-        colorbar=dict(title="日收益 (%)")
+        colorscale='RdYlGn_r',
+        colorbar=dict(title="日收益 (%)"),
+        text=pivot_table.values,
+        texttemplate="%{text:.2f}%",
+        textfont={"size": 10},
+        hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>"
     ))
     
     fig.update_layout(
@@ -324,10 +328,14 @@ def plot_backtest_stats(
             x=['1月', '2月', '3月', '4月', '5月', '6月', 
                '7月', '8月', '9月', '10月', '11月', '12月'],
             y=pivot_table.index,
-            colorscale='RdYlGn',
+            colorscale='RdYlGn_r',
             showscale=True,
             colorbar=dict(title="收益(%)", len=0.45, y=0.2),
-            name="月度热力图"
+            name="月度热力图",
+            text=pivot_table.values,
+            texttemplate="%{text:.2f}%",
+            textfont={"size": 9},
+            hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>"
         ),
         row=2, col=2
     )
@@ -439,7 +447,7 @@ def plot_colored_table(
                     # 越小越好：Min -> Red(0). input = norm
                     sample_vals = norm
                 
-                colors = px.colors.sample_colorscale("RdYlGn", sample_vals)
+                colors = px.colors.sample_colorscale("RdYlGn_r", sample_vals)
             
             cell_colors.append(colors)
         else:
@@ -554,7 +562,7 @@ def plot_long_short_comparison(
     fig.update_layout(
         title=title,
         template=template,
-        height=900,
+        height=1200,
         margin=dict(l=20, r=20, b=20, t=60),
         hovermode="x unified",
         showlegend=True,
