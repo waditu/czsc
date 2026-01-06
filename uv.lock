@@ -1004,6 +1004,7 @@ test = [
 dev = [
     { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.5.0", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "jupyter" },
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "tushare" },
@@ -1064,6 +1065,7 @@ provides-extras = ["all", "dev", "release", "test"]
 [package.metadata.requires-dev]
 dev = [
     { name = "ipython", specifier = ">=8.37.0" },
+    { name = "jupyter", specifier = ">=1.1.1" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "tushare", specifier = ">=1.4.24" },
