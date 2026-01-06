@@ -481,7 +481,7 @@ class HtmlReportBuilder:
         return self
         
     def add_table(self, df: pd.DataFrame, title: str = "数据表", 
-                 max_rows: int = None, style: str = "Table Grid") -> 'HtmlReportBuilder':
+                  max_rows: int = None, style: str = "Table Grid") -> 'HtmlReportBuilder':
         """添加数据表格
         
         :param df: pandas DataFrame
@@ -590,10 +590,7 @@ class HtmlReportBuilder:
                 footer_html += section_content + "\n"
             else:
                 main_body_html += section_content + "\n"
-        
-        # 获取当前时间
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
+
         # 构建完整 HTML
         html_content = f"""<!DOCTYPE html>
 <html lang="zh-CN">

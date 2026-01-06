@@ -252,6 +252,7 @@ def get_performance_metrics_cards(stats: dict) -> list:
     ]
     return metrics
 
+
 def plot_backtest_stats(
     dret: pd.DataFrame, 
     ret_col: str = "total", 
@@ -260,7 +261,10 @@ def plot_backtest_stats(
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
-    """绘制回测统计概览图（4宫格）
+    """绘制回测统计概览图（3图布局：上1下2）
+    
+    1. 第一行：回撤分析（包含累计收益），跨两列
+    2. 第二行：左边是日收益分布，右边是月度收益热力图
     
     :param dret: 日收益数据，index为日期
     :param ret_col: 收益列名
@@ -270,26 +274,17 @@ def plot_backtest_stats(
     :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库
     :return: Figure 对象或 HTML 字符串
     """
-    # 创建 2x2 子图
+    # 创建 subplot，第一行跨两列
     fig = make_subplots(
         rows=2, cols=2,
-        subplot_titles=("累计收益", "回撤分析", "日收益分布", "月度收益热力图"),
+        subplot_titles=("收益回撤分析", "日收益分布", "月度收益热力图"),
         vertical_spacing=0.1,
         horizontal_spacing=0.05,
-        specs=[[{"secondary_y": False}, {"secondary_y": True}],
+        specs=[[{"secondary_y": True, "colspan": 2}, None],
                [{"secondary_y": False}, {"secondary_y": False}]]
     )
     
-    # 1. 累计收益 (Top Left)
-    df_cumsum = dret[[ret_col]].cumsum()
-    fig.add_trace(
-        go.Scatter(x=df_cumsum.index, y=df_cumsum[ret_col], name="累计收益", 
-                   mode='lines', line=dict(color="#34a853"),
-                   legendgroup="1"),
-        row=1, col=1
-    )
-    
-    # 2. 回撤分析 (Top Right)
+    # 1. 收益回撤分析 (Top, spanning 2 columns)
     df = dret[[ret_col]].copy().fillna(0).sort_index(ascending=True)
     df["cum_ret"] = df[ret_col].cumsum()
     df["cum_max"] = df["cum_ret"].cummax()
@@ -298,23 +293,52 @@ def plot_backtest_stats(
     fig.add_trace(
         go.Scatter(x=df.index, y=df["drawdown"] * 100, fillcolor="salmon", 
                    line=dict(color="salmon"), fill="tozeroy", mode="lines", 
-                   name="回撤", opacity=0.5, legendgroup="2"),
-        row=1, col=2
+                   name="回撤曲线", opacity=0.5, legendgroup="1"),
+        row=1, col=1
     )
     fig.add_trace(
         go.Scatter(x=df.index, y=df["cum_ret"], mode="lines", name="累计收益", 
-                   opacity=0.8, line=dict(color="#34a853"), legendgroup="2"),
-        row=1, col=2, secondary_y=True
+                   opacity=0.8, line=dict(color="#34a853"), legendgroup="1"),
+        row=1, col=1, secondary_y=True
     )
+
+    # 添加回撤分位数线
+    for q in [0.05, 0.1, 0.2]:
+        y1 = df["drawdown"].quantile(q)
+        fig.add_hline(
+            y=y1 * 100, 
+            line_dash="dot", 
+            annotation_text=f"{q * 100:.0f}%: {y1 * 100:.2f}%",
+            annotation_position="bottom left",
+            line_color="rgba(128,128,128,0.5)", 
+            line_width=1, 
+            row=1, col=1
+        )
     
-    # 3. 日收益分布 (Bottom Left)
+    # 2. 日收益分布 (Bottom Left)
     daily_returns = (dret[ret_col] * 100)
     fig.add_trace(
         go.Histogram(x=daily_returns, nbinsx=50, name="日收益分布", showlegend=False),
         row=2, col=1
     )
     
-    # 4. 月度收益热力图 (Bottom Right)
+    # 添加 Sigma 线
+    mean_val = daily_returns.mean()
+    std_val = daily_returns.std()
+    
+    for i in [-3, -2, -1, 1, 2, 3]:
+        val = mean_val + i * std_val
+        fig.add_vline(
+            x=val, 
+            line_dash="dot", 
+            line_color="rgba(128,128,128,0.5)", 
+            line_width=1,
+            annotation_text=f"{i}σ<br>{val:.2f}%",
+            annotation_position="top",
+            row=2, col=1
+        )
+    
+    # 3. 月度收益热力图 (Bottom Right)
     df['year'] = df.index.year
     df['month'] = df.index.month
     monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
@@ -351,9 +375,9 @@ def plot_backtest_stats(
     )
     
     # 更新坐标轴标签
-    fig.update_yaxes(title_text="累计收益", row=1, col=1)
-    fig.update_yaxes(title_text="回撤 (%)", row=1, col=2, secondary_y=False)
-    fig.update_yaxes(title_text="累计收益", row=1, col=2, secondary_y=True)
+    fig.update_yaxes(title_text="回撤 (%)", row=1, col=1, secondary_y=False)
+    fig.update_yaxes(title_text="累计收益", row=1, col=1, secondary_y=True)
+    
     fig.update_xaxes(title_text="日收益 (%)", row=2, col=1)
     fig.update_yaxes(title_text="频数", row=2, col=1)
     fig.update_yaxes(title_text="年份", row=2, col=2)
