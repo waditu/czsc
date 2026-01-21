@@ -591,6 +591,9 @@ class HtmlReportBuilder:
             else:
                 main_body_html += section_content + "\n"
 
+        # 预先拼接自定义脚本（避免在f-string中使用反斜杠）
+        custom_scripts_str = "\n".join(self.custom_scripts)
+
         # 构建完整 HTML
         html_content = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -643,7 +646,7 @@ class HtmlReportBuilder:
         }});
         
         // 用户自定义脚本
-        {"\n".join(self.custom_scripts)}
+        {custom_scripts_str}
     </script>
 </body>
 </html>
