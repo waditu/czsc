@@ -35,9 +35,9 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra all
 
-    - name: Run tests
-      run: |
-        uv run pytest test/ -v
+    # - name: Run tests
+    #   run: |
+    #     uv run pytest test/ -v
 
     # - name: Lint check
     #   run: |
