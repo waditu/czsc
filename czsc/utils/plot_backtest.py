@@ -4,24 +4,209 @@
 从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
 """
 
+from typing import Union, Literal, Optional, Tuple
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-from typing import Union
+
+# ==================== 模块级常量 ====================
+
+# 颜色常量
+COLOR_DRAWDOWN = "salmon"
+COLOR_RETURN = "#34a853"
+COLOR_ANNO_GRAY = "rgba(128,128,128,0.5)"
+COLOR_ANNO_RED = "red"
+COLOR_BORDER = "darkgrey"
+COLOR_HEADER_BG = "grey"
+
+# 分位数常量
+QUANTILES_DRAWDOWN = [0.05, 0.1, 0.2]
+QUANTILES_DRAWDOWN_ANALYSIS = [0.1, 0.3, 0.5]
+
+# Sigma 级别
+SIGMA_LEVELS = [-3, -2, -1, 1, 2, 3]
+
+# 月份标签
+MONTH_LABELS = [
+    '1月', '2月', '3月', '4月', '5月', '6月',
+    '7月', '8月', '9月', '10月', '11月', '12月'
+]
+
+# 模板类型
+TemplateType = Literal['plotly', 'plotly_dark', 'ggplot2', 'seaborn', 'simple_white']
+
+
+# ==================== 辅助函数 ====================
+
+def _figure_to_html(
+    fig: go.Figure,
+    to_html: bool = False,
+    include_plotlyjs: bool = True
+) -> Union[go.Figure, str]:
+    """统一处理 Figure 转 HTML 的逻辑
+
+    :param fig: Plotly Figure 对象
+    :param to_html: 是否转换为 HTML
+    :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库
+    :return: Figure 对象或 HTML 字符串
+    """
+    if to_html:
+        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
+    return fig
+
+
+def _add_year_boundary_lines(
+    fig: go.Figure,
+    dates: pd.DatetimeIndex,
+    row: Optional[int] = None,
+    col: Optional[int] = None,
+    line_color: str = "red",
+    opacity: float = 0.3,
+    line_dash: str = "dash"
+) -> None:
+    """在图表中添加年度分隔线
+
+    :param fig: Plotly Figure 对象
+    :param dates: 日期索引
+    :param row: 子图行号（可选）
+    :param col: 子图列号（可选）
+    :param line_color: 线条颜色
+    :param opacity: 透明度
+    :param line_dash: 线条样式
+    """
+    years = dates.year.unique()
+    for year in years:
+        first_date = dates[dates.year == year].min()
+        fig.add_vline(
+            x=first_date,
+            line_dash=line_dash,
+            line_color=line_color,
+            opacity=opacity,
+            row=row, 
+            col=col
+        )
+
+
+def _calculate_drawdown(
+    returns: pd.Series,
+    fillna: bool = True
+) -> pd.DataFrame:
+    """计算累计收益和回撤
+
+    :param returns: 收益序列
+    :param fillna: 是否填充 NaN 值
+    :return: 包含 cum_ret, cum_max, drawdown 的 DataFrame
+    """
+    df = returns.copy()
+    if fillna:
+        df = df.fillna(0)
+    df = df.sort_index(ascending=True)
+
+    result = pd.DataFrame({
+        'cum_ret': df.cumsum(),
+        'cum_max': df.cumsum().cummax(),
+        'drawdown': df.cumsum() - df.cumsum().cummax()
+    })
+    return result
+
+
+def _create_monthly_heatmap_data(
+    returns_df: pd.DataFrame,
+    ret_col: str
+) -> Tuple[pd.DataFrame, float, float]:
+    """创建月度热力图所需数据
+
+    :param returns_df: 日收益数据
+    :param ret_col: 收益列名
+    :return: (透视表, 月胜率, 年胜率)
+    """
+    df = returns_df[[ret_col]].copy()
+    df['year'] = df.index.year
+    df['month'] = df.index.month
+
+    monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
+    monthly_ret = monthly_ret.reset_index()
+    monthly_ret.columns = ['年份', '月份', '月收益']
+
+    pivot_table = monthly_ret.pivot(index='年份', columns='月份', values='月收益')
+
+    monthly_win_rate = (monthly_ret['月收益'] > 0).mean()
+    yearly_ret = monthly_ret.groupby('年份')['月收益'].sum()
+    yearly_win_rate = (yearly_ret > 0).mean()
+
+    return pivot_table, monthly_win_rate, yearly_win_rate
+
+
+def _add_drawdown_annotation(
+    fig: go.Figure,
+    drawdown_series: pd.Series,
+    quantiles: list,
+    row: int,
+    col: int
+) -> None:
+    """添加回撤分位数标注线
+
+    :param fig: Plotly Figure 对象
+    :param drawdown_series: 回撤序列
+    :param quantiles: 分位数列表
+    :param row: 子图行号
+    :param col: 子图列号
+    """
+    for quantile in quantiles:
+        y_val = drawdown_series.quantile(quantile)
+        fig.add_hline(
+            y=y_val * 100,
+            line_dash="dot",
+            annotation_text=f"{quantile * 100:.0f}%: {y_val * 100:.2f}%",
+            annotation_position="bottom left",
+            line_color=COLOR_ANNO_GRAY,
+            line_width=1,
+            row=row, col=col
+        )
+
+
+def _add_sigma_lines(
+    fig: go.Figure,
+    returns_series: pd.Series,
+    row: int,
+    col: int
+) -> None:
+    """添加日收益分布的 Sigma 标注线
+
+    :param fig: Plotly Figure 对象
+    :param returns_series: 收益序列（百分比）
+    :param row: 子图行号
+    :param col: 子图列号
+    """
+    mean_val = returns_series.mean()
+    std_val = returns_series.std()
+
+    for sigma in SIGMA_LEVELS:
+        val = mean_val + sigma * std_val
+        fig.add_vline(
+            x=val,
+            line_dash="dot",
+            line_color=COLOR_ANNO_GRAY,
+            line_width=1,
+            annotation_text=f"{sigma}σ<br>{val:.2f}%",
+            annotation_font=dict(color=COLOR_ANNO_RED, size=10),
+            annotation_position="top",
+            row=row, col=col
+        )
 
 
 def plot_cumulative_returns(
-    dret: pd.DataFrame, 
+    dret: pd.DataFrame,
     title: str = "累计收益",
-    template: str = "plotly",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制累计收益曲线
-    
+
     参考 czsc.svc.returns.show_cumulative_returns
-    
+
     :param dret: 日收益数据，index为日期，columns为策略收益
     :param title: 图表标题
     :param template: plotly 模板名称，默认 'plotly'（白色主题），可选 'plotly_dark'（深色主题）
@@ -32,51 +217,46 @@ def plot_cumulative_returns(
     assert dret.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型"
     assert dret.index.is_unique, "df 的索引必须唯一"
     assert dret.index.is_monotonic_increasing, "df 的索引必须单调递增"
-    
+
     df_cumsum = dret.cumsum()
     fig = px.line(
-        df_cumsum, 
-        y=df_cumsum.columns.to_list(), 
+        df_cumsum,
+        y=df_cumsum.columns.to_list(),
         title=title,
         color_discrete_sequence=px.colors.qualitative.Plotly
     )
     fig.update_xaxes(title="")
-    
+
     # 添加年度分隔线
-    years = df_cumsum.index.year.unique()
-    for year in years:
-        first_date = df_cumsum[df_cumsum.index.year == year].index.min()
-        fig.add_vline(x=first_date, line_dash="dash", line_color="red")
-    
+    _add_year_boundary_lines(fig, df_cumsum.index)
+
     fig.update_layout(
         hovermode="x unified",
         template=template,
         margin=dict(l=0, r=0, b=0, t=40),
         legend=dict(orientation="h", y=-0.1, xanchor="center", x=0.5)
     )
-    
+
     # 仅显示 total 的曲线，其他的曲线隐藏
     for trace in fig.data:
         if trace.name != 'total':
             trace.visible = 'legendonly'
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def plot_drawdown_analysis(
-    dret: pd.DataFrame, 
-    ret_col: str = "total", 
+    dret: pd.DataFrame,
+    ret_col: str = "total",
     title: str = "回撤分析",
-    template: str = "plotly",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制回撤分析图
-    
+
     参考 czsc.svc.returns.show_drawdowns
-    
+
     :param dret: 日收益数据，包含 ret_col 列
     :param ret_col: 收益列名
     :param title: 图表标题
@@ -85,69 +265,68 @@ def plot_drawdown_analysis(
     :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库，默认 True
     :return: Figure 对象或 HTML 字符串
     """
-    df = dret[[ret_col]].copy().fillna(0).sort_index(ascending=True)
-    
     # 计算回撤数据
-    df["cum_ret"] = df[ret_col].cumsum()
-    df["cum_max"] = df["cum_ret"].cummax()
-    df["drawdown"] = df["cum_ret"] - df["cum_max"]
-    
+    df_drawdown = _calculate_drawdown(dret[ret_col])
+
     fig = go.Figure()
-    
+
     # 回撤曲线
     fig.add_trace(go.Scatter(
-        x=df.index, 
-        y=df["drawdown"] * 100,  # 转为百分比
-        fillcolor="salmon", 
-        line=dict(color="salmon"),
+        x=df_drawdown.index,
+        y=df_drawdown["drawdown"] * 100,  # 转为百分比
+        fillcolor=COLOR_DRAWDOWN,
+        line=dict(color=COLOR_DRAWDOWN),
         fill="tozeroy",
-        mode="lines", 
-        name="回撤", 
+        mode="lines",
+        name="回撤",
         opacity=0.5
     ))
-    
+
     # 累计收益曲线
     fig.add_trace(go.Scatter(
-        x=df.index, 
-        y=df["cum_ret"], 
-        mode="lines", 
-        name="累计收益", 
-        yaxis="y2", 
-        opacity=0.8, 
-        line=dict(color="#34a853")
+        x=df_drawdown.index,
+        y=df_drawdown["cum_ret"],
+        mode="lines",
+        name="累计收益",
+        yaxis="y2",
+        opacity=0.8,
+        line=dict(color=COLOR_RETURN)
     ))
-    
+
     fig.update_layout(
         yaxis2=dict(title="累计收益", overlaying="y", side="right"),
-        margin=dict(l=0, r=0, t=0, b=0), 
-        title=title, 
-        xaxis_title="", 
-        yaxis_title="净值回撤 (%)", 
+        margin=dict(l=0, r=0, t=0, b=0),
+        title=title,
+        xaxis_title="",
+        yaxis_title="净值回撤 (%)",
         legend_title="回撤分析",
         hovermode="x unified",
         template=template
     )
-    
+
     # 添加分位数线
-    for q in [0.1, 0.3, 0.5]:
-        y1 = df["drawdown"].quantile(q)
-        fig.add_hline(y=y1 * 100, line_dash="dot", line_color="rgba(52,168,83,0.5)", line_width=1)
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+    for quantile in QUANTILES_DRAWDOWN_ANALYSIS:
+        y_val = df_drawdown["drawdown"].quantile(quantile)
+        fig.add_hline(
+            y=y_val * 100,
+            line_dash="dot",
+            line_color=f"rgba(52,168,83,0.5)",
+            line_width=1
+        )
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def plot_daily_return_distribution(
-    dret: pd.DataFrame, 
-    ret_col: str = "total", 
+    dret: pd.DataFrame,
+    ret_col: str = "total",
     title: str = "日收益分布",
-    template: str = "plotly",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制日收益分布直方图
-    
+
     :param dret: 日收益数据，包含 ret_col 列
     :param ret_col: 收益列名
     :param title: 图表标题
@@ -158,33 +337,31 @@ def plot_daily_return_distribution(
     """
     daily_returns = (dret[ret_col] * 100).reset_index()
     daily_returns.columns = ["dt", "日收益"]
-    
+
     fig = px.histogram(daily_returns, x="日收益", nbins=50, title=title)
     fig.update_xaxes(title="日收益 (%)")
     fig.update_yaxes(title="频数")
-    
+
     fig.update_layout(
         template=template,
         margin=dict(l=0, r=0, b=0, t=40),
         bargap=0.1,
         hovermode="x unified"
     )
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def plot_monthly_heatmap(
-    dret: pd.DataFrame, 
-    ret_col: str = "total", 
+    dret: pd.DataFrame,
+    ret_col: str = "total",
     title: str = "月度收益热力图",
-    template: str = "plotly",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制月度收益热力图
-    
+
     :param dret: 日收益数据，index为日期
     :param ret_col: 收益列名
     :param title: 图表标题
@@ -193,22 +370,12 @@ def plot_monthly_heatmap(
     :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库，默认 True
     :return: Figure 对象或 HTML 字符串
     """
-    df = dret[[ret_col]].copy()
-    df['year'] = df.index.year
-    df['month'] = df.index.month
-    
-    # 计算月度收益
-    monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
-    monthly_ret = monthly_ret.reset_index()
-    monthly_ret.columns = ['年份', '月份', '日收益']
-    
-    # 创建透视表
-    pivot_table = monthly_ret.pivot(index='年份', columns='月份', values='日收益')
-    
+    # 创建月度热力图数据
+    pivot_table, _, _ = _create_monthly_heatmap_data(dret, ret_col)
+
     fig = go.Figure(data=go.Heatmap(
         z=pivot_table.values,
-        x=['1月', '2月', '3月', '4月', '5月', '6月', 
-           '7月', '8月', '9月', '10月', '11月', '12月'],
+        x=MONTH_LABELS,
         y=pivot_table.index,
         colorscale='RdYlGn_r',
         colorbar=dict(title="日收益 (%)"),
@@ -217,7 +384,7 @@ def plot_monthly_heatmap(
         textfont={"size": 10},
         hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>"
     ))
-    
+
     fig.update_layout(
         title=title,
         xaxis_title="月份",
@@ -225,10 +392,8 @@ def plot_monthly_heatmap(
         template=template,
         margin=dict(l=0, r=0, b=0, t=40)
     )
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def get_performance_metrics_cards(stats: dict) -> list:
@@ -254,18 +419,18 @@ def get_performance_metrics_cards(stats: dict) -> list:
 
 
 def plot_backtest_stats(
-    dret: pd.DataFrame, 
-    ret_col: str = "total", 
-    title: str = "回测统计概览",
-    template: str = "plotly",
+    dret: pd.DataFrame,
+    ret_col: str = "total",
+    title: str = "",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制回测统计概览图（3图布局：上1下2）
-    
+
     1. 第一行：回撤分析（包含累计收益），跨两列
     2. 第二行：左边是日收益分布，右边是月度收益热力图
-    
+
     :param dret: 日收益数据，index为日期
     :param ret_col: 收益列名
     :param title: 图表标题
@@ -283,79 +448,66 @@ def plot_backtest_stats(
         specs=[[{"secondary_y": True, "colspan": 2}, None],
                [{"secondary_y": False}, {"secondary_y": False}]]
     )
-    
+
     # 1. 收益回撤分析 (Top, spanning 2 columns)
-    df = dret[[ret_col]].copy().fillna(0).sort_index(ascending=True)
-    df["cum_ret"] = df[ret_col].cumsum()
-    df["cum_max"] = df["cum_ret"].cummax()
-    df["drawdown"] = df["cum_ret"] - df["cum_max"]
-    
+    df_drawdown = _calculate_drawdown(dret[ret_col])
+
     fig.add_trace(
-        go.Scatter(x=df.index, y=df["drawdown"] * 100, fillcolor="salmon", 
-                   line=dict(color="salmon"), fill="tozeroy", mode="lines", 
-                   name="回撤曲线", opacity=0.5, legendgroup="1"),
+        go.Scatter(
+            x=df_drawdown.index,
+            y=df_drawdown["drawdown"] * 100,
+            fillcolor=COLOR_DRAWDOWN,
+            line=dict(color=COLOR_DRAWDOWN),
+            fill="tozeroy",
+            mode="lines",
+            name="回撤曲线",
+            opacity=0.5,
+            legendgroup="1"
+        ),
         row=1, col=1
     )
     fig.add_trace(
-        go.Scatter(x=df.index, y=df["cum_ret"], mode="lines", name="累计收益", 
-                   opacity=0.8, line=dict(color="#34a853"), legendgroup="1"),
+        go.Scatter(
+            x=df_drawdown.index,
+            y=df_drawdown["cum_ret"],
+            mode="lines",
+            name="累计收益",
+            opacity=0.8,
+            line=dict(color=COLOR_RETURN),
+            legendgroup="1"
+        ),
         row=1, col=1, secondary_y=True
     )
 
     # 添加回撤分位数线
-    for q in [0.05, 0.1, 0.2]:
-        y1 = df["drawdown"].quantile(q)
-        fig.add_hline(
-            y=y1 * 100, 
-            line_dash="dot", 
-            annotation_text=f"{q * 100:.0f}%: {y1 * 100:.2f}%",
-            annotation_position="bottom left",
-            line_color="rgba(128,128,128,0.5)", 
-            line_width=1, 
-            row=1, col=1
-        )
-    
+    _add_drawdown_annotation(fig, df_drawdown["drawdown"], QUANTILES_DRAWDOWN, row=1, col=1)
+
+    # 添加年度分隔线
+    _add_year_boundary_lines(fig, dret.index, row=1, col=1)
+
     # 2. 日收益分布 (Bottom Left)
     daily_returns = (dret[ret_col] * 100)
     fig.add_trace(
         go.Histogram(x=daily_returns, nbinsx=50, name="日收益分布", showlegend=False),
         row=2, col=1
     )
-    
+
     # 添加 Sigma 线
-    mean_val = daily_returns.mean()
-    std_val = daily_returns.std()
-    
-    for i in [-3, -2, -1, 1, 2, 3]:
-        val = mean_val + i * std_val
-        fig.add_vline(
-            x=val, 
-            line_dash="dot", 
-            line_color="rgba(128,128,128,0.5)", 
-            line_width=1,
-            annotation_text=f"{i}σ<br>{val:.2f}%",
-            annotation_position="top",
-            row=2, col=1
-        )
-    
+    _add_sigma_lines(fig, daily_returns, row=2, col=1)
+
     # 3. 月度收益热力图 (Bottom Right)
-    df['year'] = df.index.year
-    df['month'] = df.index.month
-    monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
-    monthly_ret = monthly_ret.reset_index()
-    monthly_ret.columns = ['年份', '月份', '日收益']
-    pivot_table = monthly_ret.pivot(index='年份', columns='月份', values='日收益')
-    
+    pivot_table, monthly_win_rate, yearly_win_rate = _create_monthly_heatmap_data(dret, ret_col)
+
     fig.add_trace(
         go.Heatmap(
             z=pivot_table.values,
-            x=['1月', '2月', '3月', '4月', '5月', '6月', 
-               '7月', '8月', '9月', '10月', '11月', '12月'],
+            x=MONTH_LABELS,
             y=pivot_table.index,
             colorscale='RdYlGn_r',
             showscale=True,
             colorbar=dict(title="收益(%)", len=0.45, y=0.2),
-            name="月度热力图",
+            name="月收益热力图",
+            # title=f"月收益热力图（月胜率: {monthly_win_rate:.1%}，年胜率: {yearly_win_rate:.1%})",
             text=pivot_table.values,
             texttemplate="%{text:.2f}%",
             textfont={"size": 9},
@@ -363,7 +515,21 @@ def plot_backtest_stats(
         ),
         row=2, col=2
     )
-    
+
+    # 添加胜率标注
+    fig.add_annotation(
+        text=f"<b>月胜率</b>: {monthly_win_rate:.1%}<br><b>年胜率</b>: {yearly_win_rate:.1%}",
+        xref="x domain", yref="y domain",
+        x=1.1, y=0.0,
+        showarrow=False,
+        font=dict(size=11, color="white"),
+        bgcolor="rgba(0,0,0,0.6)",
+        bordercolor="rgba(255,255,255,0.3)",
+        borderwidth=1,
+        borderpad=5,
+        row=2, col=2
+    )
+
     # 更新布局
     fig.update_layout(
         title=title,
@@ -373,31 +539,29 @@ def plot_backtest_stats(
         hovermode="x unified",
         showlegend=True
     )
-    
+
     # 更新坐标轴标签
     fig.update_yaxes(title_text="回撤 (%)", row=1, col=1, secondary_y=False)
     fig.update_yaxes(title_text="累计收益", row=1, col=1, secondary_y=True)
-    
+
     fig.update_xaxes(title_text="日收益 (%)", row=2, col=1)
     fig.update_yaxes(title_text="频数", row=2, col=1)
     fig.update_yaxes(title_text="年份", row=2, col=2)
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def plot_colored_table(
     df: pd.DataFrame,
     title: str = "策略绩效统计",
-    template: str = "plotly_dark",
+    template: TemplateType = "plotly_dark",
     float_fmt: str = ".2f",
     to_html: bool = False,
     include_plotlyjs: bool = True,
     **kwargs
 ) -> Union[go.Figure, str]:
     """绘制带有列独立热力图颜色的表格
-    
+
     :param df: 统计数据 DataFrame
     :param title: 图表标题
     :param template: plotly 模板
@@ -417,28 +581,26 @@ def plot_colored_table(
         headers.insert(0, df.index.name)
     else:
         headers.insert(0, "Index")
-    
+
     good_high_columns = kwargs.get("good_high_columns", None)
     row_height = kwargs.get("row_height", 30)
-    border_color = kwargs.get("border_color", "darkgrey")
-    header_bgcolor = kwargs.get("header_bgcolor", "grey")
-    
+    border_color = kwargs.get("border_color", COLOR_BORDER)
+    header_bgcolor = kwargs.get("header_bgcolor", COLOR_HEADER_BG)
+
     # 准备数据和颜色
     cell_values = []
     cell_colors = []
-    
+
     # 处理索引列
     cell_values.append(df.index.tolist())
-    # 索引列背景色，使用模板默认背景或透明
     cell_colors.append([header_bgcolor] * len(df))
-    
+
     # 处理数据列
     for col in df.columns:
         series = df[col]
-        
+
         # 格式化数值
         if pd.api.types.is_float_dtype(series):
-            # 简单的智能格式化：如果列名包含%，则转为百分比格式
             if "%" in str(col) or "率" in str(col) or "比" in str(col):
                 formatted_vals = series.apply(lambda x: f"{x:.2%}")
             else:
@@ -446,33 +608,19 @@ def plot_colored_table(
             cell_values.append(formatted_vals)
         else:
             cell_values.append(series.tolist())
-            
+
         # 计算颜色
         if pd.api.types.is_numeric_dtype(series):
-            # 判断指标方向：默认越大越好（红），含有"回撤"、"风险"则越小越好（红）
-            # 注意：这里假设使用 RdYlGn 色标，且红色代表"好"（符合A股习惯）
-            # RdYlGn: 0=Red, 1=Green
-            
             is_good_high = str(col) in good_high_columns if good_high_columns is not None else True
-            
+
             min_val, max_val = series.min(), series.max()
             if min_val == max_val:
                 colors = ['rgba(0,0,0,0)'] * len(series)
             else:
                 norm = (series - min_val) / (max_val - min_val)
-                
-                # RdYlGn: 0=Red, 0.5=Yellow, 1=Green
-                # 我们希望：好=Red(0), 坏=Green(1)
-                
-                if is_good_high:
-                    # 越大越好：Max -> Red(0). input = 1 - norm
-                    sample_vals = 1 - norm
-                else:
-                    # 越小越好：Min -> Red(0). input = norm
-                    sample_vals = norm
-                
+                sample_vals = 1 - norm if is_good_high else norm
                 colors = px.colors.sample_colorscale("RdYlGn_r", sample_vals)
-            
+
             cell_colors.append(colors)
         else:
             cell_colors.append(['rgba(0,0,0,0)'] * len(series))
@@ -495,28 +643,26 @@ def plot_colored_table(
             line=dict(color=border_color, width=1)
         )
     )])
-    
+
     fig.update_layout(
         title=title,
         template=template,
         margin=dict(l=10, r=10, t=40, b=10)
     )
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)
 
 
 def plot_long_short_comparison(
     dailys_pivot: pd.DataFrame,
     stats_df: pd.DataFrame,
     title: str = "多空收益对比",
-    template: str = "plotly",
+    template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True
 ) -> Union[go.Figure, str]:
     """绘制多空收益对比图（累计收益曲线 + 绩效指标对比表）
-    
+
     :param dailys_pivot: 透视表格式的日收益数据，index为日期，columns为策略名，values为收益率
     :param stats_df: 绩效指标对比表，每行代表一个策略的指标
     :param title: 图表标题
@@ -533,7 +679,7 @@ def plot_long_short_comparison(
         row_heights=[0.55, 0.45],
         specs=[[{"type": "xy"}], [{"type": "table"}]]
     )
-    
+
     # ========== 上图：累计收益曲线 ==========
     df_cumsum = dailys_pivot.cumsum()
     for col in df_cumsum.columns:
@@ -546,28 +692,25 @@ def plot_long_short_comparison(
             ),
             row=1, col=1
         )
-    
+
     # 添加年度分隔线
-    years = df_cumsum.index.year.unique()
-    for year in years:
-        first_date = df_cumsum[df_cumsum.index.year == year].index.min()
-        fig.add_vline(x=first_date, line_dash="dash", line_color="gray", opacity=0.5, row=1, col=1)
-    
+    _add_year_boundary_lines(fig, df_cumsum.index, row=1, col=1, line_color="gray", opacity=0.5)
+
     # ========== 下图：使用 plot_colored_table 绘制绩效对比表 ==========
     # 选择关键指标列
     key_cols = [
-        "策略名称", "年化", "夏普", "卡玛", "最大回撤", 
+        "策略名称", "年化", "夏普", "卡玛", "最大回撤",
         "年化波动率", "交易胜率", "单笔收益", "持仓K线数", "多头占比", "空头占比"
     ]
-    
+
     # 过滤存在的列
     available_cols = [col for col in key_cols if col in stats_df.columns]
     table_df = stats_df[available_cols].copy()
-    
+
     # 设置策略名称为索引（如果存在）
     if "策略名称" in table_df.columns:
         table_df = table_df.set_index("策略名称")
-    
+
     # 调用 plot_colored_table 生成表格图表
     table_fig = plot_colored_table(
         table_df,
@@ -577,11 +720,11 @@ def plot_long_short_comparison(
         to_html=False,
         good_high_columns=["年化", "夏普", "卡玛", "交易胜率", "单笔收益"]
     )
-    
+
     # 将表格的 trace 添加到主图中
     for trace in table_fig.data:
         fig.add_trace(trace, row=2, col=1)
-    
+
     # ========== 更新布局 ==========
     fig.update_layout(
         title=title,
@@ -592,11 +735,9 @@ def plot_long_short_comparison(
         showlegend=True,
         legend=dict(x=0.01, y=0.99, bgcolor='rgba(0,0,0,0)')
     )
-    
+
     # 更新坐标轴标签
     fig.update_yaxes(title_text="累计收益", row=1, col=1)
     fig.update_xaxes(title_text="", row=1, col=1)
-    
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
+
+    return _figure_to_html(fig, to_html, include_plotlyjs)

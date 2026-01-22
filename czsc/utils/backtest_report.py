@@ -171,7 +171,7 @@ def _generate_main_charts(dret: pd.DataFrame) -> dict:
     :return: 图表字典
     """
     config = {'responsive': True, 'displayModeBar': True, 'scrollZoom': True}
-    fig_stats = plot_backtest_stats(dret, ret_col="total", title="回测统计概览", template="plotly")
+    fig_stats = plot_backtest_stats(dret, ret_col="total", title="", template="plotly")
     fig_stats.update_layout(height=1000, autosize=True)
     
     return {
