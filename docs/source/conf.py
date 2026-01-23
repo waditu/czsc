@@ -4,11 +4,26 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import sys
+import os
+
+# 设置 Python 路径
 sys.path.insert(0, '.')
 sys.path.insert(0, '..')
 sys.path.insert(0, '../..')
 sys.path.insert(0, '../../..')
-import czsc
+
+# 设置环境变量，确保优先使用 Rust 版本（如果可用）
+os.environ.setdefault('CZSC_USE_PYTHON', 'False')
+
+# 导入 czsc 模块，添加详细的错误处理
+try:
+    import czsc
+    print(f"✅ Successfully imported czsc version: {czsc.__version__}")
+except ImportError as e:
+    print(f"❌ Failed to import czsc: {e}")
+    print(f"Python sys.path: {sys.path}")
+    raise
+
 import sphinx_rtd_theme
 
 # -- Project information -----------------------------------------------------
