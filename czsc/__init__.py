@@ -30,8 +30,7 @@ from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.core import CZSC, Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS, format_standard_kline
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
-from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
-from czsc.sensors.feature import FixedNumberSelector
+from czsc.sensors import holds_concepts_effect, CTAResearch
 from czsc.utils import ta
 from czsc.traders import (
     CzscTrader,
@@ -67,13 +66,6 @@ from czsc.utils import (
     mac_address,
     overlap,
     to_arrow,
-    # format_standard_kline,
-    # BarGenerator,
-    # freq_end_time,
-    # resample_bars,
-    # is_trading_time,
-    # get_intraday_times,
-    # check_freq_and_market,
     dill_dump,
     dill_load,
     read_json,
@@ -170,6 +162,15 @@ from czsc.utils.plotly_plot import (
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.traders import cwc
 
+from czsc.py.bar_generator import (
+    format_standard_kline,
+    BarGenerator,
+    freq_end_time,
+    resample_bars,
+    is_trading_time,
+    get_intraday_times,
+    check_freq_and_market,
+)
 
 from czsc.eda import (
     remove_beta_effects,

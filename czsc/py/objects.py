@@ -575,7 +575,7 @@ class Event:
 
         return get_signals_config(self.unique_signals, signals_module)
 
-    def is_match(self, s: dict):
+    def is_match(self, s: dict) -> bool:
         """判断 event 是否满足
 
         代码的执行逻辑如下：
@@ -587,15 +587,15 @@ class Event:
         5. 如果遍历完所有因子都没有找到满足的因子，则返回 False，表示事件不满足。
         """
         if self.signals_not and any(signal.is_match(s) for signal in self.signals_not):
-            return False, None
+            return False
 
         if self.signals_all and not all(signal.is_match(s) for signal in self.signals_all):
-            return False, None
+            return False
 
         if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
-            return False, None
+            return False
 
-        return True, self.operate.name
+        return True
 
     def dump(self) -> dict:
         """将 Event 对象转存为 dict"""
@@ -628,7 +628,6 @@ class Event:
         assert (
             raw["operate"] in Operate.__dict__["_value2member_map_"]
         ), f"operate {raw['operate']} not in Operate"
-        assert raw["factors"], "factors can not be empty"
 
         e = Event(
             name=raw.get("name", ""),
