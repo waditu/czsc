@@ -34,10 +34,9 @@ if os.getenv('CZSC_USE_PYTHON', False) or not installed:
         # K线生成器
         BarGenerator, freq_end_time, is_trading_time, format_standard_kline,
         # 数据对象
-        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event, Position,
-        # 回测
-        WeightBacktest
+        RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event, Position
     )
+    from czsc.py.weight_backtest import WeightBacktest
 else:
     logger.info("使用 rust 版本对象")
     # 导入已经用 rust 复现的函数
