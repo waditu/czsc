@@ -81,6 +81,19 @@ uv run flake8 czsc/ test/
    - `st_components.py`: Streamlit仪表板组件
    - `ta.py`: 技术分析指标
    - `data_client.py`: 统一数据客户端接口
+   - `plot_backtest.py`: **回测可视化工具（已优化）**
+     - 提供 Plotly 交互式图表绘制函数
+     - 支持累计收益曲线、回撤分析、收益分布、月度热力图等
+     - 包含模块级常量（颜色、分位数等）和辅助函数
+     - 所有函数支持 HTML 导出和深色/浅色主题
+     - 主要函数：
+       - `plot_cumulative_returns()`: 累计收益曲线
+       - `plot_drawdown_analysis()`: 回撤分析图
+       - `plot_daily_return_distribution()`: 日收益分布
+       - `plot_monthly_heatmap()`: 月度收益热力图
+       - `plot_backtest_stats()`: 回测统计概览（3图组合）
+       - `plot_colored_table()`: 带颜色编码的绩效表格
+       - `plot_long_short_comparison()`: 多空收益对比
 
 7. **`czsc/svc/`** - 统计和可视化服务：
    - `backtest.py`: 回测分析工具
@@ -111,6 +124,13 @@ CZSC 支持使用 `CzscTrader` 类进行多级别联立分析，可同时分析�
 - 适当使用类型提示
 - 遵循代码库中现有的命名约定
 - 信号函数版本化命名（如 `V241013`）便于管理
+- **代码质量原则**：
+  - **DRY（Don't Repeat Yourself）**: 提取重复代码为辅助函数
+  - **KISS（Keep It Simple）**: 保持函数简洁，职责单一
+  - **使用模块级常量**: 避免魔法值，集中管理配置
+  - **类型提示优先**: 使用 `Literal`、`Optional` 等提升代码可读性
+  - **向后兼容性**: 公共 API 修改需谨慎，避免破坏现有代码
+  - **文档完整**: 所有公共函数必须有完整的 docstring
 
 ### 信号函数开发
 - 信号函数应遵循飞书文档中的规范说明
@@ -139,6 +159,59 @@ bars = format_standard_kline(df, freq=Freq.F30)
 
 # 创建CZSC分析对象
 czsc_obj = CZSC(bars)
+```
+
+### 回测可视化最佳实践
+```python
+# 使用 plot_backtest.py 绘制回测图表
+from czsc.utils.plot_backtest import (
+    plot_cumulative_returns,
+    plot_backtest_stats,
+    plot_monthly_heatmap
+)
+
+# 准备日收益数据（index为日期，columns为策略收益）
+dret = ...  # DataFrame with datetime index and returns columns
+
+# 1. 绘制累计收益曲线
+fig = plot_cumulative_returns(
+    dret,
+    title="策略累计收益",
+    template="plotly",  # 或 "plotly_dark"
+    to_html=False  # 返回 Figure 对象，True 则返回 HTML 字符串
+)
+fig.show()
+
+# 2. 绘制综合回测统计图（包含回撤分析、收益分布、月度热力图）
+fig = plot_backtest_stats(
+    dret,
+    ret_col="total",  # 指定收益列
+    title="回测统计概览",
+    template="plotly"
+)
+fig.show()
+
+# 3. 单独绘制月度收益热力图
+fig = plot_monthly_heatmap(dret, ret_col="total")
+fig.show()
+
+# 4. 导出为 HTML（用于报告）
+html_str = plot_cumulative_returns(dret, to_html=True)
+with open("backtest_report.html", "w", encoding="utf-8") as f:
+    f.write(html_str)
+```
+
+**模块级常量使用：**
+```python
+from czsc.utils.plot_backtest import (
+    COLOR_DRAWDOWN,
+    COLOR_RETURN,
+    QUANTILES_DRAWDOWN,
+    MONTH_LABELS
+)
+
+# 使用预定义常量确保图表风格统一
+# 避免硬编码颜色值和配置参数
 ```
 
 ### 依赖管理（UV配置）
@@ -265,3 +338,58 @@ czsc_obj = CZSC(bars)
 5. **完善的测试框架**: 统一的模拟数据生成和测试规范
 6. **可视化工具**: Streamlit组件库支持快速分析展示
 7. **策略研究工具**: CTA框架、参数优化、回测分析一体化
+8. **代码质量优化**: 遵循 DRY、KISS、SOLID 原则
+   - 使用模块级常量消除魔法值
+   - 提取辅助函数减少代码重复
+   - 完善的类型提示（Type Hints）
+   - 清晰的函数职责分离
+   - 保持向后兼容性的 API 设计
+
+### 代码优化案例（plot_backtest.py）
+
+`czsc/utils/plot_backtest.py` 模块展示了代码优化的最佳实践：
+
+**优化前的问题：**
+- HTML 转换逻辑重复 8 次
+- 年度分隔线添加代码重复 3 次
+- 回撤计算逻辑重复 2 次
+- 大量魔法值（颜色、分位数等）散落各处
+- 函数过于复杂（`plot_backtest_stats` 有 165 行）
+
+**优化措施：**
+
+1. **提取辅助函数**（6 个）：
+   ```python
+   _figure_to_html()              # 统一 HTML 转换
+   _add_year_boundary_lines()     # 统一年度分隔线
+   _calculate_drawdown()          # 统一回撤计算
+   _create_monthly_heatmap_data() # 统一月度数据准备
+   _add_drawdown_annotation()     # 统一回撤标注
+   _add_sigma_lines()             # 统一 Sigma 标注
+   ```
+
+2. **定义模块级常量**（10 个）：
+   ```python
+   COLOR_DRAWDOWN = "salmon"
+   COLOR_RETURN = "#34a853"
+   QUANTILES_DRAWDOWN = [0.05, 0.1, 0.2]
+   SIGMA_LEVELS = [-3, -2, -1, 1, 2, 3]
+   MONTH_LABELS = ['1月', '2月', ..., '12月']
+   ```
+
+3. **完善类型提示**：
+   ```python
+   TemplateType = Literal['plotly', 'plotly_dark', ...]
+   def plot_cumulative_returns(..., template: TemplateType = "plotly", ...)
+   ```
+
+**优化效果：**
+- ✅ 消除所有 HTML 转换重复代码（8 处 → 1 处）
+- ✅ 消除所有年度分隔线重复（3 处 → 1 处）
+- ✅ 消除所有回撤计算重复（2 处 → 1 处）
+- ✅ 使用模块级常量替代魔法值
+- ✅ 函数更简洁易读（165 行 → 129 行）
+- ✅ 提升可维护性和可测试性
+- ✅ 保持向后兼容性（API 未改变）
+
+**参考文件：** `czsc/utils/plot_backtest.py:1-742`
