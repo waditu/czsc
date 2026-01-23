@@ -5,21 +5,12 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   czsc.data
-
 
 .. automodapi:: czsc
    :members:
    :undoc-members:
    :no-main-docstr:
    :no-inheritance-diagram:
-
-.. automodapi:: czsc.analyze
-   :members:
-   :undoc-members:
-   :no-main-docstr:
-   :no-inheritance-diagram:
-
 
 .. automodapi:: czsc.signals
    :members:
@@ -55,13 +46,6 @@ Subpackages
    :no-main-docstr:
    :no-inheritance-diagram:
 
-.. automodapi:: czsc.enum
-   :members:
-   :undoc-members:
-   :no-main-docstr:
-   :no-inheritance-diagram:
-
-
 .. automodapi:: czsc.envs
    :members:
    :undoc-members:
@@ -69,14 +53,13 @@ Subpackages
    :no-inheritance-diagram:
 
 
-.. automodapi:: czsc.objects
+.. automodapi:: czsc.strategies
    :members:
    :undoc-members:
    :no-main-docstr:
    :no-inheritance-diagram:
 
-
-.. automodapi:: czsc.strategies
+.. automodapi:: czsc.eda
    :members:
    :undoc-members:
    :no-main-docstr:

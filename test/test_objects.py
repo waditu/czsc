@@ -62,6 +62,8 @@ def test_cal_break_even_point():
 
 
 def test_signal():
+    from rs_czsc import Signal
+    
     s = Signal(key="1分钟_倒1_形态", value="类一买_七笔_基础型_3")
     assert str(s) == "Signal('1分钟_倒1_形态_类一买_七笔_基础型_3')"
     assert s.key == "1分钟_倒1_形态"
