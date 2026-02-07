@@ -5,6 +5,7 @@
 """
 
 from typing import Union, Literal, Optional, Tuple
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -659,9 +660,10 @@ def plot_long_short_comparison(
     title: str = "多空收益对比",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
+    include_plotlyjs: bool = True,
+    target_volatility: float = 0.2
 ) -> Union[go.Figure, str]:
-    """绘制多空收益对比图（累计收益曲线 + 绩效指标对比表）
+    """绘制多空收益对比图（累计收益曲线 + 波动率调整后收益 + 绩效指标对比表）
 
     :param dailys_pivot: 透视表格式的日收益数据，index为日期，columns为策略名，values为收益率
     :param stats_df: 绩效指标对比表，每行代表一个策略的指标
@@ -669,32 +671,77 @@ def plot_long_short_comparison(
     :param template: plotly 模板名称
     :param to_html: 是否转换为 HTML
     :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库
+    :param target_volatility: 目标年化波动率，默认 0.2（20%），用于调整收益对比
     :return: Figure 对象或 HTML 字符串
     """
-    # 创建 2x1 子图（上下布局），指定第二个子图为 table 类型
+    # 创建 3x1 子图（上中下布局），指定第三个子图为 table 类型
+    subplot_title_adjusted = f"波动率调整后收益对比（目标波动率: {target_volatility:.0%}）"
     fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=("累计收益曲线对比", "绩效指标对比"),
-        vertical_spacing=0.12,
-        row_heights=[0.55, 0.45],
-        specs=[[{"type": "xy"}], [{"type": "table"}]]
+        rows=3, cols=1,
+        subplot_titles=(
+            "累计收益曲线对比",
+            subplot_title_adjusted,
+            "绩效指标对比"
+        ),
+        vertical_spacing=0.08,
+        row_heights=[0.35, 0.35, 0.30],
+        specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "table"}]]
     )
 
     # ========== 上图：累计收益曲线 ==========
     df_cumsum = dailys_pivot.cumsum()
-    for col in df_cumsum.columns:
+    colors = px.colors.qualitative.Plotly * 10
+    for i, col in enumerate(df_cumsum.columns):
         fig.add_trace(
             go.Scatter(
                 x=df_cumsum.index,
                 y=df_cumsum[col],
                 name=col,
                 mode='lines',
+                line=dict(color=colors[i]),
+                legendgroup=col,
             ),
             row=1, col=1
         )
 
     # 添加年度分隔线
     _add_year_boundary_lines(fig, df_cumsum.index, row=1, col=1, line_color="gray", opacity=0.5)
+
+    # ========== 中图：按目标波动率调整后的累计收益曲线 ==========
+    # 计算每个策略的年化波动率并调整收益
+    trading_days_per_year = 252
+    adjusted_returns = pd.DataFrame(index=dailys_pivot.index)
+
+    for col in dailys_pivot.columns:
+        daily_ret = dailys_pivot[col]
+        # 计算年化波动率
+        annual_vol = daily_ret.std() * np.sqrt(trading_days_per_year)
+        # 计算调整因子
+        if annual_vol > 0:
+            adjustment_factor = target_volatility / annual_vol
+        else:
+            adjustment_factor = 1.0
+        # 调整收益
+        adjusted_returns[col] = daily_ret * adjustment_factor
+
+    # 绘制调整后的累计收益曲线
+    df_adjusted_cumsum = adjusted_returns.cumsum()
+    for i, col in enumerate(df_adjusted_cumsum.columns):
+        fig.add_trace(
+            go.Scatter(
+                x=df_adjusted_cumsum.index,
+                y=df_adjusted_cumsum[col],
+                name=f"{col}(调整)",
+                mode='lines',
+                showlegend=False,
+                legendgroup=col,
+                line=dict(color=colors[i]),
+            ),
+            row=2, col=1
+        )
+
+    # 添加年度分隔线
+    _add_year_boundary_lines(fig, df_adjusted_cumsum.index, row=2, col=1, line_color="gray", opacity=0.5)
 
     # ========== 下图：使用 plot_colored_table 绘制绩效对比表 ==========
     # 选择关键指标列
@@ -723,13 +770,13 @@ def plot_long_short_comparison(
 
     # 将表格的 trace 添加到主图中
     for trace in table_fig.data:
-        fig.add_trace(trace, row=2, col=1)
+        fig.add_trace(trace, row=3, col=1)
 
     # ========== 更新布局 ==========
     fig.update_layout(
         title=title,
         template=template,
-        height=1200,
+        height=1400,
         margin=dict(l=20, r=20, b=20, t=60),
         hovermode="x unified",
         showlegend=True,
@@ -739,5 +786,7 @@ def plot_long_short_comparison(
     # 更新坐标轴标签
     fig.update_yaxes(title_text="累计收益", row=1, col=1)
     fig.update_xaxes(title_text="", row=1, col=1)
+    fig.update_yaxes(title_text="调整后累计收益", row=2, col=1)
+    fig.update_xaxes(title_text="", row=2, col=1)
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
