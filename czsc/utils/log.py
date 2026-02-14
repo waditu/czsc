@@ -29,7 +29,7 @@ def log_strategy_info(strategy, df: pd.DataFrame):
     logger.info(f"  品种数量: {len(unique_symbols)}")
     
     # 每个品种的详细信息
-    logger.info(f"  品种详情:")
+    logger.info("  品种详情:")
     for symbol in sorted(unique_symbols):
         symbol_df = df[df['symbol'] == symbol]
         symbol_count = len(symbol_df)

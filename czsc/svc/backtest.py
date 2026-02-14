@@ -27,7 +27,7 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
     default_percentiles = [0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
     percentiles = kwargs.get("percentiles", default_percentiles)
 
-    dfs = dfw.groupby("symbol").apply(lambda x: x["weight"].describe(percentiles=percentiles)).reset_index()
+    dfs = dfw.groupby("symbol")["weight"].apply(lambda x: x.describe(percentiles=percentiles)).unstack().reset_index()
 
     # 使用 show_df_describe 来显示结果
     from .statistics import show_df_describe
@@ -507,7 +507,7 @@ def show_long_short_backtest(df: pd.DataFrame, **kwargs):
         "策略空头": WeightBacktest(dfs, fee_rate=fee_rate, digits=digits, 
                                       weight_type=weight_type, yearly_days=yearly_days),
         "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, 
-                                      weight_type=weight_type, yearly_days=yearly_days),
+                                      weight_type="ts", yearly_days=yearly_days),
     }
     show_multi_backtest(wbs)
     return wbs
@@ -534,7 +534,7 @@ def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
             weight_type=weight_type,
         )
     with tabs[1]:
-        from .symbols import show_symbols_bench
+        from .strategy import show_symbols_bench
 
         show_symbols_bench(df[["dt", "symbol", "price"]].copy())
 

@@ -19,13 +19,14 @@ import plotly.graph_objects as go
 from typing import Optional
 from loguru import logger
 
-from .base import safe_import_weight_backtest, apply_stats_style
+from .base import safe_import_weight_backtest, apply_stats_style, generate_component_key
 
 
-def show_optuna_study(study, **kwargs):
+def show_optuna_study(study, key=None, **kwargs):
     """展示 Optuna Study 的可视化结果
 
     :param study: optuna.study.Study, Optuna Study 对象
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs: dict, 其他参数
 
         - sub_title: str, optional, 子标题
@@ -49,10 +50,15 @@ def show_optuna_study(study, **kwargs):
         st.subheader(sub_title, divider="rainbow", anchor=anchor)
 
     fig = optuna.visualization.plot_contour(study)
-    st.plotly_chart(fig, width='stretch')
+    
+    # 生成 key
+    if key is None:
+        key = generate_component_key(study, prefix="optuna", sub_title=sub_title)
+    
+    st.plotly_chart(fig, key=f"{key}_contour", width='stretch')
 
     fig = optuna.visualization.plot_slice(study)
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, key=f"{key}_slice", width='stretch')
 
     with st.expander("最佳参数列表", expanded=False):
         params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
@@ -60,11 +66,12 @@ def show_optuna_study(study, **kwargs):
     return study
 
 
-def show_czsc_trader(trader, max_k_num=300, **kwargs):
+def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
     """显示缠中说禅交易员详情
 
     :param trader: CzscTrader 对象
     :param max_k_num: 最大显示 K 线数量
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs: 其他参数
     """
     import czsc
@@ -159,7 +166,12 @@ def show_czsc_trader(trader, max_k_num=300, **kwargs):
                     "hoverCompareCartesian",
                 ],
             }
-            st.plotly_chart(kline.fig, width='stretch', config=config)
+            
+            # 生成 key
+            if key is None:
+                key = generate_component_key(trader, prefix="czsc_trader", freq=freq, max_k_num=max_k_num)
+            
+            st.plotly_chart(kline.fig, key=f"{key}_{freq}", width='stretch', config=config)
 
     with tabs[-1]:
         with st.expander("查看最新信号", expanded=False):
@@ -219,12 +231,13 @@ def show_strategies_recent(df, **kwargs):
     st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
 
 
-def show_returns_contribution(df, returns=None, max_returns=100):
+def show_returns_contribution(df, returns=None, max_returns=100, key=None):
     """分析子策略对总收益的贡献
 
     :param df: pd.DataFrame, 子策略日收益数据，index 为 datetime, columns 为 子策略名称
     :param returns: list, 子策略名称列表
     :param max_returns: int, 最大展示策略数量
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     """
     df = df.copy()
     for dt_col in ["date", "dt"]:
@@ -262,7 +275,12 @@ def show_returns_contribution(df, returns=None, max_returns=100):
             height=400,
         )
         fig_bar.update_layout(yaxis_title="绝对收益", xaxis_title="策略")
-        st.plotly_chart(fig_bar)
+        
+        # 生成 key
+        if key is None:
+            key = generate_component_key(df, prefix="ret_contrib", returns=returns, max_returns=max_returns)
+        
+        st.plotly_chart(fig_bar, key=f"{key}_bar")
         st.caption("柱状图展示每个策略的收益贡献, Y轴为绝对收益大小，X轴为策略名称")
 
     with col2.container(border=True):
@@ -270,7 +288,7 @@ def show_returns_contribution(df, returns=None, max_returns=100):
         plot_df = plot_df[plot_df["收益贡献"] > 0]
         fig_pie = px.pie(plot_df, values="收益贡献", names="策略", title="盈利贡献分析（饼图）", width=600, height=400)
         fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-        st.plotly_chart(fig_pie)
+        st.plotly_chart(fig_pie, key=f"{key}_pie")
         st.caption("饼图只展示盈利贡献为正的策略，分析子策略对盈利部分的贡献占比")
 
 
@@ -328,10 +346,11 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
         show_correlation(dailys, use_st_table=kwargs.get("use_st_table", False))
 
 
-def show_quarterly_effect(returns: pd.Series):
+def show_quarterly_effect(returns: pd.Series, key=None):
     """展示策略的季节性收益对比
 
     :param returns: 日收益率序列，index 为日期
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     """
     import plotly.express as px
     from czsc.eda import cal_yearly_days
@@ -350,7 +369,7 @@ def show_quarterly_effect(returns: pd.Series):
     s3 = returns[returns.index.quarter == 3]
     s4 = returns[returns.index.quarter == 4]
 
-    def __show_quarter_stats(s: pd.Series):
+    def __show_quarter_stats(s: pd.Series, quarter_name: str):
         stats = daily_performance(s.to_list(), yearly_days=yearly_days)
         st.markdown(
             f"总交易天数: `{len(s)}天` \
@@ -407,25 +426,29 @@ def show_quarterly_effect(returns: pd.Series):
 
         fig.update_layout(annotations=annotations)
 
-        st.plotly_chart(fig, width='stretch')
+        # 生成 key
+        if key is None:
+            key_base = generate_component_key(returns, prefix="quarterly")
+        
+        st.plotly_chart(fig, key=f"{key_base}_q{quarter_name}", width='stretch')
 
     c1, c2 = st.columns(2)
     with c1.container(border=True):
         st.markdown("##### :red[第一季度]")
-        __show_quarter_stats(s1)
+        __show_quarter_stats(s1, "1")
 
     with c2.container(border=True):
         st.markdown("##### :red[第二季度]")
-        __show_quarter_stats(s2)
+        __show_quarter_stats(s2, "2")
 
     c3, c4 = st.columns(2)
     with c3.container(border=True):
         st.markdown("##### :red[第三季度]")
-        __show_quarter_stats(s3)
+        __show_quarter_stats(s3, "3")
 
     with c4.container(border=True):
         st.markdown("##### :red[第四季度]")
-        __show_quarter_stats(s4)
+        __show_quarter_stats(s4, "4")
 
 
 def show_multi_backtest(wbs: dict, **kwargs):

@@ -46,8 +46,9 @@ class AliyunOSS:
             logger.info(f"{oss_key} exists in the bucket. Set replace=True to overwrite.")
             return False
 
+        headers = {}
         with open(filepath, "rb") as file:
-            result = self.bucket.put_object(oss_key, file)
+            result = self.bucket.put_object(oss_key, file, headers=headers)
             if result.status == 200:
                 logger.info(f"Upload {filepath} to {oss_key} successfully.")
                 return True

@@ -71,6 +71,7 @@ dependencies = [
     "Deprecated",
     "cryptography",
     "pytz",
+    "fonttools>=4.61.0",
 ]
 
 [[tool.uv.index]]
@@ -111,6 +112,7 @@ Repository = "https://github.com/waditu/czsc"
 [dependency-groups]
 dev = [
     "ipython>=8.37.0",
+    "jupyter>=1.1.1",
     "pytest>=8.4.1",
     "pyyaml>=6.0.2",
     "tushare>=1.4.24",

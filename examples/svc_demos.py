@@ -18,8 +18,6 @@ sys.path.insert(0, "..")
 import numpy as np
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timedelta
-from loguru import logger
 from czsc.mock import (
     generate_strategy_returns,
     generate_portfolio,

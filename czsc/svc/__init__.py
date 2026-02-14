@@ -9,6 +9,8 @@ Streamlit Visualize Components (SVC) - 缠中说禅可视化组件库
 - factor: 因子分析组件
 - backtest: 回测相关组件
 - statistics: 统计分析组件
+- strategy: 策略分析组件
+- weights: 持仓权重分析组件
 - utils: 工具类组件
 - forms: 用户输入表单组件
 """
@@ -90,6 +92,13 @@ from .strategy import (
     show_multi_backtest,
 )
 
+from .weights import (
+    show_weight_ts,
+    show_weight_dist,
+    show_weight_cdf,
+    show_weight_abs,
+)
+
 # 从 forms.py 导入所有表单函数
 from .forms import (
     weight_backtest_form,
@@ -155,6 +164,11 @@ __all__ = [
     "show_stats_compare",
     "show_symbol_penalty",
     "show_multi_backtest",
+    # 权重分析
+    "show_weight_ts",
+    "show_weight_dist",
+    "show_weight_cdf",
+    "show_weight_abs",
     # 工具类
     "streamlit_run",
     # 价格敏感性分析

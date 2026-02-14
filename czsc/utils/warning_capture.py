@@ -61,8 +61,8 @@ def capture_warnings():
 
 
 def execute_with_warning_capture(
-    func: Callable, 
-    *args, 
+    func: Callable,
+    *args,
     return_as_string: bool = False,
     drop_duplicates: bool = True,
     **kwargs
@@ -117,4 +117,4 @@ def execute_with_warning_capture(
         logger.info(f"捕获到 {len(warnings_list)} 条警告信息")
         return warnings_string, result
     else:
-        return warnings_list, result 
+        return warnings_list, result

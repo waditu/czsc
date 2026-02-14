@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from deprecated import deprecated
-from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index
+from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index, generate_component_key
 
 
 def show_splited_daily(df, ret_col, **kwargs):
@@ -256,7 +256,7 @@ def show_psi(df, factor, segment, **kwargs):
     st.table(dfi_styled)
 
 
-def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
+def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
     """显示 col1 对 col2 的分类作用
 
     :param df: 数据，pd.DataFrame
@@ -264,6 +264,7 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
     :param col2: 统计列
     :param n: 分层数量
     :param method: 分层方法，cut 或 qcut
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - show_bar: bool, 是否展示柱状图，默认为 False
     """
@@ -293,7 +294,12 @@ def show_classify(df, col1, col2, n=10, method="cut", **kwargs):
         fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
         fig.update_xaxes(title=None)
         fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        st.plotly_chart(fig, width='stretch')
+        
+        # 生成 key
+        if key is None:
+            key = generate_component_key(df, prefix="classify", col1=col1, col2=col2, n=n, method=method)
+        
+        st.plotly_chart(fig, key=key, width='stretch')
 
     dfg_styled = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
     dfg_styled = dfg_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])

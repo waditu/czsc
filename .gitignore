@@ -13,7 +13,7 @@ manuscrips/
 # C extensions
 *.so
 *api/
-
+.spec-workflow/
 # Distribution / packaging
 .Python
 build/

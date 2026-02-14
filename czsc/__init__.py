@@ -30,8 +30,7 @@ from czsc.traders import rwc
 from czsc.traders import cwc
 from czsc.core import CZSC, Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS, format_standard_kline
 from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
-from czsc.sensors import holds_concepts_effect, CTAResearch, EventMatchSensor
-from czsc.sensors.feature import FixedNumberSelector
+from czsc.sensors import holds_concepts_effect, CTAResearch
 from czsc.utils import ta
 from czsc.traders import (
     CzscTrader,
@@ -52,28 +51,11 @@ from czsc.traders import (
     ExitsOptimize,
 )
 
-from czsc.traders.rwc import (
-    RedisWeightsClient,
-    get_strategy_mates,
-    get_strategy_names,
-    get_heartbeat_time,
-    clear_strategy,
-    get_strategy_weights,
-    get_strategy_latest,
-)
-
 from czsc.utils import (
     timeout_decorator,
     mac_address,
     overlap,
     to_arrow,
-    # format_standard_kline,
-    # BarGenerator,
-    # freq_end_time,
-    # resample_bars,
-    # is_trading_time,
-    # get_intraday_times,
-    # check_freq_and_market,
     dill_dump,
     dill_load,
     read_json,
@@ -90,7 +72,6 @@ from czsc.utils import (
     update_nxb,
     risk_free_returns,
     resample_to_daily,
-    cross_sectional_ranker,
     cross_sectional_ic,
     rolling_daily_performance,
     holds_performance,
@@ -135,76 +116,13 @@ from czsc.utils.log import (
     log_strategy_info,
 )
 
-# streamlit 量化分析组件
-from czsc.utils.st_components import (
-    show_daily_return,
-    show_yearly_stats,
-    show_splited_daily,
-    show_monthly_return,
-    show_correlation,
-    show_corr_graph,
-    show_sectional_ic,
-    show_factor_layering,
-    show_weight_backtest,
-    show_ts_rolling_corr,
-    show_ts_self_corr,
-    show_stoploss_by_direction,
-    show_cointegration,
-    show_out_in_compare,
-    show_optuna_study,
-    show_drawdowns,
-    show_rolling_daily_performance,
-    show_event_return,
-    show_psi,
-    show_holds_backtest,
-    show_symbols_corr,
-    show_feature_returns,
-    show_czsc_trader,
-    show_strategies_recent,
-    show_factor_value,
-    show_code_editor,
-    show_classify,
-    show_df_describe,
-    show_date_effect,
-    show_weight_distribution,
-    show_normality_check,
-    show_outsample_by_dailys,
-    show_returns_contribution,
-    show_symbols_bench,
-    show_quarterly_effect,
-    show_cumulative_returns,
-    show_cta_periods_classify,
-    show_volatility_classify,
-    show_portfolio,
-    show_turnover_rate,
-    show_describe,
-    show_event_features,
-    show_stats_compare,
-    show_symbol_penalty,
-)
-
 from czsc.utils.bi_info import (
     calculate_bi_info,
     symbols_bi_infos,
 )
 
-from czsc.utils.features import (
-    normalize_feature,
-    normalize_ts_feature,
-    feature_cross_layering,
-    find_most_similarity,
-)
-
 from czsc.features.utils import (
     is_event_feature,
-    rolling_corr,
-    rolling_rank,
-    rolling_norm,
-    rolling_qcut,
-    rolling_compare,
-    rolling_scale,
-    rolling_slope,
-    rolling_tanh,
     normalize_corr,
     feature_returns,
     feature_sectional_corr,
@@ -218,6 +136,11 @@ from czsc.utils.plotly_plot import (
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.traders import cwc
 
+from czsc.py.bar_generator import (
+    resample_bars,
+    get_intraday_times,
+    check_freq_and_market,
+)
 
 from czsc.eda import (
     remove_beta_effects,
@@ -244,14 +167,14 @@ from czsc.eda import (
 )
 
 
-__version__ = "0.10.6"
+__version__ = "0.10.10"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20251216"
+__date__ = "20260210"
 
 
 def welcome():
-    from czsc import aphorism, envs
+    # from czsc import aphorism, envs
     from czsc.utils import get_dir_size, home_path
 
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")

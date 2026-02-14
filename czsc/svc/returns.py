@@ -9,13 +9,14 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from .base import safe_import_daily_performance, safe_import_top_drawdowns, apply_stats_style, ensure_datetime_index
+from .base import safe_import_daily_performance, safe_import_top_drawdowns, apply_stats_style, ensure_datetime_index, generate_component_key
 
 
-def show_daily_return(df: pd.DataFrame, **kwargs):
+def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
     """用 streamlit 展示日收益
 
     :param df: pd.DataFrame，数据源
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - sub_title: str，标题
         - stat_hold_days: bool，是否展示持有日绩效指标，默认为 True
@@ -100,13 +101,20 @@ def show_daily_return(df: pd.DataFrame, **kwargs):
             fig.update_traces(visible="legendonly", selector=dict(name=col))
         
         fig.update_layout(margin=dict(l=0, r=0, b=0))
-        st.plotly_chart(fig, width='stretch')
+        
+        # 生成 key
+        if key is None:
+            key = generate_component_key(df, prefix="daily_ret", plot_cumsum=plot_cumsum, 
+                                         legend_only_cols=kwargs.get("legend_only_cols", []))
+        
+        st.plotly_chart(fig, key=key, width='stretch')
 
 
-def show_cumulative_returns(df, **kwargs):
+def show_cumulative_returns(df, key=None, **kwargs):
     """展示累计收益曲线
     
     :param df: pd.DataFrame, 数据源，index 为日期，columns 为对应策略上一个日期至当前日期的收益
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs: dict, 可选参数
         - fig_title: str, 图表标题，默认为 "累计收益"
         - legend_only_cols: list, 仅在图例中展示的列名
@@ -138,7 +146,12 @@ def show_cumulative_returns(df, **kwargs):
             orientation="h", y=-0.1, xanchor="center", x=0.5
         ), margin=dict(l=0, r=0, b=0))
         
-    st.plotly_chart(fig, width='stretch', 
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="cum_ret", fig_title=fig_title, 
+                                     legend_only_cols=kwargs.get("legend_only_cols", []))
+    
+    st.plotly_chart(fig, key=key, width='stretch', 
                    config={"displayModeBar": not display_legend})
 
 
@@ -187,11 +200,12 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     st.caption("注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10")
 
 
-def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
+def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
     """展示最大回撤分析
 
     :param df: pd.DataFrame, columns: cells, index: dates
     :param ret_col: str, 回报率列名称
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - sub_title: str, optional, 子标题
         - top: int, optional, 默认10, 返回最大回撤的数量
@@ -243,7 +257,12 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
         xaxis_title="", yaxis_title="净值回撤", 
         legend_title="回撤分析", height=300
     )
-    st.plotly_chart(fig, width='stretch')
+    
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="dd", ret_col=ret_col, top=kwargs.get("top", 10))
+    
+    st.plotly_chart(fig, key=key, width='stretch')
 
     # 显示回撤详情
     top = kwargs.get("top", 10)
@@ -259,11 +278,12 @@ def show_drawdowns(df: pd.DataFrame, ret_col, **kwargs):
             st.dataframe(dft_styled, width='stretch')
 
 
-def show_rolling_daily_performance(df, ret_col, **kwargs):
+def show_rolling_daily_performance(df, ret_col, key=None, **kwargs):
     """展示滚动统计数据
 
     :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col]
     :param ret_col: str, 收益列名
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     """
     from czsc.utils.stats import rolling_daily_performance
 
@@ -289,4 +309,9 @@ def show_rolling_daily_performance(df, ret_col, **kwargs):
     
     # 绘图
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
-    st.plotly_chart(fig, width='stretch') 
+    
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="roll_perf", ret_col=ret_col, col=col, window=window, min_periods=min_periods)
+    
+    st.plotly_chart(fig, key=key, width='stretch') 

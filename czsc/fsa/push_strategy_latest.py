@@ -31,7 +31,6 @@ class StrategyCard:
         
     def build(self) -> Dict[str, Any]:
         """构建飞书卡片数据"""
-        recent_returns = self._calculate_recent_returns()
         stats_df = self._get_strategy_stats()
         chart_data = self._get_out_sample_curve()
         latest_positions = self._get_latest_positions()
@@ -60,8 +59,16 @@ class StrategyCard:
         elements.append(self._build_curve_section(chart_data))
         elements.append({"tag": "hr"})
 
-        elements.append({"tag": "markdown", "content": "### 4.最近10个交易日收益"})
-        elements.extend(self._build_recent_returns_section(recent_returns))
+        # 第4部分：最近若干交易日收益。仅在持仓品种数不超过30时展示，且只看最近3个交易日
+        try:
+            include_recent = len(latest_positions) <= 30
+        except Exception:
+            include_recent = True
+
+        if include_recent:
+            recent_returns = self._calculate_recent_returns(days=3)
+            elements.append({"tag": "markdown", "content": "### 4.最近3个交易日收益"})
+            elements.extend(self._build_recent_returns_section(recent_returns))
         
         card = {
             "schema": "2.0",
@@ -84,8 +91,8 @@ class StrategyCard:
         latest_pos = latest_pos[latest_pos['weight'] != 0]
         return latest_pos[['dt', 'symbol', 'weight', 'price']].reset_index(drop=True)
 
-    def _calculate_recent_returns(self, days: int = 10) -> pd.DataFrame:
-        """计算最近N个交易日的收益"""
+    def _calculate_recent_returns(self, days: int = 3) -> pd.DataFrame:
+        """计算最近N个交易日的收益（默认最近3个交易日）"""
         daily_returns = self.wb.daily_return
         daily_returns.rename(columns={'date': 'dt'}, inplace=True)
         daily_returns['dt'] = pd.to_datetime(daily_returns['dt'])
@@ -392,5 +399,5 @@ def test_push_strategy_latest():
     """测试推送策略最新表现到飞书群"""
     import czsc
     dfw = czsc.mock.generate_klines_with_weights(seed=1234)
-    feishu_key = "97ef04e5-1dea-9999-a99f-58ec30b05283"
+    feishu_key = "97ef04e5-1dea-499e-----58ec30b05283"
     push_strategy_latest(strategy="测试策略", dfw=dfw, feishu_key=feishu_key)

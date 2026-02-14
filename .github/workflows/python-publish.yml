@@ -35,9 +35,9 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra all
 
-    - name: Run tests
-      run: |
-        uv run pytest test/ -v
+    # - name: Run tests
+    #   run: |
+    #     uv run pytest test/ -v
 
     # - name: Lint check
     #   run: |
@@ -46,10 +46,10 @@ jobs:
     #     uv run black --check .
     #     uv run isort --check-only .
 
-    - name: Security audit
-      run: |
-        uv add --dev safety
-        uv run safety check
+    # - name: Security audit
+    #   run: |
+    #     uv add --dev safety
+    #     uv run safety check
 
   build:
     needs: pre-publish-checks

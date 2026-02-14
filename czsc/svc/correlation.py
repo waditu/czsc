@@ -9,13 +9,14 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from .base import ensure_datetime_index
+from .base import ensure_datetime_index, generate_component_key
 
 
-def show_correlation(df, **kwargs):
+def show_correlation(df, key=None, **kwargs):
     """展示相关性矩阵热力图
 
     :param df: pd.DataFrame，数据源
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - method: str，相关性计算方法，支持 pearson, kendall, spearman，默认为 pearson
         - cmap: str，颜色映射，默认为 RdBu_r
@@ -57,7 +58,11 @@ def show_correlation(df, **kwargs):
         height=500
     )
 
-    st.plotly_chart(fig, width='stretch')
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="corr", method=method, cmap=cmap, annotate=annotate)
+    
+    st.plotly_chart(fig, key=key, width='stretch')
 
     # 显示统计信息
     with st.expander("相关性统计信息", expanded=False):
@@ -73,12 +78,13 @@ def show_correlation(df, **kwargs):
         st.dataframe(corr_matrix.style.background_gradient(cmap=cmap, vmin=-1, vmax=1), width='stretch')
 
 
-def show_sectional_ic(df, factors, target_col, **kwargs):
+def show_sectional_ic(df, factors, target_col, key=None, **kwargs):
     """展示截面IC分析
 
     :param df: pd.DataFrame, 数据源
     :param factors: list, 因子列名列表
     :param target_col: str, 目标列名
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - dt_col: str, 日期列名，默认为 'dt'
         - show_cumsum_ic: bool, 是否显示累计IC，默认为 True
@@ -125,11 +131,15 @@ def show_sectional_ic(df, factors, target_col, **kwargs):
     st.subheader("IC统计信息")
     st.dataframe(ic_stats.style.background_gradient(cmap="RdYlGn_r"), width='stretch')
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="ic", factors=factors, target_col=target_col, ic_method=ic_method)
+
     # 绘制IC时序图
     fig = px.line(df_ic.reset_index(), x="dt", y=factors, title="IC时序图")
     fig.update_xaxes(title="")
     fig.update_yaxes(title="IC值")
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, key=f"{key}_ts", width='stretch')
 
     # 显示累计IC
     if show_cumsum_ic:
@@ -137,16 +147,17 @@ def show_sectional_ic(df, factors, target_col, **kwargs):
         fig_cumsum = px.line(df_cumsum_ic.reset_index(), x="dt", y=factors, title="累计IC")
         fig_cumsum.update_xaxes(title="")
         fig_cumsum.update_yaxes(title="累计IC")
-        st.plotly_chart(fig_cumsum, width='stretch')
+        st.plotly_chart(fig_cumsum, key=f"{key}_cumsum", width='stretch')
 
 
-def show_ts_rolling_corr(df, col1, col2, window=60, **kwargs):
+def show_ts_rolling_corr(df, col1, col2, window=60, key=None, **kwargs):
     """展示两个时间序列的滚动相关性
 
     :param df: pd.DataFrame，必须有datetime索引
     :param col1: str，列名1
     :param col2: str，列名2
     :param window: int，滚动窗口大小，默认为60
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - method: str，相关性计算方法，默认为 pearson
         - sub_title: str，子标题
@@ -178,7 +189,11 @@ def show_ts_rolling_corr(df, col1, col2, window=60, **kwargs):
     fig.add_hline(y=0.5, line_dash="dash", line_color="green", opacity=0.5)
     fig.add_hline(y=-0.5, line_dash="dash", line_color="red", opacity=0.5)
     
-    st.plotly_chart(fig, width='stretch')
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="roll_corr", col1=col1, col2=col2, window=window, method=method)
+    
+    st.plotly_chart(fig, key=key, width='stretch')
 
     # 显示统计信息
     c1, c2, c3, c4 = st.columns(4)
@@ -188,12 +203,13 @@ def show_ts_rolling_corr(df, col1, col2, window=60, **kwargs):
     c4.metric("标准差", f"{rolling_corr.std():.3f}")
 
 
-def show_ts_self_corr(df, col, max_lag=20, **kwargs):
+def show_ts_self_corr(df, col, max_lag=20, key=None, **kwargs):
     """展示时间序列的自相关性
 
     :param df: pd.DataFrame，必须有datetime索引
     :param col: str，列名
     :param max_lag: int，最大滞后期数，默认为20
+    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     :param kwargs:
         - sub_title: str，子标题
         - show_partial: bool，是否显示偏自相关，默认为False
@@ -217,6 +233,10 @@ def show_ts_self_corr(df, col, max_lag=20, **kwargs):
     autocorr = acf(data, nlags=max_lag, fft=False)
     lags = list(range(max_lag + 1))
 
+    # 生成基础 key
+    if key is None:
+        key = generate_component_key(df, prefix="self_corr", col=col, max_lag=max_lag, show_partial=show_partial)
+
     # 绘制自相关图
     fig = go.Figure()
     fig.add_trace(go.Bar(x=lags, y=autocorr, name="自相关"))
@@ -229,7 +249,7 @@ def show_ts_self_corr(df, col, max_lag=20, **kwargs):
                   annotation_text=f"95%置信下界 ({-confidence_interval:.3f})")
     
     fig.update_layout(title="自相关函数 (ACF)", xaxis_title="滞后期", yaxis_title="自相关系数")
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, key=f"{key}_acf", width='stretch')
 
     # 偏自相关
     if show_partial:
@@ -240,15 +260,16 @@ def show_ts_self_corr(df, col, max_lag=20, **kwargs):
         fig_pacf.add_hline(y=confidence_interval, line_dash="dash", line_color="red")
         fig_pacf.add_hline(y=-confidence_interval, line_dash="dash", line_color="red")
         fig_pacf.update_layout(title="偏自相关函数 (PACF)", xaxis_title="滞后期", yaxis_title="偏自相关系数")
-        st.plotly_chart(fig_pacf, width='stretch')
+        st.plotly_chart(fig_pacf, key=f"{key}_pacf", width='stretch')
 
 
-def show_cointegration(df, col1, col2, **kwargs):
+def show_cointegration(df, col1, col2, key=None, **kwargs):
     """展示两个时间序列的协整检验
 
     :param df: pd.DataFrame，必须有datetime索引
     :param col1: str，列名1
     :param col2: str，列名2
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - sub_title: str，子标题
         - show_spread: bool，是否显示价差序列，默认为True
@@ -306,14 +327,20 @@ def show_cointegration(df, col1, col2, **kwargs):
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
         fig.add_hline(y=spread.std(), line_dash="dash", line_color="red", opacity=0.5)
         fig.add_hline(y=-spread.std(), line_dash="dash", line_color="red", opacity=0.5)
-        st.plotly_chart(fig, width='stretch')
+        
+        # 生成 key
+        if key is None:
+            key = generate_component_key(df, prefix="coint", col1=col1, col2=col2)
+        
+        st.plotly_chart(fig, key=key, width='stretch')
 
 
-def show_corr_graph(df, threshold=0.3, **kwargs):
+def show_corr_graph(df, threshold=0.3, key=None, **kwargs):
     """展示相关性网络图
 
     :param df: pd.DataFrame，数据源
     :param threshold: float，显示边的相关性阈值，默认为0.3
+    :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs:
         - method: str，相关性计算方法，默认为 pearson
         - layout: str，布局算法，默认为 spring
@@ -409,14 +436,19 @@ def show_corr_graph(df, threshold=0.3, **kwargs):
                      xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
     
-    st.plotly_chart(fig, width='stretch')
+    # 生成 key
+    if key is None:
+        key = generate_component_key(df, prefix="corr_graph", threshold=threshold, method=method)
+    
+    st.plotly_chart(fig, key=key, width='stretch')
 
 
-def show_symbols_corr(df, symbols, **kwargs):
+def show_symbols_corr(df, symbols, key=None, **kwargs):
     """展示多个品种之间的相关性分析
 
     :param df: pd.DataFrame，包含多个品种的价格数据
     :param symbols: list，品种代码列表
+    :param key: str, 可选，组件的唯一标识符，默认自动生成（本函数调用其他组件，此key用于追踪）
     :param kwargs:
         - method: str，相关性计算方法，默认为 pearson
         - price_col: str，价格列名，默认为 'close'
@@ -467,7 +499,9 @@ def show_symbols_corr(df, symbols, **kwargs):
     
     # 显示热力图
     if show_heatmap:
-        show_correlation(price_matrix, method=method, fig_title=f"品种相关性矩阵 ({method})")
+        # 为 show_correlation 生成唯一的 key
+        corr_key = None if key is None else f"{key}_heatmap"
+        show_correlation(price_matrix, key=corr_key, method=method, fig_title=f"品种相关性矩阵 ({method})")
     
     # 显示聚类图
     if show_clustermap:

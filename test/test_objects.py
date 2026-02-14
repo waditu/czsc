@@ -1,8 +1,7 @@
 # coding: utf-8
 import numpy as np
-from collections import OrderedDict
 from czsc.utils import x_round
-from czsc.core import Signal, Event, Freq, Operate
+from czsc.py import Signal, Event, Freq, Operate
 from czsc.utils.stats import cal_break_even_point
 from loguru import logger
 
@@ -50,40 +49,6 @@ def test_raw_bar():
     assert np.allclose(cache_sum2, expected_sum), f"Mismatch: cache_sum2={cache_sum2}, expected={expected_sum}"
 
 
-# def test_zs():
-#     """测试中枢对象"""
-#     from czsc import mock
-#     from czsc.core import ZS, RawBar, CZSC, Freq
-
-#     # 使用mock数据替代硬编码数据文件
-#     df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
-#     bars = []
-#     for i, row in df.iterrows():
-#         bar = RawBar(
-#             symbol=row['symbol'], 
-#             id=i, 
-#             freq=Freq.D, 
-#             open=row['open'], 
-#             dt=row['dt'],
-#             close=row['close'], 
-#             high=row['high'], 
-#             low=row['low'], 
-#             vol=row['vol'], 
-#             amount=row['amount']
-#         )
-#         bars.append(bar)
-
-#     c = CZSC(bars)
-    
-#     if len(c.bi_list) >= 8:
-#         zs = ZS(c.bi_list[-5:])
-#         # if zs.is_valid:
-#         #     assert zs.zd < zs.zg, "中枢下沿应该小于上沿"
-
-#         zs = ZS(c.bi_list[-8:-3])
-#         # 注意：这里不能假设中枢一定无效，因为mock数据的特性可能不同
-
-
 def test_cal_break_even_point():
     assert cal_break_even_point([1]) == 1
     assert cal_break_even_point([-1, -2, 4, 5, 5]) == 0.6
@@ -97,6 +62,8 @@ def test_cal_break_even_point():
 
 
 def test_signal():
+    from rs_czsc import Signal
+    
     s = Signal(key="1分钟_倒1_形态", value="类一买_七笔_基础型_3")
     assert str(s) == "Signal('1分钟_倒1_形态_类一买_七笔_基础型_3')"
     assert s.key == "1分钟_倒1_形态"
@@ -114,7 +81,6 @@ def test_signal():
         s = Signal(key="1分钟_倒1形态_类一买", value="任意_任意_任意_101")
     except ValueError as e:
         pass
-
 
 
 def test_event():

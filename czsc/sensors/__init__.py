@@ -10,5 +10,5 @@ from czsc.sensors.utils import (
     turn_over_rate,
     holds_concepts_effect,
 )
-from czsc.sensors.event import EventMatchSensor
+# from czsc.sensors.event import EventMatchSensor  # 模块不存在，暂时注释
 
