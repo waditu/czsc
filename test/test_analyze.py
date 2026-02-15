@@ -12,14 +12,21 @@ from czsc.core import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direct
 
 
 def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
-    """获取mock K线数据并转换为RawBar对象"""
+    """获取mock K线数据并转换为RawBar对象（使用3年+数据）
+
+    数据格式说明：
+    - 使用 mock.generate_symbol_kines 生成
+    - 日期范围：20220101-20250101（3年数据，满足3年+要求）
+    - K线格式：OHLCVA（开高低收成交量成交额）
+    """
     if freq == Freq.F1:
-        df = mock.generate_symbol_kines(symbol, "1分钟", sdt="20240101", edt="20240110", seed=42)
-    
+        df = mock.generate_symbol_kines(symbol, "1分钟", sdt="20220101", edt="20250101", seed=42)
+
     elif freq == Freq.F5:
-        df = mock.generate_symbol_kines(symbol, "5分钟", sdt="20240101", edt="20240110", seed=42)
+        df = mock.generate_symbol_kines(symbol, "5分钟", sdt="20220101", edt="20250101", seed=42)
     elif freq == Freq.D:
-        df = mock.generate_symbol_kines(symbol, "日线", sdt="20230101", edt="20240101", seed=42)
+        # 使用3年+的数据（2022-2025）
+        df = mock.generate_symbol_kines(symbol, "日线", sdt="20220101", edt="20250101", seed=42)
     else:
         df = mock.generate_klines(seed=42)
         df = df[df['symbol'] == symbol].head(n_days) if symbol in df['symbol'].values else df.head(n_days)

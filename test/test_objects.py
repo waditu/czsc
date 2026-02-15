@@ -20,8 +20,9 @@ def test_raw_bar():
     from czsc.utils.ta import SMA
     from czsc.core import format_standard_kline, Freq
 
-    # 使用mock数据替代硬编码数据文件
-    df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
+    # 使用mock数据替代硬编码数据文件（3年+数据）
+    # 数据格式：OHLCVA，日期范围20220101-20250101（3年数据，满足3年+要求）
+    df = mock.generate_symbol_kines("000001", "日线", sdt="20220101", edt="20250101", seed=42)
     bars = format_standard_kline(df, freq=Freq.D)
     ma = SMA(np.array([x.close for x in bars]), 5)
     key = "SMA5"
