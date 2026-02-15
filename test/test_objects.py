@@ -1,4 +1,14 @@
 # coding: utf-8
+"""
+test_objects.py - 对象定义单元测试
+
+Mock数据格式说明:
+- 数据来源: czsc.mock.generate_symbol_kines
+- 数据列: dt, symbol, open, close, high, low, vol, amount
+- 时间范围: 20220101-20250101（3年数据，满足3年+要求）
+- 频率: 日线
+- Seed: 42（确保可重现）
+"""
 import numpy as np
 from czsc.utils import x_round
 from czsc.py import Signal, Event, Freq, Operate
@@ -10,7 +20,7 @@ def test_operate():
     """测试 Operate 对象"""
     lo = Operate.LO
     assert lo.value == "开多"
-    
+
     le = Operate.LE
     assert le.value == "平多"
 
@@ -20,8 +30,8 @@ def test_raw_bar():
     from czsc.utils.ta import SMA
     from czsc.core import format_standard_kline, Freq
 
-    # 使用mock数据替代硬编码数据文件
-    df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
+    # 使用mock数据替代硬编码数据文件（3年数据，满足3年+要求）
+    df = mock.generate_symbol_kines("000001", "日线", sdt="20220101", edt="20250101", seed=42)
     bars = format_standard_kline(df, freq=Freq.D)
     ma = SMA(np.array([x.close for x in bars]), 5)
     key = "SMA5"
