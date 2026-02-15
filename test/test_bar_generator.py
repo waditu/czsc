@@ -4,6 +4,13 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/2/16 20:31
 describe: czsc.utils.bar_generator 单元测试
+
+Mock数据格式说明:
+- 数据来源: czsc.mock.generate_symbol_kines
+- 数据列: dt, symbol, open, close, high, low, vol, amount
+- 时间范围: 20220101-20250101（3年数据，满足3年+要求）
+- 频率: 1分钟、日线
+- Seed: 42（确保可重现）
 """
 import pytest
 import pandas as pd
@@ -12,20 +19,20 @@ from czsc.py.bar_generator import BarGenerator, freq_end_time, resample_bars, ch
 
 
 def get_mock_1min_bars():
-    """获取1分钟mock数据"""
-    df = mock.generate_symbol_kines("000001", "1分钟", sdt="20240101", edt="20240110", seed=42)
+    """获取1分钟mock数据（使用3年数据）"""
+    df = mock.generate_symbol_kines("000001", "1分钟", sdt="20220101", edt="20250101", seed=42)
     bars = []
     for i, row in df.iterrows():
         bar = RawBar(
-            symbol=row['symbol'], 
-            id=i, 
-            freq=Freq.F1, 
-            open=row['open'], 
+            symbol=row['symbol'],
+            id=i,
+            freq=Freq.F1,
+            open=row['open'],
             dt=row['dt'],
-            close=row['close'], 
-            high=row['high'], 
-            low=row['low'], 
-            vol=row['vol'], 
+            close=row['close'],
+            high=row['high'],
+            low=row['low'],
+            vol=row['vol'],
             amount=row['amount']
         )
         bars.append(bar)
@@ -33,8 +40,8 @@ def get_mock_1min_bars():
 
 
 def get_mock_daily_bars():
-    """获取日线mock数据"""
-    df = mock.generate_symbol_kines("000001", "日线", sdt="20230101", edt="20240101", seed=42)
+    """获取日线mock数据（使用3年数据）"""
+    df = mock.generate_symbol_kines("000001", "日线", sdt="20220101", edt="20250101", seed=42)
     bars = []
     for i, row in df.iterrows():
         bar = RawBar(
