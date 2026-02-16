@@ -12,6 +12,7 @@
 **[项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)** |
 **[投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh)** |
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
+**[源码阅读指南](docs/源码阅读指南.md)** |
 **[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
 
 > **0.10.X 版本开始，逐步用 rs-czsc 替换一些 python 对象、函数的实现。有需要了解对象或函数具体执行逻辑的，可以查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。**
