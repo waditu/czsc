@@ -326,7 +326,7 @@ class CZSC:
     def to_plotly(self):
         """使用 plotly 绘制K线分析图"""
         import pandas as pd
-        from czsc.utils.plotly_plot import KlineChart
+        from czsc.utils.plotting.kline import KlineChart
 
         bi_list = self.bi_list
         df = pd.DataFrame(self.bars_raw)

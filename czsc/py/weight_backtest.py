@@ -19,7 +19,7 @@ from concurrent.futures import ProcessPoolExecutor
 import czsc
 from czsc.traders.base import CzscTrader
 from czsc.utils.io import save_json
-from czsc.utils.stats import daily_performance, evaluate_pairs
+from czsc.utils.analysis.stats import daily_performance, evaluate_pairs
 
 
 def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = "mean"):
