@@ -49,7 +49,7 @@ class DataClient:
     """
     __version__ = "V250719"
     _cache_lock = threading.Lock()  # 进程内线程锁，防止并发冲突
-    
+
     @lru_cache(maxsize=128)
     def _get_cache_key(self, req_params_str: str) -> str:
         """缓存哈希计算，避免重复计算"""
@@ -64,7 +64,7 @@ class DataClient:
         :param verbose: bool, 是否开启详细日志模式，显示请求细节
         :param kwargs: 其他参数（clear_cache, cache_path, logger）
         """
-        from czsc.utils.cache import get_dir_size
+        from czsc.utils.data.cache import get_dir_size
         self.logger = kwargs.pop("logger", loguru.logger)
 
         self.__token = token or get_url_token(url, logger=self.logger)
@@ -116,28 +116,31 @@ class DataClient:
                         logger.error(f"API请求失败(最后一次重试): {api_name}；参数：{kwargs}；状态码：{res.status_code}；响应：{res.text}")
                         return None
                     else:
-                        logger.warning(f"API请求失败(第{attempt+1}次重试): {api_name}；状态码：{res.status_code}；响应：{res.text}")
+                        msg = f"API请求失败(第{attempt + 1}次重试): {api_name}；状态码：{res.status_code}；响应：{res.text}"
+                        logger.warning(msg)
                         time.sleep(0.5 * (attempt + 1))  # 递增延迟
                         continue
-                
+
             except requests.RequestException as e:
                 if attempt == retries - 1:
                     logger.error(f"请求API失败(最后一次重试): {api_name}；参数：{kwargs}；错误: {e}")
                     return None
                 else:
-                    logger.warning(f"请求API失败(第{attempt+1}次重试): {api_name}；错误: {e}")
+                    logger.warning(f"请求API失败(第{attempt + 1}次重试): {api_name}；错误: {e}")
                     time.sleep(0.5 * (attempt + 1))  # 递增延迟
-                    
+
             except Exception as e:
                 logger.error(f"请求API失败: {api_name}；参数：{kwargs}；错误: {e}")
                 return None
-        
-        logger.error(f"API请求失败，所有重试都失败")
+
+        logger.error("API请求失败，所有重试都失败")
         return None
 
-    def _validate_response(self, res: requests.Response, api_name: str, kwargs: Dict[str, Any], logger) -> Optional[Dict[str, Any]]:
+    def _validate_response(
+        self, res: requests.Response, api_name: str, kwargs: Dict[str, Any], logger
+    ) -> Optional[Dict[str, Any]]:
         """校验API返回结构
-        
+
         结构说明：
         {
             "code": 0,
@@ -272,4 +275,3 @@ class DataClient:
         动态API方法调用，等价于 self.post_request(name, ...)
         """
         return partial(self.post_request, name)
-

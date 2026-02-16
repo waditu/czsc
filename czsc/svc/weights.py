@@ -18,7 +18,7 @@ def show_weight_ts(df, key=None, **kwargs):
         - height: int, 图表高度，默认为 800
         - show_position_count: bool, 是否显示持仓数量，默认为 True
     """
-    from czsc.utils.plot_weight import plot_weight_time_series
+    from czsc.utils.plotting.weight import plot_weight_time_series
     
     title = kwargs.get("title", "策略持仓权重分布分析")
     height = kwargs.get("height", 800)
@@ -49,7 +49,7 @@ def show_weight_dist(df, key=None, **kwargs):
         - height: int, 图表高度，默认为 800
         - width: int, 图表宽度，默认为 900
     """
-    from czsc.utils.plot_weight import plot_weight_histogram_kde
+    from czsc.utils.plotting.weight import plot_weight_histogram_kde
     
     title = kwargs.get("title", "仓位分布直方图与核密度估计")
     height = kwargs.get("height", 800)
@@ -81,7 +81,7 @@ def show_weight_cdf(df, key=None, **kwargs):
         - width: int, 图表宽度，默认为 800
         - show_percentiles: bool, 是否显示分位数参考线，默认为 True
     """
-    from czsc.utils.plot_weight import plot_weight_cdf
+    from czsc.utils.plotting.weight import plot_weight_cdf
     
     title = kwargs.get("title", "仓位分布累积分布函数(CDF)对比")
     height = kwargs.get("height", 600)
@@ -115,7 +115,7 @@ def show_weight_abs(df, key=None, **kwargs):
         - ma_windows: list, 移动平均线窗口列表，默认为 [5, 20, 60]
         - volatility_window: int, 波动率计算窗口，默认为 20
     """
-    from czsc.utils.plot_weight import plot_absolute_position_analysis
+    from czsc.utils.plotting.weight import plot_absolute_position_analysis
     
     title = kwargs.get("title", "绝对仓位详细分析图表")
     height = kwargs.get("height", 900)

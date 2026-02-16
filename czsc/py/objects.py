@@ -16,7 +16,7 @@ from loguru import logger
 from deprecated import deprecated
 from typing import List, Callable, Dict
 from czsc.py.enum import Mark, Direction, Freq, Operate
-from czsc.utils.corr import single_linear
+from czsc.utils.analysis.corr import single_linear
 
 
 @deprecated(version="1.0.0", reason="请使用 RawBar")
@@ -901,7 +901,7 @@ class Position:
         :param trade_dir: 交易方向，可选值 ['多头', '空头', '多空']
         :return: 交易表现
         """
-        from czsc.utils.stats import evaluate_pairs
+        from czsc.utils.analysis.stats import evaluate_pairs
 
         p = evaluate_pairs(pd.DataFrame(self.pairs), trade_dir)
         p.update(self.evaluate_holds(trade_dir))

@@ -7,7 +7,6 @@ describe: 绩效表现统计
 """
 import numpy as np
 import pandas as pd
-from deprecated import deprecated
 from collections import Counter
 
 

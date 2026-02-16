@@ -11,10 +11,11 @@ from loguru import logger
 from typing import Union, AnyStr, Callable
 
 from czsc.traders.base import CzscTrader
-from rs_czsc import WeightBacktest
+
+# WeightBacktest is available from czsc.core, not imported here to avoid circular dependency
 
 
-__all__ = ['WeightBacktest', 'get_ensemble_weight', 'stoploss_by_direction']
+__all__ = ['get_ensemble_weight', 'stoploss_by_direction']
 
 
 def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = "mean"):

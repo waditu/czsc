@@ -10,27 +10,48 @@ from . import ta
 from . import io
 from . import echarts_plot
 
+# 导入新组织的子模块
+from . import plotting
+from . import data
+from . import crypto
+from . import analysis
+from . import backtest_report
+
 from .echarts_plot import kline_pro, trading_view_kline
-from .corr import nmi_matrix, single_linear, cross_sectional_ic
 from .io import dill_dump, dill_load, read_json, save_json
-from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
-from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
-from .plotly_plot import KlineChart
+from .backtest_report import generate_backtest_report
+# Delayed import to avoid circular dependency - import these from czsc.utils.sig directly
+# from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
+# from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
 from .trade import update_nxb, update_bbars, update_tbars, risk_free_returns, resample_to_daily
 from .cross import cross_sectional_ranker
-from .stats import (
-    daily_performance,
-    holds_performance,
-    top_drawdowns,
-    rolling_daily_performance,
-    psi,
-)
-from .cache import home_path, get_dir_size, empty_cache_path, DiskCache, disk_cache, clear_cache, clear_expired_cache
 from .index_composition import index_composition
-from .data_client import DataClient, set_url_token, get_url_token
 from .oss import AliyunOSS
-from .events import overlap
-from .fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
+
+# 从新模块导入，保持向后兼容
+from .plotting import KlineChart
+from .plotting.backtest import (
+    plot_cumulative_returns, plot_drawdown_analysis,
+    plot_daily_return_distribution, plot_monthly_heatmap,
+    plot_backtest_stats, plot_colored_table,
+    plot_long_short_comparison
+)
+from .plotting.weight import (
+    plot_weight_histogram_kde, plot_weight_cdf,
+    plot_turnover_overview, plot_turnover_cost_analysis,
+    plot_weight_time_series
+)
+from .analysis import (
+    nmi_matrix, single_linear, cross_sectional_ic,
+    daily_performance, holds_performance, top_drawdowns,
+    rolling_daily_performance, psi, overlap
+)
+from .data import (
+    home_path, get_dir_size, empty_cache_path,
+    DiskCache, disk_cache, clear_cache, clear_expired_cache,
+    DataClient, set_url_token, get_url_token
+)
+from .crypto import generate_fernet_key, fernet_encrypt, fernet_decrypt
 
 
 sorted_freqs = [
@@ -256,3 +277,12 @@ def timeout_decorator(timeout):
         return wrapper
 
     return decorator
+
+
+# Lazy import to avoid circular dependency
+def __getattr__(name):
+    """Lazy import for functions that would cause circular imports"""
+    if name == 'get_sub_elements':
+        from .sig import get_sub_elements
+        return get_sub_elements
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

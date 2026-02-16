@@ -4,89 +4,32 @@
 从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
 """
 
-from typing import Union, Literal, Optional, Tuple
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-# ==================== 模块级常量 ====================
-
-# 颜色常量
-COLOR_DRAWDOWN = "salmon"
-COLOR_RETURN = "#34a853"
-COLOR_ANNO_GRAY = "rgba(128,128,128,0.5)"
-COLOR_ANNO_RED = "red"
-COLOR_BORDER = "darkgrey"
-COLOR_HEADER_BG = "grey"
-
-# 分位数常量
-QUANTILES_DRAWDOWN = [0.05, 0.1, 0.2]
-QUANTILES_DRAWDOWN_ANALYSIS = [0.1, 0.3, 0.5]
-
-# Sigma 级别
-SIGMA_LEVELS = [-3, -2, -1, 1, 2, 3]
-
-# 月份标签
-MONTH_LABELS = [
-    '1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月'
-]
-
-# 模板类型
-TemplateType = Literal['plotly', 'plotly_dark', 'ggplot2', 'seaborn', 'simple_white']
+# 从公共模块导入常量和辅助函数
+from .common import (
+    COLOR_DRAWDOWN,
+    COLOR_RETURN,
+    COLOR_ANNO_GRAY,
+    COLOR_ANNO_RED,
+    COLOR_BORDER,
+    COLOR_HEADER_BG,
+    QUANTILES_DRAWDOWN,
+    QUANTILES_DRAWDOWN_ANALYSIS,
+    SIGMA_LEVELS,
+    MONTH_LABELS,
+    TemplateType,
+    figure_to_html as _figure_to_html,
+    add_year_boundary_lines as _add_year_boundary_lines,
+)
 
 
 # ==================== 辅助函数 ====================
-
-def _figure_to_html(
-    fig: go.Figure,
-    to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
-    """统一处理 Figure 转 HTML 的逻辑
-
-    :param fig: Plotly Figure 对象
-    :param to_html: 是否转换为 HTML
-    :param include_plotlyjs: 转换 HTML 时是否包含 plotly.js 库
-    :return: Figure 对象或 HTML 字符串
-    """
-    if to_html:
-        return fig.to_html(include_plotlyjs=include_plotlyjs, full_html=False)
-    return fig
-
-
-def _add_year_boundary_lines(
-    fig: go.Figure,
-    dates: pd.DatetimeIndex,
-    row: Optional[int] = None,
-    col: Optional[int] = None,
-    line_color: str = "red",
-    opacity: float = 0.3,
-    line_dash: str = "dash"
-) -> None:
-    """在图表中添加年度分隔线
-
-    :param fig: Plotly Figure 对象
-    :param dates: 日期索引
-    :param row: 子图行号（可选）
-    :param col: 子图列号（可选）
-    :param line_color: 线条颜色
-    :param opacity: 透明度
-    :param line_dash: 线条样式
-    """
-    years = dates.year.unique()
-    for year in years:
-        first_date = dates[dates.year == year].min()
-        fig.add_vline(
-            x=first_date,
-            line_dash=line_dash,
-            line_color=line_color,
-            opacity=opacity,
-            row=row, 
-            col=col
-        )
 
 
 def _calculate_drawdown(
@@ -311,7 +254,7 @@ def plot_drawdown_analysis(
         fig.add_hline(
             y=y_val * 100,
             line_dash="dot",
-            line_color=f"rgba(52,168,83,0.5)",
+            line_color="rgba(52,168,83,0.5)",
             line_width=1
         )
 
@@ -399,7 +342,7 @@ def plot_monthly_heatmap(
 
 def get_performance_metrics_cards(stats: dict) -> list:
     """从WeightBacktest.stats中提取核心绩效指标，用于HTML报告中的指标卡
-    
+
     :param stats: WeightBacktest.stats 字典
     :return: 指标列表
     """

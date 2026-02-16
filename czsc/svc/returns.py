@@ -285,7 +285,7 @@ def show_rolling_daily_performance(df, ret_col, key=None, **kwargs):
     :param ret_col: str, 收益列名
     :param key: str, 可选，组件的唯一标识符，默认自动生成
     """
-    from czsc.utils.stats import rolling_daily_performance
+    from czsc.utils.analysis.stats import rolling_daily_performance
 
     df = ensure_datetime_index(df)
     df = df[[ret_col]].copy().fillna(0).sort_index(ascending=True)

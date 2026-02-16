@@ -51,7 +51,7 @@ def safe_import_top_drawdowns():
         return top_drawdowns
     except ImportError:
         try:
-            from czsc.utils.stats import top_drawdowns
+            from czsc.utils.analysis.stats import top_drawdowns
 
             return top_drawdowns
         except ImportError:

@@ -14,7 +14,9 @@ from czsc.traders.performance import (
 )
 from czsc.traders.dummy import DummyBacktest
 from czsc.traders.sig_parse import SignalsParser, get_signals_config, get_signals_freqs
-from czsc.traders.weight_backtest import WeightBacktest, get_ensemble_weight, stoploss_by_direction
+from czsc.traders.weight_backtest import get_ensemble_weight, stoploss_by_direction
+# Import WeightBacktest from core to avoid circular import
+# from czsc.traders.weight_backtest import WeightBacktest
 from czsc.traders.rwc import (
     RedisWeightsClient,
     get_strategy_mates,

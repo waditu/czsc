@@ -128,7 +128,7 @@ from czsc.features.utils import (
     feature_sectional_corr,
 )
 
-from czsc.utils.plotly_plot import (
+from czsc.utils.plotting.kline import (
     plot_czsc_chart,
     KlineChart
 )

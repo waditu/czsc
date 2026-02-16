@@ -163,7 +163,7 @@ def show_holds_backtest(df, **kwargs):
         - show_yearly_stats: 是否展示年度绩效指标，默认为True
         - show_monthly_return: 是否展示月度累计收益，默认为True
     """
-    from czsc.utils.stats import holds_performance
+    from czsc.utils.analysis.stats import holds_performance
 
     fee = kwargs.get("fee", 2)
     digits = kwargs.get("digits", 2)

@@ -241,7 +241,7 @@ def show_psi(df, factor, segment, **kwargs):
     :param kwargs:
         - sub_title: str, 子标题
     """
-    from czsc.utils.stats import psi
+    from czsc.utils.analysis.stats import psi
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")

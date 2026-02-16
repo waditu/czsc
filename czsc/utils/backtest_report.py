@@ -4,12 +4,17 @@
 使用 Python f-string + plotly 绘图实现 WeightBacktest 回测结果的 HTML 报告生成
 """
 import os
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
 
 import pandas as pd
-from rs_czsc import WeightBacktest
 
-from .plot_backtest import (
+# 尝试从 rs_czsc 导入，失败则使用 Python 版本
+try:
+    from rs_czsc import WeightBacktest
+except ImportError:
+    from czsc.py.weight_backtest import WeightBacktest
+
+from .plotting.backtest import (
     get_performance_metrics_cards,
     plot_backtest_stats,
     plot_long_short_comparison
