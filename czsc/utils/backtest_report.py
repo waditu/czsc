@@ -4,7 +4,7 @@
 使用 Python f-string + plotly 绘图实现 WeightBacktest 回测结果的 HTML 报告生成
 """
 import os
-from typing import Optional, Dict, Any, TYPE_CHECKING
+from typing import Optional, Dict, Any
 
 import pandas as pd
 
