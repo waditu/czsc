@@ -16,6 +16,8 @@
 
 > **0.10.X 版本开始，逐步用 rs-czsc 替换一些 python 对象、函数的实现。有需要了解对象或函数具体执行逻辑的，可以查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。**
 
+> [czsc_skills](https://github.com/zengbin93/czsc_skills)
+
 >源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，原始博客中的内容不太完整，且没有评论，以下是网友整理的原文备份
 
 * 备份网址1：http://www.fxgan.com
