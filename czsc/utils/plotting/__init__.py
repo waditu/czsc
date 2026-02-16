@@ -13,6 +13,7 @@ from .backtest import (
     plot_backtest_stats,
     plot_colored_table,
     plot_long_short_comparison,
+    get_performance_metrics_cards,
 )
 
 # 从 weight 导入权重相关绘图函数
@@ -56,6 +57,7 @@ __all__ = [
     'plot_backtest_stats',
     'plot_colored_table',
     'plot_long_short_comparison',
+    'get_performance_metrics_cards',
     # Weight plotting functions
     'calculate_turnover_stats',
     'calculate_weight_stats',

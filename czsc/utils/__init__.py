@@ -15,9 +15,11 @@ from . import plotting
 from . import data
 from . import crypto
 from . import analysis
+from . import backtest_report
 
 from .echarts_plot import kline_pro, trading_view_kline
 from .io import dill_dump, dill_load, read_json, save_json
+from .backtest_report import generate_backtest_report
 # Delayed import to avoid circular dependency - import these from czsc.utils.sig directly
 # from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 # from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
