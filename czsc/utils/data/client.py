@@ -64,7 +64,7 @@ class DataClient:
         :param verbose: bool, 是否开启详细日志模式，显示请求细节
         :param kwargs: 其他参数（clear_cache, cache_path, logger）
         """
-        from czsc.utils.cache import get_dir_size
+        from czsc.utils.data.cache import get_dir_size
         self.logger = kwargs.pop("logger", loguru.logger)
 
         self.__token = token or get_url_token(url, logger=self.logger)

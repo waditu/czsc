@@ -4,7 +4,7 @@
 """
 import numpy as np
 import pandas as pd
-from czsc.utils.cache import disk_cache
+from czsc.utils.data.cache import disk_cache
 
 
 def generate_symbol_kines(symbol, freq, sdt="20100101", edt="20250101", seed=42):

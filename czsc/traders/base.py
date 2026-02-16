@@ -19,7 +19,7 @@ from pyecharts.charts import Tab
 from pyecharts.components import Table
 from pyecharts.options import ComponentTitleOpts
 from czsc.core import CZSC, Position, RawBar, Signal, BarGenerator
-from czsc.utils.cache import home_path
+from czsc.utils.data.cache import home_path
 from czsc.traders.sig_parse import get_signals_freqs
 
 

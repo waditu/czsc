@@ -27,6 +27,17 @@ from .oss import AliyunOSS
 
 # 从新模块导入，保持向后兼容
 from .plotting import KlineChart
+from .plotting.backtest import (
+    plot_cumulative_returns, plot_drawdown_analysis,
+    plot_daily_return_distribution, plot_monthly_heatmap,
+    plot_backtest_stats, plot_colored_table,
+    plot_long_short_comparison
+)
+from .plotting.weight import (
+    plot_weight_histogram_kde, plot_weight_cdf,
+    plot_turnover_overview, plot_turnover_cost_analysis,
+    plot_weight_time_series
+)
 from .analysis import (
     nmi_matrix, single_linear, cross_sectional_ic,
     daily_performance, holds_performance, top_drawdowns,

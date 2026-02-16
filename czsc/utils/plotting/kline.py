@@ -428,7 +428,7 @@ class KlineChart:
         import webbrowser
 
         if not file_name:
-            from czsc.utils.cache import home_path
+            from czsc.utils.data.cache import home_path
 
             file_name = os.path.join(home_path, "kline_chart.html")
 

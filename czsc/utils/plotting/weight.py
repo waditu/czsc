@@ -546,6 +546,23 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
     return fig
 
 
+# Backward compatibility alias
+def plot_weight_time_series(dfw: pd.DataFrame, title: str = "策略持仓权重分布分析", height: int = 800, show_position_count: bool = True) -> go.Figure:
+    """
+    权重时序分析（向后兼容函数，调用 plot_turnover_overview）
+    
+    Args:
+        dfw: 包含dt、symbol、weight列的DataFrame
+        title: 图表标题
+        height: 图表高度
+        show_position_count: 是否显示持仓数量（此参数暂未使用，保留以兼容）
+        
+    Returns:
+        Plotly图表对象
+    """
+    return plot_turnover_overview(dfw, title=title, height=height)
+
+
 if __name__ == "__main__":
     import czsc
     

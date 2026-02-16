@@ -201,14 +201,14 @@ def test_backward_compatibility():
     assert callable(overlap)
     assert KlineChart is not None
     
-    # 测试从旧的单独文件导入
-    from czsc.utils.plot_backtest import plot_colored_table
-    from czsc.utils.cache import DiskCache as OldDiskCache
-    from czsc.utils.fernet import generate_fernet_key as old_gen_key
+    # 测试向后兼容性 - 通过 czsc.utils 的 __init__.py 重新导出
+    from czsc.utils import plot_colored_table
+    from czsc.utils import DiskCache
+    from czsc.utils import generate_fernet_key
     
     assert callable(plot_colored_table)
-    assert OldDiskCache is not None
-    assert callable(old_gen_key)
+    assert DiskCache is not None
+    assert callable(generate_fernet_key)
 
 
 if __name__ == '__main__':

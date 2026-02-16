@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from czsc.utils.plot_backtest import plot_colored_table
+from czsc.utils.plotting.backtest import plot_colored_table
 
 def test_plot_colored_table():
     # 构造测试数据

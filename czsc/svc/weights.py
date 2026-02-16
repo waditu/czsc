@@ -18,7 +18,7 @@ def show_weight_ts(df, key=None, **kwargs):
         - height: int, 图表高度，默认为 800
         - show_position_count: bool, 是否显示持仓数量，默认为 True
     """
-    from czsc.utils.plot_weight import plot_weight_time_series
+    from czsc.utils.plotting.weight import plot_weight_time_series
     
     title = kwargs.get("title", "策略持仓权重分布分析")
     height = kwargs.get("height", 800)
