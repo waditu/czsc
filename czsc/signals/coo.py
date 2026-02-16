@@ -9,7 +9,7 @@ import numpy as np
 from deprecated import deprecated
 from collections import OrderedDict
 from czsc.core import CZSC
-from czsc.utils import create_single_signal, get_sub_elements
+from czsc.utils.sig import create_single_signal, get_sub_elements
 from czsc.signals.tas import update_ma_cache, update_sar_cache, update_kdj_cache, update_cci_cache
 
 

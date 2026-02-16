@@ -8,7 +8,7 @@ describe:
 from czsc.core import CZSC
 from collections import OrderedDict
 from czsc.traders.base import CzscTrader
-from czsc.utils import create_single_signal, get_sub_elements
+from czsc.utils.sig import create_single_signal, get_sub_elements
 from czsc.core import Operate, Direction, Mark
 from czsc.signals.tas import update_ma_cache
 

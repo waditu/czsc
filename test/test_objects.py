@@ -12,7 +12,7 @@ Mock数据格式说明:
 import numpy as np
 from czsc.utils import x_round
 from czsc.py import Signal, Event, Freq, Operate
-from czsc.utils.stats import cal_break_even_point
+from czsc.utils.analysis.stats import cal_break_even_point
 from loguru import logger
 
 

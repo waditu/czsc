@@ -22,7 +22,7 @@ def test_x_round():
 
 
 def test_fernet():
-    from czsc.utils.fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
+    from czsc.utils.crypto.fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
 
     key = generate_fernet_key()
     text = {"account": "admin", "password": "123456"}

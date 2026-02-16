@@ -10,7 +10,7 @@ from typing import List
 from collections import OrderedDict
 from czsc import CZSC
 from czsc.core import Signal, RawBar, Direction
-from czsc.utils import get_sub_elements
+from czsc.utils.sig import get_sub_elements
 
 
 def jcc_san_xing_xian_V221023(c: CZSC, **kwargs) -> OrderedDict:

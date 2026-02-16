@@ -23,8 +23,11 @@ from collections import OrderedDict
 from deprecated import deprecated
 from czsc.core import CZSC, Signal, Direction, BI, RawBar, FX, Mark, ZS
 from czsc.traders.base import CzscSignals
-from czsc.utils import get_sub_elements, fast_slow_cross, count_last_same, create_single_signal, single_linear
-from czsc.utils.sig import cross_zero_axis, cal_cross_num, down_cross_count
+from czsc.utils import single_linear
+from czsc.utils.sig import (
+    cross_zero_axis, cal_cross_num, down_cross_count,
+    get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
+)
 
 
 def update_ma_cache(c: CZSC, **kwargs):

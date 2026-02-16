@@ -8,7 +8,7 @@ describe: 谢磊贡献的信号函数
 import numpy as np
 from typing import Union, List
 from collections import OrderedDict
-from czsc.utils import create_single_signal, get_sub_elements
+from czsc.utils.sig import create_single_signal, get_sub_elements
 from czsc.signals.tas import update_ma_cache
 from czsc.signals.jcc import check_szx
 from czsc.core import CZSC

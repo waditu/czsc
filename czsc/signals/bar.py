@@ -16,7 +16,8 @@ from collections import OrderedDict
 from czsc import envs
 from czsc.core import CZSC, Signal, RawBar, freq_end_time
 from czsc.signals.tas import update_ma_cache, update_macd_cache
-from czsc.utils import single_linear, get_sub_elements, create_single_signal
+from czsc.utils import single_linear
+from czsc.utils.sig import get_sub_elements, create_single_signal
 
 
 def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:

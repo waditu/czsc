@@ -4,7 +4,7 @@ from collections import OrderedDict
 import pandas as pd
 
 from czsc.analyze import CZSC
-from czsc.utils import create_single_signal
+from czsc.utils.sig import create_single_signal
 
 
 def bar_volatility_V241013(c: CZSC, **kwargs) -> OrderedDict:

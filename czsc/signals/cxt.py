@@ -11,8 +11,7 @@ from typing import List
 from czsc import CZSC
 from czsc.traders.base import CzscSignals
 from czsc.core import FX, BI, Direction, ZS, Mark
-from czsc.utils import get_sub_elements, create_single_signal
-from czsc.utils.sig import get_zs_seq
+from czsc.utils.sig import get_sub_elements, create_single_signal, get_zs_seq
 from czsc.signals.tas import update_ma_cache, update_macd_cache
 from collections import OrderedDict
 from deprecated import deprecated
