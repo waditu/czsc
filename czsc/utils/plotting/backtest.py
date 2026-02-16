@@ -4,7 +4,7 @@
 从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
 """
 
-from typing import Union, Optional, Tuple
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -254,7 +254,7 @@ def plot_drawdown_analysis(
         fig.add_hline(
             y=y_val * 100,
             line_dash="dot",
-            line_color=f"rgba(52,168,83,0.5)",
+            line_color="rgba(52,168,83,0.5)",
             line_width=1
         )
 
@@ -342,7 +342,7 @@ def plot_monthly_heatmap(
 
 def get_performance_metrics_cards(stats: dict) -> list:
     """从WeightBacktest.stats中提取核心绩效指标，用于HTML报告中的指标卡
-    
+
     :param stats: WeightBacktest.stats 字典
     :return: 指标列表
     """

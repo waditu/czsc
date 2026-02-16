@@ -16,16 +16,16 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 import numpy as np
 from scipy import stats
-from typing import Dict, List, Tuple
+from typing import Dict
 
 
 def calculate_turnover_stats(dfw: pd.DataFrame) -> Dict:
     """
     计算策略换手率统计指标
-    
+
     Args:
         dfw: 包含dt、symbol、weight列的DataFrame
-        
+
     Returns:
         包含换手率统计指标的字典：
         - 单边换手率: 总换手量
@@ -38,28 +38,28 @@ def calculate_turnover_stats(dfw: pd.DataFrame) -> Dict:
     """
     df = dfw.copy()
     df['dt'] = pd.to_datetime(df['dt'])
-    
+
     # 按品种和时间透视表
     dft = pd.pivot_table(df, index='dt', columns='symbol', values='weight', aggfunc='sum')
     dft = dft.fillna(0)
-    
+
     # 计算换手率（相邻时间点的权重变化绝对值之和）
     df_turns = dft.diff().abs().sum(axis=1).reset_index()
     df_turns.columns = ['dt', 'turnover']
-    
+
     # 修正第一个时间点的换手率（diff无法计算第一个点）
     sdt = df['dt'].min()
     initial_turnover = df[df['dt'] == sdt]['weight'].abs().sum()
     df_turns.loc[df_turns['dt'] == sdt, 'turnover'] = initial_turnover
-    
+
     # 按日期重采样为日频
     df_daily = df_turns.set_index('dt').resample('D').sum().reset_index()
-    
+
     # 计算统计指标
     total_turnover = df_daily['turnover'].sum()
     trading_days = len(df_daily)
     annual_turnover = total_turnover / trading_days * 252 if trading_days > 0 else 0
-    
+
     return {
         '单边换手率': round(total_turnover, 4),
         '年化单边换手率': round(annual_turnover, 2),
@@ -101,10 +101,12 @@ def calculate_weight_stats(dfw: pd.DataFrame) -> pd.DataFrame:
     return weight_stats
 
 
-def plot_weight_histogram_kde(dfw: pd.DataFrame,
-                             title: str = "仓位分布直方图与核密度估计",
-                             height: int = 800,
-                             width: int = 900) -> go.Figure:
+def plot_weight_histogram_kde(
+    dfw: pd.DataFrame,
+    title: str = "仓位分布直方图与核密度估计",
+    height: int = 800,
+    width: int = 900
+) -> go.Figure:
     """
     绘制仓位分布直方图与核密度估计
 
@@ -136,7 +138,7 @@ def plot_weight_histogram_kde(dfw: pd.DataFrame,
     }
 
     positions = ['多头仓位', '空头仓位', '净仓位', '绝对仓位']
-    position_indices = [(1,1), (1,2), (2,1), (2,2)]
+    position_indices = [(1, 1), (1, 2), (2, 1), (2, 2)]
     colors = ['#2E8B57', '#DC143C', '#4682B4', '#FF8C00']
 
     for i, (position_type, (row, col)) in enumerate(zip(positions, position_indices)):
@@ -333,22 +335,22 @@ def plot_weight_cdf(dfw: pd.DataFrame,
 def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分析总览", height: int = 600) -> go.Figure:
     """
     绘制策略换手率总览图 - 一图看懂换手率核心指标
-    
+
     Args:
         dfw: 包含dt、symbol、weight列的DataFrame
         title: 图表标题
         height: 图表高度
-        
+
     Returns:
         Plotly图表对象
     """
     # 计算换手率统计
     stats = calculate_turnover_stats(dfw)
     df_daily = stats['日换手详情']
-    
+
     # 创建图表
     fig = go.Figure()
-    
+
     # 添加换手率时序曲线
     fig.add_trace(go.Scatter(
         x=df_daily['dt'],
@@ -359,17 +361,17 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         marker=dict(size=4),
         hovertemplate='<b>日期</b>: %{x}<br><b>换手率</b>: %{y:.4f}<extra></extra>'
     ))
-    
+
     # 添加平均换手率参考线
     avg_turnover = stats['日均换手率']
     fig.add_hline(
-        y=avg_turnover, 
-        line_dash="dash", 
+        y=avg_turnover,
+        line_dash="dash",
         line_color="#E74C3C",
         annotation_text=f"日均换手: {avg_turnover:.4f}",
         annotation_position="right"
     )
-    
+
     # 添加关键指标注释
     metrics_text = (
         f"<b>核心指标</b><br>"
@@ -378,7 +380,7 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         f"最大单日: {stats['最大单日换手率']:.4f}<br>"
         f"换手标准差: {stats['换手率标准差']:.4f}"
     )
-    
+
     fig.add_annotation(
         x=0.02, y=0.98,
         text=metrics_text,
@@ -390,7 +392,7 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         borderwidth=2,
         font=dict(size=12)
     )
-    
+
     # 更新布局
     fig.update_layout(
         title={
@@ -407,7 +409,7 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         paper_bgcolor='white',
         hovermode='x unified'
     )
-    
+
     # 更新坐标轴样式
     fig.update_xaxes(
         showgrid=True,
@@ -417,7 +419,7 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         linewidth=2,
         tickfont=dict(size=12)
     )
-    
+
     fig.update_yaxes(
         showgrid=True,
         gridwidth=1,
@@ -426,47 +428,49 @@ def plot_turnover_overview(dfw: pd.DataFrame, title: str = "策略换手率分�
         linewidth=2,
         tickfont=dict(size=12)
     )
-    
+
     return fig
 
 
-def plot_turnover_cost_analysis(dfw: pd.DataFrame,
-                               fee_rate: float = 0.0003,
-                               title: str = "换手成本分析",
-                               height: int = 500) -> go.Figure:
+def plot_turnover_cost_analysis(
+    dfw: pd.DataFrame,
+    fee_rate: float = 0.0003,
+    title: str = "换手成本分析",
+    height: int = 500
+) -> go.Figure:
     """
     绘制换手成本分析图 - 评估交易成本对收益的影响
-    
+
     Args:
         dfw: 包含dt、symbol、weight列的DataFrame
         fee_rate: 单边交易费率（默认0.03%）
         title: 图表标题
         height: 图表高度
-        
+
     Returns:
         Plotly图表对象
     """
     # 计算换手率统计
     stats = calculate_turnover_stats(dfw)
     df_daily = stats['日换手详情']
-    
+
     # 计算累计换手成本
     df_daily['cumulative_cost'] = (df_daily['turnover'] * fee_rate).cumsum()
-    
+
     fig = go.Figure()
-    
+
     # 添加累计成本曲线
     fig.add_trace(go.Scatter(
         x=df_daily['dt'],
         y=df_daily['cumulative_cost'],
         mode='lines',
-        name=f'累计成本 (费率{fee_rate*100:.3f}%)',
+        name=f'累计成本 (费率{fee_rate * 100:.3f}%)',
         line=dict(color='#C0392B', width=2),
         fill='tozeroy',
         fillcolor='rgba(192, 57, 43, 0.1)',
         hovertemplate='<b>日期</b>: %{x}<br><b>累计成本</b>: %{y:.4f}<extra></extra>'
     ))
-    
+
     # 添加单日成本柱状图
     fig.add_trace(go.Bar(
         x=df_daily['dt'],
@@ -476,18 +480,18 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
         opacity=0.6,
         hovertemplate='<b>日期</b>: %{x}<br><b>单日成本</b>: %{y:.4f}<extra></extra>'
     ))
-    
+
     # 添加成本统计信息
     total_cost = df_daily['turnover'].sum() * fee_rate
     avg_daily_cost = df_daily['turnover'].mean() * fee_rate
-    
+
     cost_text = (
         f"<b>成本分析</b><br>"
         f"总成本: {total_cost:.4f}<br>"
         f"日均成本: {avg_daily_cost:.6f}<br>"
         f"年化成本: {avg_daily_cost * 252:.4f}"
     )
-    
+
     fig.add_annotation(
         x=0.98, y=0.98,
         text=cost_text,
@@ -499,7 +503,7 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
         borderwidth=2,
         font=dict(size=11)
     )
-    
+
     # 更新布局
     fig.update_layout(
         title={
@@ -523,7 +527,7 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
         paper_bgcolor='white',
         hovermode='x unified'
     )
-    
+
     # 更新坐标轴样式
     fig.update_xaxes(
         showgrid=True,
@@ -533,7 +537,7 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
         linewidth=2,
         tickfont=dict(size=12)
     )
-    
+
     fig.update_yaxes(
         showgrid=True,
         gridwidth=1,
@@ -542,21 +546,26 @@ def plot_turnover_cost_analysis(dfw: pd.DataFrame,
         linewidth=2,
         tickfont=dict(size=12)
     )
-    
+
     return fig
 
 
 # Backward compatibility alias
-def plot_weight_time_series(dfw: pd.DataFrame, title: str = "策略持仓权重分布分析", height: int = 800, show_position_count: bool = True) -> go.Figure:
+def plot_weight_time_series(
+    dfw: pd.DataFrame,
+    title: str = "策略持仓权重分布分析",
+    height: int = 800,
+    show_position_count: bool = True
+) -> go.Figure:
     """
     权重时序分析（向后兼容函数，调用 plot_turnover_overview）
-    
+
     Args:
         dfw: 包含dt、symbol、weight列的DataFrame
         title: 图表标题
         height: 图表高度
         show_position_count: 是否显示持仓数量（此参数暂未使用，保留以兼容）
-        
+
     Returns:
         Plotly图表对象
     """
@@ -565,32 +574,32 @@ def plot_weight_time_series(dfw: pd.DataFrame, title: str = "策略持仓权重�
 
 if __name__ == "__main__":
     import czsc
-    
+
     print("欢迎使用策略持仓分析工具！")
     print("=" * 50)
-    
+
     # 生成模拟数据
     print("正在生成模拟数据...")
     dfw = czsc.mock.generate_klines_with_weights()
     dfw = dfw[['dt', 'symbol', 'weight']].copy()
     print(f"数据生成完成：{len(dfw)} 条记录")
-    
+
     print("\n推荐使用简化版函数：")
     print("1. plot_turnover_overview(dfw) - 换手率总览")
     print("2. plot_positions_simple(dfw) - 持仓分析")
     print("3. plot_turnover_cost_analysis(dfw) - 成本分析")
-    
+
     print("\n传统详细分析函数：")
     print("4. plot_weight_time_series(dfw) - 完整时序分析")
     print("5. plot_weight_histogram_kde(dfw) - 分布统计分析")
     print("6. plot_absolute_position_analysis(dfw) - 绝对仓位详细分析")
-    
+
     # 示例：使用简化函数
     # fig_overview = plot_turnover_overview(dfw)
     # fig_overview.show()
-    
+
     # fig_simple = plot_positions_simple(dfw)
     # fig_simple.show()
-    
+
     # fig_cost = plot_turnover_cost_analysis(dfw)
     # fig_cost.show()
