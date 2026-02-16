@@ -12,10 +12,8 @@ Mock数据格式说明:
 - 频率: 1分钟、5分钟、日线
 - Seed: 42（确保可重现）
 """
-import pytest
-import pandas as pd
 from czsc import mock
-from czsc.core import CZSC, RawBar, NewBar, remove_include, FX, check_fx, Direction, Freq, format_standard_kline
+from czsc.core import CZSC, Direction, Freq, format_standard_kline
 
 
 def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
