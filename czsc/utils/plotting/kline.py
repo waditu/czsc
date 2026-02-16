@@ -8,8 +8,11 @@ describe: 使用 Plotly 构建绘图模块
 import os
 import numpy as np
 import pandas as pd
-from rs_czsc import CZSC
+from typing import TYPE_CHECKING
 from plotly import graph_objects as go
+
+if TYPE_CHECKING:
+    from czsc.core import CZSC
 
 
 class KlineChart:
@@ -540,7 +543,7 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
     return fig
 
 
-def plot_czsc_chart(czsc_obj: CZSC, **kwargs) -> KlineChart:
+def plot_czsc_chart(czsc_obj: "CZSC", **kwargs) -> KlineChart:
     """使用 plotly 绘制 CZSC 对象
 
     :param czsc_obj: CZSC 对象

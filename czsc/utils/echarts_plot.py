@@ -9,7 +9,7 @@ from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid, Boxplot
 from pyecharts.commons.utils import JsCode
 from typing import List, Optional
 import numpy as np
-from czsc.core import Operate
+from czsc.py.enum import Operate
 from .ta import SMA, MACD
 
 from lightweight_charts import Chart
