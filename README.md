@@ -47,7 +47,7 @@
 
 * **[择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)**
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
-* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
+* 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 signals_all/signals_any/signals_not 实现信号的逻辑组合，详见 `czsc/objects.py`
 * 定义并实现了若干信号函数，详见 `czsc/signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**

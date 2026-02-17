@@ -10,7 +10,7 @@ CZSC is a comprehensive Python library for quantitative trading based on Chan Th
 
 - ✅ Automated identification of patterns (分型), strokes (笔), segments (线段), and pivots (中枢)
 - ✅ Multi-timeframe joint analysis framework
-- ✅ Signal-Factor-Event-Trading system
+- ✅ Signal-Event-Trading system
 - ✅ Strategy backtesting and optimization
 - ✅ Multiple data source connectors
 - ✅ Rust/Python hybrid architecture for performance
@@ -53,15 +53,15 @@ CZSC is a comprehensive Python library for quantitative trading based on Chan Th
 
 ## 🔑 Core Concepts
 
-### Signal-Factor-Event-Trading System
+### Signal-Event-Trading System
 
 ```
-Raw Bars → Signals → Factors → Events → Trading Decisions
+Raw Bars → Signals → Events → Trading Decisions
 ```
 
 - **Signal**: Basic technical indicator or market state
-- **Factor**: Linear combination of signals (AND/OR/NOT logic)
-- **Event**: Merged factors representing market events
+- **Event**: Logical combination of signals (AND/OR/NOT) representing trading conditions
+  - Contains `signals_all` (must satisfy all), `signals_any` (satisfy any), `signals_not` (must not appear)
 - **Position**: Complete trading strategy with entry/exit rules
 
 ### Chan Theory Objects
@@ -232,11 +232,9 @@ class MyStrategy(CzscStrategyBase):
         # Define entry events
         opens = [{
             "operate": "开多",
-            "factors": [{
-                "signals_all": ["signal1", "signal2"],  # Must satisfy all
-                "signals_any": ["signal3"],             # Satisfy any
-                "signals_not": ["signal5"],             # Must not appear
-            }]
+            "signals_all": ["signal1", "signal2"],  # Must satisfy all
+            "signals_any": ["signal3"],              # Satisfy any
+            "signals_not": ["signal5"],              # Must not appear
         }]
         
         # Define exit events
