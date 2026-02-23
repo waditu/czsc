@@ -21,13 +21,14 @@ describe: 基于 clickhouse 的策略持仓权重管理，cwc 为 clickhouse wei
 """
 # pip install clickhouse_connect -i https://pypi.tuna.tsinghua.edu.cn/simple
 import os
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-import clickhouse_connect as ch
 import loguru
 import pandas as pd
-from clickhouse_connect.driver.client import Client
 from zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from clickhouse_connect.driver.client import Client
 
 
 def _ensure_timestamp(value, tz=ZoneInfo("Asia/Shanghai")):
@@ -123,13 +124,14 @@ def __db_from_env():
         """
         )
 
+    import clickhouse_connect as ch
     db = ch.get_client(host=host, port=port, user=user, password=password,
                        connect_timeout=connect_timeout, 
                        send_receive_timeout=send_receive_timeout)
     return db
 
 
-def init_latest_weights_view(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
+def init_latest_weights_view(db: "Optional[Client]" = None, database="czsc_strategy", **kwargs):
     """
     策略类型有 cs 和 ts，这两种策略对应的写入逻辑有所区别，需要单独创建最新持仓的视图，然后再合并。
     """
@@ -199,7 +201,7 @@ def init_latest_weights_view(db: Optional[Client] = None, database="czsc_strateg
     
     logger.info("所有最新持仓权重视图初始化完成")
 
-def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
+def init_tables(db: "Optional[Client]" = None, database="czsc_strategy", **kwargs):
     """
     创建数据库表
 
@@ -265,7 +267,7 @@ def init_tables(db: Optional[Client] = None, database="czsc_strategy", **kwargs)
     logger.info("returns 表创建成功！")
 
 
-def initialize(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
+def initialize(db: "Optional[Client]" = None, database="czsc_strategy", **kwargs):
     """初始化数据库，包括创建数据表和最新持仓视图
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -280,7 +282,7 @@ def initialize(db: Optional[Client] = None, database="czsc_strategy", **kwargs):
 
 def get_meta(
     strategy,
-    db: Optional[Client] = None,
+    db: "Optional[Client]" = None,
     database="czsc_strategy",
     logger=loguru.logger,
     tz=ZoneInfo("Asia/Shanghai")
@@ -307,7 +309,7 @@ def get_meta(
 
 
 def get_all_metas(
-    db: Optional[Client] = None,
+    db: "Optional[Client]" = None,
     database="czsc_strategy",
     tz=ZoneInfo("Asia/Shanghai")
 ) -> pd.DataFrame:
@@ -337,7 +339,7 @@ def set_meta(
     logger=loguru.logger,
     overwrite=False,
     database="czsc_strategy",
-    db: Optional[Client] = None,
+    db: "Optional[Client]" = None,
     tz=ZoneInfo("Asia/Shanghai"),
 ):
     """设置策略元数据
@@ -391,7 +393,7 @@ def set_meta(
     logger.info(f"{strategy} set_metadata: {res.summary}")
 
 
-def __send_heartbeat(db: Client, strategy, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")):
+def __send_heartbeat(db: "Client", strategy, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")):
     """发送心跳
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -418,7 +420,7 @@ def __send_heartbeat(db: Client, strategy, logger=loguru.logger, database="czsc_
 
 
 def get_strategy_weights(
-    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
+    strategy, db: "Optional[Client]" = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """获取策略持仓权重
 
@@ -456,7 +458,7 @@ def get_strategy_weights(
     return df
 
 
-def get_latest_weights(db: Optional[Client] = None, strategy=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
+def get_latest_weights(db: "Optional[Client]" = None, strategy=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
     """获取策略最新持仓权重时间
 
     :param db: clickhouse_connect.driver.Client, 数据库连接
@@ -483,7 +485,7 @@ def publish_weights(
     df: pd.DataFrame,
     batch_size=100000,
     logger=loguru.logger,
-    db: Optional[Client] = None,
+    db: "Optional[Client]" = None,
     database="czsc_strategy",
     tz=ZoneInfo("Asia/Shanghai"),
 ):
@@ -552,7 +554,7 @@ def publish_returns(
     batch_size=100000,
     logger=loguru.logger,
     database="czsc_strategy",
-    db: Optional[Client] = None,
+    db: "Optional[Client]" = None,
     tz=ZoneInfo("Asia/Shanghai"),
 ):
     """发布策略日收益
@@ -614,7 +616,7 @@ def publish_returns(
 
 
 def get_strategy_returns(
-    strategy, db: Optional[Client] = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
+    strategy, db: "Optional[Client]" = None, sdt=None, edt=None, symbols=None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """获取策略日收益
 
@@ -655,7 +657,7 @@ def get_strategy_returns(
 
 
 def update_strategy_status(
-    strategy, status, db: Optional[Client] = None, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
+    strategy, status, db: "Optional[Client]" = None, logger=loguru.logger, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """更新策略状态
 
@@ -692,7 +694,7 @@ def update_strategy_status(
     logger.info(f"策略 {strategy} 状态已更新为: {status}")
 
 
-def get_strategies_by_status(status=None, db: Optional[Client] = None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
+def get_strategies_by_status(status=None, db: "Optional[Client]" = None, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")) -> pd.DataFrame:
     """根据状态获取策略列表
 
     :param status: str, 策略状态，实盘 或 废弃，None 表示获取所有状态
@@ -713,7 +715,7 @@ def get_strategies_by_status(status=None, db: Optional[Client] = None, database=
 
 
 def clear_strategy(
-    strategy, db: Optional[Client] = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
+    strategy, db: "Optional[Client]" = None, logger=loguru.logger, human_confirm=True, database="czsc_strategy", tz=ZoneInfo("Asia/Shanghai")
 ):
     """清空策略
 

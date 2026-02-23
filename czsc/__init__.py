@@ -24,7 +24,6 @@ from czsc import utils
 from czsc import traders
 from czsc import sensors
 from czsc import aphorism
-from czsc import svc
 from czsc import mock
 from czsc.traders import rwc
 from czsc.traders import cwc
@@ -171,6 +170,18 @@ __version__ = "0.10.10"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20260210"
+
+# 延迟加载重型可选模块（如 svc 依赖 streamlit），避免影响导入速度
+_LAZY_MODULES = {"svc": "czsc.svc"}
+
+
+def __getattr__(name):
+    if name in _LAZY_MODULES:
+        import importlib
+        module = importlib.import_module(_LAZY_MODULES[name])
+        globals()[name] = module
+        return module
+    raise AttributeError(f"module 'czsc' has no attribute {name!r}")
 
 
 def welcome():

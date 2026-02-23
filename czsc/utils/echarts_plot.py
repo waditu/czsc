@@ -7,13 +7,14 @@
 from pyecharts import options as opts
 from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid, Boxplot
 from pyecharts.commons.utils import JsCode
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 import numpy as np
 from czsc.py.enum import Operate
 from .ta import SMA, MACD
 
-from lightweight_charts import Chart
-from lightweight_charts.widgets import StreamlitChart
+if TYPE_CHECKING:
+    from lightweight_charts import Chart
+
 
 
 def kline_pro(
@@ -453,11 +454,13 @@ def _prepare_kline_data(kline: List[dict], use_streamlit=False, width=1400, heig
             }
         )
 
-    # 创建主图表
+    # 创建主图表（延迟导入，避免在模块加载时引入 streamlit 等重型依赖）
     if use_streamlit:
+        from lightweight_charts.widgets import StreamlitChart
         logger.info("使用 StreamlitChart")
         chart = StreamlitChart(width=width, height=height)
     else:
+        from lightweight_charts import Chart
         logger.info("使用 Chart")
         chart = Chart()
 
@@ -468,7 +471,7 @@ def _prepare_kline_data(kline: List[dict], use_streamlit=False, width=1400, heig
     return df_data, chart
 
 
-def _add_moving_averages(chart: Chart, kline: List[dict], df_data: List[dict], t_seq: List[int]) -> None:
+def _add_moving_averages(chart: "Chart", kline: List[dict], df_data: List[dict], t_seq: List[int]) -> None:
     """添加移动平均线
 
     :param chart: 图表对象
@@ -509,7 +512,7 @@ def _add_moving_averages(chart: Chart, kline: List[dict], df_data: List[dict], t
         logger.warning(f"添加移动平均线失败: {e}")
 
 
-def _add_fractal_marks(chart: Chart, fx: List[dict]) -> None:
+def _add_fractal_marks(chart: "Chart", fx: List[dict]) -> None:
     """添加分型标记
 
     :param chart: 图表对象
@@ -540,7 +543,7 @@ def _add_fractal_marks(chart: Chart, fx: List[dict]) -> None:
         logger.warning(f"添加分型标记失败: {e}")
 
 
-def _add_bi_lines(chart: Chart, bi: List[dict]) -> None:
+def _add_bi_lines(chart: "Chart", bi: List[dict]) -> None:
     """添加笔线
 
     :param chart: 图表对象
@@ -571,7 +574,7 @@ def _add_bi_lines(chart: Chart, bi: List[dict]) -> None:
         logger.warning(f"添加笔线失败: {e}")
 
 
-def _add_xd_lines(chart: Chart, xd: List[dict]) -> None:
+def _add_xd_lines(chart: "Chart", xd: List[dict]) -> None:
     """添加线段
 
     :param chart: 图表对象
@@ -602,7 +605,7 @@ def _add_xd_lines(chart: Chart, xd: List[dict]) -> None:
         logger.warning(f"添加线段失败: {e}")
 
 
-def _add_macd_indicator(chart: Chart, kline: List[dict], df_data: List[dict]) -> None:
+def _add_macd_indicator(chart: "Chart", kline: List[dict], df_data: List[dict]) -> None:
     """添加MACD指标到子图表
 
     :param chart: 图表对象
@@ -706,7 +709,7 @@ def _add_macd_indicator(chart: Chart, kline: List[dict], df_data: List[dict]) ->
         logger.warning(f"添加MACD指标失败: {e}")
 
 
-def _add_trade_signals(chart: Chart, bs: List[dict]) -> None:
+def _add_trade_signals(chart: "Chart", bs: List[dict]) -> None:
     """添加买卖点标记
 
     :param chart: 图表对象
@@ -772,7 +775,7 @@ def _add_trade_signals(chart: Chart, bs: List[dict]) -> None:
         logger.exception(f"添加买卖点标记失败: {e}")
 
 
-def _setup_chart_style(chart: Chart, title: str) -> None:
+def _setup_chart_style(chart: "Chart", title: str) -> None:
     """设置图表样式
 
     :param chart: 图表对象
@@ -803,7 +806,7 @@ def trading_view_kline(
     title: str = "缠中说禅K线分析",
     t_seq: Optional[List[int]] = None,
     **kwargs,
-) -> Optional[Chart]:
+) -> Optional["Chart"]:
     """使用 lightweight_charts 绘制缠中说禅K线分析结果
 
     注意：本函数提供基础的lightweight_charts集成。
