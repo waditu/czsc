@@ -104,7 +104,7 @@ class DataClient:
             except Exception as e:
                 logger.warning(f"写入缓存文件失败: {file_cache}, 错误: {e}")
 
-    def _request_api(self, req_params: Dict[str, Any], api_name: str, kwargs: Dict[str, Any], logger, retries: int = 3):
+    def _request_api(self, req_params: Dict[str, Any], api_name: str, kwargs: Dict[str, Any], logger, retries: int = 3) -> Optional[Any]:
         """发起API请求，包含重试机制"""
         import requests
         for attempt in range(retries):
