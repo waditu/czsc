@@ -21,6 +21,7 @@ def use_python():
     v = os.environ.get('CZSC_USE_PYTHON', False)
     return True if v in valid_true else False
 
+
 def get_verbose(verbose=None):
     """verbose - 是否输出执行过程的详细信息"""
     verbose = verbose if verbose else os.environ.get('czsc_verbose', None)
