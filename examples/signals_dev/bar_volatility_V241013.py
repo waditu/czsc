@@ -53,11 +53,12 @@ def bar_volatility_V241013(c: CZSC, **kwargs) -> OrderedDict:
 
 
 def check():
-    from czsc.connectors import research
+    from czsc.mock import generate_symbol_kines
+    from czsc import format_standard_kline, Freq
     from czsc.traders.base import check_signals_acc
 
-    symbols = research.get_symbols("A股主要指数")
-    bars = research.get_raw_bars(symbols[0], "15分钟", "20181101", "20210101", fq="前复权")
+    df = generate_symbol_kines('test', '15分钟', '20180101', '20230101', seed=42)
+    bars = format_standard_kline(df, freq=Freq.F15)
 
     signals_config = [{"name": bar_volatility_V241013, "freq": "60分钟", "n": 10}]
     check_signals_acc(bars, signals_config=signals_config, height="780px", delta_days=5)  # type: ignore

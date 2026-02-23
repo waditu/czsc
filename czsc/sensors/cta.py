@@ -94,7 +94,10 @@ class CTAResearch:
             bars = self.read_bars(symbol, tactic.base_freq, bar_sdt, edt, fq='后复权')
             _trader = tactic.backtest(bars, sdt=sdt)
             for _pos in _trader.positions:
-                logger.info(f"{symbol} {_pos.name} {_pos.evaluate()}")
+                if hasattr(_pos, 'evaluate'):
+                    logger.info(f"{symbol} {_pos.name} {_pos.evaluate()}")
+                else:
+                    logger.info(f"{symbol} {_pos.name} holds={len(_pos.holds)} pairs={len(_pos.pairs)}")
             czsc.dill_dump(_trader, os.path.join(trader_path, f"{symbol}.trader"))
         except Exception as e:
             logger.exception(e)
