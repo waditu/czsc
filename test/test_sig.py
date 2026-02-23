@@ -101,6 +101,26 @@ class TestCheckCrossInfo:
             assert set(result[0].keys()) == expected_keys
 
 
+class TestFastSlowCross:
+    """测试 fast_slow_cross 函数（与 check_cross_info 功能相同）"""
+
+    def test_basic(self):
+        """测试基本交叉检测"""
+        fast = [1, 2, 3, 4, 5, 6, 7]
+        slow = [7, 6, 5, 4, 3, 2, 1]
+        result = fast_slow_cross(fast, slow)
+        assert isinstance(result, list)
+        assert len(result) >= 1
+
+    def test_consistent_with_check_cross_info(self):
+        """测试与 check_cross_info 结果一致"""
+        fast = [1, 3, 2, 5, 4, 7, 6]
+        slow = [4, 4, 4, 4, 4, 4, 4]
+        r1 = check_cross_info(fast, slow)
+        r2 = fast_slow_cross(fast, slow)
+        assert len(r1) == len(r2)
+
+
 class TestSameDirCounts:
     """测试 same_dir_counts 函数"""
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-test_features.py - czsc.utils.features 因子处理模块单元测试
+test_utils_features.py - czsc.utils.features 因子处理模块单元测试
 
 Mock数据格式说明:
 - normalize_feature: 需要 DataFrame，包含 dt 列和因子列

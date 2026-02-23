@@ -6,7 +6,7 @@ Mock数据格式说明:
 - 数据来源: czsc.mock.generate_symbol_kines
 - 数据列: dt, symbol, open, close, high, low, vol, amount
 - 时间范围: 20220101-20250101（3年数据）
-- 频率: 日线、5分钟
+- 频率: 日线、5分钟线
 - Seed: 42（确保可重现）
 
 测试覆盖:
