@@ -1,5 +1,4 @@
 import os
-from loguru import logger
 from typing import Tuple, Optional
 
 
@@ -23,7 +22,6 @@ def check_rs_czsc() -> Tuple[bool, Optional[str]]:
 installed, rs_czsc_version = check_rs_czsc()
 
 if os.getenv('CZSC_USE_PYTHON', False) or not installed:
-    logger.info("使用 python 版本对象")
     from czsc.py import (
         # 枚举类型
         Operate, Freq, Mark, Direction,
@@ -38,7 +36,6 @@ if os.getenv('CZSC_USE_PYTHON', False) or not installed:
     )
     from czsc.py.weight_backtest import WeightBacktest
 else:
-    logger.info("使用 rust 版本对象")
     # 导入已经用 rust 复现的函数
     from rs_czsc import (
         # 枚举类型

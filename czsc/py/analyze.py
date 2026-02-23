@@ -6,14 +6,11 @@ describe: 缠论分型、笔的识别
 """
 import os
 import webbrowser
-from loguru import logger
 from typing import List
 from collections import OrderedDict
 from czsc.py.enum import Mark, Direction
 from czsc.py.objects import BI, FX, RawBar, NewBar
 from czsc import envs
-
-logger.disable('czsc.analyze')
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -129,7 +126,8 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
         if isinstance(fx, FX):
             # 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
-                logger.error(f"check_fxs错误: {bars[i].dt}，{fx.mark}，{fxs[-1].mark}")
+                import warnings
+                warnings.warn(f"check_fxs错误: {bars[i].dt}，{fx.mark}，{fxs[-1].mark}")
             else:
                 fxs.append(fx)
     return fxs
@@ -235,6 +233,7 @@ class CZSC:
             return
 
         if self.verbose and len(bars_ubi) > 100:
+            from loguru import logger
             logger.info(f"{self.symbol} - {self.freq} - {bars_ubi[-1].dt} 未完成笔延伸数量: {len(bars_ubi)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi)

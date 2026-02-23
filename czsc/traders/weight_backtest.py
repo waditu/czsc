@@ -7,7 +7,6 @@ describe: 按持仓权重回测
 """
 import numpy as np
 import pandas as pd
-from loguru import logger
 from typing import Union, AnyStr, Callable
 
 from czsc.traders.base import CzscTrader
@@ -52,6 +51,7 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = "m
     :return: pd.DataFrame
         columns = ['dt', 'symbol', 'weight', 'price']
     """
+    from loguru import logger
     logger.info(f"trader positions: {[p.name for p in trader.positions]}")
 
     dfp = pd.DataFrame()

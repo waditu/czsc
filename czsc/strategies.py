@@ -12,11 +12,9 @@ import time
 import shutil
 import hashlib
 import pandas as pd
-from tqdm import tqdm
 from copy import deepcopy
 from datetime import timedelta, datetime
 from abc import ABC, abstractmethod
-from loguru import logger
 from typing import List
 from czsc.traders.base import CzscTrader
 from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
@@ -33,6 +31,11 @@ class CzscStrategyBase(ABC):
     3. 交易信号参数配置
     4. 持仓策略列表
     """
+
+    @staticmethod
+    def _get_logger():
+        from loguru import logger
+        return logger
 
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -175,7 +178,7 @@ class CzscStrategyBase(ABC):
         sleep_step = kwargs.get("sleep_step", 1000)
 
         trader = CzscTrader(positions=deepcopy(self.positions))     # type: ignore
-        for i, sig in tqdm(enumerate(sigs), desc=f"回测 {self.symbol} {self.sorted_freqs}"):
+        for i, sig in enumerate(sigs):
             trader.on_sig(sig)
 
             if i % sleep_step == 0:
@@ -217,7 +220,7 @@ class CzscStrategyBase(ABC):
 
         exist_ok = kwargs.get("exist_ok", False)
         if os.path.exists(res_path) and not exist_ok:
-            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            self._get_logger().warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
             return
         os.makedirs(res_path, exist_ok=exist_ok)
 
@@ -239,10 +242,10 @@ class CzscStrategyBase(ABC):
                     file_name = f"{_dt}_{op['op'].value}_{op['bid']}_{x_round(op['price'], 2)}_{op['op_desc']}.html"
                     file_html = os.path.join(pos_path, file_name)
                     trader.take_snapshot(file_html)
-                    logger.info(f"{file_html}")
+                    self._get_logger().info(f"{file_html}")
 
         for position in trader.positions:
-            logger.info(
+            self._get_logger().info(
                 f"{position.name}  "
                 f"\n 多空合并：{position.evaluate()} "
                 f"\n 多头表现：{position.evaluate('多头')} "
@@ -252,9 +255,9 @@ class CzscStrategyBase(ABC):
         file_trader = os.path.join(res_path, "trader.ct")
         try:
             dill_dump(trader, file_trader)
-            logger.info(f"交易对象保存到：{file_trader}")
+            self._get_logger().info(f"交易对象保存到：{file_trader}")
         except Exception as e:
-            logger.error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
+            self._get_logger().error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
         return trader
 
     def check(self, bars: List[RawBar], res_path, **kwargs):
@@ -273,7 +276,7 @@ class CzscStrategyBase(ABC):
 
         exist_ok = kwargs.get("exist_ok", False)
         if os.path.exists(res_path) and not exist_ok:
-            logger.warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
+            self._get_logger().warning(f"结果文件夹存在且不允许覆盖：{res_path}，如需执行，请先删除文件夹")
             return
         os.makedirs(res_path, exist_ok=exist_ok)
 

@@ -7,15 +7,18 @@ create_dt: 2021/7/16 11:51
 
 import os
 import time
-import dill
 import json
 import shutil
 import hashlib
 import inspect
 import pandas as pd
 from pathlib import Path
-from loguru import logger
 from typing import Any, Union, AnyStr
+
+
+def _get_logger():
+    from loguru import logger
+    return logger
 
 
 home_path = Path(os.environ.get("CZSC_HOME", os.path.join(os.path.expanduser("~"), ".czsc")))
@@ -61,17 +64,17 @@ class DiskCache:
         """
         file = self.path / f"{k}.{suffix}"
         if not file.exists():
-            logger.info(f"缓存文件不存在, {file}")
+            _get_logger().info(f"缓存文件不存在, {file}")
             return False
 
         if ttl > 0:
             create_time = file.stat().st_mtime
             if (time.time() - create_time) > ttl:
-                logger.info(f"缓存文件已过期, {file}")
+                _get_logger().info(f"缓存文件已过期, {file}")
                 os.remove(file)
                 return False
 
-        logger.info(f"缓存文件已找到, {file}")
+        _get_logger().info(f"缓存文件已找到, {file}")
         return True
 
     def get(self, k: str, suffix: str = "pkl") -> Any:
@@ -82,12 +85,13 @@ class DiskCache:
         :return: 缓存文件内容
         """
         file = self.path / f"{k}.{suffix}"
-        logger.info(f"正在读取缓存记录，地址：{file}")
+        _get_logger().info(f"正在读取缓存记录，地址：{file}")
         if not file.exists():
-            logger.warning(f"文件不存在, {file}")
+            _get_logger().warning(f"文件不存在, {file}")
             return None
 
         if suffix == "pkl":
+            import dill
             res = dill.load(open(file, "rb"))
         elif suffix == "json":
             res = json.load(open(file, "r", encoding="utf-8"))
@@ -114,9 +118,10 @@ class DiskCache:
         """
         file = self.path / f"{k}.{suffix}"
         if file.exists():
-            logger.info(f"缓存文件 {file} 将被覆盖")
+            _get_logger().info(f"缓存文件 {file} 将被覆盖")
 
         if suffix == "pkl":
+            import dill
             dill.dump(v, open(file, "wb"))
 
         elif suffix == "json":
@@ -152,11 +157,11 @@ class DiskCache:
         else:
             raise ValueError(f"suffix {suffix} not supported")
 
-        logger.info(f"已写入缓存文件：{file}")
+        _get_logger().info(f"已写入缓存文件：{file}")
 
     def remove(self, k: str, suffix: str = "pkl"):
         file = self.path / f"{k}.{suffix}"
-        logger.info(f"准备删除缓存文件：{file}")
+        _get_logger().info(f"准备删除缓存文件：{file}")
         Path.unlink(file) if Path.exists(file) else None
 
 
@@ -205,14 +210,14 @@ def clear_expired_cache(path, max_age: int = 3600 * 24 * 30):
     :param path: 缓存文件夹路径
     :param max_age: 最大缓存时间，单位：秒
     """
-    logger.info(f"开始清理缓存文件夹：{path}, max_age={max_age} 秒")
+    _get_logger().info(f"开始清理缓存文件夹：{path}, max_age={max_age} 秒")
     path = Path(path)
     for file in path.glob("*.pkl"):
         # 使用修改时间而不是创建时间，因为在Windows上创建时间不能轻易修改
         file_stat = file.stat()
         if (time.time() - file_stat.st_mtime) > max_age:
             file.unlink()
-            logger.info(f"已删除过期缓存文件：{file}, 修改时间：{file_stat.st_mtime}，当前时间：{time.time()}")
+            _get_logger().info(f"已删除过期缓存文件：{file}, 修改时间：{file_stat.st_mtime}，当前时间：{time.time()}")
 
 
 def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False):
@@ -226,7 +231,7 @@ def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False
     if subs is None:
         shutil.rmtree(path)
         path.mkdir(parents=True, exist_ok=False)
-        logger.info(f"已清空缓存文件夹：{path}")
+        _get_logger().info(f"已清空缓存文件夹：{path}")
         return
 
     for sub in subs:
@@ -235,4 +240,4 @@ def clear_cache(path: Union[AnyStr, Path] = home_path, subs=None, recreate=False
             shutil.rmtree(fpath)
             if recreate:
                 fpath.mkdir(parents=True, exist_ok=True)
-            logger.info(f"已清空缓存文件夹：{fpath}")
+            _get_logger().info(f"已清空缓存文件夹：{fpath}")

@@ -11,7 +11,6 @@ References:
 """
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from typing import Union
 
 
@@ -32,7 +31,7 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
     cols = df.columns.to_list()
 
     m_dict = {}
-    for i, col1 in tqdm(enumerate(cols), desc="nmi"):
+    for i, col1 in enumerate(cols):
         X = df[col1]
         for col2 in cols[i:]:
             Y = df[col2]

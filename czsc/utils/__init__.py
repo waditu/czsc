@@ -4,22 +4,16 @@ import functools
 import threading
 import pandas as pd
 from typing import List, Union
-from loguru import logger
 
 from . import ta
 from . import io
-from . import echarts_plot
 
-# 导入新组织的子模块
-from . import plotting
+# 导入轻量级子模块
 from . import data
 from . import crypto
 from . import analysis
-from . import backtest_report
 
-from .echarts_plot import kline_pro, trading_view_kline
 from .io import dill_dump, dill_load, read_json, save_json
-from .backtest_report import generate_backtest_report
 # Delayed import to avoid circular dependency - import these from czsc.utils.sig directly
 # from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 # from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
@@ -28,19 +22,6 @@ from .cross import cross_sectional_ranker
 from .index_composition import index_composition
 from .oss import AliyunOSS
 
-# 从新模块导入，保持向后兼容
-from .plotting import KlineChart
-from .plotting.backtest import (
-    plot_cumulative_returns, plot_drawdown_analysis,
-    plot_daily_return_distribution, plot_monthly_heatmap,
-    plot_backtest_stats, plot_colored_table,
-    plot_long_short_comparison
-)
-from .plotting.weight import (
-    plot_weight_histogram_kde, plot_weight_cdf,
-    plot_turnover_overview, plot_turnover_cost_analysis,
-    plot_weight_time_series
-)
 from .analysis import (
     nmi_matrix, single_linear, cross_sectional_ic,
     daily_performance, holds_performance, top_drawdowns,
@@ -266,7 +247,8 @@ def timeout_decorator(timeout):
             thread.join(timeout)
 
             if thread.is_alive():
-                logger.warning(f"{func.__name__} timed out after {timeout} seconds; args: {args}; kwargs: {kwargs}")
+                from loguru import logger as _logger
+                _logger.warning(f"{func.__name__} timed out after {timeout} seconds; args: {args}; kwargs: {kwargs}")
                 return None
 
             if exception[0]:
@@ -279,10 +261,57 @@ def timeout_decorator(timeout):
     return decorator
 
 
-# Lazy import to avoid circular dependency
+# 延迟加载的模块映射
+_LAZY_SUBMODULES = {
+    'echarts_plot': 'czsc.utils.echarts_plot',
+    'plotting': 'czsc.utils.plotting',
+    'backtest_report': 'czsc.utils.backtest_report',
+}
+
+# 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
+_LAZY_ATTRS = {
+    # echarts_plot
+    'kline_pro': ('czsc.utils.echarts_plot', 'kline_pro'),
+    'trading_view_kline': ('czsc.utils.echarts_plot', 'trading_view_kline'),
+    # backtest_report
+    'generate_backtest_report': ('czsc.utils.backtest_report', 'generate_backtest_report'),
+    # plotting.kline
+    'KlineChart': ('czsc.utils.plotting.kline', 'KlineChart'),
+    # plotting.backtest
+    'plot_cumulative_returns': ('czsc.utils.plotting.backtest', 'plot_cumulative_returns'),
+    'plot_drawdown_analysis': ('czsc.utils.plotting.backtest', 'plot_drawdown_analysis'),
+    'plot_daily_return_distribution': ('czsc.utils.plotting.backtest', 'plot_daily_return_distribution'),
+    'plot_monthly_heatmap': ('czsc.utils.plotting.backtest', 'plot_monthly_heatmap'),
+    'plot_backtest_stats': ('czsc.utils.plotting.backtest', 'plot_backtest_stats'),
+    'plot_colored_table': ('czsc.utils.plotting.backtest', 'plot_colored_table'),
+    'plot_long_short_comparison': ('czsc.utils.plotting.backtest', 'plot_long_short_comparison'),
+    # plotting.weight
+    'plot_weight_histogram_kde': ('czsc.utils.plotting.weight', 'plot_weight_histogram_kde'),
+    'plot_weight_cdf': ('czsc.utils.plotting.weight', 'plot_weight_cdf'),
+    'plot_turnover_overview': ('czsc.utils.plotting.weight', 'plot_turnover_overview'),
+    'plot_turnover_cost_analysis': ('czsc.utils.plotting.weight', 'plot_turnover_cost_analysis'),
+    'plot_weight_time_series': ('czsc.utils.plotting.weight', 'plot_weight_time_series'),
+    # sig
+    'get_sub_elements': ('czsc.utils.sig', 'get_sub_elements'),
+    # loguru logger
+    'logger': ('loguru', 'logger'),
+}
+
+
 def __getattr__(name):
-    """Lazy import for functions that would cause circular imports"""
-    if name == 'get_sub_elements':
-        from .sig import get_sub_elements
-        return get_sub_elements
+    """延迟加载重型子模块和属性，避免影响导入速度"""
+    import importlib
+
+    if name in _LAZY_SUBMODULES:
+        module = importlib.import_module(_LAZY_SUBMODULES[name])
+        globals()[name] = module
+        return module
+
+    if name in _LAZY_ATTRS:
+        mod_path, attr_name = _LAZY_ATTRS[name]
+        module = importlib.import_module(mod_path)
+        attr = getattr(module, attr_name)
+        globals()[name] = attr
+        return attr
+
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

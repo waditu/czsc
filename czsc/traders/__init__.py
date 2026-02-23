@@ -17,12 +17,26 @@ from czsc.traders.sig_parse import SignalsParser, get_signals_config, get_signal
 from czsc.traders.weight_backtest import get_ensemble_weight, stoploss_by_direction
 # Import WeightBacktest from core to avoid circular import
 # from czsc.traders.weight_backtest import WeightBacktest
-from czsc.traders.rwc import (
-    RedisWeightsClient,
-    get_strategy_mates,
-    get_heartbeat_time,
-    clear_strategy,
-    get_strategy_weights,
-    get_strategy_latest,
-)
-from czsc.traders.optimize import OpensOptimize, ExitsOptimize
+
+# 延迟加载的属性映射
+_LAZY_ATTRS = {
+    'OpensOptimize': ('czsc.traders.optimize', 'OpensOptimize'),
+    'ExitsOptimize': ('czsc.traders.optimize', 'ExitsOptimize'),
+    'RedisWeightsClient': ('czsc.traders.rwc', 'RedisWeightsClient'),
+    'get_strategy_mates': ('czsc.traders.rwc', 'get_strategy_mates'),
+    'get_heartbeat_time': ('czsc.traders.rwc', 'get_heartbeat_time'),
+    'clear_strategy': ('czsc.traders.rwc', 'clear_strategy'),
+    'get_strategy_weights': ('czsc.traders.rwc', 'get_strategy_weights'),
+    'get_strategy_latest': ('czsc.traders.rwc', 'get_strategy_latest'),
+}
+
+
+def __getattr__(name):
+    if name in _LAZY_ATTRS:
+        import importlib
+        mod_path, attr_name = _LAZY_ATTRS[name]
+        module = importlib.import_module(mod_path)
+        attr = getattr(module, attr_name)
+        globals()[name] = attr
+        return attr
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

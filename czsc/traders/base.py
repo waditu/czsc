@@ -9,15 +9,9 @@ import os
 import webbrowser
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-from loguru import logger
 from datetime import datetime, timedelta
-from deprecated import deprecated
 from collections import OrderedDict
 from typing import Callable, List, AnyStr, Union, Optional
-from pyecharts.charts import Tab
-from pyecharts.components import Table
-from pyecharts.options import ComponentTitleOpts
 from czsc.core import CZSC, Position, RawBar, Signal, BarGenerator
 from czsc.utils.data.cache import home_path
 from czsc.traders.sig_parse import get_signals_freqs
@@ -118,6 +112,10 @@ class CzscSignals:
         :param height: 图表高度
         :return:
         """
+        from pyecharts.charts import Tab
+        from pyecharts.components import Table
+        from pyecharts.options import ComponentTitleOpts
+
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
         for freq in self.freqs:
             ka: CZSC = self.kas[freq]
@@ -227,7 +225,8 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
         bars_right = [x for x in bars if x.dt >= sdt]   # type: ignore
 
     if len(bars_right) == 0:
-        logger.warning("右侧K线为空，无法进行信号生成", category=RuntimeWarning)
+        import warnings
+        warnings.warn("右侧K线为空，无法进行信号生成", RuntimeWarning)
         if df:
             return pd.DataFrame()
         else:
@@ -241,7 +240,7 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
     _sigs = []
     cs = CzscSignals(bg, signals_config=signals_config, **kwargs)
     cs.cache.update({'gsc_kwargs': kwargs})
-    for bar in tqdm(bars_right, desc=f'generate signals of {bg.symbol}'):
+    for bar in bars_right:
         cs.update_signals(bar)
         _sigs.append(dict(cs.s))
 
@@ -298,7 +297,7 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
     ct = CzscSignals(bg, signals_config=signals_config, **kwargs)
     last_dt = {signal.key: ct.end_dt for signal in signals}
 
-    for bar in tqdm(bars_right, desc=f'signals of {bg.symbol}'):
+    for bar in bars_right:
         ct.update_signals(bar)
 
         for signal in signals:
@@ -518,6 +517,10 @@ class CzscTrader(CzscSignals):
         :param height: 图表高度
         :return:
         """
+        from pyecharts.charts import Tab
+        from pyecharts.components import Table
+        from pyecharts.options import ComponentTitleOpts
+
         tab = Tab(page_title="{}@{}".format(self.symbol, self.end_dt.strftime("%Y-%m-%d %H:%M")))
         for freq in self.freqs:
             ka: CZSC = self.kas[freq]

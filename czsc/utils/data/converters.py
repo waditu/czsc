@@ -6,7 +6,6 @@
 
 import pandas as pd
 from typing import List, Dict, Any, Optional
-from loguru import logger
 
 
 def to_standard_kline_format(
@@ -47,7 +46,8 @@ def to_standard_kline_format(
         if old_col in df.columns:
             result[new_col] = df[old_col]
         else:
-            logger.warning(f"列 '{old_col}' 不存在于输入DataFrame中")
+            import warnings
+            warnings.warn(f"列 '{old_col}' 不存在于输入DataFrame中")
     
     # 确保dt列是datetime类型
     if 'dt' in result.columns:

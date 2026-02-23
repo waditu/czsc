@@ -1,9 +1,7 @@
 import os
 import time
 import shutil
-import loguru
 import hashlib
-import requests
 import threading
 import pandas as pd
 from pathlib import Path
@@ -17,6 +15,7 @@ def set_url_token(token, url, **kwargs):
     :param token: 凭证码
     :param url: 数据接口地址
     """
+    import loguru
     logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
@@ -27,6 +26,7 @@ def set_url_token(token, url, **kwargs):
 
 def get_url_token(url, **kwargs):
     """获取指定 URL 数据接口的凭证码"""
+    import loguru
     logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
@@ -64,6 +64,7 @@ class DataClient:
         :param verbose: bool, 是否开启详细日志模式，显示请求细节
         :param kwargs: 其他参数（clear_cache, cache_path, logger）
         """
+        import loguru
         from czsc.utils.data.cache import get_dir_size
         self.logger = kwargs.pop("logger", loguru.logger)
 
@@ -103,8 +104,9 @@ class DataClient:
             except Exception as e:
                 logger.warning(f"写入缓存文件失败: {file_cache}, 错误: {e}")
 
-    def _request_api(self, req_params: Dict[str, Any], api_name: str, kwargs: Dict[str, Any], logger, retries: int = 3) -> Optional[requests.Response]:
+    def _request_api(self, req_params: Dict[str, Any], api_name: str, kwargs: Dict[str, Any], logger, retries: int = 3):
         """发起API请求，包含重试机制"""
+        import requests
         for attempt in range(retries):
             try:
                 res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
@@ -137,7 +139,7 @@ class DataClient:
         return None
 
     def _validate_response(
-        self, res: requests.Response, api_name: str, kwargs: Dict[str, Any], logger
+        self, res, api_name: str, kwargs: Dict[str, Any], logger
     ) -> Optional[Dict[str, Any]]:
         """校验API返回结构
 
