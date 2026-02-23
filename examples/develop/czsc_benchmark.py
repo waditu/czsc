@@ -2,8 +2,8 @@
 import time
 import pandas as pd
 from loguru import logger
-from czsc.core import CZSC, format_standard_kline
-
+# from czsc.core import CZSC, format_standard_kline
+from rs_czsc import CZSC, format_standard_kline
 
 logger.disable("czsc.utils.cache")
 

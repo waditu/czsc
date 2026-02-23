@@ -1,9 +1,8 @@
-import numpy as np
 from collections import OrderedDict
 
 import pandas as pd
 
-from czsc.analyze import CZSC
+from czsc import CZSC
 from czsc.utils.sig import create_single_signal
 
 
