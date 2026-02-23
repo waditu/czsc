@@ -302,6 +302,7 @@ class OpensOptimize:
         all_stats = self._positions_stats(dumps_map, n_jobs=n_jobs)
 
         file_report = os.path.join(results_path, f"入场优化_{self.task_name}_{self.task_hash}.xlsx")
+        all_stats = [s for s in all_stats if s is not None]
         if all_stats:
             logger.info(f"优化完成，共 {len(all_stats)} 个策略，结果保存在 {file_report}")
             report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)
@@ -405,6 +406,7 @@ class ExitsOptimize:
         all_stats = self._positions_stats(dumps_map, n_jobs=n_jobs)
 
         file_report = os.path.join(results_path, f"出场优化_{self.task_name}_{self.task_hash}.xlsx")
+        all_stats = [s for s in all_stats if s is not None]
         if all_stats:
             logger.info(f"策略出场优化完成，共 {len(all_stats)} 个策略，结果保存在 {file_report}")
             report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)

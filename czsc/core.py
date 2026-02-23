@@ -72,5 +72,9 @@ __all__ = [
     # 回测
     "WeightBacktest",
     # 工具函数
-    "check_rs_czsc"
+    "check_rs_czsc",
+    "cal_break_even_point",
 ]    
+
+# 从 utils 中导入统计分析函数
+from czsc.utils.analysis.stats import cal_break_even_point

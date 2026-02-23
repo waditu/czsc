@@ -245,12 +245,18 @@ class CzscStrategyBase(ABC):
                     self._get_logger().info(f"{file_html}")
 
         for position in trader.positions:
-            self._get_logger().info(
-                f"{position.name}  "
-                f"\n 多空合并：{position.evaluate()} "
-                f"\n 多头表现：{position.evaluate('多头')} "
-                f"\n 空头表现：{position.evaluate('空头')}"
-            )
+            if hasattr(position, 'evaluate'):
+                self._get_logger().info(
+                    f"{position.name}  "
+                    f"\n 多空合并：{position.evaluate()} "
+                    f"\n 多头表现：{position.evaluate('多头')} "
+                    f"\n 空头表现：{position.evaluate('空头')}"
+                )
+            else:
+                self._get_logger().info(
+                    f"{position.name}  "
+                    f"\n holds={len(position.holds)}, pairs={len(position.pairs)}"
+                )
 
         file_trader = os.path.join(res_path, "trader.ct")
         try:
