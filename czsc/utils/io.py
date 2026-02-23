@@ -1,18 +1,19 @@
 # coding: utf-8
 
 import os
-import dill
 import pickle
 import json
 import zipfile
 
 
 def dill_dump(data, file):
+    import dill
     with open(file, "wb") as f:
         dill.dump(data, f)
 
 
 def dill_load(file):
+    import dill
     with open(file, "rb") as f:
         data = dill.load(f)
     return data

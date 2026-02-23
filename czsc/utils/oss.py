@@ -6,8 +6,6 @@ create_dt: 2023/6/6 13:56
 describe: 阿里云OSS操作类
 """
 import os
-from loguru import logger
-from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from typing import List
@@ -28,6 +26,11 @@ class AliyunOSS:
         self.auth = oss2.Auth(access_key_id, access_key_secret)
         self.bucket = oss2.Bucket(self.auth, endpoint, bucket_name)
 
+    @staticmethod
+    def _logger():
+        from loguru import logger
+        return logger
+
     def upload(self, filepath: str, oss_key: str, replace: bool = False) -> bool:
         """
         上传文件到OSS。
@@ -43,17 +46,17 @@ class AliyunOSS:
             self.create_folder(dir_name)
 
         if not replace and self.file_exists(oss_key):
-            logger.info(f"{oss_key} exists in the bucket. Set replace=True to overwrite.")
+            self._logger().info(f"{oss_key} exists in the bucket. Set replace=True to overwrite.")
             return False
 
         headers = {}
         with open(filepath, "rb") as file:
             result = self.bucket.put_object(oss_key, file, headers=headers)
             if result.status == 200:
-                logger.info(f"Upload {filepath} to {oss_key} successfully.")
+                self._logger().info(f"Upload {filepath} to {oss_key} successfully.")
                 return True
             else:
-                logger.error(f"Upload {filepath} to {oss_key} failed: {result.status}, {result.request_id}")
+                self._logger().error(f"Upload {filepath} to {oss_key} failed: {result.status}, {result.request_id}")
                 return False
 
     def download(self, oss_key: str, filepath: str, replace: bool = False) -> bool:
@@ -69,15 +72,15 @@ class AliyunOSS:
             os.makedirs(path)
 
         if not replace and os.path.exists(filepath):
-            logger.info(f"{filepath} exists in the local. Set replace=True to overwrite.")
+            self._logger().info(f"{filepath} exists in the local. Set replace=True to overwrite.")
             return False
 
         result = self.bucket.get_object_to_file(oss_key, filepath)
         if result.status == 200:
-            logger.info(f"Download {oss_key} to {filepath} successfully.")
+            self._logger().info(f"Download {oss_key} to {filepath} successfully.")
             return True
         else:
-            logger.error(f"Download {oss_key} to {filepath} failed: {result.status}, {result.request_id}")
+            self._logger().error(f"Download {oss_key} to {filepath} failed: {result.status}, {result.request_id}")
             return False
 
     def delete_file(self, oss_key: str) -> bool:
@@ -89,10 +92,10 @@ class AliyunOSS:
         """
         result = self.bucket.delete_object(oss_key)
         if result.status == 204:
-            logger.info(f"Delete {oss_key} successfully.")
+            self._logger().info(f"Delete {oss_key} successfully.")
             return True
         else:
-            logger.error(f"Delete {oss_key} failed: {result.status}, {result.request_id}")
+            self._logger().error(f"Delete {oss_key} failed: {result.status}, {result.request_id}")
             return False
 
     def file_exists(self, oss_key: str) -> bool:
@@ -131,6 +134,7 @@ class AliyunOSS:
         :return: list, 列举的文件的名称列表。
         """
         from oss2 import ObjectIterator
+        from tqdm import tqdm
 
         oss_keys = []
         for obj in tqdm(ObjectIterator(self.bucket, prefix=prefix), desc=f"List files of {prefix}"):
@@ -151,6 +155,7 @@ class AliyunOSS:
         :param threads: int, 并行上传的线程数。默认为5。
         """
         with ThreadPoolExecutor(max_workers=threads) as executor:
+            from tqdm import tqdm
             for filepath, oss_key in tqdm(zip(filepaths, oss_keys), total=len(filepaths), desc="Uploading"):
                 executor.submit(self.upload, filepath, oss_key, replace)
 
@@ -230,6 +235,6 @@ class AliyunOSS:
                 oss_key = os.path.join(oss_folder, relative_path)
                 oss_keys.append(oss_key)
 
-        logger.info(f"Uploading {local_folder} to {oss_folder}, {len(filepaths)} files in total.")
+        self._logger().info(f"Uploading {local_folder} to {oss_folder}, {len(filepaths)} files in total.")
         self.batch_upload(filepaths, oss_keys, replace, threads)
-        logger.info(f"Upload {local_folder} finished.")
+        self._logger().info(f"Upload {local_folder} finished.")

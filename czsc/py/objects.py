@@ -12,14 +12,26 @@ import pandas as pd
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
-from loguru import logger
-from deprecated import deprecated
 from typing import List, Callable, Dict
 from czsc.py.enum import Mark, Direction, Freq, Operate
 from czsc.utils.analysis.corr import single_linear
 
 
-@deprecated(version="1.0.0", reason="请使用 RawBar")
+import warnings as _warnings
+
+def _deprecated_class(version, reason):
+    """轻量级 deprecated 装饰器替代方案"""
+    def decorator(cls):
+        orig_init = cls.__init__
+        def new_init(self, *args, **kwargs):
+            _warnings.warn(f"{cls.__name__} is deprecated since version {version}. {reason}", DeprecationWarning, stacklevel=2)
+            orig_init(self, *args, **kwargs)
+        cls.__init__ = new_init
+        return cls
+    return decorator
+
+
+@_deprecated_class(version="1.0.0", reason="请使用 RawBar")
 @dataclass
 class Tick:
     symbol: str
@@ -939,6 +951,7 @@ class Position:
         :return:
         """
         if self.end_dt and s["dt"] <= self.end_dt:
+            from loguru import logger
             logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
             return
 

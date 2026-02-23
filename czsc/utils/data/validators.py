@@ -6,7 +6,6 @@
 
 import pandas as pd
 from typing import List, Optional
-from loguru import logger
 
 
 def validate_dataframe_columns(
@@ -112,6 +111,7 @@ def validate_no_duplicates(
     duplicates = df.duplicated(subset=subset)
     if duplicates.any():
         num_duplicates = duplicates.sum()
+        from loguru import logger
         logger.warning(f"{name} 包含 {num_duplicates} 行重复数据")
         raise ValueError(
             f"{name} 包含 {num_duplicates} 行重复数据. "

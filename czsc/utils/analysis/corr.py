@@ -11,7 +11,6 @@ References:
 """
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 from typing import Union
 
 
@@ -32,7 +31,7 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
     cols = df.columns.to_list()
 
     m_dict = {}
-    for i, col1 in tqdm(enumerate(cols), desc="nmi"):
+    for i, col1 in enumerate(cols):
         X = df[col1]
         for col2 in cols[i:]:
             Y = df[col2]
@@ -107,6 +106,8 @@ def cross_sectional_ic(df, x_col="open", y_col="n1b", method="spearman", **kwarg
             * callable: callable with input two 1d ndarrays and returning a float
     :return：df，res: 前者是每日相关系数结果，后者是每日相关系数的统计结果
     """
+    from tqdm import tqdm
+
     dt_col = kwargs.pop("dt_col", "dt")
     tqdm.pandas(desc="cross_section_ic")
     s = df.groupby(dt_col).progress_apply(lambda row: row[x_col].corr(row[y_col], method=method))

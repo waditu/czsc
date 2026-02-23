@@ -8,14 +8,16 @@ describe:
 import os
 import time
 import pandas as pd
-from tqdm import tqdm
-from loguru import logger
 from concurrent.futures import ProcessPoolExecutor
-from czsc import fsa
 from czsc.traders.base import generate_czsc_signals
 
 
 class DummyBacktest:
+    @staticmethod
+    def _get_logger():
+        from loguru import logger
+        return logger
+
     def __init__(self, strategy, signals_path, results_path, read_bars, **kwargs):
         """策略回测（支持多进程执行）
 
@@ -37,7 +39,7 @@ class DummyBacktest:
         # 缓存 poss 数据
         self.poss_path = os.path.join(results_path, 'poss')
         os.makedirs(self.poss_path, exist_ok=True)
-        logger.add(os.path.join(self.results_path, 'dummy.log'), encoding='utf-8', enqueue=True)
+        self._get_logger().add(os.path.join(self.results_path, 'dummy.log'), encoding='utf-8', enqueue=True)
         self.read_bars = read_bars
         self.kwargs = kwargs
 
@@ -58,7 +60,7 @@ class DummyBacktest:
         tactic = self.strategy(symbol=symbol, **self.kwargs)
         symbol_path = os.path.join(self.poss_path, symbol)
         if os.path.exists(symbol_path):
-            logger.info(f"{symbol} 已经回测过，跳过")
+            self._get_logger().info(f"{symbol} 已经回测过，跳过")
             return None
 
         os.makedirs(symbol_path, exist_ok=True)
@@ -77,7 +79,7 @@ class DummyBacktest:
             trader = tactic.dummy(sigs)
 
         except Exception as e:
-            logger.exception(e)
+            self._get_logger().exception(e)
             return None
 
         for pos in trader.positions:
@@ -94,9 +96,9 @@ class DummyBacktest:
                 dfh['symbol'] = pos.symbol
                 dfh.to_parquet(file_holds)
             except Exception as e:
-                logger.debug(f"{symbol} {pos.name} 保存失败，原因：{e}")
+                self._get_logger().debug(f"{symbol} {pos.name} 保存失败，原因：{e}")
 
-        logger.info(f"{symbol} 回测完成，共 {len(trader.positions)} 个持仓策略，耗时 {time.time() - start_time:.2f} 秒")
+        self._get_logger().info(f"{symbol} 回测完成，共 {len(trader.positions)} 个持仓策略，耗时 {time.time() - start_time:.2f} 秒")
 
     def one_pos_stats(self, pos_name):
         """分析单个持仓策略的表现"""
@@ -105,7 +107,7 @@ class DummyBacktest:
         symbols = os.listdir(self.poss_path)
         pos_pairs = []
         pos_holds = []
-        for symbol in tqdm(symbols, desc=f"读取 {pos_name}"):
+        for symbol in symbols:
             try:
                 dfp = pd.read_parquet(os.path.join(self.poss_path, f"{symbol}/{pos_name}.pairs"))
                 pos_pairs.append(dfp)
@@ -113,7 +115,7 @@ class DummyBacktest:
                 dfh = pd.read_parquet(os.path.join(self.poss_path, f"{symbol}/{pos_name}.holds"))
                 pos_holds.append(dfh[dfh['pos'] != 0])
             except Exception as e:
-                logger.debug(f"{symbol} 读取失败，原因：{e}")
+                self._get_logger().debug(f"{symbol} 读取失败，原因：{e}")
 
         pairs = pd.concat(pos_pairs, ignore_index=True)
         if not pairs.empty:
@@ -147,7 +149,7 @@ class DummyBacktest:
         tactic = self.strategy(symbol="symbol", **self.kwargs)
         dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
 
-        logger.info(f"策略回测，持仓策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，使用 {n_jobs} 个进程；"
+        self._get_logger().info(f"策略回测，持仓策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，使用 {n_jobs} 个进程；"
                     f"结果保存在 {results_path}。请耐心等待...")
 
         with ProcessPoolExecutor(n_jobs) as pool:
@@ -165,9 +167,10 @@ class DummyBacktest:
         file_report = os.path.join(results_path, f'{self.strategy.__name__}_回测结果汇总.xlsx')
         report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)
         report_df.to_excel(file_report, index=False)
-        logger.info(f"策略回测完成，结果保存在 {results_path}。")
+        self._get_logger().info(f"策略回测完成，结果保存在 {results_path}。")
 
         if kwargs.get('feishu_app_id') and kwargs.get('feishu_app_secret'):
+            from czsc import fsa
             if os.path.exists(file_report):
                 fsa.push_message(file_report, msg_type='file', **kwargs)
             else:

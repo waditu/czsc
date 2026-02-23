@@ -19,17 +19,9 @@ except ImportError:
     from czsc.utils import daily_performance, top_drawdowns
 
 from czsc import envs
-from czsc import fsa
 from czsc import utils
 from czsc import traders
-from czsc import sensors
-from czsc import aphorism
-from czsc import mock
-from czsc.traders import rwc
-from czsc.traders import cwc
 from czsc.core import CZSC, Freq, Operate, Direction, Signal, Event, RawBar, NewBar, Position, ZS, format_standard_kline
-from czsc.strategies import CzscStrategyBase, CzscJsonStrategy
-from czsc.sensors import holds_concepts_effect, CTAResearch
 from czsc.utils import ta
 from czsc.traders import (
     CzscTrader,
@@ -93,100 +85,105 @@ from czsc.utils import (
     fernet_decrypt,
 )
 
-# 警告信息捕获工具
-from czsc.utils.warning_capture import (
-    capture_warnings,
-    execute_with_warning_capture,
-)
-
-# 交易日历工具
-from czsc.py.calendar import (
-    is_trading_date,
-    next_trading_date,
-    prev_trading_date,
-    get_trading_dates,
-)
-
-from czsc.utils.trade import (
-    adjust_holding_weights,
-)
-
-from czsc.utils.log import (
-    log_strategy_info,
-)
-
-from czsc.utils.bi_info import (
-    calculate_bi_info,
-    symbols_bi_infos,
-)
-
-from czsc.features.utils import (
-    is_event_feature,
-    normalize_corr,
-    feature_returns,
-    feature_sectional_corr,
-)
-
-from czsc.utils.plotting.kline import (
-    plot_czsc_chart,
-    KlineChart
-)
-
-from czsc.utils.kline_quality import check_kline_quality
-from czsc.traders import cwc
-
-from czsc.py.bar_generator import (
-    resample_bars,
-    get_intraday_times,
-    check_freq_and_market,
-)
-
-from czsc.eda import (
-    remove_beta_effects,
-    vwap,
-    twap,
-    cross_sectional_strategy,
-    judge_factor_direction,
-    monotonicity,
-    min_max_limit,
-    rolling_layers,
-    cal_symbols_factor,
-    weights_simple_ensemble,
-    unify_weights,
-    sma_long_bear,
-    dif_long_bear,
-    tsf_type,
-    limit_leverage,
-    cal_trade_price,
-    mark_cta_periods,
-    mark_volatility,
-    cal_yearly_days,
-    turnover_rate,
-    make_price_features,
-)
-
 
 __version__ = "0.10.10"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20260210"
 
-# 延迟加载重型可选模块（如 svc 依赖 streamlit），避免影响导入速度
-_LAZY_MODULES = {"svc": "czsc.svc"}
+# 延迟加载重型可选模块，避免影响导入速度
+_LAZY_MODULES = {
+    "svc": "czsc.svc",
+    "fsa": "czsc.fsa",
+    "sensors": "czsc.sensors",
+    "aphorism": "czsc.aphorism",
+    "mock": "czsc.mock",
+    "rwc": "czsc.traders.rwc",
+    "cwc": "czsc.traders.cwc",
+}
+
+# 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
+_LAZY_ATTRS = {
+    # czsc.strategies
+    'CzscStrategyBase': ('czsc.strategies', 'CzscStrategyBase'),
+    'CzscJsonStrategy': ('czsc.strategies', 'CzscJsonStrategy'),
+    # czsc.sensors
+    'holds_concepts_effect': ('czsc.sensors', 'holds_concepts_effect'),
+    'CTAResearch': ('czsc.sensors', 'CTAResearch'),
+    # czsc.utils.warning_capture
+    'capture_warnings': ('czsc.utils.warning_capture', 'capture_warnings'),
+    'execute_with_warning_capture': ('czsc.utils.warning_capture', 'execute_with_warning_capture'),
+    # czsc.py.calendar
+    'is_trading_date': ('czsc.py.calendar', 'is_trading_date'),
+    'next_trading_date': ('czsc.py.calendar', 'next_trading_date'),
+    'prev_trading_date': ('czsc.py.calendar', 'prev_trading_date'),
+    'get_trading_dates': ('czsc.py.calendar', 'get_trading_dates'),
+    # czsc.utils.trade
+    'adjust_holding_weights': ('czsc.utils.trade', 'adjust_holding_weights'),
+    # czsc.utils.log
+    'log_strategy_info': ('czsc.utils.log', 'log_strategy_info'),
+    # czsc.utils.bi_info
+    'calculate_bi_info': ('czsc.utils.bi_info', 'calculate_bi_info'),
+    'symbols_bi_infos': ('czsc.utils.bi_info', 'symbols_bi_infos'),
+    # czsc.features.utils
+    'is_event_feature': ('czsc.features.utils', 'is_event_feature'),
+    'normalize_corr': ('czsc.features.utils', 'normalize_corr'),
+    'feature_returns': ('czsc.features.utils', 'feature_returns'),
+    'feature_sectional_corr': ('czsc.features.utils', 'feature_sectional_corr'),
+    # czsc.utils.plotting.kline
+    'plot_czsc_chart': ('czsc.utils.plotting.kline', 'plot_czsc_chart'),
+    'KlineChart': ('czsc.utils.plotting.kline', 'KlineChart'),
+    # czsc.utils.kline_quality
+    'check_kline_quality': ('czsc.utils.kline_quality', 'check_kline_quality'),
+    # czsc.py.bar_generator
+    'resample_bars': ('czsc.py.bar_generator', 'resample_bars'),
+    'get_intraday_times': ('czsc.py.bar_generator', 'get_intraday_times'),
+    'check_freq_and_market': ('czsc.py.bar_generator', 'check_freq_and_market'),
+    # czsc.eda
+    'remove_beta_effects': ('czsc.eda', 'remove_beta_effects'),
+    'vwap': ('czsc.eda', 'vwap'),
+    'twap': ('czsc.eda', 'twap'),
+    'cross_sectional_strategy': ('czsc.eda', 'cross_sectional_strategy'),
+    'judge_factor_direction': ('czsc.eda', 'judge_factor_direction'),
+    'monotonicity': ('czsc.eda', 'monotonicity'),
+    'min_max_limit': ('czsc.eda', 'min_max_limit'),
+    'rolling_layers': ('czsc.eda', 'rolling_layers'),
+    'cal_symbols_factor': ('czsc.eda', 'cal_symbols_factor'),
+    'weights_simple_ensemble': ('czsc.eda', 'weights_simple_ensemble'),
+    'unify_weights': ('czsc.eda', 'unify_weights'),
+    'sma_long_bear': ('czsc.eda', 'sma_long_bear'),
+    'dif_long_bear': ('czsc.eda', 'dif_long_bear'),
+    'tsf_type': ('czsc.eda', 'tsf_type'),
+    'limit_leverage': ('czsc.eda', 'limit_leverage'),
+    'cal_trade_price': ('czsc.eda', 'cal_trade_price'),
+    'mark_cta_periods': ('czsc.eda', 'mark_cta_periods'),
+    'mark_volatility': ('czsc.eda', 'mark_volatility'),
+    'cal_yearly_days': ('czsc.eda', 'cal_yearly_days'),
+    'turnover_rate': ('czsc.eda', 'turnover_rate'),
+    'make_price_features': ('czsc.eda', 'make_price_features'),
+}
 
 
 def __getattr__(name):
+    import importlib
+
     if name in _LAZY_MODULES:
-        import importlib
         module = importlib.import_module(_LAZY_MODULES[name])
         globals()[name] = module
         return module
+
+    if name in _LAZY_ATTRS:
+        mod_path, attr_name = _LAZY_ATTRS[name]
+        module = importlib.import_module(mod_path)
+        attr = getattr(module, attr_name)
+        globals()[name] = attr
+        return attr
+
     raise AttributeError(f"module 'czsc' has no attribute {name!r}")
 
 
 def welcome():
-    # from czsc import aphorism, envs
-    # from czsc.utils import get_dir_size, home_path
+    from czsc import aphorism
 
     print(f"欢迎使用CZSC！当前版本标识为 {__version__}@{__date__}\n")
     aphorism.print_one()

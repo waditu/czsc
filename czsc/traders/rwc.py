@@ -527,6 +527,8 @@ def get_strategy_mates(redis_url=None, connection_pool=None, key_pattern="Weight
     """
     heartbeat_prefix = kwargs.get("heartbeat_prefix", "heartbeat")
 
+    import redis
+
     if connection_pool:
         r = redis.Redis(connection_pool=connection_pool)
     else:
@@ -569,6 +571,8 @@ def get_heartbeat_time(strategy_name=None, redis_url=None, connection_pool=None,
 
     :return: str, 最近一次心跳时间
     """
+    import redis
+
     if connection_pool:
         r = redis.Redis(connection_pool=connection_pool)
     else:
@@ -607,6 +611,7 @@ def get_strategy_names(redis_url=None, connection_pool=None, key_prefix="Weights
     :param key_prefix: str, redis中key的前缀，默认为 Weights
     :return: list, 所有策略名
     """
+    import redis
 
     if connection_pool:
         r = redis.Redis(connection_pool=connection_pool)
@@ -626,6 +631,8 @@ def get_strategy_latest(redis_url=None, connection_pool=None, key_prefix="Weight
     :param key_prefix: str, redis中key的前缀，默认为 Weights
     :return: pd.DataFrame, 最新持仓数据
     """
+    import redis
+
     if connection_pool:
         r = redis.Redis(connection_pool=connection_pool)
     else:

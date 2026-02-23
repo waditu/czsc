@@ -19,7 +19,7 @@ freq_market_times, freq_edt_map = {}, {}
 
 def _ensure_mss_loaded():
     """延迟加载分钟K线时间分割数据，首次调用时才读取 feather 文件"""
-    global _mss, freq_market_times, freq_edt_map
+    global _mss
     if _mss is not None:
         return
     _mss = pd.read_feather(Path(__file__).parent / "minutes_split.feather")
