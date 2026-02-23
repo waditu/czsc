@@ -70,11 +70,12 @@ def test_czsc_basic():
 
 
 def test_czsc_signals():
-    """测试CZSC信号计算"""
+    """测试CZSC信号计算 - 无信号函数时signals为None或空字典"""
     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
     c = CZSC(bars)
     
-    assert isinstance(c.signals, dict), "signals应该是字典类型"
+    # 没有提供 get_signals 函数时，signals 为 None（Rust）或空字典（Python）
+    assert c.signals is None or isinstance(c.signals, dict), "signals应该是None或字典类型"
 
 
 def test_czsc_ubi_properties():
