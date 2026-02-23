@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 import numpy as np
-from scipy import stats
 from typing import Dict
 
 
@@ -145,7 +144,8 @@ def plot_weight_histogram_kde(
         data = position_data[position_type]
         color = colors[i]
 
-        # 计算核密度估计
+        # 计算核密度估计（延迟导入 scipy.stats，避免模块加载时引入重型依赖）
+        from scipy import stats
         kde = stats.gaussian_kde(data)
         x_range = np.linspace(data.min(), data.max(), 200)
         kde_values = kde(x_range)

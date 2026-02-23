@@ -13,16 +13,25 @@ from pathlib import Path
 from loguru import logger
 
 
-mss = pd.read_feather(Path(__file__).parent / "minutes_split.feather")
+_mss = None
 freq_market_times, freq_edt_map = {}, {}
-for _m, dfg in mss.groupby("market"):
-    for _f in [x for x in mss.columns if x.endswith("分钟")]:
-        freq_market_times[f"{_f}_{_m}"] = list(dfg[_f].unique())
-        freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
+
+
+def _ensure_mss_loaded():
+    """延迟加载分钟K线时间分割数据，首次调用时才读取 feather 文件"""
+    global _mss, freq_market_times, freq_edt_map
+    if _mss is not None:
+        return
+    _mss = pd.read_feather(Path(__file__).parent / "minutes_split.feather")
+    for _m, dfg in _mss.groupby("market"):
+        for _f in [x for x in _mss.columns if x.endswith("分钟")]:
+            freq_market_times[f"{_f}_{_m}"] = list(dfg[_f].unique())
+            freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
 
 
 def is_trading_time(dt: datetime = datetime.now(), market="A股"):
     """判断指定时间是否是交易时间"""
+    _ensure_mss_loaded()
     hm = dt.strftime("%H:%M")
     times = freq_market_times[f"1分钟_{market}"]
     return True if hm in times else False
@@ -37,6 +46,7 @@ def get_intraday_times(freq="1分钟", market="A股"):
     """
     assert market in ["A股", "期货", "默认"], "market 参数必须为 A股 或 期货 或 默认"
     assert freq.endswith("分钟"), "freq 参数必须为分钟级别的K线周期"
+    _ensure_mss_loaded()
     return freq_market_times[f"{freq}_{market}"]
 
 
@@ -95,6 +105,7 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     if freq in ["日线", "周线", "月线", "季线", "年线"]:
         return freq, "默认"
 
+    _ensure_mss_loaded()
     time_seq = sorted(list(set(time_seq)))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
@@ -172,6 +183,7 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
     hm = dt.strftime("%H:%M")
     key = f"{freq.value}_{market}"
     if freq.value.endswith("分钟"):
+        _ensure_mss_loaded()
         h, m = map(int, freq_edt_map[key][hm].split(":"))
         edt = dt.replace(hour=h, minute=m)
 
