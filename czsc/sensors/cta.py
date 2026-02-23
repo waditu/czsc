@@ -98,7 +98,10 @@ class CTAResearch:
                     logger.info(f"{symbol} {_pos.name} {_pos.evaluate()}")
                 else:
                     logger.info(f"{symbol} {_pos.name} holds={len(_pos.holds)} pairs={len(_pos.pairs)}")
-            czsc.dill_dump(_trader, os.path.join(trader_path, f"{symbol}.trader"))
+            try:
+                czsc.dill_dump(_trader, os.path.join(trader_path, f"{symbol}.trader"))
+            except Exception as e:
+                logger.warning(f"{symbol} trader 序列化失败（Rust对象可能不支持序列化）：{e}")
         except Exception as e:
             logger.exception(e)
 
@@ -130,11 +133,20 @@ class CTAResearch:
 
         stats = []
         for file in glob.glob(f"{trader_path}/*.trader"):
-            trader = czsc.dill_load(file)
-            for pos in trader.positions:
-                stats.append(pos.evaluate())
+            try:
+                trader = czsc.dill_load(file)
+                for pos in trader.positions:
+                    if hasattr(pos, 'evaluate'):
+                        stats.append(pos.evaluate())
+                    else:
+                        stats.append({'name': pos.name, 'holds': len(pos.holds), 'pairs': len(pos.pairs)})
+            except Exception as e:
+                logger.warning(f"加载 {file} 失败：{e}")
 
         dfs = pd.DataFrame(stats)
         file_stats = os.path.join(path, f"{self.strategy.__name__}回测绩效汇总.xlsx")
-        dfs.to_excel(file_stats, index=False)
-        logger.info(f"回测绩效汇总已保存到 {file_stats}")
+        if not dfs.empty:
+            dfs.to_excel(file_stats, index=False)
+            logger.info(f"回测绩效汇总已保存到 {file_stats}")
+        else:
+            logger.warning("回测绩效汇总为空，请检查回测结果")

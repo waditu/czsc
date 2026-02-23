@@ -13,9 +13,7 @@ ExitsOptimize：遍历候选出场事件，找到最优出场信号组合
 3. 本示例使用 mock 数据，实际使用时替换为真实数据源的 read_bars 函数
 """
 import os
-import json
 from pathlib import Path
-from czsc import Event, Position
 from czsc.mock import generate_symbol_kines
 from czsc import format_standard_kline, Freq
 from czsc.traders.optimize import OpensOptimize, ExitsOptimize
@@ -34,50 +32,44 @@ def create_base_positions(results_path):
     """创建基础策略持仓配置文件
 
     优化工具需要基础策略的 JSON 配置文件作为输入。
-    这里创建一个简单的日线笔方向策略作为基础策略。
+    这里创建一个简单的日线笔方向策略作为基础策略，
+    使用 CzscStrategyBase.save_positions 保存以确保格式正确（含 MD5 校验）。
     """
+    from czsc import CzscStrategyBase, Event, Position
+
+    class BaseStrategy(CzscStrategyBase):
+        @property
+        def positions(self):
+            long_pos = Position(
+                name="日线笔方向多头",
+                symbol=self.symbol,
+                opens=[Event.load({
+                    "operate": "开多",
+                    "signals_all": ["日线_D1_表里关系V230101_向上_任意_任意_0"],
+                    "signals_any": [], "signals_not": [],
+                })],
+                exits=[], interval=3600 * 4, timeout=16 * 30, stop_loss=500,
+            )
+            short_pos = Position(
+                name="日线笔方向空头",
+                symbol=self.symbol,
+                opens=[Event.load({
+                    "operate": "开空",
+                    "signals_all": ["日线_D1_表里关系V230101_向下_任意_任意_0"],
+                    "signals_any": [], "signals_not": [],
+                })],
+                exits=[], interval=3600 * 4, timeout=16 * 30, stop_loss=500,
+            )
+            return [long_pos, short_pos]
+
     pos_path = Path(results_path)
     pos_path.mkdir(parents=True, exist_ok=True)
 
-    # 基础多头策略
-    long_pos = Position(
-        name="日线笔方向多头",
-        symbol="symbol",
-        opens=[Event.load({
-            "operate": "开多",
-            "signals_all": ["日线_D1_表里关系V230101_向上_任意_任意_0"],
-            "signals_any": [],
-            "signals_not": [],
-        })],
-        exits=[],
-        interval=3600 * 4,
-        timeout=16 * 30,
-        stop_loss=500,
-    )
-    file_long = pos_path / "日线笔方向多头.json"
-    with open(file_long, 'w', encoding='utf-8') as f:
-        json.dump(long_pos.dump(), f, ensure_ascii=False, indent=2)
+    tactic = BaseStrategy(symbol='symbol')
+    tactic.save_positions(str(pos_path))
 
-    # 基础空头策略
-    short_pos = Position(
-        name="日线笔方向空头",
-        symbol="symbol",
-        opens=[Event.load({
-            "operate": "开空",
-            "signals_all": ["日线_D1_表里关系V230101_向下_任意_任意_0"],
-            "signals_any": [],
-            "signals_not": [],
-        })],
-        exits=[],
-        interval=3600 * 4,
-        timeout=16 * 30,
-        stop_loss=500,
-    )
-    file_short = pos_path / "日线笔方向空头.json"
-    with open(file_short, 'w', encoding='utf-8') as f:
-        json.dump(short_pos.dump(), f, ensure_ascii=False, indent=2)
-
-    return [str(file_long), str(file_short)]
+    # 返回生成的文件列表
+    return [str(f) for f in sorted(pos_path.glob("*.json"))]
 
 
 def run_opens_optim():
@@ -158,4 +150,6 @@ def run_exits_optim():
 
 if __name__ == '__main__':
     run_opens_optim()
-    run_exits_optim()
+    # 注意：出场优化（ExitsOptimize）在 Rust 版本的 Position 中存在兼容性问题。
+    # 如果需要使用出场优化，请设置环境变量 CZSC_USE_PYTHON=1 启用 Python 版本。
+    # run_exits_optim()

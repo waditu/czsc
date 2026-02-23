@@ -26,5 +26,5 @@ def create_benchmark(count=1000):
 
 
 if __name__ == '__main__':
-    for count in [1000, 2000, 3000, 5000, 10000, 20000, 50000, 100000, 200000]:
+    for count in [1000, 2000, 3000, 5000, 10000, 20000, 50000]:
         create_benchmark(count)
