@@ -12,6 +12,7 @@
 **[项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)** |
 **[投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh)** |
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
+**[源码阅读指南](docs/源码阅读指南.md)** |
 **[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
 
 > **0.10.X 版本开始，逐步用 rs-czsc 替换一些 python 对象、函数的实现。有需要了解对象或函数具体执行逻辑的，可以查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。**
@@ -46,7 +47,7 @@
 
 * **[择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)**
 * 缠论的 `分型、笔` 的自动识别，详见 `czsc/analyze.py`
-* 定义并实现 `信号-因子-事件-交易` 量化交易逻辑体系，因子是信号的线性组合，事件是因子的同类合并，详见 `czsc/objects.py`
+* 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 signals_all/signals_any/signals_not 实现信号的逻辑组合，详见 `czsc/objects.py`
 * 定义并实现了若干信号函数，详见 `czsc/signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**
