@@ -6,7 +6,6 @@ create_dt: 2023/06/16 19:45
 describe: 飞书多维表格接口
 """
 import os
-import loguru
 import pandas as pd
 from czsc.fsa.base import FeishuApiBase, request
 

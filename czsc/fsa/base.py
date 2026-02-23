@@ -2,13 +2,6 @@
 """
 author: zengbin93
 email: zeng_bin8888@163.com
-create_dt: 2022/12/16 19:42
-describe: 
-"""
-# -*- coding: utf-8 -*-
-"""
-author: zengbin93
-email: zeng_bin8888@163.com
 create_dt: 2022/12/5 19:02
 describe: 飞书应用API接口封装
 """
