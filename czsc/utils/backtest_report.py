@@ -18,11 +18,7 @@ from .plotting.backtest import (
     get_performance_metrics_cards,
     plot_backtest_stats,
     plot_long_short_comparison,
-    plot_colored_table,
-    plot_cumulative_returns,
-    plot_drawdown_analysis,
-    plot_daily_return_distribution,
-    plot_monthly_heatmap,
+    plot_colored_table
 )
 from .html_report_builder import HtmlReportBuilder
 from .pdf_report_builder import PdfReportBuilder
@@ -373,6 +369,161 @@ def _generate_charts(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any
 
 # ========== PDF 回测报告 ==========
 
+def _create_pdf_drawdown(dret, ret_col="total", benchmark_returns=None):
+    """PDF 专用：回撤分析图（独立 Figure，双 Y 轴，不含 make_subplots）
+
+    :param dret: 日收益数据
+    :param ret_col: 收益列名
+    :param benchmark_returns: 等权基准日收益序列（与 dret 索引对齐）
+    :return: Plotly Figure
+    """
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from .plotting.common import add_year_boundary_lines
+
+    returns = dret[ret_col].fillna(0).sort_index(ascending=True)
+    cum_ret = returns.cumsum()
+    drawdown = cum_ret - cum_ret.cummax()
+
+    if benchmark_returns is not None:
+        benchmark_returns = pd.Series(benchmark_returns).reindex(cum_ret.index).fillna(0)
+        bench_cum_ret = benchmark_returns.cumsum()
+    else:
+        bench_cum_ret = None
+
+    # 使用 make_subplots 创建双 Y 轴（这是唯一合理使用 secondary_y 的场景）
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    fig.add_trace(go.Scatter(
+        x=drawdown.index, y=drawdown * 100,
+        fillcolor="rgba(250,128,114,0.4)", line=dict(color="salmon"),
+        fill="tozeroy", mode="lines", name="回撤 (%)", opacity=0.6,
+    ), secondary_y=False)
+
+    fig.add_trace(go.Scatter(
+        x=cum_ret.index, y=cum_ret,
+        mode="lines", name="策略累计收益", opacity=0.9,
+        line=dict(color="#34a853", width=1.5),
+    ), secondary_y=True)
+
+    if bench_cum_ret is not None:
+        fig.add_trace(go.Scatter(
+            x=bench_cum_ret.index, y=bench_cum_ret,
+            mode="lines", name="基准累计收益", opacity=0.9,
+            line=dict(color="#1f77b4", width=1.5),
+        ), secondary_y=True)
+
+    add_year_boundary_lines(fig, dret.index)
+
+    # 添加回撤分位数标注
+    for q in [0.05, 0.1, 0.2]:
+        y_val = drawdown.quantile(q)
+        fig.add_hline(
+            y=y_val * 100, line_dash="dot",
+            annotation_text=f"{q * 100:.0f}%: {y_val * 100:.2f}%",
+            annotation_position="bottom left",
+            line_color="rgba(128,128,128,0.5)", line_width=1,
+        )
+
+    fig.update_layout(
+        title="回撤分析（策略 vs 等权）" if bench_cum_ret is not None else "回撤分析",
+        template="plotly",
+        height=400,
+        margin=dict(l=60, r=60, b=50, t=50),
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+    )
+    fig.update_yaxes(title_text="回撤 (%)", secondary_y=False)
+    fig.update_yaxes(title_text="累计收益", secondary_y=True)
+    return fig
+
+
+def _create_pdf_daily_distribution(dret, ret_col="total"):
+    """PDF 专用：日收益分布直方图（独立 Figure）
+
+    :param dret: 日收益数据
+    :param ret_col: 收益列名
+    :return: Plotly Figure
+    """
+    import plotly.express as px
+
+    daily_pct = (dret[ret_col] * 100).reset_index()
+    daily_pct.columns = ["dt", "日收益"]
+
+    fig = px.histogram(daily_pct, x="日收益", nbins=50, title="日收益分布")
+    fig.update_xaxes(title="日收益 (%)")
+    fig.update_yaxes(title="频数")
+
+    # 添加 sigma 线
+    mean_val = daily_pct["日收益"].mean()
+    std_val = daily_pct["日收益"].std()
+    for sigma in [-3, -2, -1, 1, 2, 3]:
+        val = mean_val + sigma * std_val
+        fig.add_vline(
+            x=val, line_dash="dot",
+            line_color="rgba(128,128,128,0.5)", line_width=1,
+            annotation_text=f"{sigma}σ: {val:.2f}%",
+            annotation_font=dict(color="red", size=9),
+            annotation_position="top",
+        )
+
+    fig.update_layout(
+        template="plotly",
+        height=400,
+        margin=dict(l=60, r=40, b=50, t=50),
+        bargap=0.1,
+    )
+    return fig
+
+
+def _create_pdf_monthly_heatmap(dret, ret_col="total"):
+    """PDF 专用：月度收益热力图（独立 Figure）
+
+    :param dret: 日收益数据
+    :param ret_col: 收益列名
+    :return: Plotly Figure
+    """
+    import plotly.graph_objects as go
+
+    month_labels = ['1月', '2月', '3月', '4月', '5月', '6月',
+                    '7月', '8月', '9月', '10月', '11月', '12月']
+
+    df = dret[[ret_col]].copy()
+    df['year'] = df.index.year
+    df['month'] = df.index.month
+
+    monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
+    monthly_ret = monthly_ret.reset_index()
+    monthly_ret.columns = ['年份', '月份', '月收益']
+
+    pivot = monthly_ret.pivot(index='年份', columns='月份', values='月收益')
+
+    monthly_wr = (monthly_ret['月收益'] > 0).mean()
+    yearly_ret = monthly_ret.groupby('年份')['月收益'].sum()
+    yearly_wr = (yearly_ret > 0).mean()
+
+    fig = go.Figure(data=go.Heatmap(
+        z=pivot.values,
+        x=month_labels,
+        y=pivot.index,
+        colorscale='RdYlGn_r',
+        colorbar=dict(title="收益 (%)"),
+        text=pivot.values,
+        texttemplate="%{text:.2f}%",
+        textfont={"size": 10},
+        hovertemplate="%{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>",
+    ))
+
+    fig.update_layout(
+        title=f"月度收益热力图（月胜率: {monthly_wr:.1%}，年胜率: {yearly_wr:.1%}）",
+        template="plotly",
+        height=max(300, len(pivot) * 35 + 120),
+        margin=dict(l=60, r=40, b=50, t=60),
+        xaxis_title="月份",
+        yaxis_title="年份",
+    )
+    return fig
+
 
 def _create_long_short_curves_figure(dailys_pivot):
     """为 PDF 创建多空对比累计收益曲线图（不含表格子图）
@@ -383,34 +534,52 @@ def _create_long_short_curves_figure(dailys_pivot):
     import numpy as np
     import plotly.graph_objects as go
     import plotly.express as px
-    from plotly.subplots import make_subplots
     from .plotting.common import add_year_boundary_lines
 
     target_volatility = 0.2
     trading_days_per_year = 252
 
-    fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=(
-            "累计收益曲线对比",
-            f"波动率调整后收益对比（目标波动率: {target_volatility:.0%}）",
-        ),
-        vertical_spacing=0.12,
-        row_heights=[0.5, 0.5],
-    )
-
     df_cumsum = dailys_pivot.cumsum()
     colors = px.colors.qualitative.Plotly * 10
+
+    fig = go.Figure()
+
     for i, col in enumerate(df_cumsum.columns):
-        fig.add_trace(
-            go.Scatter(x=df_cumsum.index, y=df_cumsum[col], name=col, mode="lines",
-                       line=dict(color=colors[i]), legendgroup=col),
-            row=1, col=1,
-        )
+        fig.add_trace(go.Scatter(
+            x=df_cumsum.index, y=df_cumsum[col],
+            name=col, mode="lines", line=dict(color=colors[i]),
+        ))
 
-    add_year_boundary_lines(fig, df_cumsum.index, row=1, col=1, line_color="gray", opacity=0.5)
+    add_year_boundary_lines(fig, df_cumsum.index)
 
+    fig.update_layout(
+        title="多空累计收益曲线对比",
+        template="plotly",
+        height=400,
+        margin=dict(l=60, r=40, b=50, t=50),
+        hovermode="x unified",
+        xaxis_title="",
+        yaxis_title="累计收益",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+    )
+    return fig
+
+
+def _create_long_short_adjusted_figure(dailys_pivot, target_volatility=0.2):
+    """为 PDF 创建波动率调整后的多空对比累计收益曲线
+
+    :param dailys_pivot: 透视表格式的日收益数据
+    :param target_volatility: 目标年化波动率
+    :return: Plotly Figure 对象
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from .plotting.common import add_year_boundary_lines
+
+    trading_days_per_year = 252
     adjusted_returns = pd.DataFrame(index=dailys_pivot.index)
+
     for col in dailys_pivot.columns:
         daily_ret = dailys_pivot[col]
         annual_vol = daily_ret.std() * np.sqrt(trading_days_per_year)
@@ -418,24 +587,27 @@ def _create_long_short_curves_figure(dailys_pivot):
         adjusted_returns[col] = daily_ret * factor
 
     df_adj_cumsum = adjusted_returns.cumsum()
-    for i, col in enumerate(df_adj_cumsum.columns):
-        fig.add_trace(
-            go.Scatter(x=df_adj_cumsum.index, y=df_adj_cumsum[col], name=f"{col}(调整)",
-                       mode="lines", showlegend=False, legendgroup=col,
-                       line=dict(color=colors[i])),
-            row=2, col=1,
-        )
+    colors = px.colors.qualitative.Plotly * 10
 
-    add_year_boundary_lines(fig, df_adj_cumsum.index, row=2, col=1, line_color="gray", opacity=0.5)
+    fig = go.Figure()
+    for i, col in enumerate(df_adj_cumsum.columns):
+        fig.add_trace(go.Scatter(
+            x=df_adj_cumsum.index, y=df_adj_cumsum[col],
+            name=col, mode="lines", line=dict(color=colors[i]),
+        ))
+
+    add_year_boundary_lines(fig, df_adj_cumsum.index)
 
     fig.update_layout(
-        title="多空收益对比", template="plotly", height=700,
-        margin=dict(l=40, r=40, b=40, t=60),
-        hovermode="x unified", showlegend=True,
-        legend=dict(x=0.01, y=0.99, bgcolor="rgba(0,0,0,0)"),
+        title=f"波动率调整后收益对比（目标波动率: {target_volatility:.0%}）",
+        template="plotly",
+        height=400,
+        margin=dict(l=60, r=40, b=50, t=50),
+        hovermode="x unified",
+        xaxis_title="",
+        yaxis_title="调整后累计收益",
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
     )
-    fig.update_yaxes(title_text="累计收益", row=1, col=1)
-    fig.update_yaxes(title_text="调整后累计收益", row=2, col=1)
     return fig
 
 
@@ -458,62 +630,101 @@ def _create_long_short_table_figure(stats_df):
         table_df, title="绩效指标对比", template="plotly", float_fmt=".2f",
         good_high_columns=["年化", "夏普", "卡玛", "交易胜率", "单笔收益"],
     )
-    fig.update_layout(height=300, margin=dict(l=40, r=40, b=20, t=60))
+    fig.update_layout(height=250, margin=dict(l=40, r=40, b=20, t=50))
     return fig
 
 
-def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any]) -> dict:
-    """生成 PDF 报告所需的 Plotly Figure 对象
+def _build_stats_summary_table(wb) -> pd.DataFrame:
+    """从 WeightBacktest 构建详细的统计摘要表
+
+    :param wb: WeightBacktest 对象
+    :return: 统计摘要 DataFrame（两列：指标名称、指标值）
+    """
+    stats = wb.stats
+    rows = []
+
+    # 收益相关
+    rows.append(("年化收益率", f"{stats.get('年化', 0):.4f}"))
+    rows.append(("单笔收益(BP)", f"{stats.get('单笔收益', 0):.2f}"))
+    rows.append(("交易胜率", f"{stats.get('交易胜率', 0):.4f}"))
+
+    # 风险相关
+    rows.append(("最大回撤", f"{stats.get('最大回撤', 0):.4f}"))
+    rows.append(("年化波动率", f"{stats.get('年化波动率', 0):.4f}"))
+    rows.append(("夏普比率", f"{stats.get('夏普', 0):.2f}"))
+    rows.append(("卡玛比率", f"{stats.get('卡玛', 0):.2f}"))
+
+    # 持仓相关
+    rows.append(("持仓K线数", f"{stats.get('持仓K线数', 0):.0f}"))
+    rows.append(("多头占比", f"{stats.get('多头占比', 0):.4f}"))
+    rows.append(("空头占比", f"{stats.get('空头占比', 0):.4f}"))
+
+    # 其他可能存在的指标
+    for key in ["日胜率", "盈亏比", "最大连续亏损"]:
+        if key in stats:
+            rows.append((key, f"{stats[key]:.4f}" if isinstance(stats[key], float) else str(stats[key])))
+
+    df = pd.DataFrame(rows, columns=["指标", "数值"])
+    return df
+
+
+def _generate_pdf_figures(wb, df: pd.DataFrame, config: dict) -> dict:
+    """生成 PDF 报告所需的 Plotly Figure 对象（每个图表独立，不使用 make_subplots 组合）
 
     :param wb: WeightBacktest 对象
     :param df: 原始权重数据
     :param config: 配置参数
-    :return: 字典，key 为图表名称，value 为 Plotly Figure 对象
+    :return: 有序字典，key 为图表名称，value 为 Plotly Figure 对象
     """
     dret = _prepare_daily_returns(wb)
 
-    # 回测统计概览图（收益回撤 + 日收益分布 + 月度热力图）
-    fig_stats = plot_backtest_stats(dret, ret_col="total", title="回测统计概览", template="plotly")
-    fig_stats.update_layout(height=800, margin=dict(l=40, r=40, b=40, t=60))
+    figures = {}
 
-    # 累计收益曲线
-    fig_cum = plot_cumulative_returns(dret, title="累计收益曲线", template="plotly")
-    fig_cum.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
-    # 强制显示所有品种的累计收益曲线（覆盖 plot_cumulative_returns 中默认仅显示 total 的设置）
-    for trace in fig_cum.data:
-        trace.visible = True
+    # 1. 回撤分析（含策略与等权累计收益）
+    df_bench = df[["dt", "symbol", "weight", "price"]].copy()
+    df_bench["weight"] = 1
+    wb_bench = WeightBacktest(
+        dfw=df_bench,
+        fee_rate=config["fee_rate"],
+        digits=config["digits"],
+        weight_type="ts",
+        yearly_days=config["yearly_days"],
+        n_jobs=config["n_jobs"],
+    )
+    bench_daily = wb_bench.daily_return.copy()
+    bench_daily["dt"] = pd.to_datetime(bench_daily["date"])
+    bench_daily = bench_daily.set_index("dt").sort_index(ascending=True)
 
-    # 回撤分析
-    fig_dd = plot_drawdown_analysis(dret, ret_col="total", title="回撤分析", template="plotly")
-    fig_dd.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+    fig_dd = _create_pdf_drawdown(
+        dret,
+        ret_col="total",
+        benchmark_returns=bench_daily["total"],
+    )
+    figures["drawdown_analysis"] = fig_dd
 
-    # 日收益分布
-    fig_dist = plot_daily_return_distribution(dret, ret_col="total", title="日收益分布", template="plotly")
-    fig_dist.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+    # 2. 日收益分布
+    fig_dist = _create_pdf_daily_distribution(dret, ret_col="total")
+    figures["daily_distribution"] = fig_dist
 
-    # 月度收益热力图
-    fig_heatmap = plot_monthly_heatmap(dret, ret_col="total", title="月度收益热力图", template="plotly")
-    fig_heatmap.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+    # 3. 月度收益热力图
+    fig_heatmap = _create_pdf_monthly_heatmap(dret, ret_col="total")
+    figures["monthly_heatmap"] = fig_heatmap
 
-    figures = {
-        "backtest_stats": fig_stats,
-        "cumulative_returns": fig_cum,
-        "drawdown_analysis": fig_dd,
-        "daily_return_distribution": fig_dist,
-        "monthly_heatmap": fig_heatmap,
-    }
-
-    # 多空对比图 —— 为 PDF 导出优化：拆分为两张独立图表（曲线图 + 表格），避免 kaleido 渲染 Table 子图异常
+    # 5. 多空对比图
     try:
         ls_chart = LongShortComparisonChart(df, config)
         df_dailys = ls_chart._aggregate_daily_returns()
         df_stats = ls_chart._aggregate_strategy_stats()
 
-        # 累计收益 + 波动率调整后收益（仅 xy 子图，不含 table）
-        fig_ls_curves = _create_long_short_curves_figure(df_dailys)
-        figures["long_short_comparison"] = fig_ls_curves
+        # 多空累计收益曲线
+        fig_ls = _create_long_short_curves_figure(df_dailys)
+        figures["long_short_curves"] = fig_ls
 
-        # 绩效对比表（独立表格图）
+        # 波动率调整后收益
+        fig_ls_adj = _create_long_short_adjusted_figure(df_dailys)
+        figures["long_short_adjusted"] = fig_ls_adj
+
+        # 绩效对比表
         fig_ls_table = _create_long_short_table_figure(df_stats)
         figures["long_short_table"] = fig_ls_table
     except Exception:
@@ -522,9 +733,17 @@ def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str
     return figures
 
 
-def _build_and_save_pdf_report(title: str, df: pd.DataFrame, config: Dict[str, Any],
-                               metrics: list, figures: dict, output_path: str) -> None:
+def _build_and_save_pdf_report(title: str, df: pd.DataFrame, config: dict,
+                               metrics: list, figures: dict, output_path: str,
+                               wb=None) -> None:
     """构建并保存 PDF 报告
+
+    PDF 专属布局策略：
+    - 第1页：标题 + 参数 + 目录 + 核心绩效指标卡片
+    - 第2页：回撤分析（含策略 vs 等权收益，适配整页）
+    - 第3页：日收益分布（适配整页）
+    - 第4页：月度收益热力图（适配整页）
+    - 第5页起：多空对比各图表
 
     :param title: 报告标题
     :param df: 权重数据
@@ -532,34 +751,44 @@ def _build_and_save_pdf_report(title: str, df: pd.DataFrame, config: Dict[str, A
     :param metrics: 绩效指标
     :param figures: Plotly Figure 字典
     :param output_path: 输出路径
+    :param wb: WeightBacktest 对象（保留参数兼容）
     """
     builder = PdfReportBuilder(title=title)
 
-    # 添加头部
+    # ===== 1. 头部 + 指标卡片 =====
     params = _build_report_params(df, config)
     builder.add_header(params, subtitle="基于权重策略的回测分析与绩效评估")
-
-    # 添加绩效指标
     builder.add_metrics(metrics)
 
-    # 添加图表 —— 每个图表单独一页以保证清晰度
-    chart_configs = [
-        ("backtest_stats", "回测统计概览", 13.0),
-        ("cumulative_returns", "累计收益曲线", 10.0),
-        ("drawdown_analysis", "回撤分析", 10.0),
-        ("daily_return_distribution", "日收益分布", 10.0),
-        ("monthly_heatmap", "月度收益热力图", 10.0),
-        ("long_short_comparison", "多空收益对比", 11.0),
-        ("long_short_table", "多空绩效指标对比", 6.0),
+    # ===== 2. 各图表：每个独立一页，fit_page 填充 =====
+    chart_sequence = [
+        ("drawdown_analysis", "回撤分析"),
+        ("daily_distribution", "日收益分布"),
+        ("monthly_heatmap", "月度收益热力图"),
+        ("long_short_curves", "多空累计收益对比"),
+        ("long_short_adjusted", "波动率调整后收益对比"),
+        ("long_short_table", "多空绩效指标对比"),
     ]
-    for key, chart_title, height in chart_configs:
-        if key in figures:
-            builder.add_chart(figures[key], title=chart_title, height=height)
 
-    # 添加页脚
+    for key, chart_title in chart_sequence:
+        if key in figures:
+            builder.add_page_break()
+            is_table = key == "long_short_table"
+            builder.add_chart(
+                figures[key],
+                title=chart_title,
+                fit_page=not is_table,
+                height=5.0 if is_table else None,
+                aspect_ratio=0.6 if key == "monthly_heatmap" else 0.55,
+            )
+
+    # ===== 3. 在头部后插入目录（不分页，和核心绩效指标同页显示） =====
+    builder.insert_toc_after_header(title="目 录", add_page_break=False)
+
+    # ===== 4. 页脚 =====
     builder.add_footer()
 
-    # 保存文件
+    # ===== 5. 保存 =====
     builder.save(output_path)
 
 
@@ -606,6 +835,6 @@ def generate_pdf_backtest_report(
     figures = _generate_pdf_figures(wb, df, config)
 
     # 构建报告
-    _build_and_save_pdf_report(title, df, config, metrics, figures, output_path)
+    _build_and_save_pdf_report(title, df, config, metrics, figures, output_path, wb=wb)
 
     return output_path
