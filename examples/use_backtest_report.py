@@ -4,50 +4,14 @@
 """
 import os
 import sys
+import czsc
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 
 # 将项目根目录添加到 sys.path 以便导入 czsc
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from czsc.utils.backtest_report import generate_backtest_report, generate_pdf_backtest_report
 
-def create_mock_data(start_date='2023-01-01', periods=252):
-    """创建模拟回测数据
-    
-    :param start_date: 开始日期
-    :param periods: 数据长度
-    :return: 包含 dt, symbol, weight, price 的 DataFrame
-    """
-    symbols = ['000001.SH', '000300.SH', '399006.SZ']
-    dates = pd.date_range(start=start_date, periods=periods, freq='B')
-    data = []
-    
-    for symbol in symbols:
-        # 模拟随机游走价格
-        # 使用固定的种子以保证结果可复现
-        np.random.seed(hash(symbol) % 2**32) 
-        returns = np.random.normal(0.0005, 0.02, periods)
-        price = 100 * np.cumprod(1 + returns)
-        
-        # 模拟策略权重：随机生成权重，模拟多空策略
-        weight = np.zeros(periods)
-        # 每 20 天调整一次仓位，权重在 -0.8 到 0.8 之间
-        for i in range(0, periods, 20):
-            w = np.random.uniform(-0.8, 0.8)
-            end = min(i + 20, periods)
-            weight[i:end] = w
-            
-        df = pd.DataFrame({
-            'dt': dates,
-            'price': price,
-            'weight': weight,
-            'symbol': symbol,
-        })
-        data.append(df)
-        
-    return pd.concat(data, ignore_index=True)
 
 def main():
     # 0. 准备输出目录
@@ -57,7 +21,7 @@ def main():
     
     # 1. 准备数据
     print("正在生成模拟数据...")
-    df = create_mock_data()
+    df = pd.read_feather(r"C:\Users\dell\Downloads\weight_example.feather")
     print(f"数据生成完毕，共 {len(df)} 行数据")
     print(df.head())
     
