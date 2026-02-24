@@ -219,31 +219,31 @@ class PdfReportBuilder:
         if subtitle:
             self._elements.append(Paragraph(subtitle, self._styles["subtitle"]))
 
-        # 参数徽章行 —— 用一行 Table 呈现
+        # 参数徽章行 —— 均匀分布到整个内容宽度
         if params:
             badge_cells = []
             for key, value in params.items():
                 badge_cells.append(Paragraph(f"{key}: {value}", self._styles["badge"]))
 
             n_badges = len(badge_cells)
-            badge_width = min(CONTENT_WIDTH / max(n_badges, 1), 4.5 * cm)
+            badge_width = CONTENT_WIDTH / max(n_badges, 1)
             badge_table = Table([badge_cells], colWidths=[badge_width] * n_badges)
             badge_table.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), COLOR_LIGHT),
                 ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
                 ("INNERGRID", (0, 0), (-1, -1), 0.25, COLOR_BORDER),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("ROUNDEDCORNERS", [3, 3, 3, 3]),
             ]))
-            self._elements.append(Spacer(1, 4))
+            self._elements.append(Spacer(1, 6))
             self._elements.append(badge_table)
 
         # 分隔线
-        self._elements.append(Spacer(1, 6))
-        self._elements.append(HRFlowable(width="100%", thickness=1, color=COLOR_BORDER, spaceAfter=8))
+        self._elements.append(Spacer(1, 8))
+        self._elements.append(HRFlowable(width="100%", thickness=1, color=COLOR_BORDER, spaceAfter=10))
         return self
 
     def add_metrics(self, metrics: List[Dict[str, Any]], title: str = "核心绩效指标") -> "PdfReportBuilder":
@@ -255,7 +255,7 @@ class PdfReportBuilder:
         """
         self._elements.append(Paragraph(title, self._styles["section_title"]))
 
-        cols_per_row = 6
+        cols_per_row = 5
         card_width = (CONTENT_WIDTH - (cols_per_row - 1) * CARD_SPACING) / cols_per_row
 
         rows: List[list] = []

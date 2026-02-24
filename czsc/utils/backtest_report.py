@@ -18,6 +18,7 @@ from .plotting.backtest import (
     get_performance_metrics_cards,
     plot_backtest_stats,
     plot_long_short_comparison,
+    plot_colored_table,
     plot_cumulative_returns,
     plot_drawdown_analysis,
     plot_daily_return_distribution,
@@ -86,8 +87,44 @@ def generate_backtest_report(
     title: str = "权重回测报告",
     **kwargs
 ) -> str:
+    """统一的回测报告生成入口，根据 output_path 的后缀自动选择生成 PDF 或 HTML 报告
+
+    :param df: 包含 dt, symbol, weight, price 列的权重数据
+    :param output_path: 报告文件输出路径，根据后缀自动选择格式：
+        - .pdf 后缀生成 PDF 报告
+        - .html 后缀生成 HTML 报告（默认）
+        - 默认为当前目录下的 backtest_report.html
+    :param title: 报告标题
+    :param kwargs: 回测参数和显示控制
+        - fee_rate: float, 单边交易成本，默认 0.0002
+        - digits: int, 权重小数位数，默认 2
+        - weight_type: str, 权重类型，默认 'ts'
+        - yearly_days: int, 年交易日天数，默认 252
+        - n_jobs: int, 并行进程数，默认 1
+    :return: 报告文件路径
+    :raises ValueError: 当输入数据格式不正确时或文件后缀不支持时
+    """
+    if output_path is None:
+        output_path = os.path.join(os.getcwd(), "backtest_report.html")
+
+    ext = os.path.splitext(output_path)[1].lower()
+
+    if ext == ".pdf":
+        return generate_pdf_backtest_report(df, output_path=output_path, title=title, **kwargs)
+    elif ext in (".html", ".htm"):
+        return generate_html_backtest_report(df, output_path=output_path, title=title, **kwargs)
+    else:
+        raise ValueError(f"不支持的文件后缀 '{ext}'，请使用 .html 或 .pdf")
+
+
+def generate_html_backtest_report(
+    df: pd.DataFrame,
+    output_path: Optional[str] = None,
+    title: str = "权重回测报告",
+    **kwargs
+) -> str:
     """生成权重回测的 HTML 报告
-    
+
     :param df: 包含 dt, symbol, weight, price 列的权重数据
     :param output_path: HTML 文件输出路径，默认为当前目录下的 backtest_report.html
     :param title: 报告标题
@@ -337,6 +374,94 @@ def _generate_charts(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any
 # ========== PDF 回测报告 ==========
 
 
+def _create_long_short_curves_figure(dailys_pivot):
+    """为 PDF 创建多空对比累计收益曲线图（不含表格子图）
+
+    :param dailys_pivot: 透视表格式的日收益数据
+    :return: Plotly Figure 对象
+    """
+    import numpy as np
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    from .plotting.common import add_year_boundary_lines
+
+    target_volatility = 0.2
+    trading_days_per_year = 252
+
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=(
+            "累计收益曲线对比",
+            f"波动率调整后收益对比（目标波动率: {target_volatility:.0%}）",
+        ),
+        vertical_spacing=0.12,
+        row_heights=[0.5, 0.5],
+    )
+
+    df_cumsum = dailys_pivot.cumsum()
+    colors = px.colors.qualitative.Plotly * 10
+    for i, col in enumerate(df_cumsum.columns):
+        fig.add_trace(
+            go.Scatter(x=df_cumsum.index, y=df_cumsum[col], name=col, mode="lines",
+                       line=dict(color=colors[i]), legendgroup=col),
+            row=1, col=1,
+        )
+
+    add_year_boundary_lines(fig, df_cumsum.index, row=1, col=1, line_color="gray", opacity=0.5)
+
+    adjusted_returns = pd.DataFrame(index=dailys_pivot.index)
+    for col in dailys_pivot.columns:
+        daily_ret = dailys_pivot[col]
+        annual_vol = daily_ret.std() * np.sqrt(trading_days_per_year)
+        factor = target_volatility / annual_vol if annual_vol > 0 else 1.0
+        adjusted_returns[col] = daily_ret * factor
+
+    df_adj_cumsum = adjusted_returns.cumsum()
+    for i, col in enumerate(df_adj_cumsum.columns):
+        fig.add_trace(
+            go.Scatter(x=df_adj_cumsum.index, y=df_adj_cumsum[col], name=f"{col}(调整)",
+                       mode="lines", showlegend=False, legendgroup=col,
+                       line=dict(color=colors[i])),
+            row=2, col=1,
+        )
+
+    add_year_boundary_lines(fig, df_adj_cumsum.index, row=2, col=1, line_color="gray", opacity=0.5)
+
+    fig.update_layout(
+        title="多空收益对比", template="plotly", height=700,
+        margin=dict(l=40, r=40, b=40, t=60),
+        hovermode="x unified", showlegend=True,
+        legend=dict(x=0.01, y=0.99, bgcolor="rgba(0,0,0,0)"),
+    )
+    fig.update_yaxes(title_text="累计收益", row=1, col=1)
+    fig.update_yaxes(title_text="调整后累计收益", row=2, col=1)
+    return fig
+
+
+def _create_long_short_table_figure(stats_df):
+    """为 PDF 创建多空绩效对比表格图
+
+    :param stats_df: 绩效指标 DataFrame
+    :return: Plotly Figure 对象
+    """
+    key_cols = [
+        "策略名称", "年化", "夏普", "卡玛", "最大回撤",
+        "年化波动率", "交易胜率", "单笔收益", "持仓K线数", "多头占比", "空头占比",
+    ]
+    available_cols = [c for c in key_cols if c in stats_df.columns]
+    table_df = stats_df[available_cols].copy()
+    if "策略名称" in table_df.columns:
+        table_df = table_df.set_index("策略名称")
+
+    fig = plot_colored_table(
+        table_df, title="绩效指标对比", template="plotly", float_fmt=".2f",
+        good_high_columns=["年化", "夏普", "卡玛", "交易胜率", "单笔收益"],
+    )
+    fig.update_layout(height=300, margin=dict(l=40, r=40, b=20, t=60))
+    return fig
+
+
 def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any]) -> dict:
     """生成 PDF 报告所需的 Plotly Figure 对象
 
@@ -378,14 +503,19 @@ def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str
         "monthly_heatmap": fig_heatmap,
     }
 
-    # 多空对比图
+    # 多空对比图 —— 为 PDF 导出优化：拆分为两张独立图表（曲线图 + 表格），避免 kaleido 渲染 Table 子图异常
     try:
         ls_chart = LongShortComparisonChart(df, config)
         df_dailys = ls_chart._aggregate_daily_returns()
         df_stats = ls_chart._aggregate_strategy_stats()
-        fig_ls = plot_long_short_comparison(df_dailys, df_stats, title="多空收益对比", template="plotly")
-        fig_ls.update_layout(height=1000, margin=dict(l=40, r=40, b=40, t=60))
-        figures["long_short_comparison"] = fig_ls
+
+        # 累计收益 + 波动率调整后收益（仅 xy 子图，不含 table）
+        fig_ls_curves = _create_long_short_curves_figure(df_dailys)
+        figures["long_short_comparison"] = fig_ls_curves
+
+        # 绩效对比表（独立表格图）
+        fig_ls_table = _create_long_short_table_figure(df_stats)
+        figures["long_short_table"] = fig_ls_table
     except Exception:
         pass
 
@@ -419,7 +549,8 @@ def _build_and_save_pdf_report(title: str, df: pd.DataFrame, config: Dict[str, A
         ("drawdown_analysis", "回撤分析", 10.0),
         ("daily_return_distribution", "日收益分布", 10.0),
         ("monthly_heatmap", "月度收益热力图", 10.0),
-        ("long_short_comparison", "多空收益对比", 13.0),
+        ("long_short_comparison", "多空收益对比", 11.0),
+        ("long_short_table", "多空绩效指标对比", 6.0),
     ]
     for key, chart_title, height in chart_configs:
         if key in figures:
