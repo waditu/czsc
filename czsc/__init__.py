@@ -86,10 +86,10 @@ from czsc.utils import (
 )
 
 
-__version__ = "0.10.10"
+__version__ = "0.10.11"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20260210"
+__date__ = "20260224"
 
 # 延迟加载重型可选模块，避免影响导入速度
 _LAZY_MODULES = {
