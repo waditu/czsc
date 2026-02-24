@@ -1,7 +1,7 @@
 """ 
-权重回测 HTML 报告生成器
+权重回测报告生成器
 
-使用 Python f-string + plotly 绘图实现 WeightBacktest 回测结果的 HTML 报告生成
+支持 HTML (f-string + plotly) 和 PDF (reportlab + plotly) 两种格式的 WeightBacktest 回测报告生成
 """
 import os
 from typing import Optional, Dict, Any
@@ -17,9 +17,14 @@ except ImportError:
 from .plotting.backtest import (
     get_performance_metrics_cards,
     plot_backtest_stats,
-    plot_long_short_comparison
+    plot_long_short_comparison,
+    plot_cumulative_returns,
+    plot_drawdown_analysis,
+    plot_daily_return_distribution,
+    plot_monthly_heatmap,
 )
 from .html_report_builder import HtmlReportBuilder
+from .pdf_report_builder import PdfReportBuilder
 
 
 def _validate_input_data(df: pd.DataFrame) -> None:
@@ -327,3 +332,149 @@ def _generate_charts(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any
     charts["long_short_comparison"] = _generate_long_short_chart(df, config)
     
     return charts
+
+
+# ========== PDF 回测报告 ==========
+
+
+def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str, Any]) -> dict:
+    """生成 PDF 报告所需的 Plotly Figure 对象
+
+    :param wb: WeightBacktest 对象
+    :param df: 原始权重数据
+    :param config: 配置参数
+    :return: 字典，key 为图表名称，value 为 Plotly Figure 对象
+    """
+    dret = _prepare_daily_returns(wb)
+
+    # 回测统计概览图（收益回撤 + 日收益分布 + 月度热力图）
+    fig_stats = plot_backtest_stats(dret, ret_col="total", title="回测统计概览", template="plotly")
+    fig_stats.update_layout(height=800, margin=dict(l=40, r=40, b=40, t=60))
+
+    # 累计收益曲线
+    fig_cum = plot_cumulative_returns(dret, title="累计收益曲线", template="plotly")
+    fig_cum.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+    # 强制显示所有品种的累计收益曲线（覆盖 plot_cumulative_returns 中默认仅显示 total 的设置）
+    for trace in fig_cum.data:
+        trace.visible = True
+
+    # 回撤分析
+    fig_dd = plot_drawdown_analysis(dret, ret_col="total", title="回撤分析", template="plotly")
+    fig_dd.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+
+    # 日收益分布
+    fig_dist = plot_daily_return_distribution(dret, ret_col="total", title="日收益分布", template="plotly")
+    fig_dist.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+
+    # 月度收益热力图
+    fig_heatmap = plot_monthly_heatmap(dret, ret_col="total", title="月度收益热力图", template="plotly")
+    fig_heatmap.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
+
+    figures = {
+        "backtest_stats": fig_stats,
+        "cumulative_returns": fig_cum,
+        "drawdown_analysis": fig_dd,
+        "daily_return_distribution": fig_dist,
+        "monthly_heatmap": fig_heatmap,
+    }
+
+    # 多空对比图
+    try:
+        ls_chart = LongShortComparisonChart(df, config)
+        df_dailys = ls_chart._aggregate_daily_returns()
+        df_stats = ls_chart._aggregate_strategy_stats()
+        fig_ls = plot_long_short_comparison(df_dailys, df_stats, title="多空收益对比", template="plotly")
+        fig_ls.update_layout(height=1000, margin=dict(l=40, r=40, b=40, t=60))
+        figures["long_short_comparison"] = fig_ls
+    except Exception:
+        pass
+
+    return figures
+
+
+def _build_and_save_pdf_report(title: str, df: pd.DataFrame, config: Dict[str, Any],
+                               metrics: list, figures: dict, output_path: str) -> None:
+    """构建并保存 PDF 报告
+
+    :param title: 报告标题
+    :param df: 权重数据
+    :param config: 配置参数
+    :param metrics: 绩效指标
+    :param figures: Plotly Figure 字典
+    :param output_path: 输出路径
+    """
+    builder = PdfReportBuilder(title=title)
+
+    # 添加头部
+    params = _build_report_params(df, config)
+    builder.add_header(params, subtitle="基于权重策略的回测分析与绩效评估")
+
+    # 添加绩效指标
+    builder.add_metrics(metrics)
+
+    # 添加图表 —— 每个图表单独一页以保证清晰度
+    chart_configs = [
+        ("backtest_stats", "回测统计概览", 13.0),
+        ("cumulative_returns", "累计收益曲线", 10.0),
+        ("drawdown_analysis", "回撤分析", 10.0),
+        ("daily_return_distribution", "日收益分布", 10.0),
+        ("monthly_heatmap", "月度收益热力图", 10.0),
+        ("long_short_comparison", "多空收益对比", 13.0),
+    ]
+    for key, chart_title, height in chart_configs:
+        if key in figures:
+            builder.add_chart(figures[key], title=chart_title, height=height)
+
+    # 添加页脚
+    builder.add_footer()
+
+    # 保存文件
+    builder.save(output_path)
+
+
+def generate_pdf_backtest_report(
+    df: pd.DataFrame,
+    output_path: Optional[str] = None,
+    title: str = "权重回测报告",
+    **kwargs
+) -> str:
+    """生成权重回测的 PDF 报告
+
+    :param df: 包含 dt, symbol, weight, price 列的权重数据
+    :param output_path: PDF 文件输出路径，默认为当前目录下的 backtest_report.pdf
+    :param title: 报告标题
+    :param kwargs: 回测参数和显示控制
+        - fee_rate: float, 单边交易成本，默认 0.0002
+        - digits: int, 权重小数位数，默认 2
+        - weight_type: str, 权重类型，默认 'ts'
+        - yearly_days: int, 年交易日天数，默认 252
+        - n_jobs: int, 并行进程数，默认 1
+    :return: PDF 文件路径
+    :raises ValueError: 当输入数据格式不正确时
+    """
+    # 验证输入数据
+    _validate_input_data(df)
+
+    # 准备配置
+    config = _prepare_config(kwargs)
+    if output_path is None:
+        output_path = os.path.join(os.getcwd(), "backtest_report.pdf")
+
+    # 创建回测实例
+    wb = WeightBacktest(
+        dfw=df,
+        fee_rate=config["fee_rate"],
+        digits=config["digits"],
+        weight_type=config["weight_type"],
+        yearly_days=config["yearly_days"],
+        n_jobs=config["n_jobs"]
+    )
+
+    # 提取数据
+    metrics = get_performance_metrics_cards(wb.stats)
+    figures = _generate_pdf_figures(wb, df, config)
+
+    # 构建报告
+    _build_and_save_pdf_report(title, df, config, metrics, figures, output_path)
+
+    return output_path
