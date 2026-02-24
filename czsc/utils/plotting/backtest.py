@@ -352,7 +352,6 @@ def get_performance_metrics_cards(stats: dict) -> list:
         {"label": "交易胜率", "value": f"{stats.get('交易胜率', 0):.2%}", "is_positive": stats.get('交易胜率', 0) > 0.5},
         {"label": "持仓K线数", "value": f"{stats.get('持仓K线数', 0):.0f}", "is_positive": True},
         {"label": "最大回撤", "value": f"{stats.get('最大回撤', 0):.2%}", "is_positive": stats.get('最大回撤', 0) < 0.1},
-        {"label": "年化", "value": f"{stats.get('年化', 0):.2%}", "is_positive": stats.get('年化', 0) > 0},
         {"label": "夏普", "value": f"{stats.get('夏普', 0):.2f}", "is_positive": stats.get('夏普', 0) > 1},
         {"label": "卡玛", "value": f"{stats.get('卡玛', 0):.2f}", "is_positive": stats.get('卡玛', 0) > 1},
         {"label": "年化波动率", "value": f"{stats.get('年化波动率', 0):.2%}", "is_positive": stats.get('年化波动率', 0) < 0.2},

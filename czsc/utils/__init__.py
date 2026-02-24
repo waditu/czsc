@@ -275,6 +275,7 @@ _LAZY_ATTRS = {
     'trading_view_kline': ('czsc.utils.echarts_plot', 'trading_view_kline'),
     # backtest_report
     'generate_backtest_report': ('czsc.utils.backtest_report', 'generate_backtest_report'),
+    'generate_html_backtest_report': ('czsc.utils.backtest_report', 'generate_html_backtest_report'),
     'generate_pdf_backtest_report': ('czsc.utils.backtest_report', 'generate_pdf_backtest_report'),
     # pdf_report_builder
     'PdfReportBuilder': ('czsc.utils.pdf_report_builder', 'PdfReportBuilder'),
