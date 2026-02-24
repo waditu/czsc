@@ -56,7 +56,7 @@ MARGIN_BOTTOM = 1.5 * cm
 MARGIN_LEFT = 2 * cm
 MARGIN_RIGHT = 2 * cm
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT
-CM_TO_PX = 96 / 2.54  # 96 DPI / 2.54 cm per inch ≈ 37.8
+CM_TO_PX = 96 / 2.54  # 96 DPI / 2.54 cm per inch ≈ 37.795
 CARD_SPACING = 4  # 指标卡片间距（pt）
 
 FONT_NAME = "STSong-Light"

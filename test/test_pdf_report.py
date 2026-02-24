@@ -225,6 +225,12 @@ class TestGeneratePdfBacktestReport:
         with pytest.raises(ValueError, match="数据缺少必需列"):
             generate_pdf_backtest_report(pd.DataFrame({"a": [1]}))
 
+        # 验证具体缺少的列名
+        with pytest.raises(ValueError, match="数据缺少必需列"):
+            generate_pdf_backtest_report(
+                pd.DataFrame({"dt": [1], "symbol": ["A"], "weight": [0.5]})
+            )
+
         # 空数据
         with pytest.raises(ValueError, match="输入数据不能为空"):
             generate_pdf_backtest_report(

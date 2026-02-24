@@ -1,7 +1,7 @@
 """ 
 权重回测报告生成器
 
-使用 Python f-string + plotly 绘图实现 WeightBacktest 回测结果的 HTML/PDF 报告生成
+支持 HTML (f-string + plotly) 和 PDF (reportlab + plotly) 两种格式的 WeightBacktest 回测报告生成
 """
 import os
 from typing import Optional, Dict, Any
@@ -354,7 +354,7 @@ def _generate_pdf_figures(wb: WeightBacktest, df: pd.DataFrame, config: Dict[str
     # 累计收益曲线
     fig_cum = plot_cumulative_returns(dret, title="累计收益曲线", template="plotly")
     fig_cum.update_layout(height=400, margin=dict(l=40, r=40, b=40, t=60))
-    # 在 PDF 中显示所有品种
+    # 强制显示所有品种的累计收益曲线（覆盖 plot_cumulative_returns 中默认仅显示 total 的设置）
     for trace in fig_cum.data:
         trace.visible = True
 
