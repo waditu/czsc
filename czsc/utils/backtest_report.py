@@ -92,8 +92,8 @@ def generate_backtest_report(
     :param df: 包含 dt, symbol, weight, price 列的权重数据
     :param output_path: 报告文件输出路径，根据后缀自动选择格式：
         - .pdf 后缀生成 PDF 报告
-        - .html 后缀生成 HTML 报告（默认）
-        - 默认为当前目录下的 backtest_report.html
+        - .html / .htm 后缀生成 HTML 报告
+        - 默认为 None，生成当前目录下的 backtest_report.html（HTML 格式）
     :param title: 报告标题
     :param kwargs: 回测参数和显示控制
         - fee_rate: float, 单边交易成本，默认 0.0002
