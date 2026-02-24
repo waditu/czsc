@@ -161,6 +161,8 @@ _LAZY_ATTRS = {
     'cal_yearly_days': ('czsc.eda', 'cal_yearly_days'),
     'turnover_rate': ('czsc.eda', 'turnover_rate'),
     'make_price_features': ('czsc.eda', 'make_price_features'),
+    # czsc.utils.backtest_report
+    'generate_backtest_report': ('czsc.utils.backtest_report', 'generate_backtest_report'),
 }
 
 
