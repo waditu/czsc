@@ -5,12 +5,15 @@ from typing import Dict, List, Any
 class StrategyCard:
     """策略回测结果飞书卡片构建类"""
     
-    def __init__(self, strategy_name: str, dfw: pd.DataFrame, out_sample_sdt: str = "20250101", describe: str = "", **kwargs):
+    def __init__(self, strategy_name: str, dfw: pd.DataFrame, out_sample_sdt: str = "20250101", describe: str = "",
+                 show_recent_detail: bool = True, **kwargs):
         """
         :param strategy_name: 策略名称
         :param dfw: 包含权重和价格数据的DataFrame，必须包含 'dt'、'symbol'、'weight'、'price' 四列
         :param out_sample_sdt: 样本外开始时间
         :param describe: 策略描述
+        :param show_recent_detail: 是否在卡片中展示最近3个交易日的分品种收益明细，默认为 True；
+            当标的数量较多时建议设为 False 以避免消息内容过长
         """
         from czsc import WeightBacktest
                 
@@ -22,6 +25,7 @@ class StrategyCard:
         self.dfw = self.dfw[self.dfw['dt'] >= pd.to_datetime(out_sample_sdt)].copy().reset_index(drop=True)
         
         self.strategy_name = strategy_name
+        self.show_recent_detail = show_recent_detail
         self.wb = WeightBacktest(self.dfw.copy(), fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
         self.out_sample_sdt = out_sample_sdt
         pre_describe = f"{strategy_name} 在样本外时间 {out_sample_sdt} 之后的最新表现；回测参数："
@@ -59,11 +63,11 @@ class StrategyCard:
         elements.append(self._build_curve_section(chart_data))
         elements.append({"tag": "hr"})
 
-        # 第4部分：最近若干交易日收益。仅在持仓品种数不超过30时展示，且只看最近3个交易日
+        # 第4部分：最近若干交易日收益。仅在 show_recent_detail=True 且持仓品种数不超过30时展示，且只看最近3个交易日
         try:
-            include_recent = len(latest_positions) <= 30
+            include_recent = self.show_recent_detail and len(latest_positions) <= 30
         except Exception:
-            include_recent = True
+            include_recent = self.show_recent_detail
 
         if include_recent:
             recent_returns = self._calculate_recent_returns(days=3)
@@ -369,13 +373,16 @@ class StrategyCard:
         }
 
 
-def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key: str, out_sample_sdt="20250101", **kwargs):
+def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key: str, out_sample_sdt="20250101",
+                         show_recent_detail: bool = True, **kwargs):
     """推送策略最新表现到飞书群
 
     :param strategy: 策略名称
     :param dfw: 标准持仓权重数据，包含 'dt'、'symbol'、weight', 'price' 四列
     :param feishu_key: 飞书机器人 key
     :param out_sample_sdt: 样本外开始时间，默认值 '20250101'
+    :param show_recent_detail: 是否在卡片中展示最近3个交易日的分品种收益明细，默认为 True；
+        当标的数量较多时建议设为 False 以避免消息内容过长（错误码 10208）
     :param kwargs: 其他参数，参考 czsc.WeightBacktest
     :return:
     """
@@ -383,7 +390,7 @@ def push_strategy_latest(strategy: str, dfw: pd.DataFrame, feishu_key: str, out_
         from czsc.fsa import push_card
         dfw['dt'] = pd.to_datetime(dfw['dt'])
 
-        card_builder = StrategyCard(strategy, dfw, out_sample_sdt, **kwargs)
+        card_builder = StrategyCard(strategy, dfw, out_sample_sdt, show_recent_detail=show_recent_detail, **kwargs)
         card = card_builder.build()
         push_card(card=card, key=feishu_key)
         return True
