@@ -11,8 +11,6 @@ T+1 规则：
   即：T 日新增的持仓部分，只能在 T+1 日及以后才能卖出
   T 日可以卖出 T 日之前已有的持仓（不受限制）
 """
-from typing import List
-
 import numpy as np
 import pandas as pd
 
