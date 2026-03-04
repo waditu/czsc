@@ -88,6 +88,11 @@ test = [
     "pytest-cov>=4.0.0",
 ]
 
+# Polars 加速（用于 weights_convert 等性能敏感模块）
+polars = [
+    "polars>=0.20.0",
+]
+
 # 开发工具
 dev = [
     "ipython",
