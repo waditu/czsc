@@ -12,7 +12,15 @@ import time
 
 from czsc.mock import generate_symbol_kines
 from czsc.utils.weights_convert import weights_convert as weights_convert_pd
-from czsc.utils.weights_convert_pl import weights_convert as weights_convert_pl
+
+try:
+    import polars  # noqa: F401
+
+    from czsc.utils.weights_convert_pl import weights_convert as weights_convert_pl
+except ImportError:
+    weights_convert_pl = None
+
+pytestmark = pytest.mark.skipif(weights_convert_pl is None, reason="polars is not installed")
 
 
 # ==================== 测试数据生成 ====================
