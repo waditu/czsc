@@ -18,7 +18,6 @@
     "python.testing.pytestArgs": [
         "test",
         "-s",
-        "--log-cli=true",
         "--log-cli-level=INFO"
     ],
     "python.testing.unittestEnabled": false,
