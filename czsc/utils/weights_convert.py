@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-持仓权重转换工具
+持仓权重转换工具（Polars 优化版本）
 
-将分钟线上的标准持仓权重数据转换为符合 A 股 T+1 交易规则的持仓权重数据。
+使用 Polars 重写 weights_convert.py 中的核心功能，在保持输入输出不变的前提下，
+利用 Polars 更高效的分组、排序和内存布局来提升性能。
 
 T+1 规则：
 - T：交易日（Trading Day）
@@ -13,10 +14,11 @@ T+1 规则：
 """
 import numpy as np
 import pandas as pd
+import polars as pl
 
 
 def weights_convert(weights_df: pd.DataFrame, rule: str = "t+1") -> pd.DataFrame:
-    """权重数据转换工具
+    """权重数据转换工具（Polars 优化版本）
 
     Args:
         weights_df: 标准持仓权重DataFrame，包含列：
@@ -28,19 +30,10 @@ def weights_convert(weights_df: pd.DataFrame, rule: str = "t+1") -> pd.DataFrame
             - 'none': 不转换，直接返回原数据
 
     Returns:
-        转换后的DataFrame，格式与输入相同
+        转换后的DataFrame（pandas），格式与输入相同
 
     Raises:
         ValueError: 当 rule 参数不支持时，或输入数据格式不正确时
-
-    Examples:
-        >>> import pandas as pd
-        >>> df = pd.DataFrame({
-        ...     'dt': pd.to_datetime(['2024-01-01 09:30:00', '2024-01-01 10:00:00']),
-        ...     'symbol': ['AAPL', 'AAPL'],
-        ...     'weight': [0.0, 0.5]
-        ... })
-        >>> result = weights_convert(df, rule='t+1')
     """
     _validate_input(weights_df)
 
@@ -53,21 +46,13 @@ def weights_convert(weights_df: pd.DataFrame, rule: str = "t+1") -> pd.DataFrame
 
 
 def _validate_input(weights_df: pd.DataFrame) -> None:
-    """验证输入数据的格式和完整性
-
-    Args:
-        weights_df: 待验证的DataFrame
-
-    Raises:
-        ValueError: 当数据格式不正确时
-    """
+    """验证输入数据的格式和完整性"""
     required_columns = ["dt", "symbol", "weight"]
     missing_columns = [col for col in required_columns if col not in weights_df.columns]
 
     if missing_columns:
         raise ValueError(f"输入数据缺少必需的列: {missing_columns}")
 
-    # 空DataFrame跳过类型检查
     if len(weights_df) == 0:
         return
 
@@ -79,92 +64,71 @@ def _validate_input(weights_df: pd.DataFrame) -> None:
 
 
 def _apply_t_plus_1_rule(weights_df: pd.DataFrame) -> pd.DataFrame:
-    """应用T+1交易规则转换权重数据
-
-    T+1 规则：T 日买入的股票，T+1 日起方可卖出
-    即：T 日新增的持仓部分，只能在 T+1 日及以后才能卖出
-
-    Args:
-        weights_df: 标准持仓权重DataFrame
-
-    Returns:
-        符合T+1规则的权重数据
-    """
+    """应用T+1交易规则转换权重数据（Polars 优化版本）"""
     if len(weights_df) == 0:
         return weights_df.copy()
 
-    # 使用 groupby 处理每个品种
-    results = []
-    for symbol, group_df in weights_df.groupby("symbol"):
-        converted = _convert_single_symbol_plus_1_rule(group_df.copy())
-        results.append(converted)
+    # 保留额外列信息
+    extra_cols = [c for c in weights_df.columns if c not in ("dt", "symbol", "weight")]
 
-    return pd.concat(results, ignore_index=True)
+    # 转换为 Polars DataFrame（仅核心列）
+    pldf = pl.from_pandas(weights_df[["dt", "symbol", "weight"]])
+
+    # 添加原始索引和日期列
+    pldf = pldf.with_row_index("__orig_idx__").with_columns(pl.col("dt").dt.date().alias("__date__"))
+
+    # 按 symbol 分组，对每组应用 T+1 转换（使用 eager API）
+    result = pldf.sort("dt").group_by("symbol", maintain_order=True).map_groups(_process_symbol_group)
+
+    # 按原始顺序排序
+    result = result.sort("__orig_idx__")
+
+    # 转换回 pandas
+    out = result.select(["dt", "symbol", "weight"]).to_pandas()
+
+    # 恢复额外列
+    if extra_cols:
+        for col in extra_cols:
+            out[col] = weights_df[col].values
+
+    return out
 
 
-def _convert_single_symbol_plus_1_rule(df: pd.DataFrame) -> pd.DataFrame:
-    """处理单个品种的T+1转换
+def _process_symbol_group(group_df: pl.DataFrame) -> pl.DataFrame:
+    """处理单个品种的 T+1 转换（向量化日期边界 + numpy 循环）"""
+    dates = group_df["__date__"].to_numpy()
+    weights = group_df["weight"].to_numpy().copy()
 
-    T+1 规则：T 日买入的股票，T+1 日起方可卖出
-    即：T 日新增的持仓部分，只能在 T+1 日及以后才能卖出
+    n = len(weights)
+    if n == 0:
+        return group_df
 
-    关键点：
-    - 日内新买入的部分也不能在当天卖出
-    - 需要追踪日内累计锁定的仓位
+    # 预计算日期变化位置
+    date_changes = np.empty(n, dtype=np.bool_)
+    date_changes[0] = True
+    date_changes[1:] = dates[1:] != dates[:-1]
 
-    场景：同一天内 0 → 0.5 → 0.2
-    09:30 买入到 0.5，新买入了 0.5
-    10:00 想减仓到 0.2，但 当天新买入的 0.5 不能在当天卖出
-    因此 10:00 最小持仓应该是 0.5，而不是 0.2
+    # 核心 T+1 转换逻辑
+    previous_close = 0.0
+    locked_position = 0.0
+    current_position = 0.0
 
-    Args:
-        df: 单个品种的权重数据
+    for i in range(n):
+        if date_changes[i]:
+            # 新的交易日开始
+            previous_close = current_position if i > 0 else 0.0
+            current_position = previous_close
+            locked_position = 0.0
 
-    Returns:
-        转换后的权重数据
-    """
-    df = df.sort_values("dt").reset_index(drop=True)
+        target_weight = weights[i]
 
-    # 提取日期列
-    dates: pd.Series = df["dt"].dt.date
-    weights: np.ndarray = df["weight"].values.copy()
+        if target_weight > current_position:
+            buy_amount = target_weight - current_position
+            locked_position += buy_amount
+            current_position = target_weight
+        elif target_weight < current_position:
+            current_position = max(target_weight, locked_position)
 
-    # 获取唯一日期列表（按时间顺序）
-    unique_dates: np.ndarray = dates.unique()
+        weights[i] = current_position
 
-    # 初始状态
-    previous_close: float = 0.0  # 前一日收盘权重
-
-    # 按日期处理
-    for current_date in unique_dates:
-        # 获取当日数据的索引
-        day_mask: np.ndarray = (dates == current_date).to_numpy()
-        day_indices: np.ndarray = np.where(day_mask)[0]
-
-        # 当日初始持仓 = 前一日收盘持仓
-        current_position: float = previous_close
-        # 当日锁定仓位（当天新买入的部分，不能卖）
-        locked_position: float = 0.0
-
-        # 逐个时刻处理当日数据
-        for idx in day_indices:
-            target_weight: float = weights[idx]
-
-            if target_weight > current_position:
-                # 加仓：新买入的部分加入锁定
-                buy_amount: float = target_weight - current_position
-                locked_position += buy_amount
-                current_position = target_weight
-            elif target_weight < current_position:
-                # 减仓：不能低于锁定仓位
-                actual_weight: float = max(target_weight, locked_position)
-                current_position = actual_weight
-            # else: 持仓不变，无需操作
-
-            weights[idx] = current_position
-
-        # 更新前一日收盘
-        previous_close = current_position
-
-    df["weight"] = weights
-    return df
+    return group_df.with_columns(pl.Series("weight", weights))

@@ -16,7 +16,10 @@
     },
     "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
-        "test"
+        "test",
+        "-s",
+        "--log-cli=true",
+        "--log-cli-level=INFO"
     ],
     "python.testing.unittestEnabled": false,
     "liveServer.settings.port": 5502

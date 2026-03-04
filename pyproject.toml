@@ -75,6 +75,7 @@ dependencies = [
     "cryptography",
     "pytz",
     "fonttools>=4.61.0",
+    "polars>=0.20.0",
 ]
 
 [[tool.uv.index]]
@@ -86,11 +87,6 @@ default = true
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-]
-
-# Polars 加速（用于 weights_convert 等性能敏感模块）
-polars = [
-    "polars>=0.20.0",
 ]
 
 # 开发工具
@@ -142,7 +138,7 @@ path = "czsc/__init__.py"
 testpaths = ["test"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "--tb=short -v"
+addopts = "--tb=short -v -s --log-cli=true --log-cli-level=INFO"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
