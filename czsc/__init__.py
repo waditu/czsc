@@ -4,19 +4,11 @@ author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
-# 尝试从 rs_czsc 导入，失败则使用 Python 版本
-try:
-    from rs_czsc import (
-        daily_performance,
-        top_drawdowns,
-        # python版本：from czsc.traders.weight_backtest import WeightBacktest
-        WeightBacktest,
-    )
-except ImportError:
-    # 回退到 Python 版本
-    from czsc.core import WeightBacktest
-    # daily_performance 和 top_drawdown 在 Python 版本中的位置
-    from czsc.utils import daily_performance, top_drawdowns
+from rs_czsc import (
+    daily_performance,
+    top_drawdowns,
+    WeightBacktest,
+)
 
 from czsc import envs
 from czsc import utils

@@ -8,11 +8,7 @@ from typing import Optional, Dict, Any
 
 import pandas as pd
 
-# 尝试从 rs_czsc 导入，失败则使用 Python 版本
-try:
-    from rs_czsc import WeightBacktest
-except ImportError:
-    from czsc.py.weight_backtest import WeightBacktest
+from rs_czsc import WeightBacktest
 
 from .plotting.backtest import (
     get_performance_metrics_cards,
