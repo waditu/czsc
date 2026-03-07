@@ -595,7 +595,7 @@ class CzscTrader(CzscSignals):
 
         :return: 回测结果
         """
-        from czsc.traders.weight_backtest import WeightBacktest
+        from czsc.core import WeightBacktest
 
         method = kwargs.get("method", self.__ensemble_method)
         digits = kwargs.get("digits", 2)

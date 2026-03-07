@@ -35,7 +35,7 @@ if os.getenv('CZSC_USE_PYTHON', False) or not installed:
         # 数据对象
         RawBar, NewBar, FX, BI, FakeBI, ZS, Signal, Event, Position
     )
-    from czsc.py.weight_backtest import WeightBacktest
+    from rs_czsc import WeightBacktest
 else:
     # 导入已经用 rust 复现的函数
     from rs_czsc import (
