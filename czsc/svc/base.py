@@ -34,13 +34,8 @@ def safe_import_weight_backtest():
 
         return WeightBacktest
     except ImportError:
-        try:
-            from czsc.traders.weight_backtest import WeightBacktest
-
-            return WeightBacktest
-        except ImportError:
-            st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
-            return None
+        st.error("无法导入WeightBacktest类，请确保已安装rs_czsc库")
+        return None
 
 
 def safe_import_top_drawdowns():

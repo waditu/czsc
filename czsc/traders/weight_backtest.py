@@ -3,15 +3,14 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/08/02 22:20
-describe: 按持仓权重回测
+describe: 持仓权重相关工具函数（get_ensemble_weight、stoploss_by_direction）
+          WeightBacktest 类请从 czsc.core 或 rs_czsc 导入
 """
 import numpy as np
 import pandas as pd
 from typing import Union, AnyStr, Callable
 
 from czsc.traders.base import CzscTrader
-
-# WeightBacktest is available from czsc.core, not imported here to avoid circular dependency
 
 
 __all__ = ['get_ensemble_weight', 'stoploss_by_direction']

@@ -1,0 +1,3 @@
+import pandas as pd
+
+def log_strategy_info(strategy, df: pd.DataFrame): ...
