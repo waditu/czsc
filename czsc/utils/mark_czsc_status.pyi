@@ -1,0 +1,3 @@
+import pandas as pd
+
+def mark_czsc_status(df: pd.DataFrame, **kwargs) -> tuple[pd.DataFrame, pd.DataFrame]: ...
