@@ -7,6 +7,7 @@ from .data import DataClient as DataClient, DiskCache as DiskCache, clear_cache 
 from .index_composition import index_composition as index_composition
 from .io import dill_dump as dill_dump, dill_load as dill_load, read_json as read_json, save_json as save_json
 from .oss import AliyunOSS as AliyunOSS
+from .plotting.kline import KlineChart as KlineChart, plot_czsc_chart as plot_czsc_chart
 from .trade import resample_to_daily as resample_to_daily, risk_free_returns as risk_free_returns, update_bbars as update_bbars, update_nxb as update_nxb, update_tbars as update_tbars
 from _typeshed import Incomplete
 

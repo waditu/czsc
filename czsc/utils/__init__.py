@@ -281,6 +281,7 @@ _LAZY_ATTRS = {
     'PdfReportBuilder': ('czsc.utils.pdf_report_builder', 'PdfReportBuilder'),
     # plotting.kline
     'KlineChart': ('czsc.utils.plotting.kline', 'KlineChart'),
+    'plot_czsc_chart': ('czsc.utils.plotting.kline', 'plot_czsc_chart'),
     # plotting.backtest
     'plot_cumulative_returns': ('czsc.utils.plotting.backtest', 'plot_cumulative_returns'),
     'plot_drawdown_analysis': ('czsc.utils.plotting.backtest', 'plot_drawdown_analysis'),

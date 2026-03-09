@@ -40,10 +40,12 @@ def test_plotting_backtest_imports():
     from czsc.utils.plotting import (
         plot_cumulative_returns,
         plot_colored_table,
+        plot_czsc_chart,
     )
     
     assert callable(plot_cumulative_returns)
     assert callable(plot_colored_table)
+    assert callable(plot_czsc_chart)
 
 
 def test_plotting_weight_imports():

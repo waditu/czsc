@@ -29,6 +29,7 @@ from .weight import (
 # 从 kline 导入K线相关绘图类和函数
 from .kline import (
     KlineChart,
+    plot_czsc_chart,
 )
 
 # 从 common 导出常用常量
@@ -67,6 +68,7 @@ __all__ = [
     'plot_turnover_cost_analysis',
     # Kline plotting
     'KlineChart',
+    'plot_czsc_chart',
     # Common constants and utilities
     'COLOR_DRAWDOWN',
     'COLOR_RETURN',
