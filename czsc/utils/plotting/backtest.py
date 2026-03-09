@@ -640,8 +640,10 @@ def plot_long_short_comparison(
                 y=df_cumsum[col],
                 name=col,
                 mode='lines',
+                showlegend=True,
+                legend="legend",
                 line=dict(color=colors[i]),
-                legendgroup=col,
+                legendgroup=f"cumulative::{col}",
             ),
             row=1, col=1
         )
@@ -668,6 +670,9 @@ def plot_long_short_comparison(
 
     # 绘制调整后的累计收益曲线
     df_adjusted_cumsum = adjusted_returns.cumsum()
+    if "策略多头" in df_adjusted_cumsum.columns and "基准等权" in df_adjusted_cumsum.columns:
+        df_adjusted_cumsum['多头超额'] = df_adjusted_cumsum['策略多头'] - df_adjusted_cumsum['基准等权']
+        
     for i, col in enumerate(df_adjusted_cumsum.columns):
         fig.add_trace(
             go.Scatter(
@@ -675,8 +680,9 @@ def plot_long_short_comparison(
                 y=df_adjusted_cumsum[col],
                 name=f"{col}(调整)",
                 mode='lines',
-                showlegend=False,
-                legendgroup=col,
+                showlegend=True,
+                legend="legend2",
+                legendgroup=f"adjusted::{col}",
                 line=dict(color=colors[i]),
             ),
             row=2, col=1
@@ -719,10 +725,25 @@ def plot_long_short_comparison(
         title=title,
         template=template,
         height=1400,
-        margin=dict(l=20, r=20, b=20, t=60),
+        margin=dict(l=20, r=180, b=20, t=60),
         hovermode="x unified",
         showlegend=True,
-        legend=dict(x=0.01, y=0.99, bgcolor='rgba(0,0,0,0)')
+        legend=dict(
+            title=dict(text="累计收益曲线"),
+            x=1.02,
+            y=1.0,
+            xanchor="left",
+            yanchor="top",
+            bgcolor='rgba(0,0,0,0)'
+        ),
+        legend2=dict(
+            title=dict(text="波动率调整后收益"),
+            x=1.02,
+            y=0.62,
+            xanchor="left",
+            yanchor="top",
+            bgcolor='rgba(0,0,0,0)'
+        )
     )
 
     # 更新坐标轴标签
