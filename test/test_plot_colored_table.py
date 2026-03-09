@@ -1,6 +1,6 @@
 import pandas as pd
-import numpy as np
-from czsc.utils.plotting.backtest import plot_colored_table
+from czsc.utils.plotting.backtest import plot_colored_table, TABLE_DARK_TEXT, TABLE_LIGHT_TEXT
+
 
 def test_plot_colored_table():
     # 构造测试数据
@@ -16,8 +16,8 @@ def test_plot_colored_table():
 
     # 生成 HTML
     html_content = plot_colored_table(
-        df, 
-        title="策略绩效对比测试", 
+        df,
+        title="策略绩效对比测试",
         to_html=True,
         is_good_high_columns=["年化收益率", "夏普比率", "胜率"],
         row_height=40,
@@ -51,6 +51,22 @@ def test_plot_colored_table():
         f.write(full_html)
     
     print("测试完成，结果已保存至 test_plot_colored_table_result.html")
+
+
+def test_plot_colored_table_auto_adjusts_font_color():
+    df = pd.DataFrame({
+        "收益率": [-0.10, 0.00, 0.12],
+        "交易次数": [10, 20, 30],
+    }, index=["策略A", "策略B", "策略C"])
+
+    fig = plot_colored_table(df, to_html=False, template="plotly")
+    table = fig.data[0]
+    font_colors = table.cells.font.color
+
+    assert TABLE_DARK_TEXT in font_colors[1]
+    assert TABLE_LIGHT_TEXT in font_colors[1]
+    assert font_colors[2] == [TABLE_LIGHT_TEXT, TABLE_DARK_TEXT, TABLE_LIGHT_TEXT]
+
 
 if __name__ == "__main__":
     test_plot_colored_table()

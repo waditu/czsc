@@ -4,6 +4,7 @@
 从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
 """
 
+import re
 from typing import Union, Tuple
 import numpy as np
 import pandas as pd
@@ -30,6 +31,55 @@ from .common import (
 
 
 # ==================== 辅助函数 ====================
+
+
+TABLE_LIGHT_TEXT = "#f8fafc"
+TABLE_DARK_TEXT = "#0f172a"
+
+
+def _parse_rgb_color(color: str) -> Tuple[int, int, int, float] | None:
+    """解析 rgb/rgba/hex 颜色字符串。"""
+    if not isinstance(color, str):
+        return None
+
+    value = color.strip()
+    if value.startswith("#"):
+        hex_color = value[1:]
+        if len(hex_color) == 3:
+            hex_color = "".join(ch * 2 for ch in hex_color)
+        if len(hex_color) == 6:
+            return int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16), 1.0
+        return None
+
+    match = re.fullmatch(
+        r"rgba?\(\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)(?:\s*,\s*(\d+(?:\.\d+)?))?\s*\)",
+        value,
+    )
+    if not match:
+        return None
+
+    red, green, blue = (int(float(match.group(index))) for index in range(1, 4))
+    alpha = float(match.group(4)) if match.group(4) is not None else 1.0
+    return red, green, blue, alpha
+
+
+def _get_table_text_color(background_color: str, default_color: str) -> str:
+    """根据背景亮度返回更易读的文字颜色。"""
+    parsed = _parse_rgb_color(background_color)
+    if parsed is None:
+        return default_color
+
+    red, green, blue, alpha = parsed
+    if alpha <= 0:
+        return default_color
+
+    brightness = (red * 299 + green * 587 + blue * 114) / 1000
+    return TABLE_DARK_TEXT if brightness >= 150 else TABLE_LIGHT_TEXT
+
+
+def _get_default_table_text_color(template: TemplateType) -> str:
+    """根据模板推断表格默认文字颜色。"""
+    return TABLE_LIGHT_TEXT if "dark" in str(template).lower() else TABLE_DARK_TEXT
 
 
 def _calculate_drawdown(
@@ -529,14 +579,18 @@ def plot_colored_table(
     row_height = kwargs.get("row_height", 30)
     border_color = kwargs.get("border_color", COLOR_BORDER)
     header_bgcolor = kwargs.get("header_bgcolor", COLOR_HEADER_BG)
+    default_text_color = _get_default_table_text_color(template)
+    header_text_color = _get_table_text_color(header_bgcolor, default_text_color)
 
     # 准备数据和颜色
     cell_values = []
     cell_colors = []
+    cell_font_colors = []
 
     # 处理索引列
     cell_values.append(df.index.tolist())
     cell_colors.append([header_bgcolor] * len(df))
+    cell_font_colors.append([header_text_color] * len(df))
 
     # 处理数据列
     for col in df.columns:
@@ -565,15 +619,17 @@ def plot_colored_table(
                 colors = px.colors.sample_colorscale("RdYlGn_r", sample_vals)
 
             cell_colors.append(colors)
+            cell_font_colors.append([_get_table_text_color(str(color), default_text_color) for color in colors])
         else:
             cell_colors.append(['rgba(0,0,0,0)'] * len(series))
+            cell_font_colors.append([default_text_color] * len(series))
 
     fig = go.Figure(data=[go.Table(
         header=dict(
             values=headers,
             fill_color=header_bgcolor,
             align='center',
-            font=dict(color='white', size=12),
+            font=dict(color=header_text_color, size=12),
             height=row_height,
             line=dict(color=border_color, width=1)
         ),
@@ -581,7 +637,7 @@ def plot_colored_table(
             values=cell_values,
             fill_color=cell_colors,
             align='center',
-            font=dict(color='white', size=12),
+            font=dict(color=cell_font_colors, size=12),
             height=row_height,
             line=dict(color=border_color, width=1)
         )

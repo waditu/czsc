@@ -127,7 +127,7 @@ def show_cumulative_returns(df, key=None, **kwargs):
     display_legend = kwargs.get("display_legend", True)
     fig_title = kwargs.get("fig_title", "累计收益")
     
-    df_cumsum = df.cumsum()
+    df_cumsum = df.fillna(0).cumsum()
     fig = px.line(df_cumsum, y=df_cumsum.columns.to_list(), title=fig_title)
     fig.update_xaxes(title="")
 
