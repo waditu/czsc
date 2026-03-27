@@ -2,7 +2,7 @@
     "python.defaultInterpreterPath": ".venv/Scripts/python.exe",
     "python.analysis.autoImportCompletions": true,
     "python.analysis.indexing": true,
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "off",
     "python.analysis.autoSearchPaths": true,
     "python.analysis.extraPaths": [
         "."
