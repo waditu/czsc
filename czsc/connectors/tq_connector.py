@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -8,12 +7,15 @@ describe: 对接天勤量化
 1. [使用 tqsdk 进行期货交易](https://s0cqcxuy3p.feishu.cn/wiki/wikcn41lQIAJ1f8v41Dj5eAmrub)
 2. [使用 tqsdk 查看期货实时行情](https://s0cqcxuy3p.feishu.cn/wiki/SH3mwOU6piPqnGkRRiocQrhAnrh)
 """
-import czsc
+
+from datetime import datetime, timedelta
+
 import loguru
 import pandas as pd
-from datetime import datetime, timedelta
+from tqsdk import BacktestFinished, TargetPosTask, TqAccount, TqApi, TqAuth, TqBacktest, TqKq, TqSim  # noqa
+
+import czsc
 from czsc import Freq, RawBar
-from tqsdk import TqApi, TqAuth, TqSim, TqBacktest, TargetPosTask, BacktestFinished, TqAccount, TqKq  # noqa
 
 
 def format_kline(df, freq=Freq.F1):
@@ -42,17 +44,12 @@ def is_trading_end():
     """判断交易时间是否结束"""
     now = pd.Timestamp.now().strftime("%H:%M")
 
-    if "08:30" <= now <= "16:35":
-        if now >= "15:16":
-            # 日盘交易结束
-            return True
+    if "08:30" <= now <= "16:35" and now >= "15:16":
+        # 日盘交易结束
+        return True
 
-    if "00:30" <= now <= "04:00":
-        if now >= "02:31":
-            # 夜盘交易结束
-            return True
-
-    return False
+    # 夜盘交易结束
+    return "00:30" <= now <= "04:00" and now >= "02:31"
 
 
 def create_symbol_trader(api: TqApi, symbol, **kwargs):
@@ -413,10 +410,10 @@ def adjust_portfolio(api: TqApi, portfolio, account=None, **kwargs):
         symbol_infos[symbol] = {"quote": quote, "target_pos": target_pos, "lots": lots}
 
     if not symbol_infos:
-        logger.warning(f"没有需要调仓的品种，跳过调仓")
+        logger.warning("没有需要调仓的品种，跳过调仓")
         return api
     else:
-        logger.info(f"开始调仓：{[x for x in symbol_infos.keys()]}")
+        logger.info(f"开始调仓：{list(symbol_infos)}")
 
     while True:
         api.wait_update()

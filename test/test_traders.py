@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_traders.py - 交易执行框架单元测试
 
@@ -16,10 +15,11 @@ Mock数据格式说明:
 - optimize.py: 参数优化
 - performance.py: 绩效分析
 """
-import pytest
+
 import pandas as pd
+import pytest
+
 from czsc import mock
-from czsc.core import CZSC, format_standard_kline, Freq
 from czsc.py.bar_generator import BarGenerator
 
 
@@ -37,7 +37,7 @@ def get_bar_generator(symbol="000001", sdt="20200101", edt="20250101"):
     # 生成1分钟数据
     df = mock.generate_symbol_kines(symbol=symbol, freq="1分钟", sdt=sdt, edt=edt, seed=42)
 
-    bg = BarGenerator(symbol, freq='1分钟', base_freq='1分钟')
+    bg = BarGenerator(symbol, freq="1分钟", base_freq="1分钟")
     for _, row in df.iterrows():
         bg.update(row)
 
@@ -48,10 +48,8 @@ class TestCzscSignals:
     """测试CzscSignals信号计算器"""
 
 
-
 class TestMultiLevelAnalysis:
     """测试多级别联立分析"""
-
 
 
 class TestOptimizeModule:
@@ -61,6 +59,7 @@ class TestOptimizeModule:
         """测试优化模块导入"""
         try:
             from czsc.traders.optimize import optimize_params
+
             assert callable(optimize_params), "optimize_params应为可调用函数"
         except ImportError as e:
             pytest.skip(f"优化模块导入失败: {e}")
@@ -75,10 +74,7 @@ class TestOptimizeModule:
                 return sum(params.values())
 
             # 定义参数空间
-            param_space = {
-                'param1': [1, 2, 3],
-                'param2': [0.1, 0.2, 0.3]
-            }
+            param_space = {"param1": [1, 2, 3], "param2": [0.1, 0.2, 0.3]}
 
             # 执行优化
             result = optimize_params(objective, param_space, max_iter=5)
@@ -100,15 +96,12 @@ class TestOptimizeModule:
 
             # 目标函数
             def objective(params):
-                x = params.get('x', 0)
-                y = params.get('y', 0)
+                x = params.get("x", 0)
+                y = params.get("y", 0)
                 return (x - 3) ** 2 + (y - 2) ** 2
 
             # 参数空间
-            param_space = {
-                'x': [1, 2, 3, 4, 5],
-                'y': [1, 2, 3]
-            }
+            param_space = {"x": [1, 2, 3, 4, 5], "y": [1, 2, 3]}
 
             # 执行优化
             result = optimize_params(objective, param_space, max_iter=10)
@@ -128,6 +121,7 @@ class TestPerformanceModule:
         """测试绩效模块导入"""
         try:
             from czsc.traders.performance import cal_trade_performance
+
             assert callable(cal_trade_performance), "cal_trade_performance应为可调用函数"
         except ImportError as e:
             pytest.skip(f"绩效模块导入失败: {e}")
@@ -138,13 +132,15 @@ class TestPerformanceModule:
             from czsc.traders.performance import cal_trade_performance
 
             # 模拟交易数据
-            trades = pd.DataFrame({
-                'dt': pd.date_range('2024-01-01', periods=10),
-                'symbol': ['000001'] * 10,
-                'open': [100] * 10,
-                'close': [102, 101, 103, 102, 104, 103, 105, 104, 106, 105],
-                'pnl': [2, -1, 2, -1, 2, -1, 2, -1, 2, -1]
-            })
+            trades = pd.DataFrame(
+                {
+                    "dt": pd.date_range("2024-01-01", periods=10),
+                    "symbol": ["000001"] * 10,
+                    "open": [100] * 10,
+                    "close": [102, 101, 103, 102, 104, 103, 105, 104, 106, 105],
+                    "pnl": [2, -1, 2, -1, 2, -1, 2, -1, 2, -1],
+                }
+            )
 
             result = cal_trade_performance(trades)
 
@@ -153,7 +149,6 @@ class TestPerformanceModule:
             assert isinstance(result, dict), "绩效结果应为字典"
 
             # 验证包含基本统计字段
-            expected_keys = ['total_trades', 'win_rate', 'total_pnl']
             # 至少应有一些统计信息
             assert len(result) > 0, "绩效结果应包含统计信息"
 
@@ -207,7 +202,5 @@ class TestTradersIntegration:
     """测试交易器集成功能"""
 
 
-
 class TestTraderEdgeCases:
     """测试交易器边界情况"""
-

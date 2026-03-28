@@ -15,4 +15,12 @@ MONTH_LABELS: Incomplete
 TemplateType: Incomplete
 
 def figure_to_html(fig: go.Figure, to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
-def add_year_boundary_lines(fig: go.Figure, dates: pd.DatetimeIndex, row: int | None = None, col: int | None = None, line_color: str = 'red', opacity: float = 0.3, line_dash: str = 'dash') -> None: ...
+def add_year_boundary_lines(
+    fig: go.Figure,
+    dates: pd.DatetimeIndex,
+    row: int | None = None,
+    col: int | None = None,
+    line_color: str = "red",
+    opacity: float = 0.3,
+    line_dash: str = "dash",
+) -> None: ...

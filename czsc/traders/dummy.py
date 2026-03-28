@@ -1,14 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/23 19:12
 describe:
 """
+
 import os
 import time
-import pandas as pd
 from concurrent.futures import ProcessPoolExecutor
+
+import pandas as pd
+
 from czsc.traders.base import generate_czsc_signals
 
 
@@ -16,6 +18,7 @@ class DummyBacktest:
     @staticmethod
     def _get_logger():
         from loguru import logger
+
         return logger
 
     def __init__(self, strategy, signals_path, results_path, read_bars, **kwargs):
@@ -30,6 +33,7 @@ class DummyBacktest:
             - signals_module_name: 信号函数模块名，用于动态加载信号文件，默认为 czsc.signals
         """
         from czsc.strategies import CzscStrategyBase
+
         assert issubclass(strategy, CzscStrategyBase), "strategy 必须是 CzscStrategyBase 的子类"
         self.strategy = strategy
         self.results_path = results_path
@@ -37,22 +41,22 @@ class DummyBacktest:
         self.signals_path = signals_path
         os.makedirs(self.signals_path, exist_ok=True)
         # 缓存 poss 数据
-        self.poss_path = os.path.join(results_path, 'poss')
+        self.poss_path = os.path.join(results_path, "poss")
         os.makedirs(self.poss_path, exist_ok=True)
-        self._get_logger().add(os.path.join(self.results_path, 'dummy.log'), encoding='utf-8', enqueue=True)
+        self._get_logger().add(os.path.join(self.results_path, "dummy.log"), encoding="utf-8", enqueue=True)
         self.read_bars = read_bars
         self.kwargs = kwargs
 
         # 回测起止时间
-        self.sdt = kwargs.get('sdt', '20100101')
-        self.edt = kwargs.get('edt', '20230301')
-        self.bars_sdt = pd.to_datetime(self.sdt) - pd.Timedelta(days=365*3)
+        self.sdt = kwargs.get("sdt", "20100101")
+        self.edt = kwargs.get("edt", "20230301")
+        self.bars_sdt = pd.to_datetime(self.sdt) - pd.Timedelta(days=365 * 3)
 
     def replay(self, symbol):
         """回放单个品种的交易"""
         tactic = self.strategy(symbol=symbol, **self.kwargs)
-        bars = self.read_bars(symbol, tactic.base_freq, self.sdt, self.edt, fq='后复权')
-        tactic.replay(bars, os.path.join(self.results_path, f"{symbol}_replay"), sdt='20200101')
+        bars = self.read_bars(symbol, tactic.base_freq, self.sdt, self.edt, fq="后复权")
+        tactic.replay(bars, os.path.join(self.results_path, f"{symbol}_replay"), sdt="20200101")
 
     def one_symbol_dummy(self, symbol):
         """回测单个品种"""
@@ -67,15 +71,15 @@ class DummyBacktest:
         try:
             file_sigs = os.path.join(self.signals_path, f"{symbol}.sigs")
             if not os.path.exists(file_sigs):
-                bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq='后复权')
+                bars = self.read_bars(symbol, tactic.base_freq, self.bars_sdt, self.edt, fq="后复权")
                 sigs = generate_czsc_signals(bars, signals_config=tactic.signals_config, sdt=self.sdt, df=True)
-                sigs.drop(columns=['freq', 'cache'], inplace=True)
+                sigs.drop(columns=["freq", "cache"], inplace=True)
                 sigs.to_parquet(file_sigs)
             else:
                 sigs = pd.read_parquet(file_sigs)
-                sigs = sigs[sigs['dt'] >= self.sdt]
+                sigs = sigs[sigs["dt"] >= self.sdt]
 
-            sigs = sigs.to_dict('records')
+            sigs = sigs.to_dict("records")
             trader = tactic.dummy(sigs)
 
         except Exception as e:
@@ -91,14 +95,16 @@ class DummyBacktest:
                 pairs.to_parquet(file_pairs)
 
                 dfh = pd.DataFrame(pos.holds)
-                dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
+                dfh["n1b"] = (dfh["price"].shift(-1) / dfh["price"] - 1) * 10000
                 dfh.fillna(0, inplace=True)
-                dfh['symbol'] = pos.symbol
+                dfh["symbol"] = pos.symbol
                 dfh.to_parquet(file_holds)
             except Exception as e:
                 self._get_logger().debug(f"{symbol} {pos.name} 保存失败，原因：{e}")
 
-        self._get_logger().info(f"{symbol} 回测完成，共 {len(trader.positions)} 个持仓策略，耗时 {time.time() - start_time:.2f} 秒")
+        self._get_logger().info(
+            f"{symbol} 回测完成，共 {len(trader.positions)} 个持仓策略，耗时 {time.time() - start_time:.2f} 秒"
+        )
 
     def one_pos_stats(self, pos_name):
         """分析单个持仓策略的表现"""
@@ -113,7 +119,7 @@ class DummyBacktest:
                 pos_pairs.append(dfp)
 
                 dfh = pd.read_parquet(os.path.join(self.poss_path, f"{symbol}/{pos_name}.holds"))
-                pos_holds.append(dfh[dfh['pos'] != 0])
+                pos_holds.append(dfh[dfh["pos"] != 0])
             except Exception as e:
                 self._get_logger().debug(f"{symbol} 读取失败，原因：{e}")
 
@@ -126,10 +132,10 @@ class DummyBacktest:
             stats = dict(pp.basic_info)
             # 加入截面等权评价
             holds = pd.concat(pos_holds, ignore_index=True)
-            cross = holds.groupby('dt').apply(lambda x: (x['n1b'] * x['pos']).sum() / sum(x['pos'] != 0))
-            stats['截面等权收益'] = cross.sum()
+            cross = holds.groupby("dt").apply(lambda x: (x["n1b"] * x["pos"]).sum() / sum(x["pos"] != 0))
+            stats["截面等权收益"] = cross.sum()
             cross.to_excel(os.path.join(self.results_path, f"{pos_name}_截面等权收益.xlsx"), index=True)
-            stats['pos_name'] = pos_name
+            stats["pos_name"] = pos_name
             return stats
         else:
             return None
@@ -149,8 +155,10 @@ class DummyBacktest:
         tactic = self.strategy(symbol="symbol", **self.kwargs)
         dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
 
-        self._get_logger().info(f"策略回测，持仓策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，使用 {n_jobs} 个进程；"
-                    f"结果保存在 {results_path}。请耐心等待...")
+        self._get_logger().info(
+            f"策略回测，持仓策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，使用 {n_jobs} 个进程；"
+            f"结果保存在 {results_path}。请耐心等待..."
+        )
 
         with ProcessPoolExecutor(n_jobs) as pool:
             pool.map(self.one_symbol_dummy, sorted(symbols))
@@ -161,17 +169,18 @@ class DummyBacktest:
             for _s in _stats:
                 if not _s:
                     continue
-                _s['pos_dump'] = dumps_map[_s['pos_name']]
+                _s["pos_dump"] = dumps_map[_s["pos_name"]]
                 all_stats.append(_s)
 
-        file_report = os.path.join(results_path, f'{self.strategy.__name__}_回测结果汇总.xlsx')
-        report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)
+        file_report = os.path.join(results_path, f"{self.strategy.__name__}_回测结果汇总.xlsx")
+        report_df = pd.DataFrame(all_stats).sort_values(["截面等权收益"], ascending=False, ignore_index=True)
         report_df.to_excel(file_report, index=False)
         self._get_logger().info(f"策略回测完成，结果保存在 {results_path}。")
 
-        if kwargs.get('feishu_app_id') and kwargs.get('feishu_app_secret'):
+        if kwargs.get("feishu_app_id") and kwargs.get("feishu_app_secret"):
             from czsc import fsa
+
             if os.path.exists(file_report):
-                fsa.push_message(file_report, msg_type='file', **kwargs)
+                fsa.push_message(file_report, msg_type="file", **kwargs)
             else:
                 fsa.push_message(f"{self.strategy.__name__} 回测结果为空，请检查原因！", **kwargs)

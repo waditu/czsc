@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_envs.py - czsc.envs 环境变量管理模块单元测试
 
@@ -10,9 +9,10 @@ test_envs.py - czsc.envs 环境变量管理模块单元测试
 - get_max_bi_num(): 最大笔数量配置
 - 边界情况: 无效环境变量值、参数覆盖
 """
+
 import os
-import pytest
-from czsc.envs import use_python, get_verbose, get_welcome, get_min_bi_len, get_max_bi_num
+
+from czsc.envs import get_max_bi_num, get_min_bi_len, get_verbose, get_welcome, use_python
 
 
 class TestUsePython:
@@ -48,7 +48,7 @@ class TestGetVerbose:
 
     def test_env_true(self):
         """环境变量设为 True 时应返回 True"""
-        os.environ["czsc_verbose"] = "1"
+        os.environ["CZSC_VERBOSE"] = "1"
         assert get_verbose() is True
         os.environ.pop("czsc_verbose", None)
 
@@ -65,13 +65,13 @@ class TestGetWelcome:
     def test_default_false(self):
         """默认应返回 False"""
         os.environ.pop("czsc_welcome", None)
-        os.environ["czsc_welcome"] = "0"
+        os.environ["CZSC_WELCOME"] = "0"
         assert get_welcome() is False
         os.environ.pop("czsc_welcome", None)
 
     def test_set_true(self):
         """设置为 1 时应返回 True"""
-        os.environ["czsc_welcome"] = "1"
+        os.environ["CZSC_WELCOME"] = "1"
         assert get_welcome() is True
         os.environ.pop("czsc_welcome", None)
 
@@ -91,7 +91,7 @@ class TestGetMinBiLen:
 
     def test_env_override(self):
         """环境变量应覆盖默认值"""
-        os.environ["czsc_min_bi_len"] = "7"
+        os.environ["CZSC_MIN_BI_LEN"] = "7"
         assert get_min_bi_len() == 7
         os.environ.pop("czsc_min_bi_len", None)
 
@@ -116,7 +116,7 @@ class TestGetMaxBiNum:
 
     def test_env_override(self):
         """环境变量应覆盖默认值"""
-        os.environ["czsc_max_bi_num"] = "100"
+        os.environ["CZSC_MAX_BI_NUM"] = "100"
         assert get_max_bi_num() == 100
         os.environ.pop("czsc_max_bi_num", None)
 

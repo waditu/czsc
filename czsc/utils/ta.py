@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -12,6 +11,7 @@ describe: 常用技术分析指标
 python 3.10 以上版本，可以用 pip install ta-lib-everywhere 安装 ta-lib
 
 """
+
 import numpy as np
 import pandas as pd
 
@@ -29,10 +29,7 @@ def SMA(close: np.array, timeperiod=5):
     """
     res = []
     for i in range(len(close)):
-        if i < timeperiod:
-            seq = close[0 : i + 1]
-        else:
-            seq = close[i - timeperiod + 1 : i + 1]
+        seq = close[0 : i + 1] if i < timeperiod else close[i - timeperiod + 1 : i + 1]
         res.append(seq.mean())
     return np.array(res, dtype=np.double).round(4)
 
@@ -487,8 +484,8 @@ try:
 
 except ImportError:
     print(
-        f"ta-lib 没有正确安装，将使用自定义分析函数。建议安装 ta-lib，可以大幅提升计算速度。"
-        f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
+        "ta-lib 没有正确安装，将使用自定义分析函数。建议安装 ta-lib，可以大幅提升计算速度。"
+        "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
     )
 
 
@@ -531,11 +528,6 @@ def CHOP(high, low, close, **kwargs):
     import pandas_ta
 
     return pandas_ta.chop(high=high, low=low, close=close, **kwargs)
-
-
-def SNR(real: pd.Series, timeperiod=14, **kwargs):
-    """信噪比（Signal Noise Ratio，SNR）"""
-    return real.diff(timeperiod).abs() / real.diff().abs().rolling(window=timeperiod).sum()
 
 
 def rolling_polyfit(real: pd.Series, window=20, degree=1):

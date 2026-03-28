@@ -6,7 +6,8 @@ HTML 报告构建器
 
 import os
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any
+
 import pandas as pd
 
 
@@ -22,10 +23,10 @@ class HtmlReportBuilder:
                .add_section("简介", "<p>这是报告内容</p>") \
                .save("report.html")
     """
-    
+
     def __init__(self, title: str = "HTML 报告", theme: str = "light"):
         """初始化 HTML 报告构建器
-        
+
         :param title: 报告标题
         :param theme: 主题，可选 'light' 或 'dark'
         """
@@ -36,7 +37,7 @@ class HtmlReportBuilder:
         self.custom_scripts = []  # 自定义脚本
         self.chart_count = 0  # 图表计数器，用于生成唯一ID
         self._init_default_styles()
-        
+
     def _init_default_styles(self):
         """初始化默认样式"""
         self.base_css = """
@@ -321,39 +322,39 @@ class HtmlReportBuilder:
             }
         }
         """
-        
-    def add_custom_css(self, css: str) -> 'HtmlReportBuilder':
+
+    def add_custom_css(self, css: str) -> "HtmlReportBuilder":
         """添加自定义 CSS 样式
-        
+
         :param css: CSS 字符串
         :return: self，支持链式调用
         """
         self.custom_css.append(css)
         return self
-        
-    def add_custom_script(self, script: str) -> 'HtmlReportBuilder':
+
+    def add_custom_script(self, script: str) -> "HtmlReportBuilder":
         """添加自定义 JavaScript 脚本
-        
+
         :param script: JavaScript 字符串
         :return: self，支持链式调用
         """
         self.custom_scripts.append(script)
         return self
-        
-    def add_header(self, params: Dict[str, str], subtitle: str = None) -> 'HtmlReportBuilder':
+
+    def add_header(self, params: dict[str, str], subtitle: str = None) -> "HtmlReportBuilder":
         """添加头部区域
-        
+
         :param params: 参数字典，如 {"日期": "2024-01-01", "版本": "v1.0"}
         :param subtitle: 副标题
         :return: self，支持链式调用
         """
         badges_html = ""
         for key, value in params.items():
-            badges_html += f'''                        <span class="param-badge">
+            badges_html += f"""                        <span class="param-badge">
                             <i class="bi bi-info-circle"></i> {key}: {value}
-                        </span>\n'''
-        
-        header_html = f'''    <!-- 头部区域 -->
+                        </span>\n"""
+
+        header_html = f"""    <!-- 头部区域 -->
     <div class="header-section">
         <div class="container">
             <div class="row">
@@ -362,7 +363,7 @@ class HtmlReportBuilder:
                         <i class="bi bi-graph-up-arrow section-icon"></i>
                         {self.title}
                     </h1>
-                    {f'<p class="header-subtitle">{subtitle}</p>' if subtitle else ''}
+                    {f'<p class="header-subtitle">{subtitle}</p>' if subtitle else ""}
                     
                     <div class="param-badges">
 {badges_html}                    </div>
@@ -370,14 +371,14 @@ class HtmlReportBuilder:
             </div>
         </div>
     </div>
-'''
-        
+"""
+
         self.sections.append(("header", header_html))
         return self
-        
-    def add_metrics(self, metrics: List[Dict[str, Any]], title: str = "核心绩效指标") -> 'HtmlReportBuilder':
+
+    def add_metrics(self, metrics: list[dict[str, Any]], title: str = "核心绩效指标") -> "HtmlReportBuilder":
         """添加绩效指标卡片
-        
+
         :param metrics: 指标列表，每个元素为 {"label": str, "value": str, "is_positive": bool}
         :param title: 区域标题
         :return: self，支持链式调用
@@ -385,16 +386,16 @@ class HtmlReportBuilder:
         metrics_html = ""
         for m in metrics:
             value_class = "metric-positive" if m.get("is_positive", False) else "metric-negative"
-            metrics_html += f'''                <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+            metrics_html += f"""                <div class="col-6 col-md-4 col-lg-3 col-xl-2">
                     <div class="metric-card">
                         <div class="metric-value {value_class}">
                             {m["value"]}
                         </div>
                         <div class="metric-label">{m["label"]}</div>
                     </div>
-                </div>\n'''
-        
-        section_html = f'''    <!-- {title} -->
+                </div>\n"""
+
+        section_html = f"""    <!-- {title} -->
     <section class="mb-4">
         <div class="section-header">
             <i class="bi bi-speedometer2 section-icon"></i>
@@ -404,15 +405,16 @@ class HtmlReportBuilder:
         <div class="row g-2">
 {metrics_html}        </div>
     </section>
-'''
-        
+"""
+
         self.sections.append(("metrics", section_html))
         return self
-        
-    def add_chart_tab(self, name: str, chart_html: str, icon: str = "bi-graph-up", 
-                     active: bool = False) -> 'HtmlReportBuilder':
+
+    def add_chart_tab(
+        self, name: str, chart_html: str, icon: str = "bi-graph-up", active: bool = False
+    ) -> "HtmlReportBuilder":
         """添加单个图表标签页
-        
+
         :param name: 标签页名称
         :param chart_html: 图表 HTML 内容
         :param icon: 图标类名（Bootstrap Icons）
@@ -421,48 +423,50 @@ class HtmlReportBuilder:
         """
         self.chart_count += 1
         tab_id = f"chart-tab-{self.chart_count}"
-        
-        tab_button = f'''                        <li class="nav-item">
+
+        tab_button = f"""                        <li class="nav-item">
                             <button class="nav-link {"active" if active else ""}" 
                                     data-bs-toggle="tab" data-bs-target="#{tab_id}" 
                                     type="button" role="tab">
                                 <i class="bi {icon}"></i> {name}
                             </button>
-                        </li>'''
-        
+                        </li>"""
+
         tab_content = f'''                        <div class="tab-pane fade {"show active" if active else ""}" 
                                           id="{tab_id}" role="tabpanel">
                             <div class="chart-body">
                                 {chart_html}
                             </div>
                         </div>'''
-        
+
         self.sections.append(("chart_tab", {"button": tab_button, "content": tab_content}))
         return self
-        
-    def add_charts_section(self, title: str = "可视化分析") -> 'HtmlReportBuilder':
+
+    def add_charts_section(self, title: str = "可视化分析") -> "HtmlReportBuilder":
         """添加图表展示区域（收集所有之前添加的图表标签页）
-        
+
         :param title: 区域标题
         :return: self，支持链式调用
         """
         # 收集所有图表标签页
         chart_tabs = [section for section in self.sections if section[0] == "chart_tab"]
-        
+
         if not chart_tabs:
             return self
-            
+
         # 构建标签按钮HTML
-        tabs_html = "                <div class=\"chart-card\">\n                    <ul class=\"nav nav-tabs\" role=\"tablist\">\n"
+        tabs_html = (
+            '                <div class="chart-card">\n                    <ul class="nav nav-tabs" role="tablist">\n'
+        )
         tabs_html += "\n".join([tab[1]["button"] for tab in chart_tabs])
         tabs_html += "\n                    </ul>\n"
-        
+
         # 构建标签内容HTML
-        content_html = "                    <div class=\"tab-content\">\n"
+        content_html = '                    <div class="tab-content">\n'
         content_html += "\n".join([tab[1]["content"] for tab in chart_tabs])
         content_html += "\n                    </div>\n                </div>"
-        
-        section_html = f'''    <!-- {title} -->
+
+        section_html = f"""    <!-- {title} -->
     <section class="mb-4">
         <div class="section-header">
             <i class="bi bi-bar-chart-line section-icon"></i>
@@ -472,18 +476,19 @@ class HtmlReportBuilder:
 {tabs_html}
 {content_html}
     </section>
-'''
-        
+"""
+
         # 移除单独的图表标签页，替换为整个区域
         self.sections = [s for s in self.sections if s[0] != "chart_tab"]
         self.sections.append(("charts_section", section_html))
-        
+
         return self
-        
-    def add_table(self, df: pd.DataFrame, title: str = "数据表", 
-                  max_rows: int = None, style: str = "Table Grid") -> 'HtmlReportBuilder':
+
+    def add_table(
+        self, df: pd.DataFrame, title: str = "数据表", max_rows: int = None, style: str = "Table Grid"
+    ) -> "HtmlReportBuilder":
         """添加数据表格
-        
+
         :param df: pandas DataFrame
         :param title: 表格标题
         :param max_rows: 最大显示行数，None 表示全部显示
@@ -492,16 +497,15 @@ class HtmlReportBuilder:
         """
         if df.empty:
             return self
-            
+
         # 限制行数
         if max_rows and len(df) > max_rows:
             df = df.head(max_rows)
-            
+
         # 生成表格 HTML
-        table_html = df.to_html(classes='table table-striped table-hover', 
-                                index=False, border=0, justify='center')
-        
-        section_html = f'''    <!-- {title} -->
+        table_html = df.to_html(classes="table table-striped table-hover", index=False, border=0, justify="center")
+
+        section_html = f"""    <!-- {title} -->
     <section class="mb-4">
         <div class="section-header">
             <i class="bi bi-table section-icon"></i>
@@ -512,20 +516,20 @@ class HtmlReportBuilder:
             {table_html}
         </div>
     </section>
-'''
-        
+"""
+
         self.sections.append(("table", section_html))
         return self
-        
-    def add_section(self, title: str, content: str, icon: str = "bi-file-text") -> 'HtmlReportBuilder':
+
+    def add_section(self, title: str, content: str, icon: str = "bi-file-text") -> "HtmlReportBuilder":
         """添加自定义章节
-        
+
         :param title: 章节标题
         :param content: 章节内容（HTML字符串）
         :param icon: 图标类名
         :return: self，支持链式调用
         """
-        section_html = f'''    <!-- {title} -->
+        section_html = f"""    <!-- {title} -->
     <section class="mb-4">
         <div class="section-header">
             <i class="bi {icon} section-icon"></i>
@@ -536,25 +540,25 @@ class HtmlReportBuilder:
             {content}
         </div>
     </section>
-'''
-        
+"""
+
         self.sections.append(("custom", section_html))
         return self
-        
-    def add_footer(self, text: str = None) -> 'HtmlReportBuilder':
+
+    def add_footer(self, text: str = None) -> "HtmlReportBuilder":
         """添加页脚
-        
+
         :param text: 页脚文本，None 则使用默认文本
         :return: self，支持链式调用
         """
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if text is None:
-            text = f'''<i class="bi bi-code-square"></i>
+            text = f"""<i class="bi bi-code-square"></i>
                 由 CZSC 缠中说禅技术分析工具生成 | 
                 <i class="bi bi-clock-history"></i>
-                生成时间: {current_time}'''
-            
-        footer_html = f'''    <!-- 页脚 -->
+                生成时间: {current_time}"""
+
+        footer_html = f"""    <!-- 页脚 -->
     <footer class="footer">
         <div class="container">
             <p class="mb-0">
@@ -562,28 +566,28 @@ class HtmlReportBuilder:
             </p>
         </div>
     </footer>
-'''
-        
+"""
+
         self.sections.append(("footer", footer_html))
         return self
-        
+
     def render(self) -> str:
         """渲染完整的 HTML 报告
-        
+
         :return: HTML 字符串
         """
         # 合并所有 CSS
         all_css = self.base_css + "\n" + "\n".join(self.custom_css)
-        
+
         # 分离头部、页脚和主要内容
         header_html = ""
         footer_html = ""
         main_body_html = ""
-        
+
         for section_type, section_content in self.sections:
             if isinstance(section_content, dict):
                 continue  # 跳过未处理的图表标签页
-            
+
             if section_type == "header":
                 header_html += section_content + "\n"
             elif section_type == "footer":
@@ -651,21 +655,21 @@ class HtmlReportBuilder:
 </body>
 </html>
     """
-        
+
         return html_content
-        
+
     def save(self, file_path: str) -> str:
         """保存 HTML 报告到文件
-        
+
         :param file_path: 输出文件路径
         :return: 文件路径
         """
         html_content = self.render()
-        
+
         # 确保目录存在
         os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else ".", exist_ok=True)
-        
+
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-        
+
         return file_path

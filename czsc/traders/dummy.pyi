@@ -1,4 +1,5 @@
 from _typeshed import Incomplete
+
 from czsc.traders.base import generate_czsc_signals as generate_czsc_signals
 
 class DummyBacktest:

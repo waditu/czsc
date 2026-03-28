@@ -1,11 +1,19 @@
 import abc
-from _typeshed import Incomplete
 from abc import ABC, abstractmethod
-from czsc.core import BarGenerator as BarGenerator, Position as Position, RawBar as RawBar, Signal as Signal
+
+from _typeshed import Incomplete
+
+from czsc.core import BarGenerator as BarGenerator
+from czsc.core import Position as Position
+from czsc.core import RawBar as RawBar
+from czsc.core import Signal as Signal
 from czsc.py.bar_generator import check_freq_and_market as check_freq_and_market
 from czsc.traders.base import CzscTrader as CzscTrader
-from czsc.traders.sig_parse import get_signals_config as get_signals_config, get_signals_freqs as get_signals_freqs
-from czsc.utils.io import dill_dump as dill_dump, read_json as read_json, save_json as save_json
+from czsc.traders.sig_parse import get_signals_config as get_signals_config
+from czsc.traders.sig_parse import get_signals_freqs as get_signals_freqs
+from czsc.utils.io import dill_dump as dill_dump
+from czsc.utils.io import read_json as read_json
+from czsc.utils.io import save_json as save_json
 
 class CzscStrategyBase(ABC, metaclass=abc.ABCMeta):
     kwargs: Incomplete

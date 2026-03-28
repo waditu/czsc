@@ -11,15 +11,13 @@
 """
 
 import hashlib
+
 import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.express as px
-import plotly.graph_objects as go
-from typing import Optional
-from loguru import logger
+import streamlit as st
 
-from .base import safe_import_weight_backtest, apply_stats_style, generate_component_key
+from .base import apply_stats_style, generate_component_key, safe_import_weight_backtest
 
 
 def show_optuna_study(study, key=None, **kwargs):
@@ -50,19 +48,19 @@ def show_optuna_study(study, key=None, **kwargs):
         st.subheader(sub_title, divider="rainbow", anchor=anchor)
 
     fig = optuna.visualization.plot_contour(study)
-    
+
     # 生成 key
     if key is None:
         key = generate_component_key(study, prefix="optuna", sub_title=sub_title)
-    
-    st.plotly_chart(fig, key=f"{key}_contour", width='stretch')
+
+    st.plotly_chart(fig, key=f"{key}_contour", width="stretch")
 
     fig = optuna.visualization.plot_slice(study)
-    st.plotly_chart(fig, key=f"{key}_slice", width='stretch')
+    st.plotly_chart(fig, key=f"{key}_slice", width="stretch")
 
     with st.expander("最佳参数列表", expanded=False):
         params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
-        st.dataframe(params, width='stretch')
+        st.dataframe(params, width="stretch")
     return study
 
 
@@ -89,8 +87,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
     st.write(f"交易品种: {trader.symbol}")
     tabs = st.tabs(freqs + ["策略详情"])
 
-    for freq, tab in zip(freqs, tabs[:-1]):
-
+    for freq, tab in zip(freqs, tabs[:-1], strict=False):
         c = trader.kas[freq]
         sdt = c.bars_raw[-max_k_num].dt if len(c.bars_raw) > max_k_num else c.bars_raw[0].dt
         df = pd.DataFrame(c.bars_raw)
@@ -166,12 +163,12 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
                     "hoverCompareCartesian",
                 ],
             }
-            
+
             # 生成 key
             if key is None:
                 key = generate_component_key(trader, prefix="czsc_trader", freq=freq, max_k_num=max_k_num)
-            
-            st.plotly_chart(kline.fig, key=f"{key}_{freq}", width='stretch', config=config)
+
+            st.plotly_chart(kline.fig, key=f"{key}_{freq}", width="stretch", config=config)
 
     with tabs[-1]:
         with st.expander("查看最新信号", expanded=False):
@@ -218,7 +215,7 @@ def show_strategies_recent(df, **kwargs):
 
     st.dataframe(
         n_rets.style.background_gradient(cmap="RdYlGn_r").format("{:.2%}", na_rep="-"),
-        width='stretch',
+        width="stretch",
         hide_index=False,
     )
 
@@ -227,7 +224,7 @@ def show_strategies_recent(df, **kwargs):
     win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
     dfs = dfs.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.4f}", na_rep="-")
-    st.dataframe(dfs, width='stretch')
+    st.dataframe(dfs, width="stretch")
     st.caption(f"统计截止日期：{dfr.index[-1].strftime('%Y-%m-%d')}；策略数量：{dfr.shape[1]}")
 
 
@@ -275,11 +272,11 @@ def show_returns_contribution(df, returns=None, max_returns=100, key=None):
             height=400,
         )
         fig_bar.update_layout(yaxis_title="绝对收益", xaxis_title="策略")
-        
+
         # 生成 key
         if key is None:
             key = generate_component_key(df, prefix="ret_contrib", returns=returns, max_returns=max_returns)
-        
+
         st.plotly_chart(fig_bar, key=f"{key}_bar")
         st.caption("柱状图展示每个策略的收益贡献, Y轴为绝对收益大小，X轴为策略名称")
 
@@ -353,6 +350,7 @@ def show_quarterly_effect(returns: pd.Series, key=None):
     :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
     """
     import plotly.express as px
+
     from czsc.eda import cal_yearly_days
 
     try:
@@ -382,7 +380,7 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
         # 用 plotly 绘制累计收益率曲线, 用 数字作为index，方便对比
         fig = px.line(s.cumsum(), x=list(range(len(s))), y=s.cumsum().values, title="")
-        fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率", margin=dict(l=0, r=0, t=0, b=0))
+        fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率", margin={"l": 0, "r": 0, "t": 0, "b": 0})
 
         # 按年分组，绘制矩形覆盖
         years = s.index.year.unique()
@@ -396,19 +394,19 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
             # 添加矩形
             shapes.append(
-                dict(
-                    type="rect",
-                    xref="x",
-                    yref="paper",
-                    x0=start_idx,
-                    y0=0,
-                    x1=end_idx,
-                    y1=1,
-                    fillcolor=colors[i % len(colors)],
-                    opacity=0.5,
-                    layer="below",
-                    line_width=0,
-                )
+                {
+                    "type": "rect",
+                    "xref": "x",
+                    "yref": "paper",
+                    "x0": start_idx,
+                    "y0": 0,
+                    "x1": end_idx,
+                    "y1": 1,
+                    "fillcolor": colors[i % len(colors)],
+                    "opacity": 0.5,
+                    "layer": "below",
+                    "line_width": 0,
+                }
             )
 
         # 更新图表布局，添加矩形
@@ -416,12 +414,20 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
         # 添加年份标签
         annotations = []
-        for i, year in enumerate(years):
+        for _, year in enumerate(years):
             year_data = s[s.index.year == year]
             mid_idx = s.index.get_indexer([year_data.index[len(year_data) // 2]])[0]
 
             annotations.append(
-                dict(x=mid_idx, y=0.95, xref="x", yref="paper", text=str(year), showarrow=False, font=dict(size=14))
+                {
+                    "x": mid_idx,
+                    "y": 0.95,
+                    "xref": "x",
+                    "yref": "paper",
+                    "text": str(year),
+                    "showarrow": False,
+                    "font": {"size": 14},
+                }
             )
 
         fig.update_layout(annotations=annotations)
@@ -429,8 +435,8 @@ def show_quarterly_effect(returns: pd.Series, key=None):
         # 生成 key
         if key is None:
             key_base = generate_component_key(returns, prefix="quarterly")
-        
-        st.plotly_chart(fig, key=f"{key_base}_q{quarter_name}", width='stretch')
+
+        st.plotly_chart(fig, key=f"{key_base}_q{quarter_name}", width="stretch")
 
     c1, c2 = st.columns(2)
     with c1.container(border=True):
@@ -596,7 +602,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     classify = ["原始策略", "趋势行情", "震荡行情", "普通行情", "上涨趋势", "下跌趋势", "上行震荡", "下行震荡"]
 
     wbs = {}
-    for flag, classify_ in zip(period_flags, classify):
+    for flag, classify_ in zip(period_flags, classify, strict=False):
         df_tmp = dfs.copy()
         if flag:
             df_tmp["weight"] = np.where(df_tmp[flag], df_tmp["weight"], 0)
@@ -694,11 +700,11 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
     wb3 = WeightBacktest(df3, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
     classify = ["原始策略", "高波动", "中波动", "低波动"]
-    wbs = {classify_: wb_ for classify_, wb_ in zip(classify, [wb, wb1, wb2, wb3])}
+    wbs = dict(zip(classify, [wb, wb1, wb2, wb3], strict=False))
     show_multi_backtest(wbs, show_describe=False)
 
 
-def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: Optional[str] = None, **kwargs):
+def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: str | None = None, **kwargs):
     """分析组合日收益绩效
 
     :param df: 日收益数据，包含 dt, portfolio, benchmark 三列, 其中 dt 为日期, portfolio 为组合收益, benchmark 为基准收益
@@ -803,14 +809,14 @@ def show_turnover_rate(df: pd.DataFrame):
     df_daily["change"] = df_daily["change"].cumsum()
     fig = px.line(df_daily, x="dt", y="change", title="日换手累计曲线")
     fig.update_xaxes(title_text="")
-    p1.plotly_chart(fig, width='stretch')
+    p1.plotly_chart(fig, width="stretch")
 
     # 月换手的柱状图
     df_monthly = dfc.copy()
     df_monthly = df_monthly.set_index("dt").resample("ME").sum().reset_index()
     fig = px.bar(df_monthly, x="dt", y="change", title="月换手变化")
     fig.update_xaxes(title_text="")
-    p2.plotly_chart(fig, width='stretch')
+    p2.plotly_chart(fig, width="stretch")
 
     # 年换手的柱状图
     df_yearly = dfc.copy()
@@ -819,7 +825,7 @@ def show_turnover_rate(df: pd.DataFrame):
     df_yearly["change"] = df_yearly["change"].round(0)
     fig = px.bar(df_yearly, x="dt", y="change", title="年换手变化", hover_data=["change"])
     fig.update_xaxes(title_text="")
-    p3.plotly_chart(fig, width='stretch')
+    p3.plotly_chart(fig, width="stretch")
 
     st.caption("说明：以单边换手率计算")
 
@@ -865,7 +871,7 @@ def show_stats_compare(df: pd.DataFrame, **kwargs):
 
     # 应用样式
     df = apply_stats_style(df)
-    st.dataframe(df, width='stretch')
+    st.dataframe(df, width="stretch")
 
 
 def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):

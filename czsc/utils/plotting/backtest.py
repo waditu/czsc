@@ -5,30 +5,33 @@
 """
 
 import re
-from typing import Union, Tuple
+
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # 从公共模块导入常量和辅助函数
 from .common import (
-    COLOR_DRAWDOWN,
-    COLOR_RETURN,
     COLOR_ANNO_GRAY,
     COLOR_ANNO_RED,
     COLOR_BORDER,
+    COLOR_DRAWDOWN,
     COLOR_HEADER_BG,
+    COLOR_RETURN,
+    MONTH_LABELS,
     QUANTILES_DRAWDOWN,
     QUANTILES_DRAWDOWN_ANALYSIS,
     SIGMA_LEVELS,
-    MONTH_LABELS,
     TemplateType,
-    figure_to_html as _figure_to_html,
+)
+from .common import (
     add_year_boundary_lines as _add_year_boundary_lines,
 )
-
+from .common import (
+    figure_to_html as _figure_to_html,
+)
 
 # ==================== 辅助函数 ====================
 
@@ -37,7 +40,7 @@ TABLE_LIGHT_TEXT = "#f8fafc"
 TABLE_DARK_TEXT = "#0f172a"
 
 
-def _parse_rgb_color(color: str) -> Tuple[int, int, int, float] | None:
+def _parse_rgb_color(color: str) -> tuple[int, int, int, float] | None:
     """解析 rgb/rgba/hex 颜色字符串。"""
     if not isinstance(color, str):
         return None
@@ -82,10 +85,7 @@ def _get_default_table_text_color(template: TemplateType) -> str:
     return TABLE_LIGHT_TEXT if "dark" in str(template).lower() else TABLE_DARK_TEXT
 
 
-def _calculate_drawdown(
-    returns: pd.Series,
-    fillna: bool = True
-) -> pd.DataFrame:
+def _calculate_drawdown(returns: pd.Series, fillna: bool = True) -> pd.DataFrame:
     """计算累计收益和回撤
 
     :param returns: 收益序列
@@ -97,18 +97,13 @@ def _calculate_drawdown(
         df = df.fillna(0)
     df = df.sort_index(ascending=True)
 
-    result = pd.DataFrame({
-        'cum_ret': df.cumsum(),
-        'cum_max': df.cumsum().cummax(),
-        'drawdown': df.cumsum() - df.cumsum().cummax()
-    })
+    result = pd.DataFrame(
+        {"cum_ret": df.cumsum(), "cum_max": df.cumsum().cummax(), "drawdown": df.cumsum() - df.cumsum().cummax()}
+    )
     return result
 
 
-def _create_monthly_heatmap_data(
-    returns_df: pd.DataFrame,
-    ret_col: str
-) -> Tuple[pd.DataFrame, float, float]:
+def _create_monthly_heatmap_data(returns_df: pd.DataFrame, ret_col: str) -> tuple[pd.DataFrame, float, float]:
     """创建月度热力图所需数据
 
     :param returns_df: 日收益数据
@@ -116,29 +111,23 @@ def _create_monthly_heatmap_data(
     :return: (透视表, 月胜率, 年胜率)
     """
     df = returns_df[[ret_col]].copy()
-    df['year'] = df.index.year
-    df['month'] = df.index.month
+    df["year"] = df.index.year
+    df["month"] = df.index.month
 
-    monthly_ret = df.groupby(['year', 'month'])[ret_col].sum() * 100
+    monthly_ret = df.groupby(["year", "month"])[ret_col].sum() * 100
     monthly_ret = monthly_ret.reset_index()
-    monthly_ret.columns = ['年份', '月份', '月收益']
+    monthly_ret.columns = ["年份", "月份", "月收益"]
 
-    pivot_table = monthly_ret.pivot(index='年份', columns='月份', values='月收益')
+    pivot_table = monthly_ret.pivot(index="年份", columns="月份", values="月收益")
 
-    monthly_win_rate = (monthly_ret['月收益'] > 0).mean()
-    yearly_ret = monthly_ret.groupby('年份')['月收益'].sum()
+    monthly_win_rate = (monthly_ret["月收益"] > 0).mean()
+    yearly_ret = monthly_ret.groupby("年份")["月收益"].sum()
     yearly_win_rate = (yearly_ret > 0).mean()
 
     return pivot_table, monthly_win_rate, yearly_win_rate
 
 
-def _add_drawdown_annotation(
-    fig: go.Figure,
-    drawdown_series: pd.Series,
-    quantiles: list,
-    row: int,
-    col: int
-) -> None:
+def _add_drawdown_annotation(fig: go.Figure, drawdown_series: pd.Series, quantiles: list, row: int, col: int) -> None:
     """添加回撤分位数标注线
 
     :param fig: Plotly Figure 对象
@@ -156,16 +145,12 @@ def _add_drawdown_annotation(
             annotation_position="bottom left",
             line_color=COLOR_ANNO_GRAY,
             line_width=1,
-            row=row, col=col
+            row=row,
+            col=col,
         )
 
 
-def _add_sigma_lines(
-    fig: go.Figure,
-    returns_series: pd.Series,
-    row: int,
-    col: int
-) -> None:
+def _add_sigma_lines(fig: go.Figure, returns_series: pd.Series, row: int, col: int) -> None:
     """添加日收益分布的 Sigma 标注线
 
     :param fig: Plotly Figure 对象
@@ -184,9 +169,10 @@ def _add_sigma_lines(
             line_color=COLOR_ANNO_GRAY,
             line_width=1,
             annotation_text=f"{sigma}σ<br>{val:.2f}%",
-            annotation_font=dict(color=COLOR_ANNO_RED, size=10),
+            annotation_font={"color": COLOR_ANNO_RED, "size": 10},
             annotation_position="top",
-            row=row, col=col
+            row=row,
+            col=col,
         )
 
 
@@ -195,8 +181,8 @@ def plot_cumulative_returns(
     title: str = "累计收益",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+    include_plotlyjs: bool = True,
+) -> go.Figure | str:
     """绘制累计收益曲线
 
     参考 czsc.svc.returns.show_cumulative_returns
@@ -214,10 +200,7 @@ def plot_cumulative_returns(
 
     df_cumsum = dret.cumsum()
     fig = px.line(
-        df_cumsum,
-        y=df_cumsum.columns.to_list(),
-        title=title,
-        color_discrete_sequence=px.colors.qualitative.Plotly
+        df_cumsum, y=df_cumsum.columns.to_list(), title=title, color_discrete_sequence=px.colors.qualitative.Plotly
     )
     fig.update_xaxes(title="")
 
@@ -227,14 +210,14 @@ def plot_cumulative_returns(
     fig.update_layout(
         hovermode="x unified",
         template=template,
-        margin=dict(l=0, r=0, b=0, t=40),
-        legend=dict(orientation="h", y=-0.1, xanchor="center", x=0.5)
+        margin={"l": 0, "r": 0, "b": 0, "t": 40},
+        legend={"orientation": "h", "y": -0.1, "xanchor": "center", "x": 0.5},
     )
 
     # 仅显示 total 的曲线，其他的曲线隐藏
     for trace in fig.data:
-        if trace.name != 'total':
-            trace.visible = 'legendonly'
+        if trace.name != "total":
+            trace.visible = "legendonly"
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
 
@@ -245,8 +228,8 @@ def plot_drawdown_analysis(
     title: str = "回撤分析",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+    include_plotlyjs: bool = True,
+) -> go.Figure | str:
     """绘制回撤分析图
 
     参考 czsc.svc.returns.show_drawdowns
@@ -265,48 +248,47 @@ def plot_drawdown_analysis(
     fig = go.Figure()
 
     # 回撤曲线
-    fig.add_trace(go.Scatter(
-        x=df_drawdown.index,
-        y=df_drawdown["drawdown"] * 100,  # 转为百分比
-        fillcolor=COLOR_DRAWDOWN,
-        line=dict(color=COLOR_DRAWDOWN),
-        fill="tozeroy",
-        mode="lines",
-        name="回撤",
-        opacity=0.5
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=df_drawdown.index,
+            y=df_drawdown["drawdown"] * 100,  # 转为百分比
+            fillcolor=COLOR_DRAWDOWN,
+            line={"color": COLOR_DRAWDOWN},
+            fill="tozeroy",
+            mode="lines",
+            name="回撤",
+            opacity=0.5,
+        )
+    )
 
     # 累计收益曲线
-    fig.add_trace(go.Scatter(
-        x=df_drawdown.index,
-        y=df_drawdown["cum_ret"],
-        mode="lines",
-        name="累计收益",
-        yaxis="y2",
-        opacity=0.8,
-        line=dict(color=COLOR_RETURN)
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=df_drawdown.index,
+            y=df_drawdown["cum_ret"],
+            mode="lines",
+            name="累计收益",
+            yaxis="y2",
+            opacity=0.8,
+            line={"color": COLOR_RETURN},
+        )
+    )
 
     fig.update_layout(
-        yaxis2=dict(title="累计收益", overlaying="y", side="right"),
-        margin=dict(l=0, r=0, t=0, b=0),
+        yaxis2={"title": "累计收益", "overlaying": "y", "side": "right"},
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
         title=title,
         xaxis_title="",
         yaxis_title="净值回撤 (%)",
         legend_title="回撤分析",
         hovermode="x unified",
-        template=template
+        template=template,
     )
 
     # 添加分位数线
     for quantile in QUANTILES_DRAWDOWN_ANALYSIS:
         y_val = df_drawdown["drawdown"].quantile(quantile)
-        fig.add_hline(
-            y=y_val * 100,
-            line_dash="dot",
-            line_color="rgba(52,168,83,0.5)",
-            line_width=1
-        )
+        fig.add_hline(y=y_val * 100, line_dash="dot", line_color="rgba(52,168,83,0.5)", line_width=1)
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
 
@@ -317,8 +299,8 @@ def plot_daily_return_distribution(
     title: str = "日收益分布",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+    include_plotlyjs: bool = True,
+) -> go.Figure | str:
     """绘制日收益分布直方图
 
     :param dret: 日收益数据，包含 ret_col 列
@@ -336,12 +318,7 @@ def plot_daily_return_distribution(
     fig.update_xaxes(title="日收益 (%)")
     fig.update_yaxes(title="频数")
 
-    fig.update_layout(
-        template=template,
-        margin=dict(l=0, r=0, b=0, t=40),
-        bargap=0.1,
-        hovermode="x unified"
-    )
+    fig.update_layout(template=template, margin={"l": 0, "r": 0, "b": 0, "t": 40}, bargap=0.1, hovermode="x unified")
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
 
@@ -352,8 +329,8 @@ def plot_monthly_heatmap(
     title: str = "月度收益热力图",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+    include_plotlyjs: bool = True,
+) -> go.Figure | str:
     """绘制月度收益热力图
 
     :param dret: 日收益数据，index为日期
@@ -367,24 +344,22 @@ def plot_monthly_heatmap(
     # 创建月度热力图数据
     pivot_table, _, _ = _create_monthly_heatmap_data(dret, ret_col)
 
-    fig = go.Figure(data=go.Heatmap(
-        z=pivot_table.values,
-        x=MONTH_LABELS,
-        y=pivot_table.index,
-        colorscale='RdYlGn_r',
-        colorbar=dict(title="日收益 (%)"),
-        text=pivot_table.values,
-        texttemplate="%{text:.2f}%",
-        textfont={"size": 10},
-        hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>"
-    ))
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=pivot_table.values,
+            x=MONTH_LABELS,
+            y=pivot_table.index,
+            colorscale="RdYlGn_r",
+            colorbar={"title": "日收益 (%)"},
+            text=pivot_table.values,
+            texttemplate="%{text:.2f}%",
+            textfont={"size": 10},
+            hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>",
+        )
+    )
 
     fig.update_layout(
-        title=title,
-        xaxis_title="月份",
-        yaxis_title="年份",
-        template=template,
-        margin=dict(l=0, r=0, b=0, t=40)
+        title=title, xaxis_title="月份", yaxis_title="年份", template=template, margin={"l": 0, "r": 0, "b": 0, "t": 40}
     )
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
@@ -397,14 +372,30 @@ def get_performance_metrics_cards(stats: dict) -> list:
     :return: 指标列表
     """
     metrics = [
-        {"label": "年化收益率", "value": f"{stats.get('年化', 0):.2%}", "is_positive": stats.get('年化', 0) > 0},
-        {"label": "单笔收益(BP)", "value": f"{stats.get('单笔收益', 0):.2f}", "is_positive": stats.get('单笔收益', 0) > 0},
-        {"label": "交易胜率", "value": f"{stats.get('交易胜率', 0):.2%}", "is_positive": stats.get('交易胜率', 0) > 0.5},
+        {"label": "年化收益率", "value": f"{stats.get('年化', 0):.2%}", "is_positive": stats.get("年化", 0) > 0},
+        {
+            "label": "单笔收益(BP)",
+            "value": f"{stats.get('单笔收益', 0):.2f}",
+            "is_positive": stats.get("单笔收益", 0) > 0,
+        },
+        {
+            "label": "交易胜率",
+            "value": f"{stats.get('交易胜率', 0):.2%}",
+            "is_positive": stats.get("交易胜率", 0) > 0.5,
+        },
         {"label": "持仓K线数", "value": f"{stats.get('持仓K线数', 0):.0f}", "is_positive": True},
-        {"label": "最大回撤", "value": f"{stats.get('最大回撤', 0):.2%}", "is_positive": stats.get('最大回撤', 0) < 0.1},
-        {"label": "夏普", "value": f"{stats.get('夏普', 0):.2f}", "is_positive": stats.get('夏普', 0) > 1},
-        {"label": "卡玛", "value": f"{stats.get('卡玛', 0):.2f}", "is_positive": stats.get('卡玛', 0) > 1},
-        {"label": "年化波动率", "value": f"{stats.get('年化波动率', 0):.2%}", "is_positive": stats.get('年化波动率', 0) < 0.2},
+        {
+            "label": "最大回撤",
+            "value": f"{stats.get('最大回撤', 0):.2%}",
+            "is_positive": stats.get("最大回撤", 0) < 0.1,
+        },
+        {"label": "夏普", "value": f"{stats.get('夏普', 0):.2f}", "is_positive": stats.get("夏普", 0) > 1},
+        {"label": "卡玛", "value": f"{stats.get('卡玛', 0):.2f}", "is_positive": stats.get("卡玛", 0) > 1},
+        {
+            "label": "年化波动率",
+            "value": f"{stats.get('年化波动率', 0):.2%}",
+            "is_positive": stats.get("年化波动率", 0) < 0.2,
+        },
         {"label": "多头占比", "value": f"{stats.get('多头占比', 0):.2%}", "is_positive": True},
         {"label": "空头占比", "value": f"{stats.get('空头占比', 0):.2%}", "is_positive": True},
     ]
@@ -417,8 +408,8 @@ def plot_backtest_stats(
     title: str = "",
     template: TemplateType = "plotly",
     to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+    include_plotlyjs: bool = True,
+) -> go.Figure | str:
     """绘制回测统计概览图（3图布局：上1下2）
 
     1. 第一行：回撤分析（包含累计收益），跨两列
@@ -434,12 +425,12 @@ def plot_backtest_stats(
     """
     # 创建 subplot，第一行跨两列
     fig = make_subplots(
-        rows=2, cols=2,
+        rows=2,
+        cols=2,
         subplot_titles=("收益回撤分析", "日收益分布", "月度收益热力图"),
         vertical_spacing=0.1,
         horizontal_spacing=0.05,
-        specs=[[{"secondary_y": True, "colspan": 2}, None],
-               [{"secondary_y": False}, {"secondary_y": False}]]
+        specs=[[{"secondary_y": True, "colspan": 2}, None], [{"secondary_y": False}, {"secondary_y": False}]],
     )
 
     # 1. 收益回撤分析 (Top, spanning 2 columns)
@@ -450,14 +441,15 @@ def plot_backtest_stats(
             x=df_drawdown.index,
             y=df_drawdown["drawdown"] * 100,
             fillcolor=COLOR_DRAWDOWN,
-            line=dict(color=COLOR_DRAWDOWN),
+            line={"color": COLOR_DRAWDOWN},
             fill="tozeroy",
             mode="lines",
             name="回撤曲线",
             opacity=0.5,
-            legendgroup="1"
+            legendgroup="1",
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
     fig.add_trace(
         go.Scatter(
@@ -466,10 +458,12 @@ def plot_backtest_stats(
             mode="lines",
             name="累计收益",
             opacity=0.8,
-            line=dict(color=COLOR_RETURN),
-            legendgroup="1"
+            line={"color": COLOR_RETURN},
+            legendgroup="1",
         ),
-        row=1, col=1, secondary_y=True
+        row=1,
+        col=1,
+        secondary_y=True,
     )
 
     # 添加回撤分位数线
@@ -479,11 +473,8 @@ def plot_backtest_stats(
     _add_year_boundary_lines(fig, dret.index, row=1, col=1)
 
     # 2. 日收益分布 (Bottom Left)
-    daily_returns = (dret[ret_col] * 100)
-    fig.add_trace(
-        go.Histogram(x=daily_returns, nbinsx=50, name="日收益分布", showlegend=False),
-        row=2, col=1
-    )
+    daily_returns = dret[ret_col] * 100
+    fig.add_trace(go.Histogram(x=daily_returns, nbinsx=50, name="日收益分布", showlegend=False), row=2, col=1)
 
     # 添加 Sigma 线
     _add_sigma_lines(fig, daily_returns, row=2, col=1)
@@ -496,31 +487,35 @@ def plot_backtest_stats(
             z=pivot_table.values,
             x=MONTH_LABELS,
             y=pivot_table.index,
-            colorscale='RdYlGn_r',
+            colorscale="RdYlGn_r",
             showscale=True,
-            colorbar=dict(title="收益(%)", len=0.45, y=0.2),
+            colorbar={"title": "收益(%)", "len": 0.45, "y": 0.2},
             name="月收益热力图",
             # title=f"月收益热力图（月胜率: {monthly_win_rate:.1%}，年胜率: {yearly_win_rate:.1%})",
             text=pivot_table.values,
             texttemplate="%{text:.2f}%",
             textfont={"size": 9},
-            hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>"
+            hovertemplate=" %{y}<br>%{x}<br>收益: %{z:.2f}%<extra></extra>",
         ),
-        row=2, col=2
+        row=2,
+        col=2,
     )
 
     # 添加胜率标注
     fig.add_annotation(
         text=f"<b>月胜率</b>: {monthly_win_rate:.1%}<br><b>年胜率</b>: {yearly_win_rate:.1%}",
-        xref="x domain", yref="y domain",
-        x=1.1, y=0.0,
+        xref="x domain",
+        yref="y domain",
+        x=1.1,
+        y=0.0,
         showarrow=False,
-        font=dict(size=11, color="white"),
+        font={"size": 11, "color": "white"},
         bgcolor="rgba(0,0,0,0.6)",
         bordercolor="rgba(255,255,255,0.3)",
         borderwidth=1,
         borderpad=5,
-        row=2, col=2
+        row=2,
+        col=2,
     )
 
     # 更新布局
@@ -528,9 +523,9 @@ def plot_backtest_stats(
         title=title,
         template=template,
         height=800,
-        margin=dict(l=20, r=20, b=20, t=60),
+        margin={"l": 20, "r": 20, "b": 20, "t": 60},
         hovermode="x unified",
-        showlegend=True
+        showlegend=True,
     )
 
     # 更新坐标轴标签
@@ -551,8 +546,8 @@ def plot_colored_table(
     float_fmt: str = ".2f",
     to_html: bool = False,
     include_plotlyjs: bool = True,
-    **kwargs
-) -> Union[go.Figure, str]:
+    **kwargs,
+) -> go.Figure | str:
     """绘制带有列独立热力图颜色的表格
 
     :param df: 统计数据 DataFrame
@@ -575,7 +570,7 @@ def plot_colored_table(
     else:
         headers.insert(0, "Index")
 
-    good_high_columns = kwargs.get("good_high_columns", None)
+    good_high_columns = kwargs.get("good_high_columns")
     row_height = kwargs.get("row_height", 30)
     border_color = kwargs.get("border_color", COLOR_BORDER)
     header_bgcolor = kwargs.get("header_bgcolor", COLOR_HEADER_BG)
@@ -612,7 +607,7 @@ def plot_colored_table(
 
             min_val, max_val = series.min(), series.max()
             if min_val == max_val:
-                colors = ['rgba(0,0,0,0)'] * len(series)
+                colors = ["rgba(0,0,0,0)"] * len(series)
             else:
                 norm = (series - min_val) / (max_val - min_val)
                 sample_vals = 1 - norm if is_good_high else norm
@@ -621,33 +616,33 @@ def plot_colored_table(
             cell_colors.append(colors)
             cell_font_colors.append([_get_table_text_color(str(color), default_text_color) for color in colors])
         else:
-            cell_colors.append(['rgba(0,0,0,0)'] * len(series))
+            cell_colors.append(["rgba(0,0,0,0)"] * len(series))
             cell_font_colors.append([default_text_color] * len(series))
 
-    fig = go.Figure(data=[go.Table(
-        header=dict(
-            values=headers,
-            fill_color=header_bgcolor,
-            align='center',
-            font=dict(color=header_text_color, size=12),
-            height=row_height,
-            line=dict(color=border_color, width=1)
-        ),
-        cells=dict(
-            values=cell_values,
-            fill_color=cell_colors,
-            align='center',
-            font=dict(color=cell_font_colors, size=12),
-            height=row_height,
-            line=dict(color=border_color, width=1)
-        )
-    )])
-
-    fig.update_layout(
-        title=title,
-        template=template,
-        margin=dict(l=10, r=10, t=40, b=10)
+    fig = go.Figure(
+        data=[
+            go.Table(
+                header={
+                    "values": headers,
+                    "fill_color": header_bgcolor,
+                    "align": "center",
+                    "font": {"color": header_text_color, "size": 12},
+                    "height": row_height,
+                    "line": {"color": border_color, "width": 1},
+                },
+                cells={
+                    "values": cell_values,
+                    "fill_color": cell_colors,
+                    "align": "center",
+                    "font": {"color": cell_font_colors, "size": 12},
+                    "height": row_height,
+                    "line": {"color": border_color, "width": 1},
+                },
+            )
+        ]
     )
+
+    fig.update_layout(title=title, template=template, margin={"l": 10, "r": 10, "t": 40, "b": 10})
 
     return _figure_to_html(fig, to_html, include_plotlyjs)
 
@@ -659,8 +654,8 @@ def plot_long_short_comparison(
     template: TemplateType = "plotly",
     to_html: bool = False,
     include_plotlyjs: bool = True,
-    target_volatility: float = 0.2
-) -> Union[go.Figure, str]:
+    target_volatility: float = 0.2,
+) -> go.Figure | str:
     """绘制多空收益对比图（累计收益曲线 + 波动率调整后收益 + 绩效指标对比表）
 
     :param dailys_pivot: 透视表格式的日收益数据，index为日期，columns为策略名，values为收益率
@@ -675,15 +670,12 @@ def plot_long_short_comparison(
     # 创建 3x1 子图（上中下布局），指定第三个子图为 table 类型
     subplot_title_adjusted = f"波动率调整后收益对比（目标波动率: {target_volatility:.0%}）"
     fig = make_subplots(
-        rows=3, cols=1,
-        subplot_titles=(
-            "累计收益曲线对比",
-            subplot_title_adjusted,
-            "绩效指标对比"
-        ),
+        rows=3,
+        cols=1,
+        subplot_titles=("累计收益曲线对比", subplot_title_adjusted, "绩效指标对比"),
         vertical_spacing=0.08,
         row_heights=[0.35, 0.35, 0.30],
-        specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "table"}]]
+        specs=[[{"type": "xy"}], [{"type": "xy"}], [{"type": "table"}]],
     )
 
     # ========== 上图：累计收益曲线 ==========
@@ -695,13 +687,14 @@ def plot_long_short_comparison(
                 x=df_cumsum.index,
                 y=df_cumsum[col],
                 name=col,
-                mode='lines',
+                mode="lines",
                 showlegend=True,
                 legend="legend",
-                line=dict(color=colors[i]),
+                line={"color": colors[i]},
                 legendgroup=f"cumulative::{col}",
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
 
     # 添加年度分隔线
@@ -717,31 +710,29 @@ def plot_long_short_comparison(
         # 计算年化波动率
         annual_vol = daily_ret.std() * np.sqrt(trading_days_per_year)
         # 计算调整因子
-        if annual_vol > 0:
-            adjustment_factor = target_volatility / annual_vol
-        else:
-            adjustment_factor = 1.0
+        adjustment_factor = target_volatility / annual_vol if annual_vol > 0 else 1.0
         # 调整收益
         adjusted_returns[col] = daily_ret * adjustment_factor
 
     # 绘制调整后的累计收益曲线
     df_adjusted_cumsum = adjusted_returns.cumsum()
     if "策略多头" in df_adjusted_cumsum.columns and "基准等权" in df_adjusted_cumsum.columns:
-        df_adjusted_cumsum['多头超额'] = df_adjusted_cumsum['策略多头'] - df_adjusted_cumsum['基准等权']
-        
+        df_adjusted_cumsum["多头超额"] = df_adjusted_cumsum["策略多头"] - df_adjusted_cumsum["基准等权"]
+
     for i, col in enumerate(df_adjusted_cumsum.columns):
         fig.add_trace(
             go.Scatter(
                 x=df_adjusted_cumsum.index,
                 y=df_adjusted_cumsum[col],
                 name=f"{col}(调整)",
-                mode='lines',
+                mode="lines",
                 showlegend=True,
                 legend="legend2",
                 legendgroup=f"adjusted::{col}",
-                line=dict(color=colors[i]),
+                line={"color": colors[i]},
             ),
-            row=2, col=1
+            row=2,
+            col=1,
         )
 
     # 添加年度分隔线
@@ -750,8 +741,17 @@ def plot_long_short_comparison(
     # ========== 下图：使用 plot_colored_table 绘制绩效对比表 ==========
     # 选择关键指标列
     key_cols = [
-        "策略名称", "年化", "夏普", "卡玛", "最大回撤",
-        "年化波动率", "交易胜率", "单笔收益", "持仓K线数", "多头占比", "空头占比"
+        "策略名称",
+        "年化",
+        "夏普",
+        "卡玛",
+        "最大回撤",
+        "年化波动率",
+        "交易胜率",
+        "单笔收益",
+        "持仓K线数",
+        "多头占比",
+        "空头占比",
     ]
 
     # 过滤存在的列
@@ -769,7 +769,7 @@ def plot_long_short_comparison(
         template=template,
         float_fmt=".2f",
         to_html=False,
-        good_high_columns=["年化", "夏普", "卡玛", "交易胜率", "单笔收益"]
+        good_high_columns=["年化", "夏普", "卡玛", "交易胜率", "单笔收益"],
     )
 
     # 将表格的 trace 添加到主图中
@@ -781,25 +781,25 @@ def plot_long_short_comparison(
         title=title,
         template=template,
         height=1400,
-        margin=dict(l=20, r=180, b=20, t=60),
+        margin={"l": 20, "r": 180, "b": 20, "t": 60},
         hovermode="x unified",
         showlegend=True,
-        legend=dict(
-            title=dict(text="累计收益曲线"),
-            x=1.02,
-            y=1.0,
-            xanchor="left",
-            yanchor="top",
-            bgcolor='rgba(0,0,0,0)'
-        ),
-        legend2=dict(
-            title=dict(text="波动率调整后收益"),
-            x=1.02,
-            y=0.62,
-            xanchor="left",
-            yanchor="top",
-            bgcolor='rgba(0,0,0,0)'
-        )
+        legend={
+            "title": {"text": "累计收益曲线"},
+            "x": 1.02,
+            "y": 1.0,
+            "xanchor": "left",
+            "yanchor": "top",
+            "bgcolor": "rgba(0,0,0,0)",
+        },
+        legend2={
+            "title": {"text": "波动率调整后收益"},
+            "x": 1.02,
+            "y": 0.62,
+            "xanchor": "left",
+            "yanchor": "top",
+            "bgcolor": "rgba(0,0,0,0)",
+        },
     )
 
     # 更新坐标轴标签

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -7,13 +6,15 @@ describe: CZSC投研数据共享接口
 
 投研数据共享说明（含下载地址）：https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh
 """
-import os
-import czsc
+
 import glob
-import pandas as pd
+import os
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
+
+import czsc
 
 # 投研共享数据的本地缓存路径，需要根据实际情况修改
 cache_path = os.environ.get("czsc_research_cache", r"D:\CZSC投研数据")

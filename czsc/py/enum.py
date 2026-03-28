@@ -1,13 +1,6 @@
-# coding: utf-8
 from enum import Enum
 
-
-__all__ = [
-    "Mark",
-    "Direction",
-    "Freq",
-    "Operate"
-]
+__all__ = ["Mark", "Direction", "Freq", "Operate"]
 
 
 class Operate(Enum):

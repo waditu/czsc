@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/6/6 13:56
 describe: 阿里云OSS操作类
 """
+
 import os
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
-from typing import List
 
 
 class AliyunOSS:
@@ -29,6 +28,7 @@ class AliyunOSS:
     @staticmethod
     def _logger():
         from loguru import logger
+
         return logger
 
     def upload(self, filepath: str, oss_key: str, replace: bool = False) -> bool:
@@ -115,7 +115,7 @@ class AliyunOSS:
         :return: BytesIO, 文件的数据流。
         """
         result = self.bucket.get_object(oss_key)
-        return BytesIO(result.read()) # type: ignore
+        return BytesIO(result.read())  # type: ignore
 
     def create_folder(self, folder_path: str):
         """
@@ -145,7 +145,7 @@ class AliyunOSS:
             oss_keys.append(obj.key)
         return oss_keys
 
-    def batch_upload(self, filepaths: List[str], oss_keys: List[str], replace: bool = False, threads: int = 5):
+    def batch_upload(self, filepaths: list[str], oss_keys: list[str], replace: bool = False, threads: int = 5):
         """
         批量上传文件到OSS。
 
@@ -156,10 +156,13 @@ class AliyunOSS:
         """
         with ThreadPoolExecutor(max_workers=threads) as executor:
             from tqdm import tqdm
-            for filepath, oss_key in tqdm(zip(filepaths, oss_keys), total=len(filepaths), desc="Uploading"):
+
+            for filepath, oss_key in tqdm(
+                zip(filepaths, oss_keys, strict=False), total=len(filepaths), desc="Uploading"
+            ):
                 executor.submit(self.upload, filepath, oss_key, replace)
 
-    def batch_download(self, oss_keys: List[str], local_paths: List[str], replace: bool = False, threads: int = 5):
+    def batch_download(self, oss_keys: list[str], local_paths: list[str], replace: bool = False, threads: int = 5):
         """
         批量从OSS下载文件。
 
@@ -169,7 +172,7 @@ class AliyunOSS:
         """
         assert len(oss_keys) == len(local_paths), "The length of oss_keys and local_paths must be the same."
         with ThreadPoolExecutor(max_workers=threads) as executor:
-            for oss_key, local_path in zip(oss_keys, local_paths):
+            for oss_key, local_path in zip(oss_keys, local_paths, strict=False):
                 executor.submit(self.download, oss_key, local_path, replace)
 
     def multipart_upload(self, filepath: str, oss_key: str):
@@ -179,8 +182,8 @@ class AliyunOSS:
         :param filepath: string, 本地文件的路径。
         :param oss_key: string, 文件在OSS上的路径和名称。
         """
-        from oss2.models import PartInfo
         from oss2 import determine_part_size
+        from oss2.models import PartInfo
 
         total_size = os.path.getsize(filepath)
         part_size = determine_part_size(total_size, preferred_size=100 * 1024)
@@ -226,7 +229,7 @@ class AliyunOSS:
         """
         filepaths = []
         oss_keys = []
-        for root, dirs, files in os.walk(local_folder):
+        for root, _dirs, files in os.walk(local_folder):
             for filename in files:
                 filepath = os.path.join(root, filename)
                 filepaths.append(filepath)

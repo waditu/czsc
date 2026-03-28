@@ -1,15 +1,32 @@
 import pandas as pd
-from czsc.fsa.base import FeishuApiBase as FeishuApiBase, request as request
+
+from czsc.fsa.base import FeishuApiBase as FeishuApiBase
+from czsc.fsa.base import request as request
 from czsc.fsa.bi_table import BiTable as BiTable
 from czsc.fsa.im import IM as IM
 from czsc.fsa.push_strategy_latest import push_strategy_latest as push_strategy_latest
-from czsc.fsa.spreed_sheets import SingleSheet as SingleSheet, SpreadSheets as SpreadSheets
+from czsc.fsa.spreed_sheets import SingleSheet as SingleSheet
+from czsc.fsa.spreed_sheets import SpreadSheets as SpreadSheets
 
-__all__ = ['request', 'FeishuApiBase', 'SpreadSheets', 'SingleSheet', 'read_feishu_sheet', 'update_spreadsheet', 'IM', 'push_text', 'push_card', 'push_message', 'get_feishu_members_by_mobiles', 'BiTable', 'push_strategy_latest']
+__all__ = [
+    "request",
+    "FeishuApiBase",
+    "SpreadSheets",
+    "SingleSheet",
+    "read_feishu_sheet",
+    "update_spreadsheet",
+    "IM",
+    "push_text",
+    "push_card",
+    "push_message",
+    "get_feishu_members_by_mobiles",
+    "BiTable",
+    "push_strategy_latest",
+]
 
 def push_text(text: str, key: str) -> None: ...
 def push_card(card: dict, key: str) -> None: ...
 def read_feishu_sheet(spread_sheet_token: str, sheet_id: str = None, **kwargs): ...
 def get_feishu_members_by_mobiles(mobiles: list, **kwargs): ...
-def push_message(msg: str, msg_type: str = 'text', receive_id_type: str = 'open_id', **kwargs) -> None: ...
+def push_message(msg: str, msg_type: str = "text", receive_id_type: str = "open_id", **kwargs) -> None: ...
 def update_spreadsheet(df: pd.DataFrame, spreadsheet_token: str, sheet_id: str, **kwargs) -> int: ...

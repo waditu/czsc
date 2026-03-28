@@ -117,6 +117,8 @@ dev = [
     "pytest>=8.4.1",
     "pyyaml>=6.0.2",
     "tushare>=1.4.24",
+    "ruff>=0.9.0",
+    "basedpyright>=1.28.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -142,3 +144,23 @@ filterwarnings = [
     "ignore::FutureWarning:.*'T' is deprecated.*",
     "ignore::RuntimeWarning:.*invalid value encountered in divide.*",
 ]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
+ignore = ["E501", "SIM112"]
+extend-safe-fixes = ["UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["czsc"]
+
+[tool.ruff.format]
+indent-style = "space"
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+pythonVersion = "3.10"
+exclude = ["examples/", "test_offline/", "docs/", "old/", "build/", "dist/", ".venv/"]
+reportMissingTypeStubs = false

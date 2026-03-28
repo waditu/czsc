@@ -1,9 +1,54 @@
 from collections import OrderedDict
-from czsc.core import BI as BI, CZSC as CZSC, Direction as Direction, FX as FX, Mark as Mark, RawBar as RawBar, Signal as Signal, ZS as ZS
+
+from deprecated import deprecated as deprecated
+
+from czsc.core import (
+    BI as BI,
+)
+from czsc.core import (
+    CZSC as CZSC,
+)
+from czsc.core import (
+    FX as FX,
+)
+from czsc.core import (
+    ZS as ZS,
+)
+from czsc.core import (
+    Direction as Direction,
+)
+from czsc.core import (
+    Mark as Mark,
+)
+from czsc.core import (
+    RawBar as RawBar,
+)
+from czsc.core import (
+    Signal as Signal,
+)
 from czsc.traders.base import CzscSignals as CzscSignals
 from czsc.utils import single_linear as single_linear
-from czsc.utils.sig import cal_cross_num as cal_cross_num, count_last_same as count_last_same, create_single_signal as create_single_signal, cross_zero_axis as cross_zero_axis, down_cross_count as down_cross_count, fast_slow_cross as fast_slow_cross, get_sub_elements as get_sub_elements
-from deprecated import deprecated as deprecated
+from czsc.utils.sig import (
+    cal_cross_num as cal_cross_num,
+)
+from czsc.utils.sig import (
+    count_last_same as count_last_same,
+)
+from czsc.utils.sig import (
+    create_single_signal as create_single_signal,
+)
+from czsc.utils.sig import (
+    cross_zero_axis as cross_zero_axis,
+)
+from czsc.utils.sig import (
+    down_cross_count as down_cross_count,
+)
+from czsc.utils.sig import (
+    fast_slow_cross as fast_slow_cross,
+)
+from czsc.utils.sig import (
+    get_sub_elements as get_sub_elements,
+)
 
 def update_ma_cache(c: CZSC, **kwargs): ...
 def update_macd_cache(c: CZSC, **kwargs): ...

@@ -1,16 +1,17 @@
 """测试 PDF 报告生成模块的功能"""
+
 import sys
 
 sys.path.append("..")
 sys.path.insert(0, ".")
 import os
-import pytest
-import pandas as pd
-import czsc
-from czsc.utils.pdf_report_builder import PdfReportBuilder
-from czsc.utils.backtest_report import generate_pdf_backtest_report
-from czsc.mock import generate_klines_with_weights
 
+import pandas as pd
+import pytest
+
+from czsc.mock import generate_klines_with_weights
+from czsc.utils.backtest_report import generate_pdf_backtest_report
+from czsc.utils.pdf_report_builder import PdfReportBuilder
 
 # ==================== PdfReportBuilder 基础功能测试 ====================
 
@@ -146,10 +147,12 @@ class TestPdfReportBuilderChainCalls:
             builder = (
                 PdfReportBuilder(title="链式调用报告")
                 .add_header({"项目": "量化策略", "状态": "运行中"}, subtitle="策略分析")
-                .add_metrics([
-                    {"label": "收益率", "value": "+10%", "is_positive": True},
-                    {"label": "回撤", "value": "-5%", "is_positive": False},
-                ])
+                .add_metrics(
+                    [
+                        {"label": "收益率", "value": "+10%", "is_positive": True},
+                        {"label": "回撤", "value": "-5%", "is_positive": False},
+                    ]
+                )
                 .add_section("说明", "基于缠论技术分析的多因子量化策略。")
                 .add_table(pd.DataFrame({"A": [1, 2], "B": [3, 4]}), title="数据")
                 .add_footer()
@@ -227,15 +230,11 @@ class TestGeneratePdfBacktestReport:
 
         # 验证具体缺少的列名
         with pytest.raises(ValueError, match="数据缺少必需列"):
-            generate_pdf_backtest_report(
-                pd.DataFrame({"dt": [1], "symbol": ["A"], "weight": [0.5]})
-            )
+            generate_pdf_backtest_report(pd.DataFrame({"dt": [1], "symbol": ["A"], "weight": [0.5]}))
 
         # 空数据
         with pytest.raises(ValueError, match="输入数据不能为空"):
-            generate_pdf_backtest_report(
-                pd.DataFrame(columns=["dt", "symbol", "weight", "price"])
-            )
+            generate_pdf_backtest_report(pd.DataFrame(columns=["dt", "symbol", "weight", "price"]))
 
 
 if __name__ == "__main__":

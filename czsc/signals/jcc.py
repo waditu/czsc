@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/10/31 22:17
 describe: jcc 是 Japanese Candlestick Charting 的缩写，日本蜡烛图技术
 """
-import numpy as np
-from typing import List
+
 from collections import OrderedDict
+
+import numpy as np
+
 from czsc import CZSC
-from czsc.core import Signal, RawBar, Direction
+from czsc.core import Direction, RawBar, Signal
 from czsc.utils.sig import get_sub_elements
 
 
@@ -31,7 +32,7 @@ def jcc_san_xing_xian_V221023(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     th = float(kwargs.get("th", 2))
     th = int(th * 100)
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_伞形线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_伞形线".split("_")
 
     # 判断对应K线是否满足：1) 下影线超过实体 th 倍；2）上影线小于实体 0.2 倍
     bar: RawBar = c.bars_raw[-di]
@@ -42,7 +43,7 @@ def jcc_san_xing_xian_V221023(c: CZSC, **kwargs) -> OrderedDict:
     # 判断K线趋势【这是一个可以优化的方向】
     v2 = "其他"
     if len(c.bars_raw) > 20 + di:
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
@@ -80,22 +81,32 @@ def jcc_ten_mo_V221028(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}_吞没形态".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}_吞没形态".split("_")
     bar1 = c.bars_raw[-di]
     bar2 = c.bars_raw[-di - 1]
-    v1 = '满足' if bar1.high > bar2.high and bar1.low < bar2.low else "其他"
+    v1 = "满足" if bar1.high > bar2.high and bar1.low < bar2.low else "其他"
 
     v2 = "其他"
     if len(c.bars_raw) > 20 + di:
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
 
-        if bar1.low <= left_min + 0.25 * gap and bar1.close > bar1.open and bar1.close > bar2.high and bar1.open < bar2.low:
+        if (
+            bar1.low <= left_min + 0.25 * gap
+            and bar1.close > bar1.open
+            and bar1.close > bar2.high
+            and bar1.open < bar2.low
+        ):
             v2 = "看涨吞没"
 
-        elif bar1.high >= left_max - 0.25 * gap and bar1.close < bar1.open and bar1.close < bar2.low and bar1.open > bar2.high:
+        elif (
+            bar1.high >= left_max - 0.25 * gap
+            and bar1.close < bar1.open
+            and bar1.close < bar2.low
+            and bar1.open > bar2.high
+        ):
             v2 = "看跌吞没"
 
     s = OrderedDict()
@@ -130,11 +141,10 @@ def jcc_wu_yun_gai_ding_V221101(c: CZSC, **kwargs) -> OrderedDict:
     z = int(kwargs.get("z", 500))
     th = int(kwargs.get("th", 50))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}Z{z}TH{th}_乌云盖顶".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}Z{z}TH{th}_乌云盖顶".split("_")
     v1 = "其他"
 
     if len(c.bars_raw) > di + 10:
-
         # 判断前一天K线是否满足：实体涨幅 大于 z
         pre_bar: RawBar = c.bars_raw[-di - 1]
         z0 = ((pre_bar.close - pre_bar.open) / pre_bar.open) * 10000
@@ -146,7 +156,7 @@ def jcc_wu_yun_gai_ding_V221101(c: CZSC, **kwargs) -> OrderedDict:
 
         # 上升趋势的高点，或者平台整理的高点
         if len(c.bars_raw) > di + 10:
-            left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di + 2, n=10)
+            left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di + 2, n=10)
             left_max_close = max([x.close for x in left_bars])
 
             flag_up = pre_bar.close >= left_max_close
@@ -178,7 +188,7 @@ def jcc_ci_tou_V221101(c: CZSC, **kwargs) -> OrderedDict:
     z = int(kwargs.get("z", 100))
     th = int(kwargs.get("th", 50))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}Z{z}TH{th}_刺透形态".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}Z{z}TH{th}_刺透形态".split("_")
 
     if len(c.bars_raw) < di + 15:
         v1 = "其他"
@@ -233,7 +243,7 @@ def jcc_san_fa_V20221118(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
 
-    def __check_san_fa(bars: List[RawBar]):
+    def __check_san_fa(bars: list[RawBar]):
         if len(bars) < 5:
             return "其他"
 
@@ -259,7 +269,7 @@ def jcc_san_fa_V20221118(c: CZSC, **kwargs) -> OrderedDict:
 
         return c2
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_三法A".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_三法A".split("_")
 
     for n in (5, 6, 7, 8):
         _bars = get_sub_elements(c.bars_raw, di=di, n=n)
@@ -310,7 +320,7 @@ def jcc_san_fa_V20221115(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     zdf = int(kwargs.get("zdf", 500))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_三法".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_三法".split("_")
     bar6, bar5, bar4, bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=6)
 
     bar1_zdf = abs((bar2.close - bar1.close) / bar2.close) * 10000
@@ -318,11 +328,23 @@ def jcc_san_fa_V20221115(c: CZSC, **kwargs) -> OrderedDict:
     max_high = max(bar2.high, bar3.high, bar4.high)
     min_low = min(bar2.low, bar3.low, bar4.low)
 
-    v1 = '满足' if bar1_zdf >= zdf and bar5_zdf > zdf and bar5.high > max_high else "其他"
+    v1 = "满足" if bar1_zdf >= zdf and bar5_zdf > zdf and bar5.high > max_high else "其他"
 
-    if bar5.close > bar5.open and bar1.close > bar1.open and bar1.close > bar5.high and bar1.close > max_high and bar1.open > bar2.close:
+    if (
+        bar5.close > bar5.open
+        and bar1.close > bar1.open
+        and bar1.close > bar5.high
+        and bar1.close > max_high
+        and bar1.open > bar2.close
+    ):
         v2 = "上升三法"
-    elif bar5.close < bar5.open and bar1.close < bar1.open and bar1.close < bar5.low and bar1.close < min_low and bar1.open < bar2.close:
+    elif (
+        bar5.close < bar5.open
+        and bar1.close < bar1.open
+        and bar1.close < bar5.low
+        and bar1.close < min_low
+        and bar1.open < bar2.close
+    ):
         v2 = "下降三法"
     else:
         v2 = "其他"
@@ -378,7 +400,7 @@ def jcc_xing_xian_V221118(c: CZSC, **kwargs) -> OrderedDict:
     th = int(kwargs.get("th", 2))
     assert di >= 1
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_星形线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_星形线".split("_")
 
     bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
     x3 = abs(bar3.close - bar3.open)
@@ -434,31 +456,40 @@ def jcc_fen_shou_xian_V20221113(c: CZSC, **kwargs) -> OrderedDict:
     :param zdf: 可调阈值，涨跌幅，单位 BP
     :return: 分离形态识别结果
     """
-    di = int(kwargs.get('di', 1))
-    zdf = int(kwargs.get('zdf', 300))
+    di = int(kwargs.get("di", 1))
+    zdf = int(kwargs.get("zdf", 300))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_分手线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_分手线".split("_")
     bar1 = c.bars_raw[-di]
     bar2 = c.bars_raw[-di - 1]
 
     # 条件
-    v1 = '满足' if bar1.open == bar2.open and bar1.close < bar2.low or bar1.close > bar2.high else "其他"
+    v1 = "满足" if bar1.open == bar2.open and bar1.close < bar2.low or bar1.close > bar2.high else "其他"
 
     # 判断K线趋势【这是一个可以优化的方向】
     v2 = "其他"
     if len(c.bars_raw) > 20 + di:
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
 
-        if bar1.low <= left_min + 0.25 * gap and bar1.open == bar2.open and bar1.close < bar2.low \
-                and bar2.close > bar2.open and (bar2.close - bar1.close) / bar2.close * 10000 > zdf:
-
+        if (
+            bar1.low <= left_min + 0.25 * gap
+            and bar1.open == bar2.open
+            and bar1.close < bar2.low
+            and bar2.close > bar2.open
+            and (bar2.close - bar1.close) / bar2.close * 10000 > zdf
+        ):
             v2 = "下跌分手"
 
-        elif bar1.high >= left_max - 0.25 * gap and bar1.open == bar2.open and bar1.close > bar2.high \
-                and bar2.close < bar2.open and (bar1.close - bar2.close) / bar2.close * 10000 > zdf:
+        elif (
+            bar1.high >= left_max - 0.25 * gap
+            and bar1.open == bar2.open
+            and bar1.close > bar2.high
+            and bar2.close < bar2.open
+            and (bar1.close - bar2.close) / bar2.close * 10000 > zdf
+        ):
             v2 = "上升分手"
 
     s = OrderedDict()
@@ -483,11 +514,11 @@ def jcc_zhu_huo_xian_V221027(c: CZSC, **kwargs) -> OrderedDict:
     :param zf: 可调阈值，震荡幅度大小，单位 BP
     :return: 烛火线识别结果
     """
-    di = int(kwargs.get('di', 1))
-    th = float(kwargs.get('th', 2))
-    zf = int(kwargs.get('zf', 500))
+    di = int(kwargs.get("di", 1))
+    th = float(kwargs.get("th", 2))
+    zf = int(kwargs.get("zf", 500))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}F{zf}_烛火线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}T{th}F{zf}_烛火线".split("_")
     bar: RawBar = c.bars_raw[-di]
     x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
     zf_min = (bar.high - bar.low) / bar.low * 10000 >= zf
@@ -496,7 +527,7 @@ def jcc_zhu_huo_xian_V221027(c: CZSC, **kwargs) -> OrderedDict:
     v1 = "满足" if x1 > x2 * th / 100 and x3 < 0.2 * x2 and x3 < 0.5 * x1 and zf_min else "其他"
     v2 = "其他"
     if len(c.bars_raw) > 20 + di:
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
@@ -531,8 +562,8 @@ def jcc_yun_xian_V221118(c: CZSC, **kwargs) -> OrderedDict:
     :param di: 倒数第di跟K线
     :return: 孕线识别结果
     """
-    di = int(kwargs.get('di', 1))
-    k1, k2, k3 = f"{c.freq.value}_D{di}_孕线".split('_')
+    di = int(kwargs.get("di", 1))
+    k1, k2, k3 = f"{c.freq.value}_D{di}_孕线".split("_")
     bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
 
     v1 = "其他"
@@ -569,19 +600,19 @@ def jcc_ping_tou_V221113(c: CZSC, **kwargs) -> OrderedDict:
     :param th: 百分比，右侧K线的高/低点与当前K线的高/低点之间的差距比例，单位 BP
     :return: 平头形态识别结果
     """
-    di = int(kwargs.get('di', 2))
-    th = int(kwargs.get('th', 100))
+    di = int(kwargs.get("di", 2))
+    th = int(kwargs.get("th", 100))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_平头形态".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}TH{th}_平头形态".split("_")
     bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=2)
     if abs(bar2.low - bar1.low) * 10000 / max(bar2.low, bar1.low) < th:
         v1 = "底部"
     elif abs(bar2.high - bar1.high) * 10000 / max(bar2.high, bar1.high) < th:
-        v1 = '顶部'
+        v1 = "顶部"
     else:
         v1 = "其他"
 
-    v2 = '实体标准' if bar2.solid > max(bar1.solid, bar1.upper) else "任意"
+    v2 = "实体标准" if bar2.solid > max(bar1.solid, bar1.upper) else "任意"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -609,18 +640,18 @@ def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, **kwargs) -> OrderedDict:
     :param left: 从di向左数left根K线
     :return: 捉腰带线识别结果
     """
-    di = int(kwargs.get('di', 1))
-    left = int(kwargs.get('left', 20))
+    di = int(kwargs.get("di", 1))
+    left = int(kwargs.get("left", 20))
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}L{left}_捉腰带线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}L{left}_捉腰带线".split("_")
     v1, v2 = "其他", "其他"
 
     bar: RawBar = c.bars_raw[-di]
     # x1 - 上影线大小；x2 - 实体大小；x3 - 下影线大小
-    x1, x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
+    x1, _x2, x3 = bar.high - max(bar.open, bar.close), abs(bar.close - bar.open), min(bar.open, bar.close) - bar.low
 
     if len(c.bars_raw) > left + di:
-        left_bars: List[RawBar] = c.bars_raw[-left - di:-di]
+        left_bars: list[RawBar] = c.bars_raw[-left - di : -di]
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
 
@@ -628,10 +659,9 @@ def jcc_zhuo_yao_dai_xian_v221113(c: CZSC, **kwargs) -> OrderedDict:
             if bar.close > bar.open and x3 == 0:
                 v1 = "看多"
                 v2 = "光脚阳线"
-        elif bar.high > left_max:
-            if bar.close < bar.open and x1 == 0:
-                v1 = "看跌"
-                v2 = "光头阴线"
+        elif bar.high > left_max and bar.close < bar.open and x1 == 0:
+            v1 = "看跌"
+            v2 = "光头阴线"
 
     s = OrderedDict()
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
@@ -659,15 +689,15 @@ def jcc_two_crow_V221108(c: CZSC, **kwargs):
     :param di: 连续倒di根K线
     :return:
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     s = OrderedDict()
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_两只乌鸦".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_两只乌鸦".split("_")
     bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
 
     c1 = bar3.close > bar3.open and bar3.solid > max(bar3.upper, bar3.lower)
     c2 = bar2.open > bar2.close > bar3.high
     c3 = bar1.close < bar1.open and bar1.close < bar2.close
-    v1 = '看空' if c1 and c2 and c3 else '其他'
+    v1 = "看空" if c1 and c2 and c3 else "其他"
 
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1)
     s[signal.key] = signal.value
@@ -697,10 +727,10 @@ def jcc_three_crow_V221108(c: CZSC, **kwargs):
     :param di: 连续倒di根K线
     :return:
     """
-    di = int(kwargs.get('di', 1))
+    di = int(kwargs.get("di", 1))
     s = OrderedDict()
-    k1, k2, k3 = f"{c.freq.value}_D{di}_三只乌鸦".split('_')
-    signal = Signal(k1=k1, k2=k2, k3=k3, v1='其他', v2='其他')
+    k1, k2, k3 = f"{c.freq.value}_D{di}_三只乌鸦".split("_")
+    signal = Signal(k1=k1, k2=k2, k3=k3, v1="其他", v2="其他")
     s[signal.key] = signal.value
 
     # 逻辑判断：
@@ -715,7 +745,7 @@ def jcc_three_crow_V221108(c: CZSC, **kwargs):
     bar3 = c.bars_raw[-di - 2]
 
     if len(c.bars_raw) > 20 + 3:
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=3, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di=3, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
@@ -725,35 +755,40 @@ def jcc_three_crow_V221108(c: CZSC, **kwargs):
         else:
             return s
 
-    if bar1.close < bar1.open and bar2.close < bar2.open and bar3.open > bar3.close > bar2.close > bar1.close \
-            and bar3.high > bar2.high > bar1.high:
-
-        if (bar1.close - bar1.low) < 0.5 * (bar1.open - bar1.close) \
-                and (bar2.close - bar2.low) < 0.5 * (bar2.open - bar2.close) \
-                and (bar3.close - bar3.low) < 0.5 * (bar3.open - bar3.close) \
-                and (bar1.high - bar1.open) < (bar1.open - bar1.close) \
-                and (bar2.high - bar2.open) < (bar2.open - bar2.close) \
-                and (bar3.high - bar3.open) < (bar3.open - bar3.close):
-
+    if (
+        bar1.close < bar1.open
+        and bar2.close < bar2.open
+        and bar3.open > bar3.close > bar2.close > bar1.close
+        and bar3.high > bar2.high > bar1.high
+    ):
+        if (
+            (bar1.close - bar1.low) < 0.5 * (bar1.open - bar1.close)
+            and (bar2.close - bar2.low) < 0.5 * (bar2.open - bar2.close)
+            and (bar3.close - bar3.low) < 0.5 * (bar3.open - bar3.close)
+            and (bar1.high - bar1.open) < (bar1.open - bar1.close)
+            and (bar2.high - bar2.open) < (bar2.open - bar2.close)
+            and (bar3.high - bar3.open) < (bar3.open - bar3.close)
+        ):
             if bar2.close <= bar1.open <= bar2.open and bar3.close <= bar2.open <= bar3.open:
-                v1 = '满足'
-                v2 = '常规'
+                v1 = "满足"
+                v2 = "常规"
             elif bar1.open < bar2.close and bar2.open < bar3.close:
-                v1 = '满足'
-                v2 = '加强'
-            elif (bar2.close <= bar1.open <= bar2.open and bar3.open < bar3.close) or \
-                    (bar3.close <= bar2.open <= bar3.open and bar1.open < bar2.close):
-                v1 = '满足'
-                v2 = '半加强'
+                v1 = "满足"
+                v2 = "加强"
+            elif (bar2.close <= bar1.open <= bar2.open and bar3.open < bar3.close) or (
+                bar3.close <= bar2.open <= bar3.open and bar1.open < bar2.close
+            ):
+                v1 = "满足"
+                v2 = "半加强"
             else:
-                v1 = '其他'
-                v2 = '其他'
+                v1 = "其他"
+                v2 = "其他"
         else:
-            v1 = '其他'
-            v2 = '其他'
+            v1 = "其他"
+            v2 = "其他"
     else:
         v1 = "其他"
-        v2 = '其他'
+        v2 = "其他"
 
     signal = Signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
     s[signal.key] = signal.value
@@ -873,10 +908,7 @@ def check_szx(bar: RawBar, th: int = 10, **kwargs) -> bool:
     if bar.close == bar.open and bar.high != bar.low:
         return True
 
-    if bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th:
-        return True
-    else:
-        return False
+    return bool(bar.close != bar.open and (bar.high - bar.low) / abs(bar.close - bar.open) > th)
 
 
 def jcc_szx_V221111(c: CZSC, **kwargs) -> OrderedDict:
@@ -993,14 +1025,14 @@ def jcc_fan_ji_xian_V221121(c: CZSC, **kwargs) -> OrderedDict:
     :return: 反击线识别结果
     """
     di = int(kwargs.get("di", 1))
-    k1, k2, k3 = f"{c.freq.value}_D{di}_反击线".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}_反击线".split("_")
 
     if len(c.bars_raw) < 20 + di:
         v1 = "其他"
         v2 = "任意"
     else:
         # 取前20根K线，计算区间高度gap
-        left_bars: List[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
+        left_bars: list[RawBar] = get_sub_elements(c.bars_raw, di, n=20)
         left_max = max([x.high for x in left_bars])
         left_min = min([x.low for x in left_bars])
         gap = left_max - left_min
@@ -1024,7 +1056,7 @@ def jcc_fan_ji_xian_V221121(c: CZSC, **kwargs) -> OrderedDict:
         # 看涨：下降趋势； bar2阴线； bar3低开；
         # 看跌：上升趋势； bar2阳线； bar3高开；
         v2 = "任意"
-        if v1 == '满足':
+        if v1 == "满足":
             if bar1.low <= left_min + 0.25 * gap and bar1.close > bar2.close and bar2.open > bar2.close > bar3.open:
                 v2 = "看涨反击线"
 
@@ -1059,7 +1091,7 @@ def jcc_shan_chun_V221121(c: CZSC, **kwargs) -> OrderedDict:
     :return: 识别结果
     """
     di = int(kwargs.get("di", 1))
-    k1, k2, k3 = f"{c.freq.value}_D{di}B_山川形态".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}B_山川形态".split("_")
 
     v1 = "其他"
     if len(c.bi_list) < 6 + di:
@@ -1100,18 +1132,26 @@ def jcc_gap_yin_yang_V221121(c: CZSC, **kwargs) -> OrderedDict:
     :return: 识别结果
     """
     di = int(kwargs.get("di", 1))
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_并列阴阳".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_并列阴阳".split("_")
 
     v1 = "其他"
     if len(c.bars_raw) > di + 5:
         bar3, bar2, bar1 = get_sub_elements(c.bars_raw, di=di, n=3)
 
-        if min(bar1.low, bar2.low) > bar3.high and bar2.close > bar2.open and bar1.close < bar1.open and np.var(
-                (bar1.solid, bar2.solid)) < 0.2:
+        if (
+            min(bar1.low, bar2.low) > bar3.high
+            and bar2.close > bar2.open
+            and bar1.close < bar1.open
+            and np.var((bar1.solid, bar2.solid)) < 0.2
+        ):
             v1 = "向上跳空"
 
-        elif max(bar1.high, bar2.high) < bar3.low and bar2.close < bar2.open and bar1.close > bar1.open and np.var(
-                (bar1.solid, bar2.solid)) < 0.2:
+        elif (
+            max(bar1.high, bar2.high) < bar3.low
+            and bar2.close < bar2.open
+            and bar1.close > bar1.open
+            and np.var((bar1.solid, bar2.solid)) < 0.2
+        ):
             v1 = "向下跳空"
 
     s = OrderedDict()
@@ -1149,23 +1189,22 @@ def jcc_ta_xing_V221124(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
 
-    def __check_ta_xing(bars: List[RawBar]):
+    def __check_ta_xing(bars: list[RawBar]):
         if len(bars) < 5:
             return "其他"
 
         rb, lb = bars[0], bars[-1]
         sorted_solid = sorted([x.solid for x in bars])
         if min(rb.solid, lb.solid) >= sorted_solid[-2]:
-
             g_c1 = rb.close > rb.open and lb.close < lb.open
-            g_c2 = np.var([x.high for x in bars[1: -1]]) < 0.5
-            g_c3 = all(x.low > max(rb.open, lb.close) for x in bars[1: -1])
+            g_c2 = np.var([x.high for x in bars[1:-1]]) < 0.5
+            g_c3 = all(x.low > max(rb.open, lb.close) for x in bars[1:-1])
             if g_c1 and g_c2 and g_c3:
                 return "顶部"
 
             d_c1 = rb.close < rb.open and lb.close > lb.open
-            d_c2 = np.var([x.low for x in bars[1: -1]]) < 0.5
-            d_c3 = all(x.high < min(rb.open, lb.close) for x in bars[1: -1])
+            d_c2 = np.var([x.low for x in bars[1:-1]]) < 0.5
+            d_c3 = all(x.high < min(rb.open, lb.close) for x in bars[1:-1])
             if d_c1 and d_c2 and d_c3:
                 return "底部"
 

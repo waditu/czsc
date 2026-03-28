@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_sig.py - czsc.utils.sig 信号辅助工具函数单元测试
 
@@ -15,18 +14,20 @@ Mock数据格式说明:
 - 边界情况: 空数据、单值、全同值
 - 异常输入处理
 """
+
 import numpy as np
 import pytest
+
 from czsc.utils.sig import (
-    create_single_signal,
-    check_cross_info,
-    fast_slow_cross,
-    same_dir_counts,
-    count_last_same,
-    get_sub_elements,
-    cross_zero_axis,
     cal_cross_num,
+    check_cross_info,
+    count_last_same,
+    create_single_signal,
+    cross_zero_axis,
     down_cross_count,
+    fast_slow_cross,
+    get_sub_elements,
+    same_dir_counts,
 )
 
 
@@ -97,7 +98,20 @@ class TestCheckCrossInfo:
         slow = [7, 6, 5, 4, 3, 2, 1]
         result = check_cross_info(fast, slow)
         if result:
-            expected_keys = {"位置", "类型", "快线", "慢线", "距离", "距今", "面积", "价差", "快线高点", "快线低点", "慢线高点", "慢线低点"}
+            expected_keys = {
+                "位置",
+                "类型",
+                "快线",
+                "慢线",
+                "距离",
+                "距今",
+                "面积",
+                "价差",
+                "快线高点",
+                "快线低点",
+                "慢线高点",
+                "慢线低点",
+            }
             assert set(result[0].keys()) == expected_keys
 
 

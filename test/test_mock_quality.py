@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 测试mock模块数据质量的单元测试
 """
-import pytest
+
 import pandas as pd
-import numpy as np
+import pytest
 
 
 class TestMockDataQuality:
@@ -157,8 +156,9 @@ class TestMockDataQuality:
 
     def test_performance_benchmark(self):
         """测试性能基准"""
-        from czsc import mock
         import time
+
+        from czsc import mock
 
         start_time = time.time()
         df = mock.generate_klines(seed=42)

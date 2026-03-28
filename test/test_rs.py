@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 
 
@@ -12,6 +11,7 @@ def test_daily_performance():
 def test_weight_backtest():
     """测试权重回测功能"""
     from rs_czsc import WeightBacktest
+
     from czsc import mock
 
     # 使用mock数据替代硬编码数据文件
@@ -26,15 +26,15 @@ def test_weight_backtest():
 
 
 def test_czsc():
-    from rs_czsc import CZSC, format_standard_kline, Freq
+    from rs_czsc import CZSC, Freq, format_standard_kline
+
     from czsc.mock import generate_klines
-    
+
     df = generate_klines(seed=42)
-    symbol = df['symbol'].iloc[0]
-    df = df[df['symbol'] == symbol].copy()
+    symbol = df["symbol"].iloc[0]
+    df = df[df["symbol"] == symbol].copy()
     bars = format_standard_kline(df, freq=Freq.D)
 
     c = CZSC(bars)
     bi = c.bi_list[-1]
     print(bi)
-    

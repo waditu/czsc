@@ -155,9 +155,9 @@ def apply_stats_style(stats_df):
 
 def ensure_datetime_index(df, dt_col="dt"):
     """确保DataFrame的索引是datetime64[ns]类型"""
-    if not df.index.dtype == "datetime64[ns]":
+    if df.index.dtype != "datetime64[ns]":
         if dt_col in df.columns:
-            df[dt_col] = pd.to_datetime(df[dt_col]).astype('datetime64[ns]')
+            df[dt_col] = pd.to_datetime(df[dt_col]).astype("datetime64[ns]")
             df.set_index(dt_col, inplace=True)
         else:
             raise ValueError(f"DataFrame必须有datetime64[ns]类型的索引或包含'{dt_col}'列")
@@ -168,31 +168,32 @@ def ensure_datetime_index(df, dt_col="dt"):
 
 def generate_component_key(data, prefix="component", **kwargs):
     """根据输入数据生成唯一的组件 key
-    
+
     :param data: 输入数据（DataFrame, Figure, dict, str 等）
     :param prefix: key 的前缀，建议使用函数名缩写
     :param kwargs: 其他影响输出的参数
     :return: str, 唯一的 hash key
     """
     import time
-    
+
     key_parts = [prefix]
-    
+
     if isinstance(data, pd.DataFrame):
         from pandas.util import hash_pandas_object
+
         key_parts.append(str(hash_pandas_object(data).sum()))
     elif isinstance(data, dict):
         key_parts.append(json.dumps(data, sort_keys=True, default=str))
     else:
         key_parts.append(str(data))
-    
+
     if kwargs:
         key_parts.append(json.dumps(kwargs, sort_keys=True, default=str))
-    
+
     # 添加高精度时间戳确保唯一性（精确到纳秒）
     timestamp = time.time_ns()
     key_parts.append(str(timestamp))
-    
+
     key_str = "|".join(str(p) for p in key_parts)
-    hash_value = hashlib.md5(key_str.encode('utf-8')).hexdigest()[:8]
+    hash_value = hashlib.md5(key_str.encode("utf-8")).hexdigest()[:8]
     return f"{prefix}_{hash_value}"

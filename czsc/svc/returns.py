@@ -4,12 +4,18 @@
 包含日收益、累计收益、月度收益、回撤分析等可视化功能
 """
 
-import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from .base import safe_import_daily_performance, safe_import_top_drawdowns, apply_stats_style, ensure_datetime_index, generate_component_key
+import streamlit as st
+
+from .base import (
+    apply_stats_style,
+    ensure_datetime_index,
+    generate_component_key,
+    safe_import_daily_performance,
+    safe_import_top_drawdowns,
+)
 
 
 def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
@@ -56,12 +62,12 @@ def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-    
+
     # 显示数据详情
     if kwargs.get("show_dailys", False):
         with st.expander("日收益数据详情", expanded=False):
-            st.dataframe(df, width='stretch')
-    
+            st.dataframe(df, width="stretch")
+
     # 显示交易日绩效
     if stat_hold_days:
         with st.expander("交易日绩效指标", expanded=True):
@@ -69,19 +75,19 @@ def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
             if use_st_table:
                 st.table(stats)
             else:
-                st.dataframe(stats, width='stretch')
+                st.dataframe(stats, width="stretch")
             st.caption("交易日：交易所指定的交易日，或者有收益发生变化的日期")
     else:
         stats = _stats(df, type_="交易日")
         if use_st_table:
             st.table(stats)
         else:
-            st.dataframe(stats, width='stretch')
+            st.dataframe(stats, width="stretch")
 
     # 显示持有日绩效
     if stat_hold_days:
         with st.expander("持有日绩效指标", expanded=False):
-            st.dataframe(_stats(df, type_="持有日"), width='stretch')
+            st.dataframe(_stats(df, type_="持有日"), width="stretch")
             st.caption("持有日：在交易日的基础上，将收益率为0的日期删除")
 
     # 显示累计收益曲线
@@ -98,21 +104,22 @@ def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
 
         # 设置图例显示
         for col in kwargs.get("legend_only_cols", []):
-            fig.update_traces(visible="legendonly", selector=dict(name=col))
-        
-        fig.update_layout(margin=dict(l=0, r=0, b=0))
-        
+            fig.update_traces(visible="legendonly", selector={"name": col})
+
+        fig.update_layout(margin={"l": 0, "r": 0, "b": 0})
+
         # 生成 key
         if key is None:
-            key = generate_component_key(df, prefix="daily_ret", plot_cumsum=plot_cumsum, 
-                                         legend_only_cols=kwargs.get("legend_only_cols", []))
-        
-        st.plotly_chart(fig, key=key, width='stretch')
+            key = generate_component_key(
+                df, prefix="daily_ret", plot_cumsum=plot_cumsum, legend_only_cols=kwargs.get("legend_only_cols", [])
+            )
+
+        st.plotly_chart(fig, key=key, width="stretch")
 
 
 def show_cumulative_returns(df, key=None, **kwargs):
     """展示累计收益曲线
-    
+
     :param df: pd.DataFrame, 数据源，index 为日期，columns 为对应策略上一个日期至当前日期的收益
     :param key: str, 可选，组件的唯一标识符，默认自动生成
     :param kwargs: dict, 可选参数
@@ -126,7 +133,7 @@ def show_cumulative_returns(df, key=None, **kwargs):
 
     display_legend = kwargs.get("display_legend", True)
     fig_title = kwargs.get("fig_title", "累计收益")
-    
+
     df_cumsum = df.fillna(0).cumsum()
     fig = px.line(df_cumsum, y=df_cumsum.columns.to_list(), title=fig_title)
     fig.update_xaxes(title="")
@@ -139,20 +146,20 @@ def show_cumulative_returns(df, key=None, **kwargs):
 
     # 设置图例显示
     for col in kwargs.get("legend_only_cols", []):
-        fig.update_traces(visible="legendonly", selector=dict(name=col))
-    
+        fig.update_traces(visible="legendonly", selector={"name": col})
+
     if display_legend:
-        fig.update_layout(legend=dict(
-            orientation="h", y=-0.1, xanchor="center", x=0.5
-        ), margin=dict(l=0, r=0, b=0))
-        
+        fig.update_layout(
+            legend={"orientation": "h", "y": -0.1, "xanchor": "center", "x": 0.5}, margin={"l": 0, "r": 0, "b": 0}
+        )
+
     # 生成 key
     if key is None:
-        key = generate_component_key(df, prefix="cum_ret", fig_title=fig_title, 
-                                     legend_only_cols=kwargs.get("legend_only_cols", []))
-    
-    st.plotly_chart(fig, key=key, width='stretch', 
-                   config={"displayModeBar": not display_legend})
+        key = generate_component_key(
+            df, prefix="cum_ret", fig_title=fig_title, legend_only_cols=kwargs.get("legend_only_cols", [])
+        )
+
+    st.plotly_chart(fig, key=key, width="stretch", config={"displayModeBar": not display_legend})
 
 
 def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **kwargs):
@@ -174,7 +181,7 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     monthly["year"] = monthly.index.year
     monthly["month"] = monthly.index.month
     monthly = monthly.pivot_table(index="year", columns="month", values=ret_col)
-    
+
     # 设置列名
     month_cols = [f"{x}月" for x in monthly.columns]
     monthly.columns = month_cols
@@ -184,20 +191,22 @@ def show_monthly_return(df, ret_col="total", sub_title="月度累计收益", **k
     win_rate = monthly.apply(lambda x: (x > 0).sum() / len(x), axis=0)
     ykb = monthly.apply(lambda x: x[x > 0].sum() / -x[x < 0].sum() if min(x) < 0 else 10, axis=0)
     mean_ret = monthly.mean(axis=0)
-    
+
     # 应用样式
     monthly_styled = monthly.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=month_cols)
     monthly_styled = monthly_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["年收益"])
     monthly_styled = monthly_styled.format("{:.2%}", na_rep="-")
-    
-    st.dataframe(monthly_styled, width='stretch')
-    
+
+    st.dataframe(monthly_styled, width="stretch")
+
     # 显示统计信息
     dfy = pd.DataFrame([win_rate, ykb, mean_ret], index=["胜率", "盈亏比", "平均收益"])
     dfy_styled = dfy.style.background_gradient(cmap="RdYlGn_r", axis=1).format("{:.2%}", na_rep="-")
-    st.dataframe(dfy_styled, width='stretch')
-    
-    st.caption("注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10")
+    st.dataframe(dfy_styled, width="stretch")
+
+    st.caption(
+        "注：月度收益为累计收益，胜率为月度收益大于0的占比，盈亏比为月度盈利总额与月度亏损总额的比值，如果月度亏损总额为0，则盈亏比为10"
+    )
 
 
 def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
@@ -213,10 +222,10 @@ def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
     top_drawdowns = safe_import_top_drawdowns()
     if top_drawdowns is None:
         return
-        
+
     df = ensure_datetime_index(df)
     df = df[[ret_col]].copy().fillna(0).sort_index(ascending=True)
-    
+
     # 计算回撤数据
     df["cum_ret"] = df[ret_col].cumsum()
     df["cum_max"] = df["cum_ret"].cummax()
@@ -228,41 +237,50 @@ def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
 
     # 绘制回撤图
     fig = go.Figure()
-    
+
     # 回撤曲线
-    fig.add_trace(go.Scatter(
-        x=df.index, y=df["drawdown"], fillcolor="salmon", line=dict(color="salmon"),
-        fill="tozeroy", mode="lines", name="回撤曲线", opacity=0.5
-    ))
-    
+    fig.add_trace(
+        go.Scatter(
+            x=df.index,
+            y=df["drawdown"],
+            fillcolor="salmon",
+            line={"color": "salmon"},
+            fill="tozeroy",
+            mode="lines",
+            name="回撤曲线",
+            opacity=0.5,
+        )
+    )
+
     # 累计收益曲线（右轴）
-    fig.add_trace(go.Scatter(
-        x=df.index, y=df["cum_ret"], mode="lines", name="累计收益", 
-        yaxis="y2", opacity=0.8, line=dict(color="red")
-    ))
-    
-    fig.update_layout(yaxis2=dict(title="累计收益", overlaying="y", side="right"))
+    fig.add_trace(
+        go.Scatter(
+            x=df.index, y=df["cum_ret"], mode="lines", name="累计收益", yaxis="y2", opacity=0.8, line={"color": "red"}
+        )
+    )
+
+    fig.update_layout(yaxis2={"title": "累计收益", "overlaying": "y", "side": "right"})
 
     # 添加分位数线
     for q in [0.1, 0.3, 0.5]:
         y1 = df["drawdown"].quantile(q)
         fig.add_hline(y=y1, line_dash="dot", line_color="green", line_width=1)
-        fig.add_annotation(
-            x=df.index[5], y=y1, text=f"{q:.1%} (DD: {y1:.2%})",
-            showarrow=False, yshift=10
-        )
+        fig.add_annotation(x=df.index[5], y=y1, text=f"{q:.1%} (DD: {y1:.2%})", showarrow=False, yshift=10)
 
     fig.update_layout(
-        margin=dict(l=0, r=0, t=0, b=0), title="", 
-        xaxis_title="", yaxis_title="净值回撤", 
-        legend_title="回撤分析", height=300
+        margin={"l": 0, "r": 0, "t": 0, "b": 0},
+        title="",
+        xaxis_title="",
+        yaxis_title="净值回撤",
+        legend_title="回撤分析",
+        height=300,
     )
-    
+
     # 生成 key
     if key is None:
         key = generate_component_key(df, prefix="dd", ret_col=ret_col, top=kwargs.get("top", 10))
-    
-    st.plotly_chart(fig, key=key, width='stretch')
+
+    st.plotly_chart(fig, key=key, width="stretch")
 
     # 显示回撤详情
     top = kwargs.get("top", 10)
@@ -271,11 +289,10 @@ def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
             dft = top_drawdowns(df[ret_col].copy(), top=top)
             dft_styled = dft.style.background_gradient(cmap="RdYlGn_r", subset=["净值回撤"])
             dft_styled = dft_styled.background_gradient(cmap="RdYlGn", subset=["回撤天数", "恢复天数", "新高间隔"])
-            dft_styled = dft_styled.format({
-                "净值回撤": "{:.2%}", "回撤天数": "{:.0f}", 
-                "恢复天数": "{:.0f}", "新高间隔": "{:.0f}"
-            })
-            st.dataframe(dft_styled, width='stretch')
+            dft_styled = dft_styled.format(
+                {"净值回撤": "{:.2%}", "回撤天数": "{:.0f}", "恢复天数": "{:.0f}", "新高间隔": "{:.0f}"}
+            )
+            st.dataframe(dft_styled, width="stretch")
 
 
 def show_rolling_daily_performance(df, ret_col, key=None, **kwargs):
@@ -302,16 +319,18 @@ def show_rolling_daily_performance(df, ret_col, key=None, **kwargs):
     # 计算滚动绩效
     dfr = rolling_daily_performance(df, ret_col, window=window, min_periods=min_periods)
     dfr["年化波动率/最大回撤"] = dfr["年化波动率"] / dfr["最大回撤"]
-    
+
     # 选择指标
     cols = [x for x in dfr.columns if x not in ["sdt", "edt"]]
     col = c3.selectbox("选择指标", cols, index=cols.index("夏普") if "夏普" in cols else 0)
-    
+
     # 绘图
     fig = px.area(dfr, x="edt", y=col, labels={"edt": "", col: col})
-    
+
     # 生成 key
     if key is None:
-        key = generate_component_key(df, prefix="roll_perf", ret_col=ret_col, col=col, window=window, min_periods=min_periods)
-    
-    st.plotly_chart(fig, key=key, width='stretch') 
+        key = generate_component_key(
+            df, prefix="roll_perf", ret_col=ret_col, col=col, window=window, min_periods=min_periods
+        )
+
+    st.plotly_chart(fig, key=key, width="stretch")

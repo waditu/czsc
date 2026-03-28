@@ -1,15 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/2/7 13:17
 describe: 用于探索性分析的函数
 """
+
 import time
+from collections.abc import Callable
+
 import loguru
-import pandas as pd
 import numpy as np
-from typing import Callable
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -45,7 +46,7 @@ def remove_beta_effects(df, **kwargs):
 
     :return: DataFrame
     """
-    from sklearn.linear_model import Ridge, LinearRegression, Lasso
+    from sklearn.linear_model import Lasso, LinearRegression, Ridge
 
     linear_model = kwargs.get("linear_model", "ridge")
     linear_model_params = kwargs.get("linear_model_params", {})
@@ -54,7 +55,7 @@ def remove_beta_effects(df, **kwargs):
         "linear": LinearRegression,
         "lasso": Lasso,
     }
-    assert linear_model in linear.keys(), "linear_model 参数必须为 ridge、linear 或 lasso"
+    assert linear_model in linear, "linear_model 参数必须为 ridge、linear 或 lasso"
     Model = linear[linear_model]
 
     factor = kwargs.get("factor")
@@ -64,12 +65,12 @@ def remove_beta_effects(df, **kwargs):
     assert factor is not None and betas is not None, "factor 和 betas 参数必须指定"
     assert isinstance(betas, list), "betas 参数必须为列表"
     assert factor in df.columns, f"数据中不包含因子 {factor}"
-    assert all([x in df.columns for x in betas]), f"数据中不包含全部 beta {betas}"
+    assert all(x in df.columns for x in betas), f"数据中不包含全部 beta {betas}"
 
     logger.info(f"去除 beta 对因子 {factor} 的影响, 使用 {linear_model} 模型, betas: {betas}")
 
     rows = []
-    for dt, dfg in df.groupby("dt"):
+    for _dt, dfg in df.groupby("dt"):
         dfg = dfg.copy().dropna(subset=[factor] + betas)
         if dfg.empty:
             continue
@@ -109,7 +110,7 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
 
     assert long >= 0 and short >= 0, "long 和 short 参数必须大于等于0"
     assert factor in df.columns, f"{factor} 不在 df 中"
-    assert factor_direction in ["positive", "negative"], f"factor_direction 参数错误"
+    assert factor_direction in ["positive", "negative"], "factor_direction 参数错误"
     assert window >= 1 and isinstance(window, int), "window 参数必须大于等于1, 且为整数"
 
     df = df.copy()
@@ -237,7 +238,7 @@ def rolling_layers(df, factor, n=5, **kwargs):
     :return: df, 添加了 factor分层 列
     """
     assert df[factor].nunique() > n * 2, "因子值的取值数量必须大于分层数量"
-    assert df[factor].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[factor].isna().sum())
+    assert df[factor].isna().sum() == 0, f"因子有缺失值，缺失数量为：{df[factor].isna().sum()}"
     assert df["dt"].duplicated().sum() == 0, f"dt 列不能有重复值，存在重复值数量：{df['dt'].duplicated().sum()}"
 
     window = kwargs.get("window", 600)
@@ -254,7 +255,7 @@ def rolling_layers(df, factor, n=5, **kwargs):
         df["pct_rank_cut"] = pd.cut(df["pct_rank"], bins=bins, labels=False)
         df["pct_rank_cut"] = df["pct_rank_cut"].fillna(-1)
         # 第00层表示缺失值
-        df[f"{factor}分层"] = df["pct_rank_cut"].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+        df[f"{factor}分层"] = df["pct_rank_cut"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
         df.drop(["pct_rank", "pct_rank_cut"], axis=1, inplace=True)
 
     else:
@@ -266,7 +267,7 @@ def rolling_layers(df, factor, n=5, **kwargs):
         )
         df[f"{factor}_qcut"] = df[f"{factor}_qcut"].fillna(-1)
         # 第00层表示缺失值
-        df[f"{factor}分层"] = df[f"{factor}_qcut"].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+        df[f"{factor}分层"] = df[f"{factor}_qcut"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
         df.drop([f"{factor}_qcut"], axis=1, inplace=True)
 
     return df
@@ -400,9 +401,9 @@ def weights_simple_ensemble(df, weight_cols, method="mean", only_long=False, **k
     """
     method = method.lower()
 
-    assert all(
-        [x in df.columns for x in weight_cols]
-    ), f"数据中不包含全部权重列，不包含的列：{set(weight_cols) - set(df.columns)}"
+    assert all(x in df.columns for x in weight_cols), (
+        f"数据中不包含全部权重列，不包含的列：{set(weight_cols) - set(df.columns)}"
+    )
     assert "weight" not in df.columns, "数据中已经包含 weight 列，请先删除，再调用该函数"
 
     if method == "mean":
@@ -690,7 +691,6 @@ def cal_trade_price(df: pd.DataFrame, digits=None, **kwargs):
         df_symbol["vol_close_prod"] = df_symbol["vol"] * df_symbol["close"]
 
         for t in kwargs.get("windows", (5, 10, 15, 20, 30, 60)):
-
             df_symbol[f"TP_TWAP{t}"] = df_symbol["close"].rolling(t).mean().shift(-t)
 
             df_symbol[f"sum_vol_{t}"] = df_symbol["vol"].rolling(t).sum()
@@ -733,7 +733,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         'is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period'
         'is_worst_period', 'is_worst_up_period', 'is_worst_down_period'
     """
-    from czsc.core import CZSC, format_standard_kline, Direction
+    from czsc.core import CZSC, format_standard_kline
 
     q1 = kwargs.get("q1", 0.15)
     q2 = kwargs.get("q2", 0.4)
@@ -745,7 +745,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
 
     verbose = kwargs.get("verbose", False)
     logger = kwargs.get("logger", loguru.logger)
-        
+
     rows = []
     for symbol, dfg in df.groupby("symbol"):
         if verbose:
@@ -842,15 +842,16 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
 
     return dfr
 
+
 def mark_v_reversal(df: pd.DataFrame, **kwargs):
     """【后验，有未来信息，不能用于实盘】标记V字反转模式
-    
+
     V字反转大概的识别逻辑：
     1. 任意一个有力度的向上笔或者向下笔走势
     2. 后续的一个笔的走势，吞没前面一笔走势的50%以上，而且速度很快
-    
+
     关于笔的力度定义，可以参考 mark_cta_periods 函数中的笔走势的绝对收益、R平方、波动率等指标
-    
+
     :param df: 标准K线数据，必须包含 dt, symbol, open, close, high, low, vol, amount 列
     :param kwargs: 其他参数
         - copy: 是否复制数据，默认True
@@ -865,9 +866,9 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
         'is_v_reversal_up', 'is_v_reversal_down', 'is_v_reversal'
     """
     rs = kwargs.get("rs", True)
-    
+
     if rs:
-        from rs_czsc import CZSC, format_standard_kline, Direction
+        from rs_czsc import CZSC, Direction, format_standard_kline
     else:
         from czsc.core import CZSC
         from czsc.utils.bar_generator import format_standard_kline
@@ -877,7 +878,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
     min_retracement = kwargs.get("min_retracement", 0.5)
     min_speed_ratio = kwargs.get("min_speed_ratio", 1.5)
     power_window = kwargs.get("power_window", 50)
-    
+
     if kwargs.get("copy", True):
         df = df.copy()
 
@@ -891,7 +892,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
             return "向下"
         else:
             raise ValueError
-        
+
     rows = []
     for symbol, dfg in df.groupby("symbol"):
         if verbose:
@@ -907,8 +908,8 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
             bi_stats.append(
                 {
                     "symbol": symbol,
-                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit='s'),
-                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit='s'),
+                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit="s"),
+                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit="s"),
                     "direction": bi.direction.value if not rs else __convert_rs_direction(bi.direction),
                     "power_price": abs(bi.change),
                     "length": bi.length,
@@ -916,7 +917,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
                     "power_volume": bi.power_volume,
                 }
             )
-        
+
         if len(bi_stats) < 2:
             if verbose:
                 logger.warning(f"symbol: {symbol} 笔数量不足，跳过V字反转识别")
@@ -925,18 +926,22 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
             dfg["is_v_reversal"] = 0
             rows.append(dfg)
             continue
-            
+
         bi_stats = pd.DataFrame(bi_stats)
 
         # 计算笔的力度综合评分
         bi_stats["power_price_rank"] = (
-            bi_stats["power_price"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
+            bi_stats["power_price"]
+            .rolling(window=power_window, min_periods=10)
+            .rank(method="min", ascending=True, pct=True)
         )
         bi_stats["rsq_rank"] = (
             bi_stats["rsq"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
         )
         bi_stats["power_volume_rank"] = (
-            bi_stats["power_volume"].rolling(window=power_window, min_periods=10).rank(method="min", ascending=True, pct=True)
+            bi_stats["power_volume"]
+            .rolling(window=power_window, min_periods=10)
+            .rank(method="min", ascending=True, pct=True)
         )
 
         bi_stats["power_score"] = bi_stats["power_price_rank"] + bi_stats["rsq_rank"] + bi_stats["power_volume_rank"]
@@ -945,30 +950,30 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
         # 识别V字反转
         v_reversals_up = []  # 向上V字反转
         v_reversals_down = []  # 向下V字反转
-        
+
         for i in range(len(bi_stats) - 1):
             bi1 = bi_stats.iloc[i]
             bi2 = bi_stats.iloc[i + 1]
-            
+
             # 检查方向是否相反
             if bi1["direction"] == bi2["direction"]:
                 continue
-                
+
             # 检查第一个笔的力度是否足够
             if pd.isna(bi1["power_score"]) or bi1["power_score"] < bi1["power_price_rank"] * 3 * min_power_percentile:
                 continue
-                
+
             # 计算回撤比例
             retracement_ratio = abs(bi2["power_price"]) / abs(bi1["power_price"])
-            
+
             # 检查回撤比例是否足够
             if retracement_ratio < min_retracement:
                 continue
-                
+
             # 检查第二个笔的速度是否足够快
             if bi1["speed"] > 0 and bi2["speed"] / bi1["speed"] < min_speed_ratio:
                 continue
-                
+
             # 判断V字反转类型
             if bi1["direction"] == "向下" and bi2["direction"] == "向上":
                 # 向上V字反转：先下跌后上涨
@@ -978,28 +983,30 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
                 v_reversals_down.append((bi1["sdt"], bi2["edt"]))
 
         if verbose:
-            logger.info(f"symbol: {symbol} 识别出 {len(v_reversals_up)} 个向上V字反转，{len(v_reversals_down)} 个向下V字反转")
+            logger.info(
+                f"symbol: {symbol} 识别出 {len(v_reversals_up)} 个向上V字反转，{len(v_reversals_down)} 个向下V字反转"
+            )
 
         # 标记V字反转
         dfg["is_v_reversal_up"] = 0
         dfg["is_v_reversal_down"] = 0
-        
+
         for sdt, edt in v_reversals_up:
             dfg.loc[(dfg["dt"] >= sdt) & (dfg["dt"] <= edt), "is_v_reversal_up"] = 1
-            
+
         for sdt, edt in v_reversals_down:
             dfg.loc[(dfg["dt"] >= sdt) & (dfg["dt"] <= edt), "is_v_reversal_down"] = 1
-            
+
         dfg["is_v_reversal"] = dfg["is_v_reversal_up"] | dfg["is_v_reversal_down"]
-        
+
         rows.append(dfg)
 
     dfr = pd.concat(rows, ignore_index=True)
-    
+
     if verbose:
-        v_up_coverage = dfr['is_v_reversal_up'].sum() / len(dfr) if len(dfr) > 0 else 0
-        v_down_coverage = dfr['is_v_reversal_down'].sum() / len(dfr) if len(dfr) > 0 else 0
-        v_total_coverage = dfr['is_v_reversal'].sum() / len(dfr) if len(dfr) > 0 else 0
+        v_up_coverage = dfr["is_v_reversal_up"].sum() / len(dfr) if len(dfr) > 0 else 0
+        v_down_coverage = dfr["is_v_reversal_down"].sum() / len(dfr) if len(dfr) > 0 else 0
+        v_total_coverage = dfr["is_v_reversal"].sum() / len(dfr) if len(dfr) > 0 else 0
         logger.info(
             f"处理完成，向上V字反转覆盖率：{v_up_coverage:.2%}, "
             f"向下V字反转覆盖率：{v_down_coverage:.2%}, "
@@ -1007,6 +1014,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
         )
 
     return dfr
+
 
 def mark_volatility(df: pd.DataFrame, kind="ts", **kwargs):
     """【后验，有未来信息，不能用于实盘】标记时序/截面波动率最大/最小的N个时间段

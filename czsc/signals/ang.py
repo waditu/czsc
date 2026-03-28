@@ -1,22 +1,26 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/5/11 18:11
 describe: 琅盎的信号函数
 """
+
 from loguru import logger
+
 try:
     import talib as ta
-except:
-    logger.warning("ta-lib 没有正确安装，相关信号函数无法正常执行。"
-                   "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
+except ImportError:
+    logger.warning(
+        "ta-lib 没有正确安装，相关信号函数无法正常执行。"
+        "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
+    )
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
-from typing import List
-from collections import OrderedDict
-from czsc.core import CZSC, RawBar
-from czsc.utils.sig import get_sub_elements, create_single_signal
+
+from czsc.core import CZSC
+from czsc.utils.sig import create_single_signal, get_sub_elements
 
 
 def adtm_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
@@ -51,19 +55,29 @@ def adtm_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     m = int(kwargs.get("m", 20))
     th = int(kwargs.get("th", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}TH{th}_ADTMV230603".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}TH{th}_ADTMV230603".split("_")
 
     v1 = "其他"
     if len(c.bars_raw) < di + max(n, m) + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    n_bars = get_sub_elements(c.bars_raw, di=di, n=n)  
+    n_bars = get_sub_elements(c.bars_raw, di=di, n=n)
     m_bars = get_sub_elements(c.bars_raw, di=di, n=m)
 
-    up_sum = np.sum([max(n_bars[i].high - n_bars[i].open, n_bars[i].open - n_bars[i - 1].open)
-                     for i in range(1, len(n_bars)) if n_bars[i].open > n_bars[i - 1].open])
-    dw_sum = np.sum([max(m_bars[i].open - m_bars[i].low, m_bars[i - 1].open - m_bars[i].open)
-                     for i in range(1, len(m_bars)) if m_bars[i].open < m_bars[i - 1].open])
+    up_sum = np.sum(
+        [
+            max(n_bars[i].high - n_bars[i].open, n_bars[i].open - n_bars[i - 1].open)
+            for i in range(1, len(n_bars))
+            if n_bars[i].open > n_bars[i - 1].open
+        ]
+    )
+    dw_sum = np.sum(
+        [
+            max(m_bars[i].open - m_bars[i].low, m_bars[i - 1].open - m_bars[i].open)
+            for i in range(1, len(m_bars))
+            if m_bars[i].open < m_bars[i - 1].open
+        ]
+    )
 
     adtm = (up_sum - dw_sum) / max(up_sum, dw_sum)
     if up_sum > dw_sum or adtm > th / 10:
@@ -101,11 +115,11 @@ def amv_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 30))
     m = int(kwargs.get("m", 120))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_AMV能量V230603".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_AMV能量V230603".split("_")
     if n > m or len(c.bars_raw) < di + m + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
-    n_bars = get_sub_elements(c.bars_raw, di=di, n=n)  
+    n_bars = get_sub_elements(c.bars_raw, di=di, n=n)
     m_bars = get_sub_elements(c.bars_raw, di=di, n=m)
 
     amov1 = np.sum([(n_bars[i].amount * (n_bars[i].open + n_bars[i].close) / 2) for i in range(len(n_bars))])
@@ -148,12 +162,12 @@ def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 30))
     p = int(kwargs.get("p", 120))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}P{p}_ASI多空V230603".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}P{p}_ASI多空V230603".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + p + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    _bars = get_sub_elements(c.bars_raw, di=di, n=p)  
+    _bars = get_sub_elements(c.bars_raw, di=di, n=p)
     close_prices = np.array([bar.close for bar in _bars])
     open_prices = np.array([bar.open for bar in _bars])
     high_prices = np.array([bar.high for bar in _bars])
@@ -162,23 +176,23 @@ def asi_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict:
     o = np.concatenate([[close_prices[0]], close_prices[:-1]])
     a = np.abs(high_prices - o)
     b = np.abs(low_prices - o)
-    c = np.abs(high_prices - np.concatenate([[low_prices[0]], low_prices[:-1]])) # type: ignore
+    c = np.abs(high_prices - np.concatenate([[low_prices[0]], low_prices[:-1]]))  # type: ignore
     d = np.abs(o - np.concatenate([[open_prices[0]], open_prices[:-1]]))
 
-    k = np.maximum(a, b)  
+    k = np.maximum(a, b)
     m = np.maximum(high_prices - low_prices, n)
     r1 = a + 0.5 * b + 0.25 * d
     r2 = b + 0.5 * a + 0.25 * d
     r3 = c + 0.25 * d
     r4 = np.where((a >= b) & (a >= c), r1, r2)
     r = np.where((c >= a) & (c >= b), r3, r4)
-    
+
     if (r * k / m != 0).all():
         si = 50 * (close_prices - c + (c - open_prices) + 0.5 * (close_prices - open_prices)) / (r * k / m)
     else:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    
-    asi = np.cumsum(si) 
+
+    asi = np.cumsum(si)
 
     v1 = "看多" if asi[-1] > np.mean(asi[-p:]) else "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -196,7 +210,7 @@ def clv_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     CLV=0。CLV>0（<0），说明收盘价离最高（低）价更近。我们用 CLVMA 上穿/下穿 0 来产生买入/卖出信号
 
     **信号列表：**
-    
+
     - Signal('日线_D1N70_CLV多空V230605_看多_任意_任意_0')
     - Signal('日线_D1N70_CLV多空V230605_看空_任意_任意_0')
 
@@ -209,12 +223,12 @@ def clv_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     n = int(kwargs.get("n", 70))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}_CLV多空V230605".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}_CLV多空V230605".split("_")
 
     if len(c.bars_raw) < di + 100:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)  
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
 
     close = np.array([bar.close for bar in _bars])
     low = np.array([bar.low for bar in _bars])
@@ -251,17 +265,19 @@ def cmo_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 70))
     m = int(kwargs.get("m", 30))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_CMO能量V230605".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_CMO能量V230605".split("_")
 
     v1 = "其他"
     if len(c.bars_raw) < di + n + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    _bars = get_sub_elements(c.bars_raw, di=di, n=n)  
-    up_sum = np.sum([_bars[i].close - _bars[i - 1].close for i in range(1, len(_bars))
-                     if (_bars[i].close - _bars[i - 1].close) > 0])
-    dw_sum = np.sum([_bars[i - 1].close - _bars[i].close for i in range(1, len(_bars))
-                     if (_bars[i - 1].close - _bars[i].close) > 0])
+    _bars = get_sub_elements(c.bars_raw, di=di, n=n)
+    up_sum = np.sum(
+        [_bars[i].close - _bars[i - 1].close for i in range(1, len(_bars)) if (_bars[i].close - _bars[i - 1].close) > 0]
+    )
+    dw_sum = np.sum(
+        [_bars[i - 1].close - _bars[i].close for i in range(1, len(_bars)) if (_bars[i - 1].close - _bars[i].close) > 0]
+    )
 
     cmo = (up_sum - dw_sum) / (up_sum + dw_sum) * 100
     if cmo > m:
@@ -303,30 +319,27 @@ def skdj_up_dw_line_V230611(c: CZSC, **kwargs) -> OrderedDict:
     up = int(kwargs.get("up", 60))
     dw = int(kwargs.get("dw", 40))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}UP{up}DW{dw}_SKDJ随机波动V230611".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}UP{up}DW{dw}_SKDJ随机波动V230611".split("_")
 
     # 计算RSV缓存
-    rsv_cache = f'RSV{n}'
+    rsv_cache = f"RSV{n}"
     for i, bar in enumerate(c.bars_raw):
         if bar.cache.get(rsv_cache) is not None:
             continue
-        if i < n:
-            n_bars = c.bars_raw[:i+1]
-        else:
-            n_bars = get_sub_elements(c.bars_raw, di=i, n=n)
-        
+        n_bars = c.bars_raw[: i + 1] if i < n else get_sub_elements(c.bars_raw, di=i, n=n)
+
         min_low = min([x.low for x in n_bars])
         max_high = max([x.high for x in n_bars])
         bar.cache[rsv_cache] = (bar.close - min_low) / (max_high - min_low) * 100
 
     v1 = "其他"
-    if len(c.bars_raw) < di + m*3 + 20 or n < m:
+    if len(c.bars_raw) < di + m * 3 + 20 or n < m:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bars = get_sub_elements(c.bars_raw, di=di, n=m*3 + 20)
+    bars = get_sub_elements(c.bars_raw, di=di, n=m * 3 + 20)
     rsv = np.array([bar.cache[rsv_cache] for bar in bars])
-    ma_rsv = np.convolve(rsv, np.ones(m)/m, mode='valid')
-    k = np.convolve(ma_rsv, np.ones(m)/m, mode='valid')
+    ma_rsv = np.convolve(rsv, np.ones(m) / m, mode="valid")
+    k = np.convolve(ma_rsv, np.ones(m) / m, mode="valid")
     d = np.mean(k[-m:])
 
     if dw < d < k[-1]:
@@ -361,7 +374,7 @@ def bias_up_dw_line_V230618(c: CZSC, **kwargs) -> OrderedDict:
         - :param di: 信号计算截止倒数第i根K线
         - :param n: 获取K线的根数，默认为30
         - :param m: 获取K线的根数，默认为20
-        
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
@@ -372,7 +385,7 @@ def bias_up_dw_line_V230618(c: CZSC, **kwargs) -> OrderedDict:
     th2 = int(kwargs.get("th2", 3))
     th3 = int(kwargs.get("th3", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}P{p}TH1{th1}TH2{th2}TH3{th3}_BIAS乖离率V230618".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}P{p}TH1{th1}TH2{th2}TH3{th3}_BIAS乖离率V230618".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + max(n, m, p):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -403,7 +416,7 @@ def dema_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     参数模板："{freq}_D{di}N{n}_DEMA短线趋势V230605"
 
     **信号逻辑：**
-    
+
     DEMA指标是一种趋势指标，用于衡量价格趋势的方向和强度。
     与其他移动平均线指标相比，DEMA指标更加灵敏，能够更快地反应价格趋势的变化，因此在短期交易中具有一定的优势。
     当收盘价大于DEMA看多， 当收盘价小于DEMA看空
@@ -423,9 +436,9 @@ def dema_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     n = int(kwargs.get("n", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}_DEMA短线趋势V230605".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}_DEMA短线趋势V230605".split("_")
     v1 = "其他"
-    if len(c.bars_raw) < di + 2*n + 10:
+    if len(c.bars_raw) < di + 2 * n + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     short_bars = get_sub_elements(c.bars_raw, di=di, n=n)
@@ -467,7 +480,7 @@ def demakder_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     th = int(kwargs.get("th", 5))
     tl = int(kwargs.get("tl", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}TH{th}TL{tl}_DEMAKER价格趋势V230605".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}TH{th}TL{tl}_DEMAKER价格趋势V230605".split("_")
 
     # 增加一个约束，如果K线数量不足时直接返回
     v1 = "其他"
@@ -475,10 +488,10 @@ def demakder_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     bars = get_sub_elements(c.bars_raw, di=di, n=n)
-    demax = np.mean([bars[i].high - bars[i-1].high for i in
-                     range(1, len(bars)) if bars[i].high - bars[i-1].high > 0])
-    demin = np.mean([bars[i-1].low - bars[i].low for i in
-                     range(1, len(bars)) if bars[i-1].low - bars[i].low > 0])
+    demax = np.mean(
+        [bars[i].high - bars[i - 1].high for i in range(1, len(bars)) if bars[i].high - bars[i - 1].high > 0]
+    )
+    demin = np.mean([bars[i - 1].low - bars[i].low for i in range(1, len(bars)) if bars[i - 1].low - bars[i].low > 0])
     demaker = demax / (demax + demin)
 
     if demaker > th / 10:
@@ -515,7 +528,7 @@ def emv_up_dw_line_V230605(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}_EMV简易波动V230605".split('_')
+    k1, k2, k3 = f"{freq}_D{di}_EMV简易波动V230605".split("_")
 
     # 增加一个约束，如果K线数量不足时直接返回
     v1 = "其他"
@@ -581,13 +594,13 @@ def er_up_dw_line_V230604(c: CZSC, **kwargs) -> OrderedDict:
     w = int(kwargs.get("w", 60))
     n = int(kwargs.get("n", 10))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}W{w}N{n}_ER价格动量V230604".split('_')
+    k1, k2, k3 = f"{freq}_D{di}W{w}N{n}_ER价格动量V230604".split("_")
 
     cache_key = f"ER{w}"
     for i, bar in enumerate(c.bars_raw, 1):
         if cache_key in bar.cache:
             continue
-        _bars = c.bars_raw[i-w:i]
+        _bars = c.bars_raw[i - w : i]
         ma = np.mean([x.close for x in _bars])
         bull_power = bar.high - ma if bar.high > ma else bar.low - ma
         bar.cache.update({cache_key: bull_power})
@@ -596,12 +609,12 @@ def er_up_dw_line_V230604(c: CZSC, **kwargs) -> OrderedDict:
     if len(c.bars_raw) < di + w + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    _bars = get_sub_elements(c.bars_raw, di=di, n=w*10)
+    _bars = get_sub_elements(c.bars_raw, di=di, n=w * 10)
     factors = [x.cache[cache_key] for x in _bars]
     factors = [x for x in factors if x * factors[-1] > 0]
 
     v1 = "均线上方" if factors[-1] > 0 else "均线下方"
-    q = pd.cut(factors, n, labels=list(range(1, n+1)), precision=5, duplicates='drop')[-1]
+    q = pd.cut(factors, n, labels=list(range(1, n + 1)), precision=5, duplicates="drop")[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{q}层")
 
 
@@ -620,7 +633,7 @@ def obvm_line_V230610(c: CZSC, **kwargs) -> OrderedDict:
     最后根据两条移动平均线的大小关系判断看多或看空信号。
 
     飞书文档：https://s0cqcxuy3p.feishu.cn/wiki/CEMLwa46Ii1sJZkT3IVcJKAwntc
-    
+
     **信号列表：**
 
     - Signal('日线_D1N10M30_OBV能量V230610_看空_任意_任意_0')
@@ -628,18 +641,18 @@ def obvm_line_V230610(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
-    
+
         - :param di: 信号计算截止倒数第i根K线
         - :param n: short窗口大小。
         - :param m: long窗口大小。
-        
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
     n = int(kwargs.get("n", 10))
     m = int(kwargs.get("m", 30))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_OBV能量V230610".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}_OBV能量V230610".split("_")
     v1 = "其他"
 
     # 计算OBV，缓存到bar.cache中
@@ -663,9 +676,9 @@ def obvm_line_V230610(c: CZSC, **kwargs) -> OrderedDict:
     obv_seq = np.array([x.cache[cache_key] for x in bars], dtype=np.float64)
 
     ema_n1 = ta.EMA(obv_seq, n)[-1]
-    ema_n2 =ta.EMA(obv_seq, m)[-1]
+    ema_n2 = ta.EMA(obv_seq, m)[-1]
 
-    v1 =  "看多" if ema_n1 > ema_n2 else "看空"
+    v1 = "看多" if ema_n1 > ema_n2 else "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
 
@@ -694,12 +707,12 @@ def obv_up_dw_line_V230719(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
-    
+
         - :param di: 信号计算截止倒数第i根K线
         - :param n: short窗口大小。
         - :param m: long窗口大小。
         - :param max_overlap: 信号计算时，最大重叠K线数量。
-        
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
@@ -707,7 +720,7 @@ def obv_up_dw_line_V230719(c: CZSC, **kwargs) -> OrderedDict:
     m = int(kwargs.get("m", 10))
     max_overlap = int(kwargs.get("max_overlap", 3))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}MO{max_overlap}_OBV能量V230719".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}MO{max_overlap}_OBV能量V230719".split("_")
     v1 = "其他"
 
     # 计算OBV，缓存到bar.cache中
@@ -772,21 +785,21 @@ def cvolp_up_dw_line_V230612(c: CZSC, **kwargs) -> OrderedDict:
     up = int(kwargs.get("up", 5))
     dw = int(kwargs.get("dw", 5))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}UP{up}DW{dw}_CVOLP动量变化率V230612".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}UP{up}DW{dw}_CVOLP动量变化率V230612".split("_")
 
     # 增加一个约束，如果K线数量不足时直接返回
     v1 = "其他"
     if len(c.bars_raw) < di + n + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    bars = get_sub_elements(c.bars_raw, di=di, n=n + m) 
+    bars = get_sub_elements(c.bars_raw, di=di, n=n + m)
 
     volume = np.array([bar.vol for bar in bars])
-    n_weights = np.exp(np.linspace(-1., 0., n))
+    n_weights = np.exp(np.linspace(-1.0, 0.0, n))
     n_weights /= n_weights.sum()
-    emap = np.convolve(volume, n_weights, mode='full')[:len(volume)]
+    emap = np.convolve(volume, n_weights, mode="full")[: len(volume)]
     emap[:n] = emap[n]
-    sroc = (emap - np.roll(emap, m))[-1] / np.roll(emap, m)[-1] 
+    sroc = (emap - np.roll(emap, m))[-1] / np.roll(emap, m)[-1]
 
     if sroc > up / 100:
         v1 = "看多"
@@ -797,7 +810,7 @@ def cvolp_up_dw_line_V230612(c: CZSC, **kwargs) -> OrderedDict:
 
 
 def ntmdk_V230824(c: CZSC, **kwargs) -> OrderedDict:
-    """NTMDK多空指标，贡献者：琅盎  
+    """NTMDK多空指标，贡献者：琅盎
 
     参数模板："{freq}_D{di}M{m}_NTMDK多空V230824"
 
@@ -823,11 +836,11 @@ def ntmdk_V230824(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     m = int(kwargs.get("m", 10))
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}M{m}_NTMDK多空V230824".split('_')
+    k1, k2, k3 = f"{freq}_D{di}M{m}_NTMDK多空V230824".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + m + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-    
+
     bars = get_sub_elements(c.bars_raw, di=di, n=m)
     v1 = "看多" if bars[-1].close > bars[0].close else "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -865,21 +878,23 @@ def kcatr_up_dw_line_V230823(c: CZSC, **kwargs) -> OrderedDict:
     th = int(kwargs.get("th", 2))  # 突破ATR的倍数
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}T{th}_KCATR多空V230823".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}M{m}T{th}_KCATR多空V230823".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + max(m, n) + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     n_bars = get_sub_elements(c.bars_raw, di=di, n=n)
     m_bars = get_sub_elements(c.bars_raw, di=di, n=m)
-    atr = np.mean([
-        max(
-            abs(n_bars[i].high - n_bars[i].low),
-            abs(n_bars[i].high - n_bars[i - 1].close),
-            abs(n_bars[i].low - n_bars[i - 1].close),
-        )
-        for i in range(1, len(n_bars))
-    ])
+    atr = np.mean(
+        [
+            max(
+                abs(n_bars[i].high - n_bars[i].low),
+                abs(n_bars[i].high - n_bars[i - 1].close),
+                abs(n_bars[i].low - n_bars[i - 1].close),
+            )
+            for i in range(1, len(n_bars))
+        ]
+    )
     middle = np.mean([x.close for x in m_bars])
 
     if m_bars[-1].close > middle + atr * th:

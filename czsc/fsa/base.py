@@ -1,12 +1,13 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/5 19:02
 describe: 飞书应用API接口封装
 """
+
 import os
 import time
+
 import loguru
 import requests
 from loguru import logger
@@ -25,7 +26,7 @@ def request(method, url, headers, payload=None) -> dict:
     :param payload: 传参
     :return:
     """
-    payload = {} if not payload else payload
+    payload = payload if payload else {}
     response = requests.request(method, url, headers=headers, json=payload)
     logger.info(f"{'+' * 88}")
     logger.info(f"URL: {url} || X-Tt-Logid: {response.headers['X-Tt-Logid']}")
@@ -56,7 +57,7 @@ class FeishuApiBase:
         self.app_secret = app_secret
         self.host = "https://open.feishu.cn"
         self.headers = {"Content-Type": "application/json"}
-        self.cache = dict()
+        self.cache = {}
         self.logger = kwargs.get("logger", loguru.logger)
 
     def get_access_token(self, key="app_access_token"):

@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2024/07/11 12:39
 describe: Fernet 加密解密
 """
+
 import os
-from typing import Union
 
 
 def generate_fernet_key():
@@ -20,7 +19,7 @@ def generate_fernet_key():
     return key.decode()
 
 
-def fernet_encrypt(data: Union[dict, str], key: str = None) -> str:
+def fernet_encrypt(data: dict | str, key: str = None) -> str:
     """加密文本/字典
 
     :param data: 需要加密的文本、字典

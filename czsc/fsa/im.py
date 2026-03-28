@@ -1,13 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/1/12 10:30
 describe: 即时消息
 """
+
 import json
 import os
+
 import requests
+
 from czsc.fsa.base import FeishuApiBase, request
 
 
@@ -47,6 +49,7 @@ class IM(FeishuApiBase):
         :return: file_key
         """
         from requests_toolbelt import MultipartEncoder
+
         url = "https://open.feishu.cn/open-apis/im/v1/files"
         form = {"file_name": os.path.basename(file_path), "file_type": file_type, "file": (open(file_path, "rb"))}
         multi_form = MultipartEncoder(form)
@@ -67,6 +70,7 @@ class IM(FeishuApiBase):
         :return: image_key
         """
         from requests_toolbelt import MultipartEncoder
+
         url = "https://open.feishu.cn/open-apis/im/v1/images"
         form = {"image_type": image_type, "image": (open(image_path, "rb"))}
         multi_form = MultipartEncoder(form)

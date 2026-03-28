@@ -1,13 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/16 19:45
 describe: 飞书电子表格接口
 """
+
 import string
+
 import pandas as pd
 from loguru import logger
+
 from czsc.fsa.base import FeishuApiBase, request
 
 

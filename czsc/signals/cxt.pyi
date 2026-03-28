@@ -1,15 +1,31 @@
 from collections import OrderedDict
+
 from czsc import CZSC as CZSC
-from czsc.core import BI as BI, Direction as Direction, FX as FX, Mark as Mark, ZS as ZS
-from czsc.signals.tas import update_ma_cache as update_ma_cache, update_macd_cache as update_macd_cache
+from czsc.core import BI as BI
+from czsc.core import FX as FX
+from czsc.core import ZS as ZS
+from czsc.core import Direction as Direction
+from czsc.core import Mark as Mark
+from czsc.signals.tas import update_ma_cache as update_ma_cache
+from czsc.signals.tas import update_macd_cache as update_macd_cache
 from czsc.traders.base import CzscSignals as CzscSignals
-from czsc.utils.sig import create_single_signal as create_single_signal, get_sub_elements as get_sub_elements, get_zs_seq as get_zs_seq
+from czsc.utils.sig import (
+    create_single_signal as create_single_signal,
+)
+from czsc.utils.sig import (
+    get_sub_elements as get_sub_elements,
+)
+from czsc.utils.sig import (
+    get_zs_seq as get_zs_seq,
+)
 
 def cxt_bi_base_V230228(c: CZSC, **kwargs) -> OrderedDict: ...
 def cxt_fx_power_V221107(c: CZSC, **kwargs) -> OrderedDict: ...
 def cxt_first_buy_V221126(c: CZSC, **kwargs) -> OrderedDict: ...
 def cxt_first_sell_V221126(c: CZSC, **kwargs) -> OrderedDict: ...
-def cxt_zhong_shu_gong_zhen_V221221(cat: CzscSignals, freq1: str = '日线', freq2: str = '60分钟', **kwargs) -> OrderedDict: ...
+def cxt_zhong_shu_gong_zhen_V221221(
+    cat: CzscSignals, freq1: str = "日线", freq2: str = "60分钟", **kwargs
+) -> OrderedDict: ...
 def cxt_bi_end_V230222(c: CZSC, **kwargs) -> OrderedDict: ...
 def cxt_bi_end_V230224(c: CZSC, **kwargs): ...
 def cxt_third_buy_V230228(c: CZSC, **kwargs) -> OrderedDict: ...

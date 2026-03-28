@@ -1,16 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/11/10 23:14
 describe: coo 是 cooperation 的缩写，作为前缀代表信号开源协作成员贡献的信号
 """
+
+from collections import OrderedDict
+
 import numpy as np
 from deprecated import deprecated
-from collections import OrderedDict
+
 from czsc.core import CZSC
+from czsc.signals.tas import update_cci_cache, update_kdj_cache, update_ma_cache, update_sar_cache
 from czsc.utils.sig import create_single_signal, get_sub_elements
-from czsc.signals.tas import update_ma_cache, update_sar_cache, update_kdj_cache, update_cci_cache
 
 
 def __cal_td_seq(close: np.ndarray):
@@ -35,7 +37,7 @@ def __cal_td_seq(close: np.ndarray):
     return res
 
 
-@deprecated(version='1.0.0', reason="请使用 coo_td_V221111")
+@deprecated(version="1.0.0", reason="请使用 coo_td_V221111")
 def coo_td_V221110(c: CZSC, **kwargs) -> OrderedDict:
     """获取倒数第i根K线的TD信号
 
@@ -64,14 +66,14 @@ def coo_td_V221110(c: CZSC, **kwargs) -> OrderedDict:
 
     td = __cal_td_seq(close)
     if td[-1] > 0:
-        v1 = '看多' if len(td) > 1 and td[-2] < -8 else '延续'
-        v2 = 'TD顶' if td[-1] > 8 else '非顶'
+        v1 = "看多" if len(td) > 1 and td[-2] < -8 else "延续"
+        v2 = "TD顶" if td[-1] > 8 else "非顶"
     elif td[-1] < 0:
-        v1 = '看空' if len(td) > 1 and td[-2] > 8 else '延续'
-        v2 = 'TD底' if td[-1] < -8 else '非底'
+        v1 = "看空" if len(td) > 1 and td[-2] > 8 else "延续"
+        v2 = "TD底" if td[-1] < -8 else "非底"
     else:
-        v1 = '其他'
-        v2 = '其他'
+        v1 = "其他"
+        v2 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -109,14 +111,14 @@ def coo_td_V221111(c: CZSC, **kwargs) -> OrderedDict:
     td = __cal_td_seq(close)
 
     if td[-1] > 0:
-        v1 = '看多' if len(td) > 1 and td[-2] < -8 else '延续'
-        v2 = 'TD顶' if td[-1] > 8 else '非顶'
+        v1 = "看多" if len(td) > 1 and td[-2] < -8 else "延续"
+        v2 = "TD顶" if td[-1] > 8 else "非顶"
     elif td[-1] < 0:
-        v1 = '看空' if len(td) > 1 and td[-2] > 8 else '延续'
-        v2 = 'TD底' if td[-1] < -8 else '非底'
+        v1 = "看空" if len(td) > 1 and td[-2] > 8 else "延续"
+        v2 = "TD底" if td[-1] < -8 else "非底"
     else:
-        v1 = '其他'
-        v2 = '其他'
+        v1 = "其他"
+        v2 = "其他"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -148,13 +150,13 @@ def coo_cci_V230323(c: CZSC, **kwargs) -> OrderedDict:
     di = int(kwargs.get("di", 1))
     n = int(kwargs.get("n", 20))
     m = int(kwargs.get("m", 5))
-    ma_type = kwargs.get('ma_type', 'SMA').upper()
+    ma_type = kwargs.get("ma_type", "SMA").upper()
     freq = c.freq.value
     cache_key_cci = update_cci_cache(c, timeperiod=n)
     cache_key_ma = update_ma_cache(c, ma_type=ma_type, timeperiod=n * m)
 
-    k1, k2, k3 = f"{freq}_D{di}CCI{n}#{ma_type}#{m}_BS辅助V230323".split('_')
-    v1 = '其他'
+    k1, k2, k3 = f"{freq}_D{di}CCI{n}#{ma_type}#{m}_BS辅助V230323".split("_")
+    v1 = "其他"
     if len(c.bars_raw) < n * m + di:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -163,12 +165,12 @@ def coo_cci_V230323(c: CZSC, **kwargs) -> OrderedDict:
     MA_CC = bars[-1].cache[cache_key_ma]
 
     if cci > 100 and bars[-1].close > MA_CC:
-        v1 = '多头'
+        v1 = "多头"
 
     if cci < -100 and bars[-1].close < MA_CC:
-        v1 = '空头'
+        v1 = "空头"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     v2 = "向上" if cci >= bars[-2].cache[cache_key_cci] else "向下"
@@ -201,25 +203,25 @@ def coo_kdj_V230322(c: CZSC, **kwargs) -> OrderedDict:
     """
     di = int(kwargs.get("di", 1))
     n = int(kwargs.get("n", 3))
-    ma_type = kwargs.get('ma_type', 'EMA').upper()
-    fastk_period = int(kwargs.get('fastk_period', 9))
-    slowk_period = int(kwargs.get('slowk_period', 3))
-    slowd_period = int(kwargs.get('slowd_period', 3))
+    ma_type = kwargs.get("ma_type", "EMA").upper()
+    fastk_period = int(kwargs.get("fastk_period", 9))
+    slowk_period = int(kwargs.get("slowk_period", 3))
+    slowd_period = int(kwargs.get("slowd_period", 3))
 
     ma = update_ma_cache(c, ma_type=ma_type, timeperiod=n)
     cache_key = update_kdj_cache(c, fastk_period=fastk_period, slowk_period=slowk_period, slowd_period=slowd_period)
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}KDJ{fastk_period}#{slowk_period}#{slowd_period}#{ma_type}#{n}_BS辅助V230322".split('_')
+    k1, k2, k3 = f"{freq}_D{di}KDJ{fastk_period}#{slowk_period}#{slowd_period}#{ma_type}#{n}_BS辅助V230322".split("_")
     if len(c.bars_raw) < fastk_period * slowk_period + di:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     kdj, mac = _bars[-1].cache[cache_key], _bars[-1].cache[ma]
 
-    if _bars[-1].close > mac and kdj['k'] < kdj['d']:
+    if _bars[-1].close > mac and kdj["k"] < kdj["d"]:
         v1 = "多头"
-    elif _bars[-1].close < mac and kdj['k'] > kdj['d']:
+    elif _bars[-1].close < mac and kdj["k"] > kdj["d"]:
         v1 = "空头"
     else:
         v1 = "其他"
@@ -253,7 +255,7 @@ def coo_sar_V230325(c: CZSC, **kwargs) -> OrderedDict:
     cache_key = update_sar_cache(c)
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}N{n}SAR_BS辅助V230325".split('_')
+    k1, k2, k3 = f"{freq}_D{di}N{n}SAR_BS辅助V230325".split("_")
     v1 = "其他"
     if len(c.bars_raw) < n + di + 10:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

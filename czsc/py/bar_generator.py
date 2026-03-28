@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/14 12:39
 describe: 从任意周期K线开始合成更高周期K线的工具类
 """
-import pandas as pd
-from datetime import datetime, timedelta, date
-from typing import List, Union, AnyStr, Optional
-from czsc.py.objects import RawBar, Freq
+
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import AnyStr
+
+import pandas as pd
 from loguru import logger
 
+from czsc.py.objects import Freq, RawBar
 
 _mss = None
 freq_market_times, freq_edt_map = {}, {}
@@ -26,7 +27,7 @@ def _ensure_mss_loaded():
     for _m, dfg in _mss.groupby("market"):
         for _f in [x for x in _mss.columns if x.endswith("分钟")]:
             freq_market_times[f"{_f}_{_m}"] = list(dfg[_f].unique())
-            freq_edt_map[f"{_f}_{_m}"] = {k: v for k, v in dfg[["time", _f]].values}
+            freq_edt_map[f"{_f}_{_m}"] = dict(dfg[["time", _f]].values)
 
 
 def is_trading_time(dt: datetime = datetime.now(), market="A股"):
@@ -34,7 +35,7 @@ def is_trading_time(dt: datetime = datetime.now(), market="A股"):
     _ensure_mss_loaded()
     hm = dt.strftime("%H:%M")
     times = freq_market_times[f"1分钟_{market}"]
-    return True if hm in times else False
+    return hm in times
 
 
 def get_intraday_times(freq="1分钟", market="A股"):
@@ -84,7 +85,7 @@ def format_standard_kline(df: pd.DataFrame, freq: str):
     return bars
 
 
-def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None):
+def check_freq_and_market(time_seq: list[AnyStr], freq: AnyStr | None = None):
     """检查时间序列是否为同一周期，是否为同一市场
 
     函数计算逻辑：
@@ -106,7 +107,7 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
         return freq, "默认"
 
     _ensure_mss_loaded()
-    time_seq = sorted(list(set(time_seq)))
+    time_seq = sorted(set(time_seq))
     assert len(time_seq) >= 2, "time_seq长度必须大于等于2"
 
     for key, tts in freq_market_times.items():
@@ -125,7 +126,7 @@ def check_freq_and_market(time_seq: List[AnyStr], freq: Optional[AnyStr] = None)
     return None, "默认"
 
 
-def freq_end_date(dt, freq: Union[Freq, AnyStr]):
+def freq_end_date(dt, freq: Freq | AnyStr):
     """交易日结束时间计算"""
     if not isinstance(dt, date):
         dt = pd.to_datetime(dt).date()
@@ -144,10 +145,7 @@ def freq_end_date(dt, freq: Union[Freq, AnyStr]):
         return edt
 
     if freq == Freq.M:
-        if dt.month == 12:
-            edt = dt.replace(year=dt.year + 1, month=1, day=1)
-        else:
-            edt = dt.replace(month=dt.month + 1, day=1)
+        edt = dt.replace(year=dt.year + 1, month=1, day=1) if dt.month == 12 else dt.replace(month=dt.month + 1, day=1)
         return edt - timedelta(days=1)
 
     if freq == Freq.S:
@@ -166,7 +164,7 @@ def freq_end_date(dt, freq: Union[Freq, AnyStr]):
     return dt
 
 
-def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> datetime:
+def freq_end_time(dt: datetime, freq: Freq | AnyStr, market="A股") -> datetime:
     """A股与期货市场精确的获取 dt 对应的K线周期结束时间
 
     :param dt: datetime
@@ -198,7 +196,7 @@ def freq_end_time(dt: datetime, freq: Union[Freq, AnyStr], market="A股") -> dat
     return freq_end_date(dt.date(), freq)
 
 
-def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=True, **kwargs):
+def resample_bars(df: pd.DataFrame, target_freq: Freq | AnyStr, raw_bars=True, **kwargs):
     """将给定的K线数据重新采样为目标周期的K线数据
 
     函数计算逻辑：
@@ -235,7 +233,7 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
     if not isinstance(target_freq, Freq):
         target_freq = Freq(target_freq)
 
-    base_freq = kwargs.get("base_freq", None)
+    base_freq = kwargs.get("base_freq")
     if target_freq.value.endswith("分钟"):
         uni_times = sorted(df["dt"].tail(2000).apply(lambda x: x.strftime("%H:%M")).unique().tolist())
         _, market = check_freq_and_market(uni_times, freq=base_freq)
@@ -266,20 +264,18 @@ def resample_bars(df: pd.DataFrame, target_freq: Union[Freq, AnyStr], raw_bars=T
             row.update({"id": i, "freq": target_freq})
             _bars.append(RawBar(**row))
 
-        if kwargs.get("drop_unfinished", True):
+        if kwargs.get("drop_unfinished", True) and df["dt"].iloc[-1] < _bars[-1].dt:
             # 清除最后一根未完成的K线
-            if df["dt"].iloc[-1] < _bars[-1].dt:
-                _bars.pop()
+            _bars.pop()
         return _bars
     else:
         return dfk1
 
 
 class BarGenerator:
-
     version = "V231008"
 
-    def __init__(self, base_freq: str, freqs: List[str], max_count: int = 5000, market="默认"):
+    def __init__(self, base_freq: str, freqs: list[str], max_count: int = 5000, market="默认"):
         self.symbol = None
         self.end_dt = None
         self.market = market
@@ -303,7 +299,7 @@ class BarGenerator:
             if freq not in f:
                 raise ValueError(f"freqs中包含不支持的周期：{freq}")
 
-    def init_freq_bars(self, freq: str, bars: List[RawBar]):
+    def init_freq_bars(self, freq: str, bars: list[RawBar]):
         """初始化某个周期的K线序列
 
         函数计算逻辑：
@@ -316,7 +312,7 @@ class BarGenerator:
         :param freq: 周期名称
         :param bars: K线序列
         """
-        assert freq in self.bars.keys()
+        assert freq in self.bars
         assert not self.bars[freq], f"self.bars['{freq}'] 不为空，不允许执行初始化"
         self.bars[freq] = bars
         self.symbol = bars[-1].symbol
@@ -418,7 +414,7 @@ class BarGenerator:
             )
             return
 
-        for freq in self.bars.keys():
+        for freq in self.bars:
             self._update_freq(bar, self.freq_map[freq])
 
         # 限制存在内存中的K限制数量

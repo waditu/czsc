@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 from loguru import logger
 
-from .base import safe_import_daily_performance, safe_import_weight_backtest
+from .base import safe_import_weight_backtest
 
 
 def show_weight_distribution(dfw, abs_weight=True, **kwargs):
@@ -74,7 +74,7 @@ def show_weight_backtest(dfw, **kwargs):
 
     if (dfw.isnull().sum().sum() > 0) or (dfw.isna().sum().sum() > 0):
         st.warning("权重数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], width='stretch')
+        st.dataframe(dfw[dfw.isnull().sum(axis=1) > 0], width="stretch")
         st.stop()
 
     wb = WeightBacktest(
@@ -107,7 +107,7 @@ def show_weight_backtest(dfw, **kwargs):
         dfx = pd.DataFrame([wb.long_stats, wb.short_stats])
         dfx.index = ["多头", "空头"]
         dfx.index.name = "交易方向"
-        st.dataframe(dfx.T.astype(str), width='stretch')
+        st.dataframe(dfx.T.astype(str), width="stretch")
 
     # 显示日收益
     dret = wb.daily_return.copy()
@@ -170,7 +170,7 @@ def show_holds_backtest(df, **kwargs):
 
     if (df.isnull().sum().sum() > 0) or (df.isna().sum().sum() > 0):
         st.warning("数据中存在空值，请检查数据后再试；空值数据如下：")
-        st.dataframe(df[df.isnull().sum(axis=1) > 0], width='stretch')
+        st.dataframe(df[df.isnull().sum(axis=1) > 0], width="stretch")
         st.stop()
 
     # 计算每日收益、交易成本、净收益
@@ -241,7 +241,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
 
     dfr = pd.DataFrame(rows)
     with st.expander("逐笔止损点", expanded=False):
-        st.dataframe(dfr, width='stretch')
+        st.dataframe(dfr, width="stretch")
 
     if kwargs.pop("show_detail", False):
         cols = [
@@ -258,7 +258,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         ]
         dfs = dfw1[dfw1["is_stop"]][cols].copy()
         with st.expander("止损点详情", expanded=False):
-            st.dataframe(dfs, width='stretch')
+            st.dataframe(dfs, width="stretch")
 
     show_weight_backtest(dfw1[["dt", "symbol", "weight", "price"]].copy(), **kwargs)
 
@@ -334,7 +334,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
 
     for p in percentiles:
         threshold = weight_abs.quantile(p)
-        thresholds[f"阈值_{int(p*100)}%"] = threshold
+        thresholds[f"阈值_{int(p * 100)}%"] = threshold
 
     # 创建不同阈值下的回测策略
     wbs = {}
@@ -355,7 +355,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
 
     # 不同阈值下的策略
     for p in percentiles:
-        threshold_name = f"阈值_{int(p*100)}%"
+        threshold_name = f"阈值_{int(p * 100)}%"
         threshold_value = thresholds[threshold_name]
 
         # 创建过滤后的权重
@@ -393,7 +393,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
         # 计算不同阈值下的权重使用比例
         usage_stats = []
         for p in percentiles:
-            threshold_name = f"阈值_{int(p*100)}%"
+            threshold_name = f"阈值_{int(p * 100)}%"
             threshold_value = thresholds[threshold_name]
 
             # 计算权重使用比例（非零权重的比例）
@@ -412,7 +412,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
             )
 
         usage_df = pd.DataFrame(usage_stats)
-        st.dataframe(usage_df, width='stretch')
+        st.dataframe(usage_df, width="stretch")
 
     return wbs
 
@@ -495,19 +495,21 @@ def show_long_short_backtest(df: pd.DataFrame, **kwargs):
 
     dfs = df.copy()
     dfs["weight"] = dfs["weight"].clip(upper=0)
-    
+
     dfb = df.copy()
-    dfb['weight'] = 1
-    
+    dfb["weight"] = 1
+
     wbs = {
-        "原始策略": WeightBacktest(df, fee_rate=fee_rate, digits=digits, 
-                                      weight_type=weight_type, yearly_days=yearly_days),
-        "策略多头": WeightBacktest(dfl, fee_rate=fee_rate, digits=digits, 
-                                      weight_type=weight_type, yearly_days=yearly_days),
-        "策略空头": WeightBacktest(dfs, fee_rate=fee_rate, digits=digits, 
-                                      weight_type=weight_type, yearly_days=yearly_days),
-        "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, 
-                                      weight_type="ts", yearly_days=yearly_days),
+        "原始策略": WeightBacktest(
+            df, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+        "策略多头": WeightBacktest(
+            dfl, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+        "策略空头": WeightBacktest(
+            dfs, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days
+        ),
+        "基准等权": WeightBacktest(dfb, fee_rate=fee_rate, digits=digits, weight_type="ts", yearly_days=yearly_days),
     }
     show_multi_backtest(wbs)
     return wbs
@@ -539,19 +541,13 @@ def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
         show_symbols_bench(df[["dt", "symbol", "price"]].copy())
 
     with tabs[2]:
-        show_backtest_by_year(
-            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
-        )
+        show_backtest_by_year(df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
     with tabs[3]:
-        show_backtest_by_symbol(
-            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
-        )
+        show_backtest_by_symbol(df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
     with tabs[4]:
-        show_long_short_backtest(
-            df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type
-        )
+        show_long_short_backtest(df, yearly_days=yearly_days, fee_rate=fee_rate, digits=digits, weight_type=weight_type)
 
     with tabs[5]:
         st.download_button(
@@ -583,4 +579,3 @@ def show_comprehensive_weight_backtest(df: pd.DataFrame, **kwargs):
             mime="text/csv",
         )
     return wb
-

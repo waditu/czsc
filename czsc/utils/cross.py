@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/5/11 17:53
 describe:
 """
+
 import pandas as pd
 
 
@@ -27,7 +27,7 @@ def cross_sectional_ranker(df, x_cols, y_col, **kwargs):
         from lightgbm import LGBMRanker
         from sklearn.model_selection import TimeSeriesSplit
     except ImportError:
-        raise ImportError("lightgbm is not installed, please install it by `pip install lightgbm`")
+        raise ImportError("lightgbm is not installed, please install it by `pip install lightgbm`") from None
 
     assert "symbol" in df.columns, "df must have column 'symbol'"
     assert "dt" in df.columns, "df must have column 'dt'"

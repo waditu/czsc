@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -7,26 +6,32 @@ describe: 使用 ta-lib 构建的信号函数
 
 tas = ta-lib signals 的缩写
 """
+
 from loguru import logger
 
 try:
     import talib as ta
-except:
+except ImportError:
     logger.warning(
-        f"ta-lib 没有正确安装，相关信号函数无法正常执行。"
-        f"请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
+        "ta-lib 没有正确安装，相关信号函数无法正常执行。"
+        "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
     )
-import math
-import pandas as pd
-import numpy as np
 from collections import OrderedDict
-from deprecated import deprecated
-from czsc.core import CZSC, Signal, Direction, BI, RawBar, FX, Mark, ZS
+
+import numpy as np
+import pandas as pd
+
+from czsc.core import BI, CZSC, FX, ZS, Direction, Mark, RawBar
 from czsc.traders.base import CzscSignals
 from czsc.utils import single_linear
 from czsc.utils.sig import (
-    cross_zero_axis, cal_cross_num, down_cross_count,
-    get_sub_elements, fast_slow_cross, count_last_same, create_single_signal
+    cal_cross_num,
+    count_last_same,
+    create_single_signal,
+    cross_zero_axis,
+    down_cross_count,
+    fast_slow_cross,
+    get_sub_elements,
 )
 
 
@@ -51,21 +56,21 @@ def update_ma_cache(c: CZSC, **kwargs):
     }
     timeperiod = int(kwargs["timeperiod"])
     ma_type = kwargs.get("ma_type", "SMA").upper()
-    assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
+    assert ma_type in ma_type_map, f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
 
     cache_key = f"{ma_type}#{timeperiod}"
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
         assert len(ma) == len(close)
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             _c.update({cache_key: ma[i] if ma[i] else close[i]})
             c.bars_raw[i].cache = _c
 
@@ -74,7 +79,7 @@ def update_ma_cache(c: CZSC, **kwargs):
         close = np.array([x.close for x in c.bars_raw[-timeperiod - 10 :]])
         ma = ta.MA(close, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: ma[-i]})
             c.bars_raw[-i].cache = _c
     return cache_key
@@ -98,13 +103,13 @@ def update_macd_cache(c: CZSC, **kwargs):
         return cache_key
 
     min_count = signalperiod + slowperiod + 168
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < min_count + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         dif, dea, macd = MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             dif_i = dif[i] if dif[i] else 0
             dea_i = dea[i] if dea[i] else 0
             macd_i = macd[i] if macd[i] else 0
@@ -116,7 +121,7 @@ def update_macd_cache(c: CZSC, **kwargs):
         close = np.array([x.close for x in c.bars_raw[-min_count - 10 :]])
         dif, dea, macd = MACD(close, fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: {"dif": dif[-i], "dea": dea[-i], "macd": macd[-i]}})
             c.bars_raw[-i].cache = _c
     return cache_key
@@ -137,14 +142,14 @@ def update_boll_cache_V230228(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=nbdev, nbdevdn=nbdev, matype=0)
 
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             if not m[i]:
                 _data = {"上轨": close[i], "中线": close[i], "下轨": close[i]}
             else:
@@ -158,7 +163,7 @@ def update_boll_cache_V230228(c: CZSC, **kwargs):
         u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=nbdev, nbdevdn=nbdev, matype=0)
 
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: {"上轨": u1[-i], "中线": m[-i], "下轨": l1[-i]}})
             c.bars_raw[-i].cache = _c
 
@@ -179,8 +184,8 @@ def update_boll_cache(c: CZSC, **kwargs):
         return cache_key
 
     dev_seq = (1.382, 2, 2.764)
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         u1, m, l1 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[0], nbdevdn=dev_seq[0], matype=0)
@@ -188,7 +193,7 @@ def update_boll_cache(c: CZSC, **kwargs):
         u3, m, l3 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[2], nbdevdn=dev_seq[2], matype=0)
 
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             if not m[i]:
                 _data = {
                     "上轨3": close[i],
@@ -220,7 +225,7 @@ def update_boll_cache(c: CZSC, **kwargs):
         u3, m, l3 = ta.BBANDS(close, timeperiod=timeperiod, nbdevup=dev_seq[2], nbdevdn=dev_seq[2], matype=0)
 
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update(
                 {
                     cache_key: {
@@ -270,10 +275,10 @@ def tas_boll_vt_V230212(c: CZSC, **kwargs) -> OrderedDict:
     if len(_bars) < max_overlap + 1:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    if _bars[-1].close > _bars[-1].cache[key]["上轨"] and any([x.close < x.cache[key]["上轨"] for x in _bars]):
+    if _bars[-1].close > _bars[-1].cache[key]["上轨"] and any(x.close < x.cache[key]["上轨"] for x in _bars):
         v1 = "看多"
 
-    elif _bars[-1].close < _bars[-1].cache[key]["下轨"] and any([x.close > x.cache[key]["下轨"] for x in _bars]):
+    elif _bars[-1].close < _bars[-1].cache[key]["下轨"] and any(x.close > x.cache[key]["下轨"] for x in _bars):
         v1 = "看空"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1204,8 +1209,8 @@ def update_kdj_cache(c: CZSC, **kwargs):
         return cache_key
 
     min_count = fastk_period + slowk_period
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < min_count + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < min_count + 15:
         bars = c.bars_raw
         high = np.array([x.high for x in bars])
         low = np.array([x.low for x in bars])
@@ -1217,7 +1222,7 @@ def update_kdj_cache(c: CZSC, **kwargs):
         j = list(map(lambda x, y: 3 * x - 2 * y, k, d))
 
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             _c.update({cache_key: {"k": k[i] if k[i] else 0, "d": d[i] if d[i] else 0, "j": j[i] if j[i] else 0}})
             c.bars_raw[i].cache = _c
 
@@ -1232,7 +1237,7 @@ def update_kdj_cache(c: CZSC, **kwargs):
         j = list(map(lambda x, y: 3 * x - 2 * y, k, d))
 
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: {"k": k[-i], "d": d[-i], "j": j[-i]}})
             c.bars_raw[-i].cache = _c
 
@@ -1370,14 +1375,14 @@ def update_rsi_cache(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         close = np.array([x.close for x in c.bars_raw])
         rsi = ta.RSI(close, timeperiod=timeperiod)
 
         for i in range(len(close)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             _c.update({cache_key: rsi[i] if rsi[i] else 0})
             c.bars_raw[i].cache = _c
 
@@ -1387,7 +1392,7 @@ def update_rsi_cache(c: CZSC, **kwargs):
         rsi = ta.RSI(close, timeperiod=timeperiod)
 
         for i in range(1, 6):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: rsi[-i]})
             c.bars_raw[-i].cache = _c
 
@@ -1496,16 +1501,16 @@ def tas_first_bs_V230217(c: CZSC, **kwargs) -> OrderedDict:
             n1 += 1
         if close[i] > _open[i]:
             m1 += 1
-    condition_2_down = True if (n1 / len(low)) > 0.6 else False
-    condition_2_up = True if (m1 / len(low)) > 0.6 else False
+    condition_2_down = (n1 / len(low)) > 0.6
+    condition_2_up = (m1 / len(low)) > 0.6
 
     # 最近三根K线创新低
-    condition_3_down = True if min(low[-3:]) < min(low[:-3]) else False
-    condition_3_up = True if max(high[-3:]) > max(high[:-3]) else False
+    condition_3_down = min(low[-3:]) < min(low[:-3])
+    condition_3_up = max(high[-3:]) > max(high[:-3])
 
     # 最后一根K线收在MA5之上/下
-    condition_4_down = True if close[-1] > sma[-1] else False
-    condition_4_up = True if close[-1] < sma[-1] else False
+    condition_4_down = close[-1] > sma[-1]
+    condition_4_up = close[-1] < sma[-1]
 
     if condition_1_down and condition_2_down and condition_3_down and condition_4_down:
         v1 = "一买"
@@ -1553,8 +1558,8 @@ def tas_second_bs_V230228(c: CZSC, **kwargs) -> OrderedDict:
 
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     sma = [x.cache[key] for x in _bars]
-    min_three = any([x.cache[key] > x.low for x in _bars[-3:]])
-    max_three = any([x.high > x.cache[key] for x in _bars[-3:]])
+    min_three = any(x.cache[key] > x.low for x in _bars[-3:])
+    max_three = any(x.high > x.cache[key] for x in _bars[-3:])
 
     if max(sma) == sma[-1] > sma[-2] and _bars[-1].close > sma[-1] and min_three:
         v1 = "二买"
@@ -1891,9 +1896,9 @@ def tas_macd_base_V230320(c: CZSC, **kwargs) -> OrderedDict:
 
     bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap + 1)
     value = [x.cache[cache_key][key.lower()] for x in bars]
-    if value[-1] > 0 and any([x < 0 for x in value[:-1]]):
+    if value[-1] > 0 and any(x < 0 for x in value[:-1]):
         v1 = "多头"
-    elif value[-1] < 0 and any([x > 0 for x in value[:-1]]):
+    elif value[-1] < 0 and any(x > 0 for x in value[:-1]):
         v1 = "空头"
     else:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1969,8 +1974,8 @@ def update_cci_cache(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         bars = c.bars_raw
     else:
@@ -1983,8 +1988,8 @@ def update_cci_cache(c: CZSC, **kwargs):
     cci = ta.CCI(high, low, close, timeperiod=timeperiod)
 
     for i in range(len(bars)):
-        _c = dict(bars[i].cache) if bars[i].cache else dict()
-        if cache_key not in _c.keys():
+        _c = dict(bars[i].cache) if bars[i].cache else {}
+        if cache_key not in _c:
             _c.update({cache_key: cci[i] if cci[i] else 0})
             bars[i].cache = _c
 
@@ -2162,8 +2167,8 @@ def update_atr_cache(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         bars = c.bars_raw
     else:
@@ -2176,8 +2181,8 @@ def update_atr_cache(c: CZSC, **kwargs):
     atr = ta.ATR(high, low, close, timeperiod=timeperiod)
 
     for i in range(len(bars)):
-        _c = dict(bars[i].cache) if bars[i].cache else dict()
-        if cache_key not in _c.keys():
+        _c = dict(bars[i].cache) if bars[i].cache else {}
+        if cache_key not in _c:
             _c.update({cache_key: atr[i] if atr[i] else 0})
             bars[i].cache = _c
 
@@ -2255,21 +2260,17 @@ def update_sar_cache(c: CZSC, **kwargs):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < 50:
-        # 初始化缓存
-        bars = c.bars_raw
-    else:
-        # 增量更新最近5个K线缓存
-        bars = c.bars_raw[-120:]
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    # 初始化缓存 / 增量更新最近5个K线缓存
+    bars = c.bars_raw if cache_key not in last_cache or len(c.bars_raw) < 50 else c.bars_raw[-120:]
 
     high = np.array([x.high for x in bars])
     low = np.array([x.low for x in bars])
     sar = ta.SAR(high, low)
 
     for i in range(len(bars)):
-        _c = dict(bars[i].cache) if bars[i].cache else dict()
-        if cache_key not in _c.keys():
+        _c = dict(bars[i].cache) if bars[i].cache else {}
+        if cache_key not in _c:
             _c.update({cache_key: sar[i] if sar[i] else 0})
             bars[i].cache = _c
 
@@ -2308,9 +2309,9 @@ def tas_sar_base_V230425(c: CZSC, **kwargs):
     bars = get_sub_elements(c.bars_raw, di=di, n=max_overlap)
     bar = c.bars_raw[-di]
     sar = c.bars_raw[-di].cache[cache_key]
-    if bar.close > sar and any([x.close < x.cache[cache_key] for x in bars]):
+    if bar.close > sar and any(x.close < x.cache[cache_key] for x in bars):
         v1 = "看多"
-    elif bar.close < sar and any([x.close > x.cache[cache_key] for x in bars]):
+    elif bar.close < sar and any(x.close > x.cache[cache_key] for x in bars):
         v1 = "看空"
     else:
         v1 = "其他"
@@ -2350,9 +2351,9 @@ def tas_ma_system_V230513(c: CZSC, **kwargs) -> OrderedDict:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     ma_val = [c.bars_raw[-di].cache[f"SMA#{x}"] for x in ma_seq]
-    if all([x > y for x, y in zip(ma_val[:-1], ma_val[1:])]):
+    if all(x > y for x, y in zip(ma_val[:-1], ma_val[1:], strict=False)):
         v1 = "多头排列"
-    if all([x < y for x, y in zip(ma_val[:-1], ma_val[1:])]):
+    if all(x < y for x, y in zip(ma_val[:-1], ma_val[1:], strict=False)):
         v1 = "空头排列"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -2573,11 +2574,11 @@ def tas_accelerate_V230531(c: CZSC, **kwargs) -> OrderedDict:
     down_zdf = bars[-1].cache[cache_key]["下轨"] / bars[0].cache[cache_key]["下轨"] - 1
     last_bar = bars[-1]
 
-    if all([x.close > x.cache[cache_key]["中线"] for x in bars]) and up_zdf > t / 10 * mid_zdf > 0:
+    if all(x.close > x.cache[cache_key]["中线"] for x in bars) and up_zdf > t / 10 * mid_zdf > 0:
         v1 = "多头加速"
         v2 = "升破上轨" if last_bar.cache[cache_key]["上轨"] < last_bar.high else "未破上轨"
 
-    if all([x.close < x.cache[cache_key]["中线"] for x in bars]) and down_zdf < t / 10 * mid_zdf < 0:
+    if all(x.close < x.cache[cache_key]["中线"] for x in bars) and down_zdf < t / 10 * mid_zdf < 0:
         v1 = "空头加速"
         v2 = "跌破下轨" if last_bar.cache[cache_key]["下轨"] > last_bar.low else "未破下轨"
 
@@ -2669,7 +2670,7 @@ def tas_cross_status_V230619(c: CZSC, **kwargs) -> OrderedDict:
     slowperiod = int(kwargs.get("slowperiod", 26))
     signalperiod = int(kwargs.get("signalperiod", 9))
     cache_key = update_macd_cache(c, **kwargs)
-    s = OrderedDict()
+    OrderedDict()
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
     k1, k2, k3 = f"{freq}_D{di}MACD{fastperiod}#{slowperiod}#{signalperiod}_金死叉V230619".split("_")
     v1 = "其他"
@@ -2935,7 +2936,7 @@ def tas_atr_V230630(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
     lev = [bar.cache[cache_key] / bar.close for bar in bars]
     lev = pd.qcut(lev, 10, labels=False, duplicates="drop")[-1]
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev + 1)}层")
 
 
 def tas_rumi_V230704(c: CZSC, **kwargs) -> OrderedDict:
@@ -3121,10 +3122,7 @@ def tas_macd_dist_V230410(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=1, n=w)
     factors = [x.cache[cache_key][key.lower()] for x in bars]
     v1 = "多头" if factors[-1] > 0 else "空头"
-    if v1 == "多头":
-        factors = [x for x in factors if x > 0]
-    else:
-        factors = [x for x in factors if x < 0]
+    factors = [x for x in factors if x > 0] if v1 == "多头" else [x for x in factors if x < 0]
 
     q = pd.cut(factors, n, labels=list(range(1, n + 1)), precision=5, duplicates="drop")[-1]
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=f"第{q}层")
@@ -3166,7 +3164,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
     if c1_macd[-1] > 0 and sum([1 if x > 0 else 0 for x in c1_macd]) != len(c1_macd):
         # 找出 c1 的最近一次金叉
         macd_gold_bars = []
-        for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
+        for bar1, bar2 in zip(c1_bars, c1_bars[1:], strict=False):
             if bar1.cache[cache_key]["macd"] < 0 < bar2.cache[cache_key]["macd"]:
                 macd_gold_bars.append(bar2)
         assert macd_gold_bars, "没有找到金叉"
@@ -3176,7 +3174,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         c2_bars = [x for x in c2_bars if x.dt > macd_gold_bar.dt]
         if len(c2_bars) > 3:
             c2_gold_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] < 0 < bar2.cache[cache_key]["macd"]:
                     c2_gold_bars.append(bar2)
 
@@ -3186,7 +3184,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
     if c1_macd[-1] < 0 and sum([1 if x < 0 else 0 for x in c1_macd]) != len(c1_macd):
         # 找出 c1 的最近一次死叉
         macd_dead_bars = []
-        for bar1, bar2 in zip(c1_bars, c1_bars[1:]):
+        for bar1, bar2 in zip(c1_bars, c1_bars[1:], strict=False):
             if bar1.cache[cache_key]["macd"] > 0 > bar2.cache[cache_key]["macd"]:
                 macd_dead_bars.append(bar2)
         assert macd_dead_bars, "没有找到死叉"
@@ -3196,7 +3194,7 @@ def cat_macd_V230518(cat: CzscSignals, **kwargs) -> OrderedDict:
         c2_bars = [x for x in c2_bars if x.dt > macd_dead_bar.dt]
         if len(c2_bars) > 3:
             c2_dead_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] > 0 > bar2.cache[cache_key]["macd"]:
                     c2_dead_bars.append(bar2)
 
@@ -3243,8 +3241,7 @@ def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
 
     # Check for three consecutive increases in MACD values for bull shrinkage
     min_bar = min(c1_bars, key=lambda x: x.low)
-    if all(x < y for x, y in zip(c1_macd[-3:], c1_macd[-2:])) and min(c1_macd) < 0:
-
+    if all(x < y for x, y in zip(c1_macd[-3:], c1_macd[-2:], strict=False)) and min(c1_macd) < 0:
         c2_bars = [x for x in c2_bars if x.dt > min_bar.dt]
         if len(c2_bars) > 3:
             last_bar = c2_bars[-1]
@@ -3253,12 +3250,12 @@ def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
             max_macd = max([x.cache[cache_key]["macd"] for x in c2_bars])
 
             c2_gold_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] < 0 and bar2.cache[cache_key]["macd"] > 0:
                     c2_gold_bars.append(bar2)
 
             c2_dead_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] > 0 and bar2.cache[cache_key]["macd"] < 0:
                     c2_dead_bars.append(bar2)
 
@@ -3274,8 +3271,7 @@ def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
 
     # Check for three consecutive decreases in MACD values for bear shrinkage
     max_bar = max(c1_bars, key=lambda x: x.high)
-    if all(x > y for x, y in zip(c1_macd[-3:], c1_macd[-2:])) and max(c1_macd) > 0:
-
+    if all(x > y for x, y in zip(c1_macd[-3:], c1_macd[-2:], strict=False)) and max(c1_macd) > 0:
         c2_bars = [x for x in c2_bars if x.dt > max_bar.dt]
         if len(c2_bars) > 3:
             last_bar = c2_bars[-1]
@@ -3283,12 +3279,12 @@ def cat_macd_V230520(cat: CzscSignals, **kwargs) -> OrderedDict:
             max_macd = max([x.cache[cache_key]["macd"] for x in c2_bars])
 
             c2_gold_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] < 0 and bar2.cache[cache_key]["macd"] > 0:
                     c2_gold_bars.append(bar2)
 
             c2_dead_bars = []
-            for bar1, bar2 in zip(c2_bars, c2_bars[1:]):
+            for bar1, bar2 in zip(c2_bars, c2_bars[1:], strict=False):
                 if bar1.cache[cache_key]["macd"] > 0 and bar2.cache[cache_key]["macd"] < 0:
                     c2_dead_bars.append(bar2)
 
@@ -3691,7 +3687,7 @@ def tas_dma_bs_V240608(c: CZSC, **kwargs) -> OrderedDict:
 
     bars = c.bars_raw[-100:]
     unique_prices = [x.close for x in bars] + [x.high for x in bars] + [x.low for x in bars] + [x.open for x in bars]
-    unique_prices = sorted(list(set(unique_prices)))
+    unique_prices = sorted(set(unique_prices))
 
     bar1, bar2 = bars[-2], bars[-1]
     ma1_value, ma2_value = bar2.cache[ma1], bar2.cache[ma2]

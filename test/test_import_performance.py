@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
 """
 导入性能测试
 
 验证 czsc 库的导入速度在合理范围内，确保不因新增依赖或错误的模块级导入
 而导致导入速度显著下降，影响用户体验。
 """
+
 import subprocess
 import sys
-import time
-
 
 # 可接受的最大导入时间（秒）。该阈值在 CI 环境中会有一定冗余，
 # 主要用于检测灾难性的回归（如在模块级误引入 Streamlit / scipy 等重型依赖）。
@@ -64,8 +62,7 @@ else:
     assert result.returncode == 0, f"子进程异常:\n{result.stderr}"
     output = result.stdout.strip()
     assert output == "OK", (
-        f"import czsc 后意外加载了重型依赖: {output.replace('FAIL:', '')}。"
-        "这些依赖应该使用延迟导入（lazy import）。"
+        f"import czsc 后意外加载了重型依赖: {output.replace('FAIL:', '')}。这些依赖应该使用延迟导入（lazy import）。"
     )
 
 
@@ -97,6 +94,7 @@ else:
 def test_czsc_svc_accessible():
     """czsc.svc 通过延迟加载仍可正常访问"""
     import czsc
+
     svc = czsc.svc
     assert svc is not None
     assert hasattr(svc, "show_daily_return")

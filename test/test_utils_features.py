@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_utils_features.py - czsc.utils.features 因子处理模块单元测试
 
@@ -15,10 +14,12 @@ Mock数据格式说明:
 - find_most_similarity: 相似度搜索
 - 边界情况: 含 NaN 数据断言、极端值
 """
-import pytest
+
 import numpy as np
 import pandas as pd
-from czsc.utils.features import normalize_feature, feature_cross_layering, find_most_similarity
+import pytest
+
+from czsc.utils.features import feature_cross_layering, find_most_similarity, normalize_feature
 
 
 class TestNormalizeFeature:
@@ -133,9 +134,11 @@ class TestFindMostSimilarity:
     def test_identical_vector(self):
         """测试完全相同的向量"""
         vector = pd.Series([1, 2, 3, 4, 5])
-        matrix = pd.DataFrame({
-            "exact": [1, 2, 3, 4, 5],
-            "different": [5, 4, 3, 2, 1],
-        })
+        matrix = pd.DataFrame(
+            {
+                "exact": [1, 2, 3, 4, 5],
+                "different": [5, 4, 3, 2, 1],
+            }
+        )
         result = find_most_similarity(vector, matrix, n=2)
         assert len(result) == 2

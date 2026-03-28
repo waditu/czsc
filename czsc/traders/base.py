@@ -1,26 +1,29 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/12/24 22:20
 describe: 简单的单仓位策略执行
 """
+
 import os
 import webbrowser
+from collections import OrderedDict
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from typing import AnyStr
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
-from collections import OrderedDict
-from typing import Callable, List, AnyStr, Union, Optional
-from czsc.core import CZSC, Position, RawBar, Signal, BarGenerator
-from czsc.utils.data.cache import home_path
+
+from czsc.core import CZSC, BarGenerator, Position, RawBar, Signal
 from czsc.traders.sig_parse import get_signals_freqs
+from czsc.utils.data.cache import home_path
 
 
 class CzscSignals:
     """缠中说禅技术分析理论之多级别信号计算"""
 
-    def __init__(self, bg: Optional[BarGenerator] = None, **kwargs):
+    def __init__(self, bg: BarGenerator | None = None, **kwargs):
         """
 
         :param bg: K线合成器
@@ -55,7 +58,7 @@ class CzscSignals:
             self.s = OrderedDict()
 
     def __repr__(self):
-        return "<{} for {}>".format(self.name, self.symbol)
+        return f"<{self.name} for {self.symbol}>"
 
     def get_signals_by_conf(self):
         """通过信号参数配置获取信号
@@ -86,13 +89,13 @@ class CzscSignals:
 
         for param in self.signals_config:
             param = dict(param)
-            sig_name = param.pop('name')
+            sig_name = param.pop("name")
             sig_func = import_by_name(sig_name) if isinstance(sig_name, str) else sig_name
 
-            freq = param.pop('freq', None)
-            if freq in self.kas:    # 如果指定了 freq，那么就使用 CZSC 对象作为输入
+            freq = param.pop("freq", None)
+            if freq in self.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
                 s.update(sig_func(self.kas[freq], **param))
-            else:                   # 否则使用 CAT 作为输入
+            else:  # 否则使用 CAT 作为输入
                 s.update(sig_func(self, **param))
         return s
 
@@ -125,8 +128,8 @@ class CzscSignals:
         signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
             # 按各周期K线分别加入信号表
-            freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
-            for k in freq_signals.keys():
+            freq_signals = {k: signals[k] for k in signals if k.startswith(f"{freq}_")}
+            for k in freq_signals:
                 signals.pop(k)
             if len(freq_signals) <= 0:
                 continue
@@ -187,8 +190,14 @@ class CzscSignals:
         self.s.update(last_bar.__dict__)
 
 
-def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
-                          sdt: Union[AnyStr, datetime] = "20170101", init_n: int = 500, df=False, **kwargs):
+def generate_czsc_signals(
+    bars: list[RawBar],
+    signals_config: list[dict],
+    sdt: AnyStr | datetime = "20170101",
+    init_n: int = 500,
+    df=False,
+    **kwargs,
+):
     """使用 CzscSignals 生成信号
 
     函数执行逻辑：
@@ -216,17 +225,18 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
     """
     freqs = get_signals_freqs(signals_config)
     freqs = [freq for freq in freqs if freq != bars[0].freq.value]
-    sdt = pd.to_datetime(sdt)                       # type: ignore
-    bars_left = [x for x in bars if x.dt < sdt]     # type: ignore
+    sdt = pd.to_datetime(sdt)  # type: ignore
+    bars_left = [x for x in bars if x.dt < sdt]  # type: ignore
     if len(bars_left) <= init_n:
         bars_left = bars[:init_n]
         bars_right = bars[init_n:]
     else:
-        bars_right = [x for x in bars if x.dt >= sdt]   # type: ignore
+        bars_right = [x for x in bars if x.dt >= sdt]  # type: ignore
 
     if len(bars_right) == 0:
         import warnings
-        warnings.warn("右侧K线为空，无法进行信号生成", RuntimeWarning)
+
+        warnings.warn("右侧K线为空，无法进行信号生成", RuntimeWarning, stacklevel=2)
         if df:
             return pd.DataFrame()
         else:
@@ -239,7 +249,7 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
 
     _sigs = []
     cs = CzscSignals(bg, signals_config=signals_config, **kwargs)
-    cs.cache.update({'gsc_kwargs': kwargs})
+    cs.cache.update({"gsc_kwargs": kwargs})
     for bar in bars_right:
         cs.update_signals(bar)
         _sigs.append(dict(cs.s))
@@ -250,7 +260,7 @@ def generate_czsc_signals(bars: List[RawBar], signals_config: List[dict],
         return _sigs
 
 
-def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days: int = 5, **kwargs) -> None:
+def check_signals_acc(bars: list[RawBar], signals_config: list[dict], delta_days: int = 5, **kwargs) -> None:
     """输入基础周期K线和想要验证的信号，输出信号识别结果的快照
 
     函数执行逻辑：
@@ -280,7 +290,7 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
     s_cols = [x for x in df.columns if len(x.split("_")) == 3]
     signals = []
     for col in s_cols:
-        print('=' * 100, "\n", df[col].value_counts())
+        print("=" * 100, "\n", df[col].value_counts())
         signals.extend([Signal(f"{col}_{v}") for v in df[col].unique() if "其他" not in v])
 
     print(f"signals: {'+' * 100}")
@@ -311,7 +321,7 @@ def check_signals_acc(bars: List[RawBar], signals_config: List[dict], delta_days
                 last_dt[signal.key] = bar.dt
 
 
-def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs):
+def get_unique_signals(bars: list[RawBar], signals_config: list[dict], **kwargs):
     """获取信号函数中定义的所有信号列表
 
     函数执行逻辑：
@@ -341,8 +351,13 @@ def get_unique_signals(bars: List[RawBar], signals_config: List[dict], **kwargs)
 class CzscTrader(CzscSignals):
     """缠中说禅技术分析理论之多级别联立交易决策类（支持多策略独立执行）"""
 
-    def __init__(self, bg: Optional[BarGenerator] = None, positions: Optional[List[Position]] = None,
-                 ensemble_method: Union[AnyStr, Callable] = "mean", **kwargs):
+    def __init__(
+        self,
+        bg: BarGenerator | None = None,
+        positions: list[Position] | None = None,
+        ensemble_method: AnyStr | Callable = "mean",
+        **kwargs,
+    ):
         """
 
         初始化逻辑：
@@ -378,7 +393,7 @@ class CzscTrader(CzscSignals):
         super().__init__(bg, **kwargs)
 
     def __repr__(self):
-        return "<{} for {}>".format(self.name, self.symbol)
+        return f"<{self.name} for {self.symbol}>"
 
     def update(self, bar: RawBar) -> None:
         """输入基础周期已完成K线，更新信号，更新仓位
@@ -411,8 +426,8 @@ class CzscTrader(CzscSignals):
         :return: None
         """
         self.s = sig
-        self.symbol, self.end_dt = self.s['symbol'], self.s['dt']
-        self.bid, self.latest_price = self.s['id'], self.s['close']
+        self.symbol, self.end_dt = self.s["symbol"], self.s["dt"]
+        self.bid, self.latest_price = self.s["id"], self.s["close"]
         if self.positions:
             for position in self.positions:
                 position.update(self.s)
@@ -437,9 +452,9 @@ class CzscTrader(CzscSignals):
         """
         if not self.positions:
             return False
-        return any([position.pos_changed for position in self.positions])
+        return any(position.pos_changed for position in self.positions)
 
-    def get_ensemble_pos(self, method: Union[AnyStr, Callable] = None) -> float:
+    def get_ensemble_pos(self, method: AnyStr | Callable = None) -> float:
         """获取多个仓位的集成仓位
 
         函数执行逻辑：
@@ -468,16 +483,16 @@ class CzscTrader(CzscSignals):
         if not self.positions:
             return 0
 
-        method = self.__ensemble_method if not method else method
+        method = method if method else self.__ensemble_method
         if isinstance(method, str):
             method = method.lower()
             pos_seq = [x.pos for x in self.positions]
 
-            if method == 'mean':
+            if method == "mean":
                 pos = np.mean(pos_seq)
-            elif method == 'vote':
+            elif method == "vote":
                 pos = np.sign(sum(pos_seq))
-            elif method == 'max':
+            elif method == "max":
                 pos = max(pos_seq)
             else:
                 raise ValueError
@@ -487,7 +502,7 @@ class CzscTrader(CzscSignals):
 
         return pos
 
-    def get_position(self, name: str) -> Optional[Position]:
+    def get_position(self, name: str) -> Position | None:
         """获取指定名称的仓位策略对象
 
         函数执行逻辑：
@@ -530,9 +545,9 @@ class CzscTrader(CzscSignals):
                 bs = []
                 for pos in self.positions:
                     for op in pos.operates:
-                        if op['dt'] >= ka.bars_raw[0].dt:
+                        if op["dt"] >= ka.bars_raw[0].dt:
                             _op = dict(op)
-                            _op['op_desc'] = f"{pos.name} | {_op['op_desc']}"
+                            _op["op_desc"] = f"{pos.name} | {_op['op_desc']}"
                             bs.append(_op)
 
             chart = ka.to_echarts(width, height, bs)
@@ -541,8 +556,8 @@ class CzscTrader(CzscSignals):
         signals = {k: v for k, v in self.s.items() if len(k.split("_")) == 3}
         for freq in self.freqs:
             # 按各周期K线分别加入信号表
-            freq_signals = {k: signals[k] for k in signals.keys() if k.startswith("{}_".format(freq))}
-            for k in freq_signals.keys():
+            freq_signals = {k: signals[k] for k in signals if k.startswith(f"{freq}_")}
+            for k in freq_signals:
                 signals.pop(k)
             if len(freq_signals) <= 0:
                 continue
@@ -563,7 +578,7 @@ class CzscTrader(CzscSignals):
         else:
             return tab
 
-    def get_ensemble_weight(self, method: Optional[Union[AnyStr, Callable]] = None):
+    def get_ensemble_weight(self, method: AnyStr | Callable | None = None):
         """获取 CzscTrader 中所有 positions 按照 method 方法集成之后的权重
 
         函数执行逻辑：
@@ -581,7 +596,8 @@ class CzscTrader(CzscSignals):
             columns = ['dt', 'symbol', 'weight', 'price']
         """
         from czsc.traders.weight_backtest import get_ensemble_weight
-        method = self.__ensemble_method if not method else method
+
+        method = method if method else self.__ensemble_method
         return get_ensemble_weight(self, method)
 
     def weight_backtest(self, **kwargs):
@@ -601,7 +617,7 @@ class CzscTrader(CzscSignals):
         digits = kwargs.get("digits", 2)
         fee_rate = kwargs.get("fee_rate", 0.000)
         dfw = self.get_ensemble_weight(method)
-        dfw['dt'] = pd.to_datetime(dfw['dt'])
-        dfw = dfw[['dt', 'symbol', 'weight', 'price']].copy()
+        dfw["dt"] = pd.to_datetime(dfw["dt"])
+        dfw = dfw[["dt", "symbol", "weight", "price"]].copy()
         wb = WeightBacktest(dfw, digits=digits, fee_rate=fee_rate)
         return wb

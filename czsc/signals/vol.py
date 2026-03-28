@@ -1,23 +1,26 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/8/25 17:43
 describe: 成交量相关信号
 """
+
 from loguru import logger
 
 try:
     import talib as ta
-except:
-    logger.warning("ta-lib 没有正确安装，相关信号函数无法正常执行。"
-                   "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091")
+except ImportError:
+    logger.warning(
+        "ta-lib 没有正确安装，相关信号函数无法正常执行。"
+        "请参考安装教程 https://blog.csdn.net/qaz2134560/article/details/98484091"
+    )
+from collections import OrderedDict
+
 import numpy as np
 import pandas as pd
-from typing import List
-from collections import OrderedDict
+
 from czsc.core import CZSC, RawBar
-from czsc.utils.sig import get_sub_elements, create_single_signal
+from czsc.utils.sig import create_single_signal, get_sub_elements
 
 
 def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
@@ -29,35 +32,41 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
     :return:
     """
     ma_type_map = {
-        'SMA': ta.MA_Type.SMA, 'EMA': ta.MA_Type.EMA, 'WMA': ta.MA_Type.WMA, 'KAMA': ta.MA_Type.KAMA,
-        'TEMA': ta.MA_Type.TEMA, 'DEMA': ta.MA_Type.DEMA, 'MAMA': ta.MA_Type.MAMA, 'TRIMA': ta.MA_Type.TRIMA,
+        "SMA": ta.MA_Type.SMA,
+        "EMA": ta.MA_Type.EMA,
+        "WMA": ta.MA_Type.WMA,
+        "KAMA": ta.MA_Type.KAMA,
+        "TEMA": ta.MA_Type.TEMA,
+        "DEMA": ta.MA_Type.DEMA,
+        "MAMA": ta.MA_Type.MAMA,
+        "TRIMA": ta.MA_Type.TRIMA,
     }
 
     ma_type = ma_type.upper()
-    assert ma_type in ma_type_map.keys(), f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
+    assert ma_type in ma_type_map, f"{ma_type} 不是支持的均线类型，可选值：{list(ma_type_map.keys())}"
     cache_key = f"VOL#{ma_type}#{timeperiod}"
 
     if c.bars_raw[-1].cache and c.bars_raw[-1].cache.get(cache_key, None):
         # 如果最后一根K线已经有对应的缓存，不执行更新
         return cache_key
 
-    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else dict()
-    if cache_key not in last_cache.keys() or len(c.bars_raw) < timeperiod + 15:
+    last_cache = dict(c.bars_raw[-2].cache) if c.bars_raw[-2].cache else {}
+    if cache_key not in last_cache or len(c.bars_raw) < timeperiod + 15:
         # 初始化缓存
         data = np.array([x.vol for x in c.bars_raw], dtype=np.float64)
-        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()]) # type: ignore
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])  # type: ignore
         assert len(ma) == len(data)
         for i in range(len(data)):
-            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else dict()
+            _c = dict(c.bars_raw[i].cache) if c.bars_raw[i].cache else {}
             _c.update({cache_key: ma[i] if ma[i] else data[i]})
             c.bars_raw[i].cache = _c
 
     else:
         # 增量更新最近3个K线缓存
-        data = np.array([x.vol for x in c.bars_raw[-timeperiod - 10:]], dtype=np.float64)
-        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()]) # type: ignore
+        data = np.array([x.vol for x in c.bars_raw[-timeperiod - 10 :]], dtype=np.float64)
+        ma = ta.MA(data, timeperiod=timeperiod, matype=ma_type_map[ma_type.upper()])  # type: ignore
         for i in range(1, 4):
-            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else dict()
+            _c = dict(c.bars_raw[-i].cache) if c.bars_raw[-i].cache else {}
             _c.update({cache_key: ma[-i]})
             c.bars_raw[-i].cache = _c
     return cache_key
@@ -66,34 +75,34 @@ def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs):
 def vol_single_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
     """均线辅助识别第三类买卖点，增加均线形态
 
-       参数模板："{freq}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214"
+    参数模板："{freq}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214"
 
-       **信号逻辑：**
+    **信号逻辑：**
 
-       1. vol > ma，多头；反之，空头
-       2. ma[-1] > ma[-2]，向上；反之，向下
+    1. vol > ma，多头；反之，空头
+    2. ma[-1] > ma[-2]，向上；反之，向下
 
-       **信号列表：**
+    **信号列表：**
 
-       - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向上_任意_0')
-       - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向下_任意_0')
-       - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向上_任意_0')
-       - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向下_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向上_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_空头_向下_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向上_任意_0')
+    - Signal('15分钟_D1VOL#SMA#5_分类V230214_多头_向下_任意_0')
 
-       **信号说明：**
+    **信号说明：**
 
-       :param c: CZSC对象
-       :param kwargs:
-        - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
-        - timeperiod: 均线计算周期
-        - di: 信号计算截止倒数第i根K线
-       :return: 信号识别结果
-       """
+    :param c: CZSC对象
+    :param kwargs:
+     - ma_type: 均线类型，必须是 `ma_type_map` 中的 key
+     - timeperiod: 均线计算周期
+     - di: 信号计算截止倒数第i根K线
+    :return: 信号识别结果
+    """
 
     di = int(kwargs.get("di", 1))
     ma_type = kwargs.get("ma_type", "SMA").upper()  # ma_type: 均线类型，必须是 `ma_type_map` 中的 key
     timeperiod = int(kwargs.get("timeperiod", 5))  # timeperiod: 均线计算周期
-    k1, k2, k3 = f"{c.freq.value}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}VOL#{ma_type}#{timeperiod}_分类V230214".split("_")
 
     cache_key = update_vol_ma_cache(c, ma_type, timeperiod)
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
@@ -135,7 +144,7 @@ def vol_double_ma_V230214(c: CZSC, **kwargs) -> OrderedDict:
     cache_key1 = update_vol_ma_cache(c, ma_type, t1)
     cache_key2 = update_vol_ma_cache(c, ma_type, t2)
 
-    k1, k2, k3 = f"{c.freq.value}_D{di}VOL双均线{ma_type}#{t1}#{t2}_BS辅助V230214".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}VOL双均线{ma_type}#{t1}#{t2}_BS辅助V230214".split("_")
     bars = get_sub_elements(c.bars_raw, di=di, n=3)
     v1 = "看多" if bars[-1].cache[cache_key1] >= bars[-1].cache[cache_key2] else "看空"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -171,7 +180,7 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
-    k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221216".split('_')
+    k1, k2, k3 = f"{c.freq.value}_D{di}K_量柱V221216".split("_")
     v1 = "其他"
     if len(c.bars_raw) < di + 5:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -185,7 +194,7 @@ def vol_ti_suo_V221216(c: CZSC, **kwargs) -> OrderedDict:
     elif bar1.vol < bar2.vol < bar3.vol:
         v1 = "缩量"
 
-    if v1 == '其他':
+    if v1 == "其他":
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     if bar1.close < close_min and bar1.close < bar1.open:
@@ -238,10 +247,10 @@ def vol_gao_di_V221218(c: CZSC, **kwargs) -> OrderedDict:
     """
     freq = c.freq.value
     di = int(kwargs.get("di", 1))
-    k1, k2, k3 = f"{freq}_D{di}K_量柱V221218".split('_')
+    k1, k2, k3 = f"{freq}_D{di}K_量柱V221218".split("_")
     v1, v2 = "其他", "任意"
 
-    def _check_gao_liang_zhu(bars: List[RawBar]):
+    def _check_gao_liang_zhu(bars: list[RawBar]):
         if len(bars) <= 5:
             return "其他"
 
@@ -298,12 +307,12 @@ def vol_window_V230731(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
-    
+
         - :param di: 信号计算截止倒数第i根K线
         - :param w: 观察的窗口大小。
         - :param n: 分层的数量。
         - :param m: 计算分位数所需取K线的数量。
-        
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
@@ -312,14 +321,14 @@ def vol_window_V230731(c: CZSC, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 10))
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}W{w}M{m}N{n}_窗口能量V230731".split('_')
+    k1, k2, k3 = f"{freq}_D{di}W{w}M{m}N{n}_窗口能量V230731".split("_")
     v1 = "其他"
 
     if len(c.bars_raw) < di + m:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
     vols = [x.vol for x in get_sub_elements(c.bars_raw, di=di, n=m)]
-    vols_layer = pd.qcut(vols, n, labels=False, duplicates='drop')
+    vols_layer = pd.qcut(vols, n, labels=False, duplicates="drop")
     max_vol_layer = max(vols_layer[-w:]) + 1
     min_vol_layer = min(vols_layer[-w:]) + 1
 
@@ -343,17 +352,17 @@ def vol_window_V230801(c: CZSC, **kwargs) -> OrderedDict:
 
     :param c: CZSC对象
     :param kwargs: 参数字典
-    
+
         - :param di: 信号计算截止倒数第i根K线
         - :param w: 观察的窗口大小。
-        
+
     :return: 信号识别结果
     """
     di = int(kwargs.get("di", 1))
     w = int(kwargs.get("w", 5))
 
     freq = c.freq.value
-    k1, k2, k3 = f"{freq}_D{di}W{w}_窗口能量V230801".split('_')
+    k1, k2, k3 = f"{freq}_D{di}W{w}_窗口能量V230801".split("_")
     if len(c.bars_raw) < di + w:
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1="其他")
 

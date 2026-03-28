@@ -1,12 +1,13 @@
-import os
-import time
-import shutil
 import hashlib
+import os
+import shutil
 import threading
-import pandas as pd
+import time
+from functools import lru_cache, partial
 from pathlib import Path
-from functools import partial, lru_cache
-from typing import Optional, Dict, Any
+from typing import Any
+
+import pandas as pd
 
 
 def set_url_token(token, url, **kwargs):
@@ -16,6 +17,7 @@ def set_url_token(token, url, **kwargs):
     :param url: 数据接口地址
     """
     import loguru
+
     logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
@@ -27,12 +29,13 @@ def set_url_token(token, url, **kwargs):
 def get_url_token(url, **kwargs):
     """获取指定 URL 数据接口的凭证码"""
     import loguru
+
     logger = kwargs.get("logger", loguru.logger)
     hash_key = hashlib.md5(str(url).encode("utf-8")).hexdigest()
     file_token = Path("~").expanduser() / f"{hash_key}.txt"
     if file_token.exists():
         logger.info(f"从 {file_token} 读取 {url} 的访问凭证码")
-        return open(file_token, "r", encoding="utf-8").read()
+        return open(file_token, encoding="utf-8").read()
 
     logger.warning(f"请设置 {url} 的访问凭证码，如果没有请联系管理员申请")
     token = input(f"请输入 {url} 的访问凭证码（token）：")
@@ -47,15 +50,23 @@ class DataClient:
     数据接口客户端，支持本地缓存，兼容Tushare数据接口。
     支持多线程/多进程安全，详细日志，异常处理。
     """
+
     __version__ = "V250719"
     _cache_lock = threading.Lock()  # 进程内线程锁，防止并发冲突
 
     @lru_cache(maxsize=128)
     def _get_cache_key(self, req_params_str: str) -> str:
         """缓存哈希计算，避免重复计算"""
-        return hashlib.md5(req_params_str.encode('utf-8')).hexdigest().upper()[:8]
+        return hashlib.md5(req_params_str.encode("utf-8")).hexdigest().upper()[:8]
 
-    def __init__(self, token: Optional[str] = None, url: str = "http://api.tushare.pro", timeout: int = 300, verbose: bool = False, **kwargs):
+    def __init__(
+        self,
+        token: str | None = None,
+        url: str = "http://api.tushare.pro",
+        timeout: int = 300,
+        verbose: bool = False,
+        **kwargs,
+    ):
         """
         初始化数据客户端。
         :param token: str, API接口TOKEN
@@ -65,7 +76,9 @@ class DataClient:
         :param kwargs: 其他参数（clear_cache, cache_path, logger）
         """
         import loguru
+
         from czsc.utils.data.cache import get_dir_size
+
         self.logger = kwargs.pop("logger", loguru.logger)
 
         self.__token = token or get_url_token(url, logger=self.logger)
@@ -83,7 +96,7 @@ class DataClient:
         if kwargs.get("clear_cache", False):
             self.clear_cache()
 
-    def _get_cache(self, file_cache: Path, api_name: str, kwargs: Dict[str, Any], logger) -> Optional[pd.DataFrame]:
+    def _get_cache(self, file_cache: Path, api_name: str, kwargs: dict[str, Any], logger) -> pd.DataFrame | None:
         """读取缓存"""
         if file_cache.exists():
             with self._cache_lock:
@@ -104,9 +117,12 @@ class DataClient:
             except Exception as e:
                 logger.warning(f"写入缓存文件失败: {file_cache}, 错误: {e}")
 
-    def _request_api(self, req_params: Dict[str, Any], api_name: str, kwargs: Dict[str, Any], logger, retries: int = 3) -> Optional[Any]:
+    def _request_api(
+        self, req_params: dict[str, Any], api_name: str, kwargs: dict[str, Any], logger, retries: int = 3
+    ) -> Any | None:
         """发起API请求，包含重试机制"""
         import requests
+
         for attempt in range(retries):
             try:
                 res = requests.post(self.__http_url, json=req_params, timeout=self.__timeout)
@@ -115,7 +131,9 @@ class DataClient:
                 else:
                     # 处理非200状态码
                     if attempt == retries - 1:
-                        logger.error(f"API请求失败(最后一次重试): {api_name}；参数：{kwargs}；状态码：{res.status_code}；响应：{res.text}")
+                        logger.error(
+                            f"API请求失败(最后一次重试): {api_name}；参数：{kwargs}；状态码：{res.status_code}；响应：{res.text}"
+                        )
                         return None
                     else:
                         msg = f"API请求失败(第{attempt + 1}次重试): {api_name}；状态码：{res.status_code}；响应：{res.text}"
@@ -138,9 +156,7 @@ class DataClient:
         logger.error("API请求失败，所有重试都失败")
         return None
 
-    def _validate_response(
-        self, res, api_name: str, kwargs: Dict[str, Any], logger
-    ) -> Optional[Dict[str, Any]]:
+    def _validate_response(self, res, api_name: str, kwargs: dict[str, Any], logger) -> dict[str, Any] | None:
         """校验API返回结构
 
         结构说明：
@@ -175,7 +191,7 @@ class DataClient:
             return None
         return data
 
-    def _build_dataframe(self, data: Dict[str, Any], logger) -> pd.DataFrame:
+    def _build_dataframe(self, data: dict[str, Any], logger) -> pd.DataFrame:
         """构建DataFrame"""
         try:
             df = pd.DataFrame(data["items"], columns=data["fields"])
@@ -232,13 +248,7 @@ class DataClient:
             return pd.DataFrame()
 
         ttl = int(kwargs.pop("ttl", -1))
-        req_params = {
-            "api_name": api_name,
-            "token": self.__token,
-            "params": kwargs,
-            "fields": fields,
-            "v": v
-        }
+        req_params = {"api_name": api_name, "token": self.__token, "params": kwargs, "fields": fields, "v": v}
         path = self.cache_path / f"{self.__url_hash}_{api_name}"
         path.mkdir(exist_ok=True, parents=True)
         cache_key = self._get_cache_key(str(req_params))
@@ -269,7 +279,9 @@ class DataClient:
         self._set_cache(file_cache, df, logger)
 
         if self.verbose:
-            logger.info(f"本次获取数据总耗时：{time.time() - stime:.2f}秒；API：{api_name}；参数：{kwargs}；数据量：{df.shape}")
+            logger.info(
+                f"本次获取数据总耗时：{time.time() - stime:.2f}秒；API：{api_name}；参数：{kwargs}；数据量：{df.shape}"
+            )
         return df
 
     def __getattr__(self, name):

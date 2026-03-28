@@ -1,33 +1,40 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/3/10 12:21
 describe: 常用对象结构
 """
-import math
+
 import hashlib
-import numpy as np
-import pandas as pd
+import math
+import warnings as _warnings
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Callable, Dict
-from czsc.py.enum import Mark, Direction, Freq, Operate
+
+import numpy as np
+import pandas as pd
+
+from czsc.py.enum import Direction, Freq, Mark, Operate
 from czsc.utils.analysis.corr import single_linear
 
 
-import warnings as _warnings
-
 def _deprecated_class(version, reason):
     """轻量级 deprecated 装饰器替代方案"""
+
     def decorator(cls):
         orig_init = cls.__init__
+
         def new_init(self, *args, **kwargs):
-            _warnings.warn(f"{cls.__name__} is deprecated since version {version}. {reason}", DeprecationWarning, stacklevel=2)
+            _warnings.warn(
+                f"{cls.__name__} is deprecated since version {version}. {reason}", DeprecationWarning, stacklevel=2
+            )
             orig_init(self, *args, **kwargs)
+
         cls.__init__ = new_init
         return cls
+
     return decorator
 
 
@@ -86,7 +93,7 @@ class NewBar:
     low: float
     vol: float
     amount: float
-    elements: List = field(default_factory=list)  # 存入具有包含关系的原始K线
+    elements: list = field(default_factory=list)  # 存入具有包含关系的原始K线
     cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     @property
@@ -102,7 +109,7 @@ class FX:
     high: float
     low: float
     fx: float
-    elements: List = field(default_factory=list)
+    elements: list = field(default_factory=list)
     cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     @property
@@ -169,7 +176,7 @@ class FakeBI:
     cache: dict = field(default_factory=dict)  # cache 用户缓存
 
 
-def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
+def create_fake_bis(fxs: list[FX]) -> list[FakeBI]:
     """创建 fake_bis 列表
 
     :param fxs: 分型序列，必须顶底分型交替
@@ -212,11 +219,11 @@ def create_fake_bis(fxs: List[FX]) -> List[FakeBI]:
 @dataclass
 class BI:
     symbol: str
-    fx_a: FX    # 笔开始的分型
-    fx_b: FX    # 笔结束的分型
-    fxs: List   # 笔内部的分型列表
+    fx_a: FX  # 笔开始的分型
+    fx_b: FX  # 笔结束的分型
+    fxs: list  # 笔内部的分型列表
     direction: Direction
-    bars: List[NewBar] = field(default_factory=list)
+    bars: list[NewBar] = field(default_factory=list)
     cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     def __post_init__(self):
@@ -381,7 +388,7 @@ class BI:
 class ZS:
     """中枢对象，主要用于辅助信号函数计算"""
 
-    bis: List[BI]
+    bis: list[BI]
     cache: dict = field(default_factory=dict)  # cache 用户缓存
 
     def __post_init__(self):
@@ -440,11 +447,7 @@ class ZS:
 
         for bi in self.bis:
             # 中枢内的笔必须与中枢的上下沿有交集
-            if (
-                self.zg >= bi.high >= self.zd
-                or self.zg >= bi.low >= self.zd
-                or bi.high >= self.zg > self.zd >= bi.low
-            ):
+            if self.zg >= bi.high >= self.zd or self.zg >= bi.low >= self.zd or bi.high >= self.zg > self.zd >= bi.low:
                 continue
             else:
                 return False
@@ -530,30 +533,26 @@ class Signal:
         :return: bool
         """
         key = self.key
-        v = s.get(key, None)
+        v = s.get(key)
         if not v:
             raise ValueError(f"{key} 不在信号列表中")
 
         v1, v2, v3, score = v.split("_")
-        if int(score) >= self.score:
-            if v1 == self.v1 or self.v1 == "任意":
-                if v2 == self.v2 or self.v2 == "任意":
-                    if v3 == self.v3 or self.v3 == "任意":
-                        return True
-        return False
+        return bool(int(score) >= self.score and (v1 == self.v1 or self.v1 == "任意") and (v2 == self.v2 or self.v2 == "任意") and (v3 == self.v3 or self.v3 == "任意"))
+
 
 @dataclass
 class Event:
     operate: Operate
 
     # signals_all 必须全部满足的信号，允许为空
-    signals_all: List[Signal] = field(default_factory=list)
+    signals_all: list[Signal] = field(default_factory=list)
 
     # signals_any 满足其中任一信号，允许为空
-    signals_any: List[Signal] = field(default_factory=list)
+    signals_any: list[Signal] = field(default_factory=list)
 
     # signals_not 不能满足其中任一信号，允许为空
-    signals_not: List[Signal] = field(default_factory=list)
+    signals_not: list[Signal] = field(default_factory=list)
 
     name: str = ""
 
@@ -569,7 +568,7 @@ class Event:
         self.sha256 = sha256
 
     @property
-    def unique_signals(self) -> List[str]:
+    def unique_signals(self) -> list[str]:
         """获取 Event 的唯一信号列表"""
         signals = []
         if self.signals_all:
@@ -581,7 +580,7 @@ class Event:
         signals = {x.signal if isinstance(x, Signal) else x for x in signals}
         return list(signals)
 
-    def get_signals_config(self, signals_module: str = "czsc.signals") -> List[Dict]:
+    def get_signals_config(self, signals_module: str = "czsc.signals") -> list[dict]:
         """获取事件的信号配置"""
         from czsc.traders.sig_parse import get_signals_config
 
@@ -650,9 +649,7 @@ class Event:
         :return:
         """
         # 检查输入参数是否合法
-        assert (
-            raw["operate"] in Operate.__dict__["_value2member_map_"]
-        ), f"operate {raw['operate']} not in Operate"
+        assert raw["operate"] in Operate.__dict__["_value2member_map_"], f"operate {raw['operate']} not in Operate"
 
         e = Event(
             name=raw.get("name", ""),
@@ -664,7 +661,7 @@ class Event:
         return e
 
 
-def cal_break_even_point(seq: List[float]) -> float:
+def cal_break_even_point(seq: list[float]) -> float:
     """计算单笔收益序列的盈亏平衡点
 
     :param seq: 单笔收益序列
@@ -689,8 +686,8 @@ class Position:
     def __init__(
         self,
         symbol: str,
-        opens: List[Event],
-        exits: List[Event] = [],
+        opens: list[Event],
+        exits: list[Event] = None,
         interval: int = 0,
         timeout: int = 1000,
         stop_loss=1000,
@@ -709,6 +706,8 @@ class Position:
         :param T0: 是否允许T0交易，默认为 False 表示不允许T0交易
         :param name: 仓位名称，默认值为第一个开仓事件的名称
         """
+        if exits is None:
+            exits = []
         assert name, "name 是必须的参数"
         self.symbol = symbol
         self.opens = opens
@@ -747,14 +746,14 @@ class Position:
         )
 
     @property
-    def unique_signals(self) -> List[str]:
+    def unique_signals(self) -> list[str]:
         """获取所有事件的唯一信号列表"""
         signals = []
         for e in self.events:
             signals.extend(e.unique_signals)
         return list(set(signals))
 
-    def get_signals_config(self, signals_module: str = "czsc.signals") -> List[Dict]:
+    def get_signals_config(self, signals_module: str = "czsc.signals") -> list[dict]:
         """获取事件的信号配置"""
         from czsc.traders.sig_parse import get_signals_config
 
@@ -830,15 +829,11 @@ class Position:
         """
         pairs = []
 
-        for op1, op2 in zip(self.operates, self.operates[1:]):
+        for op1, op2 in zip(self.operates, self.operates[1:], strict=False):
             if op1["op"] not in [Operate.LO, Operate.SO]:
                 continue
 
-            ykr = (
-                op2["price"] / op1["price"] - 1
-                if op1["op"] == Operate.LO
-                else 1 - op2["price"] / op1["price"]
-            )
+            ykr = op2["price"] / op1["price"] - 1 if op1["op"] == Operate.LO else 1 - op2["price"] / op1["price"]
             pair = {
                 "标的代码": self.symbol,
                 "策略标记": self.name,
@@ -897,11 +892,7 @@ class Position:
 
         yearly_n = 252
         yearly_ret = dfv.iloc[-1] * (yearly_n / len(dfv))
-        sharp = (
-            dfv.diff().mean() / dfv.diff().std() * pow(yearly_n, 0.5)
-            if dfv.diff().std() != 0
-            else 0
-        )
+        sharp = dfv.diff().mean() / dfv.diff().std() * pow(yearly_n, 0.5) if dfv.diff().std() != 0 else 0
         df0 = dfv.shift(1).ffill().fillna(0)
         mdd = (1 - (df0 + 1) / (df0 + 1).cummax()).max()
         calmar = yearly_ret / mdd if mdd != 0 else 1
@@ -1005,6 +996,7 @@ class Position:
         """
         if self.end_dt and s["dt"] <= self.end_dt:
             from loguru import logger
+
             logger.warning(f"请检查信号传入：最新信号时间{s['dt']}在上次信号时间{self.end_dt}之前")
             return
 
@@ -1045,10 +1037,7 @@ class Position:
 
         # 更新仓位
         if op == Operate.LO:
-            if self.pos != 1 and (
-                not self.last_lo_dt
-                or (dt - self.last_lo_dt).total_seconds() > self.interval
-            ):
+            if self.pos != 1 and (not self.last_lo_dt or (dt - self.last_lo_dt).total_seconds() > self.interval):
                 # 与前一次开多间隔时间大于 interval，直接开多
                 self.pos = 1
                 self.operates.append(__create_operate(Operate.LO, op_desc))
@@ -1059,10 +1048,7 @@ class Position:
                     self._execute_close(Operate.SE, op_desc, __create_operate)
 
         if op == Operate.SO:
-            if self.pos != -1 and (
-                not self.last_so_dt
-                or (dt - self.last_so_dt).total_seconds() > self.interval
-            ):
+            if self.pos != -1 and (not self.last_so_dt or (dt - self.last_so_dt).total_seconds() > self.interval):
                 # 与前一次开空间隔时间大于 interval，直接开空
                 self.pos = -1
                 self.operates.append(__create_operate(Operate.SO, op_desc))
@@ -1075,7 +1061,9 @@ class Position:
         # 多头出场
         if self.pos == 1 and self._can_close_today(dt, self.last_lo_dt):
             if self.last_event["dt"] < self.last_lo_dt:
-                raise ValueError(f"多头出场检查失败：last_event时间{self.last_event['dt']}早于开多时间{self.last_lo_dt}")
+                raise ValueError(
+                    f"多头出场检查失败：last_event时间{self.last_event['dt']}早于开多时间{self.last_lo_dt}"
+                )
 
             # 多头平仓
             if op == Operate.LE:
@@ -1092,7 +1080,9 @@ class Position:
         # 空头出场
         if self.pos == -1 and self._can_close_today(dt, self.last_so_dt):
             if self.last_event["dt"] < self.last_so_dt:
-                raise ValueError(f"空头出场检查失败：last_event时间{self.last_event['dt']}早于开空时间{self.last_so_dt}")
+                raise ValueError(
+                    f"空头出场检查失败：last_event时间{self.last_event['dt']}早于开空时间{self.last_so_dt}"
+                )
 
             # 空头平仓
             if op == Operate.SE:

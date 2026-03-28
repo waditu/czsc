@@ -35,7 +35,7 @@ def test_plot_long_short_comparison_uses_separate_legends():
     adjusted_trace_count = len(dailys_pivot.columns) + 1
 
     top_traces = fig.data[:top_trace_count]
-    adjusted_traces = fig.data[top_trace_count: top_trace_count + adjusted_trace_count]
+    adjusted_traces = fig.data[top_trace_count : top_trace_count + adjusted_trace_count]
 
     assert {trace.legend for trace in top_traces} == {"legend"}
     assert {trace.legend for trace in adjusted_traces} == {"legend2"}

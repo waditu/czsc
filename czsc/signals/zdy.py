@@ -1,18 +1,19 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/13 22:45
 describe: ZDY 信号函数集合
 """
-import numpy as np
-from loguru import logger
+
 from collections import OrderedDict
-from czsc.traders.base import CZSC, CzscTrader
+
+import numpy as np
+
+from czsc.core import ZS, Direction, Mark, Operate
 from czsc.signals.tas import update_macd_cache
+from czsc.traders.base import CZSC, CzscTrader
 from czsc.utils import sorted_freqs
-from czsc.utils.sig import get_sub_elements, create_single_signal
-from czsc.core import Direction, Mark, Operate, ZS
+from czsc.utils.sig import create_single_signal, get_sub_elements
 
 
 def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
@@ -73,7 +74,7 @@ def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
     # 笔内部再次查找停顿分型
     v2 = "任意"
     if v1 == "看多" and len(last_bi.fxs) >= 4:
-        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
+        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:], strict=False):
             if (
                 fx1.mark == Mark.D
                 and fx2.mark == Mark.G
@@ -82,7 +83,7 @@ def zdy_bi_end_V230406(c: CZSC, **kwargs) -> OrderedDict:
                 v2 = "内部底停顿"
 
     if v1 == "看空" and len(last_bi.fxs) >= 4:
-        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
+        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:], strict=False):
             if (
                 fx1.mark == Mark.G
                 and fx2.mark == Mark.D
@@ -158,7 +159,7 @@ def zdy_bi_end_V230407(c: CZSC, **kwargs) -> OrderedDict:
     # 笔内部再次查找停顿分型
     v2 = "任意"
     if v1 == "看多" and len(last_bi.fxs) >= 4:
-        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
+        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:], strict=False):
             if (
                 fx1.mark == Mark.D
                 and fx2.mark == Mark.G
@@ -167,7 +168,7 @@ def zdy_bi_end_V230407(c: CZSC, **kwargs) -> OrderedDict:
                 v2 = "内部底停顿"
 
     if v1 == "看空" and len(last_bi.fxs) >= 4:
-        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:]):
+        for fx1, fx2 in zip(last_bi.fxs[:-1], last_bi.fxs[1:], strict=False):
             if (
                 fx1.mark == Mark.G
                 and fx2.mark == Mark.D
@@ -258,13 +259,13 @@ def zdy_vibrate_V230406(cat: CzscTrader, freq1, freq2, **kwargs) -> OrderedDict:
     if temp == "顶分停顿" and c2_bar.cache[cache_key]["macd"] < 0:
         P = c1_bar.close
         H = c1_lbi.high
-        if H >= zg and (H - zg) < (zg - zd) and (H - P) * 3 < (zg - zd):
+        if zg <= H and (H - zg) < (zg - zd) and (zg - zd) > (H - P) * 3:
             v1 = "看空"
 
     if temp == "底分停顿" and c2_bar.cache[cache_key]["macd"] > 0:
         P = c1_bar.close
         L = c1_lbi.low
-        if L <= zd and (zd - L) < (zg - zd) and (P - L) * 3 < (zg - zd):
+        if zd >= L and (zd - L) < (zg - zd) and (zg - zd) > (P - L) * 3:
             v1 = "看多"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -399,16 +400,14 @@ def zdy_take_profit_V230406(cat: CzscTrader, **kwargs) -> OrderedDict:
     bis = [x for x in c.bi_list if x.fx_b.dt >= op["dt"]]
 
     # 多头止盈逻辑
-    if op["op"] == Operate.LO:
-        if len(bis) > 1 and bis[-1].direction == Direction.Up and bis[-1].high < bis[-2].high:
-            v1 = "多头止盈"
-            v2 = "向上笔不创新高"
+    if op["op"] == Operate.LO and len(bis) > 1 and bis[-1].direction == Direction.Up and bis[-1].high < bis[-2].high:
+        v1 = "多头止盈"
+        v2 = "向上笔不创新高"
 
     # 空头止盈逻辑
-    if op["op"] == Operate.SO:
-        if len(bis) > 1 and bis[-1].direction == Direction.Down and bis[-1].low > bis[-2].low:
-            v1 = "空头止盈"
-            v2 = "向下笔不创新低"
+    if op["op"] == Operate.SO and len(bis) > 1 and bis[-1].direction == Direction.Down and bis[-1].low > bis[-2].low:
+        v1 = "空头止盈"
+        v2 = "向下笔不创新低"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2)
 
@@ -799,7 +798,7 @@ def zdy_macd_dif_V230516(c: CZSC, **kwargs) -> OrderedDict:
     # macd = bars[-1].cache[cache_key]['macd'] * 2
     dif = [x.cache[cache_key]["dif"] for x in bars]
 
-    dif_th = sum([abs(x - y) for x, y in zip(dif, dif[1:])]) / len(dif) * 0.2
+    dif_th = sum([abs(x - y) for x, y in zip(dif, dif[1:], strict=False)]) / len(dif) * 0.2
     if dif[-1] - dif[-2] > -dif_th:
         v1 = "看多"
         min_macd = min([x.cache[cache_key]["macd"] for x in bars])
@@ -852,7 +851,7 @@ def zdy_macd_dif_V230517(c: CZSC, **kwargs) -> OrderedDict:
     if dif[-1] > 0:
         v1 = "看多"
         v2 = None
-        if all([x < 0 for x in dif[:-1]]):
+        if all(x < 0 for x in dif[:-1]):
             v2 = "DIF破零轴"
 
         if macd[-1] > 0 and macd[-2] < 0:
@@ -867,7 +866,7 @@ def zdy_macd_dif_V230517(c: CZSC, **kwargs) -> OrderedDict:
     if dif[-1] < 0:
         v1 = "看空"
         v2 = None
-        if all([x > 0 for x in dif[:-1]]):
+        if all(x > 0 for x in dif[:-1]):
             v2 = "DIF破零轴"
 
         if macd[-1] < 0 and macd[-2] > 0:
@@ -973,10 +972,10 @@ def zdy_macd_V230519(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=n)
     macd = [x.cache[cache_key]["macd"] for x in bars]
 
-    if all([x > 0 for x in macd]) and all([macd[i] < macd[i - 1] for i in range(1, n)]):
+    if all(x > 0 for x in macd) and all(macd[i] < macd[i - 1] for i in range(1, n)):
         v1 = "多头连续缩柱"
 
-    if all([x < 0 for x in macd]) and all([macd[i] > macd[i - 1] for i in range(1, n)]):
+    if all(x < 0 for x in macd) and all(macd[i] > macd[i - 1] for i in range(1, n)):
         v1 = "空头连续缩柱"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
@@ -1401,7 +1400,7 @@ def pressure_support_V240530(c: CZSC, **kwargs) -> OrderedDict:
     key_bar = bars[max(bar_overlap_count, key=bar_overlap_count.get)]
     # 获取窗口内的 unique price 列表
     prices = [y for x in c.bars_raw for y in [x.open, x.close, x.high, x.low]]
-    prices = sorted(list(set(prices)))
+    prices = sorted(set(prices))
     high_idx = prices.index(key_bar.high)
     low_idx = prices.index(key_bar.low)
     # 处理边界情况

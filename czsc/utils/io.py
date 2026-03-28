@@ -1,19 +1,19 @@
-# coding: utf-8
-
+import json
 import os
 import pickle
-import json
 import zipfile
 
 
 def dill_dump(data, file):
     import dill
+
     with open(file, "wb") as f:
         dill.dump(data, f)
 
 
 def dill_load(file):
     import dill
+
     with open(file, "rb") as f:
         data = dill.load(f)
     return data
@@ -31,12 +31,12 @@ def read_pkl(file):
 
 
 def save_json(data, file):
-    with open(file, "w", encoding='utf-8') as f:
+    with open(file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def read_json(file):
-    with open(file, "r", encoding='utf-8') as f:
+    with open(file, encoding="utf-8") as f:
         data = json.load(f)
     return data
 
@@ -50,7 +50,7 @@ def make_zip(source_dir: str, file_zip: str) -> None:
     """
     assert os.path.isdir(source_dir)
 
-    f = zipfile.ZipFile(file_zip, 'w', compression=zipfile.ZIP_DEFLATED)
+    f = zipfile.ZipFile(file_zip, "w", compression=zipfile.ZIP_DEFLATED)
     for parent, _, filenames in os.walk(source_dir):
         for filename in filenames:
             file = os.path.join(parent, filename)

@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/10/13 15:01
 describe: 因子（特征）处理
 """
+
 import pandas as pd
 
 
@@ -64,7 +64,7 @@ def index_composition(klines, weights=None, base_point=1000, **kwagrs):
     """
     klines["dt"] = pd.to_datetime(klines["dt"])
 
-    if 'returns' not in klines.columns.tolist():
+    if "returns" not in klines.columns.tolist():
         data = []
         for _, kline in klines.groupby("symbol"):
             kline = kline.sort_values("dt", ascending=True).reset_index(drop=True)
@@ -79,14 +79,14 @@ def index_composition(klines, weights=None, base_point=1000, **kwagrs):
         weights = returns.copy()
         weights[:] = 1 / len(returns.columns.tolist())
     else:
-        weights['dt'] = pd.to_datetime(weights['dt'])
-        assert weights['dt'].min() <= klines['dt'].min(), "权重调整记录的首个时刻必须小于等于成分K线首个时刻"
+        weights["dt"] = pd.to_datetime(weights["dt"])
+        assert weights["dt"].min() <= klines["dt"].min(), "权重调整记录的首个时刻必须小于等于成分K线首个时刻"
         weights.set_index("dt", inplace=True)
         weights = weights.reindex(returns.index, method="ffill", copy=True)
 
     index_ = (returns * weights).sum(axis=1).to_frame("returns")
     index_["price"] = base_point * (1 + index_["returns"]).cumprod()
-    index_['vol'] = klines.groupby("dt")["vol"].sum()
-    index_['amount'] = klines.groupby("dt")["amount"].sum()
+    index_["vol"] = klines.groupby("dt")["vol"].sum()
+    index_["amount"] = klines.groupby("dt")["amount"].sum()
     index_ = index_.reset_index()
     return index_

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -9,9 +8,9 @@ References:
 1. https://zhuanlan.zhihu.com/p/362258222
 2. https://blog.csdn.net/qq_45538220/article/details/107429201
 """
+
 import numpy as np
 import pandas as pd
-from typing import Union
 
 
 def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
@@ -21,8 +20,8 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
     :param heatmap: 是否绘制热力图
     :return:
     """
-    import seaborn as sns
     import matplotlib.pyplot as plt
+    import seaborn as sns
     from sklearn import metrics
 
     plt.rcParams["font.sans-serif"] = ["SimHei"]  # 用来正常显示中文标签
@@ -57,7 +56,7 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
     return dfm
 
 
-def single_linear(y: Union[np.array, list], x: Union[np.array, list] = None) -> dict:
+def single_linear(y: np.ndarray | list, x: np.ndarray | list | None = None) -> dict:
     """单变量线性拟合
 
     :param y: 目标序列

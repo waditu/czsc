@@ -3,8 +3,8 @@
 
 包含代码编辑器等辅助功能
 """
+
 import sys
-import streamlit as st
 
 
 def streamlit_run(file, port=8501, host="localhost"):
@@ -19,13 +19,17 @@ def streamlit_run(file, port=8501, host="localhost"):
 
     # 使用 streamlit.web.cli.main
     sys.argv = [
-        "streamlit", 
-        "run", 
+        "streamlit",
+        "run",
         str(file),
-        "--server.port", str(port),
-        "--server.address", host,
-        "--server.headless", "true",
-        "--server.maxUploadSize", "2048"
+        "--server.port",
+        str(port),
+        "--server.address",
+        host,
+        "--server.headless",
+        "true",
+        "--server.maxUploadSize",
+        "2048",
     ]
 
     stcli.main()

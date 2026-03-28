@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/2/26 15:03
 describe: 使用 Plotly 构建绘图模块
 """
+
 import os
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pandas as pd
-from typing import TYPE_CHECKING
 from plotly import graph_objects as go
 
 if TYPE_CHECKING:
@@ -42,10 +43,10 @@ class KlineChart:
         from plotly.subplots import make_subplots
 
         self.n_rows = n_rows
-        row_heights = kwargs.get("row_heights", None)
+        row_heights = kwargs.get("row_heights")
         if not row_heights:
             heights_map = {3: [0.6, 0.2, 0.2], 4: [0.55, 0.15, 0.15, 0.15], 5: [0.4, 0.15, 0.15, 0.15, 0.15]}
-            assert self.n_rows in heights_map.keys(), "使用内置高度配置，n_rows 只能是 3, 4, 5"
+            assert self.n_rows in heights_map, "使用内置高度配置，n_rows 只能是 3, 4, 5"
             row_heights = heights_map[self.n_rows]
 
         self.color_red = "rgba(249,41,62,0.7)"
@@ -85,13 +86,20 @@ class KlineChart:
 
         # https://plotly.com/python/reference/layout/
         fig.update_layout(
-            title=dict(text=kwargs.get("title", ""), yanchor="top", y=0.95),
+            title={"text": kwargs.get("title", ""), "yanchor": "top", "y": 0.95},
             margin=go.layout.Margin(l=0, r=0, b=0, t=0),  # left margin  # right margin  # bottom margin  # top margin
             # https://plotly.com/python/reference/layout/#layout-legend
-            legend=dict(orientation="h", yanchor="top", y=1.05, xanchor="left", x=0, bgcolor="rgba(0,0,0,0)"),
+            legend={
+                "orientation": "h",
+                "yanchor": "top",
+                "y": 1.05,
+                "xanchor": "left",
+                "x": 0,
+                "bgcolor": "rgba(0,0,0,0)",
+            },
             template="plotly_dark",
             hovermode="x unified",
-            hoverlabel=dict(bgcolor="rgba(255,255,255,0.1)", font=dict(size=20)),  # 透明，更容易看清后面k线
+            hoverlabel={"bgcolor": "rgba(255,255,255,0.1)", "font": {"size": 20}},  # 透明，更容易看清后面k线
             dragmode="pan",
             legend_title_font_color="red",
             height=kwargs.get("height", 600),
@@ -300,13 +308,13 @@ class KlineChart:
         :param kwargs:
         :return:
         """
-        line_color = kwargs.get("line_color", None)
-        line_width = kwargs.get("line_width", None)
+        line_color = kwargs.get("line_color")
+        line_width = kwargs.get("line_width")
         hover_template = kwargs.get("hover_template", "%{y:.3f}-%{text}")
         show_legend = kwargs.get("show_legend", True)
         visible = True if kwargs.get("visible", True) else "legendonly"
-        color = kwargs.get("color", None)
-        tag = kwargs.get("tag", None)
+        color = kwargs.get("color")
+        tag = kwargs.get("tag")
         scatter = go.Scatter(
             x=x,
             y=y,
@@ -319,7 +327,7 @@ class KlineChart:
             visible=visible,
             opacity=1.0,
             mode="markers",
-            marker=dict(size=10, color=color, symbol=tag),
+            marker={"size": 10, "color": color, "symbol": tag},
         )
 
         self.fig.add_trace(scatter, row=row, col=1)
@@ -473,7 +481,7 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
         x1, y1 = pos[edge[1]]
         edge_x.extend([x0, x1, None])
         edge_y.extend([y0, y1, None])
-        edge_weights.append(f'{g[edge[0]][edge[1]]["weight"]:.2f}')
+        edge_weights.append(f"{g[edge[0]][edge[1]]['weight']:.2f}")
 
     node_x = []
     node_y = []
@@ -487,7 +495,7 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
     edge_trace = go.Scatter(
         x=edge_x,
         y=edge_y,
-        line=dict(width=edge_width, color="#888"),
+        line={"width": edge_width, "color": "#888"},
         hoverinfo="none",
         mode="lines",
     )
@@ -499,12 +507,12 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
         mode="markers",
         hoverinfo="text",
         text=node_labels,  # 添加节点标签
-        marker=dict(
-            showscale=False,
-            color="skyblue",
-            size=node_marker_size,
-            line_width=0,
-        ),
+        marker={
+            "showscale": False,
+            "color": "skyblue",
+            "size": node_marker_size,
+            "line_width": 0,
+        },
     )
 
     # 计算边的中点位置并添加注释
@@ -514,15 +522,15 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
         x1, y1 = pos[edge[1]]
         mid_x = (x0 + x1) / 2
         mid_y = (y0 + y1) / 2
-        weight = f'{g[edge[0]][edge[1]]["weight"]:.2f}'
+        weight = f"{g[edge[0]][edge[1]]['weight']:.2f}"
         edge_annotations.append(
-            dict(
-                x=mid_x,
-                y=mid_y,
-                text=weight,
-                showarrow=False,
-                font=dict(size=12, color="red" if float(weight) > 0 else "green"),
-            )
+            {
+                "x": mid_x,
+                "y": mid_y,
+                "text": weight,
+                "showarrow": False,
+                "font": {"size": 12, "color": "red" if float(weight) > 0 else "green"},
+            }
         )
 
     # 创建图表
@@ -533,9 +541,9 @@ def plot_nx_graph(g, **kwargs) -> go.Figure:
             titlefont_size=16,
             showlegend=False,
             hovermode="closest",
-            margin=dict(b=20, l=5, r=5, t=40),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            margin={"b": 20, "l": 5, "r": 5, "t": 40},
+            xaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
+            yaxis={"showgrid": False, "zeroline": False, "showticklabels": False},
             annotations=edge_annotations,  # 添加边的注释
         ),
     )
@@ -551,13 +559,13 @@ def plot_czsc_chart(czsc_obj: "CZSC", **kwargs) -> KlineChart:
         - height: 图表高度，默认 800
     :return: KlineChart 对象
     """
-    height = kwargs.get('height', 600)
-    ma_system = kwargs.get('ma_system', (5, 10, 21, 34, 55, 89, 144))
+    height = kwargs.get("height", 600)
+    ma_system = kwargs.get("ma_system", (5, 10, 21, 34, 55, 89, 144))
 
     bi_list = czsc_obj.bi_list
     df = pd.DataFrame([x.__dict__ for x in czsc_obj.bars_raw])
-    df = df[['dt', 'symbol', 'open', 'high', 'low', 'close', 'vol', 'amount']]
-    chart = KlineChart(n_rows=3, title="{}-{}".format(czsc_obj.symbol, czsc_obj.freq.value), height=height)
+    df = df[["dt", "symbol", "open", "high", "low", "close", "vol", "amount"]]
+    chart = KlineChart(n_rows=3, title=f"{czsc_obj.symbol}-{czsc_obj.freq.value}", height=height)
     chart.add_kline(df, name="")
     chart.add_sma(df, ma_seq=[ma_system[0]], row=1, visible=True, line_width=1.2)
     chart.add_sma(df, ma_seq=ma_system[1:], row=1, visible=False, line_width=1.2)
@@ -565,12 +573,12 @@ def plot_czsc_chart(czsc_obj: "CZSC", **kwargs) -> KlineChart:
     chart.add_macd(df, row=3)
 
     if len(bi_list) > 0:
-        bi1 = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value.replace("分型", "")} for x in bi_list]
-        bi2 = [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
+        bi1 = [{"dt": x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value.replace("分型", "")} for x in bi_list]
+        bi2 = [{"dt": bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
         bi = pd.DataFrame(bi1 + bi2)
-        fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in czsc_obj.fx_list])
+        fx = pd.DataFrame([{"dt": x.dt, "fx": x.fx} for x in czsc_obj.fx_list])
 
         # 分型用虚线表示
-        chart.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=1.8, line_dash='dash')
-        chart.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=1.8)
+        chart.add_scatter_indicator(fx["dt"], fx["fx"], name="分型", row=1, line_width=1.8, line_dash="dash")
+        chart.add_scatter_indicator(bi["dt"], bi["bi"], name="笔", text=bi["text"], row=1, line_width=1.8)
     return chart

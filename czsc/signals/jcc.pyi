@@ -1,6 +1,9 @@
 from collections import OrderedDict
+
 from czsc import CZSC as CZSC
-from czsc.core import Direction as Direction, RawBar as RawBar, Signal as Signal
+from czsc.core import Direction as Direction
+from czsc.core import RawBar as RawBar
+from czsc.core import Signal as Signal
 from czsc.utils.sig import get_sub_elements as get_sub_elements
 
 def jcc_san_xing_xian_V221023(c: CZSC, **kwargs) -> OrderedDict: ...

@@ -1,29 +1,31 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/9/24 13:33
 describe: 择时策略开平仓优化
 """
-import os
-import czsc
-import time
+
 import hashlib
-import pandas as pd
-from tqdm import tqdm
-from loguru import logger
+import os
+import time
+from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from copy import deepcopy
 from pathlib import Path
-from typing import Callable, Union, List, AnyStr
+from typing import AnyStr
+
+import pandas as pd
+from loguru import logger
+from tqdm import tqdm
+
+import czsc
+from czsc.core import Event, Position, Signal
 from czsc.strategies import CzscStrategyBase
-from czsc.core import Position, Event, Signal
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 class CzscOpenOptimStrategy(CzscStrategyBase):
-
     @staticmethod
-    def update_beta_opens(beta: Position, open_signals_all: Union[List[AnyStr], AnyStr]):
+    def update_beta_opens(beta: Position, open_signals_all: list[AnyStr] | AnyStr):
         """更新 beta 出场信号"""
         pos = deepcopy(beta)
         assert len(pos.opens) == 1, "基础策略入场信号必须为单个Event"
@@ -33,15 +35,15 @@ class CzscOpenOptimStrategy(CzscStrategyBase):
         open_signals_all = [Signal(s) for s in open_signals_all]
         open_signals_all = [{"key": s.key, "value": s.value} for s in open_signals_all]
         pos_dict = pos.dump()
-        sig_hash = hashlib.md5(f"{open_signals_all}".encode('utf-8')).hexdigest()[:8].upper()
-        pos_dict['name'] = f"{pos.name}#{sig_hash}"
-        pos_dict['opens'][0]['signals_all'].extend(open_signals_all)
+        sig_hash = hashlib.md5(f"{open_signals_all}".encode()).hexdigest()[:8].upper()
+        pos_dict["name"] = f"{pos.name}#{sig_hash}"
+        pos_dict["opens"][0]["signals_all"].extend(open_signals_all)
         return Position.load(pos_dict)
 
     @property
     def positions(self):
-        betas = self.load_positions(self.kwargs['files_position'])
-        candidate_signals = deepcopy(self.kwargs['candidate_signals'])
+        betas = self.load_positions(self.kwargs["files_position"])
+        candidate_signals = deepcopy(self.kwargs["candidate_signals"])
         pos_list = deepcopy(betas)
         for beta in betas:
             for sigs_ in candidate_signals:
@@ -51,9 +53,8 @@ class CzscOpenOptimStrategy(CzscStrategyBase):
 
 
 class CzscExitOptimStrategy(CzscStrategyBase):
-
     @staticmethod
-    def update_beta_exits(beta: Position, event_dict: dict, mode='replace'):
+    def update_beta_exits(beta: Position, event_dict: dict, mode="replace"):
         """更新 beta 出场信号
 
         出场优化，有三种路径：
@@ -65,17 +66,17 @@ class CzscExitOptimStrategy(CzscStrategyBase):
         """
         pos = deepcopy(beta)
         event: Event = Event.load(deepcopy(event_dict))
-        event_hash = hashlib.md5(f"{event.dump()}".encode('utf-8')).hexdigest()[:8].upper()
+        event_hash = hashlib.md5(f"{event.dump()}".encode()).hexdigest()[:8].upper()
         open_ops = [x.operate.value for x in pos.opens]
 
-        if all(x == '开多' for x in open_ops) and event.operate.value != '平多':
+        if all(x == "开多" for x in open_ops) and event.operate.value != "平多":
             return None
 
-        if all(x == '开空' for x in open_ops) and event.operate.value != '平空':
+        if all(x == "开空" for x in open_ops) and event.operate.value != "平空":
             return None
 
-        assert mode in ['replace', 'append'], "mode must be replace or append"
-        if mode == 'replace':
+        assert mode in ["replace", "append"], "mode must be replace or append"
+        if mode == "replace":
             pos.exits = [deepcopy(event)]
             pos.name = f"{beta.name}#替换{event_hash}"
         else:
@@ -87,15 +88,14 @@ class CzscExitOptimStrategy(CzscStrategyBase):
 
     @property
     def positions(self):
-        betas = self.load_positions(self.kwargs['files_position'])
-        candidate_events = deepcopy(self.kwargs['candidate_events'])  # 优化出场信号
+        betas = self.load_positions(self.kwargs["files_position"])
+        candidate_events = deepcopy(self.kwargs["candidate_events"])  # 优化出场信号
         pos_list = deepcopy(betas)
 
         for beta in betas:
             for event in candidate_events:
-
-                pos1 = self.update_beta_exits(beta, event, mode='append')
-                pos2 = self.update_beta_exits(beta, event, mode='replace')
+                pos1 = self.update_beta_exits(beta, event, mode="append")
+                pos2 = self.update_beta_exits(beta, event, mode="replace")
 
                 if pos1 is not None:
                     pos_list.append(pos1)
@@ -125,21 +125,21 @@ def one_symbol_optim(symbol, read_bars: Callable, path: str, **kwargs):
         return
     symbol_path.mkdir(parents=True, exist_ok=True)
 
-    bar_sdt = kwargs.get('bar_sdt', '20150101')
-    bar_edt = kwargs.get('bar_edt', '20220101')
-    sdt = kwargs.get('sdt', '20170101')
+    bar_sdt = kwargs.get("bar_sdt", "20150101")
+    bar_edt = kwargs.get("bar_edt", "20220101")
+    sdt = kwargs.get("sdt", "20170101")
     assert bar_sdt < sdt < bar_edt, "sdt 必须在 bar_sdt 和 bar_edt 之间"
 
     start_time = time.time()
-    optim_type = kwargs.get('optim_type', 'open')
-    if optim_type == 'open':
+    optim_type = kwargs.get("optim_type", "open")
+    if optim_type == "open":
         tactic = CzscOpenOptimStrategy(symbol=symbol, **kwargs)
     else:
-        assert optim_type == 'exit', "optim_type must be open or exit"
+        assert optim_type == "exit", "optim_type must be open or exit"
         tactic = CzscExitOptimStrategy(symbol=symbol, **kwargs)
 
     try:
-        bars = read_bars(symbol, tactic.base_freq, bar_sdt, bar_edt, fq='后复权', raw_bar=True)
+        bars = read_bars(symbol, tactic.base_freq, bar_sdt, bar_edt, fq="后复权", raw_bar=True)
         if len(bars) < 100:
             logger.warning(f"{symbol} K线数量不足，无法优化")
             return None
@@ -149,7 +149,7 @@ def one_symbol_optim(symbol, read_bars: Callable, path: str, **kwargs):
         logger.exception(f"{symbol} 优化失败，原因：{e}")
         return None
 
-    for pos in trader.positions:            # type: ignore
+    for pos in trader.positions:  # type: ignore
         try:
             file_pairs = os.path.join(symbol_path, f"{pos.name}.pairs.feather")
             file_holds = os.path.join(symbol_path, f"{pos.name}.holds.feather")
@@ -158,10 +158,10 @@ def one_symbol_optim(symbol, read_bars: Callable, path: str, **kwargs):
             pairs.to_feather(file_pairs)
 
             dfh = pd.DataFrame(pos.holds)
-            if not dfh.empty:   
-                dfh['n1b'] = (dfh['price'].shift(-1) / dfh['price'] - 1) * 10000
+            if not dfh.empty:
+                dfh["n1b"] = (dfh["price"].shift(-1) / dfh["price"] - 1) * 10000
                 dfh.fillna(0, inplace=True)
-                dfh['symbol'] = pos.symbol
+                dfh["symbol"] = pos.symbol
             dfh.to_feather(file_holds)
         except Exception as e:
             logger.debug(f"{symbol} {pos.name} 保存失败，原因：{e}")
@@ -201,11 +201,19 @@ def one_position_stats(path, pos_name):
         pp = czsc.PairsPerformance(pairs)
         stats = dict(pp.basic_info)
         # 加入截面等权评价
-        cross = holds.groupby('dt', group_keys=False).apply(lambda x: (x['n1b'] * x['pos']).sum() / (sum(x['pos'] != 0) + 1), include_groups=False).sum()
-        stats['截面等权收益'] = cross
-        cross1 = holds.groupby('dt', group_keys=False).apply(lambda x: (x['n1b'] * x['pos']).mean(), include_groups=False).sum()
-        stats['截面品种等权'] = cross1
-        stats['pos_name'] = pos_name
+        cross = (
+            holds.groupby("dt", group_keys=False)
+            .apply(lambda x: (x["n1b"] * x["pos"]).sum() / (sum(x["pos"] != 0) + 1), include_groups=False)
+            .sum()
+        )
+        stats["截面等权收益"] = cross
+        cross1 = (
+            holds.groupby("dt", group_keys=False)
+            .apply(lambda x: (x["n1b"] * x["pos"]).mean(), include_groups=False)
+            .sum()
+        )
+        stats["截面品种等权"] = cross1
+        stats["pos_name"] = pos_name
         return stats
     except Exception as e:
         logger.exception(f"{pos_name} 分析失败，原因：{e}")
@@ -230,26 +238,32 @@ class OpensOptimize:
             - bar_edt: K线数据结束日期
 
         """
-        self.version = 'OpensOptimizeV230924'
-        self.symbols = sorted(kwargs['symbols'])
+        self.version = "OpensOptimizeV230924"
+        self.symbols = sorted(kwargs["symbols"])
         self.read_bars = read_bars
         self.kwargs = kwargs
-        self.task_name = kwargs.get('task_name', '出场优化')
-        self.candidate_signals = sorted(kwargs.pop('candidate_signals'))
-        self.task_hash = hashlib.md5(f"{self.candidate_signals}_{self.symbols}".encode('utf-8')).hexdigest()[:8].upper()
+        self.task_name = kwargs.get("task_name", "出场优化")
+        self.candidate_signals = sorted(kwargs.pop("candidate_signals"))
+        self.task_hash = hashlib.md5(f"{self.candidate_signals}_{self.symbols}".encode()).hexdigest()[:8].upper()
 
-        results_path = os.path.join(kwargs['results_path'], f"{self.task_name}_{self.task_hash}")
+        results_path = os.path.join(kwargs["results_path"], f"{self.task_name}_{self.task_hash}")
         os.makedirs(results_path, exist_ok=True)
-        self.poss_path = os.path.join(results_path, 'poss')
+        self.poss_path = os.path.join(results_path, "poss")
         os.makedirs(self.poss_path, exist_ok=True)
 
         self.results_path = results_path
-        logger.add(f"{self.results_path}\\信号优化.log", encoding='utf-8', enqueue=True)
+        logger.add(f"{self.results_path}\\信号优化.log", encoding="utf-8", enqueue=True)
         logger.info(f"{self.task_name} | {self.candidate_signals} | 其他参数：{kwargs}")
 
     def _one_symbol_optim(self, symbol):
-        one_symbol_optim(symbol, self.read_bars, self.poss_path, optim_type='open',
-                         candidate_signals=self.candidate_signals, **self.kwargs)
+        one_symbol_optim(
+            symbol,
+            self.read_bars,
+            self.poss_path,
+            optim_type="open",
+            candidate_signals=self.candidate_signals,
+            **self.kwargs,
+        )
 
     def _one_pos_stats(self, pos_name):
         return one_position_stats(self.poss_path, pos_name)
@@ -267,20 +281,20 @@ class OpensOptimize:
     def _positions_stats(self, dumps_map, n_jobs=1):
         """统计所有 pos 的表现"""
         if n_jobs <= 1:
-            all_stats = [self._one_pos_stats(pos_name) for pos_name in dumps_map.keys()]
-            for s, pos_name in zip(all_stats, dumps_map.keys()):
+            all_stats = [self._one_pos_stats(pos_name) for pos_name in dumps_map]
+            for s, pos_name in zip(all_stats, dumps_map.keys(), strict=False):
                 if not s:
                     continue
-                s['pos_dump'] = dumps_map[pos_name]
+                s["pos_dump"] = dumps_map[pos_name]
             return all_stats
 
         all_stats = []
         with ProcessPoolExecutor(n_jobs) as pool:
-            futures = [pool.submit(self._one_pos_stats, pos_name) for pos_name in dumps_map.keys()]
+            futures = [pool.submit(self._one_pos_stats, pos_name) for pos_name in dumps_map]
             for future in as_completed(futures):
                 s = future.result()
                 if s:
-                    s['pos_dump'] = dumps_map[s['pos_name']]
+                    s["pos_dump"] = dumps_map[s["pos_name"]]
                     all_stats.append(s)
         return all_stats
 
@@ -291,12 +305,14 @@ class OpensOptimize:
         :return:
         """
         symbols, results_path = self.symbols, self.results_path
-        tactic = CzscOpenOptimStrategy(symbol='symbol', candidate_signals=self.candidate_signals, **self.kwargs)
-        tactic.save_positions(os.path.join(results_path, 'positions'))
+        tactic = CzscOpenOptimStrategy(symbol="symbol", candidate_signals=self.candidate_signals, **self.kwargs)
+        tactic.save_positions(os.path.join(results_path, "positions"))
 
         dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
-        logger.info(f"{self.version} 开始优化策略，策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，进程数量：{n_jobs}；"
-                    f"结果保存在 {results_path}，请耐心等待...")
+        logger.info(
+            f"{self.version} 开始优化策略，策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，进程数量：{n_jobs}；"
+            f"结果保存在 {results_path}，请耐心等待..."
+        )
 
         self.__symbols_optim(n_jobs=n_jobs)
         all_stats = self._positions_stats(dumps_map, n_jobs=n_jobs)
@@ -305,14 +321,14 @@ class OpensOptimize:
         all_stats = [s for s in all_stats if s is not None]
         if all_stats:
             logger.info(f"优化完成，共 {len(all_stats)} 个策略，结果保存在 {file_report}")
-            report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)
+            report_df = pd.DataFrame(all_stats).sort_values(["截面等权收益"], ascending=False, ignore_index=True)
             report_df.to_excel(file_report, index=False)
         else:
             logger.warning("优化结果为空！")
 
-        if self.kwargs.get('feishu_app_id') and self.kwargs.get('feishu_app_secret'):
+        if self.kwargs.get("feishu_app_id") and self.kwargs.get("feishu_app_secret"):
             if os.path.exists(file_report):
-                czsc.fsa.push_message(file_report, msg_type='file', **self.kwargs)
+                czsc.fsa.push_message(file_report, msg_type="file", **self.kwargs)
             else:
                 czsc.fsa.push_message(f"开仓策略优化任务【{self.task_name} 优化结果为空！", **self.kwargs)
 
@@ -333,26 +349,32 @@ class ExitsOptimize:
             - signals_module_name: 信号模块名
 
         """
-        self.version = 'ExitsOptimizeV230924'
-        self.symbols = kwargs['symbols']
+        self.version = "ExitsOptimizeV230924"
+        self.symbols = kwargs["symbols"]
         self.read_bars = read_bars
         self.kwargs = kwargs
-        self.task_name = kwargs.get('task_name', '出场优化')
-        self.candidate_events = kwargs.pop('candidate_events')
-        self.task_hash = hashlib.md5(f"{self.candidate_events}_{self.symbols}".encode('utf-8')).hexdigest()[:8].upper()
+        self.task_name = kwargs.get("task_name", "出场优化")
+        self.candidate_events = kwargs.pop("candidate_events")
+        self.task_hash = hashlib.md5(f"{self.candidate_events}_{self.symbols}".encode()).hexdigest()[:8].upper()
 
-        results_path = os.path.join(kwargs['results_path'], f"{self.task_name}_{self.task_hash}")
+        results_path = os.path.join(kwargs["results_path"], f"{self.task_name}_{self.task_hash}")
         os.makedirs(results_path, exist_ok=True)
-        self.poss_path = os.path.join(results_path, 'poss')
+        self.poss_path = os.path.join(results_path, "poss")
         os.makedirs(self.poss_path, exist_ok=True)
 
         self.results_path = results_path
-        logger.add(f"{self.results_path}\\信号优化.log", encoding='utf-8', enqueue=True)
+        logger.add(f"{self.results_path}\\信号优化.log", encoding="utf-8", enqueue=True)
         logger.info(f"{self.task_name} | {self.candidate_events} | 其他参数：{kwargs}")
 
     def _one_symbol_optim(self, symbol):
-        one_symbol_optim(symbol, self.read_bars, self.poss_path, optim_type='exit',
-                         candidate_events=self.candidate_events, **self.kwargs)
+        one_symbol_optim(
+            symbol,
+            self.read_bars,
+            self.poss_path,
+            optim_type="exit",
+            candidate_events=self.candidate_events,
+            **self.kwargs,
+        )
 
     def _one_pos_stats(self, pos_name):
         return one_position_stats(self.poss_path, pos_name)
@@ -370,20 +392,20 @@ class ExitsOptimize:
     def _positions_stats(self, dumps_map, n_jobs=1):
         """统计所有 pos 的表现"""
         if n_jobs <= 1:
-            all_stats = [self._one_pos_stats(pos_name) for pos_name in dumps_map.keys()]
-            for s, pos_name in zip(all_stats, dumps_map.keys()):
+            all_stats = [self._one_pos_stats(pos_name) for pos_name in dumps_map]
+            for s, pos_name in zip(all_stats, dumps_map.keys(), strict=False):
                 if not s:
                     continue
-                s['pos_dump'] = dumps_map[pos_name]
+                s["pos_dump"] = dumps_map[pos_name]
             return all_stats
 
         all_stats = []
         with ProcessPoolExecutor(n_jobs) as pool:
-            futures = [pool.submit(self._one_pos_stats, pos_name) for pos_name in dumps_map.keys()]
+            futures = [pool.submit(self._one_pos_stats, pos_name) for pos_name in dumps_map]
             for future in as_completed(futures):
                 s = future.result()
                 if s:
-                    s['pos_dump'] = dumps_map[s['pos_name']]
+                    s["pos_dump"] = dumps_map[s["pos_name"]]
                     all_stats.append(s)
         return all_stats
 
@@ -395,12 +417,14 @@ class ExitsOptimize:
         """
         symbols = self.symbols
         results_path = self.results_path
-        tactic = CzscExitOptimStrategy(symbol='symbol', candidate_events=self.candidate_events, **self.kwargs)
-        tactic.save_positions(os.path.join(results_path, 'positions'))
+        tactic = CzscExitOptimStrategy(symbol="symbol", candidate_events=self.candidate_events, **self.kwargs)
+        tactic.save_positions(os.path.join(results_path, "positions"))
 
         dumps_map = {pos.name: pos.dump() for pos in tactic.positions}
-        logger.info(f"{self.version} 开始优化策略，策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，进程数量：{n_jobs}；"
-                    f"结果保存在 {results_path}，请耐心等待...")
+        logger.info(
+            f"{self.version} 开始优化策略，策略数量：{len(tactic.positions)}，共 {len(symbols)} 只标的，进程数量：{n_jobs}；"
+            f"结果保存在 {results_path}，请耐心等待..."
+        )
 
         self.__symbols_optim(n_jobs=n_jobs)
         all_stats = self._positions_stats(dumps_map, n_jobs=n_jobs)
@@ -409,13 +433,13 @@ class ExitsOptimize:
         all_stats = [s for s in all_stats if s is not None]
         if all_stats:
             logger.info(f"策略出场优化完成，共 {len(all_stats)} 个策略，结果保存在 {file_report}")
-            report_df = pd.DataFrame(all_stats).sort_values(['截面等权收益'], ascending=False, ignore_index=True)
+            report_df = pd.DataFrame(all_stats).sort_values(["截面等权收益"], ascending=False, ignore_index=True)
             report_df.to_excel(file_report, index=False)
         else:
             logger.warning("策略出场优化结果为空！请检查执行日志！")
 
-        if self.kwargs.get('feishu_app_id') and self.kwargs.get('feishu_app_secret'):
+        if self.kwargs.get("feishu_app_id") and self.kwargs.get("feishu_app_secret"):
             if os.path.exists(file_report):
-                czsc.fsa.push_message(file_report, msg_type='file', **self.kwargs)
+                czsc.fsa.push_message(file_report, msg_type="file", **self.kwargs)
             else:
                 czsc.fsa.push_message("优化结果为空！", **self.kwargs)

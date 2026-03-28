@@ -1,6 +1,17 @@
-from .base import apply_stats_style as apply_stats_style, ensure_datetime_index as ensure_datetime_index, generate_component_key as generate_component_key, safe_import_daily_performance as safe_import_daily_performance
+from .base import (
+    apply_stats_style as apply_stats_style,
+)
+from .base import (
+    ensure_datetime_index as ensure_datetime_index,
+)
+from .base import (
+    generate_component_key as generate_component_key,
+)
+from .base import (
+    safe_import_daily_performance as safe_import_daily_performance,
+)
 
-def show_feature_returns(df, features, ret_col: str = 'returns', key=None, **kwargs) -> None: ...
+def show_feature_returns(df, features, ret_col: str = "returns", key=None, **kwargs) -> None: ...
 def show_factor_layering(df, factor_col, ret_col, n_layers: int = 5, key=None, **kwargs) -> None: ...
 def show_factor_value(df, factor_col, bins: int = 50, key=None, **kwargs) -> None: ...
 def show_event_return(df, event_col, ret_col, key=None, **kwargs) -> None: ...

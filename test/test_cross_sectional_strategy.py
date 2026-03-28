@@ -1,6 +1,7 @@
 # tests/test_cross_sectional_strategy.py
-import pytest
 import pandas as pd
+import pytest
+
 from czsc.eda import cross_sectional_strategy
 
 

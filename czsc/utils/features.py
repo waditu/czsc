@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/10/06 15:01
 describe: 因子（特征）处理
 """
+
 import pandas as pd
 
 
@@ -20,10 +20,10 @@ def normalize_feature(df, x_col, method="standard", **kwargs):
 
     :return: pd.DataFrame，处理后的数据
     """
-    from sklearn.preprocessing import scale, robust_scale, minmax_scale, normalize
+    from sklearn.preprocessing import minmax_scale, normalize, robust_scale, scale
 
     df = df.copy()
-    assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
+    assert df[x_col].isna().sum() == 0, f"因子有缺失值，缺失数量为：{df[x_col].isna().sum()}"
     q = kwargs.pop("q", 0.05)  # 缩尾比例
 
     def _norm(x):
@@ -38,7 +38,7 @@ def normalize_feature(df, x_col, method="standard", **kwargs):
         elif method == "standard":
             return scale(x, **kwargs)
         else:
-            raise ValueError("不支持的标准化方法: {}".format(method))
+            raise ValueError(f"不支持的标准化方法: {method}")
 
     df[x_col] = df.groupby("dt")[x_col].transform(_norm)
     return df
@@ -58,8 +58,8 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
     :return: df, 添加了 x_col_norm, x_col_qcut, x_col分层 列
     """
     assert df[x_col].nunique() > n * 2, "因子值的取值数量必须大于分层数量"
-    assert df[x_col].isna().sum() == 0, "因子有缺失值，缺失数量为：{}".format(df[x_col].isna().sum())
-    window = kwargs.get("window", 2000)
+    assert df[x_col].isna().sum() == 0, f"因子有缺失值，缺失数量为：{df[x_col].isna().sum()}"
+    kwargs.get("window", 2000)
     min_periods = kwargs.get("min_periods", 300)
 
     # 不能有 inf 和 -inf
@@ -74,7 +74,7 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
         )
         df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
         # 第00层表示缺失值
-        df[f"{x_col}分层"] = df[f"{x_col}_qcut"].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+        df[f"{x_col}分层"] = df[f"{x_col}_qcut"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
 
     return df
 
@@ -112,7 +112,7 @@ def feature_cross_layering(df, x_col, **kwargs):
     n = kwargs.get("n", 10)
     assert "dt" in df.columns, "因子数据必须包含 dt 列"
     assert "symbol" in df.columns, "因子数据必须包含 symbol 列"
-    assert x_col in df.columns, "因子数据必须包含 {} 列".format(x_col)
+    assert x_col in df.columns, f"因子数据必须包含 {x_col} 列"
     assert df["symbol"].nunique() > n, "标的数量必须大于分层数量"
 
     if df[x_col].nunique() > n:
@@ -127,7 +127,7 @@ def feature_cross_layering(df, x_col, **kwargs):
 
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
     # 第00层表示缺失值
-    df[f"{x_col}分层"] = df[f"{x_col}分层"].apply(lambda x: f"第{str(int(x+1)).zfill(2)}层")
+    df[f"{x_col}分层"] = df[f"{x_col}分层"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
     return df
 
 

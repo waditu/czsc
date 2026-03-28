@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -12,6 +11,7 @@ Mock数据格式说明:
 - 频率: 1分钟、5分钟、日线
 - Seed: 42（确保可重现）
 """
+
 from czsc import mock
 from czsc.core import CZSC, Direction, Freq, format_standard_kline
 
@@ -36,20 +36,20 @@ def get_mock_bars(freq=Freq.D, symbol="000001", n_days=100):
         df = mock.generate_symbol_kines(symbol, "日线", sdt="20220101", edt="20250101", seed=42)
     else:
         df = mock.generate_klines(seed=42)
-        df = df[df['symbol'] == symbol].head(n_days) if symbol in df['symbol'].values else df.head(n_days)
-    
+        df = df[df["symbol"] == symbol].head(n_days) if symbol in df["symbol"].values else df.head(n_days)
+
     # bars = []
     # for i, row in df.iterrows():
     #     bar = RawBar(
-    #         symbol=row['symbol'], 
-    #         id=i, 
-    #         freq=freq, 
-    #         open=row['open'], 
+    #         symbol=row['symbol'],
+    #         id=i,
+    #         freq=freq,
+    #         open=row['open'],
     #         dt=row['dt'],
-    #         close=row['close'], 
-    #         high=row['high'], 
-    #         low=row['low'], 
-    #         vol=row['vol'], 
+    #         close=row['close'],
+    #         high=row['high'],
+    #         low=row['low'],
+    #         vol=row['vol'],
     #         amount=row['amount']
     #     )
     #     bars.append(bar)
@@ -61,7 +61,7 @@ def test_czsc_basic():
     """测试CZSC基础功能"""
     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
     c = CZSC(bars)
-    
+
     assert c.symbol == "000001", "symbol应该正确设置"
     assert c.freq == Freq.D, "频率应该正确设置"
     assert len(c.bars_raw) > 0, "原始K线数据不应为空"
@@ -73,7 +73,7 @@ def test_czsc_signals():
     """测试CZSC信号计算 - 无信号函数时signals为None或空字典"""
     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
     c = CZSC(bars)
-    
+
     # 没有提供 get_signals 函数时，signals 为 None（Rust）或空字典（Python）
     assert c.signals is None or isinstance(c.signals, dict), "signals应该是None或字典类型"
 
@@ -82,9 +82,9 @@ def test_czsc_ubi_properties():
     """测试CZSC的ubi属性"""
     bars = get_mock_bars(freq=Freq.D, symbol="000001", n_days=200)
     c = CZSC(bars)
-    
+
     ubi = c.ubi
-    assert 'direction' in ubi, "ubi应该包含direction字段"
-    assert 'high_bar' in ubi, "ubi应该包含high_bar字段"
-    assert 'low_bar' in ubi, "ubi应该包含low_bar字段"
-    assert isinstance(ubi['direction'], Direction), "direction应该是Direction类型"
+    assert "direction" in ubi, "ubi应该包含direction字段"
+    assert "high_bar" in ubi, "ubi应该包含high_bar字段"
+    assert "low_bar" in ubi, "ubi应该包含low_bar字段"
+    assert isinstance(ubi["direction"], Direction), "direction应该是Direction类型"

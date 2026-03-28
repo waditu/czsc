@@ -5,13 +5,13 @@
 """
 
 from .fernet import (
-    generate_fernet_key,
-    fernet_encrypt,
     fernet_decrypt,
+    fernet_encrypt,
+    generate_fernet_key,
 )
 
 __all__ = [
-    'generate_fernet_key',
-    'fernet_encrypt',
-    'fernet_decrypt',
+    "generate_fernet_key",
+    "fernet_encrypt",
+    "fernet_decrypt",
 ]

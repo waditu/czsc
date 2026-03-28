@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2024/4/27 15:01
 describe: 事件分析工具函数
 """
+
 import numpy as np
 import pandas as pd
 
@@ -51,7 +51,7 @@ def overlap(df: pd.DataFrame, col: str, **kwargs):
 
     new_col = kwargs.get("new_col", f"{col}_overlap")
 
-    for symbol, dfg in df.groupby("symbol"):
+    for _symbol, dfg in df.groupby("symbol"):
         # 计算 col 相同值的连续个数，从 1 开始计数
         dfg[new_col] = dfg.groupby(df[col].ne(df[col].shift()).cumsum()).cumcount() + 1
         df.loc[dfg.index, new_col] = dfg[new_col]

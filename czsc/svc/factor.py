@@ -6,10 +6,11 @@
 
 import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index, generate_component_key
+import streamlit as st
+
+from .base import apply_stats_style, generate_component_key, safe_import_daily_performance
 
 
 def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):
@@ -43,12 +44,7 @@ def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):
         data = df[[feature, ret_col]].dropna()
         if len(data) >= min_periods:
             corr = data[feature].corr(data[ret_col], method=method)
-            correlations.append({
-                "特征": feature,
-                "相关系数": corr,
-                "样本数": len(data),
-                "绝对相关系数": abs(corr)
-            })
+            correlations.append({"特征": feature, "相关系数": corr, "样本数": len(data), "绝对相关系数": abs(corr)})
 
     if not correlations:
         st.warning("没有足够的数据计算相关性")
@@ -62,38 +58,45 @@ def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):
     corr_styled = corr_df.style.background_gradient(cmap="RdYlGn_r", subset=["相关系数"])
     corr_styled = corr_styled.background_gradient(cmap="RdYlGn_r", subset=["绝对相关系数"])
     corr_styled = corr_styled.format({"相关系数": "{:.4f}", "绝对相关系数": "{:.4f}", "样本数": "{:.0f}"})
-    st.dataframe(corr_styled, width='stretch', hide_index=True)
+    st.dataframe(corr_styled, width="stretch", hide_index=True)
 
     # 生成基础 key
     if key is None:
         key = generate_component_key(df, prefix="feat_ret", features=features, ret_col=ret_col, method=method)
 
     # 绘制相关性条形图
-    fig = px.bar(corr_df, x="特征", y="相关系数", 
-                 title=f"特征与{ret_col}的相关性",
-                 color="相关系数", color_continuous_scale="RdYlGn_r")
+    fig = px.bar(
+        corr_df,
+        x="特征",
+        y="相关系数",
+        title=f"特征与{ret_col}的相关性",
+        color="相关系数",
+        color_continuous_scale="RdYlGn_r",
+    )
     fig.update_xaxes(tickangle=45)
-    st.plotly_chart(fig, key=f"{key}_bar", width='stretch')
+    st.plotly_chart(fig, key=f"{key}_bar", width="stretch")
 
     # 显示特征间相关性热力图
     if show_correlation and len(features) > 1:
         st.subheader("特征间相关性矩阵")
         feature_corr = df[features].corr(method=method)
-        
-        fig_heatmap = go.Figure(data=go.Heatmap(
-            z=feature_corr.values,
-            x=feature_corr.columns,
-            y=feature_corr.index,
-            colorscale="RdBu_r",
-            text=feature_corr.round(3).astype(str),
-            texttemplate="%{text}",
-            showscale=True,
-            zmin=-1,
-            zmax=1
-        ))
-        
+
+        fig_heatmap = go.Figure(
+            data=go.Heatmap(
+                z=feature_corr.values,
+                x=feature_corr.columns,
+                y=feature_corr.index,
+                colorscale="RdBu_r",
+                text=feature_corr.round(3).astype(str),
+                texttemplate="%{text}",
+                showscale=True,
+                zmin=-1,
+                zmax=1,
+            )
+        )
+
         fig_heatmap.update_layout(title="特征间相关性热力图", width=600, height=500)
-        st.plotly_chart(fig_heatmap, key=f"{key}_heatmap", width='stretch')
+        st.plotly_chart(fig_heatmap, key=f"{key}_heatmap", width="stretch")
 
 
 def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs):
@@ -128,9 +131,13 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs
 
     # 因子分层
     if method == "qcut":
-        data["layer"] = pd.qcut(data[factor_col], q=n_layers, labels=[f"第{i+1}层" for i in range(n_layers)], duplicates="drop")
+        data["layer"] = pd.qcut(
+            data[factor_col], q=n_layers, labels=[f"第{i + 1}层" for i in range(n_layers)], duplicates="drop"
+        )
     else:
-        data["layer"] = pd.cut(data[factor_col], bins=n_layers, labels=[f"第{i+1}层" for i in range(n_layers)], duplicates="drop")
+        data["layer"] = pd.cut(
+            data[factor_col], bins=n_layers, labels=[f"第{i + 1}层" for i in range(n_layers)], duplicates="drop"
+        )
 
     # 计算各层收益统计
     layer_stats = []
@@ -147,38 +154,47 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs
         return
 
     stats_df = pd.DataFrame(layer_stats).set_index("分层")
-    
+
     # 显示分层统计
     st.subheader(f"{factor_col} 分层收益分析")
     stats_styled = apply_stats_style(stats_df)
-    st.dataframe(stats_styled, width='stretch')
+    st.dataframe(stats_styled, width="stretch")
 
     # 生成基础 key
     if key is None:
-        key = generate_component_key(df, prefix="layer", factor_col=factor_col, ret_col=ret_col, n_layers=n_layers, method=method)
+        key = generate_component_key(
+            df, prefix="layer", factor_col=factor_col, ret_col=ret_col, n_layers=n_layers, method=method
+        )
 
     # 显示分层收益对比
     layer_returns = data.groupby("layer")[ret_col].mean()
-    fig_bar = px.bar(x=layer_returns.index.astype(str), y=layer_returns.values,
-                     title="各层平均收益对比",
-                     labels={"x": "分层", "y": "平均收益"})
-    st.plotly_chart(fig_bar, key=f"{key}_bar", width='stretch')
+    fig_bar = px.bar(
+        x=layer_returns.index.astype(str),
+        y=layer_returns.values,
+        title="各层平均收益对比",
+        labels={"x": "分层", "y": "平均收益"},
+    )
+    st.plotly_chart(fig_bar, key=f"{key}_bar", width="stretch")
 
     # 显示累计收益曲线（如果有时间信息）
     if show_cumulative and "dt" in df.columns:
         st.subheader("分层累计收益曲线")
         df_temp = df.copy()
         df_temp = df_temp.dropna(subset=[factor_col, ret_col])
-        
+
         # 重新分层
         if method == "qcut":
-            df_temp["layer"] = pd.qcut(df_temp[factor_col], q=n_layers, labels=[f"第{i+1}层" for i in range(n_layers)], duplicates="drop")
+            df_temp["layer"] = pd.qcut(
+                df_temp[factor_col], q=n_layers, labels=[f"第{i + 1}层" for i in range(n_layers)], duplicates="drop"
+            )
         else:
-            df_temp["layer"] = pd.cut(df_temp[factor_col], bins=n_layers, labels=[f"第{i+1}层" for i in range(n_layers)], duplicates="drop")
-        
+            df_temp["layer"] = pd.cut(
+                df_temp[factor_col], bins=n_layers, labels=[f"第{i + 1}层" for i in range(n_layers)], duplicates="drop"
+            )
+
         df_temp["dt"] = pd.to_datetime(df_temp["dt"])
         df_temp = df_temp.sort_values("dt")
-        
+
         # 计算各层累计收益
         cumulative_returns = []
         for layer in df_temp["layer"].cat.categories:
@@ -186,18 +202,17 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs
             layer_cumret = layer_data.groupby("dt")[ret_col].mean().cumsum()
             layer_cumret.name = layer
             cumulative_returns.append(layer_cumret)
-        
+
         if cumulative_returns:
             cumret_df = pd.concat(cumulative_returns, axis=1).fillna(method="ffill")
             fig_cumret = px.line(cumret_df, title="分层累计收益曲线")
-            st.plotly_chart(fig_cumret, key=f"{key}_cumret", width='stretch')
+            st.plotly_chart(fig_cumret, key=f"{key}_cumret", width="stretch")
 
     # 显示因子分布
     if show_distribution:
         st.subheader(f"{factor_col} 分布分析")
-        fig_hist = px.histogram(data, x=factor_col, color="layer", 
-                               title=f"{factor_col} 在各层的分布")
-        st.plotly_chart(fig_hist, key=f"{key}_hist", width='stretch')
+        fig_hist = px.histogram(data, x=factor_col, color="layer", title=f"{factor_col} 在各层的分布")
+        st.plotly_chart(fig_hist, key=f"{key}_hist", width="stretch")
 
 
 def show_factor_value(df, factor_col, bins=50, key=None, **kwargs):
@@ -234,32 +249,30 @@ def show_factor_value(df, factor_col, bins=50, key=None, **kwargs):
 
     # 分位数信息
     quantiles = data.quantile(percentiles)
-    quantile_df = pd.DataFrame({
-        "分位数": [f"{p:.1%}" for p in percentiles],
-        "数值": quantiles.values
-    })
-    
+    quantile_df = pd.DataFrame({"分位数": [f"{p:.1%}" for p in percentiles], "数值": quantiles.values})
+
     with st.expander("分位数分布", expanded=False):
-        st.dataframe(quantile_df.style.format({"数值": "{:.4f}"}), width='stretch', hide_index=True)
+        st.dataframe(quantile_df.style.format({"数值": "{:.4f}"}), width="stretch", hide_index=True)
 
     # 生成基础 key
     if key is None:
-        key = generate_component_key(df, prefix="fact_val", factor_col=factor_col, bins=bins, show_outliers=show_outliers)
+        key = generate_component_key(
+            df, prefix="fact_val", factor_col=factor_col, bins=bins, show_outliers=show_outliers
+        )
 
     # 绘制直方图和箱线图
     col1, col2 = st.columns(2)
-    
+
     with col1:
-        fig_hist = px.histogram(df, x=factor_col, nbins=bins, 
-                               title=f"{factor_col} 直方图")
+        fig_hist = px.histogram(df, x=factor_col, nbins=bins, title=f"{factor_col} 直方图")
         fig_hist.update_layout(showlegend=False)
-        st.plotly_chart(fig_hist, key=f"{key}_hist", width='stretch')
-    
+        st.plotly_chart(fig_hist, key=f"{key}_hist", width="stretch")
+
     with col2:
         fig_box = px.box(df, y=factor_col, title=f"{factor_col} 箱线图")
         if not show_outliers:
             fig_box.update_traces(boxpoints=False)
-        st.plotly_chart(fig_box, key=f"{key}_box", width='stretch')
+        st.plotly_chart(fig_box, key=f"{key}_box", width="stretch")
 
     # 异常值分析
     if show_outliers:
@@ -268,19 +281,16 @@ def show_factor_value(df, factor_col, bins=50, key=None, **kwargs):
         IQR = Q3 - Q1
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
-        
+
         outliers = data[(data < lower_bound) | (data > upper_bound)]
         if len(outliers) > 0:
             with st.expander(f"异常值分析 (共{len(outliers)}个)", expanded=False):
                 st.write(f"**异常值边界**: [{lower_bound:.4f}, {upper_bound:.4f}]")
-                st.write(f"**异常值占比**: {len(outliers)/len(data):.2%}")
-                
+                st.write(f"**异常值占比**: {len(outliers) / len(data):.2%}")
+
                 if len(outliers) <= 100:  # 只显示前100个异常值
-                    outlier_df = pd.DataFrame({
-                        "序号": range(1, len(outliers)+1),
-                        "异常值": outliers.values
-                    })
-                    st.dataframe(outlier_df.style.format({"异常值": "{:.4f}"}), width='stretch', hide_index=True)
+                    outlier_df = pd.DataFrame({"序号": range(1, len(outliers) + 1), "异常值": outliers.values})
+                    st.dataframe(outlier_df.style.format({"异常值": "{:.4f}"}), width="stretch", hide_index=True)
 
 
 def show_event_return(df, event_col, ret_col, key=None, **kwargs):
@@ -317,7 +327,7 @@ def show_event_return(df, event_col, ret_col, key=None, **kwargs):
     df = df.sort_values("dt").reset_index(drop=True)
 
     # 找出事件发生的时点
-    event_mask = (df[event_col] == True) | (df[event_col] == 1)
+    event_mask = (df[event_col]) | (df[event_col] == 1)
     event_indices = df[event_mask].index.tolist()
 
     if len(event_indices) < min_observations:
@@ -331,20 +341,20 @@ def show_event_return(df, event_col, ret_col, key=None, **kwargs):
     for event_idx in event_indices:
         start_idx = max(0, event_idx - pre_periods)
         end_idx = min(len(df), event_idx + post_periods + 1)
-        
+
         if end_idx - start_idx >= pre_periods + post_periods:
             window_data = df.iloc[start_idx:end_idx]
             window_returns = window_data[ret_col].values
-            
+
             # 计算相对于事件时点的累计收益
             event_point = pre_periods
             relative_returns = np.zeros(len(window_returns))
             for i in range(len(window_returns)):
                 if i <= event_point:
-                    relative_returns[i] = np.sum(window_returns[:i+1])
+                    relative_returns[i] = np.sum(window_returns[: i + 1])
                 else:
-                    relative_returns[i] = np.sum(window_returns[event_point:i+1])
-            
+                    relative_returns[i] = np.sum(window_returns[event_point : i + 1])
+
             event_returns.append(relative_returns)
 
     if len(event_returns) == 0:
@@ -355,59 +365,68 @@ def show_event_return(df, event_col, ret_col, key=None, **kwargs):
     event_returns_array = np.array(event_returns)
     mean_returns = np.mean(event_returns_array, axis=0)
     std_returns = np.std(event_returns_array, axis=0)
-    
+
     # 时间轴（相对于事件时点）
     time_axis = list(range(-pre_periods, post_periods + 1))
-    
+
     # 绘制事件研究图
     fig = go.Figure()
-    
+
     # 添加平均累计收益
-    fig.add_trace(go.Scatter(
-        x=time_axis, y=mean_returns,
-        mode='lines+markers', name='平均累计收益',
-        line=dict(color='blue', width=2)
-    ))
-    
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis, y=mean_returns, mode="lines+markers", name="平均累计收益", line={"color": "blue", "width": 2}
+        )
+    )
+
     # 添加置信区间
     upper_bound = mean_returns + 1.96 * std_returns / np.sqrt(len(event_returns))
     lower_bound = mean_returns - 1.96 * std_returns / np.sqrt(len(event_returns))
-    
-    fig.add_trace(go.Scatter(
-        x=time_axis, y=upper_bound,
-        fill=None, mode='lines', line_color='rgba(0,100,80,0)',
-        showlegend=False
-    ))
-    
-    fig.add_trace(go.Scatter(
-        x=time_axis, y=lower_bound,
-        fill='tonexty', mode='lines', line_color='rgba(0,100,80,0)',
-        name='95%置信区间', fillcolor='rgba(0,100,80,0.2)'
-    ))
-    
+
+    fig.add_trace(
+        go.Scatter(x=time_axis, y=upper_bound, fill=None, mode="lines", line_color="rgba(0,100,80,0)", showlegend=False)
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=time_axis,
+            y=lower_bound,
+            fill="tonexty",
+            mode="lines",
+            line_color="rgba(0,100,80,0)",
+            name="95%置信区间",
+            fillcolor="rgba(0,100,80,0.2)",
+        )
+    )
+
     # 添加事件发生时点的垂直线
-    fig.add_vline(x=0, line_dash="dash", line_color="red", 
-                  annotation_text="事件发生")
-    
+    fig.add_vline(x=0, line_dash="dash", line_color="red", annotation_text="事件发生")
+
     fig.update_layout(
         title=f"事件收益分析 (前{pre_periods}期，后{post_periods}期)",
         xaxis_title="相对事件时点的期数",
         yaxis_title="累计收益",
-        hovermode='x unified'
+        hovermode="x unified",
     )
-    
+
     # 生成 key
     if key is None:
-        key = generate_component_key(df, prefix="event_ret", event_col=event_col, ret_col=ret_col, 
-                                     pre_periods=pre_periods, post_periods=post_periods)
-    
-    st.plotly_chart(fig, key=key, width='stretch')
+        key = generate_component_key(
+            df,
+            prefix="event_ret",
+            event_col=event_col,
+            ret_col=ret_col,
+            pre_periods=pre_periods,
+            post_periods=post_periods,
+        )
+
+    st.plotly_chart(fig, key=key, width="stretch")
 
     # 显示统计信息
-    pre_event_return = mean_returns[pre_periods-1] if pre_periods > 0 else 0
+    pre_event_return = mean_returns[pre_periods - 1] if pre_periods > 0 else 0
     post_event_return = mean_returns[-1]
     event_effect = post_event_return - pre_event_return
-    
+
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("事件次数", f"{len(event_indices)}")
     c2.metric("事件前累计收益", f"{pre_event_return:.4f}")
@@ -427,7 +446,7 @@ def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
         - alpha: float, 显著性水平，默认为0.05
     """
     from scipy import stats
-    
+
     test_method = kwargs.get("test_method", "ttest")
     alpha = kwargs.get("alpha", 0.05)
 
@@ -441,7 +460,7 @@ def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
         return
 
     # 分组数据
-    event_mask = (df[event_col] == True) | (df[event_col] == 1)
+    event_mask = (df[event_col]) | (df[event_col] == 1)
     event_data = df[event_mask]
     non_event_data = df[~event_mask]
 
@@ -456,18 +475,18 @@ def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
     for feature in feature_cols:
         event_values = event_data[feature].dropna()
         non_event_values = non_event_data[feature].dropna()
-        
+
         if len(event_values) == 0 or len(non_event_values) == 0:
             continue
-        
+
         # 统计检验
         if test_method == "ttest":
             statistic, p_value = stats.ttest_ind(event_values, non_event_values)
             test_name = "T检验"
         else:
-            statistic, p_value = stats.mannwhitneyu(event_values, non_event_values, alternative='two-sided')
+            statistic, p_value = stats.mannwhitneyu(event_values, non_event_values, alternative="two-sided")
             test_name = "Mann-Whitney U检验"
-        
+
         result = {
             "特征": feature,
             "事件组均值": event_values.mean(),
@@ -475,7 +494,7 @@ def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
             "差异": event_values.mean() - non_event_values.mean(),
             "检验统计量": statistic,
             "P值": p_value,
-            "显著性": "是" if p_value < alpha else "否"
+            "显著性": "是" if p_value < alpha else "否",
         }
         test_results.append(result)
 
@@ -487,57 +506,47 @@ def show_event_features(df, event_col, feature_cols, key=None, **kwargs):
     results_df = pd.DataFrame(test_results)
     results_styled = results_df.style.background_gradient(cmap="RdYlGn_r", subset=["差异"])
     results_styled = results_styled.background_gradient(cmap="RdYlGn", subset=["P值"])
-    results_styled = results_styled.format({
-        "事件组均值": "{:.4f}",
-        "非事件组均值": "{:.4f}",
-        "差异": "{:.4f}",
-        "检验统计量": "{:.4f}",
-        "P值": "{:.4f}"
-    })
-    
-    st.dataframe(results_styled, width='stretch', hide_index=True)
+    results_styled = results_styled.format(
+        {"事件组均值": "{:.4f}", "非事件组均值": "{:.4f}", "差异": "{:.4f}", "检验统计量": "{:.4f}", "P值": "{:.4f}"}
+    )
+
+    st.dataframe(results_styled, width="stretch", hide_index=True)
     st.caption(f"检验方法: {test_name}, 显著性水平: {alpha}")
 
     # 生成基础 key
     if key is None:
-        key = generate_component_key(df, prefix="event_feat", event_col=event_col, feature_cols=feature_cols, test_method=test_method)
+        key = generate_component_key(
+            df, prefix="event_feat", event_col=event_col, feature_cols=feature_cols, test_method=test_method
+        )
 
     # 绘制特征分布对比
-    for i, feature in enumerate(feature_cols[:4]):  # 最多显示4个特征
+    for _i, feature in enumerate(feature_cols[:4]):  # 最多显示4个特征
         if feature in results_df["特征"].values:
             col1, col2 = st.columns(2)
-            
+
             with col1:
                 # 直方图对比
                 fig_hist = go.Figure()
-                
+
                 event_values = event_data[feature].dropna()
                 non_event_values = non_event_data[feature].dropna()
-                
-                fig_hist.add_trace(go.Histogram(
-                    x=event_values, name="事件组", opacity=0.7,
-                    nbinsx=30
-                ))
-                fig_hist.add_trace(go.Histogram(
-                    x=non_event_values, name="非事件组", opacity=0.7,
-                    nbinsx=30
-                ))
-                
+
+                fig_hist.add_trace(go.Histogram(x=event_values, name="事件组", opacity=0.7, nbinsx=30))
+                fig_hist.add_trace(go.Histogram(x=non_event_values, name="非事件组", opacity=0.7, nbinsx=30))
+
                 fig_hist.update_layout(
-                    title=f"{feature} 分布对比",
-                    barmode='overlay',
-                    xaxis_title=feature,
-                    yaxis_title="频数"
+                    title=f"{feature} 分布对比", barmode="overlay", xaxis_title=feature, yaxis_title="频数"
                 )
-                st.plotly_chart(fig_hist, key=f"{key}_{feature}_hist", width='stretch')
-            
+                st.plotly_chart(fig_hist, key=f"{key}_{feature}_hist", width="stretch")
+
             with col2:
                 # 箱线图对比
                 comparison_data = []
                 comparison_data.extend([{"group": "事件组", "value": v, "feature": feature} for v in event_values])
-                comparison_data.extend([{"group": "非事件组", "value": v, "feature": feature} for v in non_event_values])
+                comparison_data.extend(
+                    [{"group": "非事件组", "value": v, "feature": feature} for v in non_event_values]
+                )
                 comparison_df = pd.DataFrame(comparison_data)
-                
-                fig_box = px.box(comparison_df, x="group", y="value", 
-                                title=f"{feature} 箱线图对比")
-                st.plotly_chart(fig_box, key=f"{key}_{feature}_box", width='stretch') 
+
+                fig_box = px.box(comparison_df, x="group", y="value", title=f"{feature} 箱线图对比")
+                st.plotly_chart(fig_box, key=f"{key}_{feature}_box", width="stretch")

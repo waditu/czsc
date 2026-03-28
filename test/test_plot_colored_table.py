@@ -1,17 +1,20 @@
 import pandas as pd
-from czsc.utils.plotting.backtest import plot_colored_table, TABLE_DARK_TEXT, TABLE_LIGHT_TEXT
+
+from czsc.utils.plotting.backtest import TABLE_DARK_TEXT, TABLE_LIGHT_TEXT, plot_colored_table
 
 
 def test_plot_colored_table():
     # 构造测试数据
-    df = pd.DataFrame({
-        "策略名称": ["策略A", "策略B", "策略C", "策略D", "策略E"],
-        "年化收益率": [0.15, 0.25, -0.05, 0.10, 0.30],
-        "最大回撤": [0.10, 0.15, 0.20, 0.05, 0.12],
-        "夏普比率": [1.5, 2.0, -0.5, 1.2, 2.5],
-        "胜率": [0.55, 0.60, 0.45, 0.52, 0.65],
-        "交易次数": [100, 120, 80, 90, 150]
-    })
+    df = pd.DataFrame(
+        {
+            "策略名称": ["策略A", "策略B", "策略C", "策略D", "策略E"],
+            "年化收益率": [0.15, 0.25, -0.05, 0.10, 0.30],
+            "最大回撤": [0.10, 0.15, 0.20, 0.05, 0.12],
+            "夏普比率": [1.5, 2.0, -0.5, 1.2, 2.5],
+            "胜率": [0.55, 0.60, 0.45, 0.52, 0.65],
+            "交易次数": [100, 120, 80, 90, 150],
+        }
+    )
     df.set_index("策略名称", inplace=True)
 
     # 生成 HTML
@@ -22,9 +25,9 @@ def test_plot_colored_table():
         is_good_high_columns=["年化收益率", "夏普比率", "胜率"],
         row_height=40,
         border_color="white",
-        header_bgcolor="darkblue"
+        header_bgcolor="darkblue",
     )
-    
+
     # 包装成完整的 HTML 文件
     full_html = f"""
     <!DOCTYPE html>
@@ -49,15 +52,18 @@ def test_plot_colored_table():
 
     with open("test_plot_colored_table_result.html", "w", encoding="utf-8") as f:
         f.write(full_html)
-    
+
     print("测试完成，结果已保存至 test_plot_colored_table_result.html")
 
 
 def test_plot_colored_table_auto_adjusts_font_color():
-    df = pd.DataFrame({
-        "收益率": [-0.10, 0.00, 0.12],
-        "交易次数": [10, 20, 30],
-    }, index=["策略A", "策略B", "策略C"])
+    df = pd.DataFrame(
+        {
+            "收益率": [-0.10, 0.00, 0.12],
+            "交易次数": [10, 20, 30],
+        },
+        index=["策略A", "策略B", "策略C"],
+    )
 
     fig = plot_colored_table(df, to_html=False, template="plotly")
     table = fig.data[0]

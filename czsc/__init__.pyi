@@ -8,6 +8,7 @@ from . import traders as traders
 from . import utils as utils
 from .core import (
     CZSC,
+    ZS,
     Direction,
     Event,
     Freq,
@@ -16,71 +17,7 @@ from .core import (
     Position,
     RawBar,
     Signal,
-    ZS,
     format_standard_kline,
-)
-from .traders import (
-    CzscSignals,
-    CzscTrader,
-    DummyBacktest,
-    ExitsOptimize,
-    OpensOptimize,
-    PairsPerformance,
-    SignalsParser,
-    check_signals_acc,
-    combine_dates_and_pairs,
-    combine_holds_and_pairs,
-    generate_czsc_signals,
-    get_ensemble_weight,
-    get_signals_config,
-    get_signals_freqs,
-    get_unique_signals,
-    stoploss_by_direction,
-)
-from .utils import (
-    AliyunOSS,
-    DataClient,
-    DiskCache,
-    clear_cache,
-    clear_expired_cache,
-    code_namespace,
-    create_grid_params,
-    cross_sectional_ic,
-    dill_dump,
-    dill_load,
-    disk_cache,
-    empty_cache_path,
-    fernet_decrypt,
-    fernet_encrypt,
-    freqs_sorted,
-    generate_fernet_key,
-    get_dir_size,
-    get_py_namespace,
-    get_sub_elements,
-    get_url_token,
-    holds_performance,
-    home_path,
-    import_by_name,
-    index_composition,
-    mac_address,
-    overlap,
-    print_df_sample,
-    psi,
-    read_json,
-    resample_to_daily,
-    risk_free_returns,
-    rolling_daily_performance,
-    save_json,
-    set_url_token,
-    ta,
-    timeout_decorator,
-    to_arrow,
-    top_drawdowns,
-    update_bbars,
-    update_nxb,
-    update_tbars,
-    x_round,
-    daily_performance,
 )
 from .eda import (
     cal_symbols_factor,
@@ -115,6 +52,69 @@ from .py.bar_generator import check_freq_and_market, get_intraday_times, resampl
 from .py.calendar import get_trading_dates, is_trading_date, next_trading_date, prev_trading_date
 from .sensors import CTAResearch, holds_concepts_effect
 from .strategies import CzscJsonStrategy, CzscStrategyBase
+from .traders import (
+    CzscSignals,
+    CzscTrader,
+    DummyBacktest,
+    ExitsOptimize,
+    OpensOptimize,
+    PairsPerformance,
+    SignalsParser,
+    check_signals_acc,
+    combine_dates_and_pairs,
+    combine_holds_and_pairs,
+    generate_czsc_signals,
+    get_ensemble_weight,
+    get_signals_config,
+    get_signals_freqs,
+    get_unique_signals,
+    stoploss_by_direction,
+)
+from .utils import (
+    AliyunOSS,
+    DataClient,
+    DiskCache,
+    clear_cache,
+    clear_expired_cache,
+    code_namespace,
+    create_grid_params,
+    cross_sectional_ic,
+    daily_performance,
+    dill_dump,
+    dill_load,
+    disk_cache,
+    empty_cache_path,
+    fernet_decrypt,
+    fernet_encrypt,
+    freqs_sorted,
+    generate_fernet_key,
+    get_dir_size,
+    get_py_namespace,
+    get_sub_elements,
+    get_url_token,
+    holds_performance,
+    home_path,
+    import_by_name,
+    index_composition,
+    mac_address,
+    overlap,
+    print_df_sample,
+    psi,
+    read_json,
+    resample_to_daily,
+    risk_free_returns,
+    rolling_daily_performance,
+    save_json,
+    set_url_token,
+    ta,
+    timeout_decorator,
+    to_arrow,
+    top_drawdowns,
+    update_bbars,
+    update_nxb,
+    update_tbars,
+    x_round,
+)
 from .utils.backtest_report import generate_backtest_report
 from .utils.bi_info import calculate_bi_info, symbols_bi_infos
 from .utils.kline_quality import check_kline_quality
@@ -271,10 +271,5 @@ __all__ = [
     "welcome",
 ]
 
-
-def __getattr__(name: str) -> Any:
-    ...
-
-
-def welcome() -> None:
-    ...
+def __getattr__(name: str) -> Any: ...
+def welcome() -> None: ...

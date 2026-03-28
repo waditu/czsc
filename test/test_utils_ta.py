@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_utils_ta.py - 技术分析指标单元测试
 
@@ -18,11 +17,12 @@ Mock数据格式说明:
 - ATR (Average True Range) - 平均真实波幅
 - KDJ (Stochastic Indicator) - 随机指标
 """
-import pytest
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 from czsc import mock
-from czsc.utils.ta import SMA, EMA, MACD, RSI, BOLL, ATR, KDJ
+from czsc.utils.ta import ATR, BOLL, EMA, KDJ, MACD, RSI, SMA
 
 
 def get_test_data(freq="日线", sdt="20200101", edt="20250101", symbol="000001"):
@@ -47,10 +47,10 @@ class TestSMA:
     def test_sma_basic(self):
         """测试SMA基础功能"""
         df = get_test_data()
-        sma5 = SMA(df['close'], 5)
-        sma10 = SMA(df['close'], 10)
-        sma20 = SMA(df['close'], 20)
-        sma60 = SMA(df['close'], 60)
+        sma5 = SMA(df["close"], 5)
+        sma10 = SMA(df["close"], 10)
+        sma20 = SMA(df["close"], 20)
+        sma60 = SMA(df["close"], 60)
 
         assert len(sma5) == len(df), "SMA返回长度应与输入相同"
         assert len(sma10) == len(df), "SMA返回长度应与输入相同"
@@ -118,9 +118,9 @@ class TestEMA:
     def test_ema_basic(self):
         """测试EMA基础功能"""
         df = get_test_data()
-        ema5 = EMA(df['close'], 5)
-        ema12 = EMA(df['close'], 12)
-        ema26 = EMA(df['close'], 26)
+        ema5 = EMA(df["close"], 5)
+        ema12 = EMA(df["close"], 12)
+        ema26 = EMA(df["close"], 26)
 
         assert len(ema5) == len(df), "EMA返回长度应与输入相同"
         assert len(ema12) == len(df), "EMA返回长度应与输入相同"
@@ -162,7 +162,7 @@ class TestMACD:
     def test_macd_basic(self):
         """测试MACD基础功能"""
         df = get_test_data()
-        diff, dea, macd = MACD(df['close'].values)
+        diff, dea, macd = MACD(df["close"].values)
 
         assert len(diff) == len(df), "DIFF返回长度应与输入相同"
         assert len(dea) == len(df), "DEA返回长度应与输入相同"
@@ -223,9 +223,9 @@ class TestRSI:
     def test_rsi_basic(self):
         """测试RSI基础功能"""
         df = get_test_data()
-        rsi6 = RSI(df['close'], 6)
-        rsi12 = RSI(df['close'], 12)
-        rsi24 = RSI(df['close'], 24)
+        rsi6 = RSI(df["close"], 6)
+        rsi12 = RSI(df["close"], 12)
+        rsi24 = RSI(df["close"], 24)
 
         assert len(rsi6) == len(df), "RSI返回长度应与输入相同"
         assert len(rsi12) == len(df), "RSI返回长度应与输入相同"
@@ -280,7 +280,7 @@ class TestBOLL:
     def test_boll_basic(self):
         """测试BOLL基础功能"""
         df = get_test_data()
-        upper, middle, lower = BOLL(df['close'], 20)
+        upper, middle, lower = BOLL(df["close"], 20)
 
         assert len(upper) == len(df), "上轨返回长度应与输入相同"
         assert len(middle) == len(df), "中轨返回长度应与输入相同"
@@ -348,7 +348,7 @@ class TestATR:
     def test_atr_basic(self):
         """测试ATR基础功能"""
         df = get_test_data()
-        atr = ATR(df['high'], df['low'], df['close'], 14)
+        atr = ATR(df["high"], df["low"], df["close"], 14)
 
         assert len(atr) == len(df), "ATR返回长度应与输入相同"
 
@@ -358,34 +358,28 @@ class TestATR:
 
     def test_atr_empty_array(self):
         """测试空数组"""
-        df = pd.DataFrame({'high': [], 'low': [], 'close': []})
-        result = ATR(df['high'], df['low'], df['close'], 14)
+        df = pd.DataFrame({"high": [], "low": [], "close": []})
+        result = ATR(df["high"], df["low"], df["close"], 14)
         assert len(result) == 0, "空数组应返回空结果"
 
     def test_atr_single_value(self):
         """测试单值数据"""
-        df = pd.DataFrame({'high': [100], 'low': [90], 'close': [95]})
-        result = ATR(df['high'], df['low'], df['close'], 14)
+        df = pd.DataFrame({"high": [100], "low": [90], "close": [95]})
+        result = ATR(df["high"], df["low"], df["close"], 14)
         assert len(result) == 1, "单值数据应返回单值结果"
 
     def test_atr_with_nan(self):
         """测试包含NaN的数据"""
-        df = pd.DataFrame({
-            'high': [100, 102, np.nan, 106, 108],
-            'low': [90, 92, 94, np.nan, 98],
-            'close': [95, 97, 99, 101, 103]
-        })
-        result = ATR(df['high'], df['low'], df['close'], 14)
+        df = pd.DataFrame(
+            {"high": [100, 102, np.nan, 106, 108], "low": [90, 92, 94, np.nan, 98], "close": [95, 97, 99, 101, 103]}
+        )
+        result = ATR(df["high"], df["low"], df["close"], 14)
         assert len(result) == len(df), "包含NaN的数据长度应保持不变"
 
     def test_atr_constant_prices(self):
         """测试常量价格"""
-        df = pd.DataFrame({
-            'high': [100] * 50,
-            'low': [100] * 50,
-            'close': [100] * 50
-        })
-        result = ATR(df['high'], df['low'], df['close'], 14)
+        df = pd.DataFrame({"high": [100] * 50, "low": [100] * 50, "close": [100] * 50})
+        result = ATR(df["high"], df["low"], df["close"], 14)
         # 常量价格的ATR应为0
         valid_atr = result[~pd.isna(result)]
         if len(valid_atr) > 0:
@@ -393,18 +387,14 @@ class TestATR:
 
     def test_atr_with_zeros(self):
         """测试全0数据"""
-        df = pd.DataFrame({
-            'high': [0] * 50,
-            'low': [0] * 50,
-            'close': [0] * 50
-        })
-        result = ATR(df['high'], df['low'], df['close'], 14)
+        df = pd.DataFrame({"high": [0] * 50, "low": [0] * 50, "close": [0] * 50})
+        result = ATR(df["high"], df["low"], df["close"], 14)
         assert len(result) == len(df), "全0数据长度应保持不变"
 
     def test_atr_non_negative(self):
         """测试ATR非负性"""
         df = get_test_data()
-        atr = ATR(df['high'], df['low'], df['close'], 14)
+        atr = ATR(df["high"], df["low"], df["close"], 14)
         valid_atr = atr[~pd.isna(atr)]
         assert all(valid_atr >= 0), "ATR应始终非负"
 
@@ -415,7 +405,7 @@ class TestKDJ:
     def test_kdj_basic(self):
         """测试KDJ基础功能"""
         df = get_test_data()
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
 
         assert len(k) == len(df), "K值返回长度应与输入相同"
         assert len(d) == len(df), "D值返回长度应与输入相同"
@@ -429,47 +419,41 @@ class TestKDJ:
 
     def test_kdj_empty_array(self):
         """测试空数组"""
-        df = pd.DataFrame({'high': [], 'low': [], 'close': []})
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        df = pd.DataFrame({"high": [], "low": [], "close": []})
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
         assert len(k) == 0, "空数组应返回空结果"
         assert len(d) == 0, "空数组应返回空结果"
         assert len(j) == 0, "空数组应返回空结果"
 
     def test_kdj_single_value(self):
         """测试单值数据"""
-        df = pd.DataFrame({'high': [100], 'low': [90], 'close': [95]})
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        df = pd.DataFrame({"high": [100], "low": [90], "close": [95]})
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
         assert len(k) == 1, "单值数据应返回单值结果"
         assert len(d) == 1, "单值数据应返回单值结果"
         assert len(j) == 1, "单值数据应返回单值结果"
 
     def test_kdj_with_nan(self):
         """测试包含NaN的数据"""
-        df = pd.DataFrame({
-            'high': [100, 102, np.nan, 106, 108],
-            'low': [90, 92, 94, np.nan, 98],
-            'close': [95, 97, 99, 101, 103]
-        })
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        df = pd.DataFrame(
+            {"high": [100, 102, np.nan, 106, 108], "low": [90, 92, 94, np.nan, 98], "close": [95, 97, 99, 101, 103]}
+        )
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
         assert len(k) == len(df), "包含NaN的数据长度应保持不变"
         assert len(d) == len(df), "包含NaN的数据长度应保持不变"
         assert len(j) == len(df), "包含NaN的数据长度应保持不变"
 
     def test_kdj_constant_prices(self):
         """测试常量价格"""
-        df = pd.DataFrame({
-            'high': [100] * 50,
-            'low': [100] * 50,
-            'close': [100] * 50
-        })
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        df = pd.DataFrame({"high": [100] * 50, "low": [100] * 50, "close": [100] * 50})
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
         # 常量价格的KDJ应在50附近（超买超卖中间值）
         assert len(k) == len(df), "常量数据长度应保持不变"
 
     def test_kdj_range(self):
         """测试KDJ取值范围"""
         df = get_test_data()
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
 
         # 验证K/D在0-100范围
         valid_k = k[~pd.isna(k)]
@@ -486,13 +470,13 @@ class TestIndicatorsIntegration:
         df = get_test_data()
 
         # 测试多个指标
-        sma = SMA(df['close'].values, 20)
-        ema = EMA(df['close'].values, 20)
-        diff, dea, macd = MACD(df['close'].values)
-        rsi = RSI(df['close'].values, 14)
-        upper, middle, lower = BOLL(df['close'].values, 20)
-        atr = ATR(df['high'], df['low'], df['close'], 14)
-        k, d, j = KDJ(df['close'].values, df['high'].values, df['low'].values)
+        sma = SMA(df["close"].values, 20)
+        ema = EMA(df["close"].values, 20)
+        diff, dea, macd = MACD(df["close"].values)
+        rsi = RSI(df["close"].values, 14)
+        upper, middle, lower = BOLL(df["close"].values, 20)
+        atr = ATR(df["high"], df["low"], df["close"], 14)
+        k, d, j = KDJ(df["close"].values, df["high"].values, df["low"].values)
 
         # 验证所有指标长度一致
         assert len(sma) == len(df), "SMA长度应一致"

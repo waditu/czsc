@@ -52,34 +52,28 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: zengbin93/czsc
 
-  # formatting:
-  #   name: Code Formatting
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v4
+  formatting:
+    name: Code Formatting
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-  #   - name: Install uv
-  #     uses: astral-sh/setup-uv@v2
-  #     with:
-  #       version: "latest"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "latest"
 
-  #   - name: Set up Python
-  #     run: uv python install 3.11
+    - name: Set up Python
+      run: uv python install 3.11
 
-  #   - name: Install dependencies
-  #     run: uv sync
+    - name: Install dependencies
+      run: uv sync --extra all
 
-  #   - name: Check code formatting with black
-  #     run: |
-  #       uv add --dev black
-  #       uv run black --check --diff czsc/
-
-  #   - name: Check import sorting with isort
-  #     run: |
-  #       uv add --dev isort
-  #       uv run isort --check-only --diff czsc/
+    - name: Check code formatting with ruff
+      run: |
+        uv run ruff format --check --diff czsc/ test/
 
   linting:
     name: Code Linting
@@ -98,20 +92,15 @@ jobs:
       run: uv python install 3.11
 
     - name: Install dependencies
-      run: uv sync
+      run: uv sync --extra all
 
-    - name: Lint with flake8
+    - name: Lint with ruff
       run: |
-        uv add --dev flake8
-        # stop the build if there are Python syntax errors or undefined names
-        uv run flake8 czsc/ --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 120 chars wide
-        uv run flake8 czsc/ --count --exit-zero --max-complexity=30 --max-line-length=120 --statistics
+        uv run ruff check czsc/ test/
 
-    - name: Type checking with mypy
+    - name: Type checking with basedpyright
       run: |
-        uv add --dev mypy types-requests
-        uv run mypy czsc/ --ignore-missing-imports || true
+        uv run basedpyright czsc/ || true
 
   security:
     name: Security Audit

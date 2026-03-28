@@ -1,12 +1,95 @@
 import pandas as pd
 import plotly.graph_objects as go
-from .common import COLOR_ANNO_GRAY as COLOR_ANNO_GRAY, COLOR_ANNO_RED as COLOR_ANNO_RED, COLOR_BORDER as COLOR_BORDER, COLOR_DRAWDOWN as COLOR_DRAWDOWN, COLOR_HEADER_BG as COLOR_HEADER_BG, COLOR_RETURN as COLOR_RETURN, MONTH_LABELS as MONTH_LABELS, QUANTILES_DRAWDOWN as QUANTILES_DRAWDOWN, QUANTILES_DRAWDOWN_ANALYSIS as QUANTILES_DRAWDOWN_ANALYSIS, SIGMA_LEVELS as SIGMA_LEVELS, TemplateType as TemplateType
 
-def plot_cumulative_returns(dret: pd.DataFrame, title: str = '累计收益', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
-def plot_drawdown_analysis(dret: pd.DataFrame, ret_col: str = 'total', title: str = '回撤分析', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
-def plot_daily_return_distribution(dret: pd.DataFrame, ret_col: str = 'total', title: str = '日收益分布', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
-def plot_monthly_heatmap(dret: pd.DataFrame, ret_col: str = 'total', title: str = '月度收益热力图', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
+from .common import (
+    COLOR_ANNO_GRAY as COLOR_ANNO_GRAY,
+)
+from .common import (
+    COLOR_ANNO_RED as COLOR_ANNO_RED,
+)
+from .common import (
+    COLOR_BORDER as COLOR_BORDER,
+)
+from .common import (
+    COLOR_DRAWDOWN as COLOR_DRAWDOWN,
+)
+from .common import (
+    COLOR_HEADER_BG as COLOR_HEADER_BG,
+)
+from .common import (
+    COLOR_RETURN as COLOR_RETURN,
+)
+from .common import (
+    MONTH_LABELS as MONTH_LABELS,
+)
+from .common import (
+    QUANTILES_DRAWDOWN as QUANTILES_DRAWDOWN,
+)
+from .common import (
+    QUANTILES_DRAWDOWN_ANALYSIS as QUANTILES_DRAWDOWN_ANALYSIS,
+)
+from .common import (
+    SIGMA_LEVELS as SIGMA_LEVELS,
+)
+from .common import (
+    TemplateType as TemplateType,
+)
+
+def plot_cumulative_returns(
+    dret: pd.DataFrame,
+    title: str = "累计收益",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+) -> go.Figure | str: ...
+def plot_drawdown_analysis(
+    dret: pd.DataFrame,
+    ret_col: str = "total",
+    title: str = "回撤分析",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+) -> go.Figure | str: ...
+def plot_daily_return_distribution(
+    dret: pd.DataFrame,
+    ret_col: str = "total",
+    title: str = "日收益分布",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+) -> go.Figure | str: ...
+def plot_monthly_heatmap(
+    dret: pd.DataFrame,
+    ret_col: str = "total",
+    title: str = "月度收益热力图",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+) -> go.Figure | str: ...
 def get_performance_metrics_cards(stats: dict) -> list: ...
-def plot_backtest_stats(dret: pd.DataFrame, ret_col: str = 'total', title: str = '', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str: ...
-def plot_colored_table(df: pd.DataFrame, title: str = '策略绩效统计', template: TemplateType = 'plotly_dark', float_fmt: str = '.2f', to_html: bool = False, include_plotlyjs: bool = True, **kwargs) -> go.Figure | str: ...
-def plot_long_short_comparison(dailys_pivot: pd.DataFrame, stats_df: pd.DataFrame, title: str = '多空收益对比', template: TemplateType = 'plotly', to_html: bool = False, include_plotlyjs: bool = True, target_volatility: float = 0.2) -> go.Figure | str: ...
+def plot_backtest_stats(
+    dret: pd.DataFrame,
+    ret_col: str = "total",
+    title: str = "",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+) -> go.Figure | str: ...
+def plot_colored_table(
+    df: pd.DataFrame,
+    title: str = "策略绩效统计",
+    template: TemplateType = "plotly_dark",
+    float_fmt: str = ".2f",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+    **kwargs,
+) -> go.Figure | str: ...
+def plot_long_short_comparison(
+    dailys_pivot: pd.DataFrame,
+    stats_df: pd.DataFrame,
+    title: str = "多空收益对比",
+    template: TemplateType = "plotly",
+    to_html: bool = False,
+    include_plotlyjs: bool = True,
+    target_volatility: float = 0.2,
+) -> go.Figure | str: ...

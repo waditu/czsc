@@ -1,23 +1,23 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/11/11 20:18
 describe: bar 作为前缀，代表信号属于基础 K 线信号
 """
-import pandas as pd
-import numpy as np
-from datetime import datetime
-from typing import List
-from loguru import logger
-from copy import deepcopy
-from deprecated import deprecated
+
 from collections import OrderedDict
+from copy import deepcopy
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from loguru import logger
+
 from czsc import envs
-from czsc.core import CZSC, Signal, RawBar, freq_end_time
+from czsc.core import CZSC, RawBar, freq_end_time
 from czsc.signals.tas import update_ma_cache, update_macd_cache
 from czsc.utils import single_linear
-from czsc.utils.sig import get_sub_elements, create_single_signal
+from czsc.utils.sig import create_single_signal, get_sub_elements
 
 
 def bar_single_V230506(c: CZSC, **kwargs) -> OrderedDict:
@@ -152,10 +152,7 @@ def bar_end_V221211(c: CZSC, freq1="60分钟", **kwargs) -> OrderedDict:
             break
         i += 1
 
-    if c1_dt == c.bars_raw[-1].dt:
-        v = "闭合"
-    else:
-        v = "未闭{}".format(i)
+    v = "闭合" if c1_dt == c.bars_raw[-1].dt else f"未闭{i}"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v)
 
 
@@ -285,7 +282,7 @@ def bar_fang_liang_break_V221216(c: CZSC, **kwargs) -> OrderedDict:
 
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
 
-    def _vol_fang_liang_break(bars: List[RawBar]):
+    def _vol_fang_liang_break(bars: list[RawBar]):
         if len(bars) <= 4:
             return "其他", "其他"
 
@@ -297,10 +294,7 @@ def bar_fang_liang_break_V221216(c: CZSC, **kwargs) -> OrderedDict:
         vol_min = np.mean([x.vol for x in bars[:-1]])
         distance = all(abs(x.close / ma1v - 1) * 10000 <= th for x in bars[:-1])
 
-        if bars[-1].close >= ma1v and bars[-1].vol < vol_min and distance:
-            c2 = "缩量回踩"
-        else:
-            c2 = "其他"
+        c2 = "缩量回踩" if bars[-1].close >= ma1v and bars[-1].vol < vol_min and distance else "其他"
 
         return c1, c2
 
@@ -430,7 +424,7 @@ def bar_accelerate_V221110(c: CZSC, **kwargs) -> OrderedDict:
 
     v1 = "其他"
     if len(c.bars_raw) > di + window + 10:
-        bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=window)
+        bars: list[RawBar] = get_sub_elements(c.bars_raw, di=di, n=window)
         hhv = max([x.high for x in bars])
         llv = min([x.low for x in bars])
 
@@ -476,7 +470,7 @@ def bar_accelerate_V221118(c: CZSC, **kwargs) -> OrderedDict:
     timeperiod = int(kwargs.get("timeperiod", 10))
 
     assert window > 3, "辨别加速，至少需要3根以上K线"
-    k1, k2, k3 = c.freq.value, f"D{di}W{window}#{ma_type}#{timeperiod}", f"加速V221118"
+    k1, k2, k3 = c.freq.value, f"D{di}W{window}#{ma_type}#{timeperiod}", "加速V221118"
 
     cache_key = update_ma_cache(c, ma_type=ma_type, timeperiod=timeperiod)
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
@@ -543,7 +537,7 @@ def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
     if abs(last_diff) > th and last_diff > 0:
         # 窗口内至少要有 T 根倍量上涨的 K 线
         cnt = 0
-        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+        for bar1, bar2 in zip(bars[:-1], bars[1:], strict=False):
             if bar2.close > bar2.open and bar2.vol > bar1.vol * 2:
                 cnt += 1
         if cnt >= t:
@@ -552,7 +546,7 @@ def bar_accelerate_V240428(c: CZSC, **kwargs) -> OrderedDict:
     if abs(last_diff) > th and last_diff < 0:
         # 窗口内至少要有 T 根倍量下跌的 K 线
         cnt = 0
-        for bar1, bar2 in zip(bars[:-1], bars[1:]):
+        for bar1, bar2 in zip(bars[:-1], bars[1:], strict=False):
             if bar2.close < bar2.open and bar2.vol > bar1.vol * 2:
                 cnt += 1
         if cnt >= t:
@@ -620,7 +614,7 @@ def bar_fake_break_V230204(c: CZSC, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{c.freq.value}_D{di}N{n}M{m}_假突破".split("_")
 
     v1 = "其他"
-    last_bars: List[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
+    last_bars: list[RawBar] = get_sub_elements(c.bars_raw, di=di, n=n)
 
     def __is_overlap(_bars):
         """判断是否是重叠，如果是重叠，返回True和中枢的上下轨"""
@@ -643,7 +637,6 @@ def bar_fake_break_V230204(c: CZSC, **kwargs) -> OrderedDict:
             break
 
     if last_bars[-1].close > last_bars[-1].open:
-
         # 条件1：收盘价新高或者最高价新高
         c1_a = last_bars[-1].high == max([bar.high for bar in last_bars])
         c1_b = last_bars[-1].close == max([bar.close for bar in last_bars])
@@ -932,10 +925,7 @@ def bar_bpm_V230227(c: CZSC, **kwargs) -> OrderedDict:
 
     _bars = get_sub_elements(c.bars_raw, di=di, n=n)
     bp = (_bars[-1].close / _bars[0].open - 1) * 10000
-    if bp > 0:
-        v1 = "超强" if bp > th else "强势"
-    else:
-        v1 = "超弱" if abs(bp) > th else "弱势"
+    v1 = ("超强" if bp > th else "强势") if bp > 0 else "超弱" if abs(bp) > th else "弱势"
 
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
@@ -971,7 +961,7 @@ def bar_time_V230327(c: CZSC, **kwargs):
     time_spans = c.cache.get(cache_key, None)
     if time_spans is None:
         bars = c.bars_raw[-100:]
-        time_spans = sorted(list(set([x.dt.strftime("%H:%M") for x in bars])))
+        time_spans = sorted({x.dt.strftime("%H:%M") for x in bars})
         c.cache[cache_key] = time_spans
 
     v1 = f"第{time_spans.index(c.bars_raw[-1].dt.strftime('%H:%M')) + 1}段"
@@ -1161,7 +1151,7 @@ def bar_zt_count_V230504(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=window)
     c1 = []
     cc = 0
-    for b1, b2 in zip(bars[:-1], bars[1:]):
+    for b1, b2 in zip(bars[:-1], bars[1:], strict=False):
         if b2.close > b1.close * 1.07 and b2.close == b2.high:
             c1.append(1)
         else:
@@ -1340,7 +1330,7 @@ def bar_tnr_V230629(c: CZSC, **kwargs) -> OrderedDict:
     bars = get_sub_elements(c.bars_raw, di=di, n=100)
     tnr = [bar.cache[cache_key] for bar in bars]
     lev = pd.qcut(tnr, 10, labels=False, duplicates="drop")[-1]
-    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev+1)}层")
+    return create_single_signal(k1=k1, k2=k2, k3=k3, v1=f"第{int(lev + 1)}层")
 
 
 def bar_shuang_fei_V230507(c: CZSC, **kwargs) -> OrderedDict:
@@ -1448,7 +1438,7 @@ def bar_eight_V230702(c: CZSC, **kwargs) -> OrderedDict:
 
     bars = get_sub_elements(c.bars_raw, di=di, n=8)
     zs_list = []
-    for b1, b2, b3 in zip(bars[:-2], bars[1:-1], bars[2:]):
+    for b1, b2, b3 in zip(bars[:-2], bars[1:-1], bars[2:], strict=False):
         if min(b1.high, b2.high, b3.high) >= max(b1.low, b2.low, b3.low):
             zs_list.append([b1, b2, b3])
 
@@ -1596,7 +1586,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
     # 更新支撑压力位位置
     cache_key_pct = "pct"
     H_line, L_line = max([x.high for x in c.bi_list[-n:]]), min([x.low for x in c.bi_list[-n:]])
-    for i, bar in enumerate(c.bars_raw):
+    for _i, bar in enumerate(c.bars_raw):
         if cache_key_pct in bar.cache:
             continue
         bar.cache[cache_key_pct] = (bar.close - L_line) / (H_line - L_line)
@@ -1606,7 +1596,7 @@ def bar_window_ps_V230731(c: CZSC, **kwargs) -> OrderedDict:
     max_layer = max(layer[-w:]) + 1
     min_layer = min(layer[-w:]) + 1
 
-    v1, v2, v3 = f"压力N{max_layer}", f"支撑N{min_layer}", f"当前N{layer[-1]+1}"
+    v1, v2, v3 = f"压力N{max_layer}", f"支撑N{min_layer}", f"当前N{layer[-1] + 1}"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1, v2=v2, v3=v3)
 
 
@@ -2051,7 +2041,7 @@ def bar_decision_V240608(c: CZSC, **kwargs) -> OrderedDict:
 
     # 计算 w_bars 中成交量的 q 分位数
     qth = np.quantile([x.vol for x in w_bars], q / 100)
-    vol_match = all([x.vol > qth for x in n_bars])
+    vol_match = all(x.vol > qth for x in n_bars)
     if vol_match and n_diff > 0:
         v1 = "看空"
     if vol_match and n_diff < 0:
@@ -2322,6 +2312,6 @@ def bar_zfzd_V241014(c: CZSC, **kwargs) -> OrderedDict:
     if max_bar.solid > 2 * np.mean([x.solid for x in bars]):
         return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    if all([min(x.high, max_bar.high) > max(x.low, max_bar.low) for x in bars]):
+    if all(min(x.high, max_bar.high) > max(x.low, max_bar.low) for x in bars):
         v1 = "满足"
     return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)

@@ -4,14 +4,16 @@ email: zeng_bin8888@163.com
 create_dt: 2021/3/10 11:21
 describe: 缠论分型、笔的识别
 """
+
 import os
 import webbrowser
-from typing import List
 from collections import OrderedDict
-from czsc.py.enum import Mark, Direction
-from czsc.py.objects import BI, FX, RawBar, NewBar
-from czsc import envs
+
 from loguru import logger
+
+from czsc import envs
+from czsc.py.enum import Direction, Mark
+from czsc.py.objects import BI, FX, NewBar, RawBar
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -38,13 +40,23 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
     elif k1.high > k2.high:
         direction = Direction.Down
     else:
-        k4 = NewBar(symbol=k3.symbol, id=k3.id, freq=k3.freq, dt=k3.dt, open=k3.open,
-                    close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, amount=k3.amount, elements=[k3])
+        k4 = NewBar(
+            symbol=k3.symbol,
+            id=k3.id,
+            freq=k3.freq,
+            dt=k3.dt,
+            open=k3.open,
+            close=k3.close,
+            high=k3.high,
+            low=k3.low,
+            vol=k3.vol,
+            amount=k3.amount,
+            elements=[k3],
+        )
         return False, k4
 
     # 判断 k2 和 k3 之间是否存在包含关系，有则处理
     if (k2.high <= k3.high and k2.low >= k3.low) or (k2.high >= k3.high and k2.low <= k3.low):
-
         if direction == Direction.Up:
             high = max(k2.high, k3.high)
             low = max(k2.low, k3.low)
@@ -64,13 +76,35 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
         # 临时解决方案是直接限定len(k2.elements)<=100
         elements = [x for x in k2.elements[:100] if x.dt != k3.dt] + [k3]
-        k4 = NewBar(symbol=k3.symbol, id=k2.id, freq=k2.freq, dt=dt, open=open_,
-                    close=close, high=high, low=low, vol=vol, amount=amount, elements=elements)
+        k4 = NewBar(
+            symbol=k3.symbol,
+            id=k2.id,
+            freq=k2.freq,
+            dt=dt,
+            open=open_,
+            close=close,
+            high=high,
+            low=low,
+            vol=vol,
+            amount=amount,
+            elements=elements,
+        )
         return True, k4
 
     else:
-        k4 = NewBar(symbol=k3.symbol, id=k3.id, freq=k3.freq, dt=k3.dt, open=k3.open,
-                    close=k3.close, high=k3.high, low=k3.low, vol=k3.vol, amount=k3.amount, elements=[k3])
+        k4 = NewBar(
+            symbol=k3.symbol,
+            id=k3.id,
+            freq=k3.freq,
+            dt=k3.dt,
+            open=k3.open,
+            close=k3.close,
+            high=k3.high,
+            low=k3.low,
+            vol=k3.vol,
+            amount=k3.amount,
+            elements=[k3],
+        )
         return False, k4
 
 
@@ -94,17 +128,15 @@ def check_fx(k1: NewBar, k2: NewBar, k3: NewBar):
     """
     fx = None
     if k1.high < k2.high > k3.high and k1.low < k2.low > k3.low:
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high,
-                low=k2.low, fx=k2.high, elements=[k1, k2, k3])
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.G, high=k2.high, low=k2.low, fx=k2.high, elements=[k1, k2, k3])
 
     if k1.low > k2.low < k3.low and k1.high > k2.high < k3.high:
-        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high,
-                low=k2.low, fx=k2.low, elements=[k1, k2, k3])
+        fx = FX(symbol=k1.symbol, dt=k2.dt, mark=Mark.D, high=k2.high, low=k2.low, fx=k2.low, elements=[k1, k2, k3])
 
     return fx
 
 
-def check_fxs(bars: List[NewBar]) -> List[FX]:
+def check_fxs(bars: list[NewBar]) -> list[FX]:
     """输入一串无包含关系K线，查找其中所有分型
 
     函数的主要步骤：
@@ -127,13 +159,14 @@ def check_fxs(bars: List[NewBar]) -> List[FX]:
             # 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
             if len(fxs) >= 2 and fx.mark == fxs[-1].mark:
                 import warnings
-                warnings.warn(f"check_fxs错误: {bars[i].dt}，{fx.mark}，{fxs[-1].mark}")
+
+                warnings.warn(f"check_fxs错误: {bars[i].dt}，{fx.mark}，{fxs[-1].mark}", stacklevel=2)
             else:
                 fxs.append(fx)
     return fxs
 
 
-def check_bi(bars: List[NewBar], **kwargs):
+def check_bi(bars: list[NewBar], **kwargs):
     """输入一串无包含关系K线，查找其中的一笔
 
     :param bars: 无包含关系K线列表
@@ -177,11 +210,12 @@ def check_bi(bars: List[NewBar], **kwargs):
 
 
 class CZSC:
-    def __init__(self,
-                 bars: List[RawBar],
-                 get_signals = None,
-                 max_bi_num=envs.get_max_bi_num(),
-                 ):
+    def __init__(
+        self,
+        bars: list[RawBar],
+        get_signals=None,
+        max_bi_num=envs.get_max_bi_num(),
+    ):
         """
 
         :param bars: K线数据
@@ -190,9 +224,9 @@ class CZSC:
         """
         self.verbose = envs.get_verbose()
         self.max_bi_num = max_bi_num
-        self.bars_raw: List[RawBar] = []  # 原始K线序列
-        self.bars_ubi: List[NewBar] = []  # 未完成笔的无包含K线序列
-        self.bi_list: List[BI] = []
+        self.bars_raw: list[RawBar] = []  # 原始K线序列
+        self.bars_ubi: list[NewBar] = []  # 未完成笔的无包含K线序列
+        self.bi_list: list[BI] = []
         self.symbol = bars[0].symbol
         self.freq = bars[0].freq
         self.get_signals = get_signals
@@ -204,7 +238,7 @@ class CZSC:
             self.update(bar)
 
     def __repr__(self):
-        return "<CZSC~{}~{}>".format(self.symbol, self.freq.value)
+        return f"<CZSC~{self.symbol}~{self.freq.value}>"
 
     def __update_bi(self):
         bars_ubi = self.bars_ubi
@@ -221,8 +255,7 @@ class CZSC:
             fx_a = fxs[0]
             fxs_a = [x for x in fxs if x.mark == fx_a.mark]
             for fx in fxs_a:
-                if (fx_a.mark == Mark.D and fx.low <= fx_a.low) \
-                        or (fx_a.mark == Mark.G and fx.high >= fx_a.high):
+                if (fx_a.mark == Mark.D and fx.low <= fx_a.low) or (fx_a.mark == Mark.G and fx.high >= fx_a.high):
                     fx_a = fx
             bars_ubi = [x for x in bars_ubi if x.dt >= fx_a.elements[0].dt]
 
@@ -243,8 +276,9 @@ class CZSC:
         # 后处理：如果当前笔被破坏，将当前笔的bars与bars_ubi进行合并，并丢弃
         last_bi = self.bi_list[-1]
         bars_ubi = self.bars_ubi
-        if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) \
-                or (last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low):
+        if (last_bi.direction == Direction.Up and bars_ubi[-1].high > last_bi.high) or (
+            last_bi.direction == Direction.Down and bars_ubi[-1].low < last_bi.low
+        ):
             # 当前笔被破坏，将当前笔的bars与bars_ubi进行合并，并丢弃，这里容易出错，多一根K线就可能导致错误
             # 必须是 -2，因为最后一根无包含K线有可能是未完成的
             self.bars_ubi = last_bi.bars[:-2] + [x for x in bars_ubi if x.dt >= last_bi.bars[-2].dt]
@@ -271,9 +305,21 @@ class CZSC:
         bars_ubi = self.bars_ubi
         for bar in last_bars:
             if len(bars_ubi) < 2:
-                bars_ubi.append(NewBar(symbol=bar.symbol, id=bar.id, freq=bar.freq, dt=bar.dt,
-                                       open=bar.open, close=bar.close, amount=bar.amount,
-                                       high=bar.high, low=bar.low, vol=bar.vol, elements=[bar]))
+                bars_ubi.append(
+                    NewBar(
+                        symbol=bar.symbol,
+                        id=bar.id,
+                        freq=bar.freq,
+                        dt=bar.dt,
+                        open=bar.open,
+                        close=bar.close,
+                        amount=bar.amount,
+                        high=bar.high,
+                        low=bar.low,
+                        vol=bar.vol,
+                        elements=[bar],
+                    )
+                )
             else:
                 k1, k2 = bars_ubi[-2:]
                 has_include, k3 = remove_include(k1, k2, bar)
@@ -287,7 +333,7 @@ class CZSC:
         self.__update_bi()
 
         # 根据最大笔数量限制完成 bi_list, bars_raw 序列的数量控制
-        self.bi_list = self.bi_list[-self.max_bi_num:]
+        self.bi_list = self.bi_list[-self.max_bi_num :]
         if self.bi_list:
             sdt = self.bi_list[0].fx_a.elements[0].dt
             s_index = 0
@@ -300,7 +346,7 @@ class CZSC:
         # 如果有信号计算函数，则进行信号计算
         self.signals = self.get_signals(c=self) if self.get_signals else OrderedDict()
 
-    def to_echarts(self, width: str = "1400px", height: str = '580px', bs=[]):
+    def to_echarts(self, width: str = "1400px", height: str = "580px", bs=None):
         """绘制K线分析图
 
         :param width: 宽
@@ -310,26 +356,31 @@ class CZSC:
         """
         from czsc.utils.echarts_plot import kline_pro
 
+        if bs is None:
+            bs = []
         kline = [x.__dict__ for x in self.bars_raw]
         if len(self.bi_list) > 0:
-            bi = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + \
-                 [{'dt': self.bi_list[-1].fx_b.dt, "bi": self.bi_list[-1].fx_b.fx}]
-            fx = [{'dt': x.dt, "fx": x.fx} for x in self.fx_list]
+            bi = [{"dt": x.fx_a.dt, "bi": x.fx_a.fx} for x in self.bi_list] + [
+                {"dt": self.bi_list[-1].fx_b.dt, "bi": self.bi_list[-1].fx_b.fx}
+            ]
+            fx = [{"dt": x.dt, "fx": x.fx} for x in self.fx_list]
         else:
             bi = []
             fx = []
-        chart = kline_pro(kline, bi=bi, fx=fx, width=width, height=height, bs=bs,
-                          title="{}-{}".format(self.symbol, self.freq.value))
+        chart = kline_pro(
+            kline, bi=bi, fx=fx, width=width, height=height, bs=bs, title=f"{self.symbol}-{self.freq.value}"
+        )
         return chart
 
     def to_plotly(self):
         """使用 plotly 绘制K线分析图"""
         import pandas as pd
+
         from czsc.utils.plotting.kline import KlineChart
 
         bi_list = self.bi_list
         df = pd.DataFrame(self.bars_raw)
-        kline = KlineChart(n_rows=3, title="{}-{}".format(self.symbol, self.freq.value))
+        kline = KlineChart(n_rows=3, title=f"{self.symbol}-{self.freq.value}")
         kline.add_kline(df, name="")
         kline.add_sma(df, ma_seq=(5, 10, 21), row=1, visible=True, line_width=1.2)
         kline.add_sma(df, ma_seq=(34, 55, 89, 144), row=1, visible=False, line_width=1.2)
@@ -337,15 +388,15 @@ class CZSC:
         kline.add_macd(df, row=3)
 
         if len(bi_list) > 0:
-            bi1 = [{'dt': x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list]
-            bi2 = [{'dt': bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
+            bi1 = [{"dt": x.fx_a.dt, "bi": x.fx_a.fx, "text": x.fx_a.mark.value} for x in bi_list]
+            bi2 = [{"dt": bi_list[-1].fx_b.dt, "bi": bi_list[-1].fx_b.fx, "text": bi_list[-1].fx_b.mark.value[0]}]
             bi = pd.DataFrame(bi1 + bi2)
-            fx = pd.DataFrame([{'dt': x.dt, "fx": x.fx} for x in self.fx_list])
-            kline.add_scatter_indicator(fx['dt'], fx['fx'], name="分型", row=1, line_width=2)
-            kline.add_scatter_indicator(bi['dt'], bi['bi'], name="笔", text=bi['text'], row=1, line_width=2)
+            fx = pd.DataFrame([{"dt": x.dt, "fx": x.fx} for x in self.fx_list])
+            kline.add_scatter_indicator(fx["dt"], fx["fx"], name="分型", row=1, line_width=2)
+            kline.add_scatter_indicator(bi["dt"], bi["bi"], name="笔", text=bi["text"], row=1, line_width=2)
         return kline.fig
 
-    def open_in_browser(self, width: str = "1400px", height: str = '580px'):
+    def open_in_browser(self, width: str = "1400px", height: str = "580px"):
         """直接在浏览器中打开分析结果
 
         :param width: 图表宽度
@@ -361,18 +412,15 @@ class CZSC:
     @property
     def last_bi_extend(self):
         """判断最后一笔是否在延伸中，True 表示延伸中"""
-        if self.bi_list[-1].direction == Direction.Up \
-                and max([x.high for x in self.bars_ubi]) > self.bi_list[-1].high:
+        if self.bi_list[-1].direction == Direction.Up and max([x.high for x in self.bars_ubi]) > self.bi_list[-1].high:
             return True
 
-        if self.bi_list[-1].direction == Direction.Down \
-                and min([x.low for x in self.bars_ubi]) < self.bi_list[-1].low:
-            return True
-
-        return False
+        return bool(
+            self.bi_list[-1].direction == Direction.Down and min([x.low for x in self.bars_ubi]) < self.bi_list[-1].low
+        )
 
     @property
-    def finished_bis(self) -> List[BI]:
+    def finished_bis(self) -> list[BI]:
         """已完成的笔"""
         if not self.bi_list:
             return []
@@ -381,7 +429,7 @@ class CZSC:
         return self.bi_list
 
     @property
-    def ubi_fxs(self) -> List[FX]:
+    def ubi_fxs(self) -> list[FX]:
         """bars_ubi 中的分型"""
         if not self.bars_ubi:
             return []
@@ -416,7 +464,7 @@ class CZSC:
         return bi
 
     @property
-    def fx_list(self) -> List[FX]:
+    def fx_list(self) -> list[FX]:
         """分型列表，包括 bars_ubi 中的分型"""
         fxs = []
         for bi_ in self.bi_list:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -6,17 +5,19 @@ create_dt: 2023/08/02 22:20
 describe: 持仓权重相关工具函数（get_ensemble_weight、stoploss_by_direction）
           WeightBacktest 类请从 czsc.core 或 rs_czsc 导入
 """
+
+from collections.abc import Callable
+from typing import AnyStr
+
 import numpy as np
 import pandas as pd
-from typing import Union, AnyStr, Callable
 
 from czsc.traders.base import CzscTrader
 
+__all__ = ["get_ensemble_weight", "stoploss_by_direction"]
 
-__all__ = ['get_ensemble_weight', 'stoploss_by_direction']
 
-
-def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = "mean"):
+def get_ensemble_weight(trader: CzscTrader, method: AnyStr | Callable = "mean"):
     """获取 CzscTrader 中所有 positions 按照 method 方法集成之后的权重
 
     函数计算逻辑：
@@ -51,6 +52,7 @@ def get_ensemble_weight(trader: CzscTrader, method: Union[AnyStr, Callable] = "m
         columns = ['dt', 'symbol', 'weight', 'price']
     """
     from loguru import logger
+
     logger.info(f"trader positions: {[p.name for p in trader.positions]}")
 
     dfp = pd.DataFrame()
@@ -140,4 +142,3 @@ def stoploss_by_direction(dfw, stoploss=0.03, **kwargs):
 
     dfw1 = pd.concat(rows, ignore_index=True)
     return dfw1
-

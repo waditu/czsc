@@ -4,7 +4,8 @@
 此模块包含所有绘图模块共用的常量、类型定义和辅助函数
 """
 
-from typing import Union, Literal, Optional
+from typing import Literal
+
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -26,22 +27,16 @@ QUANTILES_DRAWDOWN_ANALYSIS = [0.1, 0.3, 0.5]
 SIGMA_LEVELS = [-3, -2, -1, 1, 2, 3]
 
 # 月份标签
-MONTH_LABELS = [
-    '1月', '2月', '3月', '4月', '5月', '6月',
-    '7月', '8月', '9月', '10月', '11月', '12月'
-]
+MONTH_LABELS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"]
 
 # 模板类型
-TemplateType = Literal['plotly', 'plotly_dark', 'ggplot2', 'seaborn', 'simple_white']
+TemplateType = Literal["plotly", "plotly_dark", "ggplot2", "seaborn", "simple_white"]
 
 
 # ==================== 辅助函数 ====================
 
-def figure_to_html(
-    fig: go.Figure,
-    to_html: bool = False,
-    include_plotlyjs: bool = True
-) -> Union[go.Figure, str]:
+
+def figure_to_html(fig: go.Figure, to_html: bool = False, include_plotlyjs: bool = True) -> go.Figure | str:
     """统一处理 Figure 转 HTML 的逻辑
 
     :param fig: Plotly Figure 对象
@@ -57,11 +52,11 @@ def figure_to_html(
 def add_year_boundary_lines(
     fig: go.Figure,
     dates: pd.DatetimeIndex,
-    row: Optional[int] = None,
-    col: Optional[int] = None,
+    row: int | None = None,
+    col: int | None = None,
     line_color: str = "red",
     opacity: float = 0.3,
-    line_dash: str = "dash"
+    line_dash: str = "dash",
 ) -> None:
     """在图表中添加年度分隔线
 
@@ -76,11 +71,4 @@ def add_year_boundary_lines(
     years = dates.year.unique()
     for year in years:
         first_date = dates[dates.year == year].min()
-        fig.add_vline(
-            x=first_date,
-            line_dash=line_dash,
-            line_color=line_color,
-            opacity=opacity,
-            row=row,
-            col=col
-        )
+        fig.add_vline(x=first_date, line_dash=line_dash, line_color=line_color, opacity=opacity, row=row, col=col)

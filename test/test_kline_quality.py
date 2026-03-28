@@ -1,4 +1,3 @@
-import pandas as pd
 from czsc import mock
 from czsc.utils.kline_quality import check_kline_quality
 
@@ -9,4 +8,4 @@ def test_check_zero_volume():
     df["vol"] = df["vol"].astype(int)
     # 执行数据质量检查
     df = df[["symbol", "dt", "open", "close", "high", "low", "vol", "amount"]]
-    issues = check_kline_quality(df)
+    check_kline_quality(df)

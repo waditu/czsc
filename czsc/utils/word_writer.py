@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -9,15 +8,18 @@ describe: 实现一个用python-docx写word文档的辅助工具
 1. https://cloud.tencent.com/developer/article/1512325
 2. https://blog.csdn.net/zhouz92/article/details/107066709
 """
+
 import os
+
 import docx
 import pandas as pd
+
 try:
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.oxml.ns import qn
     from docx.shared import Cm, Pt, RGBColor
-    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 except ImportError:
-    raise ImportError("请安装 python-docx 库")
+    raise ImportError("请安装 python-docx 库") from None
 
 
 class WordWriter:
@@ -32,8 +34,8 @@ class WordWriter:
         self.document.core_properties.author = "Reporter"
 
         # 设置正文样式
-        self.document.styles["Normal"].font.name = 'Times New Roman'
-        self.document.styles["Normal"].element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        self.document.styles["Normal"].font.name = "Times New Roman"
+        self.document.styles["Normal"].element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
 
     def add_title(self, text):
         self.document.core_properties.title = text
@@ -42,8 +44,8 @@ class WordWriter:
         title_run = title_.add_run(text)
         title_run.font.size = Pt(22)
         title_run.font.bold = True
-        title_run.font.name = 'Times New Roman'
-        title_run.element.rPr.rFonts.set(qn('w:eastAsia'), '微软雅黑')
+        title_run.font.name = "Times New Roman"
+        title_run.element.rPr.rFonts.set(qn("w:eastAsia"), "微软雅黑")
 
     def add_heading(self, text, level=1):
         if level == 1:
@@ -55,8 +57,8 @@ class WordWriter:
         title_ = self.document.add_heading(level=level)
         title_run = title_.add_run(text)
         title_run.font.size = Pt(size)
-        title_run.font.name = 'Times New Roman'
-        title_run.element.rPr.rFonts.set(qn('w:eastAsia'), '微软雅黑')
+        title_run.font.name = "Times New Roman"
+        title_run.element.rPr.rFonts.set(qn("w:eastAsia"), "微软雅黑")
         title_run.font.color.rgb = RGBColor(0, 0, 0)
 
     def add_paragraph(self, text, style=None, bold=False, first_line_indent=0.74):
@@ -77,11 +79,11 @@ class WordWriter:
 
         text = p.add_run(text)
         text.bold = bold
-        text.font.name = 'Times New Roman'
-        text.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+        text.font.name = "Times New Roman"
+        text.element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
         text.font.size = Pt(12)
 
-    def add_df_table(self, df: pd.DataFrame, style='Table Grid', **kwargs):
+    def add_df_table(self, df: pd.DataFrame, style="Table Grid", **kwargs):
         """添加数据表
 
         https://www.jianshu.com/p/93e0df92cf16
@@ -112,7 +114,7 @@ class WordWriter:
             for i, c in enumerate(columns):
                 row_cells[i].text = str(row[c])
 
-    def add_picture(self, file, width=None, height=None, alignment='center') -> None:
+    def add_picture(self, file, width=None, height=None, alignment="center") -> None:
         """写入图片到文档中
 
         :param file: 图片文件路径
@@ -122,9 +124,9 @@ class WordWriter:
         :return:
         """
         alignment_map = {
-            'center': WD_PARAGRAPH_ALIGNMENT.CENTER,
-            'left': WD_PARAGRAPH_ALIGNMENT.LEFT,
-            'right': WD_PARAGRAPH_ALIGNMENT.RIGHT,
+            "center": WD_PARAGRAPH_ALIGNMENT.CENTER,
+            "left": WD_PARAGRAPH_ALIGNMENT.LEFT,
+            "right": WD_PARAGRAPH_ALIGNMENT.RIGHT,
         }
         if isinstance(width, int):
             width = Cm(width)
@@ -149,94 +151,102 @@ class WordWriter:
 
 
 def test_word_writer():
-    import os
-    import pandas as pd
     import inspect
+    import os
+
     import matplotlib.pyplot as plt
-    
+    import pandas as pd
+
     reporter = WordWriter()
 
-    reporter.add_title('Reporter测试记录文档')
-    reporter.add_paragraph('这个方法可以用来生成完整的回测报告。以文字、图表为主，统一格式')
+    reporter.add_title("Reporter测试记录文档")
+    reporter.add_paragraph("这个方法可以用来生成完整的回测报告。以文字、图表为主，统一格式")
 
-    reporter.add_heading('一、研究背景介绍', level=1)
-    reporter.add_paragraph('python-docx 是用于创建和更新Microsoft Word（.docx）文件的Python库。')
+    reporter.add_heading("一、研究背景介绍", level=1)
+    reporter.add_paragraph("python-docx 是用于创建和更新Microsoft Word（.docx）文件的Python库。")
 
-    reporter.add_heading('1) 无序项目', level=2)
-    reporter.add_paragraph('无序项目1', style='List Bullet')
-    reporter.add_paragraph('无序项目2', style='List Bullet')
-    reporter.add_paragraph('无序项目3', style='List Bullet')
+    reporter.add_heading("1) 无序项目", level=2)
+    reporter.add_paragraph("无序项目1", style="List Bullet")
+    reporter.add_paragraph("无序项目2", style="List Bullet")
+    reporter.add_paragraph("无序项目3", style="List Bullet")
 
-    reporter.add_heading('2) 有序项目', level=2)
-    reporter.add_paragraph('有序项目1', style='List Number')
-    reporter.add_paragraph('有序项目2', style='List Number')
-    reporter.add_paragraph('有序项目3', style='List Number')
+    reporter.add_heading("2) 有序项目", level=2)
+    reporter.add_paragraph("有序项目1", style="List Number")
+    reporter.add_paragraph("有序项目2", style="List Number")
+    reporter.add_paragraph("有序项目3", style="List Number")
     reporter.add_page_break()
 
-    reporter.add_heading('二、主要研究结果', level=1)
-    reporter.add_paragraph('Python中可以用docx来生成word文档，docx中可以自定义文字的大小和字体等。')
-    reporter.add_paragraph("段落是Word中的一个块级对象，在其所在容器的左右边界内显示文本，当文本超过"
-                           "右边界时自动换行。段落的边界通常是页边界，也可以是分栏排版时的栏边界，或者"
-                           "表格单元格中的边界。段落格式用于控制段落在其容器（例如页、栏、单元格）中的"
-                           "布局，例如对齐方式、左缩进、右缩进、首行缩进、行距、段前距离、段后距离、换"
-                           "页方式、Tab键字符格式等。")
+    reporter.add_heading("二、主要研究结果", level=1)
+    reporter.add_paragraph("Python中可以用docx来生成word文档，docx中可以自定义文字的大小和字体等。")
+    reporter.add_paragraph(
+        "段落是Word中的一个块级对象，在其所在容器的左右边界内显示文本，当文本超过"
+        "右边界时自动换行。段落的边界通常是页边界，也可以是分栏排版时的栏边界，或者"
+        "表格单元格中的边界。段落格式用于控制段落在其容器（例如页、栏、单元格）中的"
+        "布局，例如对齐方式、左缩进、右缩进、首行缩进、行距、段前距离、段后距离、换"
+        "页方式、Tab键字符格式等。"
+    )
 
-    reporter.add_paragraph("""
+    reporter.add_paragraph(
+        """
     newfile = docx.Document()
     newfile.styles['Normal'].font.name = 'Times New Roman'
     newfile.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), u'宋体')
-    """, style='Normal')
+    """,
+        style="Normal",
+    )
 
-    reporter.add_heading('1) 无序项目', level=2)
-    reporter.add_paragraph('无序项目1', style='List Bullet')
-    reporter.add_paragraph('无序项目2', style='List Bullet')
-    reporter.add_paragraph('无序项目3', style='List Bullet')
+    reporter.add_heading("1) 无序项目", level=2)
+    reporter.add_paragraph("无序项目1", style="List Bullet")
+    reporter.add_paragraph("无序项目2", style="List Bullet")
+    reporter.add_paragraph("无序项目3", style="List Bullet")
 
-    reporter.add_heading('2) 有序项目', level=2)
-    reporter.add_paragraph('有序项目1', style='List Number')
-    reporter.add_paragraph('有序项目2', style='List Number')
-    reporter.add_paragraph('有序项目3', style='List Number')
+    reporter.add_heading("2) 有序项目", level=2)
+    reporter.add_paragraph("有序项目1", style="List Number")
+    reporter.add_paragraph("有序项目2", style="List Number")
+    reporter.add_paragraph("有序项目3", style="List Number")
 
     # 测试表格写入
-    df = pd.DataFrame([{'x': 1, 'y': 2, 'z': 3}, {'x': 1, 'y': 2, 'z': 3}, {'x': 1, 'y': 2, 'z': 3}])
+    df = pd.DataFrame([{"x": 1, "y": 2, "z": 3}, {"x": 1, "y": 2, "z": 3}, {"x": 1, "y": 2, "z": 3}])
     reporter.add_df_table(df)
-    reporter.add_paragraph('\n\n')
-    reporter.add_df_table(df, 'Light Grid Accent 2')
-    reporter.add_paragraph('\n\n')
-    reporter.add_df_table(df, 'Colorful Grid Accent 2')
-    reporter.add_paragraph('\n\n')
-    reporter.add_df_table(df, 'Colorful Shading Accent 2')
-    reporter.add_paragraph('\n\n')
-    reporter.add_df_table(df, 'Dark List Accent 2')
-    reporter.add_paragraph('\n\n')
-    reporter.add_df_table(df, 'Medium List 1 Accent 2')
+    reporter.add_paragraph("\n\n")
+    reporter.add_df_table(df, "Light Grid Accent 2")
+    reporter.add_paragraph("\n\n")
+    reporter.add_df_table(df, "Colorful Grid Accent 2")
+    reporter.add_paragraph("\n\n")
+    reporter.add_df_table(df, "Colorful Shading Accent 2")
+    reporter.add_paragraph("\n\n")
+    reporter.add_df_table(df, "Dark List Accent 2")
+    reporter.add_paragraph("\n\n")
+    reporter.add_df_table(df, "Medium List 1 Accent 2")
     reporter.save("reporter_test.docx")
 
     # 测试续写文档
     file_docx = "reporter_test.docx"
     reporter = WordWriter(file_docx)
     reporter.add_page_break()
-    reporter.add_heading('三、讨论', level=1)
-    reporter.add_paragraph('Python中可以用docx来生成word文档，docx中可以自定义文字的大小和字体等。')
-    reporter.add_paragraph("""段落是Word中的一个块级对象，在其所在容器的左右边界内显示文本，当文本超过
+    reporter.add_heading("三、讨论", level=1)
+    reporter.add_paragraph("Python中可以用docx来生成word文档，docx中可以自定义文字的大小和字体等。")
+    reporter.add_paragraph(
+        """段落是Word中的一个块级对象，在其所在容器的左右边界内显示文本，当文本超过
     右边界时自动换行。段落的边界通常是页边界，也可以是分栏排版时的栏边界，或者表格单元格中的边界。段落格式
     用于控制段落在其容器（例如页、栏、单元格）中的布局，例如对齐方式、左缩进、右缩进、首行缩进、行距、段前
     距离、段后距离、换页方式、Tab键字符格式等。
-        """.strip().replace("\n", ""))
+        """.strip().replace("\n", "")
+    )
 
     reporter.add_page_break()
-    reporter.add_heading('四、源码', level=1)
+    reporter.add_heading("四、源码", level=1)
     reporter.add_paragraph(inspect.getsource(WordWriter))
 
     reporter.save(file_docx)
 
     # 写入图片
     plt.close()
-    df = pd.DataFrame({'x': list(range(100)), 'y': list(range(100))})
+    df = pd.DataFrame({"x": list(range(100)), "y": list(range(100))})
     ax1 = plt.subplot(211)
-    ax1.plot(df['x'], df['y'], 'go--', linewidth=2, markersize=12)
+    ax1.plot(df["x"], df["y"], "go--", linewidth=2, markersize=12)
     ax2 = plt.subplot(212)
-    ax2.plot(df['x'], df['y'], 'ro--', linewidth=2, markersize=12)
+    ax2.plot(df["x"], df["y"], "ro--", linewidth=2, markersize=12)
     file_png = "x.png"
     plt.savefig(file_png)
     reporter.add_picture(file_png)

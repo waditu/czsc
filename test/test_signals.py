@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_signals.py - 信号生成函数单元测试
 
@@ -15,10 +14,11 @@ Mock数据格式说明:
 - cxt.py: 上下文信号（cxt_bi_base_V230228, cxt_fx_power_V221107）
 - tas.py: 技术指标信号（tas_ma_base_V230224）
 """
+
 import pytest
-import pandas as pd
+
 from czsc import mock
-from czsc.core import CZSC, format_standard_kline, Freq
+from czsc.core import CZSC, format_standard_kline
 
 
 def get_czsc_obj(symbol="000001", freq="日线", sdt="20200101", edt="20250101", seed=42):
@@ -50,6 +50,7 @@ def get_czsc_obj(symbol="000001", freq="日线", sdt="20200101", edt="20250101",
 class TestBarSignals:
     """测试K线级别信号"""
 
+
 class TestVolSignals:
     """测试成交量信号"""
 
@@ -75,8 +76,7 @@ class TestVolSignals:
         periods = [5, 10, 20]
         for period in periods:
             signal = vol_single_ma_V230214(c, ma_period=period)
-            assert signal is None or isinstance(signal, dict), \
-                f"周期{period}的成交量信号返回类型不正确"
+            assert signal is None or isinstance(signal, dict), f"周期{period}的成交量信号返回类型不正确"
 
     def test_vol_double_ma_with_normal_data(self):
         """测试双均线成交量信号（正常数据）"""
@@ -100,8 +100,7 @@ class TestVolSignals:
                 continue
 
             signal = vol_double_ma_V230214(c, ma_period1=5, ma_period2=10)
-            assert signal is None or isinstance(signal, dict), \
-                f"品种{symbol}的双均线成交量信号返回类型不正确"
+            assert signal is None or isinstance(signal, dict), f"品种{symbol}的双均线成交量信号返回类型不正确"
 
 
 class TestContextSignals:
@@ -140,12 +139,12 @@ class TestContextSignals:
                 continue
 
             signal = cxt_bi_base_V230228(c, di=1)
-            assert signal is None or isinstance(signal, dict), \
-                f"频率{freq}的上下文信号返回类型不正确"
+            assert signal is None or isinstance(signal, dict), f"频率{freq}的上下文信号返回类型不正确"
 
 
 class TestTASSignals:
     """测试技术指标信号"""
+
 
 class TestSignalCombinations:
     """测试信号组合"""
@@ -183,4 +182,4 @@ class TestSignalEdgeCases:
         signal2 = vol_single_ma_V230214(c, ma_period=5)
 
         # 结果类型应一致
-        assert type(signal1) == type(signal2), "多次调用的信号类型应一致"
+        assert isinstance(signal1, type(signal2)), "多次调用的信号类型应一致"

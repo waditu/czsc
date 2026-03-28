@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 模拟数据生成模块
 """
+
 import numpy as np
 import pandas as pd
+
 from czsc.utils.data.cache import disk_cache
 
 
@@ -354,7 +355,7 @@ def generate_strategy_returns(n_strategies=10, n_days=None, seed=42):
     data = []
 
     for i in range(n_strategies):
-        strategy_name = f"策略_{i+1:02d}"
+        strategy_name = f"策略_{i + 1:02d}"
         # 生成具有不同特征的收益率
         base_return = np.random.normal(0.0005, 0.015, len(dates))
         if i % 3 == 0:  # 每3个策略中有一个表现更好
@@ -451,7 +452,7 @@ def generate_daily_returns(n_strategies=3, seed=42):
 
     data = {}
     for i in range(n_strategies):
-        strategy_name = f"strategy_{chr(65+i)}"  # strategy_A, strategy_B, strategy_C
+        strategy_name = f"strategy_{chr(65 + i)}"  # strategy_A, strategy_B, strategy_C
         # 生成具有不同风险收益特征的收益率
         if i == 0:  # 高收益高波动
             returns = np.random.normal(0.0008, 0.015, len(dates))

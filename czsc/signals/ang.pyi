@@ -1,6 +1,9 @@
 from collections import OrderedDict
-from czsc.core import CZSC as CZSC, RawBar as RawBar
-from czsc.utils.sig import create_single_signal as create_single_signal, get_sub_elements as get_sub_elements
+
+from czsc.core import CZSC as CZSC
+from czsc.core import RawBar as RawBar
+from czsc.utils.sig import create_single_signal as create_single_signal
+from czsc.utils.sig import get_sub_elements as get_sub_elements
 
 def adtm_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict: ...
 def amv_up_dw_line_V230603(c: CZSC, **kwargs) -> OrderedDict: ...

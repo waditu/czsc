@@ -5,8 +5,8 @@ create_dt: 2024/4/27 15:01
 describe: K线质量评估工具函数
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 # 1. 缺失值检查
@@ -256,7 +256,7 @@ def check_extreme_values(df, threshold=0.2):
     extreme_changes = df[df["pct_change"] > threshold]
     if not extreme_changes.empty:
         return {
-            "description": f"存在 {len(extreme_changes)} 条记录，价格涨跌幅超过 {threshold*100}%",
+            "description": f"存在 {len(extreme_changes)} 条记录，价格涨跌幅超过 {threshold * 100}%",
             "rows": extreme_changes,
         }
     else:
@@ -307,7 +307,6 @@ def check_kline_quality(df):
     # 输出检查结果
     for symbol, symbol_issues in quality_issues.items():
         for check, result in symbol_issues.items():
-
             if result["rows"] is not None:
                 print(f"\n检查点: {symbol} - {check}")
                 print(f"结果描述: {result['description']}")

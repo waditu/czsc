@@ -1,6 +1,9 @@
 from collections import OrderedDict
-from czsc.core import CZSC as CZSC, RawBar as RawBar
-from czsc.utils.sig import create_single_signal as create_single_signal, get_sub_elements as get_sub_elements
+
+from czsc.core import CZSC as CZSC
+from czsc.core import RawBar as RawBar
+from czsc.utils.sig import create_single_signal as create_single_signal
+from czsc.utils.sig import get_sub_elements as get_sub_elements
 
 def update_vol_ma_cache(c: CZSC, ma_type: str, timeperiod: int, **kwargs): ...
 def vol_single_ma_V230214(c: CZSC, **kwargs) -> OrderedDict: ...

@@ -1,11 +1,12 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/5/10 15:19
 describe: 请描述文件用途
 """
+
 import os
+
 import pandas as pd
 from loguru import logger
 
@@ -41,13 +42,16 @@ class PairsPerformance:
 
         """
         df_pairs = df_pairs.copy(deep=True)
+
         # 将时间转换为年月日周
-        time_convert = lambda x: (
-            x.strftime("%Y年"),
-            x.strftime("%Y年%m月"),
-            x.strftime("%Y-%m-%d"),
-            f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周",
-        )
+        def time_convert(x):
+            return (
+                x.strftime("%Y年"),
+                x.strftime("%Y年%m月"),
+                x.strftime("%Y-%m-%d"),
+                f"{x.year}年第{x.weekofyear}周" if x.weekofyear >= 10 else f"{x.year}年第0{x.weekofyear}周",
+            )
+
         df_pairs[["开仓年", "开仓月", "开仓日", "开仓周"]] = list(df_pairs["开仓时间"].apply(time_convert))
         df_pairs[["平仓年", "平仓月", "平仓日", "平仓周"]] = list(df_pairs["平仓时间"].apply(time_convert))
 

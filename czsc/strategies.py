@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -7,20 +6,23 @@ describe: 提供一些策略的编写案例
 
 以 trader_ 开头的是择时交易策略案例
 """
-import os
-import time
-import shutil
+
 import hashlib
-import pandas as pd
-from copy import deepcopy
-from datetime import timedelta, datetime
+import os
+import shutil
+import time
 from abc import ABC, abstractmethod
-from typing import List
-from czsc.traders.base import CzscTrader
-from czsc.traders.sig_parse import get_signals_freqs, get_signals_config
-from czsc.utils.io import dill_dump, save_json, read_json
+from copy import deepcopy
+from datetime import datetime, timedelta
+
+import pandas as pd
+
+from czsc.core import BarGenerator, Position, RawBar, Signal
 from czsc.py.bar_generator import check_freq_and_market
-from czsc.core import RawBar, Signal, Position, BarGenerator
+from czsc.traders.base import CzscTrader
+from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
+from czsc.utils.io import dill_dump, read_json, save_json
+
 
 class CzscStrategyBase(ABC):
     """
@@ -35,6 +37,7 @@ class CzscStrategyBase(ABC):
     @staticmethod
     def _get_logger():
         from loguru import logger
+
         return logger
 
     def __init__(self, **kwargs):
@@ -68,7 +71,7 @@ class CzscStrategyBase(ABC):
     def sorted_freqs(self):
         """排好序的 K 线周期列表"""
         from czsc.utils import freqs_sorted
-        
+
         return freqs_sorted(self.freqs)
 
     @property
@@ -77,11 +80,11 @@ class CzscStrategyBase(ABC):
         return self.sorted_freqs[0]
 
     @abstractmethod
-    def positions(self) -> List[Position]:
+    def positions(self) -> list[Position]:
         """持仓策略列表"""
         raise NotImplementedError
 
-    def init_bar_generator(self, bars: List[RawBar], **kwargs):
+    def init_bar_generator(self, bars: list[RawBar], **kwargs):
         """使用策略定义初始化一个 BarGenerator 对象
 
         函数执行逻辑：
@@ -110,7 +113,7 @@ class CzscStrategyBase(ABC):
         freqs = self.sorted_freqs[1:] if base_freq in self.sorted_freqs else self.sorted_freqs
 
         if bg is None:
-            uni_times = sorted(list({x.dt.strftime("%H:%M") for x in bars}))
+            uni_times = sorted({x.dt.strftime("%H:%M") for x in bars})
             _, market = check_freq_and_market(uni_times, freq=base_freq)
 
             sdt = pd.to_datetime(kwargs.get("sdt", "20200101"))
@@ -136,7 +139,7 @@ class CzscStrategyBase(ABC):
             bars2 = [x for x in bars if x.dt > bg.end_dt]
             return bg, bars2
 
-    def init_trader(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+    def init_trader(self, bars: list[RawBar], **kwargs) -> CzscTrader:
         """使用策略定义初始化一个 CzscTrader 对象
 
         **注意：** 这里会将所有持仓策略在 sdt 之后的交易信号计算出来并缓存在持仓策略实例内部，所以初始化的过程本身也是回测的过程。
@@ -158,17 +161,21 @@ class CzscStrategyBase(ABC):
         :return: 完成策略初始化后的 CzscTrader 对象
         """
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg,
+            positions=deepcopy(self.positions),  # type: ignore
+            signals_config=deepcopy(self.signals_config),
+            **kwargs,
+        )
         for bar in bars2:
             trader.on_bar(bar)
         return trader
 
-    def backtest(self, bars: List[RawBar], **kwargs) -> CzscTrader:
+    def backtest(self, bars: list[RawBar], **kwargs) -> CzscTrader:
         trader = self.init_trader(bars, **kwargs)
         return trader
 
-    def dummy(self, sigs: List[dict], **kwargs) -> CzscTrader:
+    def dummy(self, sigs: list[dict], **kwargs) -> CzscTrader:
         """使用信号缓存进行策略回测
 
         :param sigs: 信号缓存，一般指 generate_czsc_signals 函数计算的结果缓存
@@ -177,7 +184,7 @@ class CzscStrategyBase(ABC):
         sleep_time = kwargs.get("sleep_time", 0)
         sleep_step = kwargs.get("sleep_step", 1000)
 
-        trader = CzscTrader(positions=deepcopy(self.positions))     # type: ignore
+        trader = CzscTrader(positions=deepcopy(self.positions))  # type: ignore
         for i, sig in enumerate(sigs):
             trader.on_sig(sig)
 
@@ -186,7 +193,7 @@ class CzscStrategyBase(ABC):
 
         return trader
 
-    def replay(self, bars: List[RawBar], res_path, **kwargs):
+    def replay(self, bars: list[RawBar], res_path, **kwargs):
         """交易策略交易过程回放
 
         函数执行逻辑：
@@ -214,7 +221,7 @@ class CzscStrategyBase(ABC):
         :return:
         """
         from czsc.utils import x_round
-        
+
         if kwargs.get("refresh", False):
             shutil.rmtree(res_path, ignore_errors=True)
 
@@ -225,8 +232,12 @@ class CzscStrategyBase(ABC):
         os.makedirs(res_path, exist_ok=exist_ok)
 
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg,
+            positions=deepcopy(self.positions),  # type: ignore
+            signals_config=deepcopy(self.signals_config),
+            **kwargs,
+        )
         for position in trader.positions:
             pos_path = os.path.join(res_path, position.name)
             os.makedirs(pos_path, exist_ok=exist_ok)
@@ -245,7 +256,7 @@ class CzscStrategyBase(ABC):
                     self._get_logger().info(f"{file_html}")
 
         for position in trader.positions:
-            if hasattr(position, 'evaluate'):
+            if hasattr(position, "evaluate"):
                 self._get_logger().info(
                     f"{position.name}  "
                     f"\n 多空合并：{position.evaluate()} "
@@ -253,10 +264,7 @@ class CzscStrategyBase(ABC):
                     f"\n 空头表现：{position.evaluate('空头')}"
                 )
             else:
-                self._get_logger().info(
-                    f"{position.name}  "
-                    f"\n holds={len(position.holds)}, pairs={len(position.pairs)}"
-                )
+                self._get_logger().info(f"{position.name}  \n holds={len(position.holds)}, pairs={len(position.pairs)}")
 
         file_trader = os.path.join(res_path, "trader.ct")
         try:
@@ -266,7 +274,7 @@ class CzscStrategyBase(ABC):
             self._get_logger().error(f"交易对象保存失败：{e}；通常的原因是交易对象中包含了不支持序列化的对象，比如函数")
         return trader
 
-    def check(self, bars: List[RawBar], res_path, **kwargs):
+    def check(self, bars: list[RawBar], res_path, **kwargs):
         """检查交易策略中的信号是否正确
 
         :param bars: 基础周期K线
@@ -288,8 +296,12 @@ class CzscStrategyBase(ABC):
 
         # 第一遍执行，获取信号
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg,
+            positions=deepcopy(self.positions),  # type: ignore
+            signals_config=deepcopy(self.signals_config),
+            **kwargs,
+        )
 
         _signals = []
         for bar in bars2:
@@ -314,8 +326,12 @@ class CzscStrategyBase(ABC):
 
         # 第二遍执行，检查信号，生成html
         bg, bars2 = self.init_bar_generator(bars, **kwargs)
-        trader = CzscTrader(bg=bg, positions=deepcopy(self.positions),  # type: ignore
-                            signals_config=deepcopy(self.signals_config), **kwargs)
+        trader = CzscTrader(
+            bg=bg,
+            positions=deepcopy(self.positions),  # type: ignore
+            signals_config=deepcopy(self.signals_config),
+            **kwargs,
+        )
 
         # 记录每个信号最后一次出现的时间
         last_sig_dt = {y.key: trader.end_dt for x in unique_signals.values() for y in x}
@@ -343,14 +359,14 @@ class CzscStrategyBase(ABC):
         :return: None
         """
         os.makedirs(path, exist_ok=True)
-        for pos in self.positions:          # type: ignore
+        for pos in self.positions:  # type: ignore
             pos_ = pos.dump()
             pos_.pop("symbol")
             hash_code = hashlib.md5(str(pos_).encode()).hexdigest()
             pos_["md5"] = hash_code
             save_json(pos_, os.path.join(path, f"{pos_['name']}.json"))
 
-    def load_positions(self, files: List, check=True) -> List[Position]:
+    def load_positions(self, files: list, check=True) -> list[Position]:
         """从配置文件中加载持仓策略
 
         :param files: 以json格式保存的持仓策略文件列表

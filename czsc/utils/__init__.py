@@ -1,39 +1,133 @@
-# coding: utf-8
-import os
 import functools
+import os
 import threading
-import pandas as pd
-from typing import List, Union
 
-from . import ta
-from . import io
+import pandas as pd
 
 # 导入轻量级子模块
-from . import data
-from . import crypto
-from . import analysis
-
+from . import analysis, crypto, data, io, ta
+from .analysis import (
+    cross_sectional_ic,
+    daily_performance,
+    holds_performance,
+    nmi_matrix,
+    overlap,
+    psi,
+    rolling_daily_performance,
+    single_linear,
+    top_drawdowns,
+)
+from .cross import cross_sectional_ranker
+from .crypto import fernet_decrypt, fernet_encrypt, generate_fernet_key
+from .data import (
+    DataClient,
+    DiskCache,
+    clear_cache,
+    clear_expired_cache,
+    disk_cache,
+    empty_cache_path,
+    get_dir_size,
+    get_url_token,
+    home_path,
+    set_url_token,
+)
+from .index_composition import index_composition
 from .io import dill_dump, dill_load, read_json, save_json
+from .oss import AliyunOSS
+
 # Delayed import to avoid circular dependency - import these from czsc.utils.sig directly
 # from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 # from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
-from .trade import update_nxb, update_bbars, update_tbars, risk_free_returns, resample_to_daily
-from .cross import cross_sectional_ranker
-from .index_composition import index_composition
-from .oss import AliyunOSS
+from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
-from .analysis import (
-    nmi_matrix, single_linear, cross_sectional_ic,
-    daily_performance, holds_performance, top_drawdowns,
-    rolling_daily_performance, psi, overlap
-)
-from .data import (
-    home_path, get_dir_size, empty_cache_path,
-    DiskCache, disk_cache, clear_cache, clear_expired_cache,
-    DataClient, set_url_token, get_url_token
-)
-from .crypto import generate_fernet_key, fernet_encrypt, fernet_decrypt
-
+__all__ = [
+    # 子模块
+    "analysis",
+    "crypto",
+    "data",
+    "io",
+    "ta",
+    "cross_sectional_ranker",
+    # analysis
+    "cross_sectional_ic",
+    "daily_performance",
+    "holds_performance",
+    "nmi_matrix",
+    "overlap",
+    "psi",
+    "rolling_daily_performance",
+    "single_linear",
+    "top_drawdowns",
+    # crypto
+    "fernet_decrypt",
+    "fernet_encrypt",
+    "generate_fernet_key",
+    # data
+    "DataClient",
+    "DiskCache",
+    "clear_cache",
+    "clear_expired_cache",
+    "disk_cache",
+    "empty_cache_path",
+    "get_dir_size",
+    "get_url_token",
+    "home_path",
+    "set_url_token",
+    # index_composition
+    "index_composition",
+    # io
+    "dill_dump",
+    "dill_load",
+    "read_json",
+    "save_json",
+    # oss
+    "AliyunOSS",
+    # trade
+    "resample_to_daily",
+    "risk_free_returns",
+    "update_bbars",
+    "update_nxb",
+    "update_tbars",
+    # 本模块函数
+    "x_round",
+    "get_py_namespace",
+    "code_namespace",
+    "import_by_name",
+    "freqs_sorted",
+    "create_grid_params",
+    "print_df_sample",
+    "mac_address",
+    "to_arrow",
+    "timeout_decorator",
+    "sorted_freqs",
+    # 延迟加载模块
+    "echarts_plot",
+    "plotting",
+    "backtest_report",
+    # 延迟加载属性
+    "kline_pro",
+    "trading_view_kline",
+    "generate_backtest_report",
+    "generate_html_backtest_report",
+    "generate_pdf_backtest_report",
+    "PdfReportBuilder",
+    "KlineChart",
+    "plot_czsc_chart",
+    "plot_cumulative_returns",
+    "plot_drawdown_analysis",
+    "plot_daily_return_distribution",
+    "plot_monthly_heatmap",
+    "plot_backtest_stats",
+    "plot_colored_table",
+    "plot_long_short_comparison",
+    "plot_weight_histogram_kde",
+    "plot_weight_cdf",
+    "plot_turnover_overview",
+    "plot_turnover_cost_analysis",
+    "plot_weight_time_series",
+    "get_sub_elements",
+    "logger",
+]
 
 sorted_freqs = [
     "Tick",
@@ -58,7 +152,7 @@ sorted_freqs = [
 ]
 
 
-def x_round(x: Union[float, int], digit: int = 4) -> Union[float, int]:
+def x_round(x: float | int, digit: int = 4) -> float | int:
     """用去尾法截断小数
 
     :param x: 数字
@@ -71,19 +165,21 @@ def x_round(x: Union[float, int], digit: int = 4) -> Union[float, int]:
     try:
         digit_ = pow(10, digit)
         x = int(x * digit_) / digit_
-    except:
+    except Exception:
         print(f"x_round error: x = {x}")
     return x
 
 
-def get_py_namespace(file_py: str, keys: list = []) -> dict:
+def get_py_namespace(file_py: str, keys: list = None) -> dict:
     """获取 python 脚本文件中的 namespace
 
     :param file_py: python 脚本文件名
     :param keys: 指定需要的对象名称
     :return: namespace
     """
-    text = open(file_py, "r", encoding="utf-8").read()
+    if keys is None:
+        keys = []
+    text = open(file_py, encoding="utf-8").read()
     code = compile(text, file_py, "exec")
     namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
     exec(code, namespace)
@@ -92,13 +188,15 @@ def get_py_namespace(file_py: str, keys: list = []) -> dict:
     return namespace
 
 
-def code_namespace(code: str, keys: list = []) -> dict:
+def code_namespace(code: str, keys: list = None) -> dict:
     """获取 python 代码中的 namespace
 
     :param code: python 代码
     :param keys: 指定需要的对象名称
     :return: namespace
     """
+    if keys is None:
+        keys = []
     namespace = {"code": code}
     exec(code, namespace)
     if keys:
@@ -179,10 +277,7 @@ def create_grid_params(prefix: str = "", multiply=3, **kwargs) -> dict:
 
     params = {}
     for i, row in enumerate(ParameterGrid(params_grid), 1):
-        if multiply == 0:
-            key = "#".join([f"{k}={v}" for k, v in row.items()])
-        else:
-            key = str(i).zfill(multiply)
+        key = "#".join([f"{k}={v}" for k, v in row.items()]) if multiply == 0 else str(i).zfill(multiply)
 
         row["version"] = f"{prefix}{key}"
         params[f"{prefix}@{key}"] = row
@@ -215,6 +310,7 @@ def mac_address():
 def to_arrow(df: pd.DataFrame):
     """将 pandas.DataFrame 转换为 pyarrow.Table"""
     import io
+
     import pyarrow as pa
 
     table = pa.Table.from_pandas(df)
@@ -248,6 +344,7 @@ def timeout_decorator(timeout):
 
             if thread.is_alive():
                 from loguru import logger as _logger
+
                 _logger.warning(f"{func.__name__} timed out after {timeout} seconds; args: {args}; kwargs: {kwargs}")
                 return None
 
@@ -263,43 +360,43 @@ def timeout_decorator(timeout):
 
 # 延迟加载的模块映射
 _LAZY_SUBMODULES = {
-    'echarts_plot': 'czsc.utils.echarts_plot',
-    'plotting': 'czsc.utils.plotting',
-    'backtest_report': 'czsc.utils.backtest_report',
+    "echarts_plot": "czsc.utils.echarts_plot",
+    "plotting": "czsc.utils.plotting",
+    "backtest_report": "czsc.utils.backtest_report",
 }
 
 # 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
 _LAZY_ATTRS = {
     # echarts_plot
-    'kline_pro': ('czsc.utils.echarts_plot', 'kline_pro'),
-    'trading_view_kline': ('czsc.utils.echarts_plot', 'trading_view_kline'),
+    "kline_pro": ("czsc.utils.echarts_plot", "kline_pro"),
+    "trading_view_kline": ("czsc.utils.echarts_plot", "trading_view_kline"),
     # backtest_report
-    'generate_backtest_report': ('czsc.utils.backtest_report', 'generate_backtest_report'),
-    'generate_html_backtest_report': ('czsc.utils.backtest_report', 'generate_html_backtest_report'),
-    'generate_pdf_backtest_report': ('czsc.utils.backtest_report', 'generate_pdf_backtest_report'),
+    "generate_backtest_report": ("czsc.utils.backtest_report", "generate_backtest_report"),
+    "generate_html_backtest_report": ("czsc.utils.backtest_report", "generate_html_backtest_report"),
+    "generate_pdf_backtest_report": ("czsc.utils.backtest_report", "generate_pdf_backtest_report"),
     # pdf_report_builder
-    'PdfReportBuilder': ('czsc.utils.pdf_report_builder', 'PdfReportBuilder'),
+    "PdfReportBuilder": ("czsc.utils.pdf_report_builder", "PdfReportBuilder"),
     # plotting.kline
-    'KlineChart': ('czsc.utils.plotting.kline', 'KlineChart'),
-    'plot_czsc_chart': ('czsc.utils.plotting.kline', 'plot_czsc_chart'),
+    "KlineChart": ("czsc.utils.plotting.kline", "KlineChart"),
+    "plot_czsc_chart": ("czsc.utils.plotting.kline", "plot_czsc_chart"),
     # plotting.backtest
-    'plot_cumulative_returns': ('czsc.utils.plotting.backtest', 'plot_cumulative_returns'),
-    'plot_drawdown_analysis': ('czsc.utils.plotting.backtest', 'plot_drawdown_analysis'),
-    'plot_daily_return_distribution': ('czsc.utils.plotting.backtest', 'plot_daily_return_distribution'),
-    'plot_monthly_heatmap': ('czsc.utils.plotting.backtest', 'plot_monthly_heatmap'),
-    'plot_backtest_stats': ('czsc.utils.plotting.backtest', 'plot_backtest_stats'),
-    'plot_colored_table': ('czsc.utils.plotting.backtest', 'plot_colored_table'),
-    'plot_long_short_comparison': ('czsc.utils.plotting.backtest', 'plot_long_short_comparison'),
+    "plot_cumulative_returns": ("czsc.utils.plotting.backtest", "plot_cumulative_returns"),
+    "plot_drawdown_analysis": ("czsc.utils.plotting.backtest", "plot_drawdown_analysis"),
+    "plot_daily_return_distribution": ("czsc.utils.plotting.backtest", "plot_daily_return_distribution"),
+    "plot_monthly_heatmap": ("czsc.utils.plotting.backtest", "plot_monthly_heatmap"),
+    "plot_backtest_stats": ("czsc.utils.plotting.backtest", "plot_backtest_stats"),
+    "plot_colored_table": ("czsc.utils.plotting.backtest", "plot_colored_table"),
+    "plot_long_short_comparison": ("czsc.utils.plotting.backtest", "plot_long_short_comparison"),
     # plotting.weight
-    'plot_weight_histogram_kde': ('czsc.utils.plotting.weight', 'plot_weight_histogram_kde'),
-    'plot_weight_cdf': ('czsc.utils.plotting.weight', 'plot_weight_cdf'),
-    'plot_turnover_overview': ('czsc.utils.plotting.weight', 'plot_turnover_overview'),
-    'plot_turnover_cost_analysis': ('czsc.utils.plotting.weight', 'plot_turnover_cost_analysis'),
-    'plot_weight_time_series': ('czsc.utils.plotting.weight', 'plot_weight_time_series'),
+    "plot_weight_histogram_kde": ("czsc.utils.plotting.weight", "plot_weight_histogram_kde"),
+    "plot_weight_cdf": ("czsc.utils.plotting.weight", "plot_weight_cdf"),
+    "plot_turnover_overview": ("czsc.utils.plotting.weight", "plot_turnover_overview"),
+    "plot_turnover_cost_analysis": ("czsc.utils.plotting.weight", "plot_turnover_cost_analysis"),
+    "plot_weight_time_series": ("czsc.utils.plotting.weight", "plot_weight_time_series"),
     # sig
-    'get_sub_elements': ('czsc.utils.sig', 'get_sub_elements'),
+    "get_sub_elements": ("czsc.utils.sig", "get_sub_elements"),
     # loguru logger
-    'logger': ('loguru', 'logger'),
+    "logger": ("loguru", "logger"),
 }
 
 

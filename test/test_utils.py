@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/2/16 20:31
 describe: czsc.utils 单元测试
 """
-import sys
-import pytest
+
 import time
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+
 from czsc import utils
 from czsc.utils import timeout_decorator
 
@@ -22,7 +22,7 @@ def test_x_round():
 
 
 def test_fernet():
-    from czsc.utils.crypto.fernet import generate_fernet_key, fernet_encrypt, fernet_decrypt
+    from czsc.utils.crypto.fernet import fernet_decrypt, fernet_encrypt, generate_fernet_key
 
     key = generate_fernet_key()
     text = {"account": "admin", "password": "123456"}
@@ -67,6 +67,7 @@ def test_overlap():
 
 def test_timeout_decorator_success():
     """测试超时装饰器正常情况"""
+
     @timeout_decorator(2)
     def fast_function():
         time.sleep(1)
@@ -77,6 +78,7 @@ def test_timeout_decorator_success():
 
 def test_timeout_decorator_timeout():
     """测试超时装饰器超时情况"""
+
     @timeout_decorator(1)
     def slow_function():
         time.sleep(5)

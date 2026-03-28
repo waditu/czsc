@@ -4,13 +4,13 @@
 包含分段收益、年度统计、样本内外对比、PSI分析等功能
 """
 
-import hashlib
 import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.express as px
+import streamlit as st
 from deprecated import deprecated
-from .base import safe_import_daily_performance, apply_stats_style, ensure_datetime_index, generate_component_key
+
+from .base import apply_stats_style, ensure_datetime_index, generate_component_key, safe_import_daily_performance
 
 
 def show_splited_daily(df, ret_col, **kwargs):
@@ -56,10 +56,10 @@ def show_splited_daily(df, ret_col, **kwargs):
         row_ = daily_performance(df1[ret_col], yearly_days=yearly_days)
         row.update(row_)
         rows.append(row)
-    
+
     dfv = pd.DataFrame(rows).set_index("收益名称")
     dfv_styled = apply_stats_style(dfv)
-    st.dataframe(dfv_styled, width='stretch')
+    st.dataframe(dfv_styled, width="stretch")
 
 
 def show_yearly_stats(df, ret_col, **kwargs):
@@ -92,7 +92,7 @@ def show_yearly_stats(df, ret_col, **kwargs):
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=sub_title)
-    st.dataframe(stats_styled, width='stretch')
+    st.dataframe(stats_styled, width="stretch")
 
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
@@ -122,8 +122,20 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     df_stats = pd.DataFrame([stats_i, stats_o])
     df_stats = df_stats[
         [
-            "标记", "开始日期", "结束日期", "年化", "最大回撤", "夏普", "卡玛",
-            "日胜率", "年化波动率", "非零覆盖", "盈亏平衡点", "新高间隔", "新高占比", "回撤风险",
+            "标记",
+            "开始日期",
+            "结束日期",
+            "年化",
+            "最大回撤",
+            "夏普",
+            "卡玛",
+            "日胜率",
+            "年化波动率",
+            "非零覆盖",
+            "盈亏平衡点",
+            "新高间隔",
+            "新高占比",
+            "回撤风险",
         ]
     ]
 
@@ -143,12 +155,22 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     df_stats_styled = df_stats_styled.background_gradient(cmap="RdYlGn", subset=["新高间隔"])
     df_stats_styled = df_stats_styled.background_gradient(cmap="RdYlGn", subset=["回撤风险"])
     df_stats_styled = df_stats_styled.background_gradient(cmap="RdYlGn_r", subset=["新高占比"])
-    df_stats_styled = df_stats_styled.format({
-        "盈亏平衡点": "{:.2f}", "年化波动率": "{:.2%}", "最大回撤": "{:.2%}",
-        "卡玛": "{:.2f}", "年化": "{:.2%}", "夏普": "{:.2f}", "非零覆盖": "{:.2%}",
-        "日胜率": "{:.2%}", "新高间隔": "{:.2f}", "回撤风险": "{:.2f}", "新高占比": "{:.2%}",
-    })
-    st.dataframe(df_stats_styled, width='stretch', hide_index=True)
+    df_stats_styled = df_stats_styled.format(
+        {
+            "盈亏平衡点": "{:.2f}",
+            "年化波动率": "{:.2%}",
+            "最大回撤": "{:.2%}",
+            "卡玛": "{:.2f}",
+            "年化": "{:.2%}",
+            "夏普": "{:.2f}",
+            "非零覆盖": "{:.2%}",
+            "日胜率": "{:.2%}",
+            "新高间隔": "{:.2f}",
+            "回撤风险": "{:.2f}",
+            "新高占比": "{:.2%}",
+        }
+    )
+    st.dataframe(df_stats_styled, width="stretch", hide_index=True)
 
 
 def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
@@ -159,6 +181,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     :param outsample_sdt2: 实盘开始跟踪的日期，如果为 None，则只展示样本内和样本外两个阶段
     """
     from czsc.eda import cal_yearly_days
+
     daily_performance = safe_import_daily_performance()
     if daily_performance is None:
         return
@@ -191,7 +214,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
         st.divider()
         dfd = dfx[["dt", "returns"]].copy()
         dfd.set_index("dt", inplace=True)
-        st.line_chart(dfd["returns"].cumsum(), color="#B22222", width='stretch')
+        st.line_chart(dfd["returns"].cumsum(), color="#B22222", width="stretch")
 
     if outsample_sdt2 is not None:
         outsample_sdt2 = pd.to_datetime(outsample_sdt2).strftime("%Y-%m-%d")
@@ -242,6 +265,7 @@ def show_psi(df, factor, segment, **kwargs):
         - sub_title: str, 子标题
     """
     from czsc.utils.analysis.stats import psi
+
     sub_title = kwargs.get("sub_title", "")
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=f"{factor}_{segment}_PSI")
@@ -280,7 +304,7 @@ def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
 
     dfg = df.groupby(f"{col1}_分层", observed=True)[col2].describe().reset_index()
     dfx = dfg.copy()
-    
+
     info = (
         f"{col1} 分层对应 {col2} 的均值单调性：:red[{czsc.monotonicity(dfx['mean']):.2%}]； "
         f"最后一层的均值：:red[{dfx['mean'].iloc[-1]:.4f}]；"
@@ -293,22 +317,30 @@ def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
         dfx["text"] = dfx["mean"].apply(lambda x: f"{x:.4f}")
         fig = px.bar(dfx, x="标记", y="mean", text="text", color="mean", color_continuous_scale="RdYlGn_r")
         fig.update_xaxes(title=None)
-        fig.update_layout(margin=dict(l=0, r=0, t=0, b=0))
-        
+        fig.update_layout(margin={"l": 0, "r": 0, "t": 0, "b": 0})
+
         # 生成 key
         if key is None:
             key = generate_component_key(df, prefix="classify", col1=col1, col2=col2, n=n, method=method)
-        
-        st.plotly_chart(fig, key=key, width='stretch')
+
+        st.plotly_chart(fig, key=key, width="stretch")
 
     dfg_styled = dfg.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
     dfg_styled = dfg_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
     dfg_styled = dfg_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["min", "25%", "50%", "75%", "max"])
-    dfg_styled = dfg_styled.format({
-        "count": "{:.0f}", "mean": "{:.4f}", "std": "{:.2%}",
-        "min": "{:.4f}", "25%": "{:.4f}", "50%": "{:.4f}", "75%": "{:.4f}", "max": "{:.4f}",
-    })
-    st.dataframe(dfg_styled, width='stretch')
+    dfg_styled = dfg_styled.format(
+        {
+            "count": "{:.0f}",
+            "mean": "{:.4f}",
+            "std": "{:.2%}",
+            "min": "{:.4f}",
+            "25%": "{:.4f}",
+            "50%": "{:.4f}",
+            "75%": "{:.4f}",
+            "max": "{:.4f}",
+        }
+    )
+    st.dataframe(dfg_styled, width="stretch")
 
 
 def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
@@ -363,14 +395,14 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
 
 def show_normality_check(data: pd.Series, alpha=0.05):
     """展示正态性检验结果
-    
+
     :param data: pd.Series, 需要检验的数据
     :param alpha: float, 显著性水平，默认为 0.05
     """
     import matplotlib.pyplot as plt
     import seaborn as sns
-    from scipy.stats import shapiro, jarque_bera, kstest, norm
     import statsmodels.api as sm
+    from scipy.stats import jarque_bera, kstest, norm, shapiro
 
     clean_data = data.dropna()
 
@@ -419,16 +451,16 @@ def show_describe(df: pd.DataFrame, **kwargs):
 
     :param df: pd.DataFrame, 数据框
     """
-    columns = kwargs.get('columns', None)
-    percentiles = kwargs.get('percentiles', [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
-    digits = kwargs.get('digits', 2)
+    columns = kwargs.get("columns")
+    percentiles = kwargs.get("percentiles", [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
+    digits = kwargs.get("digits", 2)
 
     columns = columns or df.columns
     df_raw = df[columns].copy()
 
     df_desc = df_raw.describe(percentiles=percentiles).T
-    df_desc['偏度'] = df_raw.skew()
-    df_desc['峰度'] = df_raw.kurt()
+    df_desc["偏度"] = df_raw.skew()
+    df_desc["峰度"] = df_raw.kurt()
 
     quantiles = [x for x in df_desc.columns if "%" in x]
     df_styled = df_desc.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
@@ -448,10 +480,12 @@ def show_describe(df: pd.DataFrame, **kwargs):
     }
     for q in quantiles:
         format_dict[q] = f"{{:.{digits}f}}"
-    
+
     df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, width='stretch')
-    st.caption("说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。")
+    st.dataframe(df_styled, width="stretch")
+    st.caption(
+        "说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。"
+    )
 
 
 @deprecated(reason="建议直接使用 show_describe 函数")
@@ -476,4 +510,4 @@ def show_df_describe(df: pd.DataFrame):
         format_dict[q] = "{:.4f}"
 
     df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, width='stretch') 
+    st.dataframe(df_styled, width="stretch")

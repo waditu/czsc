@@ -1,30 +1,32 @@
-# coding: utf-8
 """
 使用 pyecharts 定制绘图模块
 
 """
+# ruff: noqa: E101  # JS 代码嵌入 Python 字符串，mixed spaces/tabs 是误报
 
-from pyecharts import options as opts
-from pyecharts.charts import HeatMap, Kline, Line, Bar, Scatter, Grid, Boxplot
-from pyecharts.commons.utils import JsCode
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
+
 import numpy as np
+from pyecharts import options as opts
+from pyecharts.charts import Bar, Grid, Kline, Line, Scatter
+from pyecharts.commons.utils import JsCode
+
 from czsc.py.enum import Operate
-from .ta import SMA, MACD
+
+from .ta import MACD, SMA
 
 if TYPE_CHECKING:
     from lightweight_charts import Chart
 
 
-
 def kline_pro(
-    kline: List[dict],
-    fx: List[dict] = [],
-    bi: List[dict] = [],
-    xd: List[dict] = [],
-    bs: List[dict] = [],
+    kline: list[dict],
+    fx: list[dict] = None,
+    bi: list[dict] = None,
+    xd: list[dict] = None,
+    bs: list[dict] = None,
     title: str = "缠中说禅K线分析",
-    t_seq: List[int] = [],
+    t_seq: list[int] = None,
     width: str = "1400px",
     height: str = "580px",
 ) -> Grid:
@@ -50,6 +52,16 @@ def kline_pro(
     """
     # 配置项设置
     # ------------------------------------------------------------------------------------------------------------------
+    if t_seq is None:
+        t_seq = []
+    if bs is None:
+        bs = []
+    if xd is None:
+        xd = []
+    if bi is None:
+        bi = []
+    if fx is None:
+        fx = []
     bg_color = "#1f212d"  # 背景
     up_color = "#F9293E"
     down_color = "#00aa3b"
@@ -280,11 +292,11 @@ def kline_pro(
     if not t_seq:
         t_seq = [5, 13, 21]
 
-    ma_keys = dict()
+    ma_keys = {}
     for t in t_seq:
         ma_keys[f"MA{t}"] = SMA(close, timeperiod=t)
 
-    for i, (name, ma) in enumerate(ma_keys.items()):
+    for _, (name, ma) in enumerate(ma_keys.items()):
         chart_ma.add_yaxis(
             series_name=name,
             y_axis=ma,
@@ -425,23 +437,20 @@ def kline_pro(
     return grid_chart
 
 
-def _prepare_kline_data(kline: List[dict], use_streamlit=False, width=1400, height=580) -> tuple:
+def _prepare_kline_data(kline: list[dict], use_streamlit=False, width=1400, height=580) -> tuple:
     """准备K线数据
 
     :param kline: K线数据
     :return: (df_data, chart)
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     # 准备K线数据
     df_data = []
     for item in kline:
         # 处理时间格式
-        if hasattr(item["dt"], "strftime"):
-            time_str = item["dt"].strftime("%Y-%m-%d")
-        else:
-            time_str = str(item["dt"])
+        time_str = item["dt"].strftime("%Y-%m-%d") if hasattr(item["dt"], "strftime") else str(item["dt"])
 
         df_data.append(
             {
@@ -457,10 +466,12 @@ def _prepare_kline_data(kline: List[dict], use_streamlit=False, width=1400, heig
     # 创建主图表（延迟导入，避免在模块加载时引入 streamlit 等重型依赖）
     if use_streamlit:
         from lightweight_charts.widgets import StreamlitChart
+
         logger.info("使用 StreamlitChart")
         chart = StreamlitChart(width=width, height=height)
     else:
         from lightweight_charts import Chart
+
         logger.info("使用 Chart")
         chart = Chart()
 
@@ -471,7 +482,7 @@ def _prepare_kline_data(kline: List[dict], use_streamlit=False, width=1400, heig
     return df_data, chart
 
 
-def _add_moving_averages(chart: "Chart", kline: List[dict], df_data: List[dict], t_seq: List[int]) -> None:
+def _add_moving_averages(chart: "Chart", kline: list[dict], df_data: list[dict], t_seq: list[int]) -> None:
     """添加移动平均线
 
     :param chart: 图表对象
@@ -479,8 +490,8 @@ def _add_moving_averages(chart: "Chart", kline: List[dict], df_data: List[dict],
     :param df_data: 格式化后的数据
     :param t_seq: 均线周期序列
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     if not t_seq:
         return
@@ -512,14 +523,14 @@ def _add_moving_averages(chart: "Chart", kline: List[dict], df_data: List[dict],
         logger.warning(f"添加移动平均线失败: {e}")
 
 
-def _add_fractal_marks(chart: "Chart", fx: List[dict]) -> None:
+def _add_fractal_marks(chart: "Chart", fx: list[dict]) -> None:
     """添加分型标记
 
     :param chart: 图表对象
     :param fx: 分型数据
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     if not fx:
         return
@@ -527,10 +538,7 @@ def _add_fractal_marks(chart: "Chart", fx: List[dict]) -> None:
     try:
         fx_data = []
         for item in fx:
-            if hasattr(item["dt"], "strftime"):
-                time_str = item["dt"].strftime("%Y-%m-%d")
-            else:
-                time_str = str(item["dt"])
+            time_str = item["dt"].strftime("%Y-%m-%d") if hasattr(item["dt"], "strftime") else str(item["dt"])
 
             fx_data.append({"time": time_str, "分型": float(item["fx"])})
 
@@ -543,14 +551,14 @@ def _add_fractal_marks(chart: "Chart", fx: List[dict]) -> None:
         logger.warning(f"添加分型标记失败: {e}")
 
 
-def _add_bi_lines(chart: "Chart", bi: List[dict]) -> None:
+def _add_bi_lines(chart: "Chart", bi: list[dict]) -> None:
     """添加笔线
 
     :param chart: 图表对象
     :param bi: 笔数据
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     if not bi:
         return
@@ -558,10 +566,7 @@ def _add_bi_lines(chart: "Chart", bi: List[dict]) -> None:
     try:
         bi_data = []
         for item in bi:
-            if hasattr(item["dt"], "strftime"):
-                time_str = item["dt"].strftime("%Y-%m-%d")
-            else:
-                time_str = str(item["dt"])
+            time_str = item["dt"].strftime("%Y-%m-%d") if hasattr(item["dt"], "strftime") else str(item["dt"])
 
             bi_data.append({"time": time_str, "笔": float(item["bi"])})
 
@@ -574,14 +579,14 @@ def _add_bi_lines(chart: "Chart", bi: List[dict]) -> None:
         logger.warning(f"添加笔线失败: {e}")
 
 
-def _add_xd_lines(chart: "Chart", xd: List[dict]) -> None:
+def _add_xd_lines(chart: "Chart", xd: list[dict]) -> None:
     """添加线段
 
     :param chart: 图表对象
     :param xd: 线段数据
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     if not xd:
         return
@@ -589,10 +594,7 @@ def _add_xd_lines(chart: "Chart", xd: List[dict]) -> None:
     try:
         xd_data = []
         for item in xd:
-            if hasattr(item["dt"], "strftime"):
-                time_str = item["dt"].strftime("%Y-%m-%d")
-            else:
-                time_str = str(item["dt"])
+            time_str = item["dt"].strftime("%Y-%m-%d") if hasattr(item["dt"], "strftime") else str(item["dt"])
 
             xd_data.append({"time": time_str, "线段": float(item["xd"])})
 
@@ -605,15 +607,15 @@ def _add_xd_lines(chart: "Chart", xd: List[dict]) -> None:
         logger.warning(f"添加线段失败: {e}")
 
 
-def _add_macd_indicator(chart: "Chart", kline: List[dict], df_data: List[dict]) -> None:
+def _add_macd_indicator(chart: "Chart", kline: list[dict], df_data: list[dict]) -> None:
     """添加MACD指标到子图表
 
     :param chart: 图表对象
     :param kline: K线数据
     :param df_data: 格式化后的数据
     """
-    from loguru import logger
     import pandas as pd
+    from loguru import logger
 
     try:
         close_prices = np.array([x["close"] for x in kline], dtype=np.double)
@@ -709,14 +711,15 @@ def _add_macd_indicator(chart: "Chart", kline: List[dict], df_data: List[dict]) 
         logger.warning(f"添加MACD指标失败: {e}")
 
 
-def _add_trade_signals(chart: "Chart", bs: List[dict]) -> None:
+def _add_trade_signals(chart: "Chart", bs: list[dict]) -> None:
     """添加买卖点标记
 
     :param chart: 图表对象
     :param bs: 买卖点数据
     """
-    from loguru import logger
     from datetime import datetime
+
+    from loguru import logger
 
     if not bs:
         return
@@ -730,7 +733,7 @@ def _add_trade_signals(chart: "Chart", bs: List[dict]) -> None:
                 # 尝试转换为datetime对象
                 try:
                     marker_time = datetime.strptime(str(signal["dt"]), "%Y-%m-%d")
-                except:
+                except Exception:
                     marker_time = None
 
             if marker_time is None:
@@ -798,13 +801,13 @@ def _setup_chart_style(chart: "Chart", title: str) -> None:
 
 
 def trading_view_kline(
-    kline: List[dict],
-    fx: Optional[List[dict]] = None,
-    bi: Optional[List[dict]] = None,
-    xd: Optional[List[dict]] = None,
-    bs: Optional[List[dict]] = None,
+    kline: list[dict],
+    fx: list[dict] | None = None,
+    bi: list[dict] | None = None,
+    xd: list[dict] | None = None,
+    bs: list[dict] | None = None,
     title: str = "缠中说禅K线分析",
-    t_seq: Optional[List[int]] = None,
+    t_seq: list[int] | None = None,
     **kwargs,
 ) -> Optional["Chart"]:
     """使用 lightweight_charts 绘制缠中说禅K线分析结果
@@ -822,7 +825,6 @@ def trading_view_kline(
     :return: lightweight_charts Chart对象 或 None
     """
     from loguru import logger
-    import pandas as pd
 
     # 设置默认值
     fx = fx or []

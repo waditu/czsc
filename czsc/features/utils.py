@@ -13,7 +13,7 @@ def is_event_feature(df, col, **kwargs):
     :param col: str, 因子字段名称
     """
     unique_values = df[col].unique()
-    return all([x in [0, 1, -1] for x in unique_values])
+    return all(x in [0, 1, -1] for x in unique_values)
 
 
 def rolling_corr(df, col1, col2, window=300, min_periods=100, **kwargs):
@@ -170,7 +170,7 @@ def rolling_scale(df: pd.DataFrame, col: str, window=300, min_periods=100, new_c
     :param min_periods: int, 最小计算周期, 默认为100
     :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_scale' 作为新列名
     """
-    from sklearn.preprocessing import minmax_scale, scale, maxabs_scale, robust_scale
+    from sklearn.preprocessing import maxabs_scale, minmax_scale, robust_scale, scale
 
     if kwargs.get("copy", False):
         df = df.copy()
@@ -213,7 +213,7 @@ def rolling_tanh(df: pd.DataFrame, col: str, window=300, min_periods=100, new_co
     :param new_col: str, 新列名，默认为 None, 表示使用 f'{col}_scale' 作为新列名
     """
     from sklearn.preprocessing import scale
-    
+
     if kwargs.get("copy", False):
         df = df.copy()
     new_col = new_col if new_col else f"{col}_tanh"

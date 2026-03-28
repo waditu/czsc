@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_trade_utils_extended.py - czsc.utils.trade 交易工具扩展测试
 
@@ -17,10 +16,12 @@ Mock数据格式说明:
 - risk_free_returns: 基本收益率序列创建
 - 边界情况: 空数据、单行数据、无效输入
 """
-import pytest
+
 import numpy as np
 import pandas as pd
-from czsc.utils.trade import update_nxb, update_bbars, update_tbars, adjust_holding_weights, risk_free_returns
+import pytest
+
+from czsc.utils.trade import adjust_holding_weights, risk_free_returns, update_bbars, update_nxb, update_tbars
 
 
 class TestUpdateNxb:
@@ -30,11 +31,13 @@ class TestUpdateNxb:
     def sample_df(self):
         """构造测试数据"""
         dates = pd.date_range("20220101", periods=100, freq="D")
-        return pd.DataFrame({
-            "dt": dates,
-            "symbol": "000001",
-            "price": np.random.RandomState(42).uniform(10, 20, 100),
-        })
+        return pd.DataFrame(
+            {
+                "dt": dates,
+                "symbol": "000001",
+                "price": np.random.RandomState(42).uniform(10, 20, 100),
+            }
+        )
 
     def test_basic(self, sample_df):
         """测试基本功能"""
@@ -109,25 +112,29 @@ class TestUpdateTbars:
 
     def test_basic(self):
         """测试基本功能"""
-        df = pd.DataFrame({
-            "n1b": [0.01, -0.02, 0.03, -0.01, 0.02],
-            "n2b": [0.02, -0.01, 0.04, -0.02, 0.03],
-            "event": [1, -1, 1, 0, -1],
-        })
+        df = pd.DataFrame(
+            {
+                "n1b": [0.01, -0.02, 0.03, -0.01, 0.02],
+                "n2b": [0.02, -0.01, 0.04, -0.02, 0.03],
+                "event": [1, -1, 1, 0, -1],
+            }
+        )
         update_tbars(df, event_col="event")
         assert "t1b" in df.columns
         assert "t2b" in df.columns
 
     def test_direction_multiplication(self):
         """测试方向乘法"""
-        df = pd.DataFrame({
-            "n1b": [0.1, 0.1, 0.1],
-            "event": [1, -1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "n1b": [0.1, 0.1, 0.1],
+                "event": [1, -1, 0],
+            }
+        )
         update_tbars(df, event_col="event")
-        assert df["t1b"].iloc[0] == pytest.approx(0.1)   # 看多 * 正收益
+        assert df["t1b"].iloc[0] == pytest.approx(0.1)  # 看多 * 正收益
         assert df["t1b"].iloc[1] == pytest.approx(-0.1)  # 看空 * 正收益
-        assert df["t1b"].iloc[2] == pytest.approx(0.0)   # 无事件
+        assert df["t1b"].iloc[2] == pytest.approx(0.0)  # 无事件
 
 
 class TestAdjustHoldingWeights:
@@ -140,12 +147,14 @@ class TestAdjustHoldingWeights:
         data = []
         for dt in dates:
             for sym in ["A", "B"]:
-                data.append({
-                    "dt": dt,
-                    "symbol": sym,
-                    "weight": np.random.choice([0, 0.5, 1.0]),
-                    "n1b": np.random.uniform(-0.02, 0.02),
-                })
+                data.append(
+                    {
+                        "dt": dt,
+                        "symbol": sym,
+                        "weight": np.random.choice([0, 0.5, 1.0]),
+                        "n1b": np.random.uniform(-0.02, 0.02),
+                    }
+                )
         return pd.DataFrame(data)
 
     def test_hold_period_1(self, sample_df):

@@ -1,8 +1,13 @@
 from collections import OrderedDict
-from czsc.core import CZSC as CZSC, Direction as Direction, Mark as Mark, Operate as Operate
+
+from czsc.core import CZSC as CZSC
+from czsc.core import Direction as Direction
+from czsc.core import Mark as Mark
+from czsc.core import Operate as Operate
 from czsc.signals.tas import update_ma_cache as update_ma_cache
 from czsc.traders.base import CzscTrader as CzscTrader
-from czsc.utils.sig import create_single_signal as create_single_signal, get_sub_elements as get_sub_elements
+from czsc.utils.sig import create_single_signal as create_single_signal
+from czsc.utils.sig import get_sub_elements as get_sub_elements
 
 def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict: ...
 def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict: ...

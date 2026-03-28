@@ -1,7 +1,7 @@
 # 标准量价因子
 import inspect
+
 import numpy as np
-import pandas as pd
 
 
 def VPF001(df, **kwargs):
@@ -12,17 +12,17 @@ def VPF001(df, **kwargs):
         - tag: str, defaults to 'N2'  因子字段标记
         - num: int, defaults to 2  参数值
     """
-    num = kwargs.get('num', 2)
-    tag = kwargs.get('tag', f'N{num}')
+    num = kwargs.get("num", 2)
+    tag = kwargs.get("tag", f"N{num}")
 
     factor_name = inspect.stack()[0].function
-    factor_col = f'F#{factor_name}#{tag}'
+    factor_col = f"F#{factor_name}#{tag}"
 
-    con = df['open'] >= 1 / num * (df['high'] + df['low'])
-    con &= df['close'] >= 1 / num * (df['high'] + df['low'])
+    con = df["open"] >= 1 / num * (df["high"] + df["low"])
+    con &= df["close"] >= 1 / num * (df["high"] + df["low"])
 
-    red = df['open'] < 1 / num * (df['high'] + df['low'])
-    red &= df['close'] < 1 / num * (df['high'] + df['low'])
+    red = df["open"] < 1 / num * (df["high"] + df["low"])
+    red &= df["close"] < 1 / num * (df["high"] + df["low"])
 
     df[factor_col] = 0
     df[factor_col] = np.where(con, -1, df[factor_col])
@@ -40,18 +40,18 @@ def VPF002(df, **kwargs):
 
     :return: None
     """
-    num = kwargs.get('num', 4)
-    tag = kwargs.get('tag', f'N{num}')
+    num = kwargs.get("num", 4)
+    tag = kwargs.get("tag", f"N{num}")
 
     factor_name = inspect.stack()[0].function
-    factor_col = f'F#{factor_name}#{tag}'
+    factor_col = f"F#{factor_name}#{tag}"
 
-    df['return'] = df['close'] / df['close'].shift(1) - 1
-    red1 = df['return'].rolling(window=num, min_periods=1).sum() >= 0
-    red2 = (df['high'] - df['close']) / (df['close'] - df['low']) >= 1
+    df["return"] = df["close"] / df["close"].shift(1) - 1
+    red1 = df["return"].rolling(window=num, min_periods=1).sum() >= 0
+    red2 = (df["high"] - df["close"]) / (df["close"] - df["low"]) >= 1
 
     df[factor_col] = np.where(red1 | red2, 1, -1)
-    df.drop(columns=['return'], axis=1, inplace=True)
+    df.drop(columns=["return"], axis=1, inplace=True)
 
 
 def VPF003(df, **kwargs):
@@ -63,22 +63,22 @@ def VPF003(df, **kwargs):
         - tag: str
         - num: int, defaults to 60  参数值
     """
-    num = kwargs.get('num', 2)
-    tag = kwargs.get('tag', f'N{num}')
+    num = kwargs.get("num", 2)
+    tag = kwargs.get("tag", f"N{num}")
 
     factor_name = inspect.stack()[0].function
-    factor_col = f'F#{factor_name}#{tag}'
+    factor_col = f"F#{factor_name}#{tag}"
 
-    df['hol'] = (df['high'] - df['open']) / (df['high'] - df['low'])
-    df['clh'] = (df['close'] - df['low']) / (df['high'] - df['low'])
+    df["hol"] = (df["high"] - df["open"]) / (df["high"] - df["low"])
+    df["clh"] = (df["close"] - df["low"]) / (df["high"] - df["low"])
 
-    con = df['hol'].rolling(window=num, min_periods=1).mean() >= 0.5
-    con1 = (df['high'] + df['low'] - df['open'] - df['close']) >= 0
+    con = df["hol"].rolling(window=num, min_periods=1).mean() >= 0.5
+    con1 = (df["high"] + df["low"] - df["open"] - df["close"]) >= 0
     df[factor_col] = np.where(con | con1, 1, -1)
-    red = df['clh'].rolling(window=num, min_periods=1).mean() >= 0.5
+    red = df["clh"].rolling(window=num, min_periods=1).mean() >= 0.5
     df.loc[red, factor_col] = -1
 
-    df.drop(['hol', 'clh'], axis=1, inplace=True)
+    df.drop(["hol", "clh"], axis=1, inplace=True)
 
 
 def VPF004(df, **kwargs):
@@ -92,13 +92,13 @@ def VPF004(df, **kwargs):
 
     :return: None
     """
-    n = kwargs.get('n', 7)
-    tag = kwargs.get('tag', f'N{n}')
+    n = kwargs.get("n", 7)
+    tag = kwargs.get("tag", f"N{n}")
 
     factor_name = inspect.stack()[0].function
-    factor_col = f'F#{factor_name}#{tag}'
+    factor_col = f"F#{factor_name}#{tag}"
 
-    ema1 = df['close'].ewm(span=n, adjust=False).mean()
+    ema1 = df["close"].ewm(span=n, adjust=False).mean()
     ema2 = ema1.ewm(span=n, adjust=False).mean()
     ema3 = ema2.ewm(span=n, adjust=False).mean()
     df[factor_col] = 3 * (ema1 - ema2) + ema3

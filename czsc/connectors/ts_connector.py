@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/6/24 18:49
 describe: Tushare数据源
 """
+
 import os
-import czsc
+
 import pandas as pd
-from czsc import Freq, RawBar
-from typing import List
-from tqdm import tqdm
 from loguru import logger
+from tqdm import tqdm
+
+import czsc
+from czsc import Freq, RawBar
 
 # 首次使用需要打开一个python终端按如下方式设置 token
 # czsc.set_url_token(token='your token', url='http://api.tushare.pro')
@@ -20,7 +21,7 @@ cache_path = os.getenv("TS_CACHE_PATH", os.path.expanduser("~/.ts_data_cache"))
 dc = czsc.DataClient(url="http://api.tushare.pro", cache_path=cache_path)
 
 
-def format_kline(kline: pd.DataFrame, freq: Freq) -> List[RawBar]:
+def format_kline(kline: pd.DataFrame, freq: Freq) -> list[RawBar]:
     """Tushare K线数据转换
 
     :param kline: Tushare 数据接口返回的K线数据
@@ -105,10 +106,10 @@ def moneyflow_hsgt(start_date, end_date):
     sdt = pd.to_datetime(start_date)
     edt = pd.to_datetime(end_date)
     dts = pd.date_range(sdt, edt, freq="YE").to_list() + [sdt, edt]
-    dts = sorted(list(set(dts)))
+    dts = sorted(set(dts))
 
     rows = []
-    for dt1, dt2 in zip(dts[:-1], dts[1:]):
+    for dt1, dt2 in zip(dts[:-1], dts[1:], strict=False):
         ttl = -1 if dt2 != edt else 0
         df1 = dc.moneyflow_hsgt(
             start_date=dt1.strftime("%Y%m%d"),
@@ -143,8 +144,9 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     :param raw_bar: 是否返回 RawBar 对象列表
     :return:
     """
-    import tushare as ts
     from datetime import timedelta
+
+    import tushare as ts
 
     pro = ts.pro_api()
 
@@ -160,7 +162,9 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     dt2 = dt1 + delta
 
     while dt1 < end_dt:
-        print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 请求时间范围：{dt1.strftime(dt_fmt)} - {dt2.strftime(dt_fmt)}")
+        print(
+            f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 请求时间范围：{dt1.strftime(dt_fmt)} - {dt2.strftime(dt_fmt)}"
+        )
         df = ts.pro_bar(
             ts_code=ts_code,
             asset=asset,
@@ -172,8 +176,10 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
         dt2 = dt1 + delta
         if len(df) > 0:
             klines.append(df)
-            print(f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 数据长度 = {len(df)}; "
-                f"时间范围：{df['trade_time'].min()} - {df['trade_time'].max()}")
+            print(
+                f"pro_bar_minutes: {ts_code} - {asset} - {freq} - 数据长度 = {len(df)}; "
+                f"时间范围：{df['trade_time'].min()} - {df['trade_time'].max()}"
+            )
 
     df_klines = pd.concat(klines, ignore_index=True)
     kline = df_klines.drop_duplicates("trade_time").sort_values("trade_time", ascending=True, ignore_index=True)
@@ -186,7 +192,7 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     # 删除9:30的K线
     kline["keep"] = kline["trade_time"].apply(lambda x: 0 if x.hour == 9 and x.minute == 30 else 1)
     kline = kline[kline["keep"] == 1]
-    
+
     # 删除没有成交量的K线
     kline = kline[kline["vol"] > 0]
     kline.drop(["keep"], axis=1, inplace=True)
@@ -226,7 +232,7 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
         # 后复权	= 当日收盘价 × 当日复权因子
         adj_map = {row["trade_date"]: row["adj_factor"] for _, row in factor.iterrows()}
         for col in ["open", "close", "high", "low"]:
-            kline[col] = kline.apply(lambda x: x[col] * adj_map[x["trade_date"]], axis=1)   
+            kline[col] = kline.apply(lambda x: x[col] * adj_map[x["trade_date"]], axis=1)
 
     if sdt:
         kline = kline[kline["trade_time"] >= pd.to_datetime(sdt)]
@@ -236,9 +242,9 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
     kline = kline.reset_index(drop=True)
 
     # 标准化：dt, symbol, open, high, low, close, vol, amount
-    kline['symbol'] = ts_code
-    kline['dt'] = pd.to_datetime(kline['trade_time'])
-    kline = kline[['symbol', 'dt', 'open', 'high', 'low', 'close', 'vol', 'amount']].copy()
+    kline["symbol"] = ts_code
+    kline["dt"] = pd.to_datetime(kline["trade_time"])
+    kline = kline[["symbol", "dt", "open", "high", "low", "close", "vol", "amount"]].copy()
     return kline
 
 
@@ -313,6 +319,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="后复权", raw_bar=True):
 
     else:
         import tushare as ts
+
         _map = {"日线": "D", "周线": "W", "月线": "M"}
         freq = _map[freq]
         bars = ts.pro_bar(ts_code, start_date=sdt, end_date=edt, freq=freq, asset=asset, adj=adj)

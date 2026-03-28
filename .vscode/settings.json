@@ -5,7 +5,8 @@
     "python.analysis.typeCheckingMode": "off",
     "python.analysis.autoSearchPaths": true,
     "python.analysis.extraPaths": [
-        "."
+        ".",
+        "czsc"
     ],
     "files.exclude": {
         "**/__pycache__": true,

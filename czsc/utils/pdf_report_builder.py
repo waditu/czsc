@@ -7,24 +7,31 @@ PDF 报告构建器
 v2: 增强 PDF 专属特性 —— 目录、页面填充优化、图表缩放控制。
 """
 
+import contextlib
 import io
 import os
 import tempfile
 from datetime import datetime
-from typing import List, Dict, Any, Optional, Union
+from typing import Any
 
 import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
-from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm, mm
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    Image, PageBreak, HRFlowable, KeepTogether,
+    HRFlowable,
+    Image,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
 # ---------------------------------------------------------------------------
@@ -66,65 +73,141 @@ FONT_NAME = "STSong-Light"
 FONT_NAME_BOLD = "STSong-Light"  # CID 字体无独立粗体，用同一字体
 
 
-def _build_styles() -> Dict[str, ParagraphStyle]:
+def _build_styles() -> dict[str, ParagraphStyle]:
     """构建报告中使用的段落样式集合。"""
     base = getSampleStyleSheet()
-    styles: Dict[str, ParagraphStyle] = {}
+    styles: dict[str, ParagraphStyle] = {}
 
     styles["title"] = ParagraphStyle(
-        "PDFTitle", parent=base["Title"], fontName=FONT_NAME, fontSize=24,
-        leading=32, textColor=COLOR_DARK, alignment=TA_CENTER, spaceAfter=4,
+        "PDFTitle",
+        parent=base["Title"],
+        fontName=FONT_NAME,
+        fontSize=24,
+        leading=32,
+        textColor=COLOR_DARK,
+        alignment=TA_CENTER,
+        spaceAfter=4,
     )
     styles["subtitle"] = ParagraphStyle(
-        "PDFSubtitle", parent=base["Normal"], fontName=FONT_NAME, fontSize=11,
-        leading=16, textColor=COLOR_SECONDARY, alignment=TA_CENTER, spaceAfter=8,
+        "PDFSubtitle",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=11,
+        leading=16,
+        textColor=COLOR_SECONDARY,
+        alignment=TA_CENTER,
+        spaceAfter=8,
     )
     styles["section_title"] = ParagraphStyle(
-        "PDFSectionTitle", parent=base["Heading2"], fontName=FONT_NAME, fontSize=14,
-        leading=20, textColor=COLOR_PRIMARY, spaceBefore=10, spaceAfter=6,
-        borderWidth=0, borderPadding=0, borderColor=COLOR_PRIMARY,
+        "PDFSectionTitle",
+        parent=base["Heading2"],
+        fontName=FONT_NAME,
+        fontSize=14,
+        leading=20,
+        textColor=COLOR_PRIMARY,
+        spaceBefore=10,
+        spaceAfter=6,
+        borderWidth=0,
+        borderPadding=0,
+        borderColor=COLOR_PRIMARY,
     )
     styles["body"] = ParagraphStyle(
-        "PDFBody", parent=base["Normal"], fontName=FONT_NAME, fontSize=9,
-        leading=14, textColor=COLOR_DARK, spaceAfter=6,
+        "PDFBody",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=9,
+        leading=14,
+        textColor=COLOR_DARK,
+        spaceAfter=6,
     )
     styles["badge"] = ParagraphStyle(
-        "PDFBadge", parent=base["Normal"], fontName=FONT_NAME, fontSize=8,
-        leading=12, textColor=COLOR_SECONDARY, alignment=TA_CENTER,
+        "PDFBadge",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
+        textColor=COLOR_SECONDARY,
+        alignment=TA_CENTER,
     )
     styles["metric_value"] = ParagraphStyle(
-        "PDFMetricValue", parent=base["Normal"], fontName=FONT_NAME, fontSize=16,
-        leading=22, alignment=TA_CENTER, spaceAfter=2,
+        "PDFMetricValue",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=16,
+        leading=22,
+        alignment=TA_CENTER,
+        spaceAfter=2,
     )
     styles["metric_label"] = ParagraphStyle(
-        "PDFMetricLabel", parent=base["Normal"], fontName=FONT_NAME, fontSize=8,
-        leading=12, textColor=COLOR_SECONDARY, alignment=TA_CENTER,
+        "PDFMetricLabel",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
+        textColor=COLOR_SECONDARY,
+        alignment=TA_CENTER,
     )
     styles["footer"] = ParagraphStyle(
-        "PDFFooter", parent=base["Normal"], fontName=FONT_NAME, fontSize=8,
-        leading=12, textColor=COLOR_SECONDARY, alignment=TA_CENTER,
+        "PDFFooter",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
+        textColor=COLOR_SECONDARY,
+        alignment=TA_CENTER,
     )
     styles["table_header"] = ParagraphStyle(
-        "PDFTableHeader", parent=base["Normal"], fontName=FONT_NAME, fontSize=8,
-        leading=12, textColor=colors.white, alignment=TA_CENTER,
+        "PDFTableHeader",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
+        textColor=colors.white,
+        alignment=TA_CENTER,
     )
     styles["table_cell"] = ParagraphStyle(
-        "PDFTableCell", parent=base["Normal"], fontName=FONT_NAME, fontSize=8,
-        leading=12, textColor=COLOR_DARK, alignment=TA_CENTER,
+        "PDFTableCell",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=8,
+        leading=12,
+        textColor=COLOR_DARK,
+        alignment=TA_CENTER,
     )
     styles["toc_title"] = ParagraphStyle(
-        "PDFTocTitle", parent=base["Heading1"], fontName=FONT_NAME, fontSize=18,
-        leading=24, textColor=COLOR_DARK, alignment=TA_LEFT, spaceBefore=6, spaceAfter=12,
+        "PDFTocTitle",
+        parent=base["Heading1"],
+        fontName=FONT_NAME,
+        fontSize=18,
+        leading=24,
+        textColor=COLOR_DARK,
+        alignment=TA_LEFT,
+        spaceBefore=6,
+        spaceAfter=12,
     )
     styles["toc_entry"] = ParagraphStyle(
-        "PDFTocEntry", parent=base["Normal"], fontName=FONT_NAME, fontSize=11,
-        leading=20, textColor=COLOR_DARK, alignment=TA_LEFT,
-        leftIndent=12, spaceBefore=2, spaceAfter=2,
+        "PDFTocEntry",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=11,
+        leading=20,
+        textColor=COLOR_DARK,
+        alignment=TA_LEFT,
+        leftIndent=12,
+        spaceBefore=2,
+        spaceAfter=2,
     )
     styles["toc_entry_sub"] = ParagraphStyle(
-        "PDFTocEntrySub", parent=base["Normal"], fontName=FONT_NAME, fontSize=10,
-        leading=18, textColor=COLOR_SECONDARY, alignment=TA_LEFT,
-        leftIndent=30, spaceBefore=1, spaceAfter=1,
+        "PDFTocEntrySub",
+        parent=base["Normal"],
+        fontName=FONT_NAME,
+        fontSize=10,
+        leading=18,
+        textColor=COLOR_SECONDARY,
+        alignment=TA_LEFT,
+        leftIndent=30,
+        spaceBefore=1,
+        spaceAfter=1,
     )
     return styles
 
@@ -132,6 +215,7 @@ def _build_styles() -> Dict[str, ParagraphStyle]:
 # ---------------------------------------------------------------------------
 # 辅助函数
 # ---------------------------------------------------------------------------
+
 
 def _fig_to_image_bytes(fig, width: float, height: float) -> bytes:
     """将 Plotly Figure 转换为 PNG 字节流。
@@ -144,8 +228,9 @@ def _fig_to_image_bytes(fig, width: float, height: float) -> bytes:
     return fig.to_image(format="png", width=int(width), height=int(height), scale=2)
 
 
-def _make_metric_cell(value_text: str, label_text: str, is_positive: Optional[bool],
-                      styles: Dict[str, ParagraphStyle], cell_width: float) -> Table:
+def _make_metric_cell(
+    value_text: str, label_text: str, is_positive: bool | None, styles: dict[str, ParagraphStyle], cell_width: float
+) -> Table:
     """创建单个指标卡片（作为内嵌 Table 返回）。
 
     :param value_text: 指标值文本
@@ -166,29 +251,36 @@ def _make_metric_cell(value_text: str, label_text: str, is_positive: Optional[bo
         bg_color = COLOR_PRIMARY_BG
 
     val_style = ParagraphStyle(
-        "mv", parent=styles["metric_value"], textColor=val_color,
+        "mv",
+        parent=styles["metric_value"],
+        textColor=val_color,
     )
     val_para = Paragraph(str(value_text), val_style)
     lbl_para = Paragraph(str(label_text), styles["metric_label"])
 
     card = Table([[val_para], [lbl_para]], colWidths=[cell_width], rowHeights=[28, 18])
-    card.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), bg_color),
-        ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("ROUNDEDCORNERS", [4, 4, 4, 4]),
-    ]))
+    card.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), bg_color),
+                ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+            ]
+        )
+    )
     return card
 
 
 # ---------------------------------------------------------------------------
 # PdfReportBuilder 类
 # ---------------------------------------------------------------------------
+
 
 class PdfReportBuilder:
     """PDF 报告构建器
@@ -223,14 +315,14 @@ class PdfReportBuilder:
         self.author = author
         self.created_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._styles = _build_styles()
-        self._elements: List[Any] = []  # Platypus flowable 列表
-        self._footer_text: Optional[str] = None
-        self._temp_files: List[str] = []  # 临时文件路径，save/render 后清理
-        self._toc_entries: List[Dict[str, Any]] = []  # 目录条目: {"title": str, "level": int}
+        self._elements: list[Any] = []  # Platypus flowable 列表
+        self._footer_text: str | None = None
+        self._temp_files: list[str] = []  # 临时文件路径，save/render 后清理
+        self._toc_entries: list[dict[str, Any]] = []  # 目录条目: {"title": str, "level": int}
 
     # ----- 链式方法 --------------------------------------------------------
 
-    def add_header(self, params: Dict[str, str], subtitle: str = None) -> "PdfReportBuilder":
+    def add_header(self, params: dict[str, str], subtitle: str = None) -> "PdfReportBuilder":
         """添加报告头部区域
 
         :param params: 参数字典，如 {"日期": "2024-01-01", "版本": "v1.0"}
@@ -253,16 +345,20 @@ class PdfReportBuilder:
             n_badges = len(badge_cells)
             badge_width = CONTENT_WIDTH / max(n_badges, 1)
             badge_table = Table([badge_cells], colWidths=[badge_width] * n_badges)
-            badge_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), COLOR_LIGHT),
-                ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, COLOR_BORDER),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                ("ROUNDEDCORNERS", [3, 3, 3, 3]),
-            ]))
+            badge_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, -1), COLOR_LIGHT),
+                        ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.25, COLOR_BORDER),
+                        ("TOPPADDING", (0, 0), (-1, -1), 4),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                        ("ROUNDEDCORNERS", [3, 3, 3, 3]),
+                    ]
+                )
+            )
             self._elements.append(Spacer(1, 6))
             self._elements.append(badge_table)
 
@@ -283,7 +379,7 @@ class PdfReportBuilder:
         :param title: 目录区域标题
         :return: self，支持链式调用
         """
-        toc_elements: List[Any] = []
+        toc_elements: list[Any] = []
         toc_elements.append(Paragraph(title, self._styles["toc_title"]))
         toc_elements.append(Spacer(1, 8))
 
@@ -292,7 +388,7 @@ class PdfReportBuilder:
             level = entry.get("level", 1)
             entry_title = entry["title"]
             bookmark_key = entry.get("key", "")
-            
+
             if level == 1:
                 text = f'<a href="#{bookmark_key}" color="black">{idx}. {entry_title}</a>'
                 toc_elements.append(Paragraph(text, self._styles["toc_entry"]))
@@ -323,7 +419,7 @@ class PdfReportBuilder:
         if insert_pos == 0:
             insert_pos = len(self._elements)
 
-        toc_elements: List[Any] = []
+        toc_elements: list[Any] = []
         toc_elements.append(Spacer(1, 6))
         toc_elements.append(Paragraph(title, self._styles["toc_title"]))
         toc_elements.append(Spacer(1, 8))
@@ -334,7 +430,7 @@ class PdfReportBuilder:
             level = entry.get("level", 1)
             entry_title = entry["title"]
             bookmark_key = entry.get("key", "")
-            
+
             if level == 1:
                 # 带序号和虚线分隔
                 text = f'<a href="#{bookmark_key}" color="black"><b>{idx}.</b>  {entry_title}</a>'
@@ -363,7 +459,7 @@ class PdfReportBuilder:
         self._elements.append(PageBreak())
         return self
 
-    def add_metrics(self, metrics: List[Dict[str, Any]], title: str = "核心绩效指标") -> "PdfReportBuilder":
+    def add_metrics(self, metrics: list[dict[str, Any]], title: str = "核心绩效指标") -> "PdfReportBuilder":
         """添加绩效指标卡片
 
         :param metrics: 指标列表，每个元素为 {"label": str, "value": str, "is_positive": bool/None}
@@ -375,7 +471,7 @@ class PdfReportBuilder:
         cols_per_row = 5
         card_width = (CONTENT_WIDTH - (cols_per_row - 1) * CARD_SPACING) / cols_per_row
 
-        rows: List[list] = []
+        rows: list[list] = []
         current_row: list = []
         for m in metrics:
             card = _make_metric_cell(
@@ -396,13 +492,17 @@ class PdfReportBuilder:
             rows.append(current_row)
 
         grid = Table(rows, colWidths=[card_width + CARD_SPACING] * cols_per_row)
-        grid.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 2),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
+        grid.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                    ("TOPPADDING", (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ]
+            )
+        )
         self._elements.append(grid)
         self._elements.append(Spacer(1, 8))
         return self
@@ -421,9 +521,14 @@ class PdfReportBuilder:
         anchor_text = f'<a name="{bookmark_key}"/>{title}'
         self._elements.append(Paragraph(anchor_text, self._styles["section_title"]))
 
-    def add_chart(self, fig_or_image, title: str = "图表",
-                  height: float = None, fit_page: bool = False,
-                  aspect_ratio: float = 0.55) -> "PdfReportBuilder":
+    def add_chart(
+        self,
+        fig_or_image,
+        title: str = "图表",
+        height: float = None,
+        fit_page: bool = False,
+        aspect_ratio: float = 0.55,
+    ) -> "PdfReportBuilder":
         """添加图表
 
         支持 Plotly Figure 对象（通过 kaleido 转为 PNG）或图片文件路径。
@@ -466,22 +571,25 @@ class PdfReportBuilder:
 
         # 包裹图表在带边框的 Table 中
         chart_table = Table([[img]], colWidths=[CONTENT_WIDTH])
-        chart_table.setStyle(TableStyle([
-            ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-            ("LEFTPADDING", (0, 0), (-1, -1), 2),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("ROUNDEDCORNERS", [4, 4, 4, 4]),
-        ]))
+        chart_table.setStyle(
+            TableStyle(
+                [
+                    ("BOX", (0, 0), (-1, -1), 0.5, COLOR_BORDER),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ROUNDEDCORNERS", [4, 4, 4, 4]),
+                ]
+            )
+        )
         self._elements.append(chart_table)
         self._elements.append(Spacer(1, 4))
         return self
 
-    def add_table(self, df: pd.DataFrame, title: str = "数据表",
-                  max_rows: int = None) -> "PdfReportBuilder":
+    def add_table(self, df: pd.DataFrame, title: str = "数据表", max_rows: int = None) -> "PdfReportBuilder":
         """添加数据表格
 
         :param df: pandas DataFrame
@@ -593,15 +701,15 @@ class PdfReportBuilder:
         """每页回调：绘制页眉和页脚。"""
         self._draw_page_header(canvas, doc)
         self._draw_page_footer(canvas, doc)
-        
+
         # 注册书签到 PDF 目录大纲
         # 注意：由于 reportlab 的限制，这里只能在页面级别添加书签，
         # 无法精确到段落级别，但对于报告来说已经足够。
         # 我们在 _add_bookmark_and_title 中使用了 <a name="..."/> 锚点，
         # 配合 href="#..." 可以在文档内部跳转。
         # 这里额外添加 PDF 侧边栏大纲支持。
-        if hasattr(canvas, 'bookmarkPage'):
-            for entry in self._toc_entries:
+        if hasattr(canvas, "bookmarkPage"):
+            for _entry in self._toc_entries:
                 # 简单处理：如果当前页是该书签所在的页（近似），则添加到大纲
                 # 实际上 reportlab 有更复杂的机制，这里我们主要依赖内部链接
                 pass
@@ -661,8 +769,6 @@ class PdfReportBuilder:
     def _cleanup_temp_files(self):
         """清理临时图片文件。"""
         for fp in self._temp_files:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(fp)
-            except OSError:
-                pass
         self._temp_files.clear()

@@ -13,10 +13,9 @@
 """
 
 import pandas as pd
-from typing import List, Dict, Tuple, Optional
 
 
-def __two_bi_v(b1: pd.Series, b2: pd.Series, min_score: float = 0.7) -> Optional[Dict]:
+def __two_bi_v(b1: pd.Series, b2: pd.Series, min_score: float = 0.7) -> dict | None:
     """识别两笔构成的V字反转形态
 
     前提条件：
@@ -33,42 +32,40 @@ def __two_bi_v(b1: pd.Series, b2: pd.Series, min_score: float = 0.7) -> Optional
     :return: V字模式信息，如果不符合条件返回None
     """
     # 前提条件：检查趋势打分
-    if b1['score'] < min_score or b2['score'] < min_score:
+    if b1["score"] < min_score or b2["score"] < min_score:
         return None
 
     # 检查方向相反
-    if b1['direction'] == b2['direction']:
+    if b1["direction"] == b2["direction"]:
         return None
 
     # 正V字识别：b1 向下、b2 向上，且 b2 的高点大于 b1 的高点
-    if b1['direction'] == '向下' and b2['direction'] == '向上':
-        if b2['high'] > b1['high']:
+    if b1["direction"] == "向下" and b2["direction"] == "向上":
+        if b2["high"] > b1["high"]:
             return {
-                'type': '两笔正V',
-                'pattern': 'two_bi',
-                'bi_indices': [b1['bi_idx'], b2['bi_idx']],
-                'start_price': b1['high'],
-                'end_price': b2['high'],
-                'bottom_price': min(b1['low'], b2['low'])
+                "type": "两笔正V",
+                "pattern": "two_bi",
+                "bi_indices": [b1["bi_idx"], b2["bi_idx"]],
+                "start_price": b1["high"],
+                "end_price": b2["high"],
+                "bottom_price": min(b1["low"], b2["low"]),
             }
 
     # 倒V字识别：b1 向上、b2 向下，且 b2 的低点小于 b1 的低点
-    elif b1['direction'] == '向上' and b2['direction'] == '向下':
-        if b2['low'] < b1['low']:
-            return {
-                'type': '两笔倒V',
-                'pattern': 'two_bi',
-                'bi_indices': [b1['bi_idx'], b2['bi_idx']],
-                'start_price': b1['low'],
-                'end_price': b2['low'],
-                'top_price': max(b1['high'], b2['high'])
-            }
+    elif b1["direction"] == "向上" and b2["direction"] == "向下" and b2["low"] < b1["low"]:
+        return {
+            "type": "两笔倒V",
+            "pattern": "two_bi",
+            "bi_indices": [b1["bi_idx"], b2["bi_idx"]],
+            "start_price": b1["low"],
+            "end_price": b2["low"],
+            "top_price": max(b1["high"], b2["high"]),
+        }
 
     return None
 
 
-def __four_bi_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
-                min_score: float = 0.7) -> Optional[Dict]:
+def __four_bi_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series, min_score: float = 0.7) -> dict | None:
     """识别四笔构成的V字反转形态
 
     前提条件：
@@ -91,8 +88,8 @@ def __four_bi_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
         return None
 
     # 计算极值
-    min_low = min(b1['low'], b2['low'], b3['low'], b4['low'])
-    max_high = max(b1['high'], b2['high'], b3['high'], b4['high'])
+    min_low = min(b1["low"], b2["low"], b3["low"], b4["low"])
+    max_high = max(b1["high"], b2["high"], b3["high"], b4["high"])
 
     # 正V字识别
     result = __identify_four_bi_positive_v(b1, b2, b3, b4, min_low, min_score)
@@ -104,11 +101,10 @@ def __four_bi_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
     return result
 
 
-def __validate_four_bi_scores(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
-                              min_score: float) -> bool:
+def __validate_four_bi_scores(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series, min_score: float) -> bool:
     """验证四笔的趋势打分是否满足条件"""
-    up_scores = [b['score'] for b in [b1, b2, b3, b4] if b['direction'] == '向上']
-    down_scores = [b['score'] for b in [b1, b2, b3, b4] if b['direction'] == '向下']
+    up_scores = [b["score"] for b in [b1, b2, b3, b4] if b["direction"] == "向上"]
+    down_scores = [b["score"] for b in [b1, b2, b3, b4] if b["direction"] == "向下"]
 
     if not up_scores or not down_scores:
         return False
@@ -116,82 +112,85 @@ def __validate_four_bi_scores(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: p
     return max(up_scores) >= min_score and max(down_scores) >= min_score
 
 
-def __identify_four_bi_positive_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
-                                  min_low: float, min_score: float) -> Optional[Dict]:
+def __identify_four_bi_positive_v(
+    b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series, min_low: float, min_score: float
+) -> dict | None:
     """识别四笔正V字形态"""
     # 检查方向条件：1、3向下，2、4向上
-    down_directions = b1['direction'] == '向下' and b3['direction'] == '向下'
-    up_directions = b2['direction'] == '向上' and b4['direction'] == '向上'
+    down_directions = b1["direction"] == "向下" and b3["direction"] == "向下"
+    up_directions = b2["direction"] == "向上" and b4["direction"] == "向上"
     if not (down_directions and up_directions):
         return None
 
-    if b4['high'] <= b1['high']:
+    if b4["high"] <= b1["high"]:
         return None
 
     # 最低点在 b1
-    if b1['low'] == min_low and b1['score'] > min_score:
+    if b1["low"] == min_low and b1["score"] > min_score:
         return {
-            'type': '四笔正V-B1最低',
-            'pattern': 'four_bi',
-            'bi_indices': [b1['bi_idx'], b2['bi_idx'], b3['bi_idx'], b4['bi_idx']],
-            'start_price': b1['high'],
-            'end_price': b4['high'],
-            'bottom_price': b1['low']
+            "type": "四笔正V-B1最低",
+            "pattern": "four_bi",
+            "bi_indices": [b1["bi_idx"], b2["bi_idx"], b3["bi_idx"], b4["bi_idx"]],
+            "start_price": b1["high"],
+            "end_price": b4["high"],
+            "bottom_price": b1["low"],
         }
 
     # 最低点在 b3
-    if b3['low'] == min_low and b1['high'] > b3['high']:
+    if b3["low"] == min_low and b1["high"] > b3["high"]:
         return {
-            'type': '四笔正V-B3最低',
-            'pattern': 'four_bi',
-            'bi_indices': [b1['bi_idx'], b2['bi_idx'], b3['bi_idx'], b4['bi_idx']],
-            'start_price': b1['high'],
-            'end_price': b4['high'],
-            'bottom_price': b3['low']
+            "type": "四笔正V-B3最低",
+            "pattern": "four_bi",
+            "bi_indices": [b1["bi_idx"], b2["bi_idx"], b3["bi_idx"], b4["bi_idx"]],
+            "start_price": b1["high"],
+            "end_price": b4["high"],
+            "bottom_price": b3["low"],
         }
 
     return None
 
 
-def __identify_four_bi_negative_v(b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series,
-                                  max_high: float, min_score: float) -> Optional[Dict]:
+def __identify_four_bi_negative_v(
+    b1: pd.Series, b2: pd.Series, b3: pd.Series, b4: pd.Series, max_high: float, min_score: float
+) -> dict | None:
     """识别四笔倒V字形态"""
     # 检查方向条件：1、3向上，2、4向下
-    up_directions = b1['direction'] == '向上' and b3['direction'] == '向上'
-    down_directions = b2['direction'] == '向下' and b4['direction'] == '向下'
+    up_directions = b1["direction"] == "向上" and b3["direction"] == "向上"
+    down_directions = b2["direction"] == "向下" and b4["direction"] == "向下"
     if not (up_directions and down_directions):
         return None
 
-    if b4['low'] >= b1['low']:
+    if b4["low"] >= b1["low"]:
         return None
 
     # 最高点在 b1
-    if b1['high'] == max_high and b1['score'] > min_score:
+    if b1["high"] == max_high and b1["score"] > min_score:
         return {
-            'type': '四笔倒V-B1最高',
-            'pattern': 'four_bi',
-            'bi_indices': [b1['bi_idx'], b2['bi_idx'], b3['bi_idx'], b4['bi_idx']],
-            'start_price': b1['low'],
-            'end_price': b4['low'],
-            'top_price': b1['high']
+            "type": "四笔倒V-B1最高",
+            "pattern": "four_bi",
+            "bi_indices": [b1["bi_idx"], b2["bi_idx"], b3["bi_idx"], b4["bi_idx"]],
+            "start_price": b1["low"],
+            "end_price": b4["low"],
+            "top_price": b1["high"],
         }
 
     # 最高点在 b3
-    if b3['high'] == max_high and b1['low'] < b3['low']:
+    if b3["high"] == max_high and b1["low"] < b3["low"]:
         return {
-            'type': '四笔倒V-B3最高',
-            'pattern': 'four_bi',
-            'bi_indices': [b1['bi_idx'], b2['bi_idx'], b3['bi_idx'], b4['bi_idx']],
-            'start_price': b1['low'],
-            'end_price': b4['low'],
-            'top_price': b3['high']
+            "type": "四笔倒V-B3最高",
+            "pattern": "four_bi",
+            "bi_indices": [b1["bi_idx"], b2["bi_idx"], b3["bi_idx"], b4["bi_idx"]],
+            "start_price": b1["low"],
+            "end_price": b4["low"],
+            "top_price": b3["high"],
         }
 
     return None
 
 
-def __find_v(bi_stats: pd.DataFrame, min_score: float = 0.7,
-             trend_ratio: float = 0.15, oscillation_ratio: float = 0.5) -> Tuple[pd.DataFrame, List[Dict]]:
+def __find_v(
+    bi_stats: pd.DataFrame, min_score: float = 0.7, trend_ratio: float = 0.15, oscillation_ratio: float = 0.5
+) -> tuple[pd.DataFrame, list[dict]]:
     """在笔统计数据上标记V字反转、趋势、震荡笔
 
     实现顺序：
@@ -209,14 +208,14 @@ def __find_v(bi_stats: pd.DataFrame, min_score: float = 0.7,
     if not isinstance(bi_stats, pd.DataFrame):
         raise ValueError("bi_stats 必须是 pandas DataFrame")
 
-    required_columns = ['direction', 'score', 'bi_idx', 'high', 'low', 'sdt', 'edt']
+    required_columns = ["direction", "score", "bi_idx", "high", "low", "sdt", "edt"]
     missing_cols = [col for col in required_columns if col not in bi_stats.columns]
     if missing_cols:
         raise ValueError(f"bi_stats 缺少必要列: {missing_cols}")
 
     # 添加 mark 列，默认为 normal
     bi_stats = bi_stats.copy()
-    bi_stats['mark'] = 'normal'
+    bi_stats["mark"] = "normal"
 
     v_patterns = []  # 存储找到的V字模式
     v_bi_indices = set()  # 存储参与V字模式的笔索引
@@ -227,44 +226,43 @@ def __find_v(bi_stats: pd.DataFrame, min_score: float = 0.7,
         v_result = __two_bi_v(bi_stats.iloc[i], bi_stats.iloc[i + 1], min_score)
         if v_result:
             v_patterns.append(v_result)
-            v_bi_indices.update(v_result['bi_indices'])
+            v_bi_indices.update(v_result["bi_indices"])
 
     # 四笔V字识别
     for i in range(len(bi_stats) - 3):
         # 跳过已经被识别为两笔V字的笔
-        if bi_stats.iloc[i]['bi_idx'] in v_bi_indices:
+        if bi_stats.iloc[i]["bi_idx"] in v_bi_indices:
             continue
 
         v_result = __four_bi_v(
-            bi_stats.iloc[i], bi_stats.iloc[i + 1],
-            bi_stats.iloc[i + 2], bi_stats.iloc[i + 3], min_score
+            bi_stats.iloc[i], bi_stats.iloc[i + 1], bi_stats.iloc[i + 2], bi_stats.iloc[i + 3], min_score
         )
         if v_result:
             v_patterns.append(v_result)
-            v_bi_indices.update(v_result['bi_indices'])
+            v_bi_indices.update(v_result["bi_indices"])
 
     # 在 mark 列上标记 V 字反转
-    bi_stats.loc[bi_stats['bi_idx'].isin(v_bi_indices), 'mark'] = 'v_reversal'
+    bi_stats.loc[bi_stats["bi_idx"].isin(v_bi_indices), "mark"] = "v_reversal"
 
     # 2. 标记趋势和震荡笔
-    non_v_mask = bi_stats['mark'] == 'normal'
+    non_v_mask = bi_stats["mark"] == "normal"
     non_v_stats = bi_stats[non_v_mask]
 
     if len(non_v_stats) > 0:
         # 趋势标记：取趋势得分最大的前trend_ratio比例
         trend_count = max(1, int(len(non_v_stats) * trend_ratio))
-        trend_bi = non_v_stats.nlargest(trend_count, 'score')
-        bi_stats.loc[trend_bi.index, 'mark'] = 'trend'
+        trend_bi = non_v_stats.nlargest(trend_count, "score")
+        bi_stats.loc[trend_bi.index, "mark"] = "trend"
 
         # 震荡标记：取趋势得分最小的前oscillation_ratio比例
         oscillation_count = max(1, int(len(non_v_stats) * oscillation_ratio))
-        oscillation_bi = non_v_stats.nsmallest(oscillation_count, 'score')
-        bi_stats.loc[oscillation_bi.index, 'mark'] = 'oscillation'
+        oscillation_bi = non_v_stats.nsmallest(oscillation_count, "score")
+        bi_stats.loc[oscillation_bi.index, "mark"] = "oscillation"
 
     return bi_stats, v_patterns
 
 
-def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def mark_czsc_status(df: pd.DataFrame, **kwargs) -> tuple[pd.DataFrame, pd.DataFrame]:
     """【后验分析，有未来信息，不能用于实盘】标记V字反转、趋势、震荡的时间段
 
     该函数基于缠论分析，对K线数据进行状态标记，识别以下四种状态：
@@ -287,8 +285,9 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
         - K线数据新增列：is_reversal, is_trend, is_oscillation, is_normal
         - 笔统计数据包含：笔基本信息、趋势打分、状态标记
     """
-    from czsc import CZSC, format_standard_kline
     import loguru
+
+    from czsc import CZSC, format_standard_kline
 
     # 参数处理
     copy_data = kwargs.get("copy", True)
@@ -303,7 +302,7 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
     if not isinstance(df, pd.DataFrame):
         raise ValueError("df 必须是 pandas DataFrame")
 
-    required_columns = ['dt', 'symbol', 'open', 'close', 'high', 'low', 'vol']
+    required_columns = ["dt", "symbol", "open", "close", "high", "low", "vol"]
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
         raise ValueError(f"K线数据缺少必要列: {missing_cols}")
@@ -319,8 +318,7 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
     for symbol, dfg in df.groupby("symbol"):
         if verbose:
             logger_obj.info(
-                f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；"
-                f"时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}"
+                f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}"
             )
 
         # 数据排序和格式化
@@ -341,37 +339,41 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
             # 仍然进行基本的趋势标记
             bi_stats = []
             for bi_idx, bi in enumerate(c.bi_list):
-                bi_stats.append({
-                    "symbol": symbol,
-                    "bi_idx": bi_idx,
-                    "sdt": bi.sdt,
-                    "edt": bi.edt,
-                    "direction": bi.direction.value,
-                    "high": bi.high,
-                    "low": bi.low,
-                    "power_price": abs(bi.change),
-                    "length": bi.length,
-                    "rsq": bi.rsq,
-                    "power_volume": bi.power_volume,
-                })
+                bi_stats.append(
+                    {
+                        "symbol": symbol,
+                        "bi_idx": bi_idx,
+                        "sdt": bi.sdt,
+                        "edt": bi.edt,
+                        "direction": bi.direction.value,
+                        "high": bi.high,
+                        "low": bi.low,
+                        "power_price": abs(bi.change),
+                        "length": bi.length,
+                        "rsq": bi.rsq,
+                        "power_volume": bi.power_volume,
+                    }
+                )
             bi_stats = pd.DataFrame(bi_stats)
         else:
             # 提取笔统计信息
             bi_stats = []
             for bi_idx, bi in enumerate(c.bi_list):
-                bi_stats.append({
-                    "symbol": symbol,
-                    "bi_idx": bi_idx,
-                    "sdt": bi.sdt,
-                    "edt": bi.edt,
-                    "direction": bi.direction.value,
-                    "high": bi.high,
-                    "low": bi.low,
-                    "power_price": abs(bi.change),
-                    "length": bi.length,
-                    "rsq": bi.rsq,
-                    "power_volume": bi.power_volume,
-                })
+                bi_stats.append(
+                    {
+                        "symbol": symbol,
+                        "bi_idx": bi_idx,
+                        "sdt": bi.sdt,
+                        "edt": bi.edt,
+                        "direction": bi.direction.value,
+                        "high": bi.high,
+                        "low": bi.low,
+                        "power_price": abs(bi.change),
+                        "length": bi.length,
+                        "rsq": bi.rsq,
+                        "power_volume": bi.power_volume,
+                    }
+                )
             bi_stats = pd.DataFrame(bi_stats)
 
             # 计算滚动排名指标
@@ -379,15 +381,18 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
             min_periods = min(10, len(bi_stats) // 2)
 
             bi_stats["power_price_rank"] = (
-                bi_stats["power_price"].rolling(window=window_size, min_periods=min_periods)
+                bi_stats["power_price"]
+                .rolling(window=window_size, min_periods=min_periods)
                 .rank(method="min", ascending=True, pct=True)
             )
             bi_stats["rsq_rank"] = (
-                bi_stats["rsq"].rolling(window=window_size, min_periods=min_periods)
+                bi_stats["rsq"]
+                .rolling(window=window_size, min_periods=min_periods)
                 .rank(method="min", ascending=True, pct=True)
             )
             bi_stats["power_volume_rank"] = (
-                bi_stats["power_volume"].rolling(window=window_size, min_periods=min_periods)
+                bi_stats["power_volume"]
+                .rolling(window=window_size, min_periods=min_periods)
                 .rank(method="min", ascending=True, pct=True)
             )
 
@@ -400,18 +405,18 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
 
             # V字反转识别和状态标记
             bi_stats, v_patterns = __find_v(
-                bi_stats.dropna(subset=['score']).reset_index(drop=True),
+                bi_stats.dropna(subset=["score"]).reset_index(drop=True),
                 min_score=min_score,
                 trend_ratio=trend_ratio,
-                oscillation_ratio=oscillation_ratio
+                oscillation_ratio=oscillation_ratio,
             )
 
             if verbose:
-                mark_counts = bi_stats['mark'].value_counts().to_dict()
+                mark_counts = bi_stats["mark"].value_counts().to_dict()
                 logger_obj.info(f"{symbol} - 笔类型统计: {mark_counts}")
 
                 if v_patterns:
-                    v_type_counts = pd.DataFrame(v_patterns)['type'].value_counts().to_dict()
+                    v_type_counts = pd.DataFrame(v_patterns)["type"].value_counts().to_dict()
                     logger_obj.info(f"{symbol} - V字模式分类：{v_type_counts}")
 
         # 初始化状态标记列
@@ -421,24 +426,24 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
         dfg["is_normal"] = 0
 
         # 根据笔状态标记对应的时间段
-        if 'mark' in bi_stats.columns:
+        if "mark" in bi_stats.columns:
             # V字反转标记
-            v_reversal_bis = bi_stats[bi_stats['mark'] == 'v_reversal']
+            v_reversal_bis = bi_stats[bi_stats["mark"] == "v_reversal"]
             for _, row in v_reversal_bis.iterrows():
                 dfg.loc[(dfg["dt"] >= row["sdt"]) & (dfg["dt"] <= row["edt"]), "is_reversal"] = 1
 
             # 趋势标记
-            trend_bis = bi_stats[bi_stats['mark'] == 'trend']
+            trend_bis = bi_stats[bi_stats["mark"] == "trend"]
             for _, row in trend_bis.iterrows():
                 dfg.loc[(dfg["dt"] >= row["sdt"]) & (dfg["dt"] <= row["edt"]), "is_trend"] = 1
 
             # 震荡标记
-            oscillation_bis = bi_stats[bi_stats['mark'] == 'oscillation']
+            oscillation_bis = bi_stats[bi_stats["mark"] == "oscillation"]
             for _, row in oscillation_bis.iterrows():
                 dfg.loc[(dfg["dt"] >= row["sdt"]) & (dfg["dt"] <= row["edt"]), "is_oscillation"] = 1
 
             # 正常标记
-            normal_bis = bi_stats[bi_stats['mark'] == 'normal']
+            normal_bis = bi_stats[bi_stats["mark"] == "normal"]
             for _, row in normal_bis.iterrows():
                 dfg.loc[(dfg["dt"] >= row["sdt"]) & (dfg["dt"] <= row["edt"]), "is_normal"] = 1
 
@@ -455,10 +460,10 @@ def mark_czsc_status(df: pd.DataFrame, **kwargs) -> Tuple[pd.DataFrame, pd.DataF
     # 输出统计信息
     if verbose:
         total_rows = len(dfr)
-        reversal_coverage = dfr['is_reversal'].sum() / total_rows * 100
-        trend_coverage = dfr['is_trend'].sum() / total_rows * 100
-        oscillation_coverage = dfr['is_oscillation'].sum() / total_rows * 100
-        normal_coverage = dfr['is_normal'].sum() / total_rows * 100
+        reversal_coverage = dfr["is_reversal"].sum() / total_rows * 100
+        trend_coverage = dfr["is_trend"].sum() / total_rows * 100
+        oscillation_coverage = dfr["is_oscillation"].sum() / total_rows * 100
+        normal_coverage = dfr["is_normal"].sum() / total_rows * 100
 
         logger_obj.info(
             f"状态标记覆盖率统计：\n"

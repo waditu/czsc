@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_io.py - czsc.utils.io 文件IO工具模块单元测试
 
@@ -8,9 +7,12 @@ test_io.py - czsc.utils.io 文件IO工具模块单元测试
 - make_zip: 目录压缩为 zip
 - 边界情况: 空数据、嵌套结构、中文字符
 """
+
 import os
+
 import pytest
-from czsc.utils.io import save_pkl, read_pkl, save_json, read_json, make_zip
+
+from czsc.utils.io import make_zip, read_json, read_pkl, save_json, save_pkl
 
 
 @pytest.fixture

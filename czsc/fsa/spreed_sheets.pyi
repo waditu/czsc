@@ -1,6 +1,8 @@
 import pandas as pd
 from _typeshed import Incomplete
-from czsc.fsa.base import FeishuApiBase as FeishuApiBase, request as request
+
+from czsc.fsa.base import FeishuApiBase as FeishuApiBase
+from czsc.fsa.base import request as request
 
 class SpreadSheets(FeishuApiBase):
     def __init__(self, app_id, app_secret, **kwargs) -> None: ...

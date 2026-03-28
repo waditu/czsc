@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
@@ -9,35 +8,35 @@ describe: 环境变量统一管理入口
 import os
 
 # True 的有效表达
-valid_true = ['1', 'True', 'true', 'Y', 'y', 'yes', 'Yes', True]
+valid_true = ["1", "True", "true", "Y", "y", "yes", "Yes", True]
 
 
 def use_python():
     """是否使用 python 版本对象
-    
+
     True 表示使用 python 版本对象
     False 则使用 rust 版本对应的对象
     """
-    v = os.environ.get('CZSC_USE_PYTHON', False)
-    return True if v in valid_true else False
+    v = os.environ.get("CZSC_USE_PYTHON", False)
+    return v in valid_true
 
 
 def get_verbose(verbose=None):
     """verbose - 是否输出执行过程的详细信息"""
-    verbose = verbose if verbose else os.environ.get('czsc_verbose', None)
-    v = True if verbose in valid_true else False
+    verbose = verbose if verbose else os.environ.get("czsc_verbose", None)
+    v = verbose in valid_true
     return v
 
 
 def get_welcome():
     """welcome - 是否输出版本标识和缠中说禅博客摘记"""
-    v = True if os.environ.get('czsc_welcome', '0') in valid_true else False
+    v = os.environ.get("czsc_welcome", "0") in valid_true
     return v
 
 
 def get_min_bi_len(v: int = None) -> int:
     """min_bi_len - 一笔的最小长度，也就是无包含K线的数量，7是老笔的要求，6是新笔的要求"""
-    min_bi_len = v if v else os.environ.get('czsc_min_bi_len', 6)
+    min_bi_len = v if v else os.environ.get("czsc_min_bi_len", 6)
     return int(float(min_bi_len))
 
 
@@ -47,5 +46,5 @@ def get_max_bi_num(v: int = None) -> int:
     默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
     如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
     """
-    max_bi_num = v if v else os.environ.get('czsc_max_bi_num', 50)
+    max_bi_num = v if v else os.environ.get("czsc_max_bi_num", 50)
     return int(float(max_bi_num))

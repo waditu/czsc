@@ -1,4 +1,4 @@
 import os
 
-os.environ['czsc_min_bi_len'] = '7'
-os.environ['czsc_bi_change_th'] = '-1'
+os.environ["CZSC_MIN_BI_LEN"] = "7"
+os.environ["CZSC_BI_CHANGE_TH"] = "-1"

@@ -1,22 +1,23 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2022/10/27 23:23
 describe: 用于信号计算函数的各种辅助工具函数
 """
+
+from collections import OrderedDict
+from typing import Any
+
 import numpy as np
-from deprecated import deprecated
-from collections import Counter, OrderedDict
-from typing import List, Any, Dict, Union, Tuple, Optional
+
 from czsc.py.enum import Direction
-from czsc.py.objects import BI, RawBar, ZS, Signal
+from czsc.py.objects import BI, ZS, RawBar
 
 
 def create_single_signal(**kwargs) -> OrderedDict:
     """创建单个信号"""
     from rs_czsc import Signal
-    
+
     s = OrderedDict()
     k1, k2, k3 = kwargs.get("k1", "任意"), kwargs.get("k2", "任意"), kwargs.get("k3", "任意")
     v1, v2, v3 = kwargs.get("v1", "任意"), kwargs.get("v2", "任意"), kwargs.get("v3", "任意")
@@ -27,7 +28,7 @@ def create_single_signal(**kwargs) -> OrderedDict:
     return s
 
 
-def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
+def is_symmetry_zs(bis: list[BI], th: float = 0.3) -> bool:
     """对称中枢判断：中枢中所有笔的力度序列，标准差小于均值的一定比例
 
     https://pic2.zhimg.com/80/v2-2f55ef49eda01972462531ebb6de4f19_1440w.jpg
@@ -44,13 +45,10 @@ def is_symmetry_zs(bis: List[BI], th: float = 0.3) -> bool:
         return False
 
     zns = [x.power_price for x in bis]
-    if np.std(zns) / np.mean(zns) <= th:
-        return True
-    else:
-        return False
+    return np.std(zns) / np.mean(zns) <= th
 
 
-def check_cross_info(fast: Union[List, np.ndarray], slow: Union[List, np.ndarray]):
+def check_cross_info(fast: list | np.ndarray, slow: list | np.ndarray):
     """计算 fast 和 slow 的交叉信息
 
     :param fast: 快线
@@ -108,7 +106,7 @@ def check_cross_info(fast: Union[List, np.ndarray], slow: Union[List, np.ndarray
     return cross_info
 
 
-def check_gap_info(bars: List[RawBar]):
+def check_gap_info(bars: list[RawBar]):
     """检查 bars 中的缺口信息
 
     :param bars: K线序列，按时间升序
@@ -213,7 +211,7 @@ def fast_slow_cross(fast, slow):
     return cross_info
 
 
-def same_dir_counts(seq: Union[List, np.ndarray]):
+def same_dir_counts(seq: list | np.ndarray):
     """计算 seq 中与最后一个数字同向的数字数量
 
     :param seq: 数字序列
@@ -234,7 +232,7 @@ def same_dir_counts(seq: Union[List, np.ndarray]):
     return c
 
 
-def count_last_same(seq: Union[List, np.ndarray, Tuple]):
+def count_last_same(seq: list | np.ndarray | tuple):
     """统计与seq列表最后一个元素相似的连续元素数量
 
     :param seq: 数字序列
@@ -250,7 +248,7 @@ def count_last_same(seq: Union[List, np.ndarray, Tuple]):
     return c
 
 
-def get_sub_elements(elements: List[Any], di: int = 1, n: int = 10) -> List[Any]:
+def get_sub_elements(elements: list[Any], di: int = 1, n: int = 10) -> list[Any]:
     """获取截止到倒数第 di 个元素的前 n 个元素
 
     :param elements: 全部元素列表
@@ -263,48 +261,39 @@ def get_sub_elements(elements: List[Any], di: int = 1, n: int = 10) -> List[Any]
     >>>y2 = get_sub_elements(x, di=2, n=3)
     """
     assert di >= 1
-    if di == 1:
-        se = elements[-n:]
-    else:
-        se = elements[-n - di + 1 : -di + 1]
+    se = elements[-n:] if di == 1 else elements[-n - di + 1 : -di + 1]
     return se
 
 
-def is_bis_down(bis: List[BI]):
+def is_bis_down(bis: list[BI]):
     """判断 bis 中的连续笔是否是向下的"""
     if not bis or len(bis) < 3 or len(bis) % 2 == 0:
         return False
 
     assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
 
-    if (
+    return bool(
         bis[-1].direction == Direction.Down
         and bis[0].high == max([x.high for x in bis])
         and bis[-1].low == min([x.low for x in bis])
-    ):
-        return True
-    else:
-        return False
+    )
 
 
-def is_bis_up(bis: List[BI]):
+def is_bis_up(bis: list[BI]):
     """判断 bis 中的连续笔是否是向上的"""
     if not bis or len(bis) < 3 and len(bis) % 2 == 0:
         return False
 
     assert bis[1].fx_b.dt > bis[0].fx_b.dt, "时间由远到近"
 
-    if (
+    return bool(
         bis[-1].direction == Direction.Up
         and bis[-1].high == max([x.high for x in bis])
         and bis[0].low == min([x.low for x in bis])
-    ):
-        return True
-    else:
-        return False
+    )
 
 
-def get_zs_seq(bis: List[BI]) -> List[ZS]:
+def get_zs_seq(bis: list[BI]) -> list[ZS]:
     """获取连续笔中的中枢序列
 
     :param bis: 连续笔对象列表
@@ -334,7 +323,7 @@ def get_zs_seq(bis: List[BI]) -> List[ZS]:
     return zs_list
 
 
-def cross_zero_axis(n1: Union[List, np.ndarray], n2: Union[List, np.ndarray]) -> int:
+def cross_zero_axis(n1: list | np.ndarray, n2: list | np.ndarray) -> int:
     """判断两个数列的零轴交叉点
 
     :param n1: 数列1
@@ -355,7 +344,7 @@ def cross_zero_axis(n1: Union[List, np.ndarray], n2: Union[List, np.ndarray]) ->
     return int(max(num1, num2))
 
 
-def cal_cross_num(cross: List, distance: int = 1) -> tuple:
+def cal_cross_num(cross: list, distance: int = 1) -> tuple:
     """使用 distance 过滤掉fast_slow_cross函数返回值cross列表中
     不符合要求的交叉点，返回处理后的金叉和死叉数值
 
@@ -368,10 +357,7 @@ def cal_cross_num(cross: List, distance: int = 1) -> tuple:
     elif len(cross) == 1:
         cross_ = cross
     elif len(cross) == 2:
-        if cross[-1]["距离"] < distance:
-            cross_ = []
-        else:
-            cross_ = cross
+        cross_ = [] if cross[-1]["距离"] < distance else cross
     else:
         if cross[-1]["距离"] < distance:
             last_cross = cross[-1]
@@ -395,7 +381,7 @@ def cal_cross_num(cross: List, distance: int = 1) -> tuple:
     return jc, sc
 
 
-def down_cross_count(x1: Union[List, np.ndarray], x2: Union[List, np.ndarray]) -> int:
+def down_cross_count(x1: list | np.ndarray, x2: list | np.ndarray) -> int:
     """输入两个序列，计算 x1 下穿 x2 的次数
 
     :param x1: list

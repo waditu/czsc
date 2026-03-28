@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2021/11/17 18:50
 """
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
+
 from collections import Counter
-from typing import List, Tuple
+
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
 
 
-def max_draw_down(n1b: List):
+def max_draw_down(n1b: list):
     """最大回撤
 
     参考：https://blog.csdn.net/weixin_38997425/article/details/82915386
@@ -33,7 +33,7 @@ def max_draw_down(n1b: List):
     return j, i, mdd
 
 
-def turn_over_rate(df_holds: pd.DataFrame) -> Tuple[pd.DataFrame, float]:
+def turn_over_rate(df_holds: pd.DataFrame) -> tuple[pd.DataFrame, float]:
     """计算持仓明细对应的组合换手率
 
     :param df_holds: 每个交易日的持仓明细，数据样例如下

@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/21 16:04
 describe: 交易相关的工具函数
 """
+
 import pandas as pd
 
 
@@ -50,8 +50,7 @@ def update_nxb(df: pd.DataFrame, **kwargs) -> pd.DataFrame:
     df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
 
     nseq = kwargs.get("nseq", (1, 2, 3, 5, 8, 10, 13))
-    for symbol, dfg in df.groupby("symbol"):
-
+    for _symbol, dfg in df.groupby("symbol"):
         for n in nseq:
             dfg[f"n{n}b"] = dfg["price"].shift(-n) / dfg["price"] - 1
             df.loc[dfg.index, f"n{n}b"] = dfg[f"n{n}b"].fillna(0)
@@ -134,10 +133,7 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     edt = df["dt"].max() if not edt else pd.to_datetime(edt)
 
     # 创建日期序列
-    if only_trade_date:
-        trade_dates = get_trading_dates(sdt=sdt, edt=edt)
-    else:
-        trade_dates = pd.date_range(sdt, edt, freq="D").tolist()
+    trade_dates = get_trading_dates(sdt=sdt, edt=edt) if only_trade_date else pd.date_range(sdt, edt, freq="D").tolist()
     trade_dates = pd.DataFrame({"date": trade_dates})
     trade_dates = trade_dates.sort_values("date", ascending=True).reset_index(drop=True)
 

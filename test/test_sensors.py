@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 test_sensors.py - 传感器模块单元测试
 
@@ -14,12 +13,12 @@ Mock数据格式说明:
 - feature.py: FeatureSelector, rolling_features, cal_feature_importance
 - event.py: EventMatcher, detect_events
 """
-import pytest
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import pytest
+
 from czsc import mock
-from czsc.core import CZSC, format_standard_kline, Freq
-from czsc.py.bar_generator import BarGenerator
 
 
 def get_test_data(symbol="000001", freq="日线", sdt="20200101", edt="20250101", seed=42):
@@ -45,35 +44,36 @@ class TestCTAResearch:
     def test_cta_research_init(self):
         """测试CTAResearch初始化"""
         try:
-            from czsc.sensors.cta import CTAResearch
-            from czsc import CzscStrategyBase, Position
-            from typing import List
             import tempfile
-            
+
+            from czsc import CzscStrategyBase, Position
+            from czsc.sensors.cta import CTAResearch
+
             # Create a minimal strategy class for testing
             class TestStrategy(CzscStrategyBase):
                 def __init__(self, **kwargs):
                     super().__init__(**kwargs)
-                
+
                 @property
-                def positions(self) -> List[Position]:
+                def positions(self) -> list[Position]:
                     return []
-            
+
             # Create a minimal read_bars function
-            def read_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
-                from czsc.core import format_standard_kline, Freq
+            def read_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
+                from czsc.core import Freq, format_standard_kline
+
                 df = get_test_data(symbol=symbol, freq=freq, sdt=sdt, edt=edt)
                 return format_standard_kline(df, freq=Freq.D)
-            
+
             # Create temporary directory for results
             with tempfile.TemporaryDirectory() as tmpdir:
                 cta = CTAResearch(strategy=TestStrategy, read_bars=read_bars, results_path=tmpdir)
-                
+
                 # 验证基本属性
                 assert cta is not None, "CTAResearch对象应能创建"
-                assert hasattr(cta, 'strategy'), "应有strategy属性"
-                assert hasattr(cta, 'read_bars'), "应有read_bars属性"
-                assert hasattr(cta, 'results_path'), "应有results_path属性"
+                assert hasattr(cta, "strategy"), "应有strategy属性"
+                assert hasattr(cta, "read_bars"), "应有read_bars属性"
+                assert hasattr(cta, "results_path"), "应有results_path属性"
 
         except ImportError as e:
             pytest.skip(f"CTAResearch模块导入失败: {e}")
@@ -81,36 +81,37 @@ class TestCTAResearch:
     def test_cta_research_backtest(self):
         """测试CTA回测功能"""
         try:
-            from czsc.sensors.cta import CTAResearch
-            from czsc import CzscStrategyBase, Position
-            from typing import List
             import tempfile
-            
+
+            from czsc import CzscStrategyBase, Position
+            from czsc.sensors.cta import CTAResearch
+
             # Create a minimal strategy class for testing
             class TestStrategy(CzscStrategyBase):
                 def __init__(self, **kwargs):
                     super().__init__(**kwargs)
-                
+
                 @property
-                def positions(self) -> List[Position]:
+                def positions(self) -> list[Position]:
                     return []
-            
+
             # Create a minimal read_bars function
-            def read_bars(symbol, freq, sdt, edt, fq='前复权', **kwargs):
-                from czsc.core import format_standard_kline, Freq
+            def read_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
+                from czsc.core import Freq, format_standard_kline
+
                 df = get_test_data(symbol=symbol, freq=freq, sdt=sdt, edt=edt)
                 return format_standard_kline(df, freq=Freq.D)
-            
+
             # Create temporary directory for results
             with tempfile.TemporaryDirectory() as tmpdir:
                 cta = CTAResearch(strategy=TestStrategy, read_bars=read_bars, results_path=tmpdir)
-                
+
                 # 验证回测方法存在
-                assert hasattr(cta, 'replay'), "应有replay方法"
+                assert hasattr(cta, "replay"), "应有replay方法"
 
         except ImportError as e:
             pytest.skip(f"CTA Research模块导入失败: {e}")
-    
+
     def test_cta_research_with_multiple_symbols(self):
         """测试多品种CTA研究"""
         # This test needs to be updated to use new CTAResearch API
@@ -135,7 +136,7 @@ class TestFeatureSelector:
 
             # 验证基本属性
             assert selector is not None, "FeatureSelector对象应能创建"
-            assert hasattr(selector, 'df'), "应有df属性"
+            assert hasattr(selector, "df"), "应有df属性"
             assert isinstance(selector.df, pd.DataFrame), "df应为DataFrame类型"
 
         except ImportError as e:
@@ -154,15 +155,14 @@ class TestFeatureSelector:
             selector = FeatureSelector(df)
 
             # 验证select方法存在
-            assert hasattr(selector, 'select'), "应有select方法"
+            assert hasattr(selector, "select"), "应有select方法"
 
             # 尝试调用select方法（如果有合理的参数）
             try:
                 result = selector.select()
                 # 如果成功返回结果，验证类型
                 if result is not None:
-                    assert isinstance(result, (pd.DataFrame, dict, list)), \
-                        "select返回结果应为DataFrame、dict或list"
+                    assert isinstance(result, (pd.DataFrame, dict, list)), "select返回结果应为DataFrame、dict或list"
             except TypeError:
                 # 可能需要参数，这是正常的
                 pass
@@ -205,8 +205,8 @@ class TestFeatureSelector:
                 pytest.skip("数据不足，跳过测试")
 
             # 创建简单的特征和目标
-            features = df[['open', 'close', 'high', 'low']].copy()
-            target = df['close'].shift(-1)  # 预测下一日收盘价
+            features = df[["open", "close", "high", "low"]].copy()
+            target = df["close"].shift(-1)  # 预测下一日收盘价
 
             # 移除NaN
             valid_idx = ~target.isna()
@@ -219,8 +219,9 @@ class TestFeatureSelector:
 
                 # 验证结果
                 assert importance is not None, "特征重要性结果不应为None"
-                assert isinstance(importance, (dict, pd.DataFrame, pd.Series)), \
+                assert isinstance(importance, (dict, pd.DataFrame, pd.Series)), (
                     "特征重要性结果应为dict、DataFrame或Series"
+                )
 
             except Exception as e:
                 # 可能需要特定条件或依赖
@@ -239,16 +240,13 @@ class TestEventDetection:
             from czsc.sensors.event import EventMatcher
 
             # 创建简单的事件模式
-            pattern = {
-                'type': 'price_pattern',
-                'condition': 'close > ma'
-            }
+            pattern = {"type": "price_pattern", "condition": "close > ma"}
 
             matcher = EventMatcher(pattern)
 
             # 验证基本属性
             assert matcher is not None, "EventMatcher对象应能创建"
-            assert hasattr(matcher, 'pattern'), "应有pattern属性"
+            assert hasattr(matcher, "pattern"), "应有pattern属性"
 
         except ImportError as e:
             pytest.skip(f"EventMatcher模块导入失败: {e}")
@@ -265,7 +263,7 @@ class TestEventDetection:
 
             # 定义简单事件
             def simple_event(row):
-                return row['close'] > row['open']  # 阳线事件
+                return row["close"] > row["open"]  # 阳线事件
 
             # 检测事件
             try:
@@ -273,8 +271,7 @@ class TestEventDetection:
 
                 # 验证结果
                 assert events is not None, "检测结果不应为None"
-                assert isinstance(events, (list, pd.DataFrame, pd.Series)), \
-                    "检测结果应为list、DataFrame或Series"
+                assert isinstance(events, (list, pd.DataFrame, pd.Series)), "检测结果应为list、DataFrame或Series"
 
             except Exception as e:
                 # 可能需要特定的数据格式或事件定义
@@ -295,17 +292,14 @@ class TestEventDetection:
 
             # 定义简单事件
             def simple_event(row):
-                return row['close'] > row['open']
+                return row["close"] > row["open"]
 
             try:
                 events = detect_events(df, simple_event)
 
                 # 如果返回结果，进行基本统计
                 if events is not None and isinstance(events, (list, pd.Series)):
-                    if isinstance(events, list):
-                        event_count = len(events)
-                    else:
-                        event_count = events.sum()
+                    event_count = len(events) if isinstance(events, list) else events.sum()
 
                     # 验证事件数量合理
                     assert event_count >= 0, "事件数量应为非负数"
@@ -381,9 +375,9 @@ class TestSensorsIntegration:
 
             # 定义多个事件
             events = {
-                'bullish': lambda row: row['close'] > row['open'],
-                'bearish': lambda row: row['close'] < row['open'],
-                'high_vol': lambda row: row['vol'] > row['vol'].mean()
+                "bullish": lambda row: row["close"] > row["open"],
+                "bearish": lambda row: row["close"] < row["open"],
+                "high_vol": lambda row: row["vol"] > row["vol"].mean(),
             }
 
             try:
@@ -469,7 +463,7 @@ class TestSensorEdgeCases:
 
             # 添加一些缺失值
             df_with_nan = df.copy()
-            df_with_nan.loc[df_with_nan.index[0:5], 'close'] = np.nan
+            df_with_nan.loc[df_with_nan.index[0:5], "close"] = np.nan
 
             try:
                 result = rolling_features(df_with_nan, windows=[5])
@@ -526,8 +520,7 @@ class TestSensorEdgeCases:
                     result = rolling_features(df, windows=[5])
 
                     if result is not None:
-                        assert isinstance(result, pd.DataFrame), \
-                            f"频率{freq}的结果应为DataFrame"
+                        assert isinstance(result, pd.DataFrame), f"频率{freq}的结果应为DataFrame"
 
                 except Exception as e:
                     assert True, f"频率{freq}需要特殊处理: {e}"

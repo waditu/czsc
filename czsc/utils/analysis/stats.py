@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/4/19 23:27
 describe: 绩效表现统计
 """
+
+from collections import Counter
+
 import numpy as np
 import pandas as pd
-from collections import Counter
 
 
 def cal_break_even_point(seq) -> float:
@@ -132,10 +133,11 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
 
         - yearly_days: int, 252, 一年的交易日数
     """
-    from czsc.eda import cal_yearly_days
     from rs_czsc import daily_performance
 
-    if not df.index.dtype == "datetime64[ns]":
+    from czsc.eda import cal_yearly_days
+
+    if df.index.dtype != "datetime64[ns]":
         df["dt"] = pd.to_datetime(df["dt"])
         df.set_index("dt", inplace=True)
     assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
@@ -264,7 +266,7 @@ def holds_performance(df, **kwargs):
     sdt = df["dt"].min()
     df_turns.loc[(df_turns["date"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].sum()
 
-    df_edge = df.groupby("dt")[['weight', 'n1b']].apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
+    df_edge = df.groupby("dt")[["weight", "n1b"]].apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
     df_edge.columns = ["date", "edge_pre_fee"]
     dfr = pd.merge(df_turns, df_edge, on="date", how="left")
     dfr["cost"] = dfr["change"] * fee / 10000  # 换手成本
@@ -336,7 +338,7 @@ def psi(df: pd.DataFrame, factor, segment, **kwargs):
     for rate_col in cols:
         dfg[f"{rate_col}_PSI"] = np.where(
             (dfg[base_col] != 0) & (dfg[rate_col] != 0),
-            (dfg[rate_col] - dfg[base_col]) * np.log((dfg[rate_col] / dfg[base_col])),
+            (dfg[rate_col] - dfg[base_col]) * np.log(dfg[rate_col] / dfg[base_col]),
             dfg[rate_col] - dfg[base_col],
         )
     psi_cols = [x for x in dfg.columns if x.endswith("_PSI")]

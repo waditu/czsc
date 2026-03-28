@@ -1,11 +1,12 @@
 import os
 import time
 from pathlib import Path
-import czsc
+
 import ccxt
-import pandas as pd
 import loguru
-from tenacity import retry, stop_after_attempt, wait_fixed
+import pandas as pd
+
+import czsc
 
 
 def __get_exchange(exchange="币安期货"):
@@ -281,7 +282,7 @@ def test_fetcher():
     print(df)
 
     # df1 = get_raw_bars(symbol="BTCUSDT", period="4h", sdt="2017-08-17 00:00:00", edt="20240817 20:00")
-    df1 = get_raw_bars(
+    get_raw_bars(
         symbol="ADABTC",
         period="8h",
         sdt="2024-08-17 00:00:00",

@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2024/04/07 22:17
 describe: 谢磊贡献的信号函数
 """
-import numpy as np
-from typing import Union, List
+
 from collections import OrderedDict
-from czsc.utils.sig import create_single_signal, get_sub_elements
-from czsc.signals.tas import update_ma_cache
-from czsc.signals.jcc import check_szx
+
+import numpy as np
+
 from czsc.core import CZSC
+from czsc.signals.jcc import check_szx
+from czsc.signals.tas import update_ma_cache
+from czsc.utils.sig import create_single_signal, get_sub_elements
 
 
 def xl_bar_position_V240328(c: CZSC, **kwargs) -> OrderedDict:
@@ -153,7 +154,7 @@ def xl_bar_trend_V240330(c: CZSC, **kwargs) -> OrderedDict:
     cache1 = [x.cache[cache_key1] for x in bars]
     cache2 = [x.cache[cache_key2] for x in bars]
 
-    def _countN(x1: Union[List, np.array], x2: Union[List, np.array]):  # type: ignore
+    def _countN(x1: list | np.array, x2: list | np.array):  # type: ignore
         """输入两个序列，计算 次数
 
         :param x1: list

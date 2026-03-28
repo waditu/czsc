@@ -1,4 +1,5 @@
-from .base import ensure_datetime_index as ensure_datetime_index, generate_component_key as generate_component_key
+from .base import ensure_datetime_index as ensure_datetime_index
+from .base import generate_component_key as generate_component_key
 
 def show_correlation(df, key=None, **kwargs) -> None: ...
 def show_sectional_ic(df, factors, target_col, key=None, **kwargs) -> None: ...

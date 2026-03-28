@@ -1,7 +1,12 @@
+from collections.abc import Callable
+from typing import AnyStr
+
 from _typeshed import Incomplete
-from czsc.core import Event as Event, Position as Position, Signal as Signal
+
+from czsc.core import Event as Event
+from czsc.core import Position as Position
+from czsc.core import Signal as Signal
 from czsc.strategies import CzscStrategyBase as CzscStrategyBase
-from typing import AnyStr, Callable
 
 class CzscOpenOptimStrategy(CzscStrategyBase):
     @staticmethod
@@ -11,7 +16,7 @@ class CzscOpenOptimStrategy(CzscStrategyBase):
 
 class CzscExitOptimStrategy(CzscStrategyBase):
     @staticmethod
-    def update_beta_exits(beta: Position, event_dict: dict, mode: str = 'replace'): ...
+    def update_beta_exits(beta: Position, event_dict: dict, mode: str = "replace"): ...
     @property
     def positions(self): ...
 

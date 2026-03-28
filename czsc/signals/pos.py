@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/4/14 19:27
 describe:
 """
-from czsc.core import CZSC
+
 from collections import OrderedDict
+
+from czsc.core import CZSC, Mark, Operate
+from czsc.signals.tas import update_ma_cache
 from czsc.traders.base import CzscTrader
 from czsc.utils.sig import create_single_signal, get_sub_elements
-from czsc.core import Operate, Direction, Mark
-from czsc.signals.tas import update_ma_cache
 
 
 def _get_active_position(cat, pos_name, k1, k2, k3, v1="其他"):
@@ -578,7 +578,7 @@ def pos_holds_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     # 开仓后的K线
     a_bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
     unique_prices = [p for x in c.bars_raw[-200:] for p in [x.high, x.low, x.close, x.open]]
-    unique_prices = sorted(list(set(unique_prices)))
+    unique_prices = sorted(set(unique_prices))
 
     if op["op"] == Operate.LO and w_bars:
         w_low = min([x.low for x in w_bars])  # 开仓前最低价
@@ -648,7 +648,7 @@ def pos_stop_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
 
     left_bars = [x for x in c.bars_raw if x.dt < op["dt"]]
     unique_prices = [p for x in left_bars for p in [x.high, x.low, x.close, x.open]]
-    unique_prices = sorted(list(set(unique_prices)))
+    unique_prices = sorted(set(unique_prices))
 
     if op["op"] == Operate.LO:
         low_prices = sorted([x for x in unique_prices if x < op["price"]], reverse=True)
@@ -845,7 +845,7 @@ def pos_stop_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     # 开仓后的K线
     a_bars = [x for x in c.bars_raw[-100:] if x.dt > op["dt"]]
     unique_prices = [p for x in c.bars_raw[-200:] for p in [x.high, x.low, x.close, x.open]]
-    unique_prices = sorted(list(set(unique_prices)))  # 去重并按升序排列
+    unique_prices = sorted(set(unique_prices))  # 去重并按升序排列
 
     if op["op"] == Operate.LO and w_bars:
         w_low = min([x.low for x in w_bars])  # 开仓前最低价

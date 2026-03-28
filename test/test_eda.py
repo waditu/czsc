@@ -1,5 +1,6 @@
-import pytest
 import pandas as pd
+import pytest
+
 from czsc.eda import weights_simple_ensemble
 
 
@@ -152,7 +153,6 @@ def test_turnover_rate_verbose():
     from czsc.eda import turnover_rate
 
     dates = pd.date_range(start="2024-01-01", periods=2, freq="D")
-    symbols = ["A", "B"]
     data = [
         {"dt": dates[0], "symbol": "A", "weight": 1.0},
         {"dt": dates[0], "symbol": "B", "weight": 0.0},
@@ -184,6 +184,7 @@ def test_turnover_rate_invalid_data():
 def test_cross_sectional_strategy():
     """测试横截面策略功能和mock数据质量"""
     import pandas as pd
+
     from czsc import mock
     from czsc.eda import cross_sectional_strategy
 
@@ -273,6 +274,7 @@ def test_cross_sectional_strategy():
 def test_mock_klines_data_quality():
     """测试优化后的mock klines数据质量"""
     from czsc import mock
+
     # 生成数据
     df = mock.generate_klines(seed=42)
 
@@ -308,7 +310,7 @@ def test_mock_klines_data_quality():
 
     # 验证不同股票的价格走势差异
     symbols = df["symbol"].unique()
-    final_prices = df.groupby("symbol")["close"].last()
+    df.groupby("symbol")["close"].last()
     price_changes = df.groupby("symbol")["close"].apply(lambda x: (x.iloc[-1] / x.iloc[0] - 1) * 100)
 
     # 应该有涨有跌，不应该所有股票都是同样的走势
@@ -322,7 +324,7 @@ def test_mock_klines_data_quality():
     assert correlation > 0, "成交量与价格波动应该呈正相关"
     assert correlation < 0.8, "相关性不应该过高（避免过于人工化）"
 
-    print(f"Mock数据质量测试通过:")
+    print("Mock数据质量测试通过:")
     print(f"- 数据总量: {len(df):,}行")
     print(f"- 股票数量: {len(symbols)}只")
     print(f"- 时间跨度: {df['dt'].min()} 至 {df['dt'].max()}")
@@ -359,34 +361,40 @@ def test_mark_cta_periods():
     """测试CTA周期标记功能"""
     from czsc import mock
     from czsc.eda import mark_cta_periods
-    
+
     df = mock.generate_klines(seed=42)
     # df = mock.generate_symbol_kines("BTC", freq='1分钟', sdt="20170101", edt="20250101", seed=42)
     # 确保dt列是datetime类型
-    df['dt'] = pd.to_datetime(df['dt'])
+    df["dt"] = pd.to_datetime(df["dt"])
 
     # 如果可能的话，也测试rs=True，但要处理可能的错误
     # try:
     df1 = mark_cta_periods(df.copy(), rs=True, q1=0.15, q2=0.4, verbose=False)
     assert isinstance(df1, pd.DataFrame), "rs=True时返回值应该是DataFrame"
     assert len(df1) == len(df), "rs=True时处理后数据长度应该保持一致"
-    
+
     # 先测试rs=False，避免rs-czsc库的复杂性
     df2 = mark_cta_periods(df.copy(), rs=False, q1=0.15, q2=0.4, verbose=False)
-    
+
     # 基本验证
     assert isinstance(df2, pd.DataFrame), "返回值应该是DataFrame"
     assert len(df2) == len(df), "处理后数据长度应该保持一致"
-    
 
     # 对比 python 版本和 rust 版本的结果
     assert df1.shape == df2.shape, "rs=True和rs=False的结果应该有相同的形状"
     assert df1.columns.equals(df2.columns), "rs=True和rs=False的列结构应该相同"
-    assert df1['symbol'].equals(df2['symbol']), "rs=True和rs=False的symbol列应该相同"
-    assert df1['dt'].equals(df2['dt']), "rs=True和rs=False的dt列应该相同"
-    cols = ['is_best_period', 'is_best_up_period', 'is_best_down_period', 
-            'is_worst_period', 'is_worst_up_period', 'is_worst_down_period', 'is_normal_period']
-    
+    assert df1["symbol"].equals(df2["symbol"]), "rs=True和rs=False的symbol列应该相同"
+    assert df1["dt"].equals(df2["dt"]), "rs=True和rs=False的dt列应该相同"
+    cols = [
+        "is_best_period",
+        "is_best_up_period",
+        "is_best_down_period",
+        "is_worst_period",
+        "is_worst_up_period",
+        "is_worst_down_period",
+        "is_normal_period",
+    ]
+
     for col in cols:
         print(f"\n\n{'=' * 20}")
         print(f"对比 {col} 列:")

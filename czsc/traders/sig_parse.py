@@ -1,21 +1,22 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/29 10:04
 describe:
 """
+
 import re
+
 from loguru import logger
 from parse import parse
-from typing import List, Dict
+
 from czsc.core import Signal
 
 
 class SignalsParser:
     """解析一串信号，生成信号函数配置"""
 
-    def __init__(self, signals_module: str = 'czsc.signals'):
+    def __init__(self, signals_module: str = "czsc.signals"):
         """
 
         函数执行逻辑：
@@ -32,7 +33,7 @@ class SignalsParser:
         :param signals_module: 指定信号函数所在模块
         """
         from czsc.utils import import_by_name
-        
+
         self.signals_module = signals_module
         sig_name_map = {}
         sig_pats_map = {}
@@ -84,11 +85,11 @@ class SignalsParser:
             return None
 
         try:
-            params = parse(pats, key).named     # type: ignore
-            if 'di' in params:
-                params['di'] = int(params['di'])
+            params = parse(pats, key).named  # type: ignore
+            if "di" in params:
+                params["di"] = int(params["di"])
 
-            params['name'] = f"{self.signals_module}.{name}"
+            params["name"] = f"{self.signals_module}.{name}"
             return params
         except Exception as e:
             logger.error(f"解析信号 {signal} - {name} - {pats} 出错：{e}")
@@ -118,7 +119,7 @@ class SignalsParser:
             logger.error(f"信号 {signal} 有多个匹配函数：{_k3_match}，请手动解析信号")
             return None
 
-    def config_to_keys(self, config: List[Dict]):
+    def config_to_keys(self, config: list[dict]):
         """将信号函数配置转换为信号key列表
 
         函数执行逻辑：
@@ -137,12 +138,12 @@ class SignalsParser:
         """
         keys = []
         for conf in config:
-            name = conf['name'].split('.')[-1]
+            name = conf["name"].split(".")[-1]
             if name in self.sig_pats_map:
                 keys.append(self.sig_pats_map[name].format(**conf))
         return keys
 
-    def parse(self, signal_seq: List[str]):
+    def parse(self, signal_seq: list[str]):
         """解析信号序列
 
         函数执行逻辑：
@@ -171,7 +172,7 @@ class SignalsParser:
         return res
 
 
-def get_signals_config(signals_seq: List[str], signals_module: str = 'czsc.signals') -> List[Dict]:
+def get_signals_config(signals_seq: list[str], signals_module: str = "czsc.signals") -> list[dict]:
     """获取信号列表对应的信号函数配置
 
     函数执行逻辑：
@@ -189,7 +190,7 @@ def get_signals_config(signals_seq: List[str], signals_module: str = 'czsc.signa
     return conf
 
 
-def get_signals_freqs(signals_seq: List) -> List[str]:
+def get_signals_freqs(signals_seq: list) -> list[str]:
     """获取信号列表对应的K线周期列表
 
     函数执行逻辑：
@@ -205,10 +206,10 @@ def get_signals_freqs(signals_seq: List) -> List[str]:
     :return: K线周期列表
     """
     from czsc.utils import sorted_freqs
-    
+
     freqs = []
     for signal in signals_seq:
-        _freqs = re.findall('|'.join(sorted_freqs), str(signal))
+        _freqs = re.findall("|".join(sorted_freqs), str(signal))
         if _freqs:
             freqs.extend(_freqs)
     return [x for x in sorted_freqs if x in freqs]

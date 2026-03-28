@@ -6,24 +6,31 @@
 
 # 从 backtest 导入回测相关绘图函数
 from .backtest import (
-    plot_cumulative_returns,
-    plot_drawdown_analysis,
-    plot_daily_return_distribution,
-    plot_monthly_heatmap,
+    get_performance_metrics_cards,
     plot_backtest_stats,
     plot_colored_table,
+    plot_cumulative_returns,
+    plot_daily_return_distribution,
+    plot_drawdown_analysis,
     plot_long_short_comparison,
-    get_performance_metrics_cards,
+    plot_monthly_heatmap,
 )
 
-# 从 weight 导入权重相关绘图函数
-from .weight import (
-    calculate_turnover_stats,
-    calculate_weight_stats,
-    plot_weight_histogram_kde,
-    plot_weight_cdf,
-    plot_turnover_overview,
-    plot_turnover_cost_analysis,
+# 从 common 导出常用常量
+from .common import (
+    COLOR_ANNO_GRAY,
+    COLOR_ANNO_RED,
+    COLOR_BORDER,
+    COLOR_DRAWDOWN,
+    COLOR_HEADER_BG,
+    COLOR_RETURN,
+    MONTH_LABELS,
+    QUANTILES_DRAWDOWN,
+    QUANTILES_DRAWDOWN_ANALYSIS,
+    SIGMA_LEVELS,
+    TemplateType,
+    add_year_boundary_lines,
+    figure_to_html,
 )
 
 # 从 kline 导入K线相关绘图类和函数
@@ -32,55 +39,48 @@ from .kline import (
     plot_czsc_chart,
 )
 
-# 从 common 导出常用常量
-from .common import (
-    COLOR_DRAWDOWN,
-    COLOR_RETURN,
-    COLOR_ANNO_GRAY,
-    COLOR_ANNO_RED,
-    COLOR_BORDER,
-    COLOR_HEADER_BG,
-    QUANTILES_DRAWDOWN,
-    QUANTILES_DRAWDOWN_ANALYSIS,
-    SIGMA_LEVELS,
-    MONTH_LABELS,
-    TemplateType,
-    figure_to_html,
-    add_year_boundary_lines,
+# 从 weight 导入权重相关绘图函数
+from .weight import (
+    calculate_turnover_stats,
+    calculate_weight_stats,
+    plot_turnover_cost_analysis,
+    plot_turnover_overview,
+    plot_weight_cdf,
+    plot_weight_histogram_kde,
 )
 
 __all__ = [
     # Backtest plotting functions
-    'plot_cumulative_returns',
-    'plot_drawdown_analysis',
-    'plot_daily_return_distribution',
-    'plot_monthly_heatmap',
-    'plot_backtest_stats',
-    'plot_colored_table',
-    'plot_long_short_comparison',
-    'get_performance_metrics_cards',
+    "plot_cumulative_returns",
+    "plot_drawdown_analysis",
+    "plot_daily_return_distribution",
+    "plot_monthly_heatmap",
+    "plot_backtest_stats",
+    "plot_colored_table",
+    "plot_long_short_comparison",
+    "get_performance_metrics_cards",
     # Weight plotting functions
-    'calculate_turnover_stats',
-    'calculate_weight_stats',
-    'plot_weight_histogram_kde',
-    'plot_weight_cdf',
-    'plot_turnover_overview',
-    'plot_turnover_cost_analysis',
+    "calculate_turnover_stats",
+    "calculate_weight_stats",
+    "plot_weight_histogram_kde",
+    "plot_weight_cdf",
+    "plot_turnover_overview",
+    "plot_turnover_cost_analysis",
     # Kline plotting
-    'KlineChart',
-    'plot_czsc_chart',
+    "KlineChart",
+    "plot_czsc_chart",
     # Common constants and utilities
-    'COLOR_DRAWDOWN',
-    'COLOR_RETURN',
-    'COLOR_ANNO_GRAY',
-    'COLOR_ANNO_RED',
-    'COLOR_BORDER',
-    'COLOR_HEADER_BG',
-    'QUANTILES_DRAWDOWN',
-    'QUANTILES_DRAWDOWN_ANALYSIS',
-    'SIGMA_LEVELS',
-    'MONTH_LABELS',
-    'TemplateType',
-    'figure_to_html',
-    'add_year_boundary_lines',
+    "COLOR_DRAWDOWN",
+    "COLOR_RETURN",
+    "COLOR_ANNO_GRAY",
+    "COLOR_ANNO_RED",
+    "COLOR_BORDER",
+    "COLOR_HEADER_BG",
+    "QUANTILES_DRAWDOWN",
+    "QUANTILES_DRAWDOWN_ANALYSIS",
+    "SIGMA_LEVELS",
+    "MONTH_LABELS",
+    "TemplateType",
+    "figure_to_html",
+    "add_year_boundary_lines",
 ]

@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 test_objects.py - 对象定义单元测试
 
@@ -9,11 +8,15 @@ Mock数据格式说明:
 - 频率: 日线
 - Seed: 42（确保可重现）
 """
+
+import contextlib
+
 import numpy as np
-from czsc.utils import x_round
-from czsc.py import Signal, Event, Freq, Operate
-from czsc.utils.analysis.stats import cal_break_even_point
 from loguru import logger
+
+from czsc.py import Event, Freq, Operate, Signal
+from czsc.utils import x_round
+from czsc.utils.analysis.stats import cal_break_even_point
 
 
 def test_operate():
@@ -27,8 +30,8 @@ def test_operate():
 
 def test_raw_bar():
     from czsc import mock
+    from czsc.core import Freq, format_standard_kline
     from czsc.utils.ta import SMA
-    from czsc.core import format_standard_kline, Freq
 
     # 使用mock数据替代硬编码数据文件（3年数据，满足3年+要求）
     df = mock.generate_symbol_kines("000001", "日线", sdt="20220101", edt="20250101", seed=42)
@@ -38,7 +41,7 @@ def test_raw_bar():
     logger.info(ma)
     # 技术指标的全部更新
     for i in range(1, len(bars) + 1):
-        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c = dict(bars[-i].cache) if bars[-i].cache else {}
         c.update({key: ma[-i]})
         bars[-i].cache = c
     # 使用 nansum 处理可能存在的 NaN 值（ta-lib 的 SMA 在数据不足时会返回 NaN）
@@ -49,7 +52,7 @@ def test_raw_bar():
 
     # 技术指标的部分更新
     for i in range(1, 101):
-        c = dict(bars[-i].cache) if bars[-i].cache else dict()
+        c = dict(bars[-i].cache) if bars[-i].cache else {}
         # 处理 NaN：如果 ma[-i] 是 NaN，保持为 NaN；否则加 2
         c.update({key: ma[-i] + 2 if not np.isnan(ma[-i]) else ma[-i]})
         bars[-i].cache = c
@@ -73,7 +76,7 @@ def test_cal_break_even_point():
 
 def test_signal():
     from rs_czsc import Signal
-    
+
     s = Signal(key="1分钟_倒1_形态", value="类一买_七笔_基础型_3")
     assert str(s) == "Signal('1分钟_倒1_形态_类一买_七笔_基础型_3')"
     assert s.key == "1分钟_倒1_形态"
@@ -87,10 +90,8 @@ def test_signal():
     assert str(s) == "Signal('1分钟_倒1形态_类一买_任意_任意_任意_3')"
     assert s.key == "1分钟_倒1形态_类一买"
 
-    try:
+    with contextlib.suppress(ValueError):
         s = Signal(key="1分钟_倒1形态_类一买", value="任意_任意_任意_101")
-    except ValueError as e:
-        pass
 
 
 def test_event():
@@ -125,8 +126,7 @@ def test_event():
     raw1 = {
         "name": "单测",
         "operate": "开多",
-        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0",
-                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", "15分钟_倒0笔_长度_大于5_其他_其他_0"],
     }
     new_event = Event.load(raw1)
     m, _ = new_event.is_match(s)
@@ -134,8 +134,7 @@ def test_event():
 
     raw1 = {
         "operate": "开多",
-        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0",
-                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", "15分钟_倒0笔_长度_大于5_其他_其他_0"],
     }
     new_event = Event.load(raw1)
     m, _ = new_event.is_match(s)
@@ -143,8 +142,7 @@ def test_event():
 
     raw1 = {
         "operate": "开多",
-        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0",
-                        "15分钟_倒0笔_长度_大于5_其他_其他_0"],
+        "signals_all": ["15分钟_倒0笔_方向_向上_其他_其他_0", "15分钟_倒0笔_长度_大于5_其他_其他_0"],
     }
     new_event = Event.load(raw1)
     m, _ = new_event.is_match(s)
@@ -154,7 +152,10 @@ def test_event():
         name="单测",
         operate=Operate.LO,
         signals_all=[Signal(signal="15分钟_倒0笔_长度_大于5_其他_其他_0")],
-        signals_any=[Signal(signal="15分钟_倒0笔_方向_向上_其他_其他_0"), Signal(signal="15分钟_倒0笔_长度_大于100_其他_其他_0")],
+        signals_any=[
+            Signal(signal="15分钟_倒0笔_方向_向上_其他_其他_0"),
+            Signal(signal="15分钟_倒0笔_长度_大于100_其他_其他_0"),
+        ],
     )
     m, _ = event.is_match(s)
     assert m
@@ -219,7 +220,7 @@ def test_event():
             "signals_all": [
                 "1分钟_D1_涨跌停V230331_任意_任意_任意_0",
                 "1分钟_D0停顿分型_BE辅助V230106_看空_强_任意_0",
-                "5分钟_D1#SMA#40MO10_BS辅助V230313_看多_任意_任意_0"
+                "5分钟_D1#SMA#40MO10_BS辅助V230313_看多_任意_任意_0",
             ],
         }
     )

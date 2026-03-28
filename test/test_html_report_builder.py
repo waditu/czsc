@@ -1,13 +1,16 @@
 """测试 html_report_builder 模块的功能"""
+
 import sys
+
 sys.path.append("..")
 sys.path.insert(0, ".")
-import pytest
-import pandas as pd
 import os
-import czsc
-from czsc.utils.html_report_builder import HtmlReportBuilder
+
+import pandas as pd
+import pytest
+
 from czsc.mock import generate_klines_with_weights
+from czsc.utils.html_report_builder import HtmlReportBuilder
 
 
 # ==================== Fixtures ====================
@@ -23,7 +26,7 @@ def sample_metrics():
     return [
         {"label": "收益率", "value": "10%", "is_positive": True},
         {"label": "回撤", "value": "-5%", "is_positive": False},
-        {"label": "夏普比率", "value": "1.85", "is_positive": True}
+        {"label": "夏普比率", "value": "1.85", "is_positive": True},
     ]
 
 
@@ -77,11 +80,7 @@ class TestHtmlReportBuilderComponents:
 
     def test_add_header(self, sample_builder):
         """测试添加头部"""
-        params = {
-            "日期": "2024-01-01",
-            "版本": "v1.0",
-            "作者": "测试用户"
-        }
+        params = {"日期": "2024-01-01", "版本": "v1.0", "作者": "测试用户"}
         sample_builder.add_header(params, subtitle="副标题")
         html = sample_builder.render()
 
@@ -184,7 +183,7 @@ class TestHtmlReportBuilderCharts:
             ("K线图", "<div>K线图内容</div>", "bi-graph-up", True),
             ("成交量图", "<div>成交量内容</div>", "bi-bar-chart", False),
             ("指标图", "<div>指标图内容</div>", "bi-activity", False),
-            ("资金曲线", "<div>资金曲线内容</div>", "bi-pie-chart", False)
+            ("资金曲线", "<div>资金曲线内容</div>", "bi-pie-chart", False),
         ]
 
         for name, html, icon, active in charts:
@@ -274,19 +273,26 @@ class TestHtmlReportBuilderChainCalls:
 
     def test_complex_chain_call(self):
         """测试复杂链式调用（模拟示例2）"""
-        builder = (HtmlReportBuilder(title="链式调用示例")
-                  .add_header({"项目": "量化策略", "状态": "运行中"})
-                  .add_metrics([
-                      {"label": "今日收益", "value": "+1.2%", "is_positive": True},
-                      {"label": "持仓数量", "value": "5", "is_positive": True}
-                  ])
-                  .add_section("交易策略", """
+        builder = (
+            HtmlReportBuilder(title="链式调用示例")
+            .add_header({"项目": "量化策略", "状态": "运行中"})
+            .add_metrics(
+                [
+                    {"label": "今日收益", "value": "+1.2%", "is_positive": True},
+                    {"label": "持仓数量", "value": "5", "is_positive": True},
+                ]
+            )
+            .add_section(
+                "交易策略",
+                """
                   <div class="alert alert-success">
                       <h4>策略概述</h4>
                       <p>基于缠论技术分析的多因子量化策略。</p>
                   </div>
-                  """)
-                  .add_footer())
+                  """,
+            )
+            .add_footer()
+        )
 
         html = builder.render()
         assert "链式调用示例" in html
@@ -318,7 +324,7 @@ class TestHtmlReportBuilderIntegration:
                 fee_rate=0.00,
                 digits=2,
                 weight_type="ts",
-                yearly_days=252
+                yearly_days=252,
             )
 
             # 文件存在性
@@ -329,7 +335,7 @@ class TestHtmlReportBuilderIntegration:
             assert file_size > 5000
 
             # 读取并验证内容
-            with open(result_path, "r", encoding="utf-8") as f:
+            with open(result_path, encoding="utf-8") as f:
                 content = f.read()
                 assert "集成测试报告" in content
                 assert "核心绩效指标" in content or "绩效指标" in content
@@ -347,7 +353,7 @@ class TestHtmlReportBuilderIntegration:
             "分析师": "AI量化系统",
             "报告日期": "2024-01-15",
             "数据周期": "2023-01-01 ~ 2023-12-31",
-            "策略类型": "多因子量化"
+            "策略类型": "多因子量化",
         }
         builder.add_header(params, subtitle="全市场量化策略综合分析报告")
 
@@ -358,7 +364,7 @@ class TestHtmlReportBuilderIntegration:
             {"label": "最大回撤", "value": "-15.6%", "is_positive": False},
             {"label": "夏普比率", "value": "2.14", "is_positive": True},
             {"label": "胜率", "value": "62.3%", "is_positive": True},
-            {"label": "盈亏比", "value": "2.1", "is_positive": True}
+            {"label": "盈亏比", "value": "2.1", "is_positive": True},
         ]
         builder.add_metrics(metrics, title="核心绩效指标")
 
@@ -437,8 +443,7 @@ class TestHtmlReportBuilderEdgeCases:
 
     def test_large_metrics_list(self, sample_builder):
         """测试大量指标"""
-        metrics = [{"label": f"指标{i}", "value": f"{i}%", "is_positive": i % 2 == 0}
-                   for i in range(100)]
+        metrics = [{"label": f"指标{i}", "value": f"{i}%", "is_positive": i % 2 == 0} for i in range(100)]
         sample_builder.add_metrics(metrics)
         html = sample_builder.render()
 
@@ -465,7 +470,7 @@ class TestHtmlReportBuilderEdgeCases:
             sample_builder.save(output_path)
 
             # 读取文件验证UTF-8编码
-            with open(output_path, "r", encoding="utf-8") as f:
+            with open(output_path, encoding="utf-8") as f:
                 file_content = f.read()
                 assert "缠中说禅技术分析" in file_content
                 assert "Quantitative Trading" in file_content

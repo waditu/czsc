@@ -1,17 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/9/24 12:39
 describe: K线的笔特征计算
 """
+
 import pandas as pd
 from tqdm import tqdm
-from typing import List
+
 from czsc.core import CZSC, RawBar
 
 
-def calculate_bi_info(bars: List[RawBar], **kwargs) -> pd.DataFrame:
+def calculate_bi_info(bars: list[RawBar], **kwargs) -> pd.DataFrame:
     """计算笔的特征
 
     :param bars: 原始K线数据
@@ -31,15 +31,16 @@ def calculate_bi_info(bars: List[RawBar], **kwargs) -> pd.DataFrame:
             "斜边角度": bi.angle,
             "涨跌幅": (bi.fx_b.fx / bi.fx_a.fx - 1) * 10000,
             "R2": bi.rsq,
-        } for bi in c.bi_list
+        }
+        for bi in c.bi_list
     ]
     _df = pd.DataFrame(res)
-    _df['未来第一笔涨跌幅'] = _df['涨跌幅'].shift(-1)
-    _df['未来第二笔涨跌幅'] = _df['涨跌幅'].shift(-2)
+    _df["未来第一笔涨跌幅"] = _df["涨跌幅"].shift(-1)
+    _df["未来第二笔涨跌幅"] = _df["涨跌幅"].shift(-2)
     return _df
 
 
-def symbols_bi_infos(symbols, read_bars, freq='5分钟', sdt='20130101', edt='20190101', **kwargs) -> pd.DataFrame:
+def symbols_bi_infos(symbols, read_bars, freq="5分钟", sdt="20130101", edt="20190101", **kwargs) -> pd.DataFrame:
     """计算多个标的的笔特征
 
     :param symbols: 品种代码列表
@@ -52,7 +53,7 @@ def symbols_bi_infos(symbols, read_bars, freq='5分钟', sdt='20130101', edt='20
     bis = []
     for symbol in tqdm(symbols, desc="计算笔的特征"):
         try:
-            bars = read_bars(symbol=symbol, freq=freq, sdt=sdt, edt=edt, fq='后复权')
+            bars = read_bars(symbol=symbol, freq=freq, sdt=sdt, edt=edt, fq="后复权")
             dfr = calculate_bi_info(bars)
             bis.append(dfr)
         except Exception as e:

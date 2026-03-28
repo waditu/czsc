@@ -1,17 +1,18 @@
-# -*- coding: utf-8 -*-
 """
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/9/24 15:19
 describe: 策略持仓权重管理
 """
-import os
-import time
+
 import json
+import os
 import threading
+import time
+from datetime import datetime
+
 import pandas as pd
 from loguru import logger
-from datetime import datetime
 
 
 class RedisWeightsClient:
@@ -62,11 +63,13 @@ class RedisWeightsClient:
 
         else:
             import redis
+
             self.redis_url = redis_url if redis_url else os.getenv("RWC_REDIS_URL")
             thread_safe_pool = redis.BlockingConnectionPool.from_url(self.redis_url, decode_responses=True)
             logger.info(f"{strategy_name} {self.key_prefix}: 使用环境变量 RWC_REDIS_URL 创建 redis 连接池")
 
         import redis
+
         assert isinstance(thread_safe_pool, redis.BlockingConnectionPool), "redis连接池创建失败"
 
         self.r = redis.Redis(connection_pool=thread_safe_pool)
@@ -166,7 +169,7 @@ class RedisWeightsClient:
                 return 0
 
         udt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        key = f'{self.key_prefix}:{self.strategy_name}:{symbol}:{dt.strftime("%Y%m%d%H%M%S")}'
+        key = f"{self.key_prefix}:{self.strategy_name}:{symbol}:{dt.strftime('%Y%m%d%H%M%S')}"
         ref = ref if ref else "{}"
         ref_str = json.dumps(ref) if isinstance(ref, dict) else ref
         return self.lua_publish(keys=[key], args=[1 if overwrite else 0, udt, weight, price, ref_str])
@@ -213,7 +216,7 @@ class RedisWeightsClient:
 
         keys, args = [], []
         for row in df[["symbol", "dt", "weight", "price", "ref"]].to_numpy():
-            key = f'{self.key_prefix}:{self.strategy_name}:{row[0]}:{row[1].strftime("%Y%m%d%H%M%S")}'
+            key = f"{self.key_prefix}:{self.strategy_name}:{row[0]}:{row[1].strftime('%Y%m%d%H%M%S')}"
             keys.append(key)
 
             args.append(row[2])
@@ -346,7 +349,7 @@ return cnt
             """
             key_pattern = self.key_prefix + ":" + self.strategy_name + ":*:LAST"
             results = self.r.eval(lua_script, 0, key_pattern)
-            rows = [dict(zip(r[::2], r[1::2])) for r in results]  # type: ignore
+            rows = [dict(zip(r[::2], r[1::2], strict=False)) for r in results]  # type: ignore
             if symbols:
                 rows = [r for r in rows if r["symbol"] in symbols]
 
@@ -395,7 +398,7 @@ return cnt
             price = price if price is None else float(price)
             try:
                 ref = json.loads(ref)
-            except Exception as e:
+            except Exception:
                 ref = ref
             weights.append((self.strategy_name, symbol, dt, weight, price, ref))
 
@@ -423,7 +426,7 @@ return cnt
         """
         key_pattern = self.key_prefix + ":" + self.strategy_name + ":*:*"
         results = self.r.eval(lua_script, 0, key_pattern)
-        results = [dict(zip(r[::2], r[1::2])) for r in results]  # type: ignore
+        results = [dict(zip(r[::2], r[1::2], strict=False)) for r in results]  # type: ignore
 
         df = pd.DataFrame(results)
         df["dt"] = pd.to_datetime(df["dt"])
@@ -646,7 +649,7 @@ def get_strategy_latest(redis_url=None, connection_pool=None, key_prefix="Weight
     fetched_data = pipeline.execute()
 
     results = []
-    for key, data in zip(keys, fetched_data):
+    for key, data in zip(keys, fetched_data, strict=False):
         strategy = key.split(":")[1]
         data["strategy"] = strategy
         results.append(data)
