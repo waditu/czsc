@@ -11,6 +11,7 @@ from collections import OrderedDict
 from czsc.py.enum import Mark, Direction
 from czsc.py.objects import BI, FX, RawBar, NewBar
 from czsc import envs
+from loguru import logger
 
 
 def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
@@ -55,10 +56,9 @@ def remove_include(k1: NewBar, k2: NewBar, k3: RawBar):
             dt = k2.dt if k2.low < k3.low else k3.dt
 
         else:
-            raise ValueError
+            raise ValueError(f"无效的 direction: {direction}，期望为 Direction.Up 或 Direction.Down")
 
         open_, close = (high, low) if k3.open > k3.close else (low, high)
-        vol = k2.vol + k3.vol
         amount = k2.amount + k3.amount
 
         # 这里有一个隐藏Bug，len(k2.elements) 在一些及其特殊的场景下会有超大的数量，具体问题还没找到；
@@ -156,7 +156,7 @@ def check_bi(bars: List[NewBar], **kwargs):
         fx_b = min(fxs_b, key=lambda fx: fx.low, default=None)
 
     else:
-        raise ValueError
+        raise ValueError(f"无效的分型标记: {fx_a.mark}，期望为 Mark.D 或 Mark.G")
 
     if fx_b is None:
         return None, bars
@@ -233,7 +233,6 @@ class CZSC:
             return
 
         if self.verbose and len(bars_ubi) > 100:
-            from loguru import logger
             logger.info(f"{self.symbol} - {self.freq} - {bars_ubi[-1].dt} 未完成笔延伸数量: {len(bars_ubi)}")
 
         bi, bars_ubi_ = check_bi(bars_ubi)
@@ -264,7 +263,8 @@ class CZSC:
             # 当前 bar 是上一根 bar 的时间延伸
             self.bars_raw[-1] = bar
             last_bars = self.bars_ubi.pop(-1).raw_bars
-            assert bar.dt == last_bars[-1].dt, f"{bar.dt} != {last_bars[-1].dt}，时间错位"
+            if not bar.dt == last_bars[-1].dt:
+                raise ValueError(f"{bar.dt} != {last_bars[-1].dt}，时间错位")
             last_bars[-1] = bar
 
         # 去除包含关系

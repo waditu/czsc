@@ -297,7 +297,7 @@ def get_meta(
     :return: dict
     """
     db = db or __db_from_env()
-    df = db.query_df(f"SELECT * FROM {database}.metas final WHERE strategy = '{strategy}'")
+    df = db.query_df(f"SELECT * FROM {database}.metas final WHERE strategy = %(strategy)s", parameters={"strategy": strategy})
 
     if df.empty:
         logger.warning(f"策略 {strategy} 不存在元数据")
@@ -411,7 +411,8 @@ def __send_heartbeat(db: "Client", strategy, logger=loguru.logger, database="czs
 
         current_time = _format_for_db(pd.Timestamp.now(tz=tz), tz=tz)
         db.command(
-            f"ALTER TABLE {database}.metas UPDATE heartbeat_time = '{current_time}' WHERE strategy = '{strategy}'"
+            f"ALTER TABLE {database}.metas UPDATE heartbeat_time = %(current_time)s WHERE strategy = %(strategy)s",
+            parameters={"current_time": current_time, "strategy": strategy},
         )
         logger.info(f"策略 {strategy} 发送心跳成功")
     except Exception as e:
@@ -434,24 +435,27 @@ def get_strategy_weights(
     """
     db = db or __db_from_env()
 
+    parameters = {"strategy": strategy}
     query = f"""
-    SELECT * FROM {database}.weights final WHERE strategy = '{strategy}'
+    SELECT * FROM {database}.weights final WHERE strategy = %(strategy)s
     """
     if sdt:
         sdt_str = _format_for_db(sdt)
         if sdt_str:
-            query += f" AND dt >= '{sdt_str}'"
+            query += " AND dt >= %(sdt)s"
+            parameters["sdt"] = sdt_str
     if edt:
         edt_str = _format_for_db(edt)
         if edt_str:
-            query += f" AND dt <= '{edt_str}'"
+            query += " AND dt <= %(edt)s"
+            parameters["edt"] = edt_str
     if symbols:
         if isinstance(symbols, str):
             symbols = [symbols]
-        symbol_str = ", ".join([f"'{s}'" for s in symbols])
-        query += f""" AND symbol IN ({symbol_str})"""
+        query += " AND symbol IN %(symbols)s"
+        parameters["symbols"] = tuple(symbols)
 
-    df = db.query_df(query)
+    df = db.query_df(query, parameters=parameters)
     if not df.empty:
         df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
         df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
@@ -469,10 +473,12 @@ def get_latest_weights(db: "Optional[Client]" = None, strategy=None, database="c
     db = db or __db_from_env()
 
     query = f"SELECT * FROM {database}.latest_weights final"
+    parameters = {}
     if strategy:
-        query += f" WHERE strategy = '{strategy}'"
+        query += " WHERE strategy = %(strategy)s"
+        parameters["strategy"] = strategy
 
-    df = db.query_df(query)
+    df = db.query_df(query, parameters=parameters)
     df = df.rename(columns={"latest_dt": "dt", "latest_weight": "weight", "latest_update_time": "update_time"})
     if not df.empty:
         df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
@@ -574,7 +580,8 @@ def publish_returns(
 
     # 查询 czsc_strategy.returns 表中，每个品种最新的时间
     dfl = db.query_df(
-        f"SELECT symbol, max(dt) as dt FROM {database}.returns final WHERE strategy = '{strategy}' GROUP BY symbol"
+        f"SELECT symbol, max(dt) as dt FROM {database}.returns final WHERE strategy = %(strategy)s GROUP BY symbol",
+        parameters={"strategy": strategy},
     )
 
     if not dfl.empty:
@@ -630,26 +637,31 @@ def get_strategy_returns(
     """
     db = db or __db_from_env()
 
+    parameters = {"strategy": strategy}
     query = f"""
-    SELECT * FROM {database}.returns final WHERE strategy = '{strategy}'
+    SELECT * FROM {database}.returns final WHERE strategy = %(strategy)s
     """
     if sdt:
         sdt_ts = _ensure_timestamp(sdt).tz_convert(tz)
         sdt_ts = sdt_ts.replace(hour=0, minute=0, second=0, microsecond=0)
         sdt_str = _format_for_db(sdt_ts)
-        query += f" AND dt >= '{sdt_str}'"
+        if sdt_str:
+            query += " AND dt >= %(sdt)s"
+            parameters["sdt"] = sdt_str
     if edt:
         edt_ts = _ensure_timestamp(edt).tz_convert(tz)
         edt_ts = edt_ts.replace(hour=23, minute=59, second=59, microsecond=0)
         edt_str = _format_for_db(edt_ts)
-        query += f" AND dt <= '{edt_str}'"
+        if edt_str:
+            query += " AND dt <= %(edt)s"
+            parameters["edt"] = edt_str
     if symbols:
         if isinstance(symbols, str):
             symbols = [symbols]
-        symbol_str = ", ".join([f"'{s}'" for s in symbols])
-        query += f""" AND symbol IN ({symbol_str})"""
+        query += " AND symbol IN %(symbols)s"
+        parameters["symbols"] = tuple(symbols)
 
-    df = db.query_df(query)
+    df = db.query_df(query, parameters=parameters)
     if not df.empty:
         df = _localize_dataframe_columns(df, ["dt", "update_time"], tz=tz)
         df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
@@ -685,12 +697,12 @@ def update_strategy_status(
 
     # 更新策略状态和更新时间
     query = f"""
-    ALTER TABLE {database}.metas 
-    UPDATE status = %s, update_time = %s 
-    WHERE strategy = %s
+    ALTER TABLE {database}.metas
+    UPDATE status = %(status)s, update_time = %(current_time)s
+    WHERE strategy = %(strategy)s
     """
 
-    db.command(query, parameters=(status, current_time, strategy))
+    db.command(query, parameters={"status": status, "current_time": current_time, "strategy": strategy})
     logger.info(f"策略 {strategy} 状态已更新为: {status}")
 
 
@@ -705,10 +717,12 @@ def get_strategies_by_status(status=None, db: "Optional[Client]" = None, databas
     db = db or __db_from_env()
 
     query = f"SELECT * FROM {database}.metas final"
+    parameters = {}
     if status:
-        query += f" WHERE status = '{status}'"
+        query += " WHERE status = %(status)s"
+        parameters["status"] = status
 
-    df = db.query_df(query)
+    df = db.query_df(query, parameters=parameters)
     if not df.empty:
         df = _localize_dataframe_columns(df, ["outsample_sdt", "create_time", "update_time", "heartbeat_time"], tz=tz)
     return df
@@ -738,30 +752,34 @@ def clear_strategy(
     try:
         # 统计权重数据量
         weights_count = db.query_df(
-            f"SELECT count(*) as count FROM {database}.weights final WHERE strategy = '{strategy}'"
+            f"SELECT count(*) as count FROM {database}.weights final WHERE strategy = %(strategy)s",
+            parameters={"strategy": strategy},
         ).iloc[0]["count"]
 
         # 统计收益数据量
         returns_count = db.query_df(
-            f"SELECT count(*) as count FROM {database}.returns final WHERE strategy = '{strategy}'"
+            f"SELECT count(*) as count FROM {database}.returns final WHERE strategy = %(strategy)s",
+            parameters={"strategy": strategy},
         ).iloc[0]["count"]
 
         # 获取权重数据的时间范围
         weights_time_range = db.query_df(
             f"""
-            SELECT min(dt) as min_dt, max(dt) as max_dt 
-            FROM {database}.weights final 
-            WHERE strategy = '{strategy}'
-        """
+            SELECT min(dt) as min_dt, max(dt) as max_dt
+            FROM {database}.weights final
+            WHERE strategy = %(strategy)s
+        """,
+            parameters={"strategy": strategy},
         )
 
         # 获取收益数据的时间范围
         returns_time_range = db.query_df(
             f"""
-            SELECT min(dt) as min_dt, max(dt) as max_dt 
-            FROM {database}.returns final 
-            WHERE strategy = '{strategy}'
-        """
+            SELECT min(dt) as min_dt, max(dt) as max_dt
+            FROM {database}.returns final
+            WHERE strategy = %(strategy)s
+        """,
+            parameters={"strategy": strategy},
         )
 
         # 输出数据概况
@@ -805,20 +823,20 @@ def clear_strategy(
         logger.info("开始执行删除操作...")
 
     query = f"""
-    DELETE FROM {database}.metas WHERE strategy = '{strategy}'
+    DELETE FROM {database}.metas WHERE strategy = %(strategy)s
     """
-    _ = db.command(query)
+    _ = db.command(query, parameters={"strategy": strategy})
     logger.info(f"清空策略 {strategy} 元数据成功")
 
     query = f"""
-    DELETE FROM {database}.weights WHERE strategy = '{strategy}'
+    DELETE FROM {database}.weights WHERE strategy = %(strategy)s
     """
-    _ = db.command(query)
+    _ = db.command(query, parameters={"strategy": strategy})
     logger.info(f"清空策略 {strategy} 持仓权重成功")
 
     query = f"""
-    DELETE FROM {database}.returns WHERE strategy = '{strategy}'
+    DELETE FROM {database}.returns WHERE strategy = %(strategy)s
     """
-    _ = db.command(query)
+    _ = db.command(query, parameters={"strategy": strategy})
     logger.info(f"清空策略 {strategy} 日收益成功")
     logger.warning(f"策略 {strategy} 清空完成")

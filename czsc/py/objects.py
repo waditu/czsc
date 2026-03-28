@@ -374,7 +374,7 @@ class BI:
     @property
     def angle(self):
         """笔的斜边与竖直方向的夹角，角度越大，力度越大"""
-        return round(math.asin(self.power_price / self.hypotenuse) * 180 / 3.14, 2)
+        return round(math.asin(self.power_price / self.hypotenuse) * 180 / math.pi, 2)
 
 
 @dataclass
@@ -587,7 +587,7 @@ class Event:
 
         return get_signals_config(self.unique_signals, signals_module)
 
-    def is_match(self, s: dict) -> bool:
+    def is_match(self, s: dict) -> tuple[bool, str]:
         """判断 event 是否满足
 
         代码的执行逻辑如下：
@@ -597,17 +597,30 @@ class Event:
         3. 然后判断 signals_any 中的信号是否有一个得到满足，如果一个都不满足，则直接返回 False，表示事件不满足。
         4. 最后判断因子是否满足，顺序遍历因子列表，找到第一个满足的因子就退出，并返回 True 和该因子的名称，表示事件满足。
         5. 如果遍历完所有因子都没有找到满足的因子，则返回 False，表示事件不满足。
+
+        :param s: 所有信号字典
+        :return: (是否匹配, 匹配的信号名称)
         """
         if self.signals_not and any(signal.is_match(s) for signal in self.signals_not):
-            return False
+            return False, ""
 
         if self.signals_all and not all(signal.is_match(s) for signal in self.signals_all):
-            return False
+            return False, ""
 
         if self.signals_any and not any(signal.is_match(s) for signal in self.signals_any):
-            return False
+            return False, ""
 
-        return True
+        # 找到匹配的信号名称
+        match_name = ""
+        if self.signals_any:
+            for signal in self.signals_any:
+                if signal.is_match(s):
+                    match_name = signal.key
+                    break
+        elif self.signals_all:
+            match_name = self.signals_all[-1].key
+
+        return True, match_name
 
     def dump(self) -> dict:
         """将 Event 对象转存为 dict"""
@@ -919,6 +932,46 @@ class Position:
         p.update(self.evaluate_holds(trade_dir))
         return p
 
+    def _can_close_today(self, dt: datetime, open_dt: datetime) -> bool:
+        """判断当日是否允许平仓（T0 规则）
+
+        :param dt: 当前信号时间
+        :param open_dt: 开仓时间
+        :return: 是否允许平仓
+        """
+        return self.T0 or dt.date() != open_dt.date()
+
+    def _check_stop_loss(self, price: float, operate: Operate) -> bool:
+        """判断是否触发止损
+
+        :param price: 当前价格
+        :param operate: 操作类型，LO 为多头止损，SO 为空头止损
+        :return: 是否触发止损
+        """
+        if operate == Operate.LO:
+            return price / self.last_event["price"] - 1 < -self.stop_loss / 10000
+        elif operate == Operate.SO:
+            return 1 - price / self.last_event["price"] < -self.stop_loss / 10000
+        return False
+
+    def _check_timeout(self, bid: int) -> bool:
+        """判断是否触发超时
+
+        :param bid: 当前信号的 id（K线序号）
+        :return: 是否触发超时
+        """
+        return bid - self.last_event["bid"] > self.timeout
+
+    def _execute_close(self, _op: Operate, reason: str, _create_operate: Callable) -> None:
+        """执行平仓操作
+
+        :param _op: 平仓操作类型（LE 或 SE）
+        :param reason: 操作描述
+        :param _create_operate: 创建操作记录的函数
+        """
+        self.pos = 0
+        self.operates.append(_create_operate(_op, reason))
+
     def update(self, s: dict):
         """更新持仓状态
 
@@ -1002,9 +1055,8 @@ class Position:
                 self.last_lo_dt = dt
             else:
                 # 与前一次开多间隔时间小于 interval，仅对空头平仓
-                if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
-                    self.pos = 0
-                    self.operates.append(__create_operate(Operate.SE, op_desc))
+                if self.pos == -1 and self._can_close_today(dt, self.last_so_dt):
+                    self._execute_close(Operate.SE, op_desc, __create_operate)
 
         if op == Operate.SO:
             if self.pos != -1 and (
@@ -1017,54 +1069,41 @@ class Position:
                 self.last_so_dt = dt
             else:
                 # 与前一次开空间隔时间小于 interval，仅对多头平仓
-                if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
-                    self.pos = 0
-                    self.operates.append(__create_operate(Operate.LE, op_desc))
+                if self.pos == 1 and self._can_close_today(dt, self.last_lo_dt):
+                    self._execute_close(Operate.LE, op_desc, __create_operate)
 
         # 多头出场
-        if self.pos == 1 and (self.T0 or dt.date() != self.last_lo_dt.date()):
-            assert self.last_event["dt"] >= self.last_lo_dt
+        if self.pos == 1 and self._can_close_today(dt, self.last_lo_dt):
+            if self.last_event["dt"] < self.last_lo_dt:
+                raise ValueError(f"多头出场检查失败：last_event时间{self.last_event['dt']}早于开多时间{self.last_lo_dt}")
 
             # 多头平仓
             if op == Operate.LE:
-                self.pos = 0
-                self.operates.append(__create_operate(Operate.LE, op_desc))
+                self._execute_close(Operate.LE, op_desc, __create_operate)
 
             # 多头止损
-            if price / self.last_event["price"] - 1 < -self.stop_loss / 10000:
-                self.pos = 0
-                self.operates.append(
-                    __create_operate(Operate.LE, f"平多@{self.stop_loss}BP止损")
-                )
+            if self._check_stop_loss(price, Operate.LO):
+                self._execute_close(Operate.LE, f"平多@{self.stop_loss}BP止损", __create_operate)
 
             # 多头超时
-            if bid - self.last_event["bid"] > self.timeout:
-                self.pos = 0
-                self.operates.append(
-                    __create_operate(Operate.LE, f"平多@{self.timeout}K超时")
-                )
+            if self._check_timeout(bid):
+                self._execute_close(Operate.LE, f"平多@{self.timeout}K超时", __create_operate)
 
         # 空头出场
-        if self.pos == -1 and (self.T0 or dt.date() != self.last_so_dt.date()):
-            assert self.last_event["dt"] >= self.last_so_dt
+        if self.pos == -1 and self._can_close_today(dt, self.last_so_dt):
+            if self.last_event["dt"] < self.last_so_dt:
+                raise ValueError(f"空头出场检查失败：last_event时间{self.last_event['dt']}早于开空时间{self.last_so_dt}")
 
             # 空头平仓
             if op == Operate.SE:
-                self.pos = 0
-                self.operates.append(__create_operate(Operate.SE, op_desc))
+                self._execute_close(Operate.SE, op_desc, __create_operate)
 
             # 空头止损
-            if 1 - price / self.last_event["price"] < -self.stop_loss / 10000:
-                self.pos = 0
-                self.operates.append(
-                    __create_operate(Operate.SE, f"平空@{self.stop_loss}BP止损")
-                )
+            if self._check_stop_loss(price, Operate.SO):
+                self._execute_close(Operate.SE, f"平空@{self.stop_loss}BP止损", __create_operate)
 
             # 空头超时
-            if bid - self.last_event["bid"] > self.timeout:
-                self.pos = 0
-                self.operates.append(
-                    __create_operate(Operate.SE, f"平空@{self.timeout}K超时")
-                )
+            if self._check_timeout(bid):
+                self._execute_close(Operate.SE, f"平空@{self.timeout}K超时", __create_operate)
 
         self.holds.append({"dt": self.end_dt, "pos": self.pos, "price": price})

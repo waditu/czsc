@@ -93,9 +93,6 @@ test = [
 dev = [
     "ipython",
     "jupyter",
-    "black",
-    "isort",
-    "flake8",
 ]
 
 # 版本管理工具
@@ -145,21 +142,3 @@ filterwarnings = [
     "ignore::FutureWarning:.*'T' is deprecated.*",
     "ignore::RuntimeWarning:.*invalid value encountered in divide.*",
 ]
-
-[tool.black]
-line-length = 120
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | setup.py
-)/
-'''

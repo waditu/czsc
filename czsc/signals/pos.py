@@ -13,6 +13,36 @@ from czsc.core import Operate, Direction, Mark
 from czsc.signals.tas import update_ma_cache
 
 
+def _get_active_position(cat, pos_name, k1, k2, k3, v1="其他"):
+    """获取活跃的持仓对象，如果不满足条件则返回默认信号
+
+    :param cat: CzscTrader对象
+    :param pos_name: 持仓名称
+    :param k1: 信号k1
+    :param k2: 信号k2
+    :param k3: 信号k3
+    :param v1: 默认信号v1值
+    :return: (pos, default_signal)，其中 pos 为活跃持仓对象，default_signal 为默认信号（仅在需要提前返回时非None）
+    """
+    default_signal = create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+
+    # 如果没有持仓策略或kas为空，则不产生信号
+    if not hasattr(cat, "positions") or not cat.kas:
+        return None, default_signal
+
+    # 获取指定名称的持仓
+    try:
+        pos = [x for x in cat.positions if x.name == pos_name][0]
+    except IndexError:
+        return None, default_signal
+
+    # 如果持仓没有操作记录，或者最后一次操作是平仓，则不产生信号
+    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
+        return None, default_signal
+
+    return pos, None
+
+
 def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     """判断开仓后是否升破MA均线或跌破MA均线
 
@@ -44,13 +74,10 @@ def pos_ma_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}#{ma_type}#{timeperiod}_持有状态V230414".split("_")
     v1, v2 = "其他", "其他"
     key = update_ma_cache(cat.kas[freq1], ma_type=ma_type, timeperiod=timeperiod)
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -102,13 +129,9 @@ def pos_fx_stop_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{freq1}_{pos_name}N{n}_止损V230414".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -160,13 +183,10 @@ def pos_bar_stop_V230524(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}K_止损V230524".split("_")
     v1 = "其他"
     assert 20 >= n >= 1, "参数 n 取值范围为 1~20"
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos_ = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos_, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c: CZSC = cat.kas[freq1]
     op = pos_.operates[-1]
@@ -215,13 +235,10 @@ def pos_holds_V230414(cat: CzscTrader, **kwargs) -> OrderedDict:
     m = int(kwargs.get("m", 100))
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}_趋势判断V230414".split("_")
     v1 = "其他"
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -265,12 +282,10 @@ def pos_fix_exit_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
     th = int(kwargs.get("th", 300))
     k1, k2, k3 = f"{pos_name}_固定{th}BP止盈止损_出场V230624".split("_")
     v1 = "其他"
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos_ = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos_, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     op = pos_.operates[-1]
     op_price = op["price"]
@@ -322,13 +337,10 @@ def pos_profit_loss_V230624(cat: CzscTrader, **kwargs) -> OrderedDict:
     n = int(kwargs.get("n", 3))
     k1, k2, k3 = f"{pos_name}_{freq1}YKB{ykb}N{n}_盈亏比判断V230624".split("_")
     v1 = "其他"
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -431,13 +443,10 @@ def pos_holds_V230807(cat: CzscTrader, **kwargs) -> OrderedDict:
     assert m > t > 0, "参数 m 必须大于 t"
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}M{m}T{t}_BS辅助V230807".split("_")
     v1 = "其他"
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
 
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -496,13 +505,9 @@ def pos_holds_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}H{h}T{t}N{n}_保本V240428".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -561,13 +566,9 @@ def pos_holds_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}W{w}N{n}_保本V240608".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -634,13 +635,9 @@ def pos_stop_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}T{t}N{n}_止损V240428".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -709,13 +706,9 @@ def pos_take_V240428(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}T{t}N{n}_止盈V240428".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -778,15 +771,9 @@ def pos_stop_V240331(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}#{n}_止损V240331".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    # pos_ = [x for x in cat.positions if x.name == pos_name][0]
-    pos_ = cat.get_position(pos_name)
-    # 如果 pos 没有操作记录，或者最后一次操作是平仓，则不产生信号
-    if len(pos_.operates) == 0 or pos_.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos_, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c: CZSC = cat.kas[freq1]
     op = pos_.operates[-1]
@@ -846,13 +833,9 @@ def pos_stop_V240608(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}W{w}N{n}_止损V240608".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -918,13 +901,9 @@ def pos_stop_V240614(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}_止损V240614".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     c = cat.kas[freq1]
     op = pos.operates[-1]
@@ -984,13 +963,9 @@ def pos_stop_V240717(cat: CzscTrader, **kwargs) -> OrderedDict:
     k1, k2, k3 = f"{pos_name}_{freq1}N{n}T{timeperiod}_止损V240717".split("_")
     v1 = "其他"
 
-    # 如果没有持仓策略，则不产生信号
-    if not cat.kas or not hasattr(cat, "positions"):
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
-
-    pos = [x for x in cat.positions if x.name == pos_name][0]
-    if len(pos.operates) == 0 or pos.operates[-1]["op"] in [Operate.SE, Operate.LE]:
-        return create_single_signal(k1=k1, k2=k2, k3=k3, v1=v1)
+    pos, default_signal = _get_active_position(cat, pos_name, k1, k2, k3, v1)
+    if default_signal:
+        return default_signal
 
     op = pos.operates[-1]
     atr = [x.cache[cache_key] if x.cache.get(cache_key) is not None else 0 for x in c.bars_raw if x.dt == op["dt"]]
