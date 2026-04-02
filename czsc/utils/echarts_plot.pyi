@@ -3,7 +3,7 @@ from pyecharts.charts import Boxplot as Boxplot
 from pyecharts.charts import Grid
 from pyecharts.charts import HeatMap as HeatMap
 
-from czsc.py.enum import Operate as Operate
+from czsc.core import Operate as Operate
 
 from .ta import MACD as MACD
 from .ta import SMA as SMA
