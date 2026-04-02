@@ -1035,7 +1035,7 @@ requires-dist = [
     { name = "reportlab", specifier = ">=4.0" },
     { name = "requests", specifier = ">=2.24.0" },
     { name = "requests-toolbelt" },
-    { name = "rs-czsc", specifier = ">=0.1.17.post251110" },
+    { name = "rs-czsc", specifier = ">=0.1.26" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
@@ -3901,7 +3901,7 @@ wheels = [
 
 [[package]]
 name = "rs-czsc"
-version = "0.1.17.post251110"
+version = "0.1.26.post260402"
 source = { registry = "https://pypi.python.org/simple" }
 dependencies = [
     { name = "czsc" },
@@ -3909,10 +3909,11 @@ dependencies = [
     { name = "pyarrow" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/7c/84a011784e6ccb7c48cd37b01b54f36db95d052baffa7f33249d4cd7804d/rs_czsc-0.1.17.post251110-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f595468836fbebce20bbc3d873152175f2bf0b86d7be3c28d60435d1ce36dfaf", size = 11399681, upload-time = "2025-11-10T00:38:32.647Z" },
-    { url = "https://files.pythonhosted.org/packages/f0/74/3e4e2e5b6040a7256b22938d8d44108ec0e01d50f53fa3f005fa4fc944da/rs_czsc-0.1.17.post251110-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:a2d0dca13d8a43a0eac85e66c49da507c9f22a4410405401996bb47019c9b14b", size = 10019745, upload-time = "2025-11-10T00:38:48.501Z" },
-    { url = "https://files.pythonhosted.org/packages/3b/c1/a9992b56a83333247f07a0ab32ebf6e6bfe16f9e7cc330e0a8e79ccce032/rs_czsc-0.1.17.post251110-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6450c1b99c639aefb6e46309e4d393623f50fafd0c9f6ed941451516bcb19a11", size = 11868870, upload-time = "2025-11-10T00:43:43.994Z" },
-    { url = "https://files.pythonhosted.org/packages/ec/3b/22806a3b0b3626011c2359e74c0b9ef5ccb6f863574cfade78c7b6840a18/rs_czsc-0.1.17.post251110-cp38-abi3-win_amd64.whl", hash = "sha256:c37cfc3e835303125d087ecc47ab21a264751e88f561020b4b93505d6f707c22", size = 12944161, upload-time = "2025-11-10T00:55:00.273Z" },
+    { url = "https://files.pythonhosted.org/packages/90/3a/0b779ee33129b030f04d55e48206f7498dcca8bcc7c80ebf749c632e0373/rs_czsc-0.1.26.post260402-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:cb3319b803510c0f03a0a2679c8102530946c41334ebda0d24adf4bfdf6db60b", size = 13644998, upload-time = "2026-04-02T10:37:46.484Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/f3/989b03585139a1c63559a75d3d43e8a350913f78b9c04f4c5a621f36cb7b/rs_czsc-0.1.26.post260402-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:b6e7bdc7778a66689c14ff2d40a69f6570c58ab1feb495dadba2754759cd0241", size = 12333247, upload-time = "2026-04-02T10:37:49.358Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/54/cb7fb2c7bce353a7d1de4a212bd6bf1703f6c69400b0bc13e273dbb87318/rs_czsc-0.1.26.post260402-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a883e5159c49184ef4ca9b05036ad02221089784707fe8e06606ff9e5a0cabba", size = 12842091, upload-time = "2026-04-02T10:37:51.829Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/93/bea4d91ea42d174f35f7d490059e773969a5698122bfd0a027e760830ce1/rs_czsc-0.1.26.post260402-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c919297ce7ea30e0fafe0abb772ef3c9b96fa9f9c850d6556b4bd52349ba7c89", size = 14154522, upload-time = "2026-04-02T10:37:54.654Z" },
+    { url = "https://files.pythonhosted.org/packages/9b/3b/5a517daa43f076904d89e22605f6d957307f4c2b54d42fdcbe014bb57832/rs_czsc-0.1.26.post260402-cp39-abi3-win_amd64.whl", hash = "sha256:b714fac6ce7a589d21175cbb8dd43ae1e32cbe54f82b163fdd694713ab9156fa", size = 15099760, upload-time = "2026-04-02T10:37:57.68Z" },
 ]
 
 [[package]]
