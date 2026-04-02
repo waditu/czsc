@@ -11,7 +11,7 @@ from pyecharts import options as opts
 from pyecharts.charts import Bar, Grid, Kline, Line, Scatter
 from pyecharts.commons.utils import JsCode
 
-from czsc.py.enum import Operate
+from czsc.core import Operate
 
 from .ta import MACD, SMA
 

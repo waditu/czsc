@@ -211,6 +211,11 @@ def test_disk_cache_decorator():
     """测试 disk_cache 装饰器功能"""
     # 确保缓存根目录存在
     os.makedirs(temp_path, exist_ok=True)
+    clear_cache(
+        temp_path,
+        subs=["run_func_x", "run_func_text", "run_func_json", "run_func_y", "run_feather", "run_parquet"],
+        recreate=True,
+    )
 
     # 调用函数
     result = run_func_x(5)

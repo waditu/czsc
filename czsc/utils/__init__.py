@@ -17,7 +17,6 @@ from .analysis import (
     single_linear,
     top_drawdowns,
 )
-from .cross import cross_sectional_ranker
 from .crypto import fernet_decrypt, fernet_encrypt, generate_fernet_key
 from .data import (
     DataClient,
@@ -47,7 +46,6 @@ __all__ = [
     "data",
     "io",
     "ta",
-    "cross_sectional_ranker",
     # analysis
     "cross_sectional_ic",
     "daily_performance",

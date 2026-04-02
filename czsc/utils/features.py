@@ -1,70 +1,46 @@
 """
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2023/10/06 15:01
-describe: 因子（特征）处理
+Feature processing helpers kept for the current retained utility surface.
 """
 
+from __future__ import annotations
+
+import numpy as np
 import pandas as pd
 
 
 def normalize_feature(df, x_col, method="standard", **kwargs):
-    """因子标准化：缩尾，然后标准化
-
-    :param df: pd.DataFrame，数据
-    :param x_col: str，因子列名
-    :param method: str，标准化方法，可选值：standard, minmax, robust, norm, norm-l1, norm-l2, norm-max
-    :param kwargs:
-
-        - q: float，缩尾比例, 默认 0.05
-
-    :return: pd.DataFrame，处理后的数据
-    """
+    """Normalize a cross-sectional factor column by date."""
     from sklearn.preprocessing import minmax_scale, normalize, robust_scale, scale
 
     df = df.copy()
-    assert df[x_col].isna().sum() == 0, f"因子有缺失值，缺失数量为：{df[x_col].isna().sum()}"
-    q = kwargs.pop("q", 0.05)  # 缩尾比例
+    assert df[x_col].isna().sum() == 0, f"factor has missing values: {df[x_col].isna().sum()}"
+    q = kwargs.pop("q", 0.05)
 
     def _norm(x):
         x = x.clip(lower=x.quantile(q), upper=x.quantile(1 - q))
         if method == "minmax":
             return minmax_scale(x, **kwargs)
-        elif method == "robust":
+        if method == "robust":
             return robust_scale(x, **kwargs)
-        elif method.startswith("norm"):
+        if method.startswith("norm"):
             norm_type = method.split("-")[1] if "-" in method else "l2"
             return normalize(x.values.reshape(1, -1), norm=norm_type).flatten()
-        elif method == "standard":
+        if method == "standard":
             return scale(x, **kwargs)
-        else:
-            raise ValueError(f"不支持的标准化方法: {method}")
+        raise ValueError(f"unsupported normalize method: {method}")
 
     df[x_col] = df.groupby("dt")[x_col].transform(_norm)
     return df
 
 
 def normalize_ts_feature(df, x_col, n=10, **kwargs):
-    """对时间序列数据进行归一化处理
-
-    :param df: 因子数据，必须包含 dt, x_col 列，其中 dt 为日期，x_col 为因子值
-    :param x_col: 因子列名
-    :param n: 分层数量，默认为10
-    :param kwargs:
-
-        - window: 窗口大小，默认为2000
-        - min_periods: 最小样本数量，默认为300
-
-    :return: df, 添加了 x_col_norm, x_col_qcut, x_col分层 列
-    """
-    assert df[x_col].nunique() > n * 2, "因子值的取值数量必须大于分层数量"
-    assert df[x_col].isna().sum() == 0, f"因子有缺失值，缺失数量为：{df[x_col].isna().sum()}"
-    kwargs.get("window", 2000)
+    """Normalize a time-series factor into rolling quantile buckets."""
+    assert df[x_col].nunique() > n * 2, "factor must have enough unique values for bucketing"
+    assert df[x_col].isna().sum() == 0, f"factor has missing values: {df[x_col].isna().sum()}"
     min_periods = kwargs.get("min_periods", 300)
 
-    # 不能有 inf 和 -inf
     if df.loc[df[x_col].isin([float("inf"), float("-inf")]), x_col].shape[0] > 0:
-        raise ValueError(f"存在 {x_col} 为 inf / -inf 的数据")
+        raise ValueError(f"{x_col} contains inf or -inf")
 
     if f"{x_col}_qcut" not in df.columns:
         df[f"{x_col}_qcut"] = (
@@ -73,47 +49,18 @@ def normalize_ts_feature(df, x_col, n=10, **kwargs):
             .apply(lambda x: pd.qcut(x, q=n, labels=False, duplicates="drop", retbins=False).values[-1], raw=False)
         )
         df[f"{x_col}_qcut"] = df[f"{x_col}_qcut"].fillna(-1)
-        # 第00层表示缺失值
         df[f"{x_col}分层"] = df[f"{x_col}_qcut"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
 
     return df
 
 
 def feature_cross_layering(df, x_col, **kwargs):
-    """对因子数据在时间截面上进行分层处理
-
-    函数计算逻辑：
-
-    1. 首先从参数中获取分层数量 n，默认为10。
-    2. 确保数据 df 包含 dt、symbol 和指定的因子列 x_col， 确保标的数量大于分层数量。
-    3. 如果因子列的唯一值数量大于分层数量，使用 pd.qcut 函数将因子列进行分层，按照分位数进行分组。
-    4. 如果因子列的唯一值数量小于等于分层数量，按照因子列的唯一值进行排序，并将每个因子值映射为对应的层级。
-    5. 将分层结果转换为字符串形式，以表示层级。
-
-    :param df: 因子数据，数据样例：
-
-        ===================  ========  ===========  ==========  ==========
-        dt                   symbol       factor01    factor02    factor03
-        ===================  ========  ===========  ==========  ==========
-        2022-12-19 00:00:00  ZZUR9001  -0.0221211    0.034236    0.0793672
-        2022-12-20 00:00:00  ZZUR9001  -0.0278691    0.0275818   0.0735083
-        2022-12-21 00:00:00  ZZUR9001  -0.00617075   0.0512298   0.0990967
-        2022-12-22 00:00:00  ZZUR9001  -0.0222238    0.0320096   0.0792036
-        2022-12-23 00:00:00  ZZUR9001  -0.0375133    0.0129455   0.059491
-        ===================  ========  ===========  ==========  ==========
-
-    :param x_col: 因子列名
-    :param kwargs:
-
-        - n: 分层数量，默认为10
-
-    :return: df, 添加了 x_col分层 列
-    """
+    """Bucket cross-sectional factor values by date."""
     n = kwargs.get("n", 10)
-    assert "dt" in df.columns, "因子数据必须包含 dt 列"
-    assert "symbol" in df.columns, "因子数据必须包含 symbol 列"
-    assert x_col in df.columns, f"因子数据必须包含 {x_col} 列"
-    assert df["symbol"].nunique() > n, "标的数量必须大于分层数量"
+    assert "dt" in df.columns, "factor data must contain dt"
+    assert "symbol" in df.columns, "factor data must contain symbol"
+    assert x_col in df.columns, f"factor data must contain {x_col}"
+    assert df["symbol"].nunique() > n, "symbol count must be greater than layer count"
 
     if df[x_col].nunique() > n:
 
@@ -126,7 +73,36 @@ def feature_cross_layering(df, x_col, **kwargs):
         df[f"{x_col}分层"] = df[x_col].apply(lambda x: sorted_x.index(x))
 
     df[f"{x_col}分层"] = df[f"{x_col}分层"].fillna(-1)
-    # 第00层表示缺失值
     df[f"{x_col}分层"] = df[f"{x_col}分层"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
     return df
 
+
+def find_most_similarity(vector: pd.Series, matrix: pd.DataFrame, n: int = 10, metric: str = "cosine", **kwargs):
+    """Find the most similar columns in a matrix to the given vector."""
+    del kwargs
+
+    vec = pd.to_numeric(pd.Series(vector), errors="coerce")
+    data = matrix.apply(pd.to_numeric, errors="coerce")
+
+    if len(vec) != len(data.index):
+        raise ValueError("vector length must match matrix row count")
+
+    if metric == "corr":
+        scores = data.corrwith(vec)
+    elif metric == "cosine":
+        vec_values = vec.fillna(0.0).to_numpy(dtype=float)
+        vec_norm = np.linalg.norm(vec_values)
+        if vec_norm == 0:
+            scores = pd.Series(0.0, index=data.columns, dtype=float)
+        else:
+            filled = data.fillna(0.0)
+            scores = filled.apply(
+                lambda col: float(np.dot(col.to_numpy(dtype=float), vec_values) / (np.linalg.norm(col.to_numpy(dtype=float)) * vec_norm))
+                if np.linalg.norm(col.to_numpy(dtype=float)) > 0
+                else 0.0
+            )
+    else:
+        raise ValueError(f"unsupported metric: {metric}")
+
+    scores = scores.fillna(-1.0).sort_values(ascending=False)
+    return scores.head(n)

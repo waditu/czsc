@@ -4,33 +4,44 @@ email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
 
-from rs_czsc import (
-    WeightBacktest,
-    daily_performance,
-    top_drawdowns,
-)
+from rs_czsc import WeightBacktest, daily_performance, top_drawdowns
 
-from czsc import envs, traders, utils
-from czsc.core import CZSC, ZS, Direction, Event, Freq, NewBar, Operate, Position, RawBar, Signal, format_standard_kline
-from czsc.traders import (
+from . import envs, traders, utils
+from .core import CZSC, ZS, Direction, Event, Freq, NewBar, Operate, Position, RawBar, Signal, format_standard_kline
+from .eda import (
+    cal_symbols_factor,
+    cal_trade_price,
+    cal_yearly_days,
+    cross_sectional_strategy,
+    dif_long_bear,
+    judge_factor_direction,
+    limit_leverage,
+    make_price_features,
+    mark_cta_periods,
+    mark_volatility,
+    min_max_limit,
+    monotonicity,
+    remove_beta_effects,
+    rolling_layers,
+    sma_long_bear,
+    tsf_type,
+    turnover_rate,
+    twap,
+    unify_weights,
+    vwap,
+    weights_simple_ensemble,
+)
+from .traders import (
     CzscSignals,
     CzscTrader,
-    DummyBacktest,
-    ExitsOptimize,
-    OpensOptimize,
-    PairsPerformance,
     SignalsParser,
     check_signals_acc,
-    combine_dates_and_pairs,
-    combine_holds_and_pairs,
     generate_czsc_signals,
-    get_ensemble_weight,
     get_signals_config,
     get_signals_freqs,
     get_unique_signals,
-    stoploss_by_direction,
 )
-from czsc.utils import (
+from .utils import (
     AliyunOSS,
     DataClient,
     DiskCache,
@@ -75,15 +86,12 @@ from czsc.utils import (
 )
 
 __all__ = [
-    # rs_czsc
     "WeightBacktest",
     "daily_performance",
     "top_drawdowns",
-    # czsc 子模块
     "envs",
     "traders",
     "utils",
-    # czsc.core
     "CZSC",
     "ZS",
     "Direction",
@@ -95,24 +103,14 @@ __all__ = [
     "RawBar",
     "Signal",
     "format_standard_kline",
-    # czsc.traders
     "CzscSignals",
     "CzscTrader",
-    "DummyBacktest",
-    "ExitsOptimize",
-    "OpensOptimize",
-    "PairsPerformance",
     "SignalsParser",
     "check_signals_acc",
-    "combine_dates_and_pairs",
-    "combine_holds_and_pairs",
     "generate_czsc_signals",
-    "get_ensemble_weight",
     "get_signals_config",
     "get_signals_freqs",
     "get_unique_signals",
-    "stoploss_by_direction",
-    # czsc.utils
     "AliyunOSS",
     "DataClient",
     "DiskCache",
@@ -154,39 +152,22 @@ __all__ = [
     "update_nxb",
     "update_tbars",
     "x_round",
-    # 延迟加载模块
     "svc",
     "fsa",
-    "sensors",
     "aphorism",
     "mock",
-    "rwc",
     "cwc",
-    # 延迟加载属性
     "CzscStrategyBase",
     "CzscJsonStrategy",
-    "holds_concepts_effect",
-    "CTAResearch",
     "capture_warnings",
     "execute_with_warning_capture",
-    "is_trading_date",
-    "next_trading_date",
-    "prev_trading_date",
-    "get_trading_dates",
     "adjust_holding_weights",
     "log_strategy_info",
     "calculate_bi_info",
     "symbols_bi_infos",
-    "is_event_feature",
-    "normalize_corr",
-    "feature_returns",
-    "feature_sectional_corr",
     "plot_czsc_chart",
     "KlineChart",
     "check_kline_quality",
-    "resample_bars",
-    "get_intraday_times",
-    "check_freq_and_market",
     "remove_beta_effects",
     "vwap",
     "twap",
@@ -209,12 +190,10 @@ __all__ = [
     "turnover_rate",
     "make_price_features",
     "generate_backtest_report",
-    # 模块元信息
     "__version__",
     "__author__",
     "__email__",
     "__date__",
-    # 函数
     "welcome",
 ]
 
@@ -223,77 +202,26 @@ __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20260308"
 
-# 延迟加载重型可选模块，避免影响导入速度
 _LAZY_MODULES = {
     "svc": "czsc.svc",
     "fsa": "czsc.fsa",
-    "sensors": "czsc.sensors",
     "aphorism": "czsc.aphorism",
     "mock": "czsc.mock",
-    "rwc": "czsc.traders.rwc",
     "cwc": "czsc.traders.cwc",
 }
 
-# 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
 _LAZY_ATTRS = {
-    # czsc.strategies
     "CzscStrategyBase": ("czsc.strategies", "CzscStrategyBase"),
     "CzscJsonStrategy": ("czsc.strategies", "CzscJsonStrategy"),
-    # czsc.sensors
-    "holds_concepts_effect": ("czsc.sensors", "holds_concepts_effect"),
-    "CTAResearch": ("czsc.sensors", "CTAResearch"),
-    # czsc.utils.warning_capture
     "capture_warnings": ("czsc.utils.warning_capture", "capture_warnings"),
     "execute_with_warning_capture": ("czsc.utils.warning_capture", "execute_with_warning_capture"),
-    # czsc.py.calendar
-    "is_trading_date": ("czsc.py.calendar", "is_trading_date"),
-    "next_trading_date": ("czsc.py.calendar", "next_trading_date"),
-    "prev_trading_date": ("czsc.py.calendar", "prev_trading_date"),
-    "get_trading_dates": ("czsc.py.calendar", "get_trading_dates"),
-    # czsc.utils.trade
     "adjust_holding_weights": ("czsc.utils.trade", "adjust_holding_weights"),
-    # czsc.utils.log
     "log_strategy_info": ("czsc.utils.log", "log_strategy_info"),
-    # czsc.utils.bi_info
     "calculate_bi_info": ("czsc.utils.bi_info", "calculate_bi_info"),
     "symbols_bi_infos": ("czsc.utils.bi_info", "symbols_bi_infos"),
-    # czsc.features.utils
-    "is_event_feature": ("czsc.features.utils", "is_event_feature"),
-    "normalize_corr": ("czsc.features.utils", "normalize_corr"),
-    "feature_returns": ("czsc.features.utils", "feature_returns"),
-    "feature_sectional_corr": ("czsc.features.utils", "feature_sectional_corr"),
-    # czsc.utils.plotting.kline
     "plot_czsc_chart": ("czsc.utils.plotting.kline", "plot_czsc_chart"),
     "KlineChart": ("czsc.utils.plotting.kline", "KlineChart"),
-    # czsc.utils.kline_quality
     "check_kline_quality": ("czsc.utils.kline_quality", "check_kline_quality"),
-    # czsc.py.bar_generator
-    "resample_bars": ("czsc.py.bar_generator", "resample_bars"),
-    "get_intraday_times": ("czsc.py.bar_generator", "get_intraday_times"),
-    "check_freq_and_market": ("czsc.py.bar_generator", "check_freq_and_market"),
-    # czsc.eda
-    "remove_beta_effects": ("czsc.eda", "remove_beta_effects"),
-    "vwap": ("czsc.eda", "vwap"),
-    "twap": ("czsc.eda", "twap"),
-    "cross_sectional_strategy": ("czsc.eda", "cross_sectional_strategy"),
-    "judge_factor_direction": ("czsc.eda", "judge_factor_direction"),
-    "monotonicity": ("czsc.eda", "monotonicity"),
-    "min_max_limit": ("czsc.eda", "min_max_limit"),
-    "rolling_layers": ("czsc.eda", "rolling_layers"),
-    "cal_symbols_factor": ("czsc.eda", "cal_symbols_factor"),
-    "weights_simple_ensemble": ("czsc.eda", "weights_simple_ensemble"),
-    "unify_weights": ("czsc.eda", "unify_weights"),
-    "sma_long_bear": ("czsc.eda", "sma_long_bear"),
-    "dif_long_bear": ("czsc.eda", "dif_long_bear"),
-    "tsf_type": ("czsc.eda", "tsf_type"),
-    "limit_leverage": ("czsc.eda", "limit_leverage"),
-    "cal_trade_price": ("czsc.eda", "cal_trade_price"),
-    "mark_cta_periods": ("czsc.eda", "mark_cta_periods"),
-    "mark_volatility": ("czsc.eda", "mark_volatility"),
-    "cal_yearly_days": ("czsc.eda", "cal_yearly_days"),
-    "turnover_rate": ("czsc.eda", "turnover_rate"),
-    "make_price_features": ("czsc.eda", "make_price_features"),
-    # czsc.utils.backtest_report
     "generate_backtest_report": ("czsc.utils.backtest_report", "generate_backtest_report"),
 }
 
@@ -325,7 +253,3 @@ def welcome():
     print(f"CZSC环境变量：czsc_min_bi_len = {envs.get_min_bi_len()}; czsc_max_bi_num = {envs.get_max_bi_num()}; ")
     if get_dir_size(home_path) > pow(1024, 3):
         print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")
-
-
-# if get_dir_size(home_path) > pow(1024, 3):
-#     print(f"{home_path} 目录缓存超过1GB，请适当清理。调用 czsc.empty_cache_path() 可以直接清空缓存")

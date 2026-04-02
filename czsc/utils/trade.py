@@ -8,6 +8,12 @@ describe: 交易相关的工具函数
 import pandas as pd
 
 
+def _get_trade_dates(start_date, end_date):
+    start = pd.to_datetime(start_date)
+    end = pd.to_datetime(end_date)
+    return pd.bdate_range(start, end).tolist()
+
+
 def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0.03):
     """创建无风险收益率序列
 
@@ -19,9 +25,7 @@ def risk_free_returns(start_date="20180101", end_date="20210101", year_returns=0
     :param year_returns: 年化收益率
     :return: pd.DataFrame
     """
-    from czsc.py.calendar import get_trading_dates
-
-    trade_dates = get_trading_dates(start_date, end_date)  # type: ignore
+    trade_dates = _get_trade_dates(start_date, end_date)
     df = pd.DataFrame({"date": trade_dates, "returns": year_returns / 252})
     return df
 
@@ -126,14 +130,12 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     :param only_trade_date: 是否只保留交易日数据
     :return: pd.DataFrame
     """
-    from czsc.py.calendar import get_trading_dates
-
     df["dt"] = pd.to_datetime(df["dt"])
     sdt = df["dt"].min() if not sdt else pd.to_datetime(sdt)
     edt = df["dt"].max() if not edt else pd.to_datetime(edt)
 
     # 创建日期序列
-    trade_dates = get_trading_dates(sdt=sdt, edt=edt) if only_trade_date else pd.date_range(sdt, edt, freq="D").tolist()
+    trade_dates = _get_trade_dates(sdt, edt) if only_trade_date else pd.date_range(sdt, edt, freq="D").tolist()
     trade_dates = pd.DataFrame({"date": trade_dates})
     trade_dates = trade_dates.sort_values("date", ascending=True).reset_index(drop=True)
 
