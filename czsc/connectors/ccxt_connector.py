@@ -125,57 +125,6 @@ def __binance_fetch_ohlcv(exchange, symbol, sdt, edt, interval):
     return df
 
 
-def __exchange_fetch_ohlcv(exchange, symbol, sdt, edt, interval):
-    """获取交易所的K线数据"""
-    # 转换时间戳
-    since = int(pd.to_datetime(sdt).timestamp() * 1000)
-    until = int(pd.to_datetime(edt).timestamp() * 1000)
-
-    all_klines = []
-    while since < until:
-        klines = exchange.fetch_ohlcv(symbol=symbol, timeframe=interval, since=since, limit=1000)
-        if not klines:
-            break
-
-        all_klines.extend(klines)
-        since = klines[-1][0] + 1  # 更新获取时间
-
-        # 添加延时避免超过API限制
-        time.sleep(0.5)
-
-    if not all_klines:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(all_klines, columns=["dt", "open", "high", "low", "close", "vol"])
-    df["amount"] = df["vol"] * df["close"]
-
-    # dt 转成K线结束时间
-    if interval == "4h":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(hours=4)
-
-    elif interval == "2h":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(hours=2)
-
-    elif interval == "1h":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(hours=1)
-
-    elif interval == "30m":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(minutes=30)
-
-    elif interval == "15m":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(minutes=15)
-
-    elif interval == "5m":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(minutes=5)
-
-    elif interval == "1m":
-        df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(minutes=1)
-
-    # dt 是K线结束时间；时区转换：UTC -> Asia/Shanghai
-    df["dt"] = pd.to_datetime(df["dt"], unit="ms") + pd.Timedelta(hours=8)
-    return df
-
-
 def get_raw_bars(symbol="BTCUSDT", period="4h", sdt="20240101", edt="20240308", **kwargs):
     """获取指定交易对的K线数据
 
@@ -213,7 +162,6 @@ def get_raw_bars(symbol="BTCUSDT", period="4h", sdt="20240101", edt="20240308", 
         df = __binance_fetch_ohlcv(e, symbol, sdt, edt, timeframes[period])
     else:
         raise ValueError(f"不支持的交易所: {exchange}")
-        # df = __exchange_fetch_ohlcv(e, symbol, sdt, edt, timeframes[period])
 
     df = df.sort_values("dt").reset_index(drop=True)
     df = df.drop_duplicates("dt", keep="last")
