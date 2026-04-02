@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from czsc.core import CZSC, BarGenerator, Position, RawBar, Signal
+from czsc.traders._rs_signals import get_last_signal_map, run_rs_signal_generation
 from czsc.traders.sig_parse import get_signals_freqs
 from czsc.utils.data.cache import home_path
 
@@ -43,7 +44,6 @@ class CzscSignals:
             self.kas = {freq: CZSC(b) for freq, b in bg.bars.items()}
 
             last_bar = self.kas[self.base_freq].bars_raw[-1]
-            print(last_bar)
             self.end_dt, self.bid, self.latest_price = last_bar.dt, last_bar.id, last_bar.close
             self.s = OrderedDict()
             self.s.update(self.get_signals_by_conf())
@@ -81,22 +81,20 @@ class CzscSignals:
 
         :return: 信号字典
         """
-        from czsc.utils import import_by_name
-
         s = OrderedDict()
-        if not self.signals_config:
+        if not self.signals_config or not self.bg:
             return s
 
-        for param in self.signals_config:
-            param = dict(param)
-            sig_name = param.pop("name")
-            sig_func = import_by_name(sig_name) if isinstance(sig_name, str) else sig_name
-
-            freq = param.pop("freq", None)
-            if freq in self.kas:  # 如果指定了 freq，那么就使用 CZSC 对象作为输入
-                s.update(sig_func(self.kas[freq], **param))
-            else:  # 否则使用 CAT 作为输入
-                s.update(sig_func(self, **param))
+        signal_map = get_last_signal_map(
+            self.bg.bars[self.base_freq],
+            self.signals_config,
+            symbol=self.symbol,
+            bg_max_count=self.kwargs.get("bg_max_count", 5000),
+            include_sdt_bar=self.kwargs.get("include_sdt_bar"),
+        )
+        for key, value in signal_map.items():
+            if isinstance(key, str) and len(key.split("_")) == 3:
+                s[key] = value
         return s
 
     def take_snapshot(self, file_html=None, width: str = "1400px", height: str = "580px"):
@@ -223,16 +221,11 @@ def generate_czsc_signals(
     :param df: 是否返回 df 格式的信号计算结果，默认 False
     :return: 信号计算结果
     """
-    freqs = get_signals_freqs(signals_config)
-    freqs = [freq for freq in freqs if freq != bars[0].freq.value]
-    sdt = pd.to_datetime(sdt)  # type: ignore
-    bars_left = [x for x in bars if x.dt < sdt]  # type: ignore
-    if len(bars_left) <= init_n:
-        bars_left = bars[:init_n]
-        bars_right = bars[init_n:]
-    else:
-        bars_right = [x for x in bars if x.dt >= sdt]  # type: ignore
+    if not bars:
+        return pd.DataFrame() if df else []
 
+    sdt = pd.to_datetime(sdt)  # type: ignore[arg-type]
+    bars_right = [x for x in bars if x.dt >= sdt]  # type: ignore[attr-defined]
     if len(bars_right) == 0:
         import warnings
 
@@ -242,22 +235,17 @@ def generate_czsc_signals(
         else:
             return []
 
-    base_freq = str(bars[0].freq.value)
-    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=kwargs.get("bg_max_count", 5000))
-    for bar in bars_left:
-        bg.update(bar)
-
-    _sigs = []
-    cs = CzscSignals(bg, signals_config=signals_config, **kwargs)
-    cs.cache.update({"gsc_kwargs": kwargs})
-    for bar in bars_right:
-        cs.update_signals(bar)
-        _sigs.append(dict(cs.s))
-
+    signals_df = run_rs_signal_generation(
+        bars,
+        signals_config,
+        sdt=sdt.strftime("%Y-%m-%d %H:%M:%S"),
+        symbol=getattr(bars[0], "symbol", None),
+        bg_max_count=kwargs.get("bg_max_count", 5000),
+        include_sdt_bar=kwargs.get("include_sdt_bar"),
+    )
     if df:
-        return pd.DataFrame(_sigs)
-    else:
-        return _sigs
+        return signals_df
+    return signals_df.to_dict("records")
 
 
 def check_signals_acc(bars: list[RawBar], signals_config: list[dict], delta_days: int = 5, **kwargs) -> None:

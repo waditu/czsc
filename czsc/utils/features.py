@@ -130,33 +130,3 @@ def feature_cross_layering(df, x_col, **kwargs):
     df[f"{x_col}分层"] = df[f"{x_col}分层"].apply(lambda x: f"第{str(int(x + 1)).zfill(2)}层")
     return df
 
-
-def find_most_similarity(vector: pd.Series, matrix: pd.DataFrame, n=10, metric="cosine", **kwargs):
-    """寻找向量在矩阵中最相似的n个向量
-
-    :param vector: 1维向量, Series结构
-    :param matrix: 2维矩阵, DataFrame结构, 每一列是一个向量，列名是向量的标记
-    :param n: int, 返回最相似的n个向量
-    :param metric: str, 计算相似度的方法，
-
-        - From scikit-learn: ['cityblock', 'cosine', 'euclidean', 'l1', 'l2',
-        'manhattan']. These metrics support sparse matrix
-        inputs.
-        ['nan_euclidean'] but it does not yet support sparse matrices.
-
-        - From scipy.spatial.distance: ['braycurtis', 'canberra', 'chebyshev',
-        'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis',
-        'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean',
-        'sokalmichener', 'sokalsneath', 'sqeuclidean', 'yule']
-        See the documentation for scipy.spatial.distance for details on these
-        metrics. These metrics do not support sparse matrix inputs.
-
-    :param kwargs: 其他参数
-    """
-    from sklearn.metrics.pairwise import pairwise_distances
-
-    metric = kwargs.get("metric", "cosine")
-    sim = pairwise_distances(vector.values.reshape(1, -1), matrix.T, metric=metric).reshape(-1)
-    sim = pd.Series(sim, index=matrix.columns)
-    sim = sim.sort_values(ascending=False)[:n]
-    return sim
