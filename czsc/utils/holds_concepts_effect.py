@@ -6,54 +6,9 @@ create_dt: 2021/11/17 18:50
 
 from collections import Counter
 
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-
-def max_draw_down(n1b: list):
-    """最大回撤
-
-    参考：https://blog.csdn.net/weixin_38997425/article/details/82915386
-
-    :param n1b: 逐个结算周期的收益列表，单位：BP，换算关系是 10000BP = 100%
-        如，n1b = [100.1, -90.5, 212.6]，表示第一个结算周期收益为100.1BP，也就是1.001%，以此类推。
-    :return: 最大回撤起止位置和最大回撤
-    """
-    curve = np.cumsum(n1b)
-    curve += 10000
-    # 获取结束位置
-    i = np.argmax((np.maximum.accumulate(curve) - curve) / np.maximum.accumulate(curve))
-    if i == 0:
-        return 0, 0, 0
-
-    # 获取开始位置
-    j = np.argmax(curve[:i])
-    mdd = int((curve[j] - curve[i]) / curve[j] * 10000) / 10000
-    return j, i, mdd
-
-
-def turn_over_rate(df_holds: pd.DataFrame) -> tuple[pd.DataFrame, float]:
-    """计算持仓明细对应的组合换手率
-
-    :param df_holds: 每个交易日的持仓明细，数据样例如下
-                证券代码    成分日期    持仓权重
-            0  000576.SZ  2020-01-02  0.0099
-            1  000639.SZ  2020-01-02  0.0099
-            2  000803.SZ  2020-01-02  0.0099
-            3  000811.SZ  2020-01-02  0.0099
-            4  000829.SZ  2020-01-02  0.0099
-    :return: 组合换手率
-    """
-    dft = pd.pivot_table(df_holds, index="成分日期", columns="证券代码", values="持仓权重", aggfunc="sum")
-    dft = dft.fillna(0)
-    df_turns = dft.diff().abs().sum(axis=1).reset_index()
-    df_turns.columns = ["date", "change"]
-
-    # 由于是 diff 计算，第一个时刻的仓位变化被忽视了，修改一下
-    sdt = df_holds["成分日期"].min()
-    df_turns.loc[(df_turns["date"] == sdt), "change"] = df_holds[df_holds["成分日期"] == sdt]["持仓权重"].sum()
-    return df_turns, round(df_turns.change.sum() / 2, 4)
 
 
 def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3, **kwargs):
