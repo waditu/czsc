@@ -4,10 +4,25 @@ email: zeng_bin8888@163.com
 create_dt: 2019/10/29 15:01
 """
 
-from rs_czsc import WeightBacktest, daily_performance, top_drawdowns
-
 from . import envs, traders, utils
-from .core import CZSC, CzscJsonStrategy, CzscStrategyBase, Direction, Event, Freq, NewBar, Operate, Position, RawBar, Signal, ZS, format_standard_kline
+from .core import (
+    CZSC,
+    ZS,
+    CzscJsonStrategy,
+    CzscStrategyBase,
+    Direction,
+    Event,
+    Freq,
+    NewBar,
+    Operate,
+    Position,
+    RawBar,
+    Signal,
+    WeightBacktest,
+    daily_performance,
+    format_standard_kline,
+    top_drawdowns,
+)
 from .eda import (
     cal_symbols_factor,
     cal_trade_price,

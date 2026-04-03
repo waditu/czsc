@@ -10,7 +10,6 @@ import pandas as pd
 from tqdm import tqdm
 
 
-
 def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3, **kwargs):
     """股票持仓列表的板块效应
 
