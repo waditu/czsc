@@ -6,9 +6,9 @@ import numpy as np
 from deprecated import deprecated as deprecated
 
 from czsc.core import BI as BI
+from czsc.core import ZS as ZS
 from czsc.core import Direction as Direction
 from czsc.core import RawBar as RawBar
-from czsc.core import ZS as ZS
 from czsc.core import Signal as Signal
 
 def create_single_signal(**kwargs) -> OrderedDict: ...

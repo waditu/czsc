@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from czsc.core import BI, Direction, RawBar, ZS
+from czsc.core import BI, ZS, Direction, RawBar
 
 
 def create_single_signal(**kwargs) -> OrderedDict:
