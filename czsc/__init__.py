@@ -7,7 +7,7 @@ create_dt: 2019/10/29 15:01
 from rs_czsc import WeightBacktest, daily_performance, top_drawdowns
 
 from . import envs, traders, utils
-from .core import CZSC, ZS, Direction, Event, Freq, NewBar, Operate, Position, RawBar, Signal, format_standard_kline
+from .core import CZSC, CzscJsonStrategy, CzscStrategyBase, Direction, Event, Freq, NewBar, Operate, Position, RawBar, Signal, ZS, format_standard_kline
 from .eda import (
     cal_symbols_factor,
     cal_trade_price,
@@ -211,8 +211,6 @@ _LAZY_MODULES = {
 }
 
 _LAZY_ATTRS = {
-    "CzscStrategyBase": ("czsc.strategies", "CzscStrategyBase"),
-    "CzscJsonStrategy": ("czsc.strategies", "CzscJsonStrategy"),
     "capture_warnings": ("czsc.utils.warning_capture", "capture_warnings"),
     "execute_with_warning_capture": ("czsc.utils.warning_capture", "execute_with_warning_capture"),
     "adjust_holding_weights": ("czsc.utils.trade", "adjust_holding_weights"),

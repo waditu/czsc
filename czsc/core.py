@@ -1,47 +1,46 @@
-import os
+# # czsc 基础模块
+# "CZSC", "Freq", "BI", "FakeBI", "FX", "Direction", "Mark", "ZS",
+# "RawBar", "NewBar", "BarGenerator", "Market",
 
+# # 交易系统对象
+# "Signal", "Event", "Position", "Operate", "Pos", "LiteBar", "ParsedSignalDoc", "parse_signal_doc",
+# "derive_signals_config", "derive_signals_freqs",
+
+# # 工具模块
+# "print_it", "normalize_feature", "format_standard_kline",
+# "list_all_signals",
+# "top_drawdowns", "daily_performance",
+
+# # 性能工具
+# "czsc_from_dataframe_fast", "czsc_from_dataframe_ultra_fast",
+# "benchmark_czsc_creation",
+
+# # 回测与研究
+# "WeightBacktest",
+# "run_research", "run_replay", "run_optimize_batch",
+# "build_open_optim_positions", "build_exit_optim_positions",
+# "build_strategy_config",
+# "CzscStrategyBase", "CzscJsonStrategy",
+# "CzscOpenOptimStrategy", "CzscExitOptimStrategy",
+# "OpensOptimize", "ExitsOptimize",
+
+from rs_czsc import BI, CZSC, FX, ZS, RawBar, NewBar, BarGenerator, Direction, FakeBI, Freq, Mark, format_standard_kline
+from rs_czsc import Signal, Event, Position, CzscJsonStrategy, CzscStrategyBase, Operate, CzscOpenOptimStrategy, CzscExitOptimStrategy, OpensOptimize, ExitsOptimize
+from rs_czsc import parse_signal_doc, ParsedSignalDoc, derive_signals_config, derive_signals_freqs
+from rs_czsc import WeightBacktest
 from rs_czsc import (
-    BI,
-    CZSC,
-    FX,
-    ZS,
-    BarGenerator,
-    Direction,
-    Event,
-    FakeBI,
-    Freq,
-    Mark,
-    NewBar,
-    Operate,
-    Position,
-    RawBar,
-    Signal,
-    WeightBacktest,
-    format_standard_kline,
+    run_research, 
+    run_replay, 
+    run_optimize_batch, 
+    build_open_optim_positions, 
+    build_exit_optim_positions, 
+    build_strategy_config
 )
-
-from czsc.utils.analysis.stats import cal_break_even_point
-
-
-def check_rs_czsc() -> tuple[bool, str | None]:
-    """
-    检查 rs_czsc 库是否正确安装
-
-    Returns:
-        Tuple[bool, Optional[str]]: (是否安装成功, 版本号或错误信息)
-    """
-    try:
-        import rs_czsc
-
-        version = getattr(rs_czsc, "__version__", "unknown")
-        return True, version
-    except ImportError as e:
-        return False, f"ImportError: {str(e)}"
-    except Exception as e:
-        return False, f"Error: {str(e)}"
-
-
-installed, rs_czsc_version = check_rs_czsc()
+from rs_czsc import (
+    top_drawdowns,
+    daily_performance,
+    normalize_feature,
+)
 
 
 __all__ = [
@@ -62,6 +61,10 @@ __all__ = [
     "Event",
     "Position",
     "WeightBacktest",
-    "check_rs_czsc",
-    "cal_break_even_point",
+    "CzscStrategyBase",
+    "CzscJsonStrategy",
+    "CzscOpenOptimStrategy",
+    "CzscExitOptimStrategy",
+    "OpensOptimize",
+    "ExitsOptimize",
 ]
