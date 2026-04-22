@@ -9,9 +9,6 @@ from .base import (
 from .base import (
     generate_component_key as generate_component_key,
 )
-from .base import (
-    safe_import_daily_performance as safe_import_daily_performance,
-)
 
 def show_splited_daily(df, ret_col, **kwargs) -> None: ...
 def show_yearly_stats(df, ret_col, **kwargs) -> None: ...

@@ -9,13 +9,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from .base import (
-    apply_stats_style,
-    ensure_datetime_index,
-    generate_component_key,
-    safe_import_daily_performance,
-    safe_import_top_drawdowns,
-)
+from .base import apply_stats_style, ensure_datetime_index, generate_component_key
+from rs_czsc import daily_performance, top_drawdowns
 
 
 def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
@@ -32,10 +27,6 @@ def show_daily_return(df: pd.DataFrame, key=None, **kwargs):
         - yearly_days: int，年交易天数，默认为 252
         - show_dailys: bool，是否展示日收益数据详情，默认为 False
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     df = ensure_datetime_index(df)
     yearly_days = kwargs.get("yearly_days", 252)
     df = df.copy().fillna(0).sort_index(ascending=True)
@@ -219,10 +210,6 @@ def show_drawdowns(df: pd.DataFrame, ret_col, key=None, **kwargs):
         - sub_title: str, optional, 子标题
         - top: int, optional, 默认10, 返回最大回撤的数量
     """
-    top_drawdowns = safe_import_top_drawdowns()
-    if top_drawdowns is None:
-        return
-
     df = ensure_datetime_index(df)
     df = df[[ret_col]].copy().fillna(0).sort_index(ascending=True)
 

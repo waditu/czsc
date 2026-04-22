@@ -7,9 +7,6 @@ from .base import (
 from .base import (
     generate_component_key as generate_component_key,
 )
-from .base import (
-    safe_import_weight_backtest as safe_import_weight_backtest,
-)
 
 def show_optuna_study(study, key=None, **kwargs): ...
 def show_czsc_trader(trader, max_k_num: int = 300, key=None, **kwargs): ...

@@ -1,28 +1,11 @@
-# # czsc 基础模块
-# "CZSC", "Freq", "BI", "FakeBI", "FX", "Direction", "Mark", "ZS",
-# "RawBar", "NewBar", "BarGenerator", "Market",
+"""
+czsc 核心对象转发模块
 
-# # 交易系统对象
-# "Signal", "Event", "Position", "Operate", "Pos", "LiteBar", "ParsedSignalDoc", "parse_signal_doc",
-# "derive_signals_config", "derive_signals_freqs",
+本模块作为 rs_czsc Rust 扩展的 Python 桥接层，
+集中导入并暴露所有核心类与函数。无独立业务逻辑。
 
-# # 工具模块
-# "print_it", "normalize_feature", "format_standard_kline",
-# "list_all_signals",
-# "top_drawdowns", "daily_performance",
-
-# # 性能工具
-# "czsc_from_dataframe_fast", "czsc_from_dataframe_ultra_fast",
-# "benchmark_czsc_creation",
-
-# # 回测与研究
-# "WeightBacktest",
-# "run_research", "run_replay", "run_optimize_batch",
-# "build_open_optim_positions", "build_exit_optim_positions",
-# "build_strategy_config",
-# "CzscStrategyBase", "CzscJsonStrategy",
-# "CzscOpenOptimStrategy", "CzscExitOptimStrategy",
-# "OpensOptimize", "ExitsOptimize",
+如需强制使用 Python 实现，设置环境变量 CZSC_USE_PYTHON=1
+"""
 
 from rs_czsc import (
     BI,

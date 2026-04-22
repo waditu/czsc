@@ -1,8 +1,10 @@
 """
-测试权重分析组件的 Streamlit 应用
+权重分析组件 Streamlit 演示应用
 
 使用方法：
-    streamlit run test_weights_components.py
+    streamlit run examples/demos/weights_components.py
+
+注意：这不是 pytest 测试文件，请在 Streamlit Server 环境中运行。
 """
 
 import sys

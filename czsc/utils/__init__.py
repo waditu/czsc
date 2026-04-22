@@ -37,6 +37,7 @@ from .oss import AliyunOSS
 # Delayed import to avoid circular dependency - import these from czsc.utils.sig directly
 # from .sig import check_gap_info, is_bis_down, is_bis_up, get_sub_elements, is_symmetry_zs
 # from .sig import same_dir_counts, fast_slow_cross, count_last_same, create_single_signal
+from .feature_utils import feature_returns, feature_sectional_corr, is_event_feature
 from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
 __all__ = [
@@ -80,6 +81,10 @@ __all__ = [
     "save_json",
     # oss
     "AliyunOSS",
+    # feature_utils
+    "feature_returns",
+    "feature_sectional_corr",
+    "is_event_feature",
     # trade
     "resample_to_daily",
     "risk_free_returns",
@@ -101,14 +106,9 @@ __all__ = [
     # 延迟加载模块
     "echarts_plot",
     "plotting",
-    "backtest_report",
     # 延迟加载属性
     "kline_pro",
     "trading_view_kline",
-    "generate_backtest_report",
-    "generate_html_backtest_report",
-    "generate_pdf_backtest_report",
-    "PdfReportBuilder",
     "KlineChart",
     "plot_czsc_chart",
     "plot_cumulative_returns",
@@ -123,7 +123,6 @@ __all__ = [
     "plot_turnover_overview",
     "plot_turnover_cost_analysis",
     "plot_weight_time_series",
-    "get_sub_elements",
     "logger",
 ]
 
@@ -177,6 +176,10 @@ def get_py_namespace(file_py: str, keys: list = None) -> dict:
     """
     if keys is None:
         keys = []
+    file_py = os.path.abspath(file_py)
+    allowed_prefixes = [os.path.abspath("czsc/strategies"), os.path.abspath("czsc/signals")]
+    if not any(file_py.startswith(p) for p in allowed_prefixes):
+        raise ValueError(f"文件路径 {file_py} 不在白名单目录内")
     text = open(file_py, encoding="utf-8").read()
     code = compile(text, file_py, "exec")
     namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
@@ -360,7 +363,6 @@ def timeout_decorator(timeout):
 _LAZY_SUBMODULES = {
     "echarts_plot": "czsc.utils.echarts_plot",
     "plotting": "czsc.utils.plotting",
-    "backtest_report": "czsc.utils.backtest_report",
 }
 
 # 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
@@ -368,12 +370,6 @@ _LAZY_ATTRS = {
     # echarts_plot
     "kline_pro": ("czsc.utils.echarts_plot", "kline_pro"),
     "trading_view_kline": ("czsc.utils.echarts_plot", "trading_view_kline"),
-    # backtest_report
-    "generate_backtest_report": ("czsc.utils.backtest_report", "generate_backtest_report"),
-    "generate_html_backtest_report": ("czsc.utils.backtest_report", "generate_html_backtest_report"),
-    "generate_pdf_backtest_report": ("czsc.utils.backtest_report", "generate_pdf_backtest_report"),
-    # pdf_report_builder
-    "PdfReportBuilder": ("czsc.utils.pdf_report_builder", "PdfReportBuilder"),
     # plotting.kline
     "KlineChart": ("czsc.utils.plotting.kline", "KlineChart"),
     "plot_czsc_chart": ("czsc.utils.plotting.kline", "plot_czsc_chart"),
@@ -391,8 +387,6 @@ _LAZY_ATTRS = {
     "plot_turnover_overview": ("czsc.utils.plotting.weight", "plot_turnover_overview"),
     "plot_turnover_cost_analysis": ("czsc.utils.plotting.weight", "plot_turnover_cost_analysis"),
     "plot_weight_time_series": ("czsc.utils.plotting.weight", "plot_weight_time_series"),
-    # sig
-    "get_sub_elements": ("czsc.utils.sig", "get_sub_elements"),
     # loguru logger
     "logger": ("loguru", "logger"),
 }

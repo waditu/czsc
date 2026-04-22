@@ -23,13 +23,14 @@ from .core import (
     format_standard_kline,
     top_drawdowns,
 )
+from typing import TYPE_CHECKING
+
 from .eda import (
     cal_symbols_factor,
     cal_trade_price,
     cal_yearly_days,
     cross_sectional_strategy,
     dif_long_bear,
-    judge_factor_direction,
     limit_leverage,
     make_price_features,
     mark_cta_periods,
@@ -46,6 +47,9 @@ from .eda import (
     vwap,
     weights_simple_ensemble,
 )
+
+if TYPE_CHECKING:
+    from . import aphorism, cwc, fsa, mock, svc
 from .traders import (
     CzscSignals,
     CzscTrader,
@@ -75,7 +79,6 @@ from .utils import (
     generate_fernet_key,
     get_dir_size,
     get_py_namespace,
-    get_sub_elements,
     get_url_token,
     holds_performance,
     home_path,
@@ -144,7 +147,6 @@ __all__ = [
     "generate_fernet_key",
     "get_dir_size",
     "get_py_namespace",
-    "get_sub_elements",
     "get_url_token",
     "holds_performance",
     "home_path",
@@ -187,7 +189,6 @@ __all__ = [
     "vwap",
     "twap",
     "cross_sectional_strategy",
-    "judge_factor_direction",
     "monotonicity",
     "min_max_limit",
     "rolling_layers",
@@ -204,7 +205,6 @@ __all__ = [
     "cal_yearly_days",
     "turnover_rate",
     "make_price_features",
-    "generate_backtest_report",
     "__version__",
     "__author__",
     "__email__",
@@ -235,7 +235,6 @@ _LAZY_ATTRS = {
     "plot_czsc_chart": ("czsc.utils.plotting.kline", "plot_czsc_chart"),
     "KlineChart": ("czsc.utils.plotting.kline", "KlineChart"),
     "check_kline_quality": ("czsc.utils.kline_quality", "check_kline_quality"),
-    "generate_backtest_report": ("czsc.utils.backtest_report", "generate_backtest_report"),
 }
 
 

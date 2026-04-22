@@ -8,6 +8,7 @@ import pandas as pd
 from czsc.utils.data.cache import disk_cache
 
 
+@disk_cache(ttl=3600 * 24)
 def generate_symbol_kines(symbol, freq, sdt="20100101", edt="20250101", seed=42):
     """生成单个品种指定频率的K线数据
 
@@ -30,7 +31,7 @@ def generate_symbol_kines(symbol, freq, sdt="20100101", edt="20250101", seed=42)
 
     # 根据频率生成时间序列
     if freq == "日线":
-        dates = pd.date_range(start=start_date, end=end_date, freq="D")
+        dates = pd.date_range(start=start_date, end=end_date, freq="B")
     elif freq in ["1分钟", "5分钟", "15分钟", "30分钟"]:
         # 先生成日期范围
         trading_days = pd.date_range(start=start_date, end=end_date, freq="D")

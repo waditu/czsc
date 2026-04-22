@@ -1,12 +1,5 @@
 import pandas as pd
 
-from .base import (
-    safe_import_daily_performance as safe_import_daily_performance,
-)
-from .base import (
-    safe_import_weight_backtest as safe_import_weight_backtest,
-)
-
 def show_weight_distribution(dfw, abs_weight: bool = True, **kwargs): ...
 def show_weight_backtest(dfw, **kwargs): ...
 def show_holds_backtest(df, **kwargs) -> None: ...

@@ -10,7 +10,8 @@ import plotly.express as px
 import streamlit as st
 from deprecated import deprecated
 
-from .base import apply_stats_style, ensure_datetime_index, generate_component_key, safe_import_daily_performance
+from .base import apply_stats_style, ensure_datetime_index, generate_component_key
+from rs_czsc import daily_performance
 
 
 def show_splited_daily(df, ret_col, **kwargs):
@@ -21,10 +22,6 @@ def show_splited_daily(df, ret_col, **kwargs):
     :param kwargs:
         sub_title: str, 子标题
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     yearly_days = kwargs.get("yearly_days", 252)
     df = ensure_datetime_index(df)
     df = df.copy().fillna(0).sort_index(ascending=True)

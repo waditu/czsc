@@ -32,7 +32,6 @@ def test_root_api_surface_retains_supported_shortcuts():
         "svc",
         "CzscStrategyBase",
         "KlineChart",
-        "generate_backtest_report",
     }
     missing = sorted(name for name in expected if not hasattr(czsc, name))
     assert not missing
