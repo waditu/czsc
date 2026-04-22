@@ -46,11 +46,10 @@ class TestGetVerbose:
         os.environ.pop("czsc_verbose", None)
         assert get_verbose() is False
 
-    def test_env_true(self):
+    def test_env_true(self, monkeypatch):
         """环境变量设为 True 时应返回 True"""
-        os.environ["CZSC_VERBOSE"] = "1"
+        monkeypatch.setenv("CZSC_VERBOSE", "1")
         assert get_verbose() is True
-        os.environ.pop("czsc_verbose", None)
 
     def test_parameter_override(self):
         """参数传入时应覆盖环境变量"""
@@ -69,11 +68,10 @@ class TestGetWelcome:
         assert get_welcome() is False
         os.environ.pop("czsc_welcome", None)
 
-    def test_set_true(self):
+    def test_set_true(self, monkeypatch):
         """设置为 1 时应返回 True"""
-        os.environ["CZSC_WELCOME"] = "1"
+        monkeypatch.setenv("CZSC_WELCOME", "1")
         assert get_welcome() is True
-        os.environ.pop("czsc_welcome", None)
 
 
 class TestGetMinBiLen:
@@ -89,11 +87,10 @@ class TestGetMinBiLen:
         assert get_min_bi_len(7) == 7
         assert get_min_bi_len(6) == 6
 
-    def test_env_override(self):
+    def test_env_override(self, monkeypatch):
         """环境变量应覆盖默认值"""
-        os.environ["CZSC_MIN_BI_LEN"] = "7"
+        monkeypatch.setenv("CZSC_MIN_BI_LEN", "7")
         assert get_min_bi_len() == 7
-        os.environ.pop("czsc_min_bi_len", None)
 
     def test_returns_int(self):
         """返回值应为整数"""
@@ -114,11 +111,10 @@ class TestGetMaxBiNum:
         assert get_max_bi_num(100) == 100
         assert get_max_bi_num(20) == 20
 
-    def test_env_override(self):
+    def test_env_override(self, monkeypatch):
         """环境变量应覆盖默认值"""
-        os.environ["CZSC_MAX_BI_NUM"] = "100"
+        monkeypatch.setenv("CZSC_MAX_BI_NUM", "100")
         assert get_max_bi_num() == 100
-        os.environ.pop("czsc_max_bi_num", None)
 
     def test_returns_int(self):
         """返回值应为整数"""

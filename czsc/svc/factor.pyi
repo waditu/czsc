@@ -7,9 +7,6 @@ from .base import (
 from .base import (
     generate_component_key as generate_component_key,
 )
-from .base import (
-    safe_import_daily_performance as safe_import_daily_performance,
-)
 
 def show_feature_returns(df, features, ret_col: str = "returns", key=None, **kwargs) -> None: ...
 def show_factor_layering(df, factor_col, ret_col, n_layers: int = 5, key=None, **kwargs) -> None: ...

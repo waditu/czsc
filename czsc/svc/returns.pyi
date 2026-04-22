@@ -9,12 +9,6 @@ from .base import (
 from .base import (
     generate_component_key as generate_component_key,
 )
-from .base import (
-    safe_import_daily_performance as safe_import_daily_performance,
-)
-from .base import (
-    safe_import_top_drawdowns as safe_import_top_drawdowns,
-)
 
 def show_daily_return(df: pd.DataFrame, key=None, **kwargs): ...
 def show_cumulative_returns(df, key=None, **kwargs) -> None: ...

@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 from loguru import logger
 
-from .base import safe_import_weight_backtest
+from rs_czsc import WeightBacktest
 
 
 def show_weight_distribution(dfw, abs_weight=True, **kwargs):
@@ -60,7 +60,6 @@ def show_weight_backtest(dfw, **kwargs):
         - show_monthly_return: bool，是否展示月度累计收益，默认为 False
         - n_jobs: int, 并行计算的进程数，默认为 1
     """
-    WeightBacktest = safe_import_weight_backtest()
     from czsc.eda import cal_yearly_days
 
     fee = kwargs.get("fee", 2)
@@ -216,7 +215,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         - digits: int, 价格小数位数, 默认2
         - fee_rate: float, 手续费率, 默认0.0002
     """
-    from czsc.traders.weight_backtest import stoploss_by_direction
+    from rs_czsc import stoploss_by_direction
 
     dfw = dfw.copy()
     stoploss = kwargs.pop("stoploss", 0.08)
@@ -276,14 +275,7 @@ def show_backtest_by_thresholds(df: pd.DataFrame, out_sample_sdt, **kwargs):
         - weight_type: str, 权重类型，默认 'ts'
     """
     from czsc.eda import cal_yearly_days
-    from czsc.svc.base import safe_import_weight_backtest
     from czsc.svc.strategy import show_multi_backtest
-
-    # 安全导入 WeightBacktest
-    WeightBacktest = safe_import_weight_backtest()
-    if WeightBacktest is None:
-        st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
-        return
 
     # 获取参数
     percentiles = kwargs.get("percentiles", [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
@@ -421,7 +413,6 @@ def show_backtest_by_year(df: pd.DataFrame, **kwargs):
     """
     按照年份进行回测
     """
-    WeightBacktest = safe_import_weight_backtest()
     if WeightBacktest is None:
         return
 
@@ -449,7 +440,6 @@ def show_backtest_by_symbol(df: pd.DataFrame, **kwargs):
     """
     按照交易标的进行回测
     """
-    WeightBacktest = safe_import_weight_backtest()
     if WeightBacktest is None:
         return
 
@@ -477,7 +467,6 @@ def show_long_short_backtest(df: pd.DataFrame, **kwargs):
     """
     分析多头、空头的收益
     """
-    WeightBacktest = safe_import_weight_backtest()
     if WeightBacktest is None:
         return
 

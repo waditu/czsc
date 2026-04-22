@@ -97,7 +97,7 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
 
         - factor_direction: str, 因子方向，positive 或 negative
         - logger: loguru.logger, 日志记录器
-        - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 True
+        - norm: bool, 是否对 weight 进行截面持仓标准化，默认为 False
         - window: int, 窗口大小，默认为 1，平滑截面权重
 
     :return: pd.DataFrame, 包含 weight 列的数据
@@ -141,6 +141,9 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
         union_symbols = set(long_symbols) & set(short_symbols)
 
         if union_symbols:
+            removed = set(long_symbols) & set(short_symbols)
+            if removed:
+                logger.warning(f"{dt} 多空重叠品种被移除: {removed}，实际持仓将少于设定数量")
             if verbose:
                 logger.info(f"{dt} 多头品种：{long_symbols}; 数量：{len(long_symbols)}")
                 logger.info(f"{dt} 空头品种：{short_symbols}; 数量：{len(short_symbols)}")
@@ -168,32 +171,6 @@ def cross_sectional_strategy(df, factor, weight="weight", long=0.3, short=0.3, *
     dfx[weight] = dfx.groupby("symbol")[weight].transform(lambda x: x.rolling(window=window, min_periods=1).mean())
     dfx[weight] = dfx[weight].fillna(0)
     return dfx
-
-
-def judge_factor_direction(df: pd.DataFrame, factor, target="n1b", by="symbol", **kwargs):
-    """判断因子的方向，正向还是反向
-
-    :param df: pd.DataFrame, 数据源，必须包含 symbol, dt, target, factor 列
-    :param factor: str, 因子名称
-    :param target: str, 目标名称，默认为 n1b，表示下一根K线的涨跌幅
-    :param by: str, 分组字段，默认为 symbol，表示按品种分组（时序）；也可以按 dt 分组，表示按时间分组（截面）
-    :param kwargs: dict, 其他参数
-        - method: str, 相关系数计算方法，默认为 pearson，可选 pearson, kendall, spearman
-    :return: str, positive or negative
-    """
-    assert by in df.columns, f"数据中不存在 {by} 字段"
-    assert factor in df.columns, f"数据中不存在 {factor} 字段"
-    assert target in df.columns, f"数据中不存在 {target} 字段"
-
-    if by == "dt" and df["symbol"].nunique() < 2:
-        raise ValueError("品种数量过少，无法在时间截面上计算因子有效性方向")
-
-    if by == "symbol" and df["dt"].nunique() < 2:
-        raise ValueError("时间序列数据量过少，无法在品种上计算因子有效性方向")
-
-    method = kwargs.get("method", "pearson")
-    dfc = df.groupby(by)[[factor, target]].corr(method=method).unstack().iloc[:, 1].reset_index()
-    return "positive" if dfc[factor].mean().iloc[0] >= 0 else "negative"
 
 
 def monotonicity(sequence):

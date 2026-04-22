@@ -11,49 +11,6 @@ import pandas as pd
 import streamlit as st
 
 
-def safe_import_daily_performance():
-    """安全导入daily_performance函数"""
-    try:
-        from rs_czsc import daily_performance
-
-        return daily_performance
-    except ImportError:
-        try:
-            from czsc import daily_performance
-
-            return daily_performance
-        except ImportError:
-            st.error("无法导入daily_performance函数，请检查czsc或rs_czsc库的安装")
-            return None
-
-
-def safe_import_weight_backtest():
-    """安全导入WeightBacktest类"""
-    try:
-        from rs_czsc import WeightBacktest
-
-        return WeightBacktest
-    except ImportError:
-        st.error("无法导入WeightBacktest类，请确保已安装rs_czsc库")
-        return None
-
-
-def safe_import_top_drawdowns():
-    """安全导入top_drawdowns函数"""
-    try:
-        from rs_czsc import top_drawdowns
-
-        return top_drawdowns
-    except ImportError:
-        try:
-            from czsc.utils.analysis.stats import top_drawdowns
-
-            return top_drawdowns
-        except ImportError:
-            st.error("无法导入top_drawdowns函数，请检查czsc或rs_czsc库的安装")
-            return None
-
-
 def apply_stats_style(stats_df):
     """统一的绩效指标样式配置
 

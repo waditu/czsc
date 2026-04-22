@@ -10,7 +10,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from .base import apply_stats_style, generate_component_key, safe_import_daily_performance
+from .base import apply_stats_style, generate_component_key
+from rs_czsc import daily_performance
 
 
 def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):
@@ -112,10 +113,6 @@ def show_factor_layering(df, factor_col, ret_col, n_layers=5, key=None, **kwargs
         - show_cumulative: bool, 是否显示累计收益，默认为True
         - show_distribution: bool, 是否显示因子分布，默认为True
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     method = kwargs.get("method", "qcut")
     show_cumulative = kwargs.get("show_cumulative", True)
     show_distribution = kwargs.get("show_distribution", True)
@@ -305,10 +302,6 @@ def show_event_return(df, event_col, ret_col, key=None, **kwargs):
         - post_periods: int, 事件后观察期数，默认为10
         - min_observations: int, 最小观察数，默认为10
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     pre_periods = kwargs.get("pre_periods", 5)
     post_periods = kwargs.get("post_periods", 10)
     min_observations = kwargs.get("min_observations", 10)

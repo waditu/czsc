@@ -95,18 +95,18 @@ def feature_sectional_corr(df, factor, target="n1b", method="pearson", **kwargs)
     if dft.empty:
         return dft, res
 
-    dft = dft[~dft["ic"].isnull()].copy()
-    ic_avg = dft["ic"].mean()
-    ic_std = dft["ic"].std()
+    dft = dft[~dft["corr"].isnull()].copy()
+    ic_avg = dft["corr"].mean()
+    ic_std = dft["corr"].std()
 
     res["IC均值"] = round(ic_avg, 4)
     res["IC标准差"] = round(ic_std, 4)
     res["ICIR"] = round(ic_avg / ic_std, 4) if ic_std != 0 else 0
     if ic_avg > 0:
-        res["IC胜率"] = round(len(dft[dft["ic"] > 0]) / len(dft), 4)
+        res["IC胜率"] = round(len(dft[dft["corr"] > 0]) / len(dft), 4)
     else:
-        res["IC胜率"] = round(len(dft[dft["ic"] < 0]) / len(dft), 4)
+        res["IC胜率"] = round(len(dft[dft["corr"] < 0]) / len(dft), 4)
 
-    lr_ = single_linear(y=dft["ic"].cumsum().to_list())
+    lr_ = single_linear(y=dft["corr"].cumsum().to_list())
     res.update({"累计IC回归R2": lr_["r2"], "累计IC回归斜率": lr_["slope"]})
     return dft, res

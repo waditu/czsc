@@ -10,12 +10,7 @@ from typing import Any
 from loguru import logger
 from parse import parse
 
-try:
-    from rs_czsc import derive_signals_config, derive_signals_freqs, list_all_signals
-except ImportError:
-    derive_signals_config = None
-    derive_signals_freqs = None
-    list_all_signals = None
+from rs_czsc import derive_signals_config, derive_signals_freqs, list_all_signals
 
 
 def _normalize_template(template: str) -> str:
@@ -170,22 +165,14 @@ def get_signals_config(signals_seq: list[str], signals_module: str = "czsc.signa
 
 
 def get_signals_freqs(signals_seq: list) -> list[str]:
-    """Get unique frequencies referenced by a signal sequence."""
+    """Get unique frequencies referenced by a signal sequence.
+
+    依赖 rs_czsc 进行语义解析，rs-czsc 为必选依赖。
+    """
     if not signals_seq:
         return []
 
-    if derive_signals_freqs is not None and derive_signals_config is not None:
-        try:
-            if isinstance(signals_seq[0], dict):
-                return list(derive_signals_freqs(signals_seq))
-            conf = derive_signals_config(signals_seq)
-            return list(derive_signals_freqs(conf))
-        except Exception:
-            pass
-
-    from czsc.utils import sorted_freqs
-
-    freqs: list[str] = []
-    for signal in signals_seq:
-        freqs.extend(re.findall("|".join(sorted_freqs), str(signal)))
-    return [freq for freq in sorted_freqs if freq in freqs]
+    if isinstance(signals_seq[0], dict):
+        return list(derive_signals_freqs(signals_seq))
+    conf = derive_signals_config(signals_seq)
+    return list(derive_signals_freqs(conf))

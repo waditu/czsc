@@ -162,7 +162,7 @@ class CzscSignals:
         webbrowser.open(file_html)
 
     def update_signals(self, bar: RawBar):
-        """输入基础周期已完成K线，更新信号，更新仓位
+        """输入基础周期已完成K线，更新信号（不更新仓位，仓位更新由 CzscTrader.update 负责）
 
         函数执行逻辑：
 

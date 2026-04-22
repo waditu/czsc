@@ -15,7 +15,8 @@ import pandas as pd
 import streamlit as st
 from loguru import logger
 
-from .base import apply_stats_style, safe_import_weight_backtest
+from .base import apply_stats_style
+from rs_czsc import WeightBacktest
 from .returns import show_cumulative_returns
 
 
@@ -91,12 +92,6 @@ def show_price_sensitive(
         error_msg = f"计算年化天数失败: {e}"
         st.error(error_msg)
         logger.error(error_msg)
-        return None
-
-    # 获取WeightBacktest类
-    WeightBacktest = safe_import_weight_backtest()
-    if WeightBacktest is None:
-        st.error("无法导入回测类，请检查 czsc 安装")
         return None
 
     # 结果收集

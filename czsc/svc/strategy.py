@@ -17,7 +17,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from .base import apply_stats_style, generate_component_key, safe_import_weight_backtest
+from .base import apply_stats_style, generate_component_key
+from rs_czsc import WeightBacktest
 
 
 def show_optuna_study(study, key=None, **kwargs):
@@ -299,11 +300,7 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
     :param kwargs: 其他参数
         - use_st_table: bool, 是否使用 st.table 展示相关性矩阵, 默认为 False
     """
-    try:
-        from rs_czsc import daily_performance
-    except ImportError:
-        from czsc import daily_performance
-
+    from rs_czsc import daily_performance
     from czsc.eda import cal_yearly_days
 
     df = df[["symbol", "dt", "price"]].copy()
@@ -353,10 +350,7 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
     from czsc.eda import cal_yearly_days
 
-    try:
-        from rs_czsc import daily_performance
-    except ImportError:
-        from czsc import daily_performance
+    from rs_czsc import daily_performance
 
     returns.index = pd.to_datetime(returns.index)
     yearly_days = cal_yearly_days(returns.index.to_list())
@@ -542,11 +536,6 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
         - q1: 最容易赚钱的笔的占比, mark_cta_periods 函数的参数
         - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
     """
-    WeightBacktest = safe_import_weight_backtest()
-    if WeightBacktest is None:
-        st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
-        return
-
     from czsc.eda import cal_yearly_days
 
     fee_rate = kwargs.get("fee_rate", 0.00)
@@ -642,11 +631,6 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
     >>> show_volatility_classify(df, fee_rate=0.00, digits=1, weight_type='ts',
     >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
     """
-    WeightBacktest = safe_import_weight_backtest()
-    if WeightBacktest is None:
-        st.error("无法导入WeightBacktest类，请检查czsc或rs_czsc库的安装")
-        return
-
     from czsc.eda import cal_yearly_days
 
     fee_rate = kwargs.get("fee_rate", 0.00)
@@ -712,11 +696,7 @@ def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: str | None = Non
     :param benchmark: 基准名称, 可选
     :param show_detail: 是否展示详情, 可选, 默认展示
     """
-    try:
-        from rs_czsc import daily_performance
-    except ImportError:
-        from czsc import daily_performance
-
+    from rs_czsc import daily_performance
     from czsc.eda import cal_yearly_days
 
     if benchmark is not None:
