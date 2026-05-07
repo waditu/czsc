@@ -1,0 +1,4 @@
+interface:
+  display_name: "CZSC Signal Writer"
+  short_description: "Write Rust CZSC signal functions and wire registries"
+  default_prompt: "Use $czsc-write-signal-function to implement and register a new CZSC signal function."
