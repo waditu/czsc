@@ -1,0 +1,21 @@
+[package]
+name        = "czsc-ta"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "CZSC technical analysis operators (ema/sma/rolling_rank/...). Placeholder, to be migrated."
+
+[lib]
+name = "czsc_ta"
+path = "src/lib.rs"
+
+[dependencies]
+numpy         = { workspace = true, optional = true }
+ordered-float = { version = "5.0", optional = true }
+pyo3          = { workspace = true, optional = true, features = ["chrono"] }
+pyo3-stub-gen = { version = "0.12", optional = true }
+
+[features]
+python     = ["pyo3", "pyo3-stub-gen"]
+rust-numpy = ["python", "numpy", "ordered-float"]

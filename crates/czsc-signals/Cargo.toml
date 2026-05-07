@@ -1,0 +1,22 @@
+[package]
+name        = "czsc-signals"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "CZSC signal functions (bar / cxt / tas / vol / pressure / obv / cvolp / ...). Migrated from rs-czsc."
+
+[lib]
+name = "czsc_signals"
+path = "src/lib.rs"
+
+[dependencies]
+czsc-core           = { path = "../czsc-core", features = ["python"] }
+czsc-ta             = { path = "../czsc-ta" }
+czsc-signal-macros  = { path = "../czsc-signal-macros" }
+serde               = { workspace = true }
+serde_json          = "1.0"
+anyhow              = "1.0"
+tracing             = "0.1"
+inventory           = "0.3"
+chrono              = { version = "0.4", default-features = false, features = ["clock"] }

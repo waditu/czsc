@@ -1,0 +1,37 @@
+[package]
+name        = "czsc-python"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "PyO3 binding aggregator that produces the czsc._native extension module."
+
+[lib]
+name       = "czsc_python"
+path       = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+czsc-core      = { path = "../czsc-core",    features = ["python"] }
+czsc-ta        = { path = "../czsc-ta",      features = ["rust-numpy"] }
+czsc-utils     = { path = "../czsc-utils",   features = ["python"] }
+czsc-signals   = { path = "../czsc-signals" }
+czsc-trader    = { path = "../czsc-trader" }
+error-macros   = { path = "../error-macros" }
+error-support  = { path = "../error-support" }
+anyhow         = "1"
+chrono         = { workspace = true }
+inventory      = "0.3"
+md5            = "0.8"
+numpy          = { workspace = true }
+polars         = { workspace = true }
+# czsc-python is the only crate that opts into pyo3/extension-module +
+# abi3-py310. Business crates pull in the bare workspace pyo3 so
+# `cargo test --workspace` can link against a real libpython resolved
+# via PYO3_PYTHON.
+pyo3           = { workspace = true, features = ["extension-module", "abi3-py310", "chrono"] }
+pyo3-stub-gen  = "0.12"
+rust_xlsxwriter = "0.79"
+serde          = { workspace = true }
+serde_json     = "1"
+thiserror      = "2"

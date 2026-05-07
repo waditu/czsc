@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members  = ["crates/*"]
+
+[workspace.package]
+version    = "1.0.0"
+edition    = "2024"
+license    = "MIT"
+repository = "https://github.com/waditu/czsc"
+
+[workspace.dependencies]
+chrono        = "0.4"
+hashbrown     = "0.14"
+ordered-float = "5.0"
+polars        = { version = "0.42.0", features = [
+    "lazy", "serde", "strings", "concat_str", "pivot", "is_in",
+    "cum_agg", "abs", "ipc", "round_series", "dtype-datetime",
+    "temporal", "parquet", "timezones", "fmt", "partition_by",
+] }
+# Workspace-wide pyo3: declared without features so business crates'
+# unit tests can link against a real libpython resolved through
+# PYO3_PYTHON. The cdylib producer (`czsc-python`) layers on
+# `abi3-py310` + `extension-module` so the published wheel uses the
+# abi3 stable API and dynamically loads at Python startup time.
+pyo3          = { version = "0.25" }
+numpy         = "0.25"
+rayon         = "1"
+serde         = { version = "1", features = ["derive"] }
+
+[profile.release]
+lto           = true
+opt-level     = 3
+codegen-units = 1

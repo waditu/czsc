@@ -7,16 +7,64 @@ on:
     branches: [ master ]
 
 jobs:
+  # ------------------------------------------------------------------
+  # 1) Rust per-crate tests — must pass before any Python work runs.
+  #
+  #    `cargo test --workspace` cannot link against libpython when the
+  #    pyo3 `extension-module` feature is enabled (see MIGRATION_NOTES
+  #    §3.1). We therefore run cargo test per crate, skipping crates
+  #    that pull in pyo3/extension-module (czsc-python, czsc-signals,
+  #    czsc-trader) — they're exercised end-to-end by the Python test
+  #    matrix below via maturin develop + pytest.
+  # ------------------------------------------------------------------
+  rust-tests:
+    name: Rust per-crate tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+
+    - name: cargo build --workspace
+      run: cargo build --workspace --release
+
+    - name: cargo test (per-crate)
+      run: |
+        set -e
+        for crate in error-macros error-support czsc-core czsc-utils czsc-ta czsc-signal-macros; do
+          echo "::group::cargo test -p $crate"
+          cargo test -p "$crate" --no-fail-fast
+          echo "::endgroup::"
+        done
+
+  # ------------------------------------------------------------------
+  # 2) Python test matrix — single abi3 wheel covers 3.10/3.11/3.12/3.13.
+  #     Each Python version installs the project (which triggers maturin
+  #     to build czsc._native against that interpreter), then runs pytest.
+  # ------------------------------------------------------------------
   test:
-    name: Test Suite
+    name: Python tests (py${{ matrix.python-version }})
+    needs: rust-tests
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
 
     - name: Install uv
       uses: astral-sh/setup-uv@v2
@@ -31,15 +79,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y libxml2-dev libxslt-dev
 
-    - name: Install project dependencies
+    - name: Install project dependencies (Python only)
       run: |
+        # uv sync 装 Python 依赖到 .venv；czsc._native 还需要 maturin develop 单独构建。
         uv sync --extra all
 
-    - name: Check project can be imported
+    - name: Build czsc._native (maturin develop)
+      run: |
+        uv pip install maturin
+        uv run maturin develop --release
+
+    - name: Smoke-import czsc
       run: |
         uv run python -c "import czsc; print(f'CZSC version: {czsc.__version__}')"
+        uv run python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
 
-    - name: Run tests with pytest
+    - name: Run pytest
       run: |
         uv run pytest test/ -v --cov=czsc --cov-report=xml --cov-report=term
 
@@ -68,12 +123,18 @@ jobs:
     - name: Set up Python
       run: uv python install 3.11
 
-    - name: Install dependencies
-      run: uv sync --extra all
+    - name: Install dev tools (no native build needed)
+      run: |
+        uv sync --extra all
 
-    - name: Check code formatting with ruff
+    - name: Check Python formatting with ruff
       run: |
         uv run ruff format --check --diff czsc/ test/
+
+    - name: Check Rust formatting with cargo fmt
+      run: |
+        rustup component add rustfmt
+        cargo fmt --all -- --check
 
   linting:
     name: Code Linting
@@ -82,6 +143,14 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
 
     - name: Install uv
       uses: astral-sh/setup-uv@v2
@@ -94,13 +163,17 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra all
 
-    - name: Lint with ruff
+    - name: Lint Python with ruff
       run: |
         uv run ruff check czsc/ test/
 
-    - name: Type checking with basedpyright
+    - name: Type-check Python with basedpyright
       run: |
         uv run basedpyright czsc/ || true
+
+    - name: Lint Rust with cargo clippy
+      run: |
+        cargo clippy --workspace --all-targets -- -D warnings || true
 
   security:
     name: Security Audit
@@ -175,4 +248,4 @@ jobs:
         name: dependency-reports
         path: |
           licenses.json
-        retention-days: 7 
+        retention-days: 7

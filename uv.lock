@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -926,6 +926,7 @@ wheels = [
 
 [[package]]
 name = "czsc"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "clickhouse-connect" },
@@ -952,7 +953,6 @@ dependencies = [
     { name = "reportlab" },
     { name = "requests" },
     { name = "requests-toolbelt" },
-    { name = "rs-czsc" },
     { name = "scikit-learn" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -962,6 +962,7 @@ dependencies = [
     { name = "ta-lib" },
     { name = "tenacity" },
     { name = "tqdm" },
+    { name = "wbt" },
 ]
 
 [package.optional-dependencies]
@@ -972,6 +973,7 @@ all = [
     { name = "jupyter" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "rs-czsc" },
     { name = "twine" },
 ]
 dev = [
@@ -986,6 +988,7 @@ release = [
 test = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "rs-czsc" },
 ]
 
 [package.dev-dependencies]
@@ -994,6 +997,7 @@ dev = [
     { name = "ipython", version = "8.37.0", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.5.0", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "jupyter" },
+    { name = "maturin" },
     { name = "pytest" },
     { name = "pyyaml" },
     { name = "ruff" },
@@ -1002,16 +1006,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "build", marker = "extra == 'all'" },
     { name = "build", marker = "extra == 'release'" },
     { name = "clickhouse-connect" },
     { name = "cryptography" },
+    { name = "czsc", extras = ["test", "dev", "release"], marker = "extra == 'all'" },
     { name = "deprecated" },
     { name = "dill" },
     { name = "fonttools", specifier = ">=4.61.0" },
-    { name = "ipython", marker = "extra == 'all'" },
     { name = "ipython", marker = "extra == 'dev'" },
-    { name = "jupyter", marker = "extra == 'all'" },
     { name = "jupyter", marker = "extra == 'dev'" },
     { name = "kaleido" },
     { name = "lightweight-charts" },
@@ -1026,16 +1028,14 @@ requires-dist = [
     { name = "polars", specifier = ">=0.20.0" },
     { name = "pyarrow" },
     { name = "pyecharts", specifier = ">=1.9.1" },
-    { name = "pytest", marker = "extra == 'all'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
-    { name = "pytest-cov", marker = "extra == 'all'", specifier = ">=4.0.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "pytz" },
     { name = "redis" },
     { name = "reportlab", specifier = ">=4.0" },
     { name = "requests", specifier = ">=2.24.0" },
     { name = "requests-toolbelt" },
-    { name = "rs-czsc", specifier = ">=0.1.26" },
+    { name = "rs-czsc", marker = "extra == 'test'" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
@@ -1044,16 +1044,17 @@ requires-dist = [
     { name = "ta-lib", specifier = ">=0.6" },
     { name = "tenacity" },
     { name = "tqdm", specifier = ">=4.66.4" },
-    { name = "twine", marker = "extra == 'all'" },
     { name = "twine", marker = "extra == 'release'" },
+    { name = "wbt" },
 ]
-provides-extras = ["all", "dev", "release", "test"]
+provides-extras = ["test", "dev", "release", "all"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "basedpyright", specifier = ">=1.28.0" },
     { name = "ipython", specifier = ">=8.37.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
+    { name = "maturin", specifier = ">=1.13.1" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "ruff", specifier = ">=0.9.0" },
@@ -2311,6 +2312,30 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/99/5b/a36a337438a14116b16480db471ad061c36c3694df7c2084a0da7ba538b7/matplotlib_inline-0.1.7.tar.gz", hash = "sha256:8423b23ec666be3d16e16b60bdd8ac4e86e840ebd1dd11a30b9f117f2fa0ab90", size = 8159, upload-time = "2024-04-15T13:44:44.803Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8f/8e/9ad090d3553c280a8060fbf6e24dc1c0c29704ee7d1c372f0c174aa59285/matplotlib_inline-0.1.7-py3-none-any.whl", hash = "sha256:df192d39a4ff8f21b1895d72e6a13f5fcc5099f00fa84384e0ea28c2cc0653ca", size = 9899, upload-time = "2024-04-15T13:44:43.265Z" },
+]
+
+[[package]]
+name = "maturin"
+version = "1.13.1"
+source = { registry = "https://pypi.python.org/simple" }
+dependencies = [
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/39/16/b284a7bc4af3dd87717c784278c1b8cb18606ad1f6f7a671c47bfd9c3df0/maturin-1.13.1.tar.gz", hash = "sha256:9a87ff3b8e4d1c6eac33ebfe8e261e8236516d98d45c0323550621819b5a1a2f", size = 340369, upload-time = "2026-04-09T15:14:07.026Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/4d/a23fc95be881aa8c7a6ea353410417872e4d7065df03d7f3db8f0dbed4a7/maturin-1.13.1-py3-none-linux_armv6l.whl", hash = "sha256:416e4e01cb88b798e606ee43929df897e42c1647b722ef68283816cca99a8742", size = 10102444, upload-time = "2026-04-09T15:13:48.393Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/1e/65c385d65bae95cf04895d52f39dbed8b1453ae55da2903d252ade40a774/maturin-1.13.1-py3-none-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:72888e87819ce546d0d2df900e4b385e4ef299077d92ee37b48923a5602dae94", size = 19576043, upload-time = "2026-04-09T15:14:08.685Z" },
+    { url = "https://files.pythonhosted.org/packages/8f/13/f6bc868d0bfecd9314870b97f530a167e31f7878ac4945c78245c6eef69c/maturin-1.13.1-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:98b5fcf1a186c217830a8295ecc2989c6b1cf50945417adfc15252107b9475b7", size = 10117339, upload-time = "2026-04-09T15:13:40.559Z" },
+    { url = "https://files.pythonhosted.org/packages/51/58/279e081305c11c1c1c4fccacf77df8959646c5d4de7a57ec7e787653e270/maturin-1.13.1-py3-none-manylinux_2_12_i686.manylinux2010_i686.musllinux_1_1_i686.whl", hash = "sha256:3da18cccf2f683c0977bff9146a0908d6ffce836d600665736ac01679f588cb9", size = 10139689, upload-time = "2026-04-09T15:13:38.291Z" },
+    { url = "https://files.pythonhosted.org/packages/00/94/69391af5396c6aab723932240803f49e5f3de3dd7c57d32f02d237a0ce32/maturin-1.13.1-py3-none-manylinux_2_12_x86_64.manylinux2010_x86_64.musllinux_1_1_x86_64.whl", hash = "sha256:6b1e5916a253243e8f5f9e847b62bbc98420eec48c9ce2e2e8724c6da89d359b", size = 10551141, upload-time = "2026-04-09T15:13:42.887Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/bf/4edac2667b49e3733438062ae416413b8fc8d42e1bd499ba15e1fb02fc55/maturin-1.13.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.musllinux_1_1_aarch64.whl", hash = "sha256:dc91031e0619c1e28730279ef9ee5f106c9b9ec806b013f888676b242f892eb7", size = 9983094, upload-time = "2026-04-09T15:13:56.868Z" },
+    { url = "https://files.pythonhosted.org/packages/79/94/a6d651cfe8fc6bf2e892c90e3cdbb25c06d81c9115140d03ea1a68a97575/maturin-1.13.1-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.musllinux_1_1_armv7l.whl", hash = "sha256:001741c6cff56aa8ea59a0d78ae990c0550d0e3e82b00b683eedb4158a8ef7e6", size = 9949980, upload-time = "2026-04-09T15:13:59.185Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/d1/82c067464f848e38af9910bce55eb54302b1c1284a279d515dbfcf5994f5/maturin-1.13.1-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.musllinux_1_1_ppc64le.whl", hash = "sha256:01c845825c917c07c1d0b2c9032c59c16a7d383d1e649a46481d3e5693c2750f", size = 13186276, upload-time = "2026-04-09T15:13:45.725Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/f4/25367baf1025580f047f9b37598bb3fadc416e24536afd4f28e190335c73/maturin-1.13.1-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:f69093ed4a0e6464e52a7fc26d714f859ce15630ec8070743398c6bf41f38a9e", size = 10891837, upload-time = "2026-04-09T15:13:35.68Z" },
+    { url = "https://files.pythonhosted.org/packages/af/be/caafad8ce74974b7deafdf144d12f758993dfea4c66c9905b138f51a7792/maturin-1.13.1-py3-none-manylinux_2_31_riscv64.musllinux_1_1_riscv64.whl", hash = "sha256:c1490584f3c70af45466ee99065b49e6657ebdccac6b10571bb44681309c9396", size = 10351032, upload-time = "2026-04-09T15:14:01.632Z" },
+    { url = "https://files.pythonhosted.org/packages/66/0e/970a721d27cfa410e8bfa0a1e32e6ef52cb8169692110a5fdabe1af3f570/maturin-1.13.1-py3-none-win32.whl", hash = "sha256:c6a720b252c99de072922dbe4432ab19662b6f80045b0355fec23bdfccb450da", size = 8855465, upload-time = "2026-04-09T15:13:51.122Z" },
+    { url = "https://files.pythonhosted.org/packages/88/70/7c1e0d65fa147d5479055a171541c82b8cdfc1c825d85a82240470f14176/maturin-1.13.1-py3-none-win_amd64.whl", hash = "sha256:a2017d2281203d0c6570240e7d746564d766d756105823b7de68bda6ae722711", size = 10230471, upload-time = "2026-04-09T15:13:53.89Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/2a/afe0193b673a79ffd2e01ad999511b7e9e6b49af02bb3759d82a78c3043d/maturin-1.13.1-py3-none-win_arm64.whl", hash = "sha256:2839024dcd65776abb4759e5bca29941971e095574162a4d335191da4be9ff24", size = 8905575, upload-time = "2026-04-09T15:14:03.891Z" },
 ]
 
 [[package]]
@@ -4637,6 +4662,27 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/07/f6/d0e5b343768e8bcb4cda79f0f2f55051bf26177ecd5651f84c07567461cf/watchdog-6.0.0-py3-none-win32.whl", hash = "sha256:07df1fdd701c5d4c8e55ef6cf55b8f0120fe1aef7ef39a1c6fc6bc2e606d517a", size = 79065, upload-time = "2024-11-01T14:07:09.525Z" },
     { url = "https://files.pythonhosted.org/packages/db/d9/c495884c6e548fce18a8f40568ff120bc3a4b7b99813081c8ac0c936fa64/watchdog-6.0.0-py3-none-win_amd64.whl", hash = "sha256:cbafb470cf848d93b5d013e2ecb245d4aa1c8fd0504e863ccefa32445359d680", size = 79070, upload-time = "2024-11-01T14:07:10.686Z" },
     { url = "https://files.pythonhosted.org/packages/33/e8/e40370e6d74ddba47f002a32919d91310d6074130fe4e17dabcafc15cbf1/watchdog-6.0.0-py3-none-win_ia64.whl", hash = "sha256:a1914259fa9e1454315171103c6a30961236f508b9b623eae470268bbcc6a22f", size = 79067, upload-time = "2024-11-01T14:07:11.845Z" },
+]
+
+[[package]]
+name = "wbt"
+version = "0.1.7"
+source = { registry = "https://pypi.python.org/simple" }
+dependencies = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "pandas" },
+    { name = "plotly" },
+    { name = "polars" },
+    { name = "pyarrow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ad/87/337d04375b78ec37e98f3dec1f4dfc12db76b6076c8ebf19ebc3cfe0d090/wbt-0.1.7.tar.gz", hash = "sha256:b4c400fcde06b1dc14879c49fff4bc67e80d0fd70eef6af5867a5b3ed32ba73f", size = 341218, upload-time = "2026-05-06T02:40:16.6Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/72/3a/594d95d260e1ce027b0a5342427639706473e681cc985a548c18298263b3/wbt-0.1.7-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:1bbb77d5f27528d139295339c21bd64f73e2bb0bcd9b362a53cb06e4c4e75a96", size = 10409419, upload-time = "2026-05-06T02:40:02.439Z" },
+    { url = "https://files.pythonhosted.org/packages/3c/e5/a8f5afc7a178ff93735fad284b0fae81bd8ee1c47f05268d5d629c9283ad/wbt-0.1.7-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:4a2eb66091722f568367b71dd5f689665a764019e050a9dc42422b3cac518379", size = 9503435, upload-time = "2026-05-06T02:40:05.448Z" },
+    { url = "https://files.pythonhosted.org/packages/98/25/8316d48311966bee39b564c4a20a052f551a4c5abd6d3493098a69ee1d27/wbt-0.1.7-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:11914f4e3ee16f0c788234914df492420d50cecf0d9ed179686cf530c963894c", size = 9849058, upload-time = "2026-05-06T02:40:08.555Z" },
+    { url = "https://files.pythonhosted.org/packages/38/37/03d10c4b680688e7871614bdf64630a95296102832af3c5eab42dcb8feaf/wbt-0.1.7-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fd9ff5f88133ba861b65a2c4e6c52278c232058699e75a1816770e8be4d84b3b", size = 10848393, upload-time = "2026-05-06T02:40:11.553Z" },
+    { url = "https://files.pythonhosted.org/packages/65/7e/4dd81587036fb9e8b156f3f4dd62a8bbc69d8feaa8949257f28e08cc82bc/wbt-0.1.7-cp310-abi3-win_amd64.whl", hash = "sha256:cea88b3ff9ea951e52bd6eb5b20d77f90bc981079ce493940a4cedaed59954e7", size = 11509260, upload-time = "2026-05-06T02:40:14.194Z" },
 ]
 
 [[package]]
