@@ -776,3 +776,35 @@ the signal-output level on data ranging from 500 bars to 40k bars.
 | `czsc/traders/sig_parse.py` 退役 `_lazy_rs_czsc` | [czsc/traders/sig_parse.py](../czsc/traders/sig_parse.py) | 验证 `czsc._native.{derive_signals_config, derive_signals_freqs, list_all_signals}` 三函数已在 Phase F 全量上线（246 个信号模板可拉），将模块顶部的 `_lazy_rs_czsc` 工厂 + 三个 wrapper（`derive_signals_config` / `derive_signals_freqs` / `list_all_signals`）一次性删掉，改为顶层 `from czsc._native import ...`；同步移除 `if list_all_signals is not None` / `if derive_signals_config is not None` 等永真分支以及对应注释中的 `rs_czsc` 提法。`SignalsParser` 注册表初始化大小 = 246，与原 lazy 路径一致；spec §3.3 中"待评估 Rust 是否已等价实现"的临时性脚注随之失效。`czsc/traders/sig_parse.pyi` 同步更新（顶层补 `derive_signals_config / freqs / list_all_signals` 与 `sig_k3_map` 属性声明） |
 | 移除 `czsc/__init__.py` lazy loading + 注释/文档密度收缩 | [czsc/__init__.py](../czsc/__init__.py) | 按 spec §3.1 删除 `_LAZY_MODULES` / `_LAZY_ATTRS` / `__getattr__` 三件套；`svc / fsa / aphorism / mock` 改为顶层 `from . import ...`，7 个 lazy 属性（`capture_warnings` / `execute_with_warning_capture` / `adjust_holding_weights` / `log_strategy_info` / `plot_czsc_chart` / `KlineChart` / `check_kline_quality`）改为 `from czsc.utils.* import ...` 直接导入；删除 `if TYPE_CHECKING` 守卫；`welcome()` 函数体内的 `from czsc import aphorism` 提到顶层。同时压缩区段注释（17 处冗长的"逐符号说明"注释块全删）、`__all__` 字面表改为按主题分组的紧凑横排（仍保留全部 129 个公共名称、按主题用单行注释分隔）、`welcome()` docstring 折成单行、模块 docstring 22 行 → 11 行。`czsc/__init__.py` LoC 从 507 → 235（-54%）。**循环 import 防坑**：`svc / fsa / aphorism / mock` 中含 `from czsc import top_drawdowns` 等回环 import，必须放到所有顶层符号绑定后再加载（即"第二批 `from . import aphorism, fsa, mock, svc`"），第一次重排误把它们提到顶部触发 `cannot import name 'top_drawdowns' from partially initialized module 'czsc'`，调整顺序后通过；文件中以"第一批 / 第二批"分组注释固化此约束。**测试更新**：`test/test_import_performance.py::test_heavy_dependencies_not_loaded_on_import` 与 `test_svc_lazy_loaded` 是基于"streamlit 不应在 import czsc 时被加载"的旧设计断言，与新方向冲突，已删除；保留 `test_czsc_import_time`（< 10s 兜底）与 `test_czsc_svc_accessible`（顶层属性可用）。冷启动 importtime cumtime ≈ 320ms（spec §6 P3 目标 ≤ 300ms，超 ~7%；spec §3.1 注释中预期 < 50ms 仅指 Rust 扩展加载，不含整包 import） |
 | 实现 `czsc.utils.trade.stoploss_by_direction` 并切换调用方 | [czsc/utils/trade.py](../czsc/utils/trade.py)、[czsc/svc/backtest.py:261](../czsc/svc/backtest.py)、[test/test_stoploss_by_direction.py](../test/test_stoploss_by_direction.py) | 调研发现 `stoploss_by_direction` 既不在当前安装的 `rs_czsc`，也不在 `wbt`，更不在 `/Users/jun/Documents/vscodePro/rs_czsc` git 历史中——`from rs_czsc import stoploss_by_direction` 是死调用，运行 Streamlit dashboard 时会 `ImportError`。按 spec C1（`grep -r rs_czsc czsc/` 应无结果）的目标，按 superpowers TDD 范式新增 6 个 RED 测试（多/空头止损、order_id 切分、列契约、入参不可变性等），用纯 Python 在 `czsc/utils/trade.py` 写最小实现（按方向连续段切 order_id、向量化 hold_returns / min_hold_returns / returns / is_stop，浮点容差 1e-9 处理 `92/100 - 1 = -0.07999…` 这类边界），把 `czsc/svc/backtest.py:261` 的导入切到 `czsc.utils.trade.stoploss_by_direction`。**`grep -r 'from rs_czsc\\|import rs_czsc' czsc/ --include='*.py'` 现在零结果**——spec C1 全量达成，czsc 内部彻底无 `rs_czsc` 依赖。该函数标记为 czsc-only 改动，归入 §2.2 "新增能力"小节 |
+
+### 10.2 故意保留 / 暂缓的项
+
+| 项 | 原计划（spec） | 实际处理 | 原因 |
+|-|-|-|-|
+| `czsc/sensors/` 完整恢复 | spec §9 "完整保留 3 文件 301 行（含 `CTAResearch`）" | 保留占位 `__init__.py`（15 行），未恢复 `cta.py` / `utils.py` | 历史 `czsc.sensors.cta.CTAResearch` 依赖 `from czsc.traders.dummy import DummyBacktest`，而 `dummy.py` 已按 spec §3.3 删除并由 `czsc.run_replay` / wbt 替代；1:1 恢复会引入坏 import。需先在 Rust 端 `czsc-trader` 提供等价 dummy/replay 后再恢复，归为后续 Phase G 收尾 |
+| `czsc/traders/optimize.py` | spec §3.3 / §9 列入"完全删除" | 保留 | 现已是 Rust 端 `run_optimize_batch` 的 Python 薄外观层（配置归一化 + 物化数据 + 任务哈希 + 结果转发），与 spec 旧版"完全删除"假设不符；行为正确，无回归。以"过渡薄层"身份保留，不在 P0 范围内删除 |
+| `czsc/utils/ta.py` | spec §3.2 删除（由 Rust `czsc.ta.*` 替代） | 保留 75 行 | 仅保留 czsc 仪表盘场景使用的 MACD 特殊约定（"柱状图额外乘以 2"），Rust 端 `czsc-ta` 暂未迁移该约定。**不通过 `czsc.ta` 重新导出**（`czsc.ta` 已指向 Rust 子模块），调用方需显式 `from czsc.utils.ta import MACD`。后续把柱状图 ×2 约定纳入 `czsc-ta::pure` 后再删 |
+| `czsc/_native.pyi` 自动生成 | spec §2.4 / Q4 | 未生成 | 需在 `crates/czsc-python/build.rs` 接 `pyo3-stub-gen`；属 P1 范畴，本次会话未做。当前类型检查靠 `czsc/__init__.py` 内联注解 + `py.typed` |
+| `czsc.envs` 精简至 ~20 行 + `set_envs` Rust 入口 | spec §3.4 | 保留 116 行 | 需 Rust 端先暴露 `set_envs(min_bi_len=..., max_bi_num=..., verbose=...)` 入口；归 P1 |
+
+### 10.3 验证
+
+```
+$ uv run python -c "import czsc; print(czsc.__version__, czsc.__date__)"
+1.0.0 20260507
+
+$ grep -rn "from rs_czsc\|import rs_czsc" czsc/ --include='*.py'
+（无结果——spec C1 全量达成）
+
+$ uv run pytest test/compat/ test/unit/ test/test_envs.py test/test_io.py \
+                test/test_warning_capture.py test/test_utils.py test/test_kline_quality.py \
+                test/test_import_performance.py test/test_plotly_plot.py \
+                test/test_trade_utils.py test/test_stoploss_by_direction.py -q
+124 passed in 2.93s
+
+$ wc -l czsc/__init__.py czsc/traders/sig_parse.py
+235 czsc/__init__.py     # 507 -> 235，spec §3.1 lazy loading 已退役
+326 czsc/traders/sig_parse.py     # 387 -> 326，_lazy_rs_czsc 工厂已退役
+```
+
+公共 API 快照（`test/compat/snapshots/api_v1.json`，129 个公共名称）与 pickle roundtrip（5 个 PyO3 类）回归全部 GREEN，证明本轮 P0/P1 改动未破坏 §6 验收基线。
