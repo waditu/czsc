@@ -596,6 +596,7 @@ version = "1.0.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "criterion",
  "czsc-core",
  "czsc-signal-macros",
  "czsc-ta",

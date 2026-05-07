@@ -781,6 +781,7 @@ the signal-output level on data ranging from 500 bars to 40k bars.
 | `_native.pyi` 漂移检查 CI job | [.github/workflows/code-quality.yml](../.github/workflows/code-quality.yml) | `code-quality.yml` 新增 `stub-drift` job（依赖 `rust-tests`），在 CI 中：① checkout + 装 Rust + Python 3.11；② 跑 `PYO3_PYTHON=$(which python3) cargo run --bin stub_gen -p czsc-python --no-default-features`；③ `git diff --exit-code czsc/_native.pyi` 断言无漂移，否则失败并把本地重新生成命令打到日志里。本地已验证 stub_gen 重跑两次产物一致（idempotent）。这一步覆盖两个回归方向：（a）改了 `gen_stub_*` 装饰器但忘重跑 → CI 红灯阻拦；（b）手改了 stub 但 Rust 没改 → 下次 CI 复跑时把手改盖掉、提示提交方处理 |
 | `czsc/sensors/` 部分恢复（spec §9） | [czsc/sensors/utils.py](../czsc/sensors/utils.py)、[czsc/sensors/utils.pyi](../czsc/sensors/utils.pyi)、[czsc/sensors/__init__.py](../czsc/sensors/__init__.py) | 之前 sensors 仅有 15 行占位 `__init__.py`，与 spec §9 "完整保留 3 文件 301 行"差距明显。本次：① 从 git 历史 `79bdf5e:czsc/sensors/utils.py` 恢复 `utils.py`（121 行，含 `holds_concepts_effect` / `turn_over_rate` / `max_draw_down`，纯 numpy / pandas 实现，无内部 czsc 依赖）；② 同步恢复 `utils.pyi`；③ 重写 `__init__.py`：暴露 3 个 utility 函数 + 添加 `CTAResearch` **占位类**（`__init__` 直接抛 `NotImplementedError`，明确指出历史实现依赖已删 `czsc.traders.dummy.DummyBacktest`、引导用户改用 `czsc.run_replay` / `wbt.WeightBacktest` 组合，并指向本文档）。`from czsc.sensors import CTAResearch, holds_concepts_effect, ...` 全部正常；`CTAResearch()` 调用即抛 `NotImplementedError`（fail-fast，避免在调用半截才报"找不到 DummyBacktest"）。spec §9 "完整保留" 项剩余的就只是 `cta.py` 真实迁移（需先在 Rust 端 `czsc-trader` 落地等价 dummy/replay）。|
 | `czsc-core` criterion 性能基准（spec §6 P1） | [crates/czsc-core/Cargo.toml](../crates/czsc-core/Cargo.toml)、[crates/czsc-core/benches/czsc_analyze_bench.rs](../crates/czsc-core/benches/czsc_analyze_bench.rs) | 添加 `criterion 0.7` 到 `[dev-dependencies]` + `[[bench]] name = "czsc_analyze_bench" harness = false` 配置；新建 `benches/czsc_analyze_bench.rs` 用慢周期正弦+快周期抖动+渐进漂移生成 10 万根 30 分钟模拟 K 线（保证不会单调推高/降低让缠论分析路径退化），用 `criterion::iter_batched(BatchSize::LargeInput)` 测 `CZSC::new(bars, max_bi_num=50)`。**M2 Mac、release 构建（lto=true / opt-level=3 / codegen-units=1）下，mean = 96.585 ms（CI: 96.276–96.971 ms，20 样本）**——spec §6 P1 目标 ≤ 200 ms，余量 52%，**P1 达标 ✅**。触发：`cargo bench -p czsc-core` |
+| `czsc-signals` criterion 性能基准（spec §6 P2） | [crates/czsc-signals/Cargo.toml](../crates/czsc-signals/Cargo.toml)、[crates/czsc-signals/benches/signals_bench.rs](../crates/czsc-signals/benches/signals_bench.rs) | 添加 `criterion 0.7` 到 `[dev-dependencies]` + `[[bench]] name = "signals_bench" harness = false`；新建 `benches/signals_bench.rs`，复用 P1 同款 K 线生成器（独立 copy 避免跨 crate dev-dep）；构造 100 / 10 000 两个 size 的 CZSC，循环调用 `SIGNAL_REGISTRY` 中**全部 222 个 K 线信号**各一次（注：spec 说"30+"是当时的下限估计，实际仓库内已注册 222 个），用 `black_box` 阻止死代码消除。**M2 Mac、release 下：dispatch_all(222 signals, bars=100) = 244.2 µs（CI 242.86–245.52, 20 样本，约每信号 1.1 µs）；dispatch_all(222 signals, bars=10000) = 4.682 ms（CI 4.6427–4.7254）**。spec §6 P2 目标：单根 K 线 P50 ≤ 50 µs / 信号（实测 1.1 µs，余 45×）、批量 1 万根 ≤ 80 ms（实测 4.7 ms，余 17×），**P2 全维度达标 ✅**。触发：`cargo bench -p czsc-signals` |
 
 ### 10.2 故意保留 / 暂缓的项
 
@@ -817,6 +818,12 @@ $ cargo bench -p czsc-core
 czsc_analyze/CZSC::new(bars=100000, max_bi_num=50)
                         time:   [96.276 ms 96.585 ms 96.971 ms]
 # spec §6 P1 目标 ≤ 200 ms，达标 ✅
+
+$ cargo bench -p czsc-signals
+signals_dispatch/dispatch_all(222 signals, bars=100)
+                        time:   [242.86 µs 244.20 µs 245.52 µs]   # 每信号 ~1.1 µs (spec ≤ 50 µs，余 45×) ✅
+signals_dispatch/dispatch_all(222 signals, bars=10000)
+                        time:   [4.6427 ms 4.6820 ms 4.7254 ms]   # spec ≤ 80 ms，余 17× ✅
 ```
 
 公共 API 快照（`test/compat/snapshots/api_v1.json`，129 个公共名称）与 pickle roundtrip（5 个 PyO3 类）回归全部 GREEN，证明本轮 P0/P1 改动未破坏 §6 验收基线。

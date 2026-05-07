@@ -20,3 +20,12 @@ anyhow              = "1.0"
 tracing             = "0.1"
 inventory           = "0.3"
 chrono              = { version = "0.4", default-features = false, features = ["clock"] }
+
+[dev-dependencies]
+criterion = "0.7"
+
+# spec §6 P2 性能基准：30+ 信号函数批量执行
+# 单根 K 线 P50 ≤ 50 µs；批量 1 万根 ≤ 80 ms
+[[bench]]
+name    = "signals_bench"
+harness = false
