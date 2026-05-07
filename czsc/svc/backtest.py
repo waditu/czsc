@@ -246,9 +246,10 @@ def show_holds_backtest(df, **kwargs):
 def show_stoploss_by_direction(dfw, **kwargs):
     """按方向止损分析的展示
 
-    在执行权重回测之前，先调用 ``rs_czsc.stoploss_by_direction`` 对权重数据按交易方向
-    进行止损改写：当一笔交易（同方向连续持仓）的浮亏达到 ``stoploss`` 时，将后续权重
-    强制平仓。改写后再调用 :func:`show_weight_backtest` 进行回测和展示。
+    在执行权重回测之前，先调用 :func:`czsc.utils.trade.stoploss_by_direction` 对
+    权重数据按交易方向进行止损改写：当一笔交易（同方向连续持仓）的浮亏达到
+    ``stoploss`` 时，将后续权重强制平仓。改写后再调用 :func:`show_weight_backtest`
+    进行回测和展示。
 
     :param dfw: pd.DataFrame，包含 ``symbol``、``dt``、``weight``、``price`` 等权重数据
     :param kwargs: 其他参数
@@ -258,7 +259,7 @@ def show_stoploss_by_direction(dfw, **kwargs):
         - fee_rate: float，手续费率，默认 0.0002
     :return: None
     """
-    from rs_czsc import stoploss_by_direction
+    from czsc.utils.trade import stoploss_by_direction
 
     dfw = dfw.copy()
     stoploss = kwargs.pop("stoploss", 0.08)
