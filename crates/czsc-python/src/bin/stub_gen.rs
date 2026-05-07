@@ -6,7 +6,12 @@
 //!
 //! 触发方式：
 //!     PYO3_PYTHON=$(uv run python -c 'import sys; print(sys.executable)') \
-//!       cargo run --bin stub_gen -p czsc-python
+//!       cargo run --bin stub_gen -p czsc-python \
+//!         --no-default-features --features stub-gen
+//!
+//! `--features stub-gen` 通过 [[bin]] required-features 启用本二进制，
+//! `--no-default-features` 关闭 extension-module 和 abi3-py310，让 pyo3
+//! 走非 abi3 链接路径（`-lpython3.X`）。两者必须配对出现。
 //!
 //! 输出路径由 `pyproject.toml` 里 `[tool.maturin].module-name = "czsc._native"`
 //! 推导：写到 `czsc/_native.pyi`。

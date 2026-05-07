@@ -79,7 +79,8 @@ jobs:
     - name: Run stub_gen
       run: |
         export PYO3_PYTHON=$(which python3)
-        cargo run --bin stub_gen -p czsc-python --no-default-features
+        cargo run --bin stub_gen -p czsc-python \
+          --no-default-features --features stub-gen
 
     - name: Assert czsc/_native.pyi is in sync with Rust source
       run: |
@@ -87,7 +88,8 @@ jobs:
           echo "::error::czsc/_native.pyi 与 Rust 装饰器不一致 ——"
           echo "请在本地运行："
           echo "  PYO3_PYTHON=\$(uv run python -c 'import sys; print(sys.executable)') \\"
-          echo "    cargo run --bin stub_gen -p czsc-python --no-default-features"
+          echo "    cargo run --bin stub_gen -p czsc-python \\"
+          echo "      --no-default-features --features stub-gen"
           echo "并把更新后的 czsc/_native.pyi 一并 commit。"
           exit 1
         fi
