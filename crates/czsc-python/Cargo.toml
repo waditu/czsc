@@ -11,6 +11,17 @@ name       = "czsc_python"
 path       = "src/lib.rs"
 crate-type = ["cdylib", "rlib"]
 
+# 默认启用 extension-module（cdylib 路径）；
+# 编译 stub_gen 这种独立 binary 时需要 --no-default-features，
+# 让 pyo3 自动链接 libpython（详见 src/bin/stub_gen.rs）。
+[features]
+default          = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
+
+[[bin]]
+name = "stub_gen"
+path = "src/bin/stub_gen.rs"
+
 [dependencies]
 czsc-core      = { path = "../czsc-core",    features = ["python"] }
 czsc-ta        = { path = "../czsc-ta",      features = ["rust-numpy"] }
@@ -29,7 +40,7 @@ polars         = { workspace = true }
 # abi3-py310. Business crates pull in the bare workspace pyo3 so
 # `cargo test --workspace` can link against a real libpython resolved
 # via PYO3_PYTHON.
-pyo3           = { workspace = true, features = ["extension-module", "abi3-py310", "chrono"] }
+pyo3           = { workspace = true, features = ["abi3-py310", "chrono"] }
 pyo3-stub-gen  = "0.12"
 rust_xlsxwriter = "0.79"
 serde          = { workspace = true }
