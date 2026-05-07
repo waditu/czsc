@@ -37,3 +37,9 @@ python = ["pyo3", "pyo3-stub-gen", "parking_lot"]
 anyhow     = "1"
 serde_json = "1"
 thiserror  = "2"
+criterion  = "0.7"
+
+# spec §6 P1 性能基准：10 万根 K 线 CZSC 完整分析 ≤ 200 ms（M2 Mac，单进程）
+[[bench]]
+name    = "czsc_analyze_bench"
+harness = false

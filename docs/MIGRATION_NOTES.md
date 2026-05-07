@@ -780,6 +780,7 @@ the signal-output level on data ranging from 500 bars to 40k bars.
 | `czsc/_native.pyi` 自动生成（spec §2.4 / Q4） | [crates/czsc-python/Cargo.toml](../crates/czsc-python/Cargo.toml)、[crates/czsc-python/src/lib.rs](../crates/czsc-python/src/lib.rs)、[crates/czsc-python/src/bin/stub_gen.rs](../crates/czsc-python/src/bin/stub_gen.rs)、[czsc/_native.pyi](../czsc/_native.pyi) | 各 PyO3 业务 crate 上的 `gen_stub_pyclass` / `gen_stub_pyfunction` / `gen_stub_pymethods` 装饰器早已布到位，但缺 stub 收集器 + 生成 binary。本次：① `czsc-python` 拆出 `extension-module` 为可选 default feature（cdylib 走默认；binary 用 `--no-default-features` 让 pyo3 自动链接 libpython，否则 macOS 链接器找不到 `_PyExc_*` 等符号）；② lib.rs 写了一个自定义 `stub_info()` 函数，把 `from_pyproject_toml` 路径显式指向 workspace 根（默认宏 `define_stub_info_gatherer!` 假设 `pyproject.toml` 与 `Cargo.toml` 同目录，但本仓库 pyproject 在 workspace 根、Cargo 在 `crates/czsc-python/`）；③ `src/bin/stub_gen.rs` 是最小入口，调用 `stub_info()?.generate()?`；④ 触发：`PYO3_PYTHON=$(uv run python -c 'import sys; print(sys.executable)') cargo run --bin stub_gen -p czsc-python --no-default-features`；⑤ 产物：`czsc/_native.pyi`，1 235 行，覆盖 BI / CZSC / FX / ZS / BarGenerator / Position / Signal / Event / RawBar / NewBar / FakeBI / Direction / Mark / Operate / Freq / ParsedSignalDoc 等核心类与 30+ TA 算子 / 信号函数 / `chip_distribution_triangle` / `parse_signal_doc` 等顶层函数。`pyproject.toml::tool.maturin.include = ["czsc/**/*.pyi", ...]` 已经覆盖此文件，wheel 打包自动带上。**残留**：basedpyright 在 `_native.pyi` 上报 8 个 upstream pyo3-stub-gen 已知问题（`__eq__` 参数类型不兼容父类、`__dict__` 与 `dict[str, Any]` 不兼容），属于工具层 false-positive，不影响功能 |
 | `_native.pyi` 漂移检查 CI job | [.github/workflows/code-quality.yml](../.github/workflows/code-quality.yml) | `code-quality.yml` 新增 `stub-drift` job（依赖 `rust-tests`），在 CI 中：① checkout + 装 Rust + Python 3.11；② 跑 `PYO3_PYTHON=$(which python3) cargo run --bin stub_gen -p czsc-python --no-default-features`；③ `git diff --exit-code czsc/_native.pyi` 断言无漂移，否则失败并把本地重新生成命令打到日志里。本地已验证 stub_gen 重跑两次产物一致（idempotent）。这一步覆盖两个回归方向：（a）改了 `gen_stub_*` 装饰器但忘重跑 → CI 红灯阻拦；（b）手改了 stub 但 Rust 没改 → 下次 CI 复跑时把手改盖掉、提示提交方处理 |
 | `czsc/sensors/` 部分恢复（spec §9） | [czsc/sensors/utils.py](../czsc/sensors/utils.py)、[czsc/sensors/utils.pyi](../czsc/sensors/utils.pyi)、[czsc/sensors/__init__.py](../czsc/sensors/__init__.py) | 之前 sensors 仅有 15 行占位 `__init__.py`，与 spec §9 "完整保留 3 文件 301 行"差距明显。本次：① 从 git 历史 `79bdf5e:czsc/sensors/utils.py` 恢复 `utils.py`（121 行，含 `holds_concepts_effect` / `turn_over_rate` / `max_draw_down`，纯 numpy / pandas 实现，无内部 czsc 依赖）；② 同步恢复 `utils.pyi`；③ 重写 `__init__.py`：暴露 3 个 utility 函数 + 添加 `CTAResearch` **占位类**（`__init__` 直接抛 `NotImplementedError`，明确指出历史实现依赖已删 `czsc.traders.dummy.DummyBacktest`、引导用户改用 `czsc.run_replay` / `wbt.WeightBacktest` 组合，并指向本文档）。`from czsc.sensors import CTAResearch, holds_concepts_effect, ...` 全部正常；`CTAResearch()` 调用即抛 `NotImplementedError`（fail-fast，避免在调用半截才报"找不到 DummyBacktest"）。spec §9 "完整保留" 项剩余的就只是 `cta.py` 真实迁移（需先在 Rust 端 `czsc-trader` 落地等价 dummy/replay）。|
+| `czsc-core` criterion 性能基准（spec §6 P1） | [crates/czsc-core/Cargo.toml](../crates/czsc-core/Cargo.toml)、[crates/czsc-core/benches/czsc_analyze_bench.rs](../crates/czsc-core/benches/czsc_analyze_bench.rs) | 添加 `criterion 0.7` 到 `[dev-dependencies]` + `[[bench]] name = "czsc_analyze_bench" harness = false` 配置；新建 `benches/czsc_analyze_bench.rs` 用慢周期正弦+快周期抖动+渐进漂移生成 10 万根 30 分钟模拟 K 线（保证不会单调推高/降低让缠论分析路径退化），用 `criterion::iter_batched(BatchSize::LargeInput)` 测 `CZSC::new(bars, max_bi_num=50)`。**M2 Mac、release 构建（lto=true / opt-level=3 / codegen-units=1）下，mean = 96.585 ms（CI: 96.276–96.971 ms，20 样本）**——spec §6 P1 目标 ≤ 200 ms，余量 52%，**P1 达标 ✅**。触发：`cargo bench -p czsc-core` |
 
 ### 10.2 故意保留 / 暂缓的项
 
@@ -807,9 +808,15 @@ $ uv run pytest test/compat/ test/unit/ test/test_envs.py test/test_io.py \
                 test/test_trade_utils.py test/test_stoploss_by_direction.py -q
 124 passed in 2.93s
 
-$ wc -l czsc/__init__.py czsc/traders/sig_parse.py
+$ wc -l czsc/__init__.py czsc/traders/sig_parse.py czsc/envs.py
 235 czsc/__init__.py     # 507 -> 235，spec §3.1 lazy loading 已退役
 326 czsc/traders/sig_parse.py     # 387 -> 326，_lazy_rs_czsc 工厂已退役
+ 49 czsc/envs.py     # 117 -> 49，spec §3.4 Python 侧精简
+
+$ cargo bench -p czsc-core
+czsc_analyze/CZSC::new(bars=100000, max_bi_num=50)
+                        time:   [96.276 ms 96.585 ms 96.971 ms]
+# spec §6 P1 目标 ≤ 200 ms，达标 ✅
 ```
 
 公共 API 快照（`test/compat/snapshots/api_v1.json`，129 个公共名称）与 pickle roundtrip（5 个 PyO3 类）回归全部 GREEN，证明本轮 P0/P1 改动未破坏 §6 验收基线。
