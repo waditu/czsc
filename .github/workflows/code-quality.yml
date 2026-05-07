@@ -43,6 +43,56 @@ jobs:
         done
 
   # ------------------------------------------------------------------
+  # 1.1) `czsc/_native.pyi` 漂移检查
+  #
+  #      `crates/czsc-python/src/bin/stub_gen.rs` 通过 pyo3-stub-gen 0.12
+  #      把 Rust 端 `#[gen_stub_pyclass]` / `#[gen_stub_pyfunction]` /
+  #      `#[gen_stub_pymethods]` 的元信息渲染成 `czsc/_native.pyi`。
+  #      这个 stub 文件与 Rust 源码会双向漂移：
+  #
+  #      - 改了 `gen_stub_*` 装饰器但忘了重跑 stub_gen → stub 反映旧 API
+  #      - 手改了 stub 但 Rust 没改 → 下次重跑会把手改盖掉
+  #
+  #      本 job 的策略：在 CI 重新跑一次 stub_gen，再 `git diff --exit-code`
+  #      检查 `czsc/_native.pyi` 是否被改写，若变更则 PR 必须把新生成的 stub
+  #      也提交进来才能合入。
+  # ------------------------------------------------------------------
+  stub-drift:
+    name: czsc/_native.pyi drift check
+    runs-on: ubuntu-latest
+    needs: rust-tests
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@v2
+
+    - name: Set up Python (any 3.10+ works for binding)
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Run stub_gen
+      run: |
+        export PYO3_PYTHON=$(which python3)
+        cargo run --bin stub_gen -p czsc-python --no-default-features
+
+    - name: Assert czsc/_native.pyi is in sync with Rust source
+      run: |
+        if ! git diff --exit-code czsc/_native.pyi; then
+          echo "::error::czsc/_native.pyi 与 Rust 装饰器不一致 ——"
+          echo "请在本地运行："
+          echo "  PYO3_PYTHON=\$(uv run python -c 'import sys; print(sys.executable)') \\"
+          echo "    cargo run --bin stub_gen -p czsc-python --no-default-features"
+          echo "并把更新后的 czsc/_native.pyi 一并 commit。"
+          exit 1
+        fi
+
+  # ------------------------------------------------------------------
   # 2) Python test matrix — single abi3 wheel covers 3.10/3.11/3.12/3.13.
   #     Each Python version installs the project (which triggers maturin
   #     to build czsc._native against that interpreter), then runs pytest.
