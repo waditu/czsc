@@ -38,61 +38,8 @@ def test_czsc_import_time():
     )
 
 
-def test_heavy_dependencies_not_loaded_on_import():
-    """导入 czsc 后，不应自动加载 streamlit / scipy 等重型可选依赖"""
-    code = """
-import sys
-# 记录导入前已加载的模块（排除测试框架等）
-import czsc
-
-loaded = set(sys.modules.keys())
-heavy = ["streamlit", "scipy", "clickhouse_connect", "redis", "IPython", "lightweight_charts"]
-violations = [m for m in heavy if any(k == m or k.startswith(m + ".") for k in loaded)]
-if violations:
-    print("FAIL:" + ",".join(violations))
-else:
-    print("OK")
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", code],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"子进程异常:\n{result.stderr}"
-    output = result.stdout.strip()
-    assert output == "OK", (
-        f"import czsc 后意外加载了重型依赖: {output.replace('FAIL:', '')}。这些依赖应该使用延迟导入（lazy import）。"
-    )
-
-
-def test_svc_lazy_loaded():
-    """czsc.svc 应延迟加载（访问 czsc.svc 时才触发 streamlit 导入）"""
-    code = """
-import sys
-import czsc
-
-# 仅导入 czsc 本身，不访问 czsc.svc
-# streamlit 不应被加载
-loaded = set(sys.modules.keys())
-if any(k == "streamlit" or k.startswith("streamlit.") for k in loaded):
-    print("FAIL: streamlit loaded before accessing czsc.svc")
-else:
-    print("OK")
-"""
-    result = subprocess.run(
-        [sys.executable, "-c", code],
-        capture_output=True,
-        text=True,
-        timeout=60,
-    )
-    assert result.returncode == 0, f"子进程异常:\n{result.stderr}"
-    output = result.stdout.strip()
-    assert output == "OK", output
-
-
 def test_czsc_svc_accessible():
-    """czsc.svc 通过延迟加载仍可正常访问"""
+    """czsc.svc 子包在导入期就已可用（spec §3.1 移除 lazy loading 后）"""
     import czsc
 
     svc = czsc.svc
