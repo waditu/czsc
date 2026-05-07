@@ -169,8 +169,10 @@ def test_run_research_meta_match(rs_czsc_module, czsc_module, parity_inputs):
     rs_payload = rs_czsc_module._rs_czsc.run_research(arrow_bytes, strategy_json, None, None)
     czsc_payload = czsc_module._native.run_research(arrow_bytes, strategy_json, None, None)
 
-    # 这些字段在不同构建间合理变化，比较时需要排除
-    drop_keys = {"build_ts", "git_hash", "engine_version"}
+    # 这些字段在不同构建/运行间合理变化，比较时需要排除：
+    #   build_ts / git_hash / engine_version —— 构建环境差异
+    #   elapsed_ms —— 同一进程两次调用的毫秒级耗时抖动，与算法/数据无关
+    drop_keys = {"build_ts", "git_hash", "engine_version", "elapsed_ms"}
     rs_meta = {k: v for k, v in rs_payload["meta"].items() if k not in drop_keys}
     czsc_meta = {k: v for k, v in czsc_payload["meta"].items() if k not in drop_keys}
 
