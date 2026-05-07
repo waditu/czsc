@@ -5,16 +5,12 @@
 被策略加载器、信号注册表与信号编辑器等上层组件使用，以便用户既能用紧凑
 的字符串描述信号，也能在程序内部以结构化字典进行编辑、序列化与回放。
 
-实现层面的关键点：
+底层 ``derive_signals_config`` / ``derive_signals_freqs`` / ``list_all_signals``
+均由 Rust 端 ``czsc._native`` 提供（已在 Phase F 完成迁移）；本模块只做
+Python 侧的解析、模板格式化与配置展平等编排工作。
 
-* 由于 Rust 端的 ``derive_signals_config`` / ``derive_signals_freqs`` /
-  ``list_all_signals`` 在当前阶段尚未完全迁移到 ``czsc._native`` 命名空间，
-  本模块通过 :func:`_lazy_rs_czsc` 在调用点惰性导入 ``rs_czsc``，从而保证
-  即便相关函数缺失，模块本身仍可被正常 import；只有真正调用到对应函数时
-  才会抛出明确的错误。
-* :class:`SignalsParser` 在初始化时尽力调用 ``list_all_signals`` 拉取全量
-  信号模板，缺失时退化为空注册表；上层调用方可以在没有任何注册信息时
-  仍然顺利构造解析器，只是部分功能会返回空结果。
+:class:`SignalsParser` 在初始化时调用 ``list_all_signals`` 拉取全量信号模板；
+失败时退化为空注册表，上层调用方仍可顺利构造解析器，只是部分功能会返回空结果。
 """
 
 from __future__ import annotations
@@ -25,64 +21,11 @@ from typing import Any
 from loguru import logger
 from parse import parse
 
-
-def _lazy_rs_czsc():
-    """惰性导入 ``rs_czsc`` 中尚未迁移到 czsc._native 的若干函数。
-
-    由于这些函数当前阶段尚未在 czsc._native 中暴露，模块加载时直接 import
-    会带来强依赖；本函数把 import 推迟到调用点，让模块自身可以在 rs_czsc
-    缺失或部分不可用时仍可被正常导入。
-
-    Returns:
-        三元组 ``(derive_signals_config, derive_signals_freqs, list_all_signals)``，
-        分别对应 rs_czsc 中三个尚未迁移的函数。
-
-    Raises:
-        NotImplementedError: 当 rs_czsc 不可用或缺失上述函数时抛出，
-            提示调用方重新安装 rs_czsc 以恢复回退能力。
-    """
-    try:
-        from rs_czsc import (  # type: ignore[import-not-found]
-            derive_signals_config as _dsc,
-            derive_signals_freqs as _dsf,
-            list_all_signals as _las,
-        )
-    except ImportError as exc:  # pragma: no cover
-        # 故意把 ImportError 转成 NotImplementedError，让"功能未提供"的语义
-        # 比"缺包"更明显，并附上修复建议。
-        raise NotImplementedError(
-            "rs_czsc.{derive_signals_config, derive_signals_freqs, "
-            "list_all_signals} have not been migrated to czsc._native yet "
-            "(see MIGRATION_NOTES §2.8). Re-install rs_czsc to fall back."
-        ) from exc
-    return _dsc, _dsf, _las
-
-
-def derive_signals_config(*args, **kwargs):
-    """``rs_czsc.derive_signals_config`` 的惰性转发包装。
-
-    所有参数会原样转发给底层实现；当底层不可用时抛出
-    :class:`NotImplementedError`，错误信息见 :func:`_lazy_rs_czsc`。
-    """
-    return _lazy_rs_czsc()[0](*args, **kwargs)
-
-
-def derive_signals_freqs(*args, **kwargs):
-    """``rs_czsc.derive_signals_freqs`` 的惰性转发包装。
-
-    所有参数会原样转发给底层实现；当底层不可用时抛出
-    :class:`NotImplementedError`，错误信息见 :func:`_lazy_rs_czsc`。
-    """
-    return _lazy_rs_czsc()[1](*args, **kwargs)
-
-
-def list_all_signals(*args, **kwargs):
-    """``rs_czsc.list_all_signals`` 的惰性转发包装。
-
-    所有参数会原样转发给底层实现；当底层不可用时抛出
-    :class:`NotImplementedError`，错误信息见 :func:`_lazy_rs_czsc`。
-    """
-    return _lazy_rs_czsc()[2](*args, **kwargs)
+from czsc._native import (
+    derive_signals_config,
+    derive_signals_freqs,
+    list_all_signals,
+)
 
 
 def _normalize_template(template: str) -> str:
@@ -147,7 +90,7 @@ class SignalsParser:
     建立"函数名 → 模板"的注册表；后续调用 ``parse_params`` /
     ``get_function_name`` / ``config_to_keys`` / ``parse`` 均依赖该注册表。
 
-    当 rs_czsc 不可用导致 ``list_all_signals`` 失败时，注册表会被置空，
+    当 ``list_all_signals`` 失败（如 Rust 扩展异常）时，注册表会被置空，
     此时各方法会按"找不到匹配模板"的语义返回空值，而不会抛出异常。
     """
 
@@ -164,14 +107,13 @@ class SignalsParser:
         # "k3 → 函数名列表"的反向索引，供后续解析与匹配使用。
         sig_pats_map: dict[str, str] = {}
         sig_k3_map: dict[str, str] = {}
-        signal_defs = []
+        signal_defs: list[dict[str, Any]] = []
 
-        if list_all_signals is not None:
-            try:
-                # 尽力拉取全量信号定义；失败时降级为空注册表，不影响模块导入。
-                signal_defs = list_all_signals(include_kline=True, include_trader=True)
-            except Exception as exc:
-                logger.warning(f"list_all_signals unavailable, using empty parser registry: {exc}")
+        try:
+            # 尽力拉取全量信号定义；失败时降级为空注册表，不影响模块导入。
+            signal_defs = list(list_all_signals(include_kline=True, include_trader=True))
+        except Exception as exc:
+            logger.warning(f"list_all_signals unavailable, using empty parser registry: {exc}")
 
         for item in signal_defs:
             name = str(item.get("name", "")).strip()
@@ -263,15 +205,14 @@ class SignalsParser:
             logger.error(f"signal {signal} matched multiple functions: {matches}")
             return None
 
-        if derive_signals_config is not None:
-            try:
-                # 本地匹配失败时，回退到 Rust 端的权威解析作为兜底。
-                conf = derive_signals_config([signal])
-                if conf:
-                    return str(conf[0]["name"]).split(".")[-1]
-            except Exception:
-                # 兜底失败保持静默（log 已在更底层打印），避免噪声。
-                pass
+        try:
+            # 本地匹配失败时，回退到 Rust 端的权威解析作为兜底。
+            conf = derive_signals_config([signal])
+            if conf:
+                return str(conf[0]["name"]).split(".")[-1]
+        except Exception:
+            # 兜底失败保持静默（log 已在更底层打印），避免噪声。
+            pass
         return None
 
     def config_to_keys(self, config: list[dict]):
@@ -313,7 +254,7 @@ class SignalsParser:
             扁平化后的信号配置字典列表；输入为空或底层解析不可用时返回
             空列表。
         """
-        if not signal_seq or derive_signals_config is None:
+        if not signal_seq:
             return []
 
         try:
@@ -372,8 +313,7 @@ def get_signals_freqs(signals_seq: list) -> list[str]:
         去重的 K 线周期字符串列表；输入为空时返回空列表。
 
     Notes:
-        本函数依赖 ``rs_czsc`` 进行语义解析，``rs-czsc`` 为必选依赖；
-        缺失时会通过 :func:`_lazy_rs_czsc` 抛出 :class:`NotImplementedError`。
+        语义解析由 Rust 扩展 ``czsc._native.derive_signals_*`` 完成。
     """
     if not signals_seq:
         return []
