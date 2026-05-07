@@ -1,15 +1,53 @@
-"""czsc.sensors —— 事件检测与特征分析命名空间（占位实现）。
+"""czsc.sensors —— 事件检测与特征分析命名空间。
 
-本包对应 CZSC 项目中的“传感器（sensors）”层，目标是承载下列高层能力：
+按 spec §9，本包目标承载三类传感器能力：
 
-- ``CTA`` 研究框架：策略回放、参数优化、并行回测；
-- 特征选择器：基于滚动窗口的因子选择与分析；
-- 事件匹配器：把信号组合成事件并在历史数据上扫描匹配。
+1. **CTA 研究框架**：策略回放、参数优化、并行回测——以 ``CTAResearch`` 类为核心
+2. **特征选择器**：基于滚动窗口的因子选择与分析
+3. **事件匹配器**：把信号组合成事件并在历史数据上扫描匹配
 
-当前阶段仅恢复命名空间的可导入性，使得 ``import czsc.sensors`` 不会
-报错；具体的传感器类（``CTAResearch``、``FeatureSelector``、``EventMatcher`` 等）
-将在后续 Python 端清理工作中一并迁移过来。
-
-在迁移完成之前，本模块保持为一个空的命名空间包，公共 API 冒烟测试只验证模块
-能干净地完成导入这一最小契约，不假设包内已有任何具体类型。
+当前阶段已恢复 ``utils`` 子模块（``holds_concepts_effect`` /
+``turn_over_rate`` / ``max_draw_down`` 三个纯 numpy/pandas 工具，无内部 czsc
+依赖）。``CTAResearch`` 历史实现依赖已删除的 ``czsc.traders.dummy.DummyBacktest``
+（spec §3.3 已经把 dummy 替换为 ``czsc.run_replay`` / wbt），因此暂时保留为
+``NotImplementedError`` 占位，等 Phase G 在 Rust 端 ``czsc-trader`` 提供
+等价的 dummy/replay 后再恢复实现。
 """
+
+from __future__ import annotations
+
+from czsc.sensors.utils import (
+    holds_concepts_effect,
+    max_draw_down,
+    turn_over_rate,
+)
+
+
+class CTAResearch:
+    """spec §9 中的 CTA 研究框架占位类。
+
+    历史实现依赖 ``czsc.traders.dummy.DummyBacktest``；该模块已按 spec §3.3
+    在 Phase J 删除（被 ``czsc.run_replay`` / ``wbt.WeightBacktest`` 取代）。
+    完整恢复需要先在 Rust 端 ``czsc-trader`` 提供等价能力，详见
+    ``docs/MIGRATION_NOTES.md`` §10.2。
+
+    在那之前，实例化此类会立即抛 :class:`NotImplementedError`，明确告知用户
+    迁移路径，而不是让代码在运行半截后才报"找不到 DummyBacktest"。
+    """
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError(
+            "czsc.sensors.CTAResearch 暂未恢复——历史实现依赖已删除的 "
+            "czsc.traders.dummy.DummyBacktest（spec §3.3 / Phase J）。"
+            "请改用 czsc.run_replay / czsc.run_research / czsc.WeightBacktest "
+            "组合达成等价工作流；或关注 docs/MIGRATION_NOTES.md §10.2 中"
+            "对该项的恢复计划。"
+        )
+
+
+__all__ = [
+    "CTAResearch",
+    "holds_concepts_effect",
+    "max_draw_down",
+    "turn_over_rate",
+]
