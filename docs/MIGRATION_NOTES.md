@@ -756,3 +756,19 @@ test_all_signals_parity[xlarge] PASSED
 checks across ~9.7M data points** — every single one passes. The
 migrated ``czsc._native`` is a drop-in replacement for ``rs_czsc`` at
 the signal-output level on data ranging from 500 bars to 40k bars.
+
+---
+
+## 10. Phase Q — Audit-driven P0/P1 fixes (2026-05-07)
+
+> 触发：飞书 spec wiki 子文档 [实现细节审计 — czsc Rust 迁移现状（2026-05-07）](https://www.feishu.cn/wiki/Z7gGweUfqiK1DfkiC36cMl62nLe) 列出的 P0/P1 缺口。
+
+### 10.1 已完成的修补
+
+| 修复 | 文件 | 修改 |
+|-|-|-|
+| 版本号对齐 | [czsc/__init__.py](../czsc/__init__.py) | `__version__ = "0.10.12"` → `"1.0.0"`、`__date__ = "20260308"` → `"20260507"`，与 `Cargo.toml` / `pyproject.toml` 的 `1.0.0` 一致 |
+| 删除过时 stub | `czsc/__init__.pyi` | 整文件删除。该 stub 仍引用 `from rs_czsc import ...` 与 `from .core import ...`（`core.py` 已删；`rs_czsc` 已退出依赖图），basedpyright `standard` 模式下会报错。`czsc/py.typed` 仍在，类型信息回退到 `czsc/__init__.py` 内联注解；spec §2.4 期望的 `czsc/_native.pyi` 由 `pyo3-stub-gen` 生成，留待 P1 |
+| 死分支折叠 | [czsc/eda.py:823-859](../czsc/eda.py) | `mark_v_reversal` 的 `rs` 双分支已折叠为 `from czsc import CZSC, Direction, format_standard_kline` 单一 import；移除 `kwargs["rs"]` 文档项与 `from rs_czsc import ...` / `from czsc.utils.bar_generator import ...` 的死路径（`rs_czsc` 不再依赖、`bar_generator.py` 已删） |
+| 散落 `rs_czsc` 导入清理 | [czsc/utils/sig.py:46](../czsc/utils/sig.py)、[czsc/utils/analysis/stats.py:136](../czsc/utils/analysis/stats.py) | `from rs_czsc import Signal` → `from czsc import Signal`；`from rs_czsc import daily_performance` → `from wbt import daily_performance`。两处都是函数体内的 lazy import，`czsc` / `wbt` 等价符号已全量验证 |
+| 修复 `.pyi` 中已删除的 `czsc.core` 引用 | [czsc/utils/sig.pyi](../czsc/utils/sig.pyi)、[czsc/utils/plotting/kline.pyi](../czsc/utils/plotting/kline.pyi) | 5 处 `from czsc.core import X as X` → `from czsc import X as X`（`czsc.core` 已在 Phase H 删除，basedpyright 会报错）；同步更新 `czsc/utils/sig.py` docstring 中"通过 ``rs_czsc.Signal`` 把…" → "通过 ``czsc.Signal`` 把…" |

@@ -834,7 +834,6 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
         - copy: 是否复制数据，默认True
         - verbose: 是否打印日志，默认False
         - logger: 日志记录器
-        - rs: 是否使用rs_czsc，默认True
         - min_power_percentile: 第一个笔的最小力度百分位数，默认0.7（即前30%）
         - min_retracement: 最小回撤比例，默认0.5
         - min_speed_ratio: 第二个笔相对第一个笔的最小速度比例，默认1.5
@@ -842,13 +841,7 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
     :return: 带有V字反转标记的K线数据，新增列
         'is_v_reversal_up', 'is_v_reversal_down', 'is_v_reversal'
     """
-    rs = kwargs.get("rs", True)
-
-    if rs:
-        from rs_czsc import CZSC, Direction, format_standard_kline
-    else:
-        from czsc import CZSC
-        from czsc.utils.bar_generator import format_standard_kline
+    from czsc import CZSC, Direction, format_standard_kline
 
     # 参数设置
     min_power_percentile = kwargs.get("min_power_percentile", 0.7)

@@ -33,7 +33,7 @@ from czsc import BI, ZS, Direction, RawBar
 def create_single_signal(**kwargs) -> OrderedDict:
     """构造单个标准信号对象
 
-    通过 ``rs_czsc.Signal`` 把 ``k1/k2/k3/v1/v2/v3/score`` 标准字段拼装成
+    通过 ``czsc.Signal`` 把 ``k1/k2/k3/v1/v2/v3/score`` 标准字段拼装成
     ``key="k1_k2_k3"`` / ``value="v1_v2_v3_score"`` 的字符串形式，并以
     ``OrderedDict`` 返回，便于和其他信号合并。
 
@@ -43,7 +43,7 @@ def create_single_signal(**kwargs) -> OrderedDict:
         - score: int，信号置信度评分，默认 0
     :return: OrderedDict，``{Signal.key: Signal.value}``
     """
-    from rs_czsc import Signal
+    from czsc import Signal
 
     s = OrderedDict()
     k1, k2, k3 = kwargs.get("k1", "任意"), kwargs.get("k2", "任意"), kwargs.get("k3", "任意")

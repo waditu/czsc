@@ -2,7 +2,7 @@ import pandas as pd
 from _typeshed import Incomplete
 from plotly import graph_objects as go
 
-from czsc.core import CZSC as CZSC
+from czsc import CZSC as CZSC
 
 class KlineChart:
     n_rows: Incomplete

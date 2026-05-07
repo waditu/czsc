@@ -133,7 +133,7 @@ def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods
 
         - yearly_days: int, 252, 一年的交易日数
     """
-    from rs_czsc import daily_performance
+    from wbt import daily_performance
 
     from czsc.eda import cal_yearly_days
 
