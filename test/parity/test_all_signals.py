@@ -132,7 +132,6 @@ def _build_all_signals_strategy(czsc_module, base_freq: str):
         "name": "AllSignals",
         "symbol": "000001",
         "base_freq": base_freq,
-        "signals_module": "czsc.signals",
         "signals_config": [signal_config_to_runtime(c) for c in runtime_for_freq],
         "positions": [position_dump_to_runtime(dummy_pos.dump(with_data=False))],
         "market": "默认",

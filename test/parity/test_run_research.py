@@ -37,7 +37,6 @@ def _strategy_payload(czsc_module, position_dict):
         "name": "ParityStrategy",
         "symbol": position_dict["symbol"],
         "base_freq": "日线",
-        "signals_module": "czsc.signals",
         "signals_config": [signal_config_to_runtime(c) for c in signals_cfg],
         "positions": [runtime_position],
         "market": "默认",

@@ -72,7 +72,6 @@ def time_open(module_name: str, results_root: Path, candidates: list[str]) -> fl
         candidate_signals=candidates,
         read_bars=get_raw_bars,
         results_path=results_root,
-        signals_module_name="czsc.signals",
         bar_sdt=bar_sdt,
         bar_edt=bar_edt,
         sdt=sdt,
@@ -109,7 +108,6 @@ def time_exit(module_name: str, results_root: Path, candidate_events: list[dict]
         candidate_events=candidate_events,
         read_bars=get_raw_bars,
         results_path=results_root,
-        signals_module_name="czsc.signals",
         # 显式指定 base_freq 是为了绕过 czsc 在自动推导时对 strategy.positions 的处理 bug
         base_freq="5分钟",
         bar_sdt=bar_sdt,

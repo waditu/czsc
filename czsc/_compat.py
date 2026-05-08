@@ -6,7 +6,7 @@ Rust/Python 兼容层（Compatibility Shim）
 
 涵盖的转换族：
     1. 周期（Freq）字符串排序                    —— sort_freqs
-    2. 信号配置（dict）                          —— signal_config_to_runtime / signal_config_to_public
+    2. 信号配置（dict）                          —— signal_config_to_runtime
     3. Position 序列化转 Rust 期望布局           —— position_dump_to_runtime
     4. K 线 list[RawBar] / DataFrame 标准化      —— bars_to_dataframe
     5. 候选事件结构归一                          —— normalize_candidate_event(s)
@@ -108,8 +108,7 @@ def signal_config_to_runtime(cfg: dict[str, Any]) -> dict[str, Any]:
         }
 
     # 风格 B：除 name/freq/signals_module/module 以外的所有键都视为参数
-    # 这里之所以同时排除 signals_module 与 module，是因为不同代码版本曾用过两种命名，
-    # 都属于"模块定位元信息"，不应进入 params。
+    # signals_module/module 是旧版本遗留字段，不应进入 params。
     params = {}
     for key, value in cfg.items():
         if key in {"name", "freq", "signals_module", "module"}:
@@ -121,31 +120,6 @@ def signal_config_to_runtime(cfg: dict[str, Any]) -> dict[str, Any]:
         "params": params,
     }
 
-
-def signal_config_to_public(cfg: dict[str, Any], signals_module_name: str) -> dict[str, Any]:
-    """
-    将运行时三段式信号配置反向转换为"用户层平铺式"配置
-
-    主要用途：
-        - 把 Rust 内部存储的紧凑配置对外展示给用户（如 dump 到 JSON）
-        - 当 ``name`` 缺少模块前缀时，用 ``signals_module_name`` 自动补齐，
-          保证导出的配置可被独立加载（无需依赖外部上下文）
-
-    参数:
-        cfg: 任意风格的信号配置（先经 :func:`signal_config_to_runtime` 归一）
-        signals_module_name: 信号实现所在模块名，用于补全 name 前缀；为空则不补
-
-    返回:
-        平铺式 dict，name/freq 在外层，参数与之同级
-    """
-    runtime = signal_config_to_runtime(cfg)
-    name = runtime["name"]
-    # 若 name 不含点号，说明缺少模块前缀；按 signals_module_name 补全为完整路径
-    if signals_module_name and "." not in name:
-        name = f"{signals_module_name}.{name}"
-    out = {"name": name, "freq": runtime.get("freq")}
-    out.update(runtime.get("params", {}))
-    return out
 
 
 def position_dump_to_runtime(payload: dict[str, Any]) -> dict[str, Any]:

@@ -245,7 +245,6 @@ class OpensOptimize:
         files_position: 待优化的基准持仓配置文件列表。
         task_name: 任务名称，用于结果目录命名。
         candidate_signals: 排序后的候选开仓信号列表。
-        signals_module_name: 信号函数所在的 Python 模块名。
         base_freq: 基础 K 线周期，未提供时通过策略类自动推导。
         results_root: 结果输出根目录。
         task_hash: 由候选信号 + 标的列表生成的 8 位 MD5 任务哈希。
@@ -261,8 +260,8 @@ class OpensOptimize:
             read_bars: 用户提供的 K 线读取函数，签名详见 :func:`_read_bars`。
             **kwargs: 任务配置；至少需要包含 ``symbols``、``files_position``、
                 ``candidate_signals``、``results_path`` 等键；可选项包括
-                ``task_name``、``signals_module_name``、``base_freq``、
-                ``bar_sdt``、``bar_edt``、``market``、``bg_max_count`` 等。
+                ``task_name``、``base_freq``、``bar_sdt``、``bar_edt``、
+                ``market``、``bg_max_count`` 等。
 
         Notes:
             未显式提供 ``base_freq`` 时，会临时构造一个 :class:`CzscOpenOptimStrategy`
@@ -276,7 +275,6 @@ class OpensOptimize:
         self.files_position = [str(x) for x in kwargs["files_position"]]
         self.task_name = kwargs.get("task_name", "入场优化")
         self.candidate_signals = sorted(kwargs["candidate_signals"])
-        self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
         # base_freq 优先取用户显式配置；否则借助策略类自动推导，
         # 保证后续读取 K 线和写入 Rust 配置时频率信息一致。
         self.base_freq = (
@@ -285,7 +283,6 @@ class OpensOptimize:
                 symbol="symbol",
                 files_position=self.files_position,
                 candidate_signals=self.candidate_signals,
-                signals_module_name=self.signals_module_name,
             ).base_freq
         )
         self.results_root = Path(kwargs["results_path"])
@@ -387,7 +384,6 @@ class ExitsOptimize:
         files_position: 待优化的基准持仓配置文件列表。
         task_name: 任务名称，用于结果目录命名。
         candidate_events: 归一化后的候选平仓事件列表。
-        signals_module_name: 信号函数所在的 Python 模块名。
         base_freq: 基础 K 线周期，未提供时通过策略类自动推导。
         results_root: 结果输出根目录。
         task_hash: 由候选事件 + 标的列表生成的 8 位 MD5 任务哈希。
@@ -417,7 +413,6 @@ class ExitsOptimize:
         self.task_name = kwargs.get("task_name", "出场优化")
         # 候选事件首先在 Python 侧统一归一化，下游 Rust 端拿到的结构稳定。
         self.candidate_events = normalize_candidate_events(kwargs["candidate_events"])
-        self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
         # 与 OpensOptimize 对称：未显式指定 base_freq 时通过策略类反推。
         self.base_freq = (
             kwargs.get("base_freq")
@@ -425,7 +420,6 @@ class ExitsOptimize:
                 symbol="symbol",
                 files_position=self.files_position,
                 candidate_events=self.candidate_events,
-                signals_module_name=self.signals_module_name,
             ).base_freq
         )
         self.results_root = Path(kwargs["results_path"])

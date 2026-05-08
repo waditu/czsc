@@ -3,7 +3,6 @@
 本测试锁定迁移后 ``czsc`` 包对外暴露的公共 API 表面，包括：
 
     * ``czsc.*`` 顶层应导出的核心名称
-    * ``czsc.signals.*`` 应包含的信号子包
     * ``czsc.traders.*`` 应包含的公共名称
     * ``czsc.ta.*`` 技术指标命名空间应包含的名称
     * ``czsc.WeightBacktest`` 必须来自 ``wbt`` 包（架构层面的约束）
@@ -59,20 +58,6 @@ def test_top_level_names_importable() -> None:
     missing = [name for name in snap["top_level"] if not hasattr(czsc, name)]
     assert not missing, f"czsc.* missing {len(missing)} required public names: {missing}"
 
-
-def test_signal_subpackages_present() -> None:
-    """``czsc.signals.*`` 下的所有信号子包必须可以正常 import。
-
-    关键断言：``snap["signal_subpackages"]`` 中每一个子包都能 import
-    成功，否则记录失败原因（含异常类型与消息）。
-    """
-    snap = _load_snapshot()
-    failures: list[str] = []
-    for sub in snap["signal_subpackages"]:
-        mod, err = _safe_import(f"czsc.signals.{sub}")
-        if mod is None:
-            failures.append(f"czsc.signals.{sub} ({err})")
-    assert not failures, f"czsc.signals.* missing {len(failures)} required subpackages: {failures}"
 
 
 def test_traders_namespace_complete() -> None:

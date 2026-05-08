@@ -30,7 +30,6 @@ class StrategyConfig(TypedDict, total=False):
         name           - 策略名称（用于日志/产物目录命名）
         symbol         - 标的代码
         base_freq      - 基础周期（如 ``"30分钟"``）
-        signals_module - 信号实现所在的 Python 模块路径，用于 short-name 解析
         signals_config - 信号配置列表，每项形如 ``{"name": ..., "freq": ..., "params": {...}}``
         positions      - 持仓配置列表，每项是一个 Position 的 JSON dump
         market         - 市场标识（如 "A股"/"期货"），影响交易日、夜盘判断等
@@ -42,7 +41,6 @@ class StrategyConfig(TypedDict, total=False):
     name: str
     symbol: str
     base_freq: str
-    signals_module: str
     signals_config: list[dict[str, Any]]
     positions: list[dict[str, Any]]
     market: str

@@ -48,21 +48,6 @@ def _normalize_template(template: str) -> str:
     return text
 
 
-def _prefix_name(name: str, signals_module: str) -> str:
-    """为信号函数名补全模块前缀。
-
-    若名称已经包含 ``"."``（即调用方已写明完整模块路径），原样返回；
-    否则拼接 ``signals_module`` 作为前缀。
-
-    Args:
-        name: 信号函数名或完整路径。
-        signals_module: 默认的信号函数所在模块名。
-
-    Returns:
-        含模块前缀的信号函数完整路径字符串。
-    """
-    return name if "." in str(name) else f"{signals_module}.{name}"
-
 
 def _extract_signal_key(signal: Any) -> str:
     """从字符串或 Signal 对象中提取信号 key（前 3 段）。
@@ -94,15 +79,8 @@ class SignalsParser:
     此时各方法会按"找不到匹配模板"的语义返回空值，而不会抛出异常。
     """
 
-    def __init__(self, signals_module: str = "czsc.signals"):
-        """构建解析器并预加载信号模板注册表。
-
-        Args:
-            signals_module: 默认的信号函数所在模块名，会在补全函数名时
-                作为前缀使用。
-        """
-        self.signals_module = signals_module
-
+    def __init__(self):
+        """构建解析器并预加载信号模板注册表。"""
         # 三张本地注册表：分别保存模板字符串、k3 段（信号子类标识）以及
         # "k3 → 函数名列表"的反向索引，供后续解析与匹配使用。
         sig_pats_map: dict[str, str] = {}
@@ -164,7 +142,7 @@ class SignalsParser:
                 # di（distance index）按约定恒为整数，反解出来时仍是字符串，
                 # 在此显式转回 int，避免下游再次手动转换。
                 params["di"] = int(params["di"])
-            params["name"] = _prefix_name(short_name, self.signals_module)
+            params["name"] = short_name
             return params
         except Exception as exc:
             logger.error(f"failed to parse signal params for {signal} - {name}: {exc}")
@@ -266,10 +244,7 @@ class SignalsParser:
         out: list[dict[str, Any]] = []
         for row in conf:
             raw = dict(row)
-            # 名称在 Python 侧补齐模块前缀，得到可直接 import 的全限定名。
-            item: dict[str, Any] = {
-                "name": _prefix_name(str(raw.get("name", "")), self.signals_module),
-            }
+            item: dict[str, Any] = {"name": str(raw.get("name", ""))}
             if raw.get("freq"):
                 item["freq"] = raw.get("freq")
             params = raw.get("params") or {}
@@ -286,17 +261,16 @@ class SignalsParser:
         return out
 
 
-def get_signals_config(signals_seq: list[str], signals_module: str = "czsc.signals") -> list[dict]:
-    """把信号字符串序列解析为扁平化的信号配置列表的快捷函数。
+def get_signals_config(signals_seq: list[str]) -> list[dict]:
+    """把信号字符串序列解析为扁平化的信号配置列表。
 
     Args:
         signals_seq: 信号字符串序列。
-        signals_module: 默认的信号函数所在模块名。
 
     Returns:
         扁平化后的信号配置字典列表；语义与 :meth:`SignalsParser.parse` 一致。
     """
-    return SignalsParser(signals_module=signals_module).parse(signals_seq)
+    return SignalsParser().parse(signals_seq)
 
 
 def get_signals_freqs(signals_seq: list) -> list[str]:

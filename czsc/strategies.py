@@ -28,7 +28,6 @@ from typing import Any
 from czsc._compat import (
     bars_to_dataframe,
     position_dump_to_runtime,
-    signal_config_to_public,
     signal_config_to_runtime,
     sort_freqs,
 )
@@ -57,7 +56,6 @@ class CzscStrategyBase(ABC):
         - symbol: 策略对应的标的代码
 
     常用可选参数:
-        - signals_module_name: 用户自定义信号模块路径，默认 "czsc.signals"
         - name:                策略名（默认取类名），影响产物目录命名
         - market:              市场标识，默认 "默认"
         - bg_max_count:        BarGenerator 缓冲根数上限，默认 5000
@@ -65,16 +63,8 @@ class CzscStrategyBase(ABC):
     """
 
     def __init__(self, **kwargs):
-        """
-        保存兼容层所需的策略级参数
-
-        所有参数统一存入 ``self.kwargs``，子类可按需通过 ``self.kwargs.get(key)``
-        读取或扩展。signals_module_name 会被单独提取，因为它在多个属性派生
-        路径上都会用到，避免每次访问时重复 dict.get。
-        """
+        """保存策略级参数，子类可通过 ``self.kwargs.get(key)`` 读取或扩展。"""
         self.kwargs = kwargs
-        # 自定义信号模块路径：用户在外部包中扩展信号实现时，可在此声明完整模块路径
-        self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
 
     @property
     def symbol(self):
@@ -103,16 +93,8 @@ class CzscStrategyBase(ABC):
 
     @property
     def signals_config(self):
-        """
-        基于 ``unique_signals`` 派生的"用户层"信号配置列表
-
-        实现路径:
-            unique_signals(list[str]) ->
-            Rust 派生器返回运行时配置(list[dict]) ->
-            ``signal_config_to_public`` 转为用户层格式（含模块前缀的 name 等）
-        """
-        runtime = _derive_signals_config_impl(self.unique_signals)
-        return [signal_config_to_public(cfg, self.signals_module_name) for cfg in runtime]
+        """基于 ``unique_signals`` 派生的信号配置列表（运行时三段式格式）。"""
+        return list(_derive_signals_config_impl(self.unique_signals))
 
     @property
     def freqs(self):
@@ -259,7 +241,6 @@ class CzscStrategyBase(ABC):
             "name": self.kwargs.get("name", self.__class__.__name__),
             "symbol": self.symbol,
             "base_freq": self.base_freq,
-            "signals_module": self.signals_module_name,
             "signals_config": [signal_config_to_runtime(cfg) for cfg in self.signals_config],
             "positions": [position_dump_to_runtime(pos.dump(with_data=False)) for pos in self.positions],
             "market": self.kwargs.get("market", "默认"),

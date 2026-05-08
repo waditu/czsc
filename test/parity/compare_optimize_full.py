@@ -263,7 +263,6 @@ def run_open(module_name: str, results_root: Path) -> Path:
         candidate_signals=candidates,
         read_bars=get_raw_bars,
         results_path=results_root,
-        signals_module_name="czsc.signals",
         bar_sdt=bar_sdt,
         bar_edt=bar_edt,
         sdt=sdt,
@@ -299,7 +298,6 @@ def run_exit(module_name: str, results_root: Path) -> Path:
         candidate_events=candidate_events,
         read_bars=get_raw_bars,
         results_path=results_root,
-        signals_module_name="czsc.signals",
         # 显式传 base_freq 来跳过自动推导：迁移后的 czsc 在自动推导路径上
         # 会对字符串形式的 signals_all 调用 Position.load（其更严格的校验
         # 器会拒绝该形态）。两套实现的 Rust optimizer 调用本身都接受字符串。

@@ -36,7 +36,6 @@
     "boll_positions",
     "mock",
     "envs",
-    "signals",
     "traders",
     "ta",
     "utils",
@@ -58,15 +57,6 @@
     "ema",
     "sma",
     "boll_positions"
-  ],
-  "signal_subpackages": [
-    "bar",
-    "cxt",
-    "tas",
-    "vol",
-    "pressure",
-    "obv",
-    "cvolp"
   ],
   "removed": [
     "DummyBacktest",

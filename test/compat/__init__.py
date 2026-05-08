@@ -3,7 +3,6 @@
 本包内的测试用例锁定迁移后 ``czsc`` 包对外暴露的公共 API 表面，
 包括：
     * 顶层模块需要导出的名称（``CZSC``、``RawBar``、``Signal`` 等）
-    * 信号子包是否齐全（如 ``czsc.signals.bar`` 等）
     * ``czsc.traders`` 命名空间下应保留的公共名称
     * ``czsc.ta`` 技术指标命名空间
     * 已废弃的旧 API 必须被移除（``WeightBacktest`` 应来自 ``wbt`` 包等）

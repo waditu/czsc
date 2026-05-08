@@ -2,7 +2,7 @@
 
 按 spec §3.1，所有公共 API 在导入期一次性 import；不再使用 PEP 562 lazy loading。
 - ``czsc._native``：Rust 扩展（PyO3），提供缠论核心类型、信号、交易器、TA 算子。
-- ``czsc.{connectors,sensors,signals,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
+- ``czsc.{connectors,sensors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
 - ``czsc.{ema,sma,...,ultimate_smoother,...}``：Rust TA 算子的顶层别名。
 - ``czsc.{WeightBacktest,daily_performance,top_drawdowns}``：来自硬依赖 ``wbt``。
 
@@ -18,7 +18,7 @@ import sys as _sys
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
 # svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
-from . import _native, connectors, envs, sensors, signals, traders, utils
+from . import _native, connectors, envs, sensors, traders, utils
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===
@@ -211,7 +211,6 @@ __all__ = [
     "connectors",
     "envs",
     "sensors",
-    "signals",
     "traders",
     "utils",
     "svc",
