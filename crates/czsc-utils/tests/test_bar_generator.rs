@@ -63,8 +63,8 @@ fn update_bar_appends_for_new_freq_window() {
     bg.update_bar(&bar(1_700_000_000, 10.0, 11.0, 12.0, 9.0))
         .unwrap();
     // Both freq queues received a bar
-    assert!(bg.freq_bars.get(&Freq::F1).unwrap().read().len() >= 1);
-    assert!(bg.freq_bars.get(&Freq::F30).unwrap().read().len() >= 1);
+    assert!(!bg.freq_bars.get(&Freq::F1).unwrap().read().is_empty());
+    assert!(!bg.freq_bars.get(&Freq::F30).unwrap().read().is_empty());
 }
 
 #[test]
@@ -72,6 +72,8 @@ fn symbol_returns_seed_symbol_after_update() {
     let bg = BarGenerator::new(Freq::F1, vec![Freq::F30], 100, Market::Default).unwrap();
     bg.update_bar(&bar(1_700_000_000, 10.0, 11.0, 12.0, 9.0))
         .unwrap();
-    let sym = bg.symbol().expect("symbol should be available after update");
+    let sym = bg
+        .symbol()
+        .expect("symbol should be available after update");
     assert_eq!(&*sym, "000001");
 }

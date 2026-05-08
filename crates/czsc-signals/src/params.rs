@@ -19,10 +19,10 @@ impl<'a> ParamView<'a> {
             if let Some(n) = val.as_u64() {
                 return n as usize;
             }
-            if let Some(s) = val.as_str() {
-                if let Ok(n) = s.parse::<usize>() {
-                    return n;
-                }
+            if let Some(s) = val.as_str()
+                && let Ok(n) = s.parse::<usize>()
+            {
+                return n;
             }
         }
         default
@@ -30,10 +30,10 @@ impl<'a> ParamView<'a> {
 
     #[inline]
     pub fn str<'b>(&'b self, key: &str, default: &'b str) -> &'b str {
-        if let Some(val) = self.inner.get(key) {
-            if let Some(s) = val.as_str() {
-                return s;
-            }
+        if let Some(val) = self.inner.get(key)
+            && let Some(s) = val.as_str()
+        {
+            return s;
         }
         default
     }

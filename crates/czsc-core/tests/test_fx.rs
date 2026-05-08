@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use chrono::{TimeZone, Utc};
 use czsc_core::objects::bar::{NewBar, NewBarBuilder};
-use czsc_core::objects::fx::{FX, FXBuilder};
 use czsc_core::objects::freq::Freq;
+use czsc_core::objects::fx::{FX, FXBuilder};
 use czsc_core::objects::mark::Mark;
 
 fn nb(ts: i64, high: f64, low: f64, vol: f64) -> NewBar {

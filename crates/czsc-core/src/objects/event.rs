@@ -14,15 +14,15 @@ use super::operate::Operate;
 use super::signal::{ANY, Signal};
 
 #[cfg(feature = "python")]
+use super::operate::PyOperate;
+#[cfg(feature = "python")]
+use super::signal::PySignal;
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::{PyDict, PyDictMethods};
-#[cfg(feature = "python")]
-use super::operate::PyOperate;
-#[cfg(feature = "python")]
-use super::signal::PySignal;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 

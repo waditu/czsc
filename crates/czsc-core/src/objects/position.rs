@@ -21,15 +21,15 @@ use super::operate::Operate;
 use super::signal::{ANY, Signal};
 
 #[cfg(feature = "python")]
+use super::event::PyEvent;
+#[cfg(feature = "python")]
+use super::signal::PySignal;
+#[cfg(feature = "python")]
 use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::PyBytes;
-#[cfg(feature = "python")]
-use super::event::PyEvent;
-#[cfg(feature = "python")]
-use super::signal::PySignal;
 
 /// 解析 operate 字符串，支持英文缩写和中文名称
 fn parse_operate(s: &str) -> Result<Operate, String> {
@@ -1111,7 +1111,10 @@ impl PyLiteBar {
 
 /// Python可见的Position包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "Position", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(name = "Position", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyPosition {
     pub inner: Position,

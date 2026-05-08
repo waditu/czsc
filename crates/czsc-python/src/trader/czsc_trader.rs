@@ -30,14 +30,16 @@ fn extract_position(_py: Python, obj: &Bound<PyAny>) -> PyResult<Position> {
     }
     // 尝试从 _inner 属性提取
     if let Ok(inner_attr) = obj.getattr("_inner")
-        && let Ok(py_pos) = inner_attr.extract::<PyPosition>() {
-            return Ok(py_pos.inner);
-        }
+        && let Ok(py_pos) = inner_attr.extract::<PyPosition>()
+    {
+        return Ok(py_pos.inner);
+    }
     // 尝试从 inner 属性提取
     if let Ok(inner_attr) = obj.getattr("inner")
-        && let Ok(py_pos) = inner_attr.extract::<PyPosition>() {
-            return Ok(py_pos.inner);
-        }
+        && let Ok(py_pos) = inner_attr.extract::<PyPosition>()
+    {
+        return Ok(py_pos.inner);
+    }
     Err(PyValueError::new_err(
         "positions 中的元素必须是 Position 或有 _inner/inner 属性的对象",
     ))
@@ -138,11 +140,12 @@ impl PyCzscTrader {
     #[getter]
     fn end_dt(&self, py: Python) -> PyResult<Option<PyObject>> {
         if let Some(dt_str) = self.inner.signals.s.get("dt")
-            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str) {
-                let utc_dt = dt.with_timezone(&chrono::Utc);
-                let timestamp = create_naive_pandas_timestamp(py, utc_dt)?;
-                return Ok(Some(timestamp));
-            }
+            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str)
+        {
+            let utc_dt = dt.with_timezone(&chrono::Utc);
+            let timestamp = create_naive_pandas_timestamp(py, utc_dt)?;
+            return Ok(Some(timestamp));
+        }
         Ok(None)
     }
 
@@ -351,7 +354,13 @@ impl PyCzscTrader {
         let configs_list = super::czsc_signals::signal_configs_to_pylist(py, &self.signals_config)?;
 
         let constructor = py.get_type::<Self>();
-        let args = (bg_clone, positions_list, configs_list, self.ensemble_method.clone()).into_pyobject(py)?;
+        let args = (
+            bg_clone,
+            positions_list,
+            configs_list,
+            self.ensemble_method.clone(),
+        )
+            .into_pyobject(py)?;
         let result = (constructor, args).into_pyobject(py)?;
         Ok(result.into_any().unbind())
     }
@@ -385,18 +394,19 @@ fn parse_dt_from_pyobj(obj: &Bound<PyAny>) -> PyResult<DateTime<FixedOffset>> {
 
     // 尝试 pandas Timestamp: 调用 .isoformat() 或 str()
     if let Ok(iso) = obj.call_method0("isoformat")
-        && let Ok(s) = iso.extract::<String>() {
-            if let Ok(dt) = DateTime::parse_from_rfc3339(&s) {
-                return Ok(dt);
-            }
-            // pandas isoformat 可能不带时区
-            if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S") {
-                return Ok(DateTime::from_naive_utc_and_offset(
-                    naive,
-                    FixedOffset::east_opt(0).unwrap(),
-                ));
-            }
+        && let Ok(s) = iso.extract::<String>()
+    {
+        if let Ok(dt) = DateTime::parse_from_rfc3339(&s) {
+            return Ok(dt);
         }
+        // pandas isoformat 可能不带时区
+        if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(&s, "%Y-%m-%dT%H:%M:%S") {
+            return Ok(DateTime::from_naive_utc_and_offset(
+                naive,
+                FixedOffset::east_opt(0).unwrap(),
+            ));
+        }
+    }
 
     // 最后降级：str(obj)
     let s = obj.str()?.to_string();

@@ -34,13 +34,14 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
         // 优先从 "params" 子字典取参数
         if let Some(params_obj) = dict.get_item("params")?
             && !params_obj.is_none()
-                && let Ok(params_dict) = params_obj.downcast::<PyDict>() {
-                    for (k, v) in params_dict.iter() {
-                        let key: String = k.extract()?;
-                        let val = py_to_serde_value(&v)?;
-                        params.insert(key, val);
-                    }
-                }
+            && let Ok(params_dict) = params_obj.downcast::<PyDict>()
+        {
+            for (k, v) in params_dict.iter() {
+                let key: String = k.extract()?;
+                let val = py_to_serde_value(&v)?;
+                params.insert(key, val);
+            }
+        }
 
         // 也支持 flat params：dict 中除 name/freq/params 以外的 key 直接作为参数
         for (k, v) in dict.iter() {
@@ -166,11 +167,12 @@ impl PyCzscSignals {
     #[getter]
     fn end_dt(&self, py: Python) -> PyResult<Option<PyObject>> {
         if let Some(dt_str) = self.inner.s.get("dt")
-            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str) {
-                let utc_dt = dt.with_timezone(&chrono::Utc);
-                let timestamp = create_naive_pandas_timestamp(py, utc_dt)?;
-                return Ok(Some(timestamp));
-            }
+            && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str)
+        {
+            let utc_dt = dt.with_timezone(&chrono::Utc);
+            let timestamp = create_naive_pandas_timestamp(py, utc_dt)?;
+            return Ok(Some(timestamp));
+        }
         Ok(None)
     }
 
@@ -247,10 +249,7 @@ impl PyCzscSignals {
 /// Helper: convert `Vec<SignalConfig>` back to a Python ``list[dict]``
 /// shaped exactly like ``parse_signals_config`` expects, so
 /// ``__reduce__`` -> ``__new__`` round-trips cleanly.
-pub(crate) fn signal_configs_to_pylist(
-    py: Python,
-    configs: &[SignalConfig],
-) -> PyResult<PyObject> {
+pub(crate) fn signal_configs_to_pylist(py: Python, configs: &[SignalConfig]) -> PyResult<PyObject> {
     let list = PyList::empty(py);
     for cfg in configs {
         let dict = PyDict::new(py);

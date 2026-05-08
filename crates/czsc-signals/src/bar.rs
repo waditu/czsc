@@ -63,11 +63,10 @@ pub fn bar_single_v230506(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
             factors.push((bar.close - bar.open) / (bar.open * bar.vol));
         }
 
-        if valid && !factors.is_empty() {
-            if let Some(q) = pd_cut_last_label(&factors, n) {
+        if valid && !factors.is_empty()
+            && let Some(q) = pd_cut_last_label(&factors, n) {
                 v1 = format!("第{}层", q);
             }
-        }
     }
 
     make_kline_signal_v1(&k1, &k2, k3, &v1)

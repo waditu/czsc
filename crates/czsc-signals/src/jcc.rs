@@ -12,11 +12,10 @@ fn get_f64_param(params: &ParamView, key: &str, default: f64) -> f64 {
         if let Some(x) = v.as_f64() {
             return x;
         }
-        if let Some(s) = v.as_str() {
-            if let Ok(x) = s.parse::<f64>() {
+        if let Some(s) = v.as_str()
+            && let Ok(x) = s.parse::<f64>() {
                 return x;
             }
-        }
     }
     default
 }

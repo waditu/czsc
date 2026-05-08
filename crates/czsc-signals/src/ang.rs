@@ -375,12 +375,11 @@ pub fn skdj_up_dw_line_v230611(c: &CZSC, params: &ParamView, cache: &mut TaCache
     for (i, bar) in c.bars_raw.iter().enumerate() {
         rsv_ids.push(bar.id);
         // 对齐 Python：历史 bar 的 RSV 只计算一次；同 dt 延伸时仅最后一根会重算。
-        if i + 1 < c.bars_raw.len() {
-            if let Some(v) = old_map.get(&bar.id) {
+        if i + 1 < c.bars_raw.len()
+            && let Some(v) = old_map.get(&bar.id) {
                 rsv_series.push(*v);
                 continue;
             }
-        }
         let win = if i < n {
             &c.bars_raw[..=i]
         } else {

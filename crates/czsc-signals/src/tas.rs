@@ -3087,13 +3087,11 @@ pub fn tas_macd_bc_v230803(czsc: &CZSC, _params: &ParamView, cache: &mut TaCache
                 .flat_map(|nb| nb.elements.iter())
                 .nth(1)
                 .map(|x| x.id);
-            if let (Some(i1), Some(i2)) = (id1, id2) {
-                if let (Some(macd1), Some(macd2)) = (get_macd(i1), get_macd(i2)) {
-                    if macd1 > macd2 && macd2 > 0.0 {
+            if let (Some(i1), Some(i2)) = (id1, id2)
+                && let (Some(macd1), Some(macd2)) = (get_macd(i1), get_macd(i2))
+                    && macd1 > macd2 && macd2 > 0.0 {
                         v1 = "空头";
                     }
-                }
-            }
         }
     } else {
         let bottoms: Vec<_> = fx_list
@@ -3120,13 +3118,11 @@ pub fn tas_macd_bc_v230803(czsc: &CZSC, _params: &ParamView, cache: &mut TaCache
                 .flat_map(|nb| nb.elements.iter())
                 .nth(1)
                 .map(|x| x.id);
-            if let (Some(i1), Some(i2)) = (id1, id2) {
-                if let (Some(macd1), Some(macd2)) = (get_macd(i1), get_macd(i2)) {
-                    if macd1 < macd2 && macd2 < 0.0 {
+            if let (Some(i1), Some(i2)) = (id1, id2)
+                && let (Some(macd1), Some(macd2)) = (get_macd(i1), get_macd(i2))
+                    && macd1 < macd2 && macd2 < 0.0 {
                         v1 = "多头";
                     }
-                }
-            }
         }
     }
 

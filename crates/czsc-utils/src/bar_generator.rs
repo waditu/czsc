@@ -408,7 +408,7 @@ impl BarGenerator {
                 ));
             };
 
-            self.init_freq_with_bars(freq, bars.into_iter())?;
+            self.init_freq_with_bars(freq, bars)?;
             Ok(())
         })
     }

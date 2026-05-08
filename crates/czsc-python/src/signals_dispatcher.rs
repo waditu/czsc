@@ -68,8 +68,8 @@ pub fn call_signal(
     czsc: &CZSC,
     params: Option<&Bound<'_, PyDict>>,
 ) -> PyResult<Vec<PySignal>> {
-    let descriptor = lookup(name)
-        .ok_or_else(|| PyKeyError::new_err(format!("unknown signal: {name}")))?;
+    let descriptor =
+        lookup(name).ok_or_else(|| PyKeyError::new_err(format!("unknown signal: {name}")))?;
 
     let kline_func = match descriptor.func_ref {
         SignalFnRef::Kline(f) => f,
@@ -96,7 +96,6 @@ pub fn call_signal(
 #[pyo3(signature = (category=None))]
 pub fn list_signal_names(category: Option<&str>) -> Vec<String> {
     let mut out: Vec<String> = inventory::iter::<SignalDescriptor>()
-        .into_iter()
         .filter(|d| matches!(d.func_ref, SignalFnRef::Kline(_)))
         .filter(|d| match category {
             Some(c) => name_prefix(d.name).map(|p| p == c).unwrap_or(false),
@@ -130,7 +129,11 @@ pub fn get_signal_category(name: &str) -> Option<String> {
 /// and ``czsc._native.signals`` (submodule). The submodule entries
 /// give design-doc §3.3 the path ``from czsc._native.signals import
 /// call_signal``.
-pub fn register(py: Python<'_>, m: &Bound<'_, PyModule>, signals_mod: &Bound<'_, PyModule>) -> PyResult<()> {
+pub fn register(
+    py: Python<'_>,
+    m: &Bound<'_, PyModule>,
+    signals_mod: &Bound<'_, PyModule>,
+) -> PyResult<()> {
     use pyo3::wrap_pyfunction;
 
     m.add_function(wrap_pyfunction!(call_signal, m)?)?;
@@ -151,15 +154,7 @@ pub fn register(py: Python<'_>, m: &Bound<'_, PyModule>, signals_mod: &Bound<'_,
     //
     // The Python-side `czsc/signals/<cat>.py` shim layers __getattr__
     // on top of these to expose individual functions.
-    let categories = [
-        "bar",
-        "cxt",
-        "tas",
-        "vol",
-        "pressure",
-        "obv",
-        "cvolp",
-    ];
+    let categories = ["bar", "cxt", "tas", "vol", "pressure", "obv", "cvolp"];
     let sys = py.import("sys")?;
     let py_modules = sys.getattr("modules")?;
     for cat in categories {

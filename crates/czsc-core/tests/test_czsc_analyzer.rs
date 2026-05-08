@@ -77,18 +77,15 @@ fn fx_and_bi_lists_are_consistent_with_zigzag() {
 fn update_bar_appends_incrementally() {
     let bars = synthetic_zigzag(30);
     let mut c = CZSC::new(bars, 50);
-    let extra = rb(
-        1_700_000_000 + 30 * 1800,
-        102.0,
-        103.0,
-        104.0,
-        101.0,
-    );
+    let extra = rb(1_700_000_000 + 30 * 1800, 102.0, 103.0, 104.0, 101.0);
     c.update_bar(extra);
     assert_eq!(c.freq, Freq::F30);
     // bars_raw monotonically grows (modulo the analyzer's internal pruning)
-    assert!(c.bars_raw.iter().any(|b| b.dt
-        == Utc.timestamp_opt(1_700_000_000 + 30 * 1800, 0).unwrap()));
+    assert!(
+        c.bars_raw
+            .iter()
+            .any(|b| b.dt == Utc.timestamp_opt(1_700_000_000 + 30 * 1800, 0).unwrap())
+    );
 }
 
 #[test]

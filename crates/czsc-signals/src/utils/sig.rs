@@ -41,10 +41,10 @@ pub fn get_usize_param(params: &ParamView, key: &str, default: usize) -> usize {
         if let Some(n) = val.as_u64() {
             return n as usize;
         }
-        if let Some(s) = val.as_str() {
-            if let Ok(n) = s.parse::<usize>() {
-                return n;
-            }
+        if let Some(s) = val.as_str()
+            && let Ok(n) = s.parse::<usize>()
+        {
+            return n;
         }
     }
     default
@@ -110,11 +110,7 @@ pub fn parse_minute_freq(freq: &str) -> Option<i64> {
         return None;
     }
     let n = freq.trim_end_matches("分钟").parse::<i64>().ok()?;
-    if n > 0 {
-        Some(n)
-    } else {
-        None
-    }
+    if n > 0 { Some(n) } else { None }
 }
 
 /// 计算分钟周期对应的结束时间（与 Python freq_end_time 口径一致）
@@ -835,10 +831,10 @@ mod tests {
 
 /// 解析字符串参数
 pub fn get_str_param<'a>(params: &'a ParamView, key: &str, default: &'a str) -> &'a str {
-    if let Some(val) = params.value(key) {
-        if let Some(s) = val.as_str() {
-            return s;
-        }
+    if let Some(val) = params.value(key)
+        && let Some(s) = val.as_str()
+    {
+        return s;
     }
     default
 }

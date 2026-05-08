@@ -38,7 +38,11 @@ fn fx(ts: i64, mark: Mark, level: f64) -> FX {
         .mark(mark)
         .high(k2.high)
         .low(k2.low)
-        .fx(if matches!(level, l if l > 5.0) { k2.high } else { k2.low })
+        .fx(if matches!(level, l if l > 5.0) {
+            k2.high
+        } else {
+            k2.low
+        })
         .elements(vec![k1, k2, k3])
         .build()
         .unwrap()
@@ -49,7 +53,14 @@ fn sample_bi_up() -> BI {
     let fx_a = fx(1_700_000_000, Mark::D, 9.0);
     let fx_b = fx(1_700_007_200, Mark::G, 12.0);
     let bars: Vec<NewBar> = (0..5)
-        .map(|i| nb(1_700_000_000 + i * 1800, 11.0 + i as f64 * 0.2, 9.5 + i as f64 * 0.2, 100.0))
+        .map(|i| {
+            nb(
+                1_700_000_000 + i * 1800,
+                11.0 + i as f64 * 0.2,
+                9.5 + i as f64 * 0.2,
+                100.0,
+            )
+        })
         .collect();
     BIBuilder::default()
         .symbol(Arc::<str>::from("000001"))

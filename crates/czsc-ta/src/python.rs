@@ -29,7 +29,12 @@ fn rolling_rank(series: Vec<f64>, window: usize) -> Vec<f64> {
 
 #[pyfunction]
 #[pyo3(signature = (series, n=None, *, period=None, length=None))]
-fn sma(series: Vec<f64>, n: Option<usize>, period: Option<usize>, length: Option<usize>) -> Vec<f64> {
+fn sma(
+    series: Vec<f64>,
+    n: Option<usize>,
+    period: Option<usize>,
+    length: Option<usize>,
+) -> Vec<f64> {
     // Same kwarg story as `ema` — talib's keyword is `timeperiod` /
     // pandas-ta's is `length`; rs-czsc historical scripts pass `n` /
     // `period`. Phase A parity test calls `ta.sma(series, length=20)`.
@@ -100,7 +105,12 @@ fn rank_positions(series: Vec<f64>, n: usize) -> Vec<f64> {
 
 #[pyfunction]
 #[pyo3(signature = (series, n=None, *, period=None, length=None))]
-fn ema(series: Vec<f64>, n: Option<usize>, period: Option<usize>, length: Option<usize>) -> Vec<f64> {
+fn ema(
+    series: Vec<f64>,
+    n: Option<usize>,
+    period: Option<usize>,
+    length: Option<usize>,
+) -> Vec<f64> {
     // Accept any of: positional `n`, kwargs `period=` (legacy rs-czsc) or
     // `length=` (talib / pandas-ta convention). The Phase A parity test
     // in `test/unit/test_ta_parity.py::test_ema_matches_talib` calls
@@ -222,8 +232,14 @@ pub fn register(py: Python<'_>, parent: &Bound<'_, PyModule>) -> PyResult<()> {
     );
 
     // numpy-bound entries
-    ta.add_function(wrap_pyfunction!(mixed::chip_dist::chip_distribution_triangle, &ta)?)?;
-    parent.add_function(wrap_pyfunction!(mixed::chip_dist::chip_distribution_triangle, parent)?)?;
+    ta.add_function(wrap_pyfunction!(
+        mixed::chip_dist::chip_distribution_triangle,
+        &ta
+    )?)?;
+    parent.add_function(wrap_pyfunction!(
+        mixed::chip_dist::chip_distribution_triangle,
+        parent
+    )?)?;
 
     // Register the submodule into sys.modules so `from czsc._native.ta
     // import ema` (and `import czsc._native.ta`) works the same as a

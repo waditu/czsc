@@ -11,9 +11,7 @@ use czsc_core::objects::signal::Signal;
 fn sample_event() -> Event {
     Event {
         operate: Operate::LO,
-        signals_all: vec![
-            Signal::from_str("30分钟_D1_前高_看多_强_任意_0").unwrap(),
-        ],
+        signals_all: vec![Signal::from_str("30分钟_D1_前高_看多_强_任意_0").unwrap()],
         signals_any: vec![
             Signal::from_str("日线_D1_趋势_看多_中_任意_0").unwrap(),
             Signal::from_str("日线_D2_趋势_看多_弱_任意_0").unwrap(),
@@ -38,8 +36,11 @@ fn compute_sha8_returns_4_hex_chars() {
     let e = sample_event();
     let h = e.compute_sha8();
     assert_eq!(h.len(), 4, "sha8 prefix must be 4 chars, got {h:?}");
-    assert!(h.chars().all(|c| c.is_ascii_hexdigit() && c.is_ascii_uppercase() || c.is_ascii_digit()),
-        "expected uppercase hex, got {h:?}");
+    assert!(
+        h.chars()
+            .all(|c| c.is_ascii_hexdigit() && c.is_ascii_uppercase() || c.is_ascii_digit()),
+        "expected uppercase hex, got {h:?}"
+    );
 }
 
 #[test]

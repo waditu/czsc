@@ -15,10 +15,7 @@ use strum_macros::{AsRefStr, EnumIter, EnumString};
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
-use pyo3::{
-    Bound, FromPyObject, PyResult, Python, exceptions::PyValueError,
-    types::PyAnyMethods,
-};
+use pyo3::{Bound, FromPyObject, PyResult, Python, exceptions::PyValueError, types::PyAnyMethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 

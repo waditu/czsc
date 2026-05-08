@@ -524,7 +524,10 @@ impl PySignal {
 
 /// Python可见的ParsedSignalDoc包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "ParsedSignalDoc", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(name = "ParsedSignalDoc", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyParsedSignalDoc {
     pub(crate) inner: ParsedSignalDoc,

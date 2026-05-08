@@ -76,7 +76,9 @@ fn check_fxs_extracts_fx_from_sequence() {
 
 #[test]
 fn check_bi_returns_tuple_with_remainder() {
-    let bars: Vec<NewBar> = (0..6).map(|i| nb(i + 1, 10.0 + i as f64, 9.0 + i as f64)).collect();
+    let bars: Vec<NewBar> = (0..6)
+        .map(|i| nb(i + 1, 10.0 + i as f64, 9.0 + i as f64))
+        .collect();
     let (bi, remainder) = check_bi(&bars);
     // The function signature contract: always returns (Option<BI>, &[NewBar])
     let _ = bi;

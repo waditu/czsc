@@ -162,11 +162,10 @@ pub fn obvm_line_v230610(c: &CZSC, params: &ParamView, cache: &mut TaCache) -> V
     let bars = get_sub_elements(&c.bars_raw, di, n.max(m) + 10);
     let mut obv_seq = Vec::with_capacity(bars.len());
     for b in bars {
-        if let Some(i) = id_map.get(&b.id).copied() {
-            if i < obv_series.len() {
+        if let Some(i) = id_map.get(&b.id).copied()
+            && i < obv_series.len() {
                 obv_seq.push(obv_series[i]);
             }
-        }
     }
     if obv_seq.len() < n.max(m) {
         return make_kline_signal_v1(&k1, &k2, k3, v1_default);
@@ -238,11 +237,10 @@ pub fn obv_up_dw_line_v230719(
     let bars = get_sub_elements(&c.bars_raw, di, min_k_num);
     let mut obv_seq = Vec::with_capacity(bars.len());
     for b in bars {
-        if let Some(i) = id_map.get(&b.id).copied() {
-            if i < obv_series.len() {
+        if let Some(i) = id_map.get(&b.id).copied()
+            && i < obv_series.len() {
                 obv_seq.push(obv_series[i]);
             }
-        }
     }
     if obv_seq.len() < min_k_num {
         return make_kline_signal_v1(&k1, &k2, k3, v1_default);

@@ -40,21 +40,35 @@ fn fx(ts: i64, mark: Mark, level: f64) -> FX {
         .mark(mark_clone)
         .high(k2.high)
         .low(k2.low)
-        .fx(if matches!(mark, Mark::G) { k2.high } else { k2.low })
+        .fx(if matches!(mark, Mark::G) {
+            k2.high
+        } else {
+            k2.low
+        })
         .elements(vec![k1, k2, k3])
         .build()
         .unwrap()
 }
 
-fn make_bi(ts_a: i64, mark_a: Mark, level_a: f64,
-           ts_b: i64, mark_b: Mark, level_b: f64,
-           direction: Direction) -> BI {
+fn make_bi(
+    ts_a: i64,
+    mark_a: Mark,
+    level_a: f64,
+    ts_b: i64,
+    mark_b: Mark,
+    level_b: f64,
+    direction: Direction,
+) -> BI {
     let fx_a = fx(ts_a, mark_a, level_a);
     let fx_b = fx(ts_b, mark_b, level_b);
     // bars span — endpoints determine high/low
     let bars = vec![
         nb(ts_a, level_a + 0.5, level_a - 0.5),
-        nb((ts_a + ts_b) / 2, (level_a + level_b) / 2.0 + 0.5, (level_a + level_b) / 2.0 - 0.5),
+        nb(
+            (ts_a + ts_b) / 2,
+            (level_a + level_b) / 2.0 + 0.5,
+            (level_a + level_b) / 2.0 - 0.5,
+        ),
         nb(ts_b, level_b + 0.5, level_b - 0.5),
     ];
     BIBuilder::default()
@@ -70,12 +84,33 @@ fn make_bi(ts_a: i64, mark_a: Mark, level_a: f64,
 
 fn sample_zs() -> ZS {
     // 3-bi center: down 12 -> 9, up 9 -> 11, down 11 -> 9.5
-    let bi1 = make_bi(1_700_000_000, Mark::G, 12.0,
-                      1_700_001_800, Mark::D,  9.0, Direction::Down);
-    let bi2 = make_bi(1_700_001_800, Mark::D,  9.0,
-                      1_700_003_600, Mark::G, 11.0, Direction::Up);
-    let bi3 = make_bi(1_700_003_600, Mark::G, 11.0,
-                      1_700_005_400, Mark::D,  9.5, Direction::Down);
+    let bi1 = make_bi(
+        1_700_000_000,
+        Mark::G,
+        12.0,
+        1_700_001_800,
+        Mark::D,
+        9.0,
+        Direction::Down,
+    );
+    let bi2 = make_bi(
+        1_700_001_800,
+        Mark::D,
+        9.0,
+        1_700_003_600,
+        Mark::G,
+        11.0,
+        Direction::Up,
+    );
+    let bi3 = make_bi(
+        1_700_003_600,
+        Mark::G,
+        11.0,
+        1_700_005_400,
+        Mark::D,
+        9.5,
+        Direction::Down,
+    );
     ZS::new(vec![bi1, bi2, bi3])
 }
 
@@ -98,7 +133,12 @@ fn zg_zd_within_first_three_bis() {
 fn zz_is_midpoint_of_zg_zd() {
     let zs = sample_zs();
     let mid = (zs.zg + zs.zd) / 2.0;
-    assert!((zs.zz - mid).abs() < 1e-9, "zz {} should equal mid {}", zs.zz, mid);
+    assert!(
+        (zs.zz - mid).abs() < 1e-9,
+        "zz {} should equal mid {}",
+        zs.zz,
+        mid
+    );
 }
 
 #[test]

@@ -9,7 +9,6 @@
 
 #[test]
 fn proc_macro_crate_links() {
-    // Reaching this assertion means the crate compiled with both
+    // Reaching this function means the crate compiled with both
     // #[proc_macro_attribute] entrypoints exported.
-    assert!(true);
 }

@@ -6,12 +6,15 @@ use error_support::{czsc_bail, expand_error_chain};
 
 #[test]
 fn expand_error_chain_walks_sources() {
-    let inner = std::io::Error::new(std::io::ErrorKind::Other, "leaf");
+    let inner = std::io::Error::other("leaf");
     let mid = anyhow::Error::new(inner).context("middle layer");
     let outer = mid.context("outermost");
     let chain = expand_error_chain(&outer);
     assert!(chain.contains("outermost"), "chain missing outer: {chain}");
-    assert!(chain.contains("Caused by: middle layer"), "missing middle: {chain}");
+    assert!(
+        chain.contains("Caused by: middle layer"),
+        "missing middle: {chain}"
+    );
     assert!(chain.contains("Caused by: leaf"), "missing leaf: {chain}");
 }
 

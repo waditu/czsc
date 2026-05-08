@@ -13,12 +13,12 @@ use czsc_core::analyze::utils::format_standard_kline;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::freq::Freq;
 use czsc_core::objects::position::Position;
+use czsc_signals::registry::list_all_signals as list_all_registered_signals;
 use czsc_trader::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngine};
 use czsc_trader::optimize::{
     get_exit_optim_positions, get_open_optim_positions, symbols_optim_parallel,
 };
 use czsc_trader::signals::sig_parse::{SignalConfig, get_signals_config, get_signals_freqs};
-use czsc_signals::registry::list_all_signals as list_all_registered_signals;
 use polars::prelude::*;
 
 fn write_df_parquet(path: &Path, mut df: DataFrame) -> PyResult<()> {

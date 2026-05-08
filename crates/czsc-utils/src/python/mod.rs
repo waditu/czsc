@@ -23,11 +23,7 @@ fn is_trading_time(dt: chrono::NaiveDateTime, market: &str) -> bool {
 /// `PyValueError` via `UtilsError`'s PyErr conversion.
 #[pyfunction]
 #[pyo3(signature = (dt, freq, market=Market::Default))]
-fn freq_end_time(
-    dt: DateTime<Utc>,
-    freq: Freq,
-    market: Market,
-) -> PyResult<DateTime<Utc>> {
+fn freq_end_time(dt: DateTime<Utc>, freq: Freq, market: Market) -> PyResult<DateTime<Utc>> {
     crate::freq_data::freq_end_time(dt, freq, market)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
 }

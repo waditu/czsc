@@ -21,5 +21,8 @@ fn from_anyhow_blanket_impl_exists() {
 fn serialize_emits_string() {
     let dummy = DummyError::Unexpected(anyhow::anyhow!("boom"));
     let json = serde_json::to_string(&dummy).unwrap();
-    assert!(json.contains("boom"), "expected serialized payload, got {json}");
+    assert!(
+        json.contains("boom"),
+        "expected serialized payload, got {json}"
+    );
 }

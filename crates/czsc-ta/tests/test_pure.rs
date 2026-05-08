@@ -3,8 +3,8 @@
 //! aligned with the rs-czsc 47ef6efa baseline.
 
 use czsc_ta::pure::{
-    boll_positions, double_sma_positions, ema, mid_positions, rolling_rank,
-    single_ema_positions, single_sma_positions, true_range, ultimate_smoother,
+    boll_positions, double_sma_positions, ema, mid_positions, rolling_rank, single_ema_positions,
+    single_sma_positions, true_range, ultimate_smoother,
 };
 
 fn series(n: usize) -> Vec<f64> {
@@ -24,7 +24,12 @@ fn ultimate_smoother_first_4_passthrough() {
     let s = series(20);
     let out = ultimate_smoother(&s, 10.0);
     for i in 0..4 {
-        assert!((out[i] - s[i]).abs() < f64::EPSILON, "i={i}: {} vs {}", out[i], s[i]);
+        assert!(
+            (out[i] - s[i]).abs() < f64::EPSILON,
+            "i={i}: {} vs {}",
+            out[i],
+            s[i]
+        );
     }
 }
 
@@ -73,7 +78,10 @@ fn mid_positions_in_range() {
     let s = series(30);
     let out = mid_positions(&s, 5);
     for v in &out {
-        assert!(*v >= -1.0 && *v <= 1.0, "expected position in [-1, 1], got {v}");
+        assert!(
+            *v >= -1.0 && *v <= 1.0,
+            "expected position in [-1, 1], got {v}"
+        );
     }
 }
 
@@ -96,9 +104,9 @@ fn boll_positions_in_signed_range() {
 
 #[test]
 fn true_range_matches_input_length() {
-    let high  = vec![10.0, 11.0, 12.0, 11.5];
-    let low   = vec![ 9.0,  9.5, 10.5, 10.0];
-    let prev  = vec![ 9.5, 10.0, 11.0, 10.5];
+    let high = vec![10.0, 11.0, 12.0, 11.5];
+    let low = vec![9.0, 9.5, 10.5, 10.0];
+    let prev = vec![9.5, 10.0, 11.0, 10.5];
     let tr = true_range(&high, &low, &prev);
     assert_eq!(tr.len(), 4);
     // tr[i] = max(high-low, |high-prev|, |low-prev|) >= 0

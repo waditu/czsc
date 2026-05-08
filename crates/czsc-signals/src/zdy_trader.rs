@@ -166,12 +166,11 @@ pub fn zdy_stop_loss_v230406(cat: &dyn TraderState, params: &ParamView) -> Vec<S
     let mut v1 = "其他";
     let mut v2 = "其他";
     if op.op == Operate::LO {
-        if let Some(open_base_fx) = fxs.iter().rfind(|x| x.mark == Mark::D && x.dt < op.dt) {
-            if last_bar.close < open_base_fx.low {
+        if let Some(open_base_fx) = fxs.iter().rfind(|x| x.mark == Mark::D && x.dt < op.dt)
+            && last_bar.close < open_base_fx.low {
                 v1 = "多头止损";
                 v2 = "跌破分型低点";
             }
-        }
         if (last_bar.close / op.price - 1.0) * 10000.0 <= -first_stop {
             v1 = "多头止损";
             v2 = "进场点止损";
@@ -193,12 +192,11 @@ pub fn zdy_stop_loss_v230406(cat: &dyn TraderState, params: &ParamView) -> Vec<S
         }
     }
     if op.op == Operate::SO {
-        if let Some(open_base_fx) = fxs.iter().rfind(|x| x.mark == Mark::G && x.dt < op.dt) {
-            if last_bar.close > open_base_fx.high {
+        if let Some(open_base_fx) = fxs.iter().rfind(|x| x.mark == Mark::G && x.dt < op.dt)
+            && last_bar.close > open_base_fx.high {
                 v1 = "空头止损";
                 v2 = "升破分型高点";
             }
-        }
         if (1.0 - last_bar.close / op.price) * 10000.0 <= -first_stop {
             v1 = "空头止损";
             v2 = "进场点止损";

@@ -21,14 +21,15 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // czsc-signals contributes `SignalDescriptor` entries via
     // `inventory::collect!`. The dummy iterator forces the crate
     // into the final cdylib so the constructors run on import.
-    let _signals_count = inventory::iter::<czsc_signals::types::SignalDescriptor>()
-        .into_iter()
-        .count();
+    let _signals_count = inventory::iter::<czsc_signals::types::SignalDescriptor>().count();
 
     // Trader surface — CzscTrader, CzscSignals, generate_czsc_signals.
     m.add_class::<trader::czsc_trader::PyCzscTrader>()?;
     m.add_class::<trader::czsc_signals::PyCzscSignals>()?;
-    m.add_function(wrap_pyfunction!(trader::generate::generate_czsc_signals, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        trader::generate::generate_czsc_signals,
+        m
+    )?)?;
 
     // Research / optimize entrypoints (mirrors rs_czsc/python/src/lib.rs).
     // These are the heavy-lift functions that strategies.py /
@@ -42,8 +43,14 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(trader::research::run_research, m)?)?;
     m.add_function(wrap_pyfunction!(trader::research::run_replay, m)?)?;
     m.add_function(wrap_pyfunction!(trader::research::run_optimize_batch, m)?)?;
-    m.add_function(wrap_pyfunction!(trader::research::build_open_optim_positions, m)?)?;
-    m.add_function(wrap_pyfunction!(trader::research::build_exit_optim_positions, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        trader::research::build_open_optim_positions,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        trader::research::build_exit_optim_positions,
+        m
+    )?)?;
 
     // czsc._native.signals namespace + per-category sub-modules
     // (bar / cxt / tas / vol / pressure / obv / cvolp). The dispatcher

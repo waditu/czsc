@@ -50,7 +50,10 @@ fn is_match_obeys_score_and_wildcards() {
     let s = Signal::from_str("30分钟_D1_前高_看多_强_任意_50").unwrap();
     let mut dict = HashMap::new();
     dict.insert("30分钟_D1_前高".to_string(), "看多_强_中_60".to_string());
-    assert!(s.is_match(&dict), "score 60 >= 50 with v3 wildcard should match");
+    assert!(
+        s.is_match(&dict),
+        "score 60 >= 50 with v3 wildcard should match"
+    );
 
     let mut low_score = HashMap::new();
     low_score.insert("30分钟_D1_前高".to_string(), "看多_强_中_40".to_string());

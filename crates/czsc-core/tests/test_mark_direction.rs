@@ -38,7 +38,7 @@ fn direction_display_round_trips() {
 #[test]
 fn direction_equality_and_clone() {
     let a = Direction::Up;
-    let b = a.clone();
+    let b = a;
     assert_eq!(a, b);
     assert_ne!(Direction::Up, Direction::Down);
 }

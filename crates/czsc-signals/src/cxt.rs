@@ -592,13 +592,11 @@ pub fn cxt_bi_end_v230324(c: &CZSC, params: &ParamView, cache: &mut TaCache) -> 
 
     let mut ma_vals: Vec<f64> = Vec::new();
     for rb in fx_raw.iter().take(fx_raw.len() - 1) {
-        if let Some(idx) = id_to_idx.get(&rb.id) {
-            if let Some(x) = ma.get(*idx) {
-                if x.is_finite() {
+        if let Some(idx) = id_to_idx.get(&rb.id)
+            && let Some(x) = ma.get(*idx)
+                && x.is_finite() {
                     ma_vals.push(*x);
                 }
-            }
-        }
     }
     if ma_vals.is_empty() {
         return make_kline_signal_v1(&k1, &k2, k3, v1);
@@ -1638,11 +1636,10 @@ pub fn cxt_bi_end_v230222(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
     }
 
     let mut fxs: Vec<FX> = Vec::new();
-    if let Some(last_bi) = c.bi_list.last() {
-        if last_bi.fxs.len() > 1 {
+    if let Some(last_bi) = c.bi_list.last()
+        && last_bi.fxs.len() > 1 {
             fxs.extend_from_slice(&last_bi.fxs[1..]);
         }
-    }
     for x in ubi_fxs {
         if fxs.last().map(|y| x.dt > y.dt).unwrap_or(true) {
             fxs.push(x);
@@ -1963,11 +1960,10 @@ pub fn cxt_bi_end_v230322(c: &CZSC, params: &ParamView, cache: &mut TaCache) -> 
     let last_fx_raw = fx_raw_bars(last_fx);
     let mut ma_vals = Vec::new();
     for rb in &last_fx_raw {
-        if let Some(idx) = id_to_idx.get(&rb.id) {
-            if let Some(v) = ma.get(*idx) {
+        if let Some(idx) = id_to_idx.get(&rb.id)
+            && let Some(v) = ma.get(*idx) {
                 ma_vals.push(*v);
             }
-        }
     }
     if ma_vals.is_empty() {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
