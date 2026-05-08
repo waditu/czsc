@@ -944,8 +944,6 @@ def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):
         - yearly_days: int，年化天数，默认 252
     :return: None
     """
-    WeightBacktest = safe_import_weight_backtest()
-
     digits = kwargs.get("digits", 2)
     fee_rate = kwargs.get("fee_rate", 0.0)
     weight_type = kwargs.get("weight_type", "ts")

@@ -152,11 +152,11 @@ def get_min_future_klines(code, sdt, edt, freq="1m", **kwargs):
     dates = pd.date_range(start="20000101", end="20300101", freq="365D")
 
     dates = [d.strftime("%Y%m%d") for d in dates]
-    dates = sorted(list(set(dates)))
+    dates = sorted(set(dates))
 
     rows = []
     # 遍历每一个分段区间 [sdt_, edt_)，按需要逐段拉取
-    for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:]), total=len(dates) - 1):
+    for sdt_, edt_ in tqdm(zip(dates[:-1], dates[1:], strict=False), total=len(dates) - 1):
         # 该段结束时间早于查询开始时间，跳过
         if edt_ < sdt:
             continue

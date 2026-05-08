@@ -189,7 +189,6 @@ __all__ = [
     "show_backtest_by_symbol",
     "show_long_short_backtest",
     "show_comprehensive_weight_backtest",
-    "run_weight_backtest_app",
     "show_splited_daily",
     "show_yearly_stats",
     "show_out_in_compare",
@@ -223,5 +222,3 @@ __all__ = [
     "code_editor_form",
 ]
 
-# Names in __all__ with no definition:
-#   run_weight_backtest_app

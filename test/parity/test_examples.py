@@ -471,9 +471,9 @@ def test_example_weight_backtest_parity(rs_czsc_module, czsc_module, capsys):
         if k not in tight_check:
             continue
         rv, cv = rs_stats[k], czsc_stats[k]
-        if isinstance(rv, (int, float)) and isinstance(cv, (int, float)):
-            if abs(rv - cv) > 0.005:  # 0.5 个百分点的容差
-                diffs[k] = (rv, cv)
+        if isinstance(rv, (int, float)) and isinstance(cv, (int, float)) and abs(rv - cv) > 0.005:
+            # 0.5 个百分点的容差
+            diffs[k] = (rv, cv)
     assert not diffs, f"core stats divergence beyond 0.005 tolerance: {diffs}"
 
     with capsys.disabled():

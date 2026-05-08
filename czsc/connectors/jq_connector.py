@@ -192,10 +192,7 @@ def get_concept_stocks(symbol, date=None):
         >>> symbols1 = get_concept_stocks("GN036", date="2020-07-08")
         >>> symbols2 = get_concept_stocks("GN036", date=datetime.now())
     """
-    if not date:
-        date = str(datetime.now().date())
-    else:
-        date = pd.to_datetime(date)
+    date = str(datetime.now().date()) if not date else pd.to_datetime(date)
 
     if isinstance(date, datetime):
         date = str(date.date())
@@ -317,7 +314,7 @@ def get_kline(
         >>> df4 = get_kline(symbol="000001.XSHG", end_date='20200719', freq="1min", count=1000)
     """
     if count and count > 5000:
-        warnings.warn(f"count={count}, 超过5000的最大值限制，仅返回最后5000条记录")
+        warnings.warn(f"count={count}, 超过5000的最大值限制，仅返回最后5000条记录", stacklevel=2)
 
     end_date = pd.to_datetime(end_date)
 
@@ -411,7 +408,7 @@ def get_kline_period(
 
     # 粗略估算：(自然日 * 5/7) 近似得到交易日数；超 1000 个交易日可能触发服务端限制
     if (end_date - start_date).days * 5 / 7 > 1000:
-        warnings.warn(f"{end_date.date()} - {start_date.date()} 超过1000个交易日，K线获取可能失败，返回为0")
+        warnings.warn(f"{end_date.date()} - {start_date.date()} 超过1000个交易日，K线获取可能失败，返回为0", stacklevel=2)
 
     data = {
         "method": "get_price_period",
@@ -487,7 +484,7 @@ def get_init_bg(symbol: str, end_dt: [str, datetime], base_freq: str, freqs: lis
 
     bg = BarGenerator(base_freq, freqs, max_count)
     # 对 BarGenerator 中维护的每一个频率，分别拉取并初始化
-    for freq in bg.bars.keys():
+    for freq in bg.bars:
         bars_ = get_kline(symbol=symbol, end_date=last_day, freq=freq_cn2jq[freq], count=max_count, fq=fq)
         bg.init_freq_bars(freq, bars_)
         print(f"{symbol} - {freq} - {len(bg.bars[freq])} - last_dt: {bg.bars[freq][-1].dt} - last_day: {last_day}")
@@ -538,7 +535,7 @@ def get_fundamental(table: str, symbol: str, date: str, columns: str = "") -> di
     df = text2df(r.text)
     try:
         return df.iloc[0].to_dict()
-    except:
+    except Exception:
         # 兼容数据为空、列缺失等多种异常，统一返回空字典
         return {}
 
@@ -701,7 +698,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     kwargs["fq"] = fq
     freq = str(freq)
     # 仅 "前复权" 时设为 True，其他统一为 False
-    fq = True if fq == "前复权" else False
+    fq = fq == "前复权"
     # CZSC 中文频率到聚宽 pandas-style 频率字符串的映射
     _map = {
         "1分钟": "1min",

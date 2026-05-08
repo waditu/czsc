@@ -89,10 +89,6 @@ def show_yearly_stats(df, ret_col, **kwargs):
         - sub_title: str，子标题
     :return: None
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     df = ensure_datetime_index(df)
     df = df.copy().fillna(0).sort_index(ascending=True)
 
@@ -128,10 +124,6 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
         - sub_title: str，子标题
     :return: None
     """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
-
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     df = ensure_datetime_index(df)
     df = df[[ret_col]].copy().fillna(0).sort_index(ascending=True)
@@ -219,10 +211,6 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     :return: None
     """
     from czsc.eda import cal_yearly_days
-
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
 
     if not ("dt" in df.columns and "returns" in df.columns):
         st.error(f"数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")

@@ -878,9 +878,9 @@ def mark_v_reversal(df: pd.DataFrame, **kwargs):
             bi_stats.append(
                 {
                     "symbol": symbol,
-                    "sdt": bi.sdt if not rs else pd.to_datetime(bi.sdt, unit="s"),
-                    "edt": bi.edt if not rs else pd.to_datetime(bi.edt, unit="s"),
-                    "direction": bi.direction.value if not rs else __convert_rs_direction(bi.direction),
+                    "sdt": pd.to_datetime(bi.sdt, unit="s"),
+                    "edt": pd.to_datetime(bi.edt, unit="s"),
+                    "direction": __convert_rs_direction(bi.direction),
                     "power_price": abs(bi.change),
                     "length": bi.length,
                     "rsq": bi.rsq,

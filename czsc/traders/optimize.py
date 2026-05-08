@@ -275,7 +275,7 @@ class OpensOptimize:
         self.symbols = sorted(kwargs["symbols"])
         self.files_position = [str(x) for x in kwargs["files_position"]]
         self.task_name = kwargs.get("task_name", "入场优化")
-        self.candidate_signals = sorted(list(kwargs["candidate_signals"]))
+        self.candidate_signals = sorted(kwargs["candidate_signals"])
         self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
         # base_freq 优先取用户显式配置；否则借助策略类自动推导，
         # 保证后续读取 K 线和写入 Rust 配置时频率信息一致。

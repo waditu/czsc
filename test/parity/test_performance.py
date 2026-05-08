@@ -218,11 +218,8 @@ def test_perf_run_research_endtoend(rs_czsc_module, czsc_module, mock_kline_df, 
             samples.append(time.perf_counter() - start)
         return statistics.median(samples)
 
-    if hasattr(rs_czsc_module, "_rs_czsc"):
-        # rs_czsc 的入口在 ``rs_czsc._rs_czsc`` 子模块上
-        rs_native = rs_czsc_module._rs_czsc
-    else:
-        rs_native = rs_czsc_module._native
+    # rs_czsc 的入口在 ``rs_czsc._rs_czsc`` 子模块上
+    rs_native = rs_czsc_module._rs_czsc if hasattr(rs_czsc_module, "_rs_czsc") else rs_czsc_module._native
 
     samples_rs = []
     samples_czsc = []

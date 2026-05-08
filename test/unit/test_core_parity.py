@@ -108,7 +108,7 @@ def test_fx_marks_sequence_matches_baseline() -> None:
     actual = [str(fx.mark) for fx in obj.fx_list]
     assert actual == snap["fx_marks"], (
         f"FX 方向序列出现漂移；首个差异下标 = "
-        f"{next((i for i, (a, b) in enumerate(zip(actual, snap['fx_marks'])) if a != b), 'len mismatch')}"
+        f"{next((i for i, (a, b) in enumerate(zip(actual, snap['fx_marks'], strict=False)) if a != b), 'len mismatch')}"
     )
 
 
@@ -120,7 +120,7 @@ def test_bi_directions_sequence_matches_baseline() -> None:
     actual = [str(bi.direction) for bi in obj.bi_list]
     assert actual == snap["bi_directions"], (
         f"BI 方向序列出现漂移；首个差异下标 = "
-        f"{next((i for i, (a, b) in enumerate(zip(actual, snap['bi_directions'])) if a != b), 'len mismatch')}"
+        f"{next((i for i, (a, b) in enumerate(zip(actual, snap['bi_directions'], strict=False)) if a != b), 'len mismatch')}"
     )
 
 
