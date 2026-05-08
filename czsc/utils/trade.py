@@ -144,7 +144,9 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     trade_dates = pd.merge_asof(trade_dates, vdt, left_on="date", right_on="dt")
     trade_dates = trade_dates.dropna(subset=["dt"]).reset_index(drop=True)
 
-    dt_map = dict(df.groupby("dt"))
+    # noqa: C416 — DataFrameGroupBy.keys 是字符串属性而非方法，dict(grouper) 会把
+    # mapping 路径走崩（'str' object is not callable）。必须用显式 dict-comp。
+    dt_map = {dt: dfg for dt, dfg in df.groupby("dt")}  # noqa: C416
     results = []
     for row in trade_dates.to_dict("records"):
         # 注意：这里必须进行 copy，否则默认浅拷贝导致数据异常
