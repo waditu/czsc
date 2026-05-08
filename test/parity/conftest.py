@@ -82,9 +82,7 @@ def sample_position_dict():
             {
                 "name": "open_long",
                 "operate": "开多",
-                "signals_all": [
-                    {"key": "日线_D1N5M5TH10_ADTMV230603", "value": "看多_任意_任意_0"}
-                ],
+                "signals_all": [{"key": "日线_D1N5M5TH10_ADTMV230603", "value": "看多_任意_任意_0"}],
                 "signals_any": [],
                 "signals_not": [],
             },
@@ -93,9 +91,7 @@ def sample_position_dict():
             {
                 "name": "exit_long",
                 "operate": "平多",
-                "signals_all": [
-                    {"key": "日线_D1N5M5TH10_ADTMV230603", "value": "看空_任意_任意_0"}
-                ],
+                "signals_all": [{"key": "日线_D1N5M5TH10_ADTMV230603", "value": "看空_任意_任意_0"}],
                 "signals_any": [],
                 "signals_not": [],
             },

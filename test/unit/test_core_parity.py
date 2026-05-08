@@ -50,9 +50,7 @@ def _build_czsc() -> tuple[Any | None, str | None]:
         import czsc
         from czsc.mock import generate_symbol_kines
 
-        df = generate_symbol_kines(
-            "000001", "30分钟", "20240101", "20240301", seed=42
-        )
+        df = generate_symbol_kines("000001", "30分钟", "20240101", "20240301", seed=42)
         bars = czsc.format_standard_kline(df, freq=czsc.Freq.F30)
         return czsc.CZSC(bars), None
     except Exception as exc:  # noqa: BLE001
@@ -73,8 +71,7 @@ def test_czsc_source_is_in_repo_native() -> None:
     assert obj is not None, err
     module = type(obj).__module__
     assert module.startswith("czsc."), (
-        f"czsc.CZSC 必须来自 czsc._native（实际：{module!r}）；"
-        "迁移目标要求完全移除 rs_czsc PyPI 依赖。"
+        f"czsc.CZSC 必须来自 czsc._native（实际：{module!r}）；迁移目标要求完全移除 rs_czsc PyPI 依赖。"
     )
 
 
@@ -84,8 +81,7 @@ def test_fx_list_count_matches_baseline() -> None:
     assert obj is not None, err
     snap = _load_snapshot()
     assert len(obj.fx_list) == snap["fx_list_count"], (
-        f"FX 数量出现漂移：实际 {len(obj.fx_list)}，基线 "
-        f"{snap['fx_list_count']}"
+        f"FX 数量出现漂移：实际 {len(obj.fx_list)}，基线 {snap['fx_list_count']}"
     )
 
 
@@ -95,8 +91,7 @@ def test_bi_list_count_matches_baseline() -> None:
     assert obj is not None, err
     snap = _load_snapshot()
     assert len(obj.bi_list) == snap["bi_list_count"], (
-        f"BI 数量出现漂移：实际 {len(obj.bi_list)}，基线 "
-        f"{snap['bi_list_count']}"
+        f"BI 数量出现漂移：实际 {len(obj.bi_list)}，基线 {snap['bi_list_count']}"
     )
 
 
@@ -135,7 +130,4 @@ def test_bi_lengths_sequence_matches_baseline() -> None:
     assert obj is not None, err
     snap = _load_snapshot()
     actual = [bi.length for bi in obj.bi_list]
-    assert actual == snap["bi_lengths"], (
-        f"BI 长度序列出现漂移；期望 {snap['bi_lengths'][:5]}…，"
-        f"实际 {actual[:5]}…"
-    )
+    assert actual == snap["bi_lengths"], f"BI 长度序列出现漂移；期望 {snap['bi_lengths'][:5]}…，实际 {actual[:5]}…"

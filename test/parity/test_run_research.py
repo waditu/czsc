@@ -106,9 +106,7 @@ def test_run_research_signals_match(rs_czsc_module, czsc_module, parity_inputs):
         f"czsc only: {set(czsc_df.columns) - set(rs_df.columns)}"
     )
     common_cols = sorted(rs_df.columns)
-    pd.testing.assert_frame_equal(
-        rs_df[common_cols], czsc_df[common_cols], check_dtype=False
-    )
+    pd.testing.assert_frame_equal(rs_df[common_cols], czsc_df[common_cols], check_dtype=False)
 
 
 def test_run_research_pairs_match(rs_czsc_module, czsc_module, parity_inputs):

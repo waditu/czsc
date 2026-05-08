@@ -23,6 +23,8 @@
 
 # 直接从 Rust 原生扩展中导入交易体系核心类与帮助函数，
 # 确保 Python 侧只承担"调用-转发"职责，业务逻辑落在 Rust 端。
+from wbt import WeightBacktest
+
 from czsc._native import (
     CzscSignals,
     CzscTrader,
@@ -30,7 +32,6 @@ from czsc._native import (
     derive_signals_freqs,
     generate_czsc_signals,
 )
-from wbt import WeightBacktest
 
 # 兼容老的导入路径：保留 Python 侧的薄封装函数 get_unique_signals。
 from czsc.traders.base import get_unique_signals

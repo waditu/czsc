@@ -26,8 +26,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # 兼容层提供的辅助函数，统一处理 Python <-> Rust 之间的数据转换、
 # 序列化、哈希计算和事件归一化等跨语言桥接逻辑。
@@ -278,12 +279,15 @@ class OpensOptimize:
         self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
         # base_freq 优先取用户显式配置；否则借助策略类自动推导，
         # 保证后续读取 K 线和写入 Rust 配置时频率信息一致。
-        self.base_freq = kwargs.get("base_freq") or CzscOpenOptimStrategy(
-            symbol="symbol",
-            files_position=self.files_position,
-            candidate_signals=self.candidate_signals,
-            signals_module_name=self.signals_module_name,
-        ).base_freq
+        self.base_freq = (
+            kwargs.get("base_freq")
+            or CzscOpenOptimStrategy(
+                symbol="symbol",
+                files_position=self.files_position,
+                candidate_signals=self.candidate_signals,
+                signals_module_name=self.signals_module_name,
+            ).base_freq
+        )
         self.results_root = Path(kwargs["results_path"])
         # 用候选信号集合 + 标的列表的字符串拼接做 MD5，截前 8 位作任务哈希；
         # 相同输入会得到相同的输出目录，便于结果复用与覆盖。
@@ -340,9 +344,7 @@ class OpensOptimize:
         for symbol in self.symbols:
             bars = _read_bars(self.read_bars, symbol, self.base_freq, bar_sdt, bar_edt)
             # parquet 不写 index，Rust 端按列名读取，避免歧义。
-            bars_to_dataframe(bars, symbol=symbol).to_parquet(
-                bars_dir / f"{symbol}.parquet", index=False
-            )
+            bars_to_dataframe(bars, symbol=symbol).to_parquet(bars_dir / f"{symbol}.parquet", index=False)
         return bars_dir
 
     def _materialize_position_files(self):
@@ -417,17 +419,18 @@ class ExitsOptimize:
         self.candidate_events = normalize_candidate_events(kwargs["candidate_events"])
         self.signals_module_name = kwargs.get("signals_module_name", "czsc.signals")
         # 与 OpensOptimize 对称：未显式指定 base_freq 时通过策略类反推。
-        self.base_freq = kwargs.get("base_freq") or CzscExitOptimStrategy(
-            symbol="symbol",
-            files_position=self.files_position,
-            candidate_events=self.candidate_events,
-            signals_module_name=self.signals_module_name,
-        ).base_freq
+        self.base_freq = (
+            kwargs.get("base_freq")
+            or CzscExitOptimStrategy(
+                symbol="symbol",
+                files_position=self.files_position,
+                candidate_events=self.candidate_events,
+                signals_module_name=self.signals_module_name,
+            ).base_freq
+        )
         self.results_root = Path(kwargs["results_path"])
         # 候选事件用 JSON 化字符串再做 MD5，避免 dict 不同顺序导致哈希漂移。
-        self.task_hash = md5_upper8(
-            f"{py_repr_json(self.candidate_events)}_{py_repr_list_str(self.symbols)}"
-        )
+        self.task_hash = md5_upper8(f"{py_repr_json(self.candidate_events)}_{py_repr_list_str(self.symbols)}")
         self.results_path = str(self.results_root / f"{self.task_name}_{self.task_hash}")
         self.poss_path = str(Path(self.results_path) / "poss")
 
@@ -472,9 +475,7 @@ class ExitsOptimize:
         bar_edt = self.kwargs.get("bar_edt", "20220101")
         for symbol in self.symbols:
             bars = _read_bars(self.read_bars, symbol, self.base_freq, bar_sdt, bar_edt)
-            bars_to_dataframe(bars, symbol=symbol).to_parquet(
-                bars_dir / f"{symbol}.parquet", index=False
-            )
+            bars_to_dataframe(bars, symbol=symbol).to_parquet(bars_dir / f"{symbol}.parquet", index=False)
         return bars_dir
 
     def _materialize_position_files(self):

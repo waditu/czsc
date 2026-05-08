@@ -27,7 +27,6 @@ from pathlib import Path
 
 import pytest
 
-
 # 仓库根目录（基于本测试文件位置反推），以及构建产物所在目录
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DIST_DIR = REPO_ROOT / "dist"
@@ -49,8 +48,7 @@ def test_pyproject_uses_maturin_backend() -> None:
         pytest.fail(f"未找到 pyproject.toml，路径：{pyproject}")
     text = pyproject.read_text(encoding="utf-8")
     assert "maturin" in text, (
-        "pyproject.toml 必须声明 [build-system] requires=['maturin>=...'] "
-        "以及 build-backend='maturin'"
+        "pyproject.toml 必须声明 [build-system] requires=['maturin>=...'] 以及 build-backend='maturin'"
     )
 
 
@@ -77,9 +75,7 @@ def test_native_extension_present_in_install() -> None:
         "构建流程必须保证 maturin 正确打包了 Rust 扩展"
     )
     out = proc.stdout.strip()
-    assert out.endswith((".so", ".pyd", ".dylib")), (
-        f"czsc._native.__file__ 应指向编译扩展，实际为 {out!r}"
-    )
+    assert out.endswith((".so", ".pyd", ".dylib")), f"czsc._native.__file__ 应指向编译扩展，实际为 {out!r}"
 
 
 def test_wheel_install_in_clean_venv(tmp_path: Path) -> None:
@@ -109,10 +105,7 @@ def test_wheel_install_in_clean_venv(tmp_path: Path) -> None:
         # 常规 CI 的 test job 只跑 `maturin develop`，不产 wheel；
         # wheel 安装验证由 python-publish.yml 的 smoke-test job 在发布流程
         # 里专门跑。所以本地/常规 CI 没 wheel 时跳过，不算失败。
-        pytest.skip(
-            f"在 {DIST_DIR} 下找不到 wheel；"
-            "如需运行本测试，请先 `maturin build --release`"
-        )
+        pytest.skip(f"在 {DIST_DIR} 下找不到 wheel；如需运行本测试，请先 `maturin build --release`")
 
     # 构建一个全新的虚拟环境用于隔离安装
     venv = tmp_path / "venv"
@@ -130,9 +123,7 @@ def test_wheel_install_in_clean_venv(tmp_path: Path) -> None:
         text=True,
     )
     if install.returncode != 0:
-        pytest.fail(
-            f"pip install {wheels[-1].name} 失败: {install.stderr}"
-        )
+        pytest.fail(f"pip install {wheels[-1].name} 失败: {install.stderr}")
 
     # 在新 venv 中打印 czsc.CZSC.__module__，
     # 该值由 PyO3 的 #[pyclass(module=...)] 设置为 "czsc._native"

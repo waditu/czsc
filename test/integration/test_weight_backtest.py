@@ -56,10 +56,7 @@ def test_czsc_attr_is_wbt_attr(attr_name: str) -> None:
     assert czsc is not None, f"failed to import czsc: {czsc_err}"
     wbt, wbt_err = _safe_import("wbt")
     if wbt is None:
-        pytest.fail(
-            f"wbt 必须作为硬依赖存在 ({wbt_err})；"
-            f"czsc.{attr_name} 必须从 wbt 重导出"
-        )
+        pytest.fail(f"wbt 必须作为硬依赖存在 ({wbt_err})；czsc.{attr_name} 必须从 wbt 重导出")
 
     czsc_attr = getattr(czsc, attr_name, None)
     wbt_attr = getattr(wbt, attr_name, None)
@@ -94,7 +91,4 @@ def test_no_residual_rs_czsc_dependency() -> None:
     if wb is None:
         pytest.fail("czsc.WeightBacktest 缺失")
     module = getattr(wb, "__module__", "?")
-    assert "rs_czsc" not in module, (
-        f"czsc.WeightBacktest 仍然通过 {module!r} 路由；"
-        f"必须替换为 wbt.WeightBacktest"
-    )
+    assert "rs_czsc" not in module, f"czsc.WeightBacktest 仍然通过 {module!r} 路由；必须替换为 wbt.WeightBacktest"

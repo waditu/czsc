@@ -57,9 +57,7 @@ def test_top_level_names_importable() -> None:
     czsc, err = _safe_import("czsc")
     assert czsc is not None, f"failed to import czsc: {err}"
     missing = [name for name in snap["top_level"] if not hasattr(czsc, name)]
-    assert not missing, (
-        f"czsc.* missing {len(missing)} required public names: {missing}"
-    )
+    assert not missing, f"czsc.* missing {len(missing)} required public names: {missing}"
 
 
 def test_signal_subpackages_present() -> None:
@@ -74,9 +72,7 @@ def test_signal_subpackages_present() -> None:
         mod, err = _safe_import(f"czsc.signals.{sub}")
         if mod is None:
             failures.append(f"czsc.signals.{sub} ({err})")
-    assert not failures, (
-        f"czsc.signals.* missing {len(failures)} required subpackages: {failures}"
-    )
+    assert not failures, f"czsc.signals.* missing {len(failures)} required subpackages: {failures}"
 
 
 def test_traders_namespace_complete() -> None:
@@ -85,9 +81,7 @@ def test_traders_namespace_complete() -> None:
     traders, err = _safe_import("czsc.traders")
     assert traders is not None, f"failed to import czsc.traders: {err}"
     missing = [name for name in snap["traders"] if not hasattr(traders, name)]
-    assert not missing, (
-        f"czsc.traders.* missing {len(missing)} required public names: {missing}"
-    )
+    assert not missing, f"czsc.traders.* missing {len(missing)} required public names: {missing}"
 
 
 def test_ta_namespace_complete() -> None:
@@ -96,9 +90,7 @@ def test_ta_namespace_complete() -> None:
     ta, err = _safe_import("czsc.ta")
     assert ta is not None, f"failed to import czsc.ta: {err}"
     missing = [name for name in snap["ta"] if not hasattr(ta, name)]
-    assert not missing, (
-        f"czsc.ta.* missing {len(missing)} required public names: {missing}"
-    )
+    assert not missing, f"czsc.ta.* missing {len(missing)} required public names: {missing}"
 
 
 def test_no_legacy_dummy_backtest() -> None:
@@ -111,9 +103,7 @@ def test_no_legacy_dummy_backtest() -> None:
     czsc, err = _safe_import("czsc")
     assert czsc is not None, f"failed to import czsc: {err}"
     leftover = [name for name in snap["removed"] if hasattr(czsc, name)]
-    assert not leftover, (
-        f"czsc.* still exposes legacy names that must be removed: {leftover}"
-    )
+    assert not leftover, f"czsc.* still exposes legacy names that must be removed: {leftover}"
 
 
 def test_no_czsc_use_python_branch() -> None:
@@ -125,9 +115,7 @@ def test_no_czsc_use_python_branch() -> None:
     envs, err = _safe_import("czsc.envs")
     assert envs is not None, f"failed to import czsc.envs: {err}"
     leftover = [name for name in snap["removed_envs"] if hasattr(envs, name)]
-    assert not leftover, (
-        f"czsc.envs still exposes removed env vars: {leftover}"
-    )
+    assert not leftover, f"czsc.envs still exposes removed env vars: {leftover}"
 
 
 def test_weight_backtest_comes_from_wbt() -> None:

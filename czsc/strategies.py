@@ -25,8 +25,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
 from czsc._compat import (
     bars_to_dataframe,
     position_dump_to_runtime,
@@ -35,9 +33,12 @@ from czsc._compat import (
     sort_freqs,
 )
 from czsc._native import Position
+
 # 直接调用 Rust 端的派生器（用下划线后缀别名，避免与同名公开 API 混淆）
 from czsc._native import (
     derive_signals_config as _derive_signals_config_impl,
+)
+from czsc._native import (
     derive_signals_freqs as _derive_signals_freqs_impl,
 )
 from czsc.research import run_replay, run_research
@@ -216,9 +217,7 @@ class CzscStrategyBase(ABC):
             payload.pop("symbol", None)
             # md5 校验码：基于序列化字符串生成，加载时可校验配置完整性
             payload["md5"] = hashlib.md5(str(payload).encode("utf-8")).hexdigest()
-            (out_dir / f"{payload['name']}.json").write_text(
-                json.dumps(payload, ensure_ascii=False), encoding="utf-8"
-            )
+            (out_dir / f"{payload['name']}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
 
     def load_positions(self, files, check=True):
         """
@@ -262,9 +261,7 @@ class CzscStrategyBase(ABC):
             "base_freq": self.base_freq,
             "signals_module": self.signals_module_name,
             "signals_config": [signal_config_to_runtime(cfg) for cfg in self.signals_config],
-            "positions": [
-                position_dump_to_runtime(pos.dump(with_data=False)) for pos in self.positions
-            ],
+            "positions": [position_dump_to_runtime(pos.dump(with_data=False)) for pos in self.positions],
             "market": self.kwargs.get("market", "默认"),
             "bg_max_count": int(self.kwargs.get("bg_max_count", 5000)),
             # 仅当 sdt 存在时才注入字段，避免显式写 None 触发 Rust 端 schema 错误
@@ -326,6 +323,4 @@ class CzscJsonStrategy(CzscStrategyBase):
     @property
     def positions(self):
         """从 ``files_position`` 加载并返回 Position 列表，受 ``check_position`` 控制是否校验"""
-        return self.load_positions(
-            self.kwargs["files_position"], self.kwargs.get("check_position", True)
-        )
+        return self.load_positions(self.kwargs["files_position"], self.kwargs.get("check_position", True))

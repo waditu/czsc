@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 模块说明:
     聚宽（JQData）HTTP 数据接口的轻量封装。
@@ -27,18 +26,19 @@
         - 单次 K 线请求最大 5000 条，超过会触发 warning 并被服务端截断；
         - 区间查询超过 1000 个交易日时同样可能失败，需要自行分段。
 """
+
+import json
 import os
 import pickle
-import json
-import requests
 import warnings
 from collections import OrderedDict
-import pandas as pd
 from datetime import datetime, timedelta
-from typing import List
 from urllib.parse import quote
 
-from czsc import RawBar, Freq, BarGenerator, freq_end_time
+import pandas as pd
+import requests
+
+from czsc import BarGenerator, Freq, RawBar, freq_end_time
 
 # CZSC 内部周期字符串到聚宽 unit 字符串的映射
 freq_cn2jq = {
@@ -288,7 +288,7 @@ def get_all_securities(code, date=None) -> pd.DataFrame:
 
 def get_kline(
     symbol: str, end_date: [datetime, str], freq: str, start_date: [datetime, str] = None, count=None, fq: bool = True
-) -> List[RawBar]:
+) -> list[RawBar]:
     """获取 K 线数据并转换为 ``RawBar`` 列表。
 
     支持两种调用模式：
@@ -391,7 +391,7 @@ def get_kline(
 
 def get_kline_period(
     symbol: str, start_date: [datetime, str], end_date: [datetime, str], freq: str, fq=True
-) -> List[RawBar]:
+) -> list[RawBar]:
     """获取指定时间段的行情数据（仅区间模式，固定使用 ``get_price_period``）。
 
     与 ``get_kline`` 的区别：本函数强制使用 start_date + end_date，对超长区间会发出告警。
@@ -461,7 +461,7 @@ def get_kline_period(
     return bars
 
 
-def get_init_bg(symbol: str, end_dt: [str, datetime], base_freq: str, freqs: List[str], max_count=1000, fq=True):
+def get_init_bg(symbol: str, end_dt: [str, datetime], base_freq: str, freqs: list[str], max_count=1000, fq=True):
     """获取指定标的的初始化 BarGenerator 以及待重放数据。
 
     用于实时回放/回测的启动阶段：
@@ -577,7 +577,7 @@ def get_share_basic(symbol):
     :return: collections.OrderedDict, 基础面汇总信息
     """
     # 公司基础信息：股票名称、所属行业、地域、主营业务等
-    basic_info = run_query(table="finance.STK_COMPANY_INFO", conditions="code#=#{}".format(symbol), count=1)
+    basic_info = run_query(table="finance.STK_COMPANY_INFO", conditions=f"code#=#{symbol}", count=1)
     basic_info = basic_info.iloc[0].to_dict()
 
     f10 = OrderedDict()
@@ -605,27 +605,27 @@ def get_share_basic(symbol):
     for year in ["2017", "2018", "2019", "2020"]:
         indicator = get_fundamental(table="indicator", symbol=symbol, date=year)
         # indicator.get(key, 0) 可能返回 None 或空字符串，因此再做一次真值判断后再转 float
-        f10["{}EPS".format(year)] = float(indicator.get("eps", 0)) if indicator.get("eps", 0) else 0
-        f10["{}ROA".format(year)] = float(indicator.get("roa", 0)) if indicator.get("roa", 0) else 0
-        f10["{}ROE".format(year)] = float(indicator.get("roe", 0)) if indicator.get("roe", 0) else 0
-        f10["{}销售净利率(%)".format(year)] = (
+        f10[f"{year}EPS"] = float(indicator.get("eps", 0)) if indicator.get("eps", 0) else 0
+        f10[f"{year}ROA"] = float(indicator.get("roa", 0)) if indicator.get("roa", 0) else 0
+        f10[f"{year}ROE"] = float(indicator.get("roe", 0)) if indicator.get("roe", 0) else 0
+        f10[f"{year}销售净利率(%)"] = (
             float(indicator.get("net_profit_margin", 0)) if indicator.get("net_profit_margin", 0) else 0
         )
-        f10["{}销售毛利率(%)".format(year)] = (
+        f10[f"{year}销售毛利率(%)"] = (
             float(indicator.get("gross_profit_margin", 0)) if indicator.get("gross_profit_margin", 0) else 0
         )
-        f10["{}营业收入同比增长率(%)".format(year)] = (
+        f10[f"{year}营业收入同比增长率(%)"] = (
             float(indicator.get("inc_revenue_year_on_year", 0)) if indicator.get("inc_revenue_year_on_year", 0) else 0
         )
-        f10["{}营业收入环比增长率(%)".format(year)] = (
+        f10[f"{year}营业收入环比增长率(%)"] = (
             float(indicator.get("inc_revenue_annual", 0)) if indicator.get("inc_revenue_annual", 0) else 0
         )
-        f10["{}营业利润同比增长率(%)".format(year)] = (
+        f10[f"{year}营业利润同比增长率(%)"] = (
             float(indicator.get("inc_operation_profit_year_on_year", 0))
             if indicator.get("inc_operation_profit_year_on_year", 0)
             else 0
         )
-        f10["{}经营活动产生的现金流量净额/营业收入(%)".format(year)] = (
+        f10[f"{year}经营活动产生的现金流量净额/营业收入(%)"] = (
             float(indicator.get("ocf_to_revenue", 0)) if indicator.get("ocf_to_revenue", 0) else 0
         )
 
@@ -633,7 +633,7 @@ def get_share_basic(symbol):
     msg = "{}（{}）@{}\n".format(f10["股票代码"], f10["股票名称"], f10["地域"])
     msg += "\n{}\n".format("*" * 30)
     for k in ["行业", "主营", "PE_TTM", "PE", "PB", "总市值（亿）", "流通市值（亿）", "流通比（%）", "同花顺F10"]:
-        msg += "{}：{}\n".format(k, f10[k])
+        msg += f"{k}：{f10[k]}\n"
 
     msg += "\n{}\n".format("*" * 30)
     cols = [
@@ -650,7 +650,7 @@ def get_share_basic(symbol):
     for k in cols:
         # 把 4 年同一指标横向拼接，便于一眼看出趋势
         msg += k + "：{} | {} | {} | {}\n".format(
-            *[f10["{}{}".format(year, k)] for year in ["2017", "2018", "2019", "2020"]]
+            *[f10[f"{year}{k}"] for year in ["2017", "2018", "2019", "2020"]]
         )
 
     f10["msg"] = msg

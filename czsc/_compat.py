@@ -23,11 +23,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
-
 
 # 周期字符串到排序权重的映射表
 # 数字越小代表越小级别（越高频），按此权重做稳定排序后，
@@ -171,9 +171,7 @@ def position_dump_to_runtime(payload: dict[str, Any]) -> dict[str, Any]:
             event_copy = dict(event)
             # 三种信号关系字段：必须存在但允许为空列表
             for sig_key in ("signals_all", "signals_any", "signals_not"):
-                event_copy[sig_key] = [
-                    signal_kv_to_string(sig) for sig in list(event_copy.get(sig_key) or [])
-                ]
+                event_copy[sig_key] = [signal_kv_to_string(sig) for sig in list(event_copy.get(sig_key) or [])]
             events.append(event_copy)
         out[event_key] = events
     return out
@@ -371,9 +369,7 @@ def py_repr_json(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ", ".join(py_repr_json(item) for item in value) + "]"
     if isinstance(value, dict):
-        return "{" + ", ".join(
-            f"'{py_escape_str(str(key))}': {py_repr_json(val)}" for key, val in value.items()
-        ) + "}"
+        return "{" + ", ".join(f"'{py_escape_str(str(key))}': {py_repr_json(val)}" for key, val in value.items()) + "}"
     # 兜底：把非典型类型按字符串处理，再走一次递归
     return py_repr_json(str(value))
 

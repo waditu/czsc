@@ -17,12 +17,14 @@ import pytest
 
 def _make_dfw(weights: list[float], prices: list[float], symbol: str = "X") -> pd.DataFrame:
     assert len(weights) == len(prices)
-    return pd.DataFrame({
-        "dt": pd.date_range("2024-01-01", periods=len(prices), freq="D"),
-        "symbol": symbol,
-        "weight": weights,
-        "price": prices,
-    })
+    return pd.DataFrame(
+        {
+            "dt": pd.date_range("2024-01-01", periods=len(prices), freq="D"),
+            "symbol": symbol,
+            "weight": weights,
+            "price": prices,
+        }
+    )
 
 
 def test_long_position_no_stop():
@@ -104,9 +106,18 @@ def test_required_output_columns():
     dfw = _make_dfw(weights=[1.0, 1.0], prices=[100.0, 101.0])
     out = stoploss_by_direction(dfw, stoploss=0.05)
 
-    required = {"dt", "symbol", "raw_weight", "weight", "price",
-                "hold_returns", "min_hold_returns", "returns",
-                "order_id", "is_stop"}
+    required = {
+        "dt",
+        "symbol",
+        "raw_weight",
+        "weight",
+        "price",
+        "hold_returns",
+        "min_hold_returns",
+        "returns",
+        "order_id",
+        "is_stop",
+    }
     assert required.issubset(set(out.columns))
 
 

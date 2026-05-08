@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 作者: zengbin93
 邮箱: zeng_bin8888@163.com
@@ -32,17 +31,20 @@
         - 数据接口由内部服务 ``http://zbczsc.com:9106`` 提供，外网用户无权访问；
         - 缓存目录默认位于 ``~/.quant_data_cache``，可以通过环境变量 ``CZSC_CACHE_PATH`` 覆盖。
 """
+
 import os
 import time
-import czsc
-import requests
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
 import loguru
 import pandas as pd
+import requests
 from tqdm import tqdm
-from pathlib import Path
-from datetime import datetime
-from czsc import RawBar, Freq
-from typing import Dict, List, Any
+
+import czsc
+from czsc import Freq
 
 # 首次使用需要打开一个 Python 终端按如下方式设置 token，或者直接在环境变量中设置 CZSC_TOKEN
 # 示例：czsc.set_url_token(token='your token', url='http://zbczsc.com:9106')
@@ -283,7 +285,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     if "SH" in symbol or "SZ" in symbol:
         # 复权类型映射：本地中文枚举到底层接口缩写
         fq_map = {"前复权": "qfq", "后复权": "hfq", "不复权": None}
-        adj = fq_map.get(fq, None)
+        adj = fq_map.get(fq)
 
         # 标的代码格式为 "code#asset"，asset 取首字母即可（s/e/i 等）
         code, asset = symbol.split("#")
@@ -717,7 +719,7 @@ class StrategyClient:
         self._setup_headers()
         self.logger.info("访问令牌已更新")
 
-    def _make_request(self, method: str, endpoint: str, data: Dict = None) -> Dict:
+    def _make_request(self, method: str, endpoint: str, data: dict = None) -> dict:
         """统一的 HTTP 请求底层方法（内部方法）。
 
         负责拼接 URL、根据 method 选择 GET/POST 调用、统一异常处理与日志输出。
@@ -750,7 +752,7 @@ class StrategyClient:
             self.logger.error(f"响应解析失败: {e}")
             raise
 
-    def get_all_strategy_metadata(self) -> List[Dict]:
+    def get_all_strategy_metadata(self) -> list[dict]:
         """获取所有策略元数据。
 
         :return: list[dict], 策略元数据列表；接口失败时返回空列表
@@ -872,7 +874,7 @@ class StrategyClient:
             self.logger.error(f"删除策略元数据失败: {result.get('msg', '未知错误')}")
             return False
 
-    def get_all_strategy_latest_weights(self) -> List[Dict]:
+    def get_all_strategy_latest_weights(self) -> list[dict]:
         """获取所有策略的最新持仓权重快照。
 
         :return: list[dict], 策略权重数据列表；接口失败时返回空列表
@@ -887,7 +889,7 @@ class StrategyClient:
             self.logger.error(f"获取最新权重数据失败: {result.get('msg', '未知错误')}")
             return []
 
-    def query_strategy_weight(self, strategy: str, sdt: str = "", edt: str = "", symbols: List[str] = None) -> Dict:
+    def query_strategy_weight(self, strategy: str, sdt: str = "", edt: str = "", symbols: list[str] = None) -> dict:
         """查询单个策略的持仓权重。
 
         :param strategy: str, 策略名称
@@ -926,7 +928,7 @@ class StrategyClient:
             self.logger.error(f"删除策略失败: {result.get('msg', '未知错误')}")
             return False
 
-    def clear_cache(self, tokens: List[str] = None, roles: List[int] = None) -> bool:
+    def clear_cache(self, tokens: list[str] = None, roles: list[int] = None) -> bool:
         """清除服务端的接口缓存。
 
         :param tokens: list[str], 可选, 需要清除的 token 列表
@@ -954,7 +956,7 @@ class StrategyClient:
         author: str,
         outsample_sdt: str,
         upload_token: str = None,
-    ) -> Dict:
+    ) -> dict:
         """上传策略权重数据。
 
         与模块级 ``upload_strategy`` 函数功能一致，区别在于参数以独立形参的形式暴露，
@@ -970,8 +972,9 @@ class StrategyClient:
         :return: dict, 上传接口返回的结果
         :raises requests.exceptions.RequestException: 网络异常时抛出
         """
-        import pandas as pd
         import os
+
+        import pandas as pd
 
         # 数据预处理：拷贝以避免污染外部数据
         df_copy = df.copy()

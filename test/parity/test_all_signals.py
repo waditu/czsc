@@ -38,7 +38,6 @@ import pytest
 
 from ._signal_defaults import render
 
-
 # --------------------------------------------------------------------- #
 # K 线 fixture                                                          #
 # --------------------------------------------------------------------- #
@@ -66,6 +65,7 @@ def _make_bars(freq: str, sdt: str, edt: str) -> pd.DataFrame:
 # --------------------------------------------------------------------- #
 # 策略合成                                                              #
 # --------------------------------------------------------------------- #
+
 
 def _build_all_signals_strategy(czsc_module, base_freq: str):
     """构造覆盖全部 K 线信号的运行时策略。
@@ -151,14 +151,13 @@ def _signal_columns(df: pd.DataFrame) -> list[str]:
 # 参数化等价性测试                                                      #
 # --------------------------------------------------------------------- #
 
+
 @pytest.mark.parametrize(
     "label,base_freq,sdt,edt",
     DATASETS,
     ids=[d[0] for d in DATASETS],
 )
-def test_all_signals_parity(
-    rs_czsc_module, czsc_module, label, base_freq, sdt, edt, capsys
-):
+def test_all_signals_parity(rs_czsc_module, czsc_module, label, base_freq, sdt, edt, capsys):
     """对每种规模的数据集，``czsc.run_research`` 输出的每一列信号都
     必须与 ``rs_czsc.run_research`` 完全相等。
 
@@ -193,17 +192,13 @@ def test_all_signals_parity(
     czsc_df = arrow_bytes_to_pd_df(bytes(czsc_payload["signals_arrow"]))
 
     # shape 必须完全一致
-    assert rs_df.shape == czsc_df.shape, (
-        f"[{label}] shape mismatch: rs={rs_df.shape} czsc={czsc_df.shape}"
-    )
+    assert rs_df.shape == czsc_df.shape, f"[{label}] shape mismatch: rs={rs_df.shape} czsc={czsc_df.shape}"
 
     # 列集合严格相等：任何一边出现额外列都视为失败
     rs_cols = set(rs_df.columns)
     czsc_cols = set(czsc_df.columns)
     assert rs_cols == czsc_cols, (
-        f"[{label}] column set differs.\n"
-        f"  rs only: {rs_cols - czsc_cols}\n"
-        f"  czsc only: {czsc_cols - rs_cols}"
+        f"[{label}] column set differs.\n  rs only: {rs_cols - czsc_cols}\n  czsc only: {czsc_cols - rs_cols}"
     )
 
     # 逐列、逐 cell 对比信号值，记录所有不一致列
@@ -217,8 +212,12 @@ def test_all_signals_parity(
             mask = rs_series.ne(czsc_series) | (rs_series.isna() ^ czsc_series.isna())
             first_idx = mask.idxmax() if mask.any() else None
             diverging.append(
-                (col, first_idx, rs_series.iloc[first_idx] if first_idx is not None else None,
-                 czsc_series.iloc[first_idx] if first_idx is not None else None)
+                (
+                    col,
+                    first_idx,
+                    rs_series.iloc[first_idx] if first_idx is not None else None,
+                    czsc_series.iloc[first_idx] if first_idx is not None else None,
+                )
             )
 
     ratio = czsc_elapsed / rs_elapsed if rs_elapsed > 0 else float("inf")
@@ -234,6 +233,5 @@ def test_all_signals_parity(
         )
 
     assert not diverging, (
-        f"[{label}] {len(diverging)} signal columns diverge.\n"
-        f"  first 5 (col, row, rs, czsc): {diverging[:5]}"
+        f"[{label}] {len(diverging)} signal columns diverge.\n  first 5 (col, row, rs, czsc): {diverging[:5]}"
     )

@@ -2,10 +2,11 @@
 # ruff: noqa: E501, F401
 
 import builtins
-import numpy
-import numpy.typing
 import typing
 from enum import Enum
+
+import numpy
+import numpy.typing
 
 class BI:
     r"""
@@ -116,21 +117,29 @@ class BI:
         r"""
         缓存字典（与 czsc 库兼容）
         """
-    def __new__(cls, symbol:builtins.str, direction:Direction, fx_a:FX, fx_b:FX, fxs:typing.Sequence[FX], bars:typing.Sequence[NewBar]) -> BI: ...
-    def get_cache_with_default(self, _key:builtins.str, default_value:builtins.float) -> builtins.float:
+    def __new__(
+        cls,
+        symbol: builtins.str,
+        direction: Direction,
+        fx_a: FX,
+        fx_b: FX,
+        fxs: typing.Sequence[FX],
+        bars: typing.Sequence[NewBar],
+    ) -> BI: ...
+    def get_cache_with_default(self, _key: builtins.str, default_value: builtins.float) -> builtins.float:
         r"""
         获取缓存值，如果不存在则返回默认值（与 czsc 库兼容）
         """
-    def get_price_linear(self, n:builtins.int) -> builtins.float:
+    def get_price_linear(self, n: builtins.int) -> builtins.float:
         r"""
         获取线性价格（与 czsc 库兼容）
         """
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:BI, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: BI, op: int) -> builtins.bool: ...
 
 class BarGenerator:
     @property
-    def symbol_py(self) -> typing.Optional[builtins.str]:
+    def symbol_py(self) -> builtins.str | None:
         r"""
         获取所属品种 - Python 属性
         """
@@ -140,7 +149,7 @@ class BarGenerator:
         获取基准频率
         """
     @property
-    def end_dt(self) -> typing.Optional[typing.Any]:
+    def end_dt(self) -> typing.Any | None:
         r"""
         获取end_dt属性（Python兼容）
         """
@@ -149,28 +158,34 @@ class BarGenerator:
         r"""
         获取各周期K线数据 - 返回字典，键为频率字符串，值为K线列表
         """
-    def __new__(cls, base_freq:typing.Any, freqs:typing.Any, max_count:builtins.int=2000, market:typing.Optional[typing.Any]=None) -> BarGenerator: ...
-    def init_freq_bars(self, freq:typing.Any, bars:typing.Sequence[RawBar]) -> None:
+    def __new__(
+        cls,
+        base_freq: typing.Any,
+        freqs: typing.Any,
+        max_count: builtins.int = 2000,
+        market: typing.Any | None = None,
+    ) -> BarGenerator: ...
+    def init_freq_bars(self, freq: typing.Any, bars: typing.Sequence[RawBar]) -> None:
         r"""
         初始化某个周期的K线序列
-        
+
         # 函数计算逻辑
-        
+
         1. 检查输入的`freq`是否存在于`self.freq_bars`的键中。如果不存在，返回错误。
         2. 检查`self.freq_bars[freq]`是否为空。如果不为空，返回错误，表示不允许重复初始化。
         3. 如果以上检查都通过，将输入的`bars`存储到`self.freq_bars[freq]`中。
         4. 从`bars`中获取最后一根K线的交易标的代码，更新`self.symbol`。
-        
+
         # Arguments
-        
+
         * `freq` - 周期名称 (支持字符串或Freq枚举)
         * `bars` - K线序列
         """
-    def get_latest_date(self) -> typing.Optional[builtins.str]:
+    def get_latest_date(self) -> builtins.str | None:
         r"""
         获取最新K线日期
         """
-    def update(self, bar:RawBar) -> None:
+    def update(self, bar: RawBar) -> None:
         r"""
         从Python RawBar对象更新K线数据 - 支持直接自动转换
         """
@@ -178,7 +193,7 @@ class BarGenerator:
         r"""
         支持 pickle 序列化 - 使用 __reduce__ 方法
         """
-    def __setstate__(self, state:typing.Any) -> None:
+    def __setstate__(self, state: typing.Any) -> None:
         r"""
         支持 pickle 反序列化
         """
@@ -254,19 +269,19 @@ class CZSC:
         r"""
         缓存字典（与 czsc 库兼容）
         """
-    def __new__(cls, bars_raw:typing.Sequence[RawBar], max_bi_num:builtins.int=50) -> CZSC: ...
+    def __new__(cls, bars_raw: typing.Sequence[RawBar], max_bi_num: builtins.int = 50) -> CZSC: ...
     @staticmethod
-    def from_dataframe(df_bytes:bytes, freq:Freq, max_bi_num:builtins.int=50) -> CZSC:
+    def from_dataframe(df_bytes: bytes, freq: Freq, max_bi_num: builtins.int = 50) -> CZSC:
         r"""
         直接从Arrow格式的DataFrame创建CZSC对象，避免中间转换
         这是高性能的批量创建接口，适用于大量数据的初始化
-        
+
         :param df_bytes: Arrow IPC格式的DataFrame字节数据
         :param freq: K线频率
         :param max_bi_num: 最大笔数量限制
         :return: CZSC对象
         """
-    def open_in_browser(self, _renderer:typing.Optional[builtins.str]=None) -> builtins.str:
+    def open_in_browser(self, _renderer: builtins.str | None = None) -> builtins.str:
         r"""
         在浏览器中打开（与 czsc 库兼容）
         """
@@ -278,7 +293,7 @@ class CZSC:
         r"""
         转换为 Plotly 格式（与 czsc 库兼容）
         """
-    def update(self, bar:RawBar) -> None:
+    def update(self, bar: RawBar) -> None:
         r"""
         更新K线数据
         """
@@ -286,7 +301,7 @@ class CZSC:
     def __reduce__(self) -> typing.Any:
         r"""
         Pickle support — `__reduce__` returns ``(CZSC, (fixed_point_bars, max_bi_num))``.
-        
+
         `update_bar` drains older bars whose dt is below the current
         first-BI's start (see `bars_raw.drain` block above), so a
         freshly-constructed CZSC's `bars_raw` may still differ from the
@@ -333,17 +348,17 @@ class CzscSignals:
         返回基准周期字符串
         """
     @property
-    def end_dt(self) -> typing.Optional[typing.Any]:
+    def end_dt(self) -> typing.Any | None:
         r"""
         返回最新时间，作为 pandas Timestamp
         """
     @property
-    def bid(self) -> typing.Optional[builtins.int]:
+    def bid(self) -> builtins.int | None:
         r"""
         返回当前 bar id
         """
     @property
-    def latest_price(self) -> typing.Optional[builtins.float]:
+    def latest_price(self) -> builtins.float | None:
         r"""
         返回最新价格
         """
@@ -352,8 +367,8 @@ class CzscSignals:
         r"""
         返回原始信号配置
         """
-    def __new__(cls, bg:BarGenerator, signals_config:list) -> CzscSignals: ...
-    def update_signals(self, bar:RawBar) -> None:
+    def __new__(cls, bg: BarGenerator, signals_config: list) -> CzscSignals: ...
+    def update_signals(self, bar: RawBar) -> None:
         r"""
         更新信号
         """
@@ -404,17 +419,17 @@ class CzscTrader:
         返回基准周期字符串
         """
     @property
-    def end_dt(self) -> typing.Optional[typing.Any]:
+    def end_dt(self) -> typing.Any | None:
         r"""
         返回最新时间，作为 pandas Timestamp
         """
     @property
-    def bid(self) -> typing.Optional[builtins.int]:
+    def bid(self) -> builtins.int | None:
         r"""
         返回当前 bar id
         """
     @property
-    def latest_price(self) -> typing.Optional[builtins.float]:
+    def latest_price(self) -> builtins.float | None:
         r"""
         返回最新价格
         """
@@ -433,24 +448,26 @@ class CzscTrader:
         r"""
         返回是否有仓位发生变化
         """
-    def __new__(cls, bg:BarGenerator, positions:list, signals_config:list, ensemble_method:builtins.str='mean') -> CzscTrader: ...
-    def update(self, bar:RawBar) -> None:
+    def __new__(
+        cls, bg: BarGenerator, positions: list, signals_config: list, ensemble_method: builtins.str = "mean"
+    ) -> CzscTrader: ...
+    def update(self, bar: RawBar) -> None:
         r"""
         更新信号和仓位
         """
-    def on_bar(self, bar:RawBar) -> None:
+    def on_bar(self, bar: RawBar) -> None:
         r"""
         更新信号和仓位（同 update）
         """
-    def on_sig(self, sig:dict) -> None:
+    def on_sig(self, sig: dict) -> None:
         r"""
         基于信号字典更新仓位
         """
-    def get_ensemble_pos(self, method:typing.Optional[builtins.str]=None) -> builtins.float:
+    def get_ensemble_pos(self, method: builtins.str | None = None) -> builtins.float:
         r"""
         获取集成后的仓位值
         """
-    def get_position(self, name:builtins.str) -> typing.Optional[Position]:
+    def get_position(self, name: builtins.str) -> Position | None:
         r"""
         根据名称获取仓位
         """
@@ -458,7 +475,7 @@ class CzscTrader:
         r"""
         获取当前信号字典
         """
-    def update_signals(self, bar:RawBar) -> None:
+    def update_signals(self, bar: RawBar) -> None:
         r"""
         仅更新信号（不更新仓位）
         """
@@ -493,16 +510,23 @@ class Event:
         r"""
         获取SHA256哈希
         """
-    def __new__(cls, operate:Operate, signals_all:typing.Sequence[Signal]=[], signals_any:typing.Sequence[Signal]=[], signals_not:typing.Sequence[Signal]=[], name:builtins.str='') -> Event: ...
+    def __new__(
+        cls,
+        operate: Operate,
+        signals_all: typing.Sequence[Signal] = [],
+        signals_any: typing.Sequence[Signal] = [],
+        signals_not: typing.Sequence[Signal] = [],
+        name: builtins.str = "",
+    ) -> Event: ...
     @classmethod
-    def from_dict(cls, _cls:type, dict:dict) -> Event: ...
+    def from_dict(cls, _cls: type, dict: dict) -> Event: ...
     @classmethod
-    def from_json(cls, _cls:type, json_str:builtins.str) -> Event: ...
+    def from_json(cls, _cls: type, json_str: builtins.str) -> Event: ...
     def compute_sha8(self) -> builtins.str:
         r"""
         计算SHA8哈希值
         """
-    def is_match(self, signals:typing.Any) -> builtins.bool:
+    def is_match(self, signals: typing.Any) -> builtins.bool:
         r"""
         判断事件是否匹配信号集合，返回是否匹配
         支持多种参数类型：Dict[str, str] 或 Dict[str, Signal] 或 Vec<PySignal>
@@ -518,7 +542,7 @@ class Event:
         导出为字典
         """
     @classmethod
-    def load(cls, _cls:type, data:dict) -> Event:
+    def load(cls, _cls: type, data: dict) -> Event:
         r"""
         从字典加载
         """
@@ -587,9 +611,18 @@ class FX:
         r"""
         直接支持 __dict__ 属性，让 pandas DataFrame() 能正确识别对象
         """
-    def __new__(cls, symbol:builtins.str, dt:typing.Any, mark:Mark, high:builtins.float, low:builtins.float, fx:builtins.float, elements:typing.Sequence[NewBar]) -> FX: ...
+    def __new__(
+        cls,
+        symbol: builtins.str,
+        dt: typing.Any,
+        mark: Mark,
+        high: builtins.float,
+        low: builtins.float,
+        fx: builtins.float,
+        elements: typing.Sequence[NewBar],
+    ) -> FX: ...
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:FX, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: FX, op: int) -> builtins.bool: ...
 
 class FakeBI:
     r"""
@@ -624,7 +657,7 @@ class LiteBar:
     def dt(self) -> builtins.float: ...
     @property
     def price(self) -> builtins.float: ...
-    def __new__(cls, id:builtins.int, dt:builtins.float, price:builtins.float) -> LiteBar: ...
+    def __new__(cls, id: builtins.int, dt: builtins.float, price: builtins.float) -> LiteBar: ...
     def __repr__(self) -> builtins.str: ...
 
 class NewBar:
@@ -660,14 +693,28 @@ class NewBar:
         r"""
         获取构成NewBar的原始K线列表（与elements相同，为兼容czsc库）
         """
-    def __new__(cls, symbol:builtins.str, dt:typing.Any, freq:Freq, open:builtins.float, close:builtins.float, high:builtins.float, low:builtins.float, vol:builtins.float, amount:builtins.float, id:builtins.int=0, elements:typing.Optional[typing.Sequence[RawBar]]=None) -> NewBar: ...
+    def __new__(
+        cls,
+        symbol: builtins.str,
+        dt: typing.Any,
+        freq: Freq,
+        open: builtins.float,
+        close: builtins.float,
+        high: builtins.float,
+        low: builtins.float,
+        vol: builtins.float,
+        amount: builtins.float,
+        id: builtins.int = 0,
+        elements: typing.Sequence[RawBar] | None = None,
+    ) -> NewBar: ...
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:NewBar, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: NewBar, op: int) -> builtins.bool: ...
 
 class Operate:
     r"""
     Python可见的Operate包装器
     """
+
     HL: Operate
     HS: Operate
     HO: Operate
@@ -681,26 +728,26 @@ class Operate:
         兼容性属性：返回操作类型的中文字符串值
         """
     @classmethod
-    def hl(cls, _cls:type) -> Operate: ...
+    def hl(cls, _cls: type) -> Operate: ...
     @classmethod
-    def hs(cls, _cls:type) -> Operate: ...
+    def hs(cls, _cls: type) -> Operate: ...
     @classmethod
-    def ho(cls, _cls:type) -> Operate: ...
+    def ho(cls, _cls: type) -> Operate: ...
     @classmethod
-    def lo(cls, _cls:type) -> Operate: ...
+    def lo(cls, _cls: type) -> Operate: ...
     @classmethod
-    def le(cls, _cls:type) -> Operate: ...
+    def le(cls, _cls: type) -> Operate: ...
     @classmethod
-    def so(cls, _cls:type) -> Operate: ...
+    def so(cls, _cls: type) -> Operate: ...
     @classmethod
-    def se(cls, _cls:type) -> Operate: ...
+    def se(cls, _cls: type) -> Operate: ...
     @classmethod
-    def from_str_py(cls, _cls:type, s:builtins.str) -> Operate: ...
+    def from_str_py(cls, _cls: type, s: builtins.str) -> Operate: ...
     @classmethod
-    def from_str(cls, _cls:type, s:builtins.str) -> Operate: ...
+    def from_str(cls, _cls: type, s: builtins.str) -> Operate: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __eq__(self, other:Operate) -> builtins.bool: ...
+    def __eq__(self, other: Operate) -> builtins.bool: ...
     def __hash__(self) -> builtins.int: ...
     def __reduce__(self) -> typing.Any:
         r"""
@@ -712,7 +759,7 @@ class ParsedSignalDoc:
     Python可见的ParsedSignalDoc包装器
     """
     @property
-    def param_template(self) -> typing.Optional[builtins.str]: ...
+    def param_template(self) -> builtins.str | None: ...
     @property
     def signals(self) -> builtins.list[Signal]: ...
     def __repr__(self) -> builtins.str: ...
@@ -722,19 +769,19 @@ class Pos:
     Python可见的Pos枚举包装器
     """
     @classmethod
-    def short(cls, _cls:type) -> Pos: ...
+    def short(cls, _cls: type) -> Pos: ...
     @classmethod
-    def flat(cls, _cls:type) -> Pos: ...
+    def flat(cls, _cls: type) -> Pos: ...
     @classmethod
-    def long(cls, _cls:type) -> Pos: ...
+    def long(cls, _cls: type) -> Pos: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __eq__(self, other:Pos) -> builtins.bool: ...
-    def __add__(self, other:Pos) -> builtins.float:
+    def __eq__(self, other: Pos) -> builtins.bool: ...
+    def __add__(self, other: Pos) -> builtins.float:
         r"""
         加法运算，用于numpy.mean等数学操作
         """
-    def __radd__(self, other:builtins.float) -> builtins.float:
+    def __radd__(self, other: builtins.float) -> builtins.float:
         r"""
         右加法运算
         """
@@ -746,19 +793,19 @@ class Pos:
         r"""
         整数转换
         """
-    def __lt__(self, other:Pos) -> builtins.bool:
+    def __lt__(self, other: Pos) -> builtins.bool:
         r"""
         比较运算符 - 小于
         """
-    def __le__(self, other:Pos) -> builtins.bool:
+    def __le__(self, other: Pos) -> builtins.bool:
         r"""
         比较运算符 - 小于等于
         """
-    def __gt__(self, other:Pos) -> builtins.bool:
+    def __gt__(self, other: Pos) -> builtins.bool:
         r"""
         比较运算符 - 大于
         """
-    def __ge__(self, other:Pos) -> builtins.bool:
+    def __ge__(self, other: Pos) -> builtins.bool:
         r"""
         比较运算符 - 大于等于
         """
@@ -788,7 +835,7 @@ class Position:
     @property
     def pos_changed(self) -> builtins.bool: ...
     @property
-    def end_dt(self) -> typing.Optional[builtins.float]:
+    def end_dt(self) -> builtins.float | None:
         r"""
         获取最新信号时间
         """
@@ -811,12 +858,22 @@ class Position:
     def unique_signals(self) -> builtins.list[builtins.str]: ...
     @property
     def events(self) -> builtins.list[Event]: ...
-    def __new__(cls, symbol:builtins.str, opens:typing.Sequence[Event], exits:typing.Sequence[Event]=[], interval:builtins.int=0, timeout:builtins.int=1000, stop_loss:builtins.float=1000.0, t0:builtins.bool=False, name:typing.Optional[builtins.str]=None) -> Position: ...
+    def __new__(
+        cls,
+        symbol: builtins.str,
+        opens: typing.Sequence[Event],
+        exits: typing.Sequence[Event] = [],
+        interval: builtins.int = 0,
+        timeout: builtins.int = 1000,
+        stop_loss: builtins.float = 1000.0,
+        t0: builtins.bool = False,
+        name: builtins.str | None = None,
+    ) -> Position: ...
     @classmethod
-    def load_from_file(cls, _cls:type, path:builtins.str) -> Position: ...
+    def load_from_file(cls, _cls: type, path: builtins.str) -> Position: ...
     @classmethod
-    def from_json(cls, _cls:type, json_str:builtins.str) -> Position: ...
-    def save(self, path:builtins.str) -> None:
+    def from_json(cls, _cls: type, json_str: builtins.str) -> Position: ...
+    def save(self, path: builtins.str) -> None:
         r"""
         保存到文件
         """
@@ -828,7 +885,7 @@ class Position:
         r"""
         获取所有相关事件
         """
-    def update(self, arg1:typing.Any, arg2:typing.Optional[typing.Any]=None) -> None:
+    def update(self, arg1: typing.Any, arg2: typing.Any | None = None) -> None:
         r"""
         更新仓位状态（兼容单参数调用）
         """
@@ -836,12 +893,12 @@ class Position:
         r"""
         支持 pickle 序列化 - 使用 __reduce__ 方法
         """
-    def dump(self, with_data:builtins.bool=True) -> typing.Any:
+    def dump(self, with_data: builtins.bool = True) -> typing.Any:
         r"""
         导出Position数据为Python字典
         """
     @classmethod
-    def load(cls, _cls:type, data:typing.Any) -> Position:
+    def load(cls, _cls: type, data: typing.Any) -> Position:
         r"""
         从字典数据加载Position
         """
@@ -893,7 +950,19 @@ class RawBar:
         r"""
         直接支持 __dict__ 属性，让 pandas DataFrame() 能正确识别对象
         """
-    def __new__(cls, symbol:builtins.str, dt:typing.Any, freq:Freq, open:builtins.float, close:builtins.float, high:builtins.float, low:builtins.float, vol:builtins.float, amount:builtins.float, id:builtins.int=0) -> RawBar: ...
+    def __new__(
+        cls,
+        symbol: builtins.str,
+        dt: typing.Any,
+        freq: Freq,
+        open: builtins.float,
+        close: builtins.float,
+        high: builtins.float,
+        low: builtins.float,
+        vol: builtins.float,
+        amount: builtins.float,
+        id: builtins.int = 0,
+    ) -> RawBar: ...
     def _asdict(self) -> typing.Any:
         r"""
         让对象表现得像记录，pandas DataFrame构造器会调用这个
@@ -906,12 +975,12 @@ class RawBar:
         r"""
         支持pickle序列化
         """
-    def __deepcopy__(self, _memo:typing.Any) -> RawBar:
+    def __deepcopy__(self, _memo: typing.Any) -> RawBar:
         r"""
         支持深拷贝
         """
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:RawBar, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: RawBar, op: int) -> builtins.bool: ...
 
 class Signal:
     r"""
@@ -938,22 +1007,35 @@ class Signal:
         """
     @property
     def k2(self) -> builtins.str: ...
-    def __new__(cls, *args, signal:typing.Optional[builtins.str]=None, key:typing.Optional[builtins.str]=None, value:typing.Optional[builtins.str]=None, k1:typing.Optional[builtins.str]=None, k2:typing.Optional[builtins.str]=None, k3:typing.Optional[builtins.str]=None, v1:typing.Optional[builtins.str]=None, v2:typing.Optional[builtins.str]=None, v3:typing.Optional[builtins.str]=None, score:typing.Optional[builtins.int]=None) -> Signal: ...
+    def __new__(
+        cls,
+        *args,
+        signal: builtins.str | None = None,
+        key: builtins.str | None = None,
+        value: builtins.str | None = None,
+        k1: builtins.str | None = None,
+        k2: builtins.str | None = None,
+        k3: builtins.str | None = None,
+        v1: builtins.str | None = None,
+        v2: builtins.str | None = None,
+        v3: builtins.str | None = None,
+        score: builtins.int | None = None,
+    ) -> Signal: ...
     @classmethod
-    def from_string(cls, _cls:type, s:builtins.str) -> Signal: ...
+    def from_string(cls, _cls: type, s: builtins.str) -> Signal: ...
     def to_json(self) -> builtins.str:
         r"""
         添加to_json方法以匹配Python版本
         """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __eq__(self, other:Signal) -> builtins.bool: ...
+    def __eq__(self, other: Signal) -> builtins.bool: ...
     def __hash__(self) -> builtins.int: ...
-    def matches(self, other:Signal) -> builtins.bool:
+    def matches(self, other: Signal) -> builtins.bool:
         r"""
         检查Signal是否匹配另一个Signal
         """
-    def is_match(self, signals_dict:typing.Mapping[builtins.str, builtins.str]) -> builtins.bool:
+    def is_match(self, signals_dict: typing.Mapping[builtins.str, builtins.str]) -> builtins.bool:
         r"""
         判断信号是否与信号字典中的值匹配（Python版本is_match逻辑）
         """
@@ -1015,7 +1097,7 @@ class ZS:
         """
     @property
     def cache(self) -> dict: ...
-    def __new__(cls, bis:typing.Sequence[BI]) -> ZS: ...
+    def __new__(cls, bis: typing.Sequence[BI]) -> ZS: ...
     def is_valid(self) -> builtins.bool:
         r"""
         中枢是否有效
@@ -1025,6 +1107,7 @@ class Direction(Enum):
     r"""
     方向
     """
+
     Up = ...
     r"""
     向上
@@ -1039,7 +1122,7 @@ class Direction(Enum):
         r"""
         获取方向的字符串值（与 czsc 库兼容）
         """
-    def __deepcopy__(self, _memo:typing.Any) -> Direction:
+    def __deepcopy__(self, _memo: typing.Any) -> Direction:
         r"""
         支持深拷贝
         """
@@ -1047,15 +1130,16 @@ class Direction(Enum):
         r"""
         支持pickle序列化
         """
-    def __new__(cls, value:builtins.str) -> Direction: ...
+    def __new__(cls, value: builtins.str) -> Direction: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:typing.Any, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 class Freq(Enum):
     r"""
     时间周期
     """
+
     Tick = ...
     r"""
     逐笔
@@ -1144,7 +1228,7 @@ class Freq(Enum):
     __members__: typing.Any
     @property
     def value(self) -> builtins.str: ...
-    def __deepcopy__(self, _memo:typing.Any) -> Freq:
+    def __deepcopy__(self, _memo: typing.Any) -> Freq:
         r"""
         支持深拷贝
         """
@@ -1152,15 +1236,16 @@ class Freq(Enum):
         r"""
         支持pickle序列化
         """
-    def __new__(cls, value:builtins.str) -> Freq: ...
+    def __new__(cls, value: builtins.str) -> Freq: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:typing.Any, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 class Mark(Enum):
     r"""
     分型类型
     """
+
     D = ...
     r"""
     底分型
@@ -1177,7 +1262,7 @@ class Mark(Enum):
         """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
-    def __richcmp__(self, other:typing.Any, op:int) -> builtins.bool: ...
+    def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 class Market(Enum):
     AShare = ...
@@ -1193,43 +1278,44 @@ class Market(Enum):
     默认
     """
 
-    def __new__(cls, ob:typing.Any) -> Market: ...
+    def __new__(cls, ob: typing.Any) -> Market: ...
 
-def chip_distribution_triangle(data:numpy.typing.NDArray[numpy.float64], price_step:builtins.float, decay_factor:builtins.float) -> tuple[numpy.typing.NDArray[numpy.float64], numpy.typing.NDArray[numpy.float64]]:
+def chip_distribution_triangle(
+    data: numpy.typing.NDArray[numpy.float64], price_step: builtins.float, decay_factor: builtins.float
+) -> tuple[numpy.typing.NDArray[numpy.float64], numpy.typing.NDArray[numpy.float64]]:
     r"""
     计算筹码分布（三角形分布 + 筹码沉淀机制）
-    
+
     此函数用于估算基于历史K线的筹码分布情况，结合三角形分布模型和筹码沉淀（衰减）机制。
-    
+
     # Python 接口说明
-    
+
     输入一个二维 numpy 数组，形状为 (N, 3)，每一行对应一根K线，列顺序为：
     `[high, low, vol]`，类型必须为 `float64`。
-    
+
     示例：
     ```python
     columns = ['high', 'low', 'vol']
     arr2 = df[columns].to_numpy(dtype=np.float64)
     price_centers, chip_dist = chip_distribution_triangle(arr2, 0.01, 0.9)
     ```
-    
+
     # 参数
-    
+
     - `data`: 二维数组，形状为 (N, 3)，分别是每根K线的最高价、最低价和成交量。
     - `price_step`: 分档间隔（如0.01表示以0.01为单位划分价格区间）。
     - `decay_factor`: 筹码衰减因子，表示前一根K线上的筹码有多少比例沉淀保留到下一根K线上，范围为(0, 1)，例如0.98表示保留98%。
-    
+
     # 返回值
-    
+
     返回一个元组 `(price_centers, chip_distribution)`:
     - `price_centers`: 一维数组，表示价格分布区间的中心价位。
     - `chip_distribution`: 一维数组，对应每个价格中心的筹码强度（权重/密度）。
-    
+
     返回的两个数组长度相同，可用于绘制筹码分布图或进一步分析。
     """
 
-def parse_signal_doc(doc:builtins.str) -> ParsedSignalDoc:
+def parse_signal_doc(doc: builtins.str) -> ParsedSignalDoc:
     r"""
     解析文档中的Signal信息
     """
-

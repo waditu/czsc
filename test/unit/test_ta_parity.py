@@ -94,9 +94,7 @@ def test_ema_matches_talib() -> None:
     if not hasattr(ta, "ema"):
         pytest.fail("czsc.ta.ema 尚未暴露")
     actual = ta.ema(series, length=14)
-    np.testing.assert_allclose(
-        np.asarray(actual)[20:], expected[20:], rtol=1e-6, atol=1e-6
-    )
+    np.testing.assert_allclose(np.asarray(actual)[20:], expected[20:], rtol=1e-6, atol=1e-6)
 
 
 def test_sma_matches_talib() -> None:
@@ -116,9 +114,7 @@ def test_sma_matches_talib() -> None:
     if not hasattr(ta, "sma"):
         pytest.fail("czsc.ta.sma 尚未暴露")
     actual = ta.sma(series, length=20)
-    np.testing.assert_allclose(
-        np.asarray(actual)[20:], expected[20:], rtol=1e-6, atol=1e-6
-    )
+    np.testing.assert_allclose(np.asarray(actual)[20:], expected[20:], rtol=1e-6, atol=1e-6)
 
 
 def test_rolling_rank_returns_finite() -> None:
@@ -133,9 +129,7 @@ def test_rolling_rank_returns_finite() -> None:
     if not hasattr(ta, "rolling_rank"):
         pytest.fail("czsc.ta.rolling_rank 尚未暴露")
     out = np.asarray(ta.rolling_rank(_series(), window=20))
-    assert np.isfinite(out[20:]).all(), (
-        "rolling_rank 在预热窗口之后必须产出有限值"
-    )
+    assert np.isfinite(out[20:]).all(), "rolling_rank 在预热窗口之后必须产出有限值"
 
 
 def test_boll_positions_signature() -> None:
@@ -147,9 +141,7 @@ def test_boll_positions_signature() -> None:
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    assert hasattr(ta, "boll_positions"), (
-        "czsc.ta.boll_positions 必须暴露"
-    )
+    assert hasattr(ta, "boll_positions"), "czsc.ta.boll_positions 必须暴露"
 
 
 def test_ultimate_smoother_signature() -> None:
@@ -161,6 +153,4 @@ def test_ultimate_smoother_signature() -> None:
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    assert hasattr(ta, "ultimate_smoother"), (
-        "czsc.ta.ultimate_smoother 必须暴露"
-    )
+    assert hasattr(ta, "ultimate_smoother"), "czsc.ta.ultimate_smoother 必须暴露"

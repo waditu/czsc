@@ -24,12 +24,11 @@ import time
 from pathlib import Path
 
 import pandas as pd
-import pytest
-
 
 # --------------------------------------------------------------------- #
 # 共享辅助函数                                                          #
 # --------------------------------------------------------------------- #
+
 
 def _patch_event_is_match_tuple_contract(module):
     """把 ``module.Event.is_match`` 包装成 (matched, reason) 元组返回。
@@ -111,16 +110,12 @@ def _compare_parquet_trees(rs_root: Path, czsc_root: Path, label: str):
     for rel in sorted(rs_files):
         rs_df = _normalise_parquet(rs_root / rel)
         czsc_df = _normalise_parquet(czsc_root / rel)
-        assert rs_df.shape == czsc_df.shape, (
-            f"[{label}/{rel}] shape mismatch: rs={rs_df.shape} czsc={czsc_df.shape}"
-        )
+        assert rs_df.shape == czsc_df.shape, f"[{label}/{rel}] shape mismatch: rs={rs_df.shape} czsc={czsc_df.shape}"
         # 列集合严格一致："完全一致"意味着任何一边都不能多出列
         rs_cols = set(rs_df.columns)
         czsc_cols = set(czsc_df.columns)
         assert rs_cols == czsc_cols, (
-            f"[{label}/{rel}] column set differs.\n"
-            f"  rs only: {rs_cols - czsc_cols}\n"
-            f"  czsc only: {czsc_cols - rs_cols}"
+            f"[{label}/{rel}] column set differs.\n  rs only: {rs_cols - czsc_cols}\n  czsc only: {czsc_cols - rs_cols}"
         )
         cols = sorted(rs_cols)
         pd.testing.assert_frame_equal(
@@ -134,6 +129,7 @@ def _compare_parquet_trees(rs_root: Path, czsc_root: Path, label: str):
 # --------------------------------------------------------------------- #
 # 示例 1 —— 30分钟笔非多即空.py                                         #
 # --------------------------------------------------------------------- #
+
 
 def _build_long_short_position(module, symbol: str, base_freq: str):
     """构造与 ``30分钟笔非多即空.py::create_long_short_V230909`` 一致的 Position。
@@ -202,9 +198,7 @@ def _run_30m_example(module, bars_df, results_root: Path):
     return elapsed
 
 
-def test_example_30min_long_short_parity(
-    rs_czsc_module, czsc_module, tmp_path, capsys
-):
+def test_example_30min_long_short_parity(rs_czsc_module, czsc_module, tmp_path, capsys):
     """30分钟笔非多即空 示例脚本的端到端等价性。
 
     测试场景：rs_czsc 与 czsc 各跑一次 backtest+replay，输出落到不同目录。
@@ -226,10 +220,7 @@ def test_example_30min_long_short_parity(
     with capsys.disabled():
         ratio = czsc_elapsed / rs_elapsed if rs_elapsed > 0 else float("inf")
         # 顺便打印耗时比，便于跟踪性能
-        print(
-            f"\n[30分钟笔非多即空] rs_czsc={rs_elapsed:.3f}s "
-            f"czsc={czsc_elapsed:.3f}s  ratio={ratio:.2f}x"
-        )
+        print(f"\n[30分钟笔非多即空] rs_czsc={rs_elapsed:.3f}s czsc={czsc_elapsed:.3f}s  ratio={ratio:.2f}x")
 
 
 # --------------------------------------------------------------------- #
@@ -355,9 +346,7 @@ def _run_optimize_example(module, bars_df, results_root: Path):
 
     open_root = results_root / "open_demo"
     open_root.mkdir(parents=True, exist_ok=True)
-    files_position = _materialize_beta_positions(
-        module, "000001", open_root / "base_positions"
-    )
+    files_position = _materialize_beta_positions(module, "000001", open_root / "base_positions")
 
     start = time.perf_counter()
     oop = OpensOptimize(
@@ -377,9 +366,7 @@ def _run_optimize_example(module, bars_df, results_root: Path):
 
     exit_root = results_root / "exit_demo"
     exit_root.mkdir(parents=True, exist_ok=True)
-    files_position_exit = _materialize_beta_positions(
-        module, "000001", exit_root / "base_positions"
-    )
+    files_position_exit = _materialize_beta_positions(module, "000001", exit_root / "base_positions")
     eop = ExitsOptimize(
         symbols=["000001"],
         files_position=files_position_exit,
@@ -397,9 +384,7 @@ def _run_optimize_example(module, bars_df, results_root: Path):
     return time.perf_counter() - start
 
 
-def test_example_use_optimize_parity(
-    rs_czsc_module, czsc_module, tmp_path, capsys
-):
+def test_example_use_optimize_parity(rs_czsc_module, czsc_module, tmp_path, capsys):
     """use_optimize 示例脚本的端到端等价性。
 
     测试场景：rs_czsc 与 czsc 分别跑一遍开仓优化 + 出场优化，输出落到
@@ -421,15 +406,13 @@ def test_example_use_optimize_parity(
 
     with capsys.disabled():
         ratio = czsc_elapsed / rs_elapsed if rs_elapsed > 0 else float("inf")
-        print(
-            f"\n[use_optimize] rs_czsc={rs_elapsed:.3f}s "
-            f"czsc={czsc_elapsed:.3f}s  ratio={ratio:.2f}x"
-        )
+        print(f"\n[use_optimize] rs_czsc={rs_elapsed:.3f}s czsc={czsc_elapsed:.3f}s  ratio={ratio:.2f}x")
 
 
 # --------------------------------------------------------------------- #
 # 示例 3 —— weight_backtest.py                                          #
 # --------------------------------------------------------------------- #
+
 
 def _build_weight_df():
     """构造 ``weight_backtest.py`` 所需的权重 DataFrame。
@@ -443,9 +426,7 @@ def _build_weight_df():
     return df[["dt", "symbol", "weight", "price"]].copy()
 
 
-def test_example_weight_backtest_parity(
-    rs_czsc_module, czsc_module, capsys
-):
+def test_example_weight_backtest_parity(rs_czsc_module, czsc_module, capsys):
     """``WeightBacktest`` 示例的等价性测试（弱化版本）。
 
     关键约定：
@@ -468,9 +449,7 @@ def test_example_weight_backtest_parity(
     df = _build_weight_df()
 
     start = time.perf_counter()
-    rs_wb = rs_czsc_module.WeightBacktest(
-        df, digits=2, n_jobs=1, weight_type="ts"
-    )
+    rs_wb = rs_czsc_module.WeightBacktest(df, digits=2, n_jobs=1, weight_type="ts")
     rs_stats = dict(rs_wb.stats)
     rs_elapsed = time.perf_counter() - start
 
@@ -495,9 +474,7 @@ def test_example_weight_backtest_parity(
         if isinstance(rv, (int, float)) and isinstance(cv, (int, float)):
             if abs(rv - cv) > 0.005:  # 0.5 个百分点的容差
                 diffs[k] = (rv, cv)
-    assert not diffs, (
-        f"core stats divergence beyond 0.005 tolerance: {diffs}"
-    )
+    assert not diffs, f"core stats divergence beyond 0.005 tolerance: {diffs}"
 
     with capsys.disabled():
         ratio = czsc_elapsed / rs_elapsed if rs_elapsed > 0 else float("inf")

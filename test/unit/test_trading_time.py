@@ -75,14 +75,9 @@ def test_is_trading_time(market: str, dt: datetime, expected: bool) -> None:
     if czsc is None:
         pytest.fail(f"导入 czsc 失败：{err}")
     if not hasattr(czsc, "is_trading_time"):
-        pytest.fail(
-            "czsc.is_trading_time 尚未暴露 — czsc-utils 必须添加该函数"
-        )
+        pytest.fail("czsc.is_trading_time 尚未暴露 — czsc-utils 必须添加该函数")
     actual = czsc.is_trading_time(dt, market=market)
-    assert actual is expected, (
-        f"is_trading_time({market}, {dt.isoformat()}) 返回 {actual}，"
-        f"预期 {expected}"
-    )
+    assert actual is expected, f"is_trading_time({market}, {dt.isoformat()}) 返回 {actual}，预期 {expected}"
 
 
 def test_is_trading_time_module_origin() -> None:
@@ -101,6 +96,4 @@ def test_is_trading_time_module_origin() -> None:
     if fn is None:
         pytest.fail("czsc.is_trading_time 缺失")
     module = getattr(fn, "__module__", "?")
-    assert module.startswith("czsc."), (
-        f"is_trading_time 必须来自 czsc._native（实际 {module!r}）"
-    )
+    assert module.startswith("czsc."), f"is_trading_time 必须来自 czsc._native（实际 {module!r}）"

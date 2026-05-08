@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from wbt import WeightBacktest
 
 from .base import apply_stats_style, generate_component_key
-from wbt import WeightBacktest
 
 
 def show_optuna_study(study, key=None, **kwargs):
@@ -334,6 +334,7 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
     :return: None
     """
     from wbt import daily_performance
+
     from czsc.eda import cal_yearly_days
 
     df = df[["symbol", "dt", "price"]].copy()
@@ -386,10 +387,9 @@ def show_quarterly_effect(returns: pd.Series, key=None):
     :return: None
     """
     import plotly.express as px
+    from wbt import daily_performance
 
     from czsc.eda import cal_yearly_days
-
-    from wbt import daily_performance
 
     returns.index = pd.to_datetime(returns.index)
     yearly_days = cal_yearly_days(returns.index.to_list())
@@ -761,6 +761,7 @@ def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: str | None = Non
     :return: None
     """
     from wbt import daily_performance
+
     from czsc.eda import cal_yearly_days
 
     if benchmark is not None:

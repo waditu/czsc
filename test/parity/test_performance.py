@@ -14,10 +14,8 @@ from __future__ import annotations
 import json
 import statistics
 import time
-from pathlib import Path
 
 import pandas as pd
-
 
 # 性能回归预算：czsc 不应慢于 rs_czsc 1.5 倍
 PERF_RATIO_BUDGET = 1.5
@@ -96,6 +94,7 @@ def _backtest_perf(module, bars_df, freq, sdt, tmp_path):
 # 测试 1 —— CZSC 分析器构造性能                                          #
 # --------------------------------------------------------------------- #
 
+
 def test_perf_czsc_analyzer(rs_czsc_module, czsc_module, mock_kline_df, capsys):
     """约 522 根日线下，``CZSC(bars)`` 分析器的耗时对比。
 
@@ -111,20 +110,17 @@ def test_perf_czsc_analyzer(rs_czsc_module, czsc_module, mock_kline_df, capsys):
 
     ratio = czsc_t / rs_t if rs_t > 0 else float("inf")
     with capsys.disabled():
-        print(
-            f"\n[CZSC(522 daily bars)] rs_czsc={rs_t * 1000:.2f}ms "
-            f"czsc={czsc_t * 1000:.2f}ms ratio={ratio:.2f}x"
-        )
+        print(f"\n[CZSC(522 daily bars)] rs_czsc={rs_t * 1000:.2f}ms czsc={czsc_t * 1000:.2f}ms ratio={ratio:.2f}x")
     # 这是宽松预算 —— 性能差异主要起到信息提示作用，而不是阻塞性的卡口
     assert ratio <= PERF_RATIO_BUDGET, (
-        f"czsc analyzer is {ratio:.2f}x slower than rs_czsc baseline "
-        f"({PERF_RATIO_BUDGET}x budget exceeded)"
+        f"czsc analyzer is {ratio:.2f}x slower than rs_czsc baseline ({PERF_RATIO_BUDGET}x budget exceeded)"
     )
 
 
 # --------------------------------------------------------------------- #
 # 测试 2 —— 多种 K 线规模下的 backtest 性能                              #
 # --------------------------------------------------------------------- #
+
 
 def test_perf_backtest_scaling(rs_czsc_module, czsc_module, tmp_path, capsys):
     """30 分钟策略 backtest 在不同 K 线规模下的耗时对比。
@@ -156,18 +152,14 @@ def test_perf_backtest_scaling(rs_czsc_module, czsc_module, tmp_path, capsys):
         backtest_sdt = pd.to_datetime(sdt_data) + pd.Timedelta(days=60)
         backtest_sdt_str = backtest_sdt.strftime("%Y-%m-%d")
 
-        rs_t = _backtest_perf(
-            rs_czsc_module, df, "30分钟", backtest_sdt_str, tmp_path / "rs"
-        )
-        czsc_t = _backtest_perf(
-            czsc_module, df, "30分钟", backtest_sdt_str, tmp_path / "czsc"
-        )
+        rs_t = _backtest_perf(rs_czsc_module, df, "30分钟", backtest_sdt_str, tmp_path / "rs")
+        czsc_t = _backtest_perf(czsc_module, df, "30分钟", backtest_sdt_str, tmp_path / "czsc")
         ratio = czsc_t / rs_t if rs_t > 0 else float("inf")
         rows.append((len(df), rs_t * 1000, czsc_t * 1000, ratio))
 
     with capsys.disabled():
         # 打印一张对照表
-        print(f"\n[backtest scaling — 30min strategy]")
+        print("\n[backtest scaling — 30min strategy]")
         print(f"  {'#bars':>6} | {'rs_czsc':>10} | {'czsc':>10} | {'ratio':>6}")
         print(f"  {'-' * 6} | {'-' * 10} | {'-' * 10} | {'-' * 6}")
         for n_bars, rs_ms, czsc_ms, r in rows:
@@ -175,18 +167,15 @@ def test_perf_backtest_scaling(rs_czsc_module, czsc_module, tmp_path, capsys):
 
     # 只要任何一个规模超出预算就视为失败
     over_budget = [(n, r) for n, _, _, r in rows if r > PERF_RATIO_BUDGET]
-    assert not over_budget, (
-        f"backtest perf budget {PERF_RATIO_BUDGET}x exceeded at: {over_budget}"
-    )
+    assert not over_budget, f"backtest perf budget {PERF_RATIO_BUDGET}x exceeded at: {over_budget}"
 
 
 # --------------------------------------------------------------------- #
 # 测试 3 —— derive_signals_config + run_research 端到端性能              #
 # --------------------------------------------------------------------- #
 
-def test_perf_run_research_endtoend(
-    rs_czsc_module, czsc_module, mock_kline_df, sample_position_dict, capsys
-):
+
+def test_perf_run_research_endtoend(rs_czsc_module, czsc_module, mock_kline_df, sample_position_dict, capsys):
     """``run_research(arrow_bytes, json)`` 的端到端性能对比。
 
     这是迁移后最关键的入口：把 Arrow 字节 + JSON 策略喂给 Rust 端，
@@ -256,6 +245,4 @@ def test_perf_run_research_endtoend(
             f"ratio={ratio:.2f}x"
         )
 
-    assert ratio <= PERF_RATIO_BUDGET, (
-        f"czsc.run_research is {ratio:.2f}x slower than rs_czsc baseline"
-    )
+    assert ratio <= PERF_RATIO_BUDGET, f"czsc.run_research is {ratio:.2f}x slower than rs_czsc baseline"

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """性能基准测试脚本：对比 ``rs_czsc`` 与迁移后的 ``czsc`` 在
 ``OpensOptimize`` / ``ExitsOptimize`` 工作流上的耗时表现。
 
@@ -22,17 +21,11 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
-import importlib
-import json
-import shutil
 import statistics
 import sys
 import tempfile
 import time
 from pathlib import Path
-
-import pandas as pd
 
 # 把 parity 测试目录加入 sys.path，方便复用其中的辅助函数
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,7 +33,6 @@ PARITY_DIR = ROOT / "test" / "parity"
 sys.path.insert(0, str(PARITY_DIR))
 sys.path.insert(0, str(PARITY_DIR / "_compare_optimize"))
 
-from _signal_defaults import render  # noqa: E402
 
 # 复用 parity 脚本中的工具函数（数据准备、模块导入、仓位文件落盘等）
 from compare_optimize_full import (  # noqa: E402
@@ -74,11 +66,16 @@ def time_open(module_name: str, results_root: Path, candidates: list[str]) -> fl
     files_position = write_beta_positions(czsc_mod, results_root / "base_positions", "000001")
 
     oop = OpensOptimize(
-        symbols=["000001"], files_position=files_position,
-        task_name="BenchOpen", candidate_signals=candidates,
-        read_bars=get_raw_bars, results_path=results_root,
+        symbols=["000001"],
+        files_position=files_position,
+        task_name="BenchOpen",
+        candidate_signals=candidates,
+        read_bars=get_raw_bars,
+        results_path=results_root,
         signals_module_name="czsc.signals",
-        bar_sdt=bar_sdt, bar_edt=bar_edt, sdt=sdt,
+        bar_sdt=bar_sdt,
+        bar_edt=bar_edt,
+        sdt=sdt,
     )
     t0 = time.perf_counter()
     oop.execute(n_jobs=1)
@@ -106,13 +103,18 @@ def time_exit(module_name: str, results_root: Path, candidate_events: list[dict]
     files_position = write_beta_positions(czsc_mod, results_root / "base_positions", "000001")
 
     eop = ExitsOptimize(
-        symbols=["000001"], files_position=files_position,
-        task_name="BenchExit", candidate_events=candidate_events,
-        read_bars=get_raw_bars, results_path=results_root,
+        symbols=["000001"],
+        files_position=files_position,
+        task_name="BenchExit",
+        candidate_events=candidate_events,
+        read_bars=get_raw_bars,
+        results_path=results_root,
         signals_module_name="czsc.signals",
         # 显式指定 base_freq 是为了绕过 czsc 在自动推导时对 strategy.positions 的处理 bug
         base_freq="5分钟",
-        bar_sdt=bar_sdt, bar_edt=bar_edt, sdt=sdt,
+        bar_sdt=bar_sdt,
+        bar_edt=bar_edt,
+        sdt=sdt,
     )
     t0 = time.perf_counter()
     eop.execute(n_jobs=1)
@@ -122,9 +124,11 @@ def time_exit(module_name: str, results_root: Path, candidate_events: list[dict]
 def fmt(times: list[float]) -> str:
     """把多次试验的耗时列表格式化为 ``mean±stdev (min/max)`` 字符串。"""
     if len(times) < 2:
-        return f"{times[0]*1000:.0f}ms"
-    return (f"{statistics.mean(times)*1000:.0f}±{statistics.stdev(times)*1000:.0f}ms "
-            f"(min {min(times)*1000:.0f}ms / max {max(times)*1000:.0f}ms)")
+        return f"{times[0] * 1000:.0f}ms"
+    return (
+        f"{statistics.mean(times) * 1000:.0f}±{statistics.stdev(times) * 1000:.0f}ms "
+        f"(min {min(times) * 1000:.0f}ms / max {max(times) * 1000:.0f}ms)"
+    )
 
 
 def main():
@@ -136,15 +140,13 @@ def main():
     # 候选信号 / 候选事件预计算一次即可：parity 测试已经证明两套实现
     # 在这部分输入上完全一致，因此可以放心共享。
     import czsc as _cz
+
     candidate_signals = all_kline_candidate_signals(_cz)
     candidate_events = all_kline_candidate_events(_cz)
     # 把可能存在的 dict 形式的信号统一回退成字符串形式，确保两套实现
     # 在最终消费时拿到完全相同的输入（双保险）。
     for e in candidate_events:
-        e["signals_all"] = [
-            (s if isinstance(s, str) else f"{s['key']}_{s['value']}")
-            for s in e["signals_all"]
-        ]
+        e["signals_all"] = [(s if isinstance(s, str) else f"{s['key']}_{s['value']}") for s in e["signals_all"]]
 
     print(f"trials={args.trials}, candidate_signals={len(candidate_signals)}, candidate_events={len(candidate_events)}")
     print()
@@ -153,8 +155,7 @@ def main():
     # 然后再跑 args.trials 次正式试验。
     results: dict = {"open": {}, "exit": {}}
 
-    for kind, module in [("open", "rs_czsc"), ("open", "czsc"),
-                         ("exit", "rs_czsc"), ("exit", "czsc")]:
+    for kind, module in [("open", "rs_czsc"), ("open", "czsc"), ("exit", "rs_czsc"), ("exit", "czsc")]:
         # warm-up 阶段：失败时记录但不阻塞后续测量
         with tempfile.TemporaryDirectory() as tmp:
             try:
@@ -174,7 +175,7 @@ def main():
                 else:
                     t = time_exit(module, Path(tmp), candidate_events)
                 times.append(t)
-            print(f"  [{module}/{kind}] trial {i+1}: {t*1000:.0f}ms")
+            print(f"  [{module}/{kind}] trial {i + 1}: {t * 1000:.0f}ms")
         results[kind][module] = times
 
     # 汇总输出

@@ -1,3 +1,5 @@
+from wbt import WeightBacktest as WeightBacktest
+
 from czsc._native import (
     CzscSignals as CzscSignals,
 )
@@ -22,6 +24,5 @@ from czsc.traders.sig_parse import (
 from czsc.traders.sig_parse import (
     get_signals_freqs as get_signals_freqs,
 )
-from wbt import WeightBacktest as WeightBacktest
 
 def __getattr__(name): ...

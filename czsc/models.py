@@ -14,7 +14,7 @@ Python 端策略研究流程的数据模型定义
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, TypedDict
 
 from czsc._utils._df_convert import arrow_bytes_to_pd_df
 
@@ -74,13 +74,13 @@ class ResearchResult:
         holds_path    - 持仓表对应的本地路径（可选）
     """
 
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
     signals_arrow: bytes
     pairs_arrow: bytes
     holds_arrow: bytes
-    signals_path: Optional[str] = None
-    pairs_path: Optional[str] = None
-    holds_path: Optional[str] = None
+    signals_path: str | None = None
+    pairs_path: str | None = None
+    holds_path: str | None = None
 
     def signals_df(self):
         """将 ``signals_arrow`` 反序列化为 Pandas DataFrame（按需调用，避免无谓开销）"""
@@ -104,6 +104,7 @@ class ReplayResult(ResearchResult):
     代码与日志中体现语义差异（"复现某次回放"对应 ReplayResult，"批量研究
     多组参数"对应 ResearchResult）。
     """
+
     pass
 
 
@@ -116,4 +117,5 @@ class OptimizeResult:
     （成功概要 / 警告 / 错误信息）。后续若需要扩展更结构化的优化指标
     （如最优参数、得分排序等），可在此追加字段，保持向后兼容。
     """
+
     message: str

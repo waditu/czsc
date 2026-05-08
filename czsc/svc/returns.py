@@ -20,10 +20,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from wbt import daily_performance
+
+from czsc import top_drawdowns
 
 from .base import apply_stats_style, ensure_datetime_index, generate_component_key
-from wbt import daily_performance
-from czsc import top_drawdowns
 
 
 def show_daily_return(df: pd.DataFrame, key=None, **kwargs):

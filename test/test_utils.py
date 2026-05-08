@@ -9,9 +9,6 @@
 
 import time
 
-import numpy as np
-import pandas as pd
-
 from czsc import utils
 from czsc.utils import timeout_decorator
 

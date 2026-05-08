@@ -16,8 +16,7 @@ import os
 
 import pandas as pd
 
-from czsc import KlineChart, mock
-from czsc import CZSC, Freq, RawBar
+from czsc import CZSC, Freq, KlineChart, RawBar, mock
 
 
 def test_kline_chart():

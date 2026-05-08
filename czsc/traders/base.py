@@ -31,7 +31,6 @@ from czsc._native import (
     derive_signals_freqs,
     generate_czsc_signals,
 )
-
 from czsc.traders.sig_parse import get_signals_freqs
 
 

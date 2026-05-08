@@ -21,9 +21,9 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from deprecated import deprecated
+from wbt import daily_performance
 
 from .base import apply_stats_style, ensure_datetime_index, generate_component_key
-from wbt import daily_performance
 
 
 def show_splited_daily(df, ret_col, **kwargs):

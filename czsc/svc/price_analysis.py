@@ -20,9 +20,9 @@
 import pandas as pd
 import streamlit as st
 from loguru import logger
+from wbt import WeightBacktest
 
 from .base import apply_stats_style
-from wbt import WeightBacktest
 from .returns import show_cumulative_returns
 
 

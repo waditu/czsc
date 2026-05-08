@@ -20,9 +20,7 @@ def test_list_all_signals_count_matches(rs_czsc_module, czsc_module):
     """注册表中信号数量必须一致。"""
     rs_list = rs_czsc_module.list_all_signals()
     czsc_list = czsc_module._native.list_all_signals()
-    assert len(rs_list) == len(czsc_list), (
-        f"signal count mismatch: rs_czsc={len(rs_list)} vs czsc={len(czsc_list)}"
-    )
+    assert len(rs_list) == len(czsc_list), f"signal count mismatch: rs_czsc={len(rs_list)} vs czsc={len(czsc_list)}"
 
 
 def test_list_all_signals_names_match(rs_czsc_module, czsc_module):
@@ -43,11 +41,7 @@ def test_list_all_signals_templates_match(rs_czsc_module, czsc_module):
     """
     rs_map = {d["name"]: d.get("param_template") for d in rs_czsc_module.list_all_signals()}
     czsc_map = {d["name"]: d.get("param_template") for d in czsc_module._native.list_all_signals()}
-    diffs = {
-        name: (rs_map[name], czsc_map[name])
-        for name in rs_map
-        if rs_map[name] != czsc_map[name]
-    }
+    diffs = {name: (rs_map[name], czsc_map[name]) for name in rs_map if rs_map[name] != czsc_map[name]}
     assert not diffs, f"param_template mismatches: {diffs}"
 
 

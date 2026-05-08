@@ -51,9 +51,7 @@ def test_signal_subpackage_exists(sub: str) -> None:
         ``importlib.import_module(f"czsc.signals.{sub}")`` 不抛异常且返回非 None。
     """
     mod, err = _safe_import(f"czsc.signals.{sub}")
-    assert mod is not None, (
-        f"czsc.signals.{sub} 必须可被导入（{err}）"
-    )
+    assert mod is not None, f"czsc.signals.{sub} 必须可被导入（{err}）"
 
 
 # 参数化覆盖所有必需信号子包，每个子包验证其暴露足够数量的函数
@@ -71,13 +69,9 @@ def test_signal_subpackage_has_functions(sub: str) -> None:
     mod, err = _safe_import(f"czsc.signals.{sub}")
     if mod is None:
         pytest.fail(f"无法导入 czsc.signals.{sub}: {err}")
-    funcs = [
-        name for name in dir(mod)
-        if not name.startswith("_") and callable(getattr(mod, name))
-    ]
+    funcs = [name for name in dir(mod) if not name.startswith("_") and callable(getattr(mod, name))]
     assert len(funcs) >= MIN_FUNCS_PER_SUBPACKAGE, (
-        f"czsc.signals.{sub} 必须至少暴露 {MIN_FUNCS_PER_SUBPACKAGE} 个 "
-        f"信号函数；实际找到 {len(funcs)} 个：{funcs}"
+        f"czsc.signals.{sub} 必须至少暴露 {MIN_FUNCS_PER_SUBPACKAGE} 个 信号函数；实际找到 {len(funcs)} 个：{funcs}"
     )
 
 
@@ -96,10 +90,7 @@ def test_signal_subpackage_sourced_from_native(sub: str) -> None:
     mod, err = _safe_import(f"czsc.signals.{sub}")
     if mod is None:
         pytest.fail(f"无法导入 czsc.signals.{sub}: {err}")
-    funcs = [
-        getattr(mod, n) for n in dir(mod)
-        if not n.startswith("_") and callable(getattr(mod, n))
-    ]
+    funcs = [getattr(mod, n) for n in dir(mod) if not n.startswith("_") and callable(getattr(mod, n))]
     if not funcs:
         pytest.fail(f"czsc.signals.{sub} 中没有任何可调用对象")
 
@@ -123,6 +114,4 @@ def test_native_signals_module_exists() -> None:
     """
     native, err = _safe_import("czsc._native")
     assert native is not None, f"czsc._native 必须存在（maturin 构建产物）（{err}）"
-    assert hasattr(native, "signals"), (
-        "czsc._native.signals 必须是已注册的 PyO3 子模块"
-    )
+    assert hasattr(native, "signals"), "czsc._native.signals 必须是已注册的 PyO3 子模块"

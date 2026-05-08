@@ -42,8 +42,8 @@ def _try_build_bars() -> tuple[Any | None, str | None]:
     避免 fixture 阶段直接抛异常造成 pytest 报告为 ERROR 的情况。
     """
     try:
+        from czsc import Freq, format_standard_kline  # type: ignore[attr-defined]
         from czsc.mock import generate_symbol_kines  # type: ignore[attr-defined]
-        from czsc import format_standard_kline, Freq  # type: ignore[attr-defined]
     except Exception as exc:  # noqa: BLE001
         return None, f"import failed: {type(exc).__name__}: {exc}"
 
@@ -122,16 +122,9 @@ def test_pickle_roundtrip(target: str) -> None:
         blob = pickle.dumps(obj)
         restored = pickle.loads(blob)
     except Exception as exc:  # noqa: BLE001
-        pytest.fail(
-            f"[{target}] pickle 往返序列化抛出异常 "
-            f"{type(exc).__name__}: {exc}"
-        )
+        pytest.fail(f"[{target}] pickle 往返序列化抛出异常 {type(exc).__name__}: {exc}")
 
-    assert type(restored) is type(obj), (
-        f"[{target}] 往返序列化改变了对象类型：{type(obj)} → {type(restored)}"
-    )
+    assert type(restored) is type(obj), f"[{target}] 往返序列化改变了对象类型：{type(obj)} → {type(restored)}"
 
     if hasattr(obj, "__getstate__") and hasattr(restored, "__getstate__"):
-        assert restored.__getstate__() == obj.__getstate__(), (
-            f"[{target}] __getstate__ 在往返序列化后发生变化"
-        )
+        assert restored.__getstate__() == obj.__getstate__(), f"[{target}] __getstate__ 在往返序列化后发生变化"

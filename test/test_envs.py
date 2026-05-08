@@ -52,9 +52,7 @@ class TestRetiredHelpers:
         if name == "_env":
             assert hasattr(envs_mod, name), "私有 _env helper 应当继续保留"
         else:
-            assert not hasattr(envs_mod, name), (
-                f"czsc.envs.{name} 必须被移除"
-            )
+            assert not hasattr(envs_mod, name), f"czsc.envs.{name} 必须被移除"
 
     def test_no_czsc_use_python_branch(self) -> None:
         """验证 czsc.envs 源码中不再引用 CZSC_USE_PYTHON 环境变量。
@@ -70,9 +68,7 @@ class TestRetiredHelpers:
         import inspect
 
         src = inspect.getsource(envs_mod)
-        assert "CZSC_USE_PYTHON" not in src, (
-            "CZSC_USE_PYTHON 环境变量必须不被引用"
-        )
+        assert "CZSC_USE_PYTHON" not in src, "CZSC_USE_PYTHON 环境变量必须不被引用"
 
 
 class TestGetVerbose:

@@ -20,9 +20,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
+from wbt import daily_performance
 
 from .base import apply_stats_style, generate_component_key
-from wbt import daily_performance
 
 
 def show_feature_returns(df, features, ret_col="returns", key=None, **kwargs):

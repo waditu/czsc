@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """完整 K 线信号集合下的 Open/Exit 优化等价性对比脚本。
 
 本脚本对比 ``rs_czsc`` 与迁移后的 ``czsc`` 在 ``use_optimize.py`` 工作流
@@ -43,12 +42,14 @@ OUT_ROOT = PARITY_DIR / "_compare_optimize"
 # K 线数据准备 —— 用 mock 替换原示例缺失的 k_line.feather              #
 # --------------------------------------------------------------------- #
 
+
 def make_bars_df(freq: str, sdt: str, edt: str) -> pd.DataFrame:
     """生成单品种 mock K 线 DataFrame，列与示例脚本对齐。
 
     使用固定 ``seed=42`` 以保证两次运行（rs_czsc 与 czsc）的输入完全一致。
     """
     from wbt.mock import mock_symbol_kline
+
     df = mock_symbol_kline("000001", freq, sdt, edt, seed=42)
     df["dt"] = pd.to_datetime(df["dt"])
     cols = ["dt", "symbol", "open", "high", "low", "close", "vol", "amount"]
@@ -58,6 +59,7 @@ def make_bars_df(freq: str, sdt: str, edt: str) -> pd.DataFrame:
 # --------------------------------------------------------------------- #
 # Beta 仓位构造与 read_bars 回调                                       #
 # --------------------------------------------------------------------- #
+
 
 def _sig_str_to_kv(sig: str) -> dict:
     """把七段式信号字符串拆分成 ``{key, value}`` 字典形式。
@@ -88,16 +90,18 @@ def build_position(czsc_module, symbol, name, open_signal, open_operate):
 
     # czsc.Position 不接受 T0 关键字参数；rs_czsc 接受。
     # 通过 .load 走 dict 入口可以让两套实现保持完全一致的入参形态。
-    return Position.load({
-        "symbol": symbol,
-        "name": name,
-        "opens": [event_dict(f"{name}_open", open_operate, open_signal)],
-        "exits": [event_dict(f"{name}_exit", exit_operate, exit_signal)],
-        "interval": 0,
-        "timeout": 120,
-        "stop_loss": 800.0,
-        "T0": False,
-    })
+    return Position.load(
+        {
+            "symbol": symbol,
+            "name": name,
+            "opens": [event_dict(f"{name}_open", open_operate, open_signal)],
+            "exits": [event_dict(f"{name}_exit", exit_operate, exit_signal)],
+            "interval": 0,
+            "timeout": 120,
+            "stop_loss": 800.0,
+            "T0": False,
+        }
+    )
 
 
 def write_beta_positions(czsc_module, path: Path, symbol: str) -> list[str]:
@@ -109,12 +113,18 @@ def write_beta_positions(czsc_module, path: Path, symbol: str) -> list[str]:
     path.mkdir(parents=True, exist_ok=True)
     positions = [
         build_position(
-            czsc_module, symbol, "long_beta",
-            "5分钟_D1单K趋势N5_BS辅助V230506_第1层_任意_任意_0", "开多",
+            czsc_module,
+            symbol,
+            "long_beta",
+            "5分钟_D1单K趋势N5_BS辅助V230506_第1层_任意_任意_0",
+            "开多",
         ),
         build_position(
-            czsc_module, symbol, "short_beta",
-            "5分钟_D1单K趋势N5_BS辅助V230506_第18层_任意_任意_0", "开空",
+            czsc_module,
+            symbol,
+            "short_beta",
+            "5分钟_D1单K趋势N5_BS辅助V230506_第18层_任意_任意_0",
+            "开空",
         ),
     ]
     files = []
@@ -132,6 +142,7 @@ def write_beta_positions(czsc_module, path: Path, symbol: str) -> list[str]:
 # --------------------------------------------------------------------- #
 # 候选信号集合 —— 全量 K 线信号（按默认参数渲染）                     #
 # --------------------------------------------------------------------- #
+
 
 def all_kline_candidate_signals(czsc_module) -> list[str]:
     """渲染信号注册表里所有 K 线类信号为完整七段式字符串。
@@ -160,6 +171,7 @@ def all_kline_candidate_signals(czsc_module) -> list[str]:
 # 驱动逻辑 —— 对每个模块各跑一次 OpensOptimize / ExitsOptimize         #
 # --------------------------------------------------------------------- #
 
+
 def _import_module(module_name: str):
     """根据名字导入对应的 czsc 模块和 traders.optimize 子模块。
 
@@ -170,12 +182,14 @@ def _import_module(module_name: str):
     if module_name == "rs_czsc":
         import rs_czsc as czsc_mod
         from rs_czsc import Event as _Event
+
         if not getattr(_Event, "_rs_tuple_contract_patch", False):
             origin = _Event.is_match
 
             def _wrapped(self, sig):
                 out = origin(self, sig)
                 return out if isinstance(out, tuple) else (out, "is_match" if out else "")
+
             _Event.is_match = _wrapped
             _Event._rs_tuple_contract_patch = True
     elif module_name == "czsc":
@@ -183,16 +197,19 @@ def _import_module(module_name: str):
     else:
         raise ValueError(module_name)
     import importlib
+
     optim_mod = importlib.import_module(f"{module_name}.traders.optimize")
     return czsc_mod, optim_mod
 
 
 def _make_read_bars(czsc_mod, bars_5min, bars_daily):
     """构造一个 ``read_bars`` 回调，按 freq 选择对应频率的 mock 数据。"""
+
     def get_raw_bars(symbol_in, freq_in, sdt_in, edt_in, **_):
         df = bars_daily if freq_in == "日线" else bars_5min
         df = df[df["symbol"] == symbol_in]
         return czsc_mod.format_standard_kline(df, freq=freq_in)
+
     return get_raw_bars
 
 
@@ -210,13 +227,15 @@ def all_kline_candidate_events(czsc_mod) -> list[dict]:
     out = []
     for i, sig in enumerate(all_kline_candidate_signals(czsc_mod)):
         operate = "平多" if i % 2 == 0 else "平空"
-        out.append({
-            "name": f"exit_{i:03d}",
-            "operate": operate,
-            "signals_all": [sig],
-            "signals_any": [],
-            "signals_not": [],
-        })
+        out.append(
+            {
+                "name": f"exit_{i:03d}",
+                "operate": operate,
+                "signals_all": [sig],
+                "signals_any": [],
+                "signals_not": [],
+            }
+        )
     return out
 
 
@@ -245,7 +264,9 @@ def run_open(module_name: str, results_root: Path) -> Path:
         read_bars=get_raw_bars,
         results_path=results_root,
         signals_module_name="czsc.signals",
-        bar_sdt=bar_sdt, bar_edt=bar_edt, sdt=sdt,
+        bar_sdt=bar_sdt,
+        bar_edt=bar_edt,
+        sdt=sdt,
     )
     t0 = time.perf_counter()
     oop.execute(n_jobs=1)
@@ -283,7 +304,9 @@ def run_exit(module_name: str, results_root: Path) -> Path:
         # 会对字符串形式的 signals_all 调用 Position.load（其更严格的校验
         # 器会拒绝该形态）。两套实现的 Rust optimizer 调用本身都接受字符串。
         base_freq="5分钟",
-        bar_sdt=bar_sdt, bar_edt=bar_edt, sdt=sdt,
+        bar_sdt=bar_sdt,
+        bar_edt=bar_edt,
+        sdt=sdt,
     )
     t0 = time.perf_counter()
     eop.execute(n_jobs=1)
@@ -295,6 +318,7 @@ def run_exit(module_name: str, results_root: Path) -> Path:
 # --------------------------------------------------------------------- #
 # 输出树对比                                                           #
 # --------------------------------------------------------------------- #
+
 
 def inventory(root: Path) -> dict[str, int]:
     """递归扫描 ``root`` 下的所有文件，返回 {相对路径: 字节数}。"""
@@ -349,11 +373,14 @@ def compare_trees(rs_path: Path, czsc_path: Path) -> dict:
                     continue
                 cols = sorted(set(a.columns) & set(b.columns))
                 if set(a.columns) != set(b.columns):
-                    summary["parquet_diffs"].append({
-                        "rel": rel, "kind": "columns",
-                        "rs_only": sorted(set(a.columns) - set(b.columns)),
-                        "czsc_only": sorted(set(b.columns) - set(a.columns)),
-                    })
+                    summary["parquet_diffs"].append(
+                        {
+                            "rel": rel,
+                            "kind": "columns",
+                            "rs_only": sorted(set(a.columns) - set(b.columns)),
+                            "czsc_only": sorted(set(b.columns) - set(a.columns)),
+                        }
+                    )
                 a = a[cols].reset_index(drop=True)
                 b = b[cols].reset_index(drop=True)
                 try:

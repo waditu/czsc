@@ -28,18 +28,28 @@ from czsc._compat import (
     position_dump_to_runtime,
     signal_config_to_runtime,
 )
+
 # 直接调用 PyO3 暴露的 Rust 实现（带下划线别名表示"不要在调用方代码中再展开"）
 from czsc._native import (
     build_exit_optim_positions as _build_exit_optim_positions,
+)
+from czsc._native import (
     build_open_optim_positions as _build_open_optim_positions,
+)
+from czsc._native import (
     run_optimize,
+)
+from czsc._native import (
     run_optimize_batch as _run_optimize_batch,
+)
+from czsc._native import (
     run_replay as _run_replay,
+)
+from czsc._native import (
     run_research as _run_research,
 )
 from czsc._utils._df_convert import pandas_to_arrow_bytes
 from czsc.models import OptimizeResult, ReplayResult, ResearchResult
-
 
 # 类型别名：bars 入参允许传 DataFrame 或已就绪的 Arrow IPC 字节
 # 这种"两可"形式可以让上层在已经持有字节流的场景下省一次序列化
@@ -129,8 +139,7 @@ def run_research(
     # positions / signals_config 都是用户层格式，需要先归一化为 Rust 运行时期望的紧凑布局
     if "positions" in strategy_payload:
         strategy_payload["positions"] = [
-            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos
-            for pos in strategy_payload["positions"]
+            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos for pos in strategy_payload["positions"]
         ]
     if "signals_config" in strategy_payload:
         strategy_payload["signals_config"] = [
@@ -180,8 +189,7 @@ def run_replay(
     strategy_payload = dict(strategy)
     if "positions" in strategy_payload:
         strategy_payload["positions"] = [
-            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos
-            for pos in strategy_payload["positions"]
+            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos for pos in strategy_payload["positions"]
         ]
     if "signals_config" in strategy_payload:
         strategy_payload["signals_config"] = [

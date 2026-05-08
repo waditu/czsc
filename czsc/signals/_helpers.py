@@ -36,7 +36,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 # 从 Rust 扩展模块按需导入底层接口；使用 ``as _xxx`` 显式标注为内部依赖，避免被外部直接引用
 from czsc._native import call_signal as _call_signal

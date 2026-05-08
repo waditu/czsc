@@ -17,8 +17,6 @@
 from __future__ import annotations
 
 import json
-import shutil
-import tempfile
 from pathlib import Path
 
 import pandas as pd
@@ -67,9 +65,7 @@ def test_build_open_optim_positions_matches(rs_czsc_module, czsc_module, positio
     rs_data = json.loads(rs_raw) if isinstance(rs_raw, str) else rs_raw
     czsc_data = json.loads(czsc_raw) if isinstance(czsc_raw, str) else czsc_raw
 
-    assert len(rs_data) == len(czsc_data), (
-        f"position count mismatch: rs={len(rs_data)} czsc={len(czsc_data)}"
-    )
+    assert len(rs_data) == len(czsc_data), f"position count mismatch: rs={len(rs_data)} czsc={len(czsc_data)}"
 
     # 仓位列表的顺序在两次独立运行间不一定一致；统一用 (name, opens hash,
     # exits hash) 做规范化后再比较集合相等。
@@ -83,9 +79,7 @@ def test_build_open_optim_positions_matches(rs_czsc_module, czsc_module, positio
             for p in positions
         )
 
-    assert _canon(rs_data) == _canon(czsc_data), (
-        f"open-optim variants diverge"
-    )
+    assert _canon(rs_data) == _canon(czsc_data), "open-optim variants diverge"
 
 
 def test_build_exit_optim_positions_matches(rs_czsc_module, czsc_module, position_files):
@@ -145,9 +139,7 @@ def bars_dir(tmp_path, mock_kline_df, czsc_module):
     return bars_path
 
 
-def test_run_optimize_batch_matches(
-    rs_czsc_module, czsc_module, bars_dir, position_files, tmp_path
-):
+def test_run_optimize_batch_matches(rs_czsc_module, czsc_module, bars_dir, position_files, tmp_path):
     """``run_optimize_batch`` 端到端等价性测试。
 
     测试场景：构造一个最小化的开仓优化任务配置，rs_czsc 与 czsc 各跑
