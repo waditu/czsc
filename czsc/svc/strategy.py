@@ -154,8 +154,10 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
 
                 open_ops = [czsc.Operate.LO, czsc.Operate.SO]
                 # 开仓用上三角，平仓用下三角；颜色区分多空
-                bs_df["tag"] = bs_df["op"].apply(lambda x: "triangle-up" if x in open_ops else "triangle-down")
-                bs_df["color"] = bs_df["op"].apply(lambda x: "red" if x in open_ops else "white")
+                bs_df["tag"] = bs_df["op"].apply(
+                    lambda x, open_ops=open_ops: "triangle-up" if x in open_ops else "triangle-down"
+                )
+                bs_df["color"] = bs_df["op"].apply(lambda x, open_ops=open_ops: "red" if x in open_ops else "white")
 
                 kline.add_scatter_indicator(
                     bs_df["dt"],

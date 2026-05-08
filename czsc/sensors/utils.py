@@ -112,7 +112,9 @@ def holds_concepts_effect(holds: pd.DataFrame, concepts: dict, top_n=20, min_n=3
         dt_key_concepts[dt] = key_concepts
 
         # 计算在密集概念中出现次数超过min_n的股票
-        dfg["强势概念"] = dfg["概念板块"].apply(lambda x: ",".join(set(x) & set(key_concepts)))
+        dfg["强势概念"] = dfg["概念板块"].apply(
+            lambda x, key_concepts=key_concepts: ",".join(set(x) & set(key_concepts))
+        )
         sel = dfg[dfg["强势概念"].apply(lambda x: len(x.split(",")) >= min_n)]
         new_holds.append(sel)
 

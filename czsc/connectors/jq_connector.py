@@ -408,7 +408,9 @@ def get_kline_period(
 
     # 粗略估算：(自然日 * 5/7) 近似得到交易日数；超 1000 个交易日可能触发服务端限制
     if (end_date - start_date).days * 5 / 7 > 1000:
-        warnings.warn(f"{end_date.date()} - {start_date.date()} 超过1000个交易日，K线获取可能失败，返回为0", stacklevel=2)
+        warnings.warn(
+            f"{end_date.date()} - {start_date.date()} 超过1000个交易日，K线获取可能失败，返回为0", stacklevel=2
+        )
 
     data = {
         "method": "get_price_period",
@@ -646,9 +648,7 @@ def get_share_basic(symbol):
     msg += "2017~2020 财务变化\n\n"
     for k in cols:
         # 把 4 年同一指标横向拼接，便于一眼看出趋势
-        msg += k + "：{} | {} | {} | {}\n".format(
-            *[f10[f"{year}{k}"] for year in ["2017", "2018", "2019", "2020"]]
-        )
+        msg += k + "：{} | {} | {} | {}\n".format(*[f10[f"{year}{k}"] for year in ["2017", "2018", "2019", "2020"]])
 
     f10["msg"] = msg
     return f10

@@ -212,7 +212,8 @@ def get_py_namespace(file_py: str, keys: list = None) -> dict:
     allowed_prefixes = [os.path.abspath("czsc/strategies"), os.path.abspath("czsc/signals")]
     if not any(file_py.startswith(p) for p in allowed_prefixes):
         raise ValueError(f"文件路径 {file_py} 不在白名单目录内")
-    text = open(file_py, encoding="utf-8").read()
+    with open(file_py, encoding="utf-8") as _f:
+        text = _f.read()
     code = compile(text, file_py, "exec")
     namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
     exec(code, namespace)

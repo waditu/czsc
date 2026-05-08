@@ -9,16 +9,16 @@
 作者: zengbin93 <zeng_bin8888@163.com>，创建于 2019/10/29。
 """
 
+# isort: skip_file
+# 顶层包的 import 顺序经过手工设计以处理子包间的循环依赖，
+# 不要让 isort/ruff 重排——会触发 partially-initialized module 错误。
+
 import sys as _sys
 
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
 # svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
 from . import _native, connectors, envs, sensors, signals, traders, utils
-
-# czsc.ta -> czsc._native.ta（Rust 实现）；同时设置 sys.modules 以兼容 import czsc.ta
-ta = _native.ta
-_sys.modules["czsc.ta"] = _native.ta
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===

@@ -54,8 +54,9 @@ class DataClient:
     __version__ = "V250719"
     _cache_lock = threading.Lock()  # 进程内线程锁，防止并发冲突
 
+    @staticmethod
     @lru_cache(maxsize=128)
-    def _get_cache_key(self, req_params_str: str) -> str:
+    def _get_cache_key(req_params_str: str) -> str:
         """缓存哈希计算，避免重复计算"""
         return hashlib.md5(req_params_str.encode("utf-8")).hexdigest().upper()[:8]
 

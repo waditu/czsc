@@ -221,4 +221,3 @@ __all__ = [
     "weight_backtest_form",
     "code_editor_form",
 ]
-
