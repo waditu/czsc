@@ -1,0 +1,80 @@
+{
+  "_doc": "Phase A baseline snapshot for public API. Source: docs/superpowers/specs/2026-05-03-rust-czsc-migration-design.md §3.1 + §8 Appendix A.",
+  "top_level": [
+    "CZSC",
+    "FX",
+    "BI",
+    "ZS",
+    "RawBar",
+    "NewBar",
+    "Freq",
+    "Mark",
+    "Direction",
+    "Operate",
+    "Signal",
+    "Event",
+    "Position",
+    "BarGenerator",
+    "format_standard_kline",
+    "freq_end_time",
+    "is_trading_time",
+    "check_bi",
+    "check_fx",
+    "check_fxs",
+    "remove_include",
+    "CzscTrader",
+    "CzscSignals",
+    "generate_czsc_signals",
+    "get_unique_signals",
+    "WeightBacktest",
+    "daily_performance",
+    "top_drawdowns",
+    "ultimate_smoother",
+    "rolling_rank",
+    "ema",
+    "sma",
+    "boll_positions",
+    "mock",
+    "envs",
+    "signals",
+    "traders",
+    "ta",
+    "utils",
+    "connectors",
+    "sensors",
+    "svc"
+  ],
+  "traders": [
+    "CzscTrader",
+    "CzscSignals",
+    "generate_czsc_signals",
+    "get_unique_signals",
+    "WeightBacktest",
+    "SignalsParser"
+  ],
+  "ta": [
+    "ultimate_smoother",
+    "rolling_rank",
+    "ema",
+    "sma",
+    "boll_positions"
+  ],
+  "signal_subpackages": [
+    "bar",
+    "cxt",
+    "tas",
+    "vol",
+    "pressure",
+    "obv",
+    "cvolp"
+  ],
+  "removed": [
+    "DummyBacktest",
+    "OpensOptimize",
+    "ExitsOptimize",
+    "CTAResearch"
+  ],
+  "removed_envs": [
+    "CZSC_USE_PYTHON"
+  ]
+}

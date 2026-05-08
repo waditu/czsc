@@ -1,0 +1,31 @@
+[package]
+name        = "czsc-signals"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "CZSC signal functions (bar / cxt / tas / vol / pressure / obv / cvolp / ...). Migrated from rs-czsc."
+
+[lib]
+name = "czsc_signals"
+path = "src/lib.rs"
+
+[dependencies]
+czsc-core           = { path = "../czsc-core", features = ["python"] }
+czsc-ta             = { path = "../czsc-ta" }
+czsc-signal-macros  = { path = "../czsc-signal-macros" }
+serde               = { workspace = true }
+serde_json          = "1.0"
+anyhow              = "1.0"
+tracing             = "0.1"
+inventory           = "0.3"
+chrono              = { version = "0.4", default-features = false, features = ["clock"] }
+
+[dev-dependencies]
+criterion = "0.7"
+
+# spec §6 P2 性能基准：30+ 信号函数批量执行
+# 单根 K 线 P50 ≤ 50 µs；批量 1 万根 ≤ 80 ms
+[[bench]]
+name    = "signals_bench"
+harness = false

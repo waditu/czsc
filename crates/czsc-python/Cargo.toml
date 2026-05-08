@@ -1,0 +1,65 @@
+[package]
+name        = "czsc-python"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "PyO3 binding aggregator that produces the czsc._native extension module."
+
+[lib]
+name       = "czsc_python"
+path       = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+# 默认启用 extension-module（cdylib 路径）。
+#
+# 同一个 package 里既有 cdylib（wheel）又有 bin（stub_gen），feature 集会被
+# 统一，单一 feature 集无法同时满足两者：wheel 要 extension-module +
+# abi3-py310（不链接 libpython），bin 要裸 pyo3（链接具体版本 libpython）。
+# 所以把 stub_gen 用 required-features 隔离到独立 feature `stub-gen`：
+#   - `cargo build --workspace --release`         → 默认只构 wheel，跳过 bin
+#   - `cargo run --bin stub_gen -p czsc-python \
+#        --no-default-features --features stub-gen`
+#                                                 → 关 extension-module/abi3，
+#                                                   走非 abi3 链接路径，
+#                                                   PYO3_PYTHON 解析具体
+#                                                   libpython3.X.so
+#
+# abi3-py310 也挂在 extension-module 后面：CI 上 setup-python 提供的是
+# libpython3.X.so，没有 abi3 模式期望的 libpython3.so 符号链接，bin 路径
+# 必须避开 abi3 才能让链接器找到 PyGILState_Release 这类符号。
+[features]
+default          = ["extension-module"]
+extension-module = ["pyo3/extension-module", "pyo3/abi3-py310"]
+stub-gen         = []
+
+[[bin]]
+name             = "stub_gen"
+path             = "src/bin/stub_gen.rs"
+required-features = ["stub-gen"]
+
+[dependencies]
+czsc-core      = { path = "../czsc-core",    features = ["python"] }
+czsc-ta        = { path = "../czsc-ta",      features = ["rust-numpy"] }
+czsc-utils     = { path = "../czsc-utils",   features = ["python"] }
+czsc-signals   = { path = "../czsc-signals" }
+czsc-trader    = { path = "../czsc-trader" }
+error-macros   = { path = "../error-macros" }
+error-support  = { path = "../error-support" }
+anyhow         = "1"
+chrono         = { workspace = true }
+inventory      = "0.3"
+md5            = "0.8"
+numpy          = { workspace = true }
+polars         = { workspace = true }
+# czsc-python 是唯一启用 pyo3/extension-module 的 crate。
+# abi3-py310 通过上面的 [features] 段挂在 extension-module 后面，仅 wheel
+# 构建路径启用；stub_gen --no-default-features 时走具体版本 libpython 链接。
+# 业务 crate 都引用 workspace 裸 pyo3，`cargo test --workspace` 通过
+# PYO3_PYTHON 解析真实 libpython。
+pyo3           = { workspace = true, features = ["chrono"] }
+pyo3-stub-gen  = "0.12"
+rust_xlsxwriter = "0.79"
+serde          = { workspace = true }
+serde_json     = "1"
+thiserror      = "2"

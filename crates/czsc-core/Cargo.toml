@@ -1,0 +1,45 @@
+[package]
+name        = "czsc-core"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "CZSC core analyzer (FX/BI/ZS/CZSC) — placeholder, to be migrated from rs-czsc"
+
+[lib]
+name = "czsc_core"
+path = "src/lib.rs"
+
+[dependencies]
+error-macros   = { path = "../error-macros" }
+error-support  = { path = "../error-support" }
+anyhow         = "1"
+chrono         = { workspace = true }
+derive_builder = "0.20"
+hex            = "0.4"
+log            = "0.4"
+md5            = "0.8"
+parking_lot    = { version = "0.12", optional = true }
+polars         = { workspace = true, features = ["lazy", "ipc"] }
+serde          = { workspace = true }
+serde_json     = "1"
+sha2           = "0.10"
+strum          = "0.26"
+strum_macros   = "0.26"
+thiserror      = "2"
+pyo3           = { workspace = true, optional = true, features = ["chrono"] }
+pyo3-stub-gen  = { version = "0.12", optional = true }
+
+[features]
+python = ["pyo3", "pyo3-stub-gen", "parking_lot"]
+
+[dev-dependencies]
+anyhow     = "1"
+serde_json = "1"
+thiserror  = "2"
+criterion  = "0.7"
+
+# spec §6 P1 性能基准：10 万根 K 线 CZSC 完整分析 ≤ 200 ms（M2 Mac，单进程）
+[[bench]]
+name    = "czsc_analyze_bench"
+harness = false

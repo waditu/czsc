@@ -150,16 +150,17 @@ class FeishuApiBase:
 
         file_size = os.path.getsize(file_path)
         url = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
-        form = {
-            "file_name": os.path.basename(file_path),
-            "parent_type": "explorer",
-            "parent_node": parent_node,
-            "size": str(file_size),
-            "file": (open(file_path, "rb")),
-        }
-        multi_form = MultipartEncoder(form)
-        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
-        response = requests.request("POST", url, headers=headers, data=multi_form)
+        with open(file_path, "rb") as _fp:
+            form = {
+                "file_name": os.path.basename(file_path),
+                "parent_type": "explorer",
+                "parent_node": parent_node,
+                "size": str(file_size),
+                "file": _fp,
+            }
+            multi_form = MultipartEncoder(form)
+            headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
+            response = requests.request("POST", url, headers=headers, data=multi_form)
         return response.json()["data"]["file_token"]
 
     def download_file(self, file_token, file_path):

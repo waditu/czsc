@@ -1,0 +1,25 @@
+[package]
+name        = "error-macros"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "Proc-macro for error type generation. Placeholder, to be migrated."
+
+[lib]
+name       = "error_macros"
+path       = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+anyhow      = "1"
+proc-macro2 = "1"
+quote       = "1"
+syn         = "2"
+thiserror   = "2"
+
+[dev-dependencies]
+anyhow      = "1"
+serde       = { workspace = true }
+serde_json  = "1"
+thiserror   = "2"

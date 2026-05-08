@@ -1,50 +1,49 @@
+"""czsc.envs —— 极简环境变量适配层（spec §3.4）。
+
+迁移到 Rust 后端后仅保留三项运行时参数：
+
+- ``CZSC_VERBOSE``     —— 是否打印详细日志（True/False）
+- ``CZSC_MIN_BI_LEN``  —— 笔的最小长度（去包含后的 K 线根数；默认 6）
+- ``CZSC_MAX_BI_NUM``  —— 单个 CZSC 实例保留的最大笔数（默认 50）
+
+约定：环境变量名同时接受全大写与全小写写法（大写优先），函数参数显式传值时
+优先级最高（覆盖环境变量）。
 """
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2022/3/17 21:41
-describe: 环境变量统一管理入口
-"""
+
+from __future__ import annotations
 
 import os
 
-# True 的有效表达
-valid_true = ["1", "True", "true", "Y", "y", "yes", "Yes", True]
+# 被视为"真值"的字符串（小写化后比对，覆盖常见写法）
+_VALID_TRUE = {"1", "true", "y", "yes"}
 
 
-def use_python():
-    """是否使用 python 版本对象
-
-    True 表示使用 python 版本对象
-    False 则使用 rust 版本对应的对象
-    """
-    v = os.environ.get("CZSC_USE_PYTHON", False)
-    return v in valid_true
+def _env(name: str, default: str | None = None) -> str | None:
+    """读取环境变量，依次按 UPPER / lower 大小写降级。"""
+    return os.environ.get(name.upper(), os.environ.get(name.lower(), default))
 
 
-def get_verbose(verbose=None):
-    """verbose - 是否输出执行过程的详细信息"""
-    verbose = verbose if verbose else os.environ.get("czsc_verbose", None)
-    v = verbose in valid_true
-    return v
+def _to_bool(v) -> bool:
+    """把任意值宽松地转成 bool（None → False；字符串按 ``_VALID_TRUE`` 集合判定）。"""
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    return str(v).strip().lower() in _VALID_TRUE
 
 
-def get_welcome():
-    """welcome - 是否输出版本标识和缠中说禅博客摘记"""
-    v = os.environ.get("czsc_welcome", "0") in valid_true
-    return v
+def get_verbose(verbose=None) -> bool:
+    """返回是否启用详细日志（``CZSC_VERBOSE`` 环境变量；显式参数优先）。"""
+    return _to_bool(verbose if verbose is not None else _env("czsc_verbose"))
 
 
-def get_min_bi_len(v: int = None) -> int:
-    """min_bi_len - 一笔的最小长度，也就是无包含K线的数量，7是老笔的要求，6是新笔的要求"""
-    min_bi_len = v if v else os.environ.get("czsc_min_bi_len", 6)
-    return int(float(min_bi_len))
+def get_min_bi_len(v: int | None = None) -> int:
+    """返回笔最小长度（``CZSC_MIN_BI_LEN``；默认 6）。``int(float(...))`` 兼容 "6"/"6.0"/6.5 等输入。"""
+    raw = v if v is not None else _env("czsc_min_bi_len", 6)
+    return int(float(raw))
 
 
-def get_max_bi_num(v: int = None) -> int:
-    """max_bi_num - 单个级别K线分析中，程序最大保存的笔数量
-
-    默认值为 50，仅使用内置的信号和因子，不需要调整这个参数。
-    如果进行新的信号计算需要用到更多的笔，可以适当调大这个参数。
-    """
-    max_bi_num = v if v else os.environ.get("czsc_max_bi_num", 50)
-    return int(float(max_bi_num))
+def get_max_bi_num(v: int | None = None) -> int:
+    """返回单个 CZSC 实例的最大笔数（``CZSC_MAX_BI_NUM``；默认 50）。"""
+    raw = v if v is not None else _env("czsc_max_bi_num", 50)
+    return int(float(raw))

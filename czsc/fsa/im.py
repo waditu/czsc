@@ -51,10 +51,11 @@ class IM(FeishuApiBase):
         from requests_toolbelt import MultipartEncoder
 
         url = "https://open.feishu.cn/open-apis/im/v1/files"
-        form = {"file_name": os.path.basename(file_path), "file_type": file_type, "file": (open(file_path, "rb"))}
-        multi_form = MultipartEncoder(form)
-        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
-        response = requests.request("POST", url, headers=headers, data=multi_form)
+        with open(file_path, "rb") as _fp:
+            form = {"file_name": os.path.basename(file_path), "file_type": file_type, "file": _fp}
+            multi_form = MultipartEncoder(form)
+            headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
+            response = requests.request("POST", url, headers=headers, data=multi_form)
         return response.json()["data"]["file_key"]
 
     def upload_im_image(self, image_path, image_type="message"):
@@ -72,10 +73,11 @@ class IM(FeishuApiBase):
         from requests_toolbelt import MultipartEncoder
 
         url = "https://open.feishu.cn/open-apis/im/v1/images"
-        form = {"image_type": image_type, "image": (open(image_path, "rb"))}
-        multi_form = MultipartEncoder(form)
-        headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
-        response = requests.request("POST", url, headers=headers, data=multi_form)
+        with open(image_path, "rb") as _fp:
+            form = {"image_type": image_type, "image": _fp}
+            multi_form = MultipartEncoder(form)
+            headers = {"Authorization": f"Bearer {self.get_access_token()}", "Content-Type": multi_form.content_type}
+            response = requests.request("POST", url, headers=headers, data=multi_form)
         return response.json()["data"]["image_key"]
 
     def send(self, payload, receive_id_type="open_id"):

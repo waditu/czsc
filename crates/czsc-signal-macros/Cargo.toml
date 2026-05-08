@@ -1,0 +1,17 @@
+[package]
+name        = "czsc-signal-macros"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "Proc-macro for #[signal_module] registration. Placeholder, to be migrated."
+
+[lib]
+name       = "czsc_signal_macros"
+path       = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote       = "1"
+syn         = { version = "2", features = ["full", "parsing"] }

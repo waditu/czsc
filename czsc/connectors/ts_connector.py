@@ -226,13 +226,13 @@ def pro_bar_minutes(ts_code, sdt, edt, freq="60min", asset="E", adj=None):
         latest_factor = factor.iloc[-1]["adj_factor"]
         adj_map = {row["trade_date"]: row["adj_factor"] for _, row in factor.iterrows()}
         for col in ["open", "close", "high", "low"]:
-            kline[col] = kline.apply(lambda x: x[col] * adj_map[x["trade_date"]] / latest_factor, axis=1)
+            kline[col] = kline.apply(lambda x, col=col: x[col] * adj_map[x["trade_date"]] / latest_factor, axis=1)
 
     if len(factor) > 0 and adj and adj == "hfq":
         # 后复权	= 当日收盘价 × 当日复权因子
         adj_map = {row["trade_date"]: row["adj_factor"] for _, row in factor.iterrows()}
         for col in ["open", "close", "high", "low"]:
-            kline[col] = kline.apply(lambda x: x[col] * adj_map[x["trade_date"]], axis=1)
+            kline[col] = kline.apply(lambda x, col=col: x[col] * adj_map[x["trade_date"]], axis=1)
 
     if sdt:
         kline = kline[kline["trade_time"] >= pd.to_datetime(sdt)]

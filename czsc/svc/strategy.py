@@ -1,11 +1,21 @@
 """
-策略分析组件模块
+策略分析与可视化组件模块
 
-该模块提供策略分析相关的 Streamlit 可视化组件，包括：
-- 优化结果展示
-- 策略收益分析
-- 组合表现分析
-- 风险分析等
+本模块汇总了策略层面的常用 Streamlit 可视化组件，覆盖以下场景：
+
+1. :func:`show_optuna_study`：展示 Optuna 调参的可视化结果与最佳参数表；
+2. :func:`show_czsc_trader`：展示 ``CzscTrader`` 的多周期 K 线、分型、笔以及交易信号；
+3. :func:`show_strategies_recent`：展示多个策略最近 N 天的收益对比；
+4. :func:`show_returns_contribution`：分析子策略对组合总收益的贡献；
+5. :func:`show_symbols_bench`：展示多品种等权基准与品种间相关性；
+6. :func:`show_quarterly_effect`：展示四个季度分别的累计收益与绩效；
+7. :func:`show_multi_backtest`：多策略回测结果的统一对比表；
+8. :func:`show_cta_periods_classify` / :func:`show_volatility_classify`：按 CTA 行情阶段
+   或波动率分类的回测对比；
+9. :func:`show_portfolio`：组合日收益绩效的综合展示；
+10. :func:`show_turnover_rate`：换手率的多维度展示；
+11. :func:`show_stats_compare`：多组策略回测的绩效对比；
+12. :func:`show_symbol_penalty`：依次剔除收益最高的 N 个品种，对比收益变化。
 
 作者: 缠中说禅团队
 """
@@ -16,22 +26,23 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from wbt import WeightBacktest
 
 from .base import apply_stats_style, generate_component_key
-from rs_czsc import WeightBacktest
 
 
 def show_optuna_study(study, key=None, **kwargs):
     """展示 Optuna Study 的可视化结果
 
-    :param study: optuna.study.Study, Optuna Study 对象
-    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
-    :param kwargs: dict, 其他参数
+    依次绘制 Optuna 的 ``contour`` 与 ``slice`` 图，并展示 ``optuna_good_params``
+    输出的最佳参数列表。
 
-        - sub_title: str, optional, 子标题
-        - keep: float, optional, 默认0.2, 保留最佳参数的比例
-
-    :return: optuna.study.Study
+    :param study: optuna.study.Study，Optuna Study 对象
+    :param key: str，可选；组件基础标识符，每个图表会自动追加后缀
+    :param kwargs: 其他参数
+        - sub_title: str，子标题
+        - keep: float，保留最佳参数的比例，默认 0.2
+    :return: optuna.study.Study；原样返回，便于链式调用
     """
     try:
         import optuna
@@ -39,23 +50,27 @@ def show_optuna_study(study, key=None, **kwargs):
         st.error("请安装 optuna 库, 执行命令：pip install optuna")
         return
 
+    # Optuna 可视化文档：
     # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
     # https://zh-cn.optuna.org/reference/visualization.html
     from czsc.utils.optuna import optuna_good_params
 
     sub_title = kwargs.pop("sub_title", "Optuna Study Visualization")
     if sub_title:
+        # 为 anchor 生成稳定且短小的 hash
         anchor = hashlib.md5(sub_title.encode("utf-8")).hexdigest().upper()[:6]
         st.subheader(sub_title, divider="rainbow", anchor=anchor)
 
+    # 等高线图
     fig = optuna.visualization.plot_contour(study)
 
-    # 生成 key
+    # 自动生成组件 key
     if key is None:
         key = generate_component_key(study, prefix="optuna", sub_title=sub_title)
 
     st.plotly_chart(fig, key=f"{key}_contour", width="stretch")
 
+    # 切片图
     fig = optuna.visualization.plot_slice(study)
     st.plotly_chart(fig, key=f"{key}_slice", width="stretch")
 
@@ -68,10 +83,15 @@ def show_optuna_study(study, key=None, **kwargs):
 def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
     """显示缠中说禅交易员详情
 
+    将 ``CzscTrader`` 中的多周期 K 线、分型、笔、均线、成交量、MACD、交易信号统一
+    渲染到 Tab 页中；最后一个 Tab 展示策略详情（最新信号 + 各 Position 的 JSON）。
+
     :param trader: CzscTrader 对象
-    :param max_k_num: 最大显示 K 线数量
-    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
+    :param max_k_num: int，每个周期最多显示多少根 K 线，默认 300
+    :param key: str，可选；组件基础标识符
     :param kwargs: 其他参数
+        - sub_title: str，子标题
+    :return: None
     """
     import czsc
     from czsc.utils.ta import MACD
@@ -90,6 +110,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
 
     for freq, tab in zip(freqs, tabs[:-1], strict=False):
         c = trader.kas[freq]
+        # 仅显示最近 max_k_num 根 K 线，避免数据量过大造成前端卡顿
         sdt = c.bars_raw[-max_k_num].dt if len(c.bars_raw) > max_k_num else c.bars_raw[0].dt
         df = pd.DataFrame(c.bars_raw)
         df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"], fastperiod=12, slowperiod=26, signalperiod=9)
@@ -98,6 +119,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
         kline = czsc.KlineChart(n_rows=3, row_heights=(0.5, 0.3, 0.2), title="", width="100%", height=800)
         kline.add_kline(df, name="")
 
+        # 叠加分型与笔
         if len(c.bi_list) > 0:
             bi = pd.DataFrame(
                 [{"dt": x.fx_a.dt, "bi": x.fx_a.fx} for x in c.bi_list]
@@ -123,7 +145,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
         kline.add_vol(df, row=2, line_width=1)
         kline.add_macd(df, row=3, line_width=1)
 
-        # 在基础周期上绘制交易信号
+        # 在基础周期上叠加交易信号
         if freq == trader.base_freq:
             for pos in trader.positions:
                 bs_df = pd.DataFrame([x for x in pos.operates if x["dt"] >= sdt])
@@ -131,8 +153,11 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
                     continue
 
                 open_ops = [czsc.Operate.LO, czsc.Operate.SO]
-                bs_df["tag"] = bs_df["op"].apply(lambda x: "triangle-up" if x in open_ops else "triangle-down")
-                bs_df["color"] = bs_df["op"].apply(lambda x: "red" if x in open_ops else "white")
+                # 开仓用上三角，平仓用下三角；颜色区分多空
+                bs_df["tag"] = bs_df["op"].apply(
+                    lambda x, open_ops=open_ops: "triangle-up" if x in open_ops else "triangle-down"
+                )
+                bs_df["color"] = bs_df["op"].apply(lambda x, open_ops=open_ops: "red" if x in open_ops else "white")
 
                 kline.add_scatter_indicator(
                     bs_df["dt"],
@@ -149,6 +174,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
                 )
 
         with tab:
+            # plotly 工具栏配置：开启滚轮缩放，去掉一些不常用按钮
             config = {
                 "scrollZoom": True,
                 "displayModeBar": True,
@@ -165,7 +191,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
                 ],
             }
 
-            # 生成 key
+            # 自动生成组件 key
             if key is None:
                 key = generate_component_key(trader, prefix="czsc_trader", freq=freq, max_k_num=max_k_num)
 
@@ -174,6 +200,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
     with tabs[-1]:
         with st.expander("查看最新信号", expanded=False):
             if len(trader.s):
+                # 仅展示形如 "k1_k2_k3" 的标准信号（key 由三段组成）
                 s = {k: v for k, v in trader.s.items() if len(k.split("_")) == 3}
                 st.write(s)
             else:
@@ -187,7 +214,10 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
 def show_strategies_recent(df, **kwargs):
     """展示最近 N 天的策略表现
 
-    :param df: pd.DataFrame, columns=['dt', 'strategy', 'returns'], 样例如下：
+    输入数据应为长表 ``[dt, strategy, returns]``，按策略累积近 N 天的收益，
+    再透视成"策略 × 时间窗"的对比矩阵；同时统计每个时间窗的盈利策略数量与比例。
+
+    :param df: pd.DataFrame，columns = ['dt', 'strategy', 'returns']，样例如下：
 
         ===================  ==========  ============
         dt                   strategy    returns
@@ -199,15 +229,16 @@ def show_strategies_recent(df, **kwargs):
         2021-01-08 00:00:00  STK001       0.000510725
         ===================  ==========  ============
 
-    :param kwargs: dict
-
-        - nseq: tuple, optional, 默认为 (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360)，展示的天数序列
+    :param kwargs: 其他参数
+        - nseq: tuple，展示的天数序列，默认 (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360)
+    :return: None
     """
     nseq = kwargs.get("nseq", (1, 3, 5, 10, 20, 30, 60, 90, 120, 180, 240, 360))
     dfr = df.copy()
     dfr = pd.pivot_table(dfr, index="dt", columns="strategy", values="returns", aggfunc="sum").fillna(0)
     rows = []
     for n in nseq:
+        # 取最近 n 天每个策略的累计收益
         for k, v in dfr.iloc[-n:].sum(axis=0).to_dict().items():
             rows.append({"天数": f"近{n}天", "策略": k, "收益": v})
 
@@ -220,7 +251,7 @@ def show_strategies_recent(df, **kwargs):
         hide_index=False,
     )
 
-    # 计算每个时间段的盈利策略数量
+    # 每个时间窗内的盈利策略数量与比例
     win_count = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0)
     win_rate = n_rets.map(lambda x: 1 if x > 0 else 0).sum(axis=0) / n_rets.shape[0]
     dfs = pd.DataFrame({"盈利策略数量": win_count, "盈利策略比例": win_rate}).T
@@ -232,10 +263,13 @@ def show_strategies_recent(df, **kwargs):
 def show_returns_contribution(df, returns=None, max_returns=100, key=None):
     """分析子策略对总收益的贡献
 
-    :param df: pd.DataFrame, 子策略日收益数据，index 为 datetime, columns 为 子策略名称
-    :param returns: list, 子策略名称列表
-    :param max_returns: int, 最大展示策略数量
-    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
+    左侧绘制柱状图（包含正负贡献），右侧绘制饼图（仅展示正贡献策略的占比）。
+
+    :param df: pd.DataFrame，子策略日收益数据；index 为 datetime，columns 为子策略名称
+    :param returns: list，子策略名称列表；为 None 时使用 df 的全部列
+    :param max_returns: int，最大展示策略数量，超过时给出提示
+    :param key: str，可选；组件基础标识符
+    :return: None
     """
     df = df.copy()
     for dt_col in ["date", "dt"]:
@@ -250,18 +284,18 @@ def show_returns_contribution(df, returns=None, max_returns=100, key=None):
         st.warning(f"请选择多个策略进行对比，或者选择少于{max_returns} 个策略; 当前选择 {len(returns)} 个策略")
         return
 
-    # 计算每个策略的总收益贡献
+    # 每个策略的总收益贡献
     total_returns = df[returns].sum(axis=0)
 
-    # 创建用于绘图的数据框
+    # 构造绘图数据
     plot_df = pd.DataFrame({"策略": total_returns.index, "收益贡献": total_returns.values})
     plot_df = plot_df.sort_values(by="收益贡献", ascending=False)
 
-    # 创建两列布局
+    # 左大右小的两列布局
     col1, col2 = st.columns([3, 2])
 
     with col1.container(border=True):
-        # 绘制柱状图
+        # 收益贡献柱状图
         fig_bar = px.bar(
             plot_df,
             x="策略",
@@ -274,7 +308,7 @@ def show_returns_contribution(df, returns=None, max_returns=100, key=None):
         )
         fig_bar.update_layout(yaxis_title="绝对收益", xaxis_title="策略")
 
-        # 生成 key
+        # 自动生成组件 key
         if key is None:
             key = generate_component_key(df, prefix="ret_contrib", returns=returns, max_returns=max_returns)
 
@@ -282,7 +316,7 @@ def show_returns_contribution(df, returns=None, max_returns=100, key=None):
         st.caption("柱状图展示每个策略的收益贡献, Y轴为绝对收益大小，X轴为策略名称")
 
     with col2.container(border=True):
-        # 绘制饼图，如果收益贡献为负，删除
+        # 仅保留正贡献策略，绘制饼图
         plot_df = plot_df[plot_df["收益贡献"] > 0]
         fig_pie = px.pie(plot_df, values="收益贡献", names="策略", title="盈利贡献分析（饼图）", width=600, height=400)
         fig_pie.update_traces(textposition="inside", textinfo="percent+label")
@@ -293,17 +327,20 @@ def show_returns_contribution(df, returns=None, max_returns=100, key=None):
 def show_symbols_bench(df: pd.DataFrame, **kwargs):
     """展示多个品种的基准收益相关信息
 
-    :param df: pd.DataFrame, 数据源, 包含symbol, dt, price 字段, 其他字段将被忽略
-        symbol: 品种代码
-        dt: 时间
-        price: 交易价格
+    构造"品种等权"基准：先按 symbol 计算日内收益，再按日均值得到等权日收益；
+    展示其核心绩效、最大回撤以及品种间日收益的相关性矩阵。
+
+    :param df: pd.DataFrame，必须包含 ``symbol``、``dt``、``price`` 三列；其他列将被忽略
     :param kwargs: 其他参数
-        - use_st_table: bool, 是否使用 st.table 展示相关性矩阵, 默认为 False
+        - use_st_table: bool，是否使用 ``st.table`` 展示相关性矩阵，默认 False
+    :return: None
     """
-    from rs_czsc import daily_performance
+    from wbt import daily_performance
+
     from czsc.eda import cal_yearly_days
 
     df = df[["symbol", "dt", "price"]].copy()
+    # 按 symbol 计算价格的日内 pct_change
     df["pct_change"] = df.groupby("symbol")["price"].pct_change()
     df["date"] = df["dt"].dt.date
     dailys = df.groupby(["symbol", "date"])["pct_change"].sum().reset_index()
@@ -313,6 +350,7 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
 
     with st.container(border=True):
         st.markdown("##### 品种等权累计收益&最大回撤")
+        # 品种等权基准
         dailys["total"] = dailys.mean(axis=1)
         dailys.index = pd.to_datetime(dailys.index)
 
@@ -343,25 +381,29 @@ def show_symbols_bench(df: pd.DataFrame, **kwargs):
 def show_quarterly_effect(returns: pd.Series, key=None):
     """展示策略的季节性收益对比
 
-    :param returns: 日收益率序列，index 为日期
-    :param key: str, 可选，组件的基础标识符，每个图表会自动添加后缀
+    将日收益按"自然季度"分成四组，分别展示每组的核心绩效与累计收益曲线（按数字
+    索引绘制，便于跨年份对比），并以彩色矩形覆盖标注不同年份的区间。
+
+    :param returns: pd.Series，日收益率序列；index 为日期
+    :param key: str，可选；组件基础标识符
+    :return: None
     """
     import plotly.express as px
+    from wbt import daily_performance
 
     from czsc.eda import cal_yearly_days
-
-    from rs_czsc import daily_performance
 
     returns.index = pd.to_datetime(returns.index)
     yearly_days = cal_yearly_days(returns.index.to_list())
 
-    # 按4个季度划分数据为 s1，s2，s3，s4，分别计算每个季度的统计指标
+    # 按季度切分收益
     s1 = returns[returns.index.quarter == 1]
     s2 = returns[returns.index.quarter == 2]
     s3 = returns[returns.index.quarter == 3]
     s4 = returns[returns.index.quarter == 4]
 
     def __show_quarter_stats(s: pd.Series, quarter_name: str):
+        """展示单个季度的绩效与累计收益曲线"""
         stats = daily_performance(s.to_list(), yearly_days=yearly_days)
         st.markdown(
             f"总交易天数: `{len(s)}天` \
@@ -372,21 +414,20 @@ def show_quarterly_effect(returns: pd.Series, key=None):
                     | 年化波动率: `{stats['年化波动率']:.2%}`"
         )
 
-        # 用 plotly 绘制累计收益率曲线, 用 数字作为index，方便对比
+        # 用 plotly 绘制累计收益曲线，X 轴使用数字索引，便于跨年份对比
         fig = px.line(s.cumsum(), x=list(range(len(s))), y=s.cumsum().values, title="")
         fig.update_layout(xaxis_title="交易天数", yaxis_title="累计收益率", margin={"l": 0, "r": 0, "t": 0, "b": 0})
 
-        # 按年分组，绘制矩形覆盖
+        # 按年份分组，用半透明矩形覆盖区分
         years = s.index.year.unique()
         colors = ["rgba(102, 255, 178, 0.1)", "rgba(102, 178, 255, 0.1)"]  # 薄荷绿和天蓝色，半透明
         shapes = []
         for i, year in enumerate(years):
-            # 获取该年的第一个和最后一个交易日在数字索引中的位置
+            # 拿到该年第一个/最后一个交易日在数字索引中的位置
             year_data = s[s.index.year == year]
             start_idx = s.index.get_indexer([year_data.index[0]])[0]
             end_idx = s.index.get_indexer([year_data.index[-1]])[0]
 
-            # 添加矩形
             shapes.append(
                 {
                     "type": "rect",
@@ -403,10 +444,9 @@ def show_quarterly_effect(returns: pd.Series, key=None):
                 }
             )
 
-        # 更新图表布局，添加矩形
         fig.update_layout(shapes=shapes)
 
-        # 添加年份标签
+        # 在每段年份矩形的中部加上年份标签
         annotations = []
         for _, year in enumerate(years):
             year_data = s[s.index.year == year]
@@ -426,7 +466,7 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
         fig.update_layout(annotations=annotations)
 
-        # 生成 key
+        # 自动生成组件 key
         if key is None:
             key_base = generate_component_key(returns, prefix="quarterly")
 
@@ -452,7 +492,16 @@ def show_quarterly_effect(returns: pd.Series, key=None):
 
 
 def show_multi_backtest(wbs: dict, **kwargs):
-    """展示多个策略的回测结果"""
+    """展示多个策略的回测结果
+
+    将多个 ``WeightBacktest`` 对象的核心绩效汇总成一张对比表，并通过
+    :func:`show_cumulative_returns` 绘制累计收益曲线。
+
+    :param wbs: dict，``{策略名: WeightBacktest}`` 映射
+    :param kwargs: 其他参数
+        - show_describe: bool，是否额外展示几个核心指标的分布，默认 False
+    :return: tuple[pd.DataFrame, pd.DataFrame]，绩效对比表与日收益宽表
+    """
     from czsc.svc.base import apply_stats_style
     from czsc.svc.returns import show_cumulative_returns
     from czsc.svc.statistics import show_describe
@@ -466,7 +515,7 @@ def show_multi_backtest(wbs: dict, **kwargs):
         stats.update(wb.stats)
         rows.append(stats)
 
-        # 获取日收益
+        # 取该策略的日收益序列（仅保留 total），便于横向合并
         daily = wb.daily_return.copy()[["date", "total"]]
         daily["strategy"] = strategy
         daily["return"] = daily["total"]
@@ -474,7 +523,7 @@ def show_multi_backtest(wbs: dict, **kwargs):
         dailys.append(daily[["dt", "strategy", "return"]])
 
     df_stats = pd.DataFrame(rows)
-    # st.write(df_stats.columns.to_list())
+    # 展示用列；按业务习惯排序
     cols = [
         "策略名称",
         "开始日期",
@@ -506,6 +555,7 @@ def show_multi_backtest(wbs: dict, **kwargs):
 
         st.dataframe(apply_stats_style(df_stats))
 
+        # 多策略累计收益对比
         dailys = pd.concat(dailys, axis=0)
         dailys["dt"] = pd.to_datetime(dailys["dt"])
         dailys = dailys.sort_values("dt", ascending=False)
@@ -516,7 +566,7 @@ def show_multi_backtest(wbs: dict, **kwargs):
     if kwargs.get("show_describe", False):
         with st.container(border=True):
             st.markdown("#### :red[主要统计指标分布]")
-            # 绘制单笔收益、持仓K线数、夏普的分布
+            # 展示单笔收益、持仓K线数、夏普、年化的分布
             show_describe(df_stats[["单笔收益", "持仓K线数", "夏普", "年化"]])
 
     return df_stats, df_dailys
@@ -525,16 +575,19 @@ def show_multi_backtest(wbs: dict, **kwargs):
 def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     """展示不同市场环境下的策略表现
 
-    :param df: 标准K线数据，
-            必须包含 dt, symbol, open, close, high, low, vol, amount, weight, price 列;
-            如果 price 列不存在，则使用 close 列
-    :param kwargs:
+    通过 ``mark_cta_periods`` 把行情按"最佳/最差/普通"以及"上涨/下跌"打标签，
+    再分别将权重在不同标签下保留 / 置 0，构造多组回测进行对比。
 
+    :param df: pd.DataFrame，标准 K 线数据，必须包含
+        ``dt, symbol, open, close, high, low, vol, amount, weight, price`` 列；
+        若 ``price`` 列不存在，则使用 ``close`` 列代替
+    :param kwargs: 其他参数
         - fee_rate: 手续费率
         - digits: 小数位数
         - weight_type: 权重类型
-        - q1: 最容易赚钱的笔的占比, mark_cta_periods 函数的参数
-        - q2: 最难赚钱的笔的占比, mark_cta_periods 函数的参数
+        - q1: 最容易赚钱的笔的占比，传给 ``mark_cta_periods``
+        - q2: 最难赚钱的笔的占比，传给 ``mark_cta_periods``
+    :return: None
     """
     from czsc.eda import cal_yearly_days
 
@@ -544,6 +597,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
 
     yearly_days = cal_yearly_days(df["dt"].unique().tolist())
 
+    # 期望的标签列；若用户未预先打标，则在内部调用 mark_cta_periods 自动生成
     mark_cols = [
         "is_best_period",
         "is_best_up_period",
@@ -565,6 +619,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     if "price" not in dfs.columns:
         dfs["price"] = dfs["close"]
 
+    # 行情结构占比统计
     p1 = dfs["is_best_period"].value_counts()[1] / len(dfs)
     p1_up = dfs["is_best_up_period"].value_counts()[1] / len(dfs)
     p1_down = dfs["is_best_down_period"].value_counts()[1] / len(dfs)
@@ -578,6 +633,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     st.caption(f"WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
     wb_cols = ["dt", "symbol", "weight", "price"]
+    # None 表示原始策略；其余每个 flag 表示"仅保留该类行情的权重"
     period_flags = [
         None,
         "is_best_period",
@@ -594,6 +650,7 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
     for flag, classify_ in zip(period_flags, classify, strict=False):
         df_tmp = dfs.copy()
         if flag:
+            # 非目标行情区间的权重置 0
             df_tmp["weight"] = np.where(df_tmp[flag], df_tmp["weight"], 0)
         wb = WeightBacktest(
             df_tmp[wb_cols],
@@ -610,26 +667,25 @@ def show_cta_periods_classify(df: pd.DataFrame, **kwargs):
 def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
     """【后验，有未来信息，不能用于实盘】波动率分类回测
 
-    :param df: 标准K线数据，
-            必须包含 dt, symbol, open, close, high, low, vol, amount, weight, price 列;
-            如果 price 列不存在，则使用 close 列
-    :param kwargs:
+    使用 ``mark_volatility`` 给每根 K 线打"高/中/低"波动率标签，再分别将权重
+    限制在某一类波动率内回测。注意该函数依赖未来信息，仅用于研究分析。
 
-        - fee_rate: 手续费率，WeightBacktest 的参数
-        - digits: 小数位数，WeightBacktest 的参数
-        - weight_type: 权重类型，'ts' 表示时序，'cs' 表示截面，WeightBacktest 的参数
-        - kind: 波动率分类方式，'ts' 表示时序，'cs' 表示截面，mark_volatility 函数的参数
-        - window: 计算波动率的窗口，mark_volatility 函数的参数
-        - q1: 波动率最大的K线数量占比，默认 0.3，mark_volatility 函数的参数
-        - q2: 波动率最小的K线数量占比，默认 0.3，mark_volatility 函数的参数
-
+    :param df: pd.DataFrame，标准 K 线数据，必须包含
+        ``dt, symbol, open, close, high, low, vol, amount, weight, price`` 列；
+        若 ``price`` 列不存在，则使用 ``close`` 列代替
+    :param kind: 波动率分类方式，``'ts'`` 表示时序，``'cs'`` 表示截面
+    :param kwargs: 其他参数
+        - fee_rate: 手续费率，``WeightBacktest`` 参数
+        - digits: 小数位数，``WeightBacktest`` 参数
+        - weight_type: 权重类型，``'ts'`` 时序 / ``'cs'`` 截面
+        - kind: 波动率分类方式（同 ``kind``），传给 ``mark_volatility``
+        - window: 计算波动率的窗口
+        - q1: 高波动率 K 线数量占比，默认 0.3
+        - q2: 低波动率 K 线数量占比，默认 0.3
     :return: None
-
-    ==============
-    example
-    ==============
-    >>> show_volatility_classify(df, fee_rate=0.00, digits=1, weight_type='ts',
-    >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
+    :example:
+        >>> show_volatility_classify(df, fee_rate=0.00, digits=1, weight_type='ts',
+        >>>                          kind='ts', window=20, q1=0.2, q2=0.2 )
     """
     from czsc.eda import cal_yearly_days
 
@@ -654,12 +710,14 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
     if "price" not in dfs.columns:
         dfs["price"] = dfs["close"]
 
+    # 三类波动率的占比
     p1 = dfs["is_max_volatility"].value_counts()[1] / len(dfs)
     p2 = dfs["is_mid_volatility"].value_counts()[1] / len(dfs)
     p3 = dfs["is_min_volatility"].value_counts()[1] / len(dfs)
     st.markdown(f"高波动行情占比：:red[{p1:.2%}]；中波动行情占比：:green[{p2:.2%}]；低波动行情占比：:blue[{p3:.2%}]")
     st.caption(f"WeightBacktest 参数：fee_rate={fee_rate}, digits={digits}, weight_type={weight_type}")
 
+    # 原始策略
     wb = WeightBacktest(
         dfs[["dt", "symbol", "weight", "price"]],
         fee_rate=fee_rate,
@@ -668,16 +726,19 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
         yearly_days=yearly_days,
     )
 
+    # 高波动权重组：非高波动区间置 0
     df1 = dfs.copy()
     df1["weight"] = np.where(df1["is_max_volatility"], df1["weight"], 0)
     df1 = df1[["dt", "symbol", "weight", "price"]].copy().reset_index(drop=True)
     wb1 = WeightBacktest(df1, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
+    # 中波动权重组
     df2 = dfs.copy()
     df2["weight"] = np.where(df2["is_mid_volatility"], df2["weight"], 0)
     df2 = df2[["dt", "symbol", "weight", "price"]].copy().reset_index(drop=True)
     wb2 = WeightBacktest(df2, fee_rate=fee_rate, digits=digits, weight_type=weight_type, yearly_days=yearly_days)
 
+    # 低波动权重组
     df3 = dfs.copy()
     df3["weight"] = np.where(df3["is_min_volatility"], df3["weight"], 0)
     df3 = df3[["dt", "symbol", "weight", "price"]].copy().reset_index(drop=True)
@@ -691,15 +752,22 @@ def show_volatility_classify(df: pd.DataFrame, kind="ts", **kwargs):
 def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: str | None = None, **kwargs):
     """分析组合日收益绩效
 
-    :param df: 日收益数据，包含 dt, portfolio, benchmark 三列, 其中 dt 为日期, portfolio 为组合收益, benchmark 为基准收益
-    :param portfolio: 组合名称
-    :param benchmark: 基准名称, 可选
-    :param show_detail: 是否展示详情, 可选, 默认展示
+    展示组合的核心指标 + 回撤曲线；并在详情中按 Tab 展示年度 / 季度 / 月度绩效，
+    若提供基准，还会展示组合相对基准的超额收益分析。
+
+    :param df: pd.DataFrame，日收益数据；包含 ``dt`` 与 ``portfolio`` 列，可选 ``benchmark`` 列
+    :param portfolio: str，组合名称
+    :param benchmark: str，基准名称，可选
+    :param kwargs: 其他参数
+        - show_detail: bool，是否展示详情，默认展示
+    :return: None
     """
-    from rs_czsc import daily_performance
+    from wbt import daily_performance
+
     from czsc.eda import cal_yearly_days
 
     if benchmark is not None:
+        # 同时计算超额收益（alpha），便于后续展示
         df["alpha"] = df[portfolio] - df[benchmark]
         df = df[["dt", portfolio, benchmark, "alpha"]].copy()
     else:
@@ -759,15 +827,19 @@ def show_portfolio(df: pd.DataFrame, portfolio: str, benchmark: str | None = Non
 def show_turnover_rate(df: pd.DataFrame):
     """显示换手率变化
 
-    :param df: 权重数据，必须包含 dt, symbol, weight 三列, 其他列忽略
+    展示策略的核心换手率指标（单边、日均、最大、最小、近 30 天、近 1 年），
+    并辅以 3 张图：日换手累计曲线、月换手柱状图、年换手柱状图。
+
+    :param df: pd.DataFrame，权重数据；必须包含 ``dt``、``symbol``、``weight`` 三列
+    :return: None
     """
     from czsc.eda import turnover_rate
 
     res = turnover_rate(df, verbose=True)
-    dfc = res["日换手详情"]  # 两列：dt, change
+    dfc = res["日换手详情"]  # 包含两列：dt, change
     dfc["dt"] = pd.to_datetime(dfc["dt"])
 
-    # 最近30天换手率
+    # 最近 30 天换手率
     _sdt_30 = dfc["dt"].max() - pd.Timedelta(days=30)
     _dfc = dfc[dfc["dt"] >= _sdt_30]
 
@@ -784,21 +856,21 @@ def show_turnover_rate(df: pd.DataFrame):
     m6.metric("最近一年换手率", f"{_dfy['change'].sum():.2f}", help=f"最近一年换手率，自{_sdt_year}以来")
 
     p1, p2, p3 = st.columns([2, 3, 1])
-    # 日换手的累计变化（X轴不显示）
+    # 日换手累计曲线
     df_daily = dfc.copy()
     df_daily["change"] = df_daily["change"].cumsum()
     fig = px.line(df_daily, x="dt", y="change", title="日换手累计曲线")
     fig.update_xaxes(title_text="")
     p1.plotly_chart(fig, width="stretch")
 
-    # 月换手的柱状图
+    # 月换手柱状图
     df_monthly = dfc.copy()
     df_monthly = df_monthly.set_index("dt").resample("ME").sum().reset_index()
     fig = px.bar(df_monthly, x="dt", y="change", title="月换手变化")
     fig.update_xaxes(title_text="")
     p2.plotly_chart(fig, width="stretch")
 
-    # 年换手的柱状图
+    # 年换手柱状图
     df_yearly = dfc.copy()
     df_yearly = df_yearly.set_index("dt").resample("YE").sum().reset_index()
     df_yearly["dt"] = df_yearly["dt"].dt.strftime("%Y")
@@ -813,7 +885,12 @@ def show_turnover_rate(df: pd.DataFrame):
 def show_stats_compare(df: pd.DataFrame, **kwargs):
     """显示多组策略回测的绩效对比
 
-    :param df: 策略回测结果, WeightBacktest 的 stats 数据汇总成的 DataFrame，用 name 列区分不同的策略
+    将 ``WeightBacktest.stats`` 汇总成的 DataFrame（用 ``name`` 列区分不同策略）按
+    标准列序展示，并应用 :func:`apply_stats_style` 的统一着色与格式化。
+
+    :param df: pd.DataFrame，策略回测结果汇总表
+    :param kwargs: 其他参数（保留以便扩展）
+    :return: None
     """
     if "name" in df.columns:
         df.set_index("name", inplace=True)
@@ -845,29 +922,36 @@ def show_stats_compare(df: pd.DataFrame, **kwargs):
         "结束日期",
     ]
 
-    # 只选择存在的列
+    # 仅保留实际存在的列，避免 KeyError
     existing_cols = [col for col in stats_cols if col in df.columns]
     df = df[existing_cols].copy()
 
-    # 应用样式
+    # 应用统一样式
     df = apply_stats_style(df)
     st.dataframe(df, width="stretch")
 
 
 def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):
-    """依次删除策略收益最高的N个品种，对比收益变化
+    """依次删除策略收益最高的 N 个品种，对比收益变化
 
-    :param df: 策略权重数据
-    :param n: 删除的品种数量
+    用于评估策略对个别赚钱品种的依赖程度：先用全量数据回测，再依次剔除累计盈利
+    Top 1、Top 2、... Top N 品种重新回测，最后比较累计收益曲线与绩效。
+
+    :param df: pd.DataFrame，策略权重数据
+    :param n: int，删除的品种数量
+    :param kwargs: 其他参数
+        - digits: int，权重小数位数，默认 2
+        - fee_rate: float，手续费率，默认 0
+        - weight_type: str，权重类型，默认 ``'ts'``
+        - yearly_days: int，年化天数，默认 252
     :return: None
     """
-    WeightBacktest = safe_import_weight_backtest()
-
     digits = kwargs.get("digits", 2)
     fee_rate = kwargs.get("fee_rate", 0.0)
     weight_type = kwargs.get("weight_type", "ts")
     yearly_days = kwargs.get("yearly_days", 252)
 
+    # n 不能超过 symbol 的总数 - 1（至少要剩 1 个）
     n = min(n, df["symbol"].nunique() - 1)
     dfw = df[["dt", "symbol", "weight", "price"]].copy()
     wb_map = {}
@@ -875,6 +959,7 @@ def show_symbol_penalty(df: pd.DataFrame, n=3, **kwargs):
     wb_map["原始策略"] = wb1
 
     for i in list(range(1, n + 1)):
+        # 取累计盈利最高的前 i 个品种
         top_symbols = wb1.get_top_symbols(i, kind="profit")
         dfw1 = dfw[~dfw["symbol"].isin(top_symbols)].copy().reset_index(drop=True)
         wb2 = WeightBacktest(

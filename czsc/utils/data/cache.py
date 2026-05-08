@@ -94,9 +94,11 @@ class DiskCache:
         if suffix == "pkl":
             import dill
 
-            res = dill.load(open(file, "rb"))
+            with open(file, "rb") as _f:
+                res = dill.load(_f)
         elif suffix == "json":
-            res = json.load(open(file, encoding="utf-8"))
+            with open(file, encoding="utf-8") as _f:
+                res = json.load(_f)
         elif suffix == "txt":
             res = file.read_text(encoding="utf-8")
         elif suffix == "csv":
@@ -125,12 +127,14 @@ class DiskCache:
         if suffix == "pkl":
             import dill
 
-            dill.dump(v, open(file, "wb"))
+            with open(file, "wb") as _f:
+                dill.dump(v, _f)
 
         elif suffix == "json":
             if not isinstance(v, dict):
                 raise ValueError("suffix json only support dict")
-            json.dump(v, open(file, "w", encoding="utf-8"), ensure_ascii=False, indent=4)
+            with open(file, "w", encoding="utf-8") as _f:
+                json.dump(v, _f, ensure_ascii=False, indent=4)
 
         elif suffix == "txt":
             if not isinstance(v, str):

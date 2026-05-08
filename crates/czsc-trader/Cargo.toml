@@ -1,0 +1,37 @@
+[package]
+name        = "czsc-trader"
+version.workspace    = true
+edition.workspace    = true
+license.workspace    = true
+repository.workspace = true
+description = "CZSC trader (CzscTrader / CzscSignals / signal compilation / weight backtest). Migrated from rs-czsc."
+
+[lib]
+name = "czsc_trader"
+path = "src/lib.rs"
+
+[dependencies]
+czsc-core     = { path = "../czsc-core",     features = ["python"] }
+czsc-utils    = { path = "../czsc-utils" }
+czsc-signals  = { path = "../czsc-signals" }
+error-macros  = { path = "../error-macros" }
+error-support = { path = "../error-support" }
+
+anyhow        = "1"
+chrono        = { workspace = true, features = ["serde"] }
+hashbrown     = { workspace = true }
+hex           = "0.4"
+log           = "0.4"
+md5           = "0.8"
+polars        = { workspace = true, features = ["lazy", "ipc", "parquet"] }
+polars-plan   = { version = "0.42" }
+rayon         = { workspace = true }
+serde         = { workspace = true }
+serde_json    = "1"
+sha2          = "0.10"
+strum         = "0.26"
+strum_macros  = "0.26"
+thiserror     = "2"
+tracing       = "0.1"
+arrayvec      = "0.7"
+csv           = "1"

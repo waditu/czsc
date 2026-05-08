@@ -1,15 +1,23 @@
-# This workflow will build and upload a Python Package using UV when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# Build & Publish Python Package
+#
+# czsc 1.0.0+ is a mixed Rust/Python package: the czsc._native extension
+# is produced by the czsc-python crate (PyO3) and the pure-Python tree
+# under czsc/ is bundled alongside via maturin's `python-source = "."`.
+# We build per-platform abi3 wheels (Python 3.10+ ABI) so a single wheel
+# per (OS, arch) covers Python 3.10/3.11/3.12/3.13.
+#
+# Trusted Publishing (OIDC) is configured at https://pypi.org/p/czsc and
+# https://test.pypi.org/p/czsc — no API token secrets are kept in the repo.
 
 name: Build & Publish Python Package
 
 on:
   push:
     tags:
-      - 'v*'  # 监听所有 v* 格式的标签，如 v1.0.0, v0.9.70
+      - 'v*'  # 监听 v* 格式的 tag，例如 v1.0.0
   release:
     types: [published]
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:
     inputs:
       publish_to_testpypi:
         description: 'Publish to TestPyPI instead of PyPI'
@@ -18,233 +26,275 @@ on:
         type: boolean
 
 jobs:
-  pre-publish-checks:
+  # ------------------------------------------------------------------
+  # 1) Build per-platform abi3 wheels (Linux / macOS / Windows × x86_64+arm64)
+  # ------------------------------------------------------------------
+  build-wheels:
+    name: Wheel ${{ matrix.platform.os }} ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
+          - { os: macos-13,       target: x86_64,  manylinux: '' }
+          - { os: macos-14,       target: aarch64, manylinux: '' }
+          - { os: windows-latest, target: x64,     manylinux: '' }
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Build wheel (maturin)
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.platform.target }}
+          manylinux: ${{ matrix.platform.manylinux }}
+          args: --release --strip --out dist
+          sccache: 'true'
+
+      - name: List built wheels
+        shell: bash
+        run: ls -la dist/
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.platform.os }}-${{ matrix.platform.target }}
+          path: dist/*.whl
+          retention-days: 30
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------
+  # 2) Build source distribution (sdist)
+  # ------------------------------------------------------------------
+  build-sdist:
+    name: Build sdist
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v2
-      with:
-        version: "latest"
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Build sdist (maturin)
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
 
-    - name: Install dependencies
-      run: uv sync --extra all
+      - name: List sdist
+        run: ls -la dist/
 
-    # - name: Run tests
-    #   run: |
-    #     uv run pytest test/ -v
+      - name: Upload sdist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/*.tar.gz
+          retention-days: 30
+          if-no-files-found: error
 
-    # - name: Lint check
-    #   run: |
-    #     uv add --dev flake8 black isort
-    #     uv run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    #     uv run black --check .
-    #     uv run isort --check-only .
-
-    # - name: Security audit
-    #   run: |
-    #     uv add --dev safety
-    #     uv run safety check
-
-  build:
-    needs: pre-publish-checks
+  # ------------------------------------------------------------------
+  # 3) Verify wheels can be installed and `import czsc` works
+  # ------------------------------------------------------------------
+  smoke-test:
+    name: Smoke test (Linux x86_64)
+    needs: build-wheels
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@v2
-      with:
-        version: "latest"
+      - name: Download Linux wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-latest-x86_64
+          path: dist/
 
-    - name: Set up Python
-      run: uv python install 3.11
+      - name: Install + import czsc
+        run: |
+          python -m pip install --upgrade pip
+          # 安装 czsc wheel + PyPI 上的运行时依赖
+          python -m pip install dist/*.whl
+          python -c "import czsc; print('czsc version:', getattr(czsc, '__version__', 'unknown'))"
+          python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
 
-    - name: Install dependencies
-      run: uv sync
-
-    - name: Build package
-      run: uv build
-
-    - name: Check package metadata
-      run: |
-        uv add --dev twine
-        uv run twine check dist/*
-
-    - name: List build artifacts
-      run: ls -la dist/
-
-    - name: Upload build artifacts  
-      uses: actions/upload-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
-        retention-days: 30
-        if-no-files-found: error
-
+  # ------------------------------------------------------------------
+  # 4) (optional) Publish to TestPyPI via workflow_dispatch
+  # ------------------------------------------------------------------
   publish-to-testpypi:
     name: Publish to TestPyPI
     if: github.event.inputs.publish_to_testpypi == 'true'
-    needs: build
+    needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
       url: https://test.pypi.org/p/czsc
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
+      id-token: write  # Trusted Publishing
     steps:
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-staging/
 
-    - name: Publish to TestPyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        repository-url: https://test.pypi.org/legacy/
-        verbose: true
+      - name: Flatten dist
+        run: |
+          mkdir -p dist
+          find dist-staging -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
+          ls -la dist/
 
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          verbose: true
+
+  # ------------------------------------------------------------------
+  # 5) Publish to PyPI on tag push / GitHub release
+  # ------------------------------------------------------------------
   publish-to-pypi:
     name: Publish to PyPI
     if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
-    needs: build
+    needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/czsc
     permissions:
-      id-token: write  # IMPORTANT: mandatory for trusted publishing
-
+      id-token: write  # Trusted Publishing
     steps:
-    - name: Extract version from tag
-      id: extract_version
-      run: |
-        if [[ $GITHUB_REF == refs/tags/v* ]]; then
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-        elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
-          echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          echo "tag_name=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-        fi
+      - name: Extract version from tag
+        id: extract_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
+            echo "version=${{ github.event.release.tag_name }}" | sed 's/v//' >> "$GITHUB_OUTPUT"
+            echo "tag_name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-staging/
 
-    - name: Verify version consistency
-      run: |
-        # 验证构建的包版本与 tag 版本一致
-        BUILT_VERSION=$(ls dist/*.whl | grep -oP 'czsc-\K[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-        TAG_VERSION=${{ steps.extract_version.outputs.version }}
-        
-        echo "Built version: $BUILT_VERSION"
-        echo "Tag version: $TAG_VERSION"
-        
-        if [ "$BUILT_VERSION" != "$TAG_VERSION" ]; then
-          echo "❌ Version mismatch: built $BUILT_VERSION != tag $TAG_VERSION"
-          exit 1
-        else
-          echo "✅ Version consistency verified"
-        fi
+      - name: Flatten dist
+        run: |
+          mkdir -p dist
+          find dist-staging -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
+          ls -la dist/
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        verbose: true
+      - name: Verify version consistency
+        run: |
+          # 至少有一个 wheel 文件，把版本和 tag 比对
+          BUILT_VERSION=$(ls dist/*.whl | head -1 | grep -oP 'czsc-\K[0-9]+\.[0-9]+\.[0-9]+(?:[a-z0-9.+-]*)?')
+          TAG_VERSION=${{ steps.extract_version.outputs.version }}
+          echo "Built version: $BUILT_VERSION"
+          echo "Tag version:   $TAG_VERSION"
+          if [ "$BUILT_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch: built $BUILT_VERSION != tag $TAG_VERSION"
+            exit 1
+          fi
+          echo "Version consistency verified"
 
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+
+  # ------------------------------------------------------------------
+  # 6) Sign + create GitHub Release on tag push
+  # ------------------------------------------------------------------
   create-github-release:
     name: Sign and upload to GitHub Release
     if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
     needs: publish-to-pypi
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # IMPORTANT: mandatory for making GitHub Releases
-      id-token: write  # IMPORTANT: mandatory for sigstore
-
+      contents: write  # 创建 GitHub Release
+      id-token: write  # sigstore
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: python-package-distributions
-        path: dist/
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-staging/
 
-    - name: Extract version info
-      id: version_info
-      run: |
-        if [[ $GITHUB_REF == refs/tags/v* ]]; then
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          VERSION=${GITHUB_REF#refs/tags/v}
-        elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
-          TAG_NAME=${{ github.event.release.tag_name }}
-          VERSION=${TAG_NAME#v}
-        fi
-        
-        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Flatten dist
+        run: |
+          mkdir -p dist
+          find dist-staging -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
+          ls -la dist/
 
-    - name: Create Release (if tag push)
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: |
-        TAG_NAME=${{ steps.version_info.outputs.tag_name }}
-        VERSION=${{ steps.version_info.outputs.version }}
-        
-        # 检查 Release 是否已存在
-        if ! gh release view "$TAG_NAME" > /dev/null 2>&1; then
-          echo "Creating release for $TAG_NAME..."
-          
-          # 创建发布说明
-          cat > release_notes.md << EOF
-        🚀 czsc $VERSION
+      - name: Extract version info
+        id: version_info
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            VERSION=${GITHUB_REF#refs/tags/v}
+          elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
+            TAG_NAME=${{ github.event.release.tag_name }}
+            VERSION=${TAG_NAME#v}
+          fi
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-        ### 更新内容
-        - 更新到版本 $VERSION
-        - 详细变更请查看提交历史
+      - name: Create Release (if tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          TAG_NAME=${{ steps.version_info.outputs.tag_name }}
+          VERSION=${{ steps.version_info.outputs.version }}
+          if ! gh release view "$TAG_NAME" > /dev/null 2>&1; then
+            cat > release_notes.md << EOF
+          🚀 czsc $VERSION
 
-        ### 安装方式
-        \`\`\`bash
-        pip install czsc==$VERSION
-        \`\`\`
+          ### 更新内容
+          详细变更请查看提交历史以及 \`docs/MIGRATION_NOTES.md\`。
 
-        ### 文档
-        - 项目文档: README.md
-        - API 参考文档请查看源码
-        EOF
-          
-          gh release create "$TAG_NAME" \
-            --title "Release $VERSION" \
-            --notes-file release_notes.md \
-            --draft=false \
-            --prerelease=false
-        else
-          echo "Release $TAG_NAME already exists"
-        fi
+          ### 安装方式
+          \`\`\`bash
+          pip install czsc==$VERSION
+          \`\`\`
 
-    - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.2.0
-      with:
-        inputs: >-
-          ./dist/*.tar.gz
-          ./dist/*.whl
+          ### 文档
+          - 项目文档: README.md
+          - API 参考: https://czsc.readthedocs.io/
+          EOF
+            gh release create "$TAG_NAME" \
+              --title "Release $VERSION" \
+              --notes-file release_notes.md \
+              --draft=false \
+              --prerelease=false
+          else
+            echo "Release $TAG_NAME already exists"
+          fi
 
-    - name: Upload to GitHub Release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: |
-        TAG_NAME=${{ steps.version_info.outputs.tag_name }}
-        gh release upload "$TAG_NAME" dist/** --clobber
+      - name: Sign the dists with Sigstore
+        uses: sigstore/gh-action-sigstore-python@v3.2.0
+        with:
+          inputs: >-
+            ./dist/*.tar.gz
+            ./dist/*.whl
+
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          TAG_NAME=${{ steps.version_info.outputs.tag_name }}
+          gh release upload "$TAG_NAME" dist/** --clobber

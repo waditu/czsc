@@ -1,22 +1,28 @@
 """
 价格敏感性分析模块
 
-用于分析策略对执行价格的敏感性，通过对比不同交易价格的回测结果来评估价格执行对策略性能的影响。
+用于分析策略对执行价格的敏感性。其典型应用场景是：同一份权重数据搭配不同的
+执行价（如开盘价、加权平均价、TWAP、VWAP 等，列名以 ``TP`` 开头），分别构造
+``WeightBacktest`` 进行回测，再比较核心绩效指标与累计收益曲线，从而评估策略
+对价格执行的依赖程度。
 
 主要功能：
-1. 累计收益曲线展示
-2. 价格敏感性分析
-3. 分析结果摘要
 
-作者: czsc
+1. :func:`show_price_sensitive`：核心入口，遍历所有 ``TP*`` 列，逐个完成回测、
+   汇总绩效，并在 Streamlit 面板中以表格 + 折线图的形式展示。
+2. 内部辅助 :func:`_show_sensitivity_assessment`：根据"年化收益的极差/均值"
+   给出三档敏感性评估（低 / 中 / 高）。
+
+输出统一通过 Streamlit 渲染；同时也以 ``(stats_df, daily_df)`` 二元组的形式返回，
+方便上层进一步处理或导出。
 """
 
 import pandas as pd
 import streamlit as st
 from loguru import logger
+from wbt import WeightBacktest
 
 from .base import apply_stats_style
-from rs_czsc import WeightBacktest
 from .returns import show_cumulative_returns
 
 
@@ -25,26 +31,24 @@ def show_price_sensitive(
 ) -> tuple[pd.DataFrame, pd.DataFrame] | None:
     """价格敏感性分析组件
 
-    分析策略对执行价格的敏感性，通过对比不同交易价格的回测结果来评估价格执行对策略性能的影响。
+    分析策略对执行价格的敏感性，通过对比不同交易价格的回测结果，评估价格执行
+    对策略性能的影响。
 
-    参数:
-        df: 包含以下必要列的数据框：
-            - symbol: 合约代码
-            - dt: 日期时间
-            - weight: 仓位权重
-            - TP*: 以TP开头的交易价格列（如TP_open, TP_high等）
-        fee: 单边费率（BP），默认2.0
-        digits: 小数位数，默认2
-        weight_type: 权重类型，可选 "ts" 或 "cs"，默认 "ts"
-        n_jobs: 并行数，默认1
-        **kwargs: 其他参数
-            - title_prefix: 标题前缀，默认为空
-            - show_detailed_stats: 是否显示详细统计信息，默认False
-
-    返回:
-        tuple: (dfr, dfd) 分别为统计结果DataFrame和日收益率DataFrame，失败时返回None
-
-    示例:
+    :param df: pd.DataFrame，必须包含以下列：
+        - ``symbol``：合约代码
+        - ``dt``：日期时间
+        - ``weight``：仓位权重
+        - ``TP*``：以 TP 开头的交易价格列（如 ``TP_open``、``TP_high`` 等）
+    :param fee: float，单边费率（BP），默认 2.0
+    :param digits: int，权重小数位数，默认 2
+    :param weight_type: str，权重类型，可选 ``"ts"`` 或 ``"cs"``，默认 ``"ts"``
+    :param n_jobs: int，并行进程数，默认 1
+    :param kwargs: 其他参数
+        - title_prefix: str，标题前缀，默认空字符串
+        - show_detailed_stats: bool，是否展示更多绩效字段，默认 False
+    :return: tuple[pd.DataFrame, pd.DataFrame] | None；
+        分别为绩效汇总表和日收益宽表；若关键步骤失败则返回 None
+    :example:
         >>> # 基本用法
         >>> dfr, dfd = show_price_sensitive(df, fee=2.0, digits=2)
 
@@ -61,11 +65,11 @@ def show_price_sensitive(
     """
     from czsc.eda import cal_yearly_days
 
-    # 参数处理
+    # 提取展示相关参数
     title_prefix = kwargs.get("title_prefix", "")
     show_detailed_stats = kwargs.get("show_detailed_stats", False)
 
-    # 数据验证
+    # 校验必要列是否存在
     required_cols = ["symbol", "dt", "weight"]
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
@@ -74,7 +78,7 @@ def show_price_sensitive(
         logger.error(f"数据检查失败，{error_msg}")
         return None
 
-    # 查找交易价格列
+    # 找出所有以 TP 开头的交易价格列
     tp_cols = [x for x in df.columns if x.startswith("TP")]
     if not tp_cols:
         error_msg = "没有找到交易价格列，请检查文件；交易价列名必须以 TP 开头"
@@ -84,7 +88,7 @@ def show_price_sensitive(
 
     logger.info(f"找到 {len(tp_cols)} 个交易价格列: {tp_cols}")
 
-    # 计算年化天数
+    # 根据 dt 列推断每年实际交易天数
     try:
         yearly_days = cal_yearly_days(dts=df["dt"].unique().tolist())
         logger.info(f"计算得到年化天数: {yearly_days}")
@@ -94,16 +98,16 @@ def show_price_sensitive(
         logger.error(error_msg)
         return None
 
-    # 结果收集
+    # 收集每个 TP 列对应的回测结果
     c1 = st.container(border=True)
     rows = []
     dfd = pd.DataFrame()
 
-    # 创建进度条
+    # 进度条与状态文本
     progress_bar = st.progress(0)
     status_text = st.empty()
 
-    # 逐个处理交易价格
+    # 逐列回测
     for i, tp_col in enumerate(tp_cols):
         try:
             progress = (i + 1) / len(tp_cols)
@@ -112,13 +116,13 @@ def show_price_sensitive(
 
             logger.info(f"正在处理第 {i + 1}/{len(tp_cols)} 个交易价格: {tp_col}")
 
-            # 准备数据
+            # 构造单次回测所需的数据：用对应的 TP 列填充缺失，再当作 price 列
             df_temp = df.copy()
             df_temp[tp_col] = df_temp[tp_col].fillna(df_temp["price"])
             dfw = df_temp[["symbol", "dt", "weight", tp_col]].copy()
             dfw.rename(columns={tp_col: "price"}, inplace=True)
 
-            # 创建回测实例
+            # 构造回测对象
             wb = WeightBacktest(
                 dfw=dfw,
                 digits=digits,
@@ -128,7 +132,7 @@ def show_price_sensitive(
                 yearly_days=yearly_days,
             )
 
-            # 获取日收益率
+            # 把 daily_return 中的 total 列重命名为 TP 列名，便于多列横向合并
             daily = wb.daily_return.copy()
             daily.rename(columns={"total": tp_col}, inplace=True)
 
@@ -137,7 +141,7 @@ def show_price_sensitive(
             else:
                 dfd = pd.merge(dfd, daily[["date", tp_col]], on="date", how="outer")
 
-            # 收集统计结果
+            # 保留绩效统计
             res = {"交易价格": tp_col}
             res.update(wb.stats)
             rows.append(res)
@@ -156,16 +160,16 @@ def show_price_sensitive(
         st.error("所有交易价格处理失败，无法生成报告")
         return None
 
-    # 显示结果
+    # 渲染绩效对比表
     with c1:
         st.markdown(f"##### :red[{title_prefix}不同交易价格回测核心指标对比]")
         dfr = pd.DataFrame(rows)
 
-        # 敏感性评估
+        # 多个 TP 列时给出敏感性评估
         if len(dfr) > 1 and "年化" in dfr.columns:
             _show_sensitivity_assessment(dfr)
 
-        # 选择显示列
+        # 选择展示列
         if show_detailed_stats:
             display_cols = [
                 "交易价格",
@@ -202,15 +206,15 @@ def show_price_sensitive(
                 "持仓K线数",
             ]
 
-        # 确保所有列都存在
+        # 仅保留实际存在的列，避免 KeyError
         available_cols = [col for col in display_cols if col in dfr.columns]
         dfr_display = dfr[available_cols].copy()
 
-        # 应用样式
+        # 应用统一样式
         dfr_styled = apply_stats_style(dfr_display)
         st.dataframe(dfr_styled, width="stretch")
 
-    # 累计收益对比
+    # 累计收益对比图
     c2 = st.container(border=True)
     with c2:
         st.markdown(f"##### :red[{title_prefix}不同交易价格回测累计收益对比]")
@@ -229,8 +233,13 @@ def show_price_sensitive(
 
 
 def _show_sensitivity_assessment(dfr: pd.DataFrame) -> None:
-    """显示敏感性评估"""
+    """根据年化收益的极差/均值，给出敏感性评估文案
+
+    :param dfr: pd.DataFrame，必须包含 ``"年化"`` 列
+    :return: None；通过 ``streamlit`` 直接渲染
+    """
     annual_returns = dfr["年化"]
+    # 敏感度 = (max - min) / mean，反映不同 TP 之间收益的相对差距
     sensitivity_score = (annual_returns.max() - annual_returns.min()) / annual_returns.mean()
 
     st.markdown("**敏感性评估：**")
@@ -242,7 +251,7 @@ def _show_sensitivity_assessment(dfr: pd.DataFrame) -> None:
         st.error(f"🔴 策略对价格执行高度敏感 (敏感度: {sensitivity_score:.2%})")
 
 
-# 支持的函数列表
+# 模块对外暴露的 API 列表
 __all__ = [
     "show_price_sensitive",
 ]

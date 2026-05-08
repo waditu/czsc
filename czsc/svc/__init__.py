@@ -125,7 +125,6 @@ __all__ = [
     "show_backtest_by_symbol",
     "show_long_short_backtest",
     "show_comprehensive_weight_backtest",
-    "run_weight_backtest_app",
     # 统计分析
     "show_splited_daily",
     "show_yearly_stats",

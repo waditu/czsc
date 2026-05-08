@@ -1,7 +1,19 @@
 """
-统计分析相关的可视化组件
+统计分析相关的 Streamlit 可视化组件
 
-包含分段收益、年度统计、样本内外对比、PSI分析等功能
+本模块汇集了一组面向"日收益数据"或"通用 DataFrame"的统计分析与展示组件，
+主要包括：
+
+1. :func:`show_splited_daily`：分段展示策略最近 1 周 / 1 月 / 1 年 / 今年以来 / 成立以来等
+   不同时间段的绩效；
+2. :func:`show_yearly_stats`：按自然年统计日收益绩效；
+3. :func:`show_out_in_compare`：以指定日期为分界，比较样本内外表现；
+4. :func:`show_outsample_by_dailys`：基于日收益的样本内外两段或三段对比；
+5. :func:`show_psi`：分布稳定性指标 PSI；
+6. :func:`show_classify`：单变量分层统计与单调性观察；
+7. :func:`show_date_effect`：星期效应与月份效应；
+8. :func:`show_normality_check`：正态性检验（Shapiro-Wilk、Jarque-Bera、KS）；
+9. :func:`show_describe` / :func:`show_df_describe`：DataFrame 描述性统计的着色版本。
 """
 
 import numpy as np
@@ -9,18 +21,23 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from deprecated import deprecated
+from wbt import daily_performance
 
 from .base import apply_stats_style, ensure_datetime_index, generate_component_key
-from rs_czsc import daily_performance
 
 
 def show_splited_daily(df, ret_col, **kwargs):
     """展示分段日收益表现
 
-    :param df: pd.DataFrame
-    :param ret_col: str, df 中的列名，指定收益列
-    :param kwargs:
-        sub_title: str, 子标题
+    将日收益数据按"过去 1 周 / 2 周 / 1 月 / 3 月 / 6 月 / 1 年 / 今年以来 / 成立以来"
+    等区间切分，分别计算 :func:`daily_performance` 绩效，并以表格展示。
+
+    :param df: pd.DataFrame，必须包含 ``ret_col`` 列、索引为日期或包含 ``dt`` 列
+    :param ret_col: str，指定收益列
+    :param kwargs: 其他参数
+        - sub_title: str，子标题
+        - yearly_days: int，年化天数，默认 252
+    :return: None
     """
     yearly_days = kwargs.get("yearly_days", 252)
     df = ensure_datetime_index(df)
@@ -30,6 +47,7 @@ def show_splited_daily(df, ret_col, **kwargs):
     if sub_title:
         st.subheader(sub_title, divider="rainbow", anchor=sub_title)
 
+    # 以最后一个交易日为锚点构造 8 个时间段
     last_dt = df.index[-1]
     sdt_map = {
         "过去1周": last_dt - pd.Timedelta(days=7),
@@ -62,19 +80,20 @@ def show_splited_daily(df, ret_col, **kwargs):
 def show_yearly_stats(df, ret_col, **kwargs):
     """按年计算日收益表现
 
-    :param df: pd.DataFrame，数据源
-    :param ret_col: str，收益列名
-    :param kwargs:
-        - sub_title: str, 子标题
-    """
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
+    将日收益按自然年分组，分别调用 :func:`daily_performance`，年化天数取年份中
+    最大的一个分组长度，避免不完整年份导致年化指标偏低。
 
+    :param df: pd.DataFrame，日收益数据
+    :param ret_col: str，收益列名
+    :param kwargs: 其他参数
+        - sub_title: str，子标题
+    :return: None
+    """
     df = ensure_datetime_index(df)
     df = df.copy().fillna(0).sort_index(ascending=True)
 
     df["年份"] = df.index.year
+    # 用最长年份的样本数作为 yearly_days，最大化降低年初 / 年末截断带来的偏差
     yearly_days = max(len(df_) for year, df_ in df.groupby("年份"))
 
     _stats = []
@@ -93,11 +112,18 @@ def show_yearly_stats(df, ret_col, **kwargs):
 
 
 def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
-    """展示样本内外表现对比"""
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
+    """展示样本内外表现对比
 
+    以 ``mid_dt`` 为切分点，分别在样本内 / 样本外区间计算 :func:`daily_performance`，
+    并把两组绩效拼接成单张表格，方便直接对比。
+
+    :param df: pd.DataFrame，日收益数据
+    :param ret_col: str，收益列名
+    :param mid_dt: 样本切分点；样本内为 ``< mid_dt``，样本外为 ``>= mid_dt``
+    :param kwargs: 其他参数
+        - sub_title: str，子标题
+    :return: None
+    """
     assert isinstance(df, pd.DataFrame), "df 必须是 pd.DataFrame 类型"
     df = ensure_datetime_index(df)
     df = df[[ret_col]].copy().fillna(0).sort_index(ascending=True)
@@ -106,11 +132,13 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     dfi = df[df.index < mid_dt].copy()
     dfo = df[df.index >= mid_dt].copy()
 
+    # 样本内
     stats_i = daily_performance(dfi[ret_col].to_list())
     stats_i["标记"] = "样本内"
     stats_i["开始日期"] = dfi.index[0].strftime("%Y-%m-%d")
     stats_i["结束日期"] = dfi.index[-1].strftime("%Y-%m-%d")
 
+    # 样本外
     stats_o = daily_performance(dfo[ret_col].to_list())
     stats_o["标记"] = "样本外"
     stats_o["开始日期"] = dfo.index[0].strftime("%Y-%m-%d")
@@ -140,7 +168,7 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
     if sub_title:
         st.subheader(sub_title, divider="rainbow")
 
-    # 应用样式
+    # 着色：正向指标用反向 RdYlGn；负向指标用正向 RdYlGn
     df_stats_styled = df_stats.style.background_gradient(cmap="RdYlGn_r", subset=["年化"])
     df_stats_styled = df_stats_styled.background_gradient(cmap="RdYlGn_r", subset=["夏普"])
     df_stats_styled = df_stats_styled.background_gradient(cmap="RdYlGn", subset=["最大回撤"])
@@ -173,15 +201,16 @@ def show_out_in_compare(df, ret_col, mid_dt, **kwargs):
 def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     """根据日收益数据展示样本内外对比
 
-    :param df: 日收益数据，包含列 ['dt', 'returns']
+    支持两种模式：
+    - 仅传入 ``outsample_sdt1``：分为"样本内 / 样本外"两段；
+    - 同时传入 ``outsample_sdt2``：分为"研究阶段样本内 / 研究阶段样本外 / 系统跟踪样本外"三段。
+
+    :param df: pd.DataFrame，必须包含 ``['dt', 'returns']`` 两列
     :param outsample_sdt1: 样本外开始日期
-    :param outsample_sdt2: 实盘开始跟踪的日期，如果为 None，则只展示样本内和样本外两个阶段
+    :param outsample_sdt2: 实盘开始跟踪的日期；为 ``None`` 则只展示两段
+    :return: None
     """
     from czsc.eda import cal_yearly_days
-
-    daily_performance = safe_import_daily_performance()
-    if daily_performance is None:
-        return
 
     if not ("dt" in df.columns and "returns" in df.columns):
         st.error(f"数据格式错误，必须包含列 ['dt', 'returns']; 当前列：{df.columns}")
@@ -192,10 +221,11 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
     outsample_sdt1 = pd.to_datetime(outsample_sdt1).strftime("%Y-%m-%d")
 
     def __show_returns(dfx):
+        """单段展示：核心指标 + 累计收益曲线"""
         stats = daily_performance(dfx["returns"], yearly_days=yearly_days)
         sc1, sc2, sc3 = st.columns(3)
 
-        # 绘制收益指标
+        # 9 个核心指标分 3 列展示
         sc1.metric("年化收益率", f"{stats['年化']:.2%}")
         sc1.metric("夏普比率", f"{stats['夏普']:.2f}")
         sc1.metric("新高占比", f"{stats['新高占比']:.2%}")
@@ -222,7 +252,7 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
 
         df1 = df[df["dt"] < outsample_sdt1].copy()  # 样本内
         df2 = df[(df["dt"] >= outsample_sdt1) & (df["dt"] < outsample_sdt2)].copy()  # 第一段样本外
-        df3 = df[df["dt"] >= outsample_sdt2].copy()  # 第二段样本外
+        df3 = df[df["dt"] >= outsample_sdt2].copy()  # 第二段样本外（系统跟踪）
 
         c1, c2, c3 = st.columns(3)
 
@@ -253,13 +283,17 @@ def show_outsample_by_dailys(df, outsample_sdt1, outsample_sdt2=None):
 
 
 def show_psi(df, factor, segment, **kwargs):
-    """PSI分布稳定性
+    """PSI 分布稳定性
 
-    :param df: pd.DataFrame, 数据源
-    :param factor: str, 分组因子
-    :param segment: str, 分段字段
-    :param kwargs:
-        - sub_title: str, 子标题
+    PSI（Population Stability Index）用于衡量分组因子在不同分段下的分布稳定性，
+    数值越大代表分布差异越显著。
+
+    :param df: pd.DataFrame，数据源
+    :param factor: str，分组因子
+    :param segment: str，分段字段
+    :param kwargs: 其他参数
+        - sub_title: str，子标题
+    :return: None
     """
     from czsc.utils.analysis.stats import psi
 
@@ -278,16 +312,21 @@ def show_psi(df, factor, segment, **kwargs):
 
 
 def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
-    """显示 col1 对 col2 的分类作用
+    """显示 ``col1`` 对 ``col2`` 的分类作用
 
-    :param df: 数据，pd.DataFrame
-    :param col1: 分层列
-    :param col2: 统计列
-    :param n: 分层数量
-    :param method: 分层方法，cut 或 qcut
-    :param key: str, 可选，组件的唯一标识符，默认自动生成
-    :param kwargs:
-        - show_bar: bool, 是否展示柱状图，默认为 False
+    将 ``col1`` 按 ``cut``（等距）或 ``qcut``（等频）分层后，对每一层统计 ``col2``
+    的描述性指标，并展示其单调性、首末层均值等关键信息。
+
+    :param df: pd.DataFrame，数据源
+    :param col1: str，分层列
+    :param col2: str，统计列
+    :param n: int，分层数量
+    :param method: str，分层方法，``"cut"`` 或 ``"qcut"``
+    :param key: str，可选；组件唯一标识符
+    :param kwargs: 其他参数
+        - show_bar: bool，是否展示均值柱状图，默认 False
+    :return: None
+    :raises ValueError: 当 method 不在 ``{"cut", "qcut"}`` 时
     """
     import czsc
 
@@ -302,6 +341,7 @@ def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
     dfg = df.groupby(f"{col1}_分层", observed=True)[col2].describe().reset_index()
     dfx = dfg.copy()
 
+    # 用单调性、首末层均值描述分层效果
     info = (
         f"{col1} 分层对应 {col2} 的均值单调性：:red[{czsc.monotonicity(dfx['mean']):.2%}]； "
         f"最后一层的均值：:red[{dfx['mean'].iloc[-1]:.4f}]；"
@@ -316,7 +356,7 @@ def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
         fig.update_xaxes(title=None)
         fig.update_layout(margin={"l": 0, "r": 0, "t": 0, "b": 0})
 
-        # 生成 key
+        # 自动生成组件 key
         if key is None:
             key = generate_component_key(df, prefix="classify", col1=col1, col2=col2, n=n, method=method)
 
@@ -343,12 +383,15 @@ def show_classify(df, col1, col2, n=10, method="cut", key=None, **kwargs):
 def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
     """分析日收益数据的日历效应
 
-    :param df: pd.DataFrame, 包含日期的日收益数据
-    :param ret_col: str, 收益列名称
-    :param kwargs: dict, 其他参数
-        - show_weekday: bool, 是否展示星期效应，默认为 True
-        - show_month: bool, 是否展示月份效应，默认为 True
-        - percentiles: list, 分位数，默认为 [0.1, 0.25, 0.5, 0.75, 0.9]
+    分别按"星期几"与"月份"对日收益做 describe 统计，观察是否存在显著的日历效应。
+
+    :param df: pd.DataFrame，包含日期索引或 dt 列的日收益数据
+    :param ret_col: str，收益列名
+    :param kwargs: 其他参数
+        - show_weekday: bool，是否展示星期效应，默认 True
+        - show_month: bool，是否展示月份效应，默认 True
+        - percentiles: list，分位数，默认 [0.1, 0.25, 0.5, 0.75, 0.9]
+    :return: None
     """
     show_weekday = kwargs.get("show_weekday", True)
     show_month = kwargs.get("show_month", True)
@@ -393,8 +436,12 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
 def show_normality_check(data: pd.Series, alpha=0.05):
     """展示正态性检验结果
 
-    :param data: pd.Series, 需要检验的数据
-    :param alpha: float, 显著性水平，默认为 0.05
+    依次完成 Shapiro-Wilk、Jarque-Bera、Kolmogorov-Smirnov 三种检验，并附带绘制
+    直方图（叠加正态密度曲线）与 Q-Q 图。
+
+    :param data: pd.Series，需要检验的数据
+    :param alpha: float，显著性水平，默认 0.05
+    :return: None
     """
     import matplotlib.pyplot as plt
     import seaborn as sns
@@ -404,6 +451,7 @@ def show_normality_check(data: pd.Series, alpha=0.05):
     clean_data = data.dropna()
 
     def __metric(s, p):
+        """以 3 列形式展示统计量、P 值与是否拒绝原假设"""
         m1, m2, m3 = st.columns(3)
         m1.metric(label="统计量", value=f"{s:.3f}", border=False)
         m2.metric(label="P值", value=f"{p:.1%}", border=False)
@@ -426,17 +474,20 @@ def show_normality_check(data: pd.Series, alpha=0.05):
         stat, p_ks = kstest(clean_data, "norm", args=(mu, std))
         __metric(stat, p_ks)
 
+    # matplotlib 中文负号修复 + 主题
     plt.rcParams["axes.unicode_minus"] = False
     plt.style.use("ggplot")
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
+    # 直方图 + 正态密度曲线
     sns.histplot(clean_data, kde=True, stat="density", ax=ax1)
     x = np.linspace(mu - 4 * std, mu + 4 * std, 100)
     ax1.plot(x, norm.pdf(x, mu, std), "r", lw=2)
     ax1.set_title(f"Histogram => SKEW: {clean_data.skew():.2f}, KURT: {clean_data.kurt():.2f}")
     ax1.legend(["Normal PDF", "Data"])
 
+    # Q-Q 图
     sm.qqplot(clean_data, line="45", fit=True, ax=ax2)
     ax2.set_title("Q-Q")
     st.pyplot(fig)
@@ -446,7 +497,14 @@ def show_normality_check(data: pd.Series, alpha=0.05):
 def show_describe(df: pd.DataFrame, **kwargs):
     """展示 DataFrame 的描述性统计信息
 
-    :param df: pd.DataFrame, 数据框
+    比 :func:`show_df_describe` 多了"偏度""峰度"以及自定义分位数和小数位数控制。
+
+    :param df: pd.DataFrame，数据源
+    :param kwargs: 其他参数
+        - columns: list，参与统计的列名，默认 df 的全部列
+        - percentiles: list，分位数列表，默认 [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95]
+        - digits: int，统计值保留小数位数，默认 2
+    :return: None
     """
     columns = kwargs.get("columns")
     percentiles = kwargs.get("percentiles", [0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95])
@@ -466,6 +524,7 @@ def show_describe(df: pd.DataFrame, **kwargs):
     df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["偏度"])
     df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["峰度"])
 
+    # 根据 digits 动态构造格式化字符串
     format_dict = {
         "count": "{:.0f}",
         "mean": f"{{:.{digits}f}}",
@@ -487,9 +546,10 @@ def show_describe(df: pd.DataFrame, **kwargs):
 
 @deprecated(reason="建议直接使用 show_describe 函数")
 def show_df_describe(df: pd.DataFrame):
-    """展示 DataFrame 的描述性统计信息
+    """展示 DataFrame 的描述性统计信息（旧版，已弃用）
 
-    :param df: pd.DataFrame，必须是 df.describe() 的结果
+    :param df: pd.DataFrame，必须是 ``df.describe()`` 的结果
+    :return: None
     """
     quantiles = [x for x in df.columns if "%" in x]
     df_styled = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
