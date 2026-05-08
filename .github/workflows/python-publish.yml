@@ -274,7 +274,6 @@ jobs:
 
           ### 文档
           - 项目文档: README.md
-          - API 参考: https://czsc.readthedocs.io/
           EOF
             gh release create "$TAG_NAME" \
               --title "Release $VERSION" \
