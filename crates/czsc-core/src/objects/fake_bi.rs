@@ -115,11 +115,11 @@ impl FakeBI {
 
 /// 创建 fake_bis 列表
 ///
-/// # Arguments
+/// # 参数
 ///
 /// * `fxs` - 分型序列，必须顶底分型交替
 ///
-/// # Returns
+/// # 返回值
 ///
 /// * 返回 FakeBI 的 Vec
 pub fn create_fake_bis(fxs: &[FX]) -> Vec<FakeBI> {

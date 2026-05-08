@@ -1,9 +1,9 @@
-//! Phase D.U — RED test: analyze::utils helpers (check_fx / check_fxs /
-//! check_bi / remove_include / format_standard_kline) are publicly callable
-//! and produce the expected shapes per the rs-czsc 47ef6efa baseline.
+//! Phase D.U — RED test：analyze::utils 的 helper（check_fx / check_fxs /
+//! check_bi / remove_include / format_standard_kline）对外可调用，
+//! 并且产出与 rs-czsc 47ef6efa 基线一致的形状。
 //!
-//! This test also locks the visibility promotions required by the design
-//! doc §2.5: all four `pub(crate)` helpers must now be `pub`.
+//! 本测试同时锁定 design doc §2.5 要求的可见性提升：
+//! 这 4 个原本 `pub(crate)` 的 helper 现在必须是 `pub`。
 
 use std::sync::Arc;
 
@@ -32,7 +32,7 @@ fn nb(ts: i64, high: f64, low: f64) -> NewBar {
 
 #[test]
 fn check_fx_detects_top_pattern() {
-    // top fx: middle bar engulfs both neighbours from above
+    // 顶分型：中间 bar 从上方包住两侧邻居
     let k1 = nb(1, 11.0, 9.0);
     let k2 = nb(2, 12.0, 10.0);
     let k3 = nb(3, 11.5, 9.5);
@@ -53,7 +53,7 @@ fn check_fx_detects_bottom_pattern() {
 
 #[test]
 fn check_fx_returns_none_when_no_pattern() {
-    // strictly increasing — neither top nor bottom
+    // 严格递增——既不是顶也不是底
     let k1 = nb(1, 10.0, 9.0);
     let k2 = nb(2, 11.0, 10.0);
     let k3 = nb(3, 12.0, 11.0);
@@ -62,7 +62,7 @@ fn check_fx_returns_none_when_no_pattern() {
 
 #[test]
 fn check_fxs_extracts_fx_from_sequence() {
-    // 5 bars: ascending, peak, descending → exactly one top fx in the middle
+    // 5 根 bar：上升、峰、下降 → 中间恰好出现一个顶分型
     let bars = vec![
         nb(1, 10.0, 9.0),
         nb(2, 11.0, 10.0),
@@ -80,7 +80,7 @@ fn check_bi_returns_tuple_with_remainder() {
         .map(|i| nb(i + 1, 10.0 + i as f64, 9.0 + i as f64))
         .collect();
     let (bi, remainder) = check_bi(&bars);
-    // The function signature contract: always returns (Option<BI>, &[NewBar])
+    // 函数签名契约：总是返回 (Option<BI>, &[NewBar])
     let _ = bi;
     assert!(remainder.len() <= bars.len());
 }

@@ -1,11 +1,11 @@
-//! PyO3 wrappers for czsc-trader public objects (CzscTrader / CzscSignals),
-//! the `generate_czsc_signals` free function, and the research/optimize
-//! orchestration entrypoints (`run_research`, `run_replay`,
-//! `run_optimize_batch`, `build_*_optim_positions`).
+//! czsc-trader 公共对象（CzscTrader / CzscSignals）的 PyO3 包装层、
+//! `generate_czsc_signals` 自由函数，以及 research/optimize 编排入口
+//! (`run_research`、`run_replay`、`run_optimize_batch`、
+//! `build_*_optim_positions`)。
 //!
-//! Mirrors `rs_czsc/python/src/trader/`. The `weight_backtest` submodule
-//! from rs-czsc is intentionally NOT migrated — czsc relies on the
-//! external `wbt` package for backtests (design doc §3.1 / §5.10).
+//! 对齐 `rs_czsc/python/src/trader/`。rs-czsc 中的 `weight_backtest`
+//! 子模块**有意**不迁移过来 —— czsc 依赖外部 `wbt` 包做回测
+//! （design doc §3.1 / §5.10）。
 
 pub mod api;
 pub mod czsc_signals;

@@ -246,9 +246,9 @@ impl PyCzscSignals {
     }
 }
 
-/// Helper: convert `Vec<SignalConfig>` back to a Python ``list[dict]``
-/// shaped exactly like ``parse_signals_config`` expects, so
-/// ``__reduce__`` -> ``__new__`` round-trips cleanly.
+/// 辅助函数：把 `Vec<SignalConfig>` 还原回与 ``parse_signals_config``
+/// 期望形状完全一致的 Python ``list[dict]``，让
+/// ``__reduce__`` -> ``__new__`` 能干净地往返序列化。
 pub(crate) fn signal_configs_to_pylist(py: Python, configs: &[SignalConfig]) -> PyResult<PyObject> {
     let list = PyList::empty(py);
     for cfg in configs {

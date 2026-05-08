@@ -1,7 +1,7 @@
-// czsc-only: pyo3 imports + super::operate / super::signal Python wrappers
-// gated behind the `python` feature for non-python builds. Sha256 is used in
-// the (non-python) Event helpers so it stays unconditional.
-// See docs/MIGRATION_NOTES.md §2.4.
+// czsc-only: pyo3 import 与 super::operate / super::signal 的 Python wrapper
+// 通过 `python` feature 进行门控，以便 non-python 构建。Sha256 在
+// （non-python 的）Event 辅助函数里被使用，因此保持无条件 import。
+// 参见 docs/MIGRATION_NOTES.md §2.4。
 #![allow(unused)]
 use anyhow::{Context, anyhow};
 use serde::{Deserialize, Serialize};
@@ -270,7 +270,7 @@ impl<'py> FromPyObject<'py> for Event {
                 None => String::new(),
             };
 
-            // 3) signals
+            // 3) 信号字段
             let signals_all = dict
                 .get_item("signals_all")?
                 .ok_or(PyValueError::new_err("缺少字段: 'signals_all'"))?

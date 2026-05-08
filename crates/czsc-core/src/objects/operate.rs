@@ -1,10 +1,9 @@
-// czsc-only: rs-czsc's `operate.rs` carried a wide collection of unused
-// imports (polars / log / rayon / sha2 / and forward references to
-// event / position / signal). Since the file only really defines the
-// `Operate` enum + its `PyOperate` wrapper, we trim the imports here to
-// avoid pulling those heavy crates into czsc-core. The original
-// `#![allow(unused)]` is kept for the few remaining unused items the
-// upstream file carries. See docs/MIGRATION_NOTES.md §2.4.
+// czsc-only: rs-czsc 的 `operate.rs` 里带了一大堆未使用的 import
+// （polars / log / rayon / sha2 还有对 event / position / signal 的前向引用）。
+// 由于这个文件实际上只定义了 `Operate` 枚举及其 `PyOperate` 包装器，
+// 我们在这里裁剪掉这些 import，避免把那些重量级 crate 拉进 czsc-core。
+// 原本的 `#![allow(unused)]` 保留下来，用于覆盖上游文件中尚存的少量
+// 未使用项。参见 docs/MIGRATION_NOTES.md §2.4。
 #![allow(unused)]
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -25,25 +24,25 @@ pub const ANY: &str = "任意";
     Clone, Copy, Debug, PartialEq, Hash, EnumString, EnumIter, AsRefStr, Serialize, Deserialize,
 )]
 pub enum Operate {
-    /// Hold Long 持多
+    /// 持多（Hold Long）
     #[serde(rename = "持多")]
     HL,
-    /// Hold Short 持空
+    /// 持空（Hold Short）
     #[serde(rename = "持空")]
     HS,
-    /// Hold Other 持币
+    /// 持币（Hold Other）
     #[serde(rename = "持币")]
     HO,
-    /// Long Open 开多
+    /// 开多（Long Open）
     #[serde(rename = "开多")]
     LO,
-    /// Long Exit 平多
+    /// 平多（Long Exit）
     #[serde(rename = "平多")]
     LE,
-    /// Short Open 开空
+    /// 开空（Short Open）
     #[serde(rename = "开空")]
     SO,
-    /// Short Exit 平空
+    /// 平空（Short Exit）
     #[serde(rename = "平空")]
     SE,
 }

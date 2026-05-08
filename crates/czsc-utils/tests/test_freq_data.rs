@@ -1,5 +1,5 @@
-//! Phase C.1 — RED test: freq_end_time + infer_market_from_bars match the
-//! rs-czsc 47ef6efa baseline behaviour.
+//! Phase C.1 — RED test：freq_end_time + infer_market_from_bars 与
+//! rs-czsc 47ef6efa 基线行为一致。
 
 use std::sync::Arc;
 
@@ -11,9 +11,9 @@ use czsc_utils::freq_data::{freq_end_time, infer_market_from_bars};
 
 #[test]
 fn freq_end_time_returns_some_datetime_for_30min_default_market() {
-    // For an arbitrary intraday minute we just want to confirm the helper
-    // succeeds and the result is non-decreasing (the actual minute table
-    // is encoded in minutes_split.feather and is the rs-czsc baseline).
+    // 对于任意一个盘中分钟，我们只想确认 helper 调用成功，并且
+    // 结果是非递减的（具体的分钟表编码在 minutes_split.feather 中，
+    // 即 rs-czsc 基线）。
     let dt = Utc.with_ymd_and_hms(2024, 1, 8, 9, 30, 0).unwrap();
     let edt = freq_end_time(dt, Freq::F30, Market::Default).unwrap();
     assert!(edt >= dt, "edt {edt} must be >= input dt {dt}");
@@ -21,8 +21,8 @@ fn freq_end_time_returns_some_datetime_for_30min_default_market() {
 
 #[test]
 fn freq_end_time_idempotent_when_already_at_boundary() {
-    // If a query already lands on a boundary the function must round-trip
-    // (i.e. calling it again should return the same instant).
+    // 如果一次查询已经正好落在边界上，函数必须能 round-trip
+    // （即再调一次应该返回同一个时刻）。
     let dt = Utc.with_ymd_and_hms(2024, 1, 8, 10, 0, 0).unwrap();
     let edt1 = freq_end_time(dt, Freq::F30, Market::Default).unwrap();
     let edt2 = freq_end_time(edt1, Freq::F30, Market::Default).unwrap();
@@ -31,9 +31,8 @@ fn freq_end_time_idempotent_when_already_at_boundary() {
 
 #[test]
 fn freq_end_time_handles_daily_freq() {
-    // For higher timeframes the function is still callable and should not
-    // panic; the exact boundary semantics are encoded in rs-czsc and we
-    // simply lock that calling it returns Ok.
+    // 对更高级别的时间周期，函数仍然可以调用且不应 panic；
+    // 具体的边界语义编码在 rs-czsc 里，我们这里只锁定调用返回 Ok。
     let dt = Utc.with_ymd_and_hms(2024, 1, 8, 14, 30, 0).unwrap();
     let _ = freq_end_time(dt, Freq::D, Market::Default).unwrap();
 }

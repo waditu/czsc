@@ -1,6 +1,6 @@
-//! Phase D.A — RED test: CZSC analyzer constructs from a RawBar feed,
-//! exposes bars_raw / bars_ubi / bi_list / fx_list, and survives an
-//! incremental update_bar feed.
+//! Phase D.A — RED test：CZSC 分析器从 RawBar 流构造，
+//! 暴露 bars_raw / bars_ubi / bi_list / fx_list，并能正确处理
+//! 增量的 update_bar 输入。
 
 use std::sync::Arc;
 
@@ -26,7 +26,7 @@ fn rb(ts: i64, open: f64, close: f64, high: f64, low: f64) -> RawBar {
 }
 
 fn synthetic_zigzag(n: usize) -> Vec<RawBar> {
-    // Build a sine-like zigzag so that the analyzer can produce fxs/bis.
+    // 构造一个类正弦波形的 zigzag，让分析器能产出 fxs/bis。
     (0..n)
         .map(|i| {
             let phase = (i as f64) * 0.7;
@@ -56,8 +56,8 @@ fn new_populates_symbol_and_freq() {
 fn new_consumes_all_bars_and_builds_ubi() {
     let bars = synthetic_zigzag(40);
     let c = CZSC::new(bars, 50);
-    // bars_ubi is the merged-bar (NewBar) sequence; for 40 raw zigzag
-    // bars we expect non-empty merged sequence
+    // bars_ubi 是合并后 bar（NewBar）序列；对于 40 根原始 zigzag
+    // bar，我们期望合并后的序列非空
     assert!(!c.bars_ubi.is_empty(), "bars_ubi should not be empty");
 }
 
@@ -66,9 +66,8 @@ fn fx_and_bi_lists_are_consistent_with_zigzag() {
     let bars = synthetic_zigzag(60);
     let c = CZSC::new(bars, 50);
     let fxs = c.get_fx_list();
-    // A 60-bar zigzag should produce at least 2 fxs (or zero — the
-    // exact count depends on the synthetic shape; we only assert
-    // non-negative invariants).
+    // 60 根 bar 的 zigzag 应该至少产出 2 个 fx（或者 0 个——
+    // 具体数量取决于合成出来的波形；这里只断言非负不变量）。
     assert!(fxs.len() <= 60);
     assert!(c.bi_list.len() <= 50);
 }
@@ -80,7 +79,7 @@ fn update_bar_appends_incrementally() {
     let extra = rb(1_700_000_000 + 30 * 1800, 102.0, 103.0, 104.0, 101.0);
     c.update_bar(extra);
     assert_eq!(c.freq, Freq::F30);
-    // bars_raw monotonically grows (modulo the analyzer's internal pruning)
+    // bars_raw 单调增长（不计分析器内部的裁剪）
     assert!(
         c.bars_raw
             .iter()

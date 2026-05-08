@@ -1,5 +1,5 @@
-//! Phase D.8 — RED test: BI (笔) constructs via BIBuilder, surfaces
-//! direction / endpoints, and answers length / SNR / power_price helpers.
+//! Phase D.8 —— RED 测试：BI（笔）通过 BIBuilder 构造，
+//! 暴露 direction / 端点，并响应 length / SNR / power_price 等辅助方法。
 
 use std::sync::Arc;
 
@@ -49,7 +49,7 @@ fn fx(ts: i64, mark: Mark, level: f64) -> FX {
 }
 
 fn sample_bi_up() -> BI {
-    // up bi: starts at bottom fx, ends at top fx
+    // 向上的笔：起点是底分型，终点是顶分型
     let fx_a = fx(1_700_000_000, Mark::D, 9.0);
     let fx_b = fx(1_700_007_200, Mark::G, 12.0);
     let bars: Vec<NewBar> = (0..5)
@@ -89,7 +89,7 @@ fn length_is_bars_count() {
 #[test]
 fn high_low_endpoints_match_fxs() {
     let bi = sample_bi_up();
-    assert!(bi.get_low() < bi.get_high(), "low must be < high");
+    assert!(bi.get_low() < bi.get_high(), "low 必须小于 high");
 }
 
 #[test]

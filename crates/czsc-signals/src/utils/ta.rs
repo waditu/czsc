@@ -249,9 +249,9 @@ fn calc_wma_cache_style(series: &[f64], n: usize) -> Vec<f64> {
 }
 
 /// 计算 MACD {dif, dea, macd}，对齐 TA-Lib 原始三元组语义：
-/// - `dif` = MACD line
-/// - `dea` = signal line
-/// - `macd` = histogram
+/// - `dif` = MACD 线
+/// - `dea` = 信号线
+/// - `macd` = 柱状图
 pub fn calc_macd(series: &[f64], short: usize, long: usize, m: usize) -> MacdSeries {
     let len = series.len();
     let mut dif = vec![f64::NAN; len];
@@ -1378,8 +1378,8 @@ fn calc_stoch(
     let mut slowk = calc_sma_nan(&fastk, slowk_period);
     let mut slowd = calc_sma_nan(&slowk, slowd_period);
 
-    // Align with TA-Lib STOCH lookback: fastk-1 + slowk-1 + slowd-1.
-    // TA-Lib returns both slowk/slowd as NaN before this index.
+    // 与 TA-Lib STOCH lookback 对齐：fastk-1 + slowk-1 + slowd-1。
+    // TA-Lib 在该索引之前的 slowk/slowd 都返回 NaN。
     let lookback = (fastk_period - 1) + (slowk_period - 1) + (slowd_period - 1);
     let warmup = lookback.min(len);
     for i in 0..warmup {

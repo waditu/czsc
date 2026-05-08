@@ -1,5 +1,5 @@
-//! Phase D.9 — RED test: ZS (中枢) constructs from a non-empty BI list,
-//! computes zg / zd / zz / gg / dd boundaries, and surfaces is_valid().
+//! Phase D.9 —— RED 测试：ZS（中枢）从非空 BI 列表构造，
+//! 计算 zg / zd / zz / gg / dd 边界，并暴露 is_valid()。
 
 use std::sync::Arc;
 
@@ -61,7 +61,7 @@ fn make_bi(
 ) -> BI {
     let fx_a = fx(ts_a, mark_a, level_a);
     let fx_b = fx(ts_b, mark_b, level_b);
-    // bars span — endpoints determine high/low
+    // bars 跨度 —— 端点决定 high/low
     let bars = vec![
         nb(ts_a, level_a + 0.5, level_a - 0.5),
         nb(
@@ -83,7 +83,7 @@ fn make_bi(
 }
 
 fn sample_zs() -> ZS {
-    // 3-bi center: down 12 -> 9, up 9 -> 11, down 11 -> 9.5
+    // 由 3 笔构成的中枢：向下 12 -> 9，向上 9 -> 11，向下 11 -> 9.5
     let bi1 = make_bi(
         1_700_000_000,
         Mark::G,
@@ -125,7 +125,7 @@ fn new_populates_endpoints() {
 #[test]
 fn zg_zd_within_first_three_bis() {
     let zs = sample_zs();
-    // zg = min of first 3 bis' highs; zd = max of first 3 bis' lows
+    // zg = 前 3 笔 high 的最小值；zd = 前 3 笔 low 的最大值
     assert!(zs.zg >= zs.zd, "zg={} must be >= zd={}", zs.zg, zs.zd);
 }
 
@@ -151,5 +151,5 @@ fn gg_dd_envelope_zg_zd() {
 #[test]
 fn is_valid_returns_bool() {
     let zs = sample_zs();
-    let _ = zs.is_valid(); // doesn't matter true or false — must not panic
+    let _ = zs.is_valid(); // 返回 true 还是 false 都无所谓 —— 关键是不能 panic
 }

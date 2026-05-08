@@ -1,13 +1,11 @@
-//! PyO3 binding registry for czsc-core.
+//! czsc-core 的 PyO3 binding 注册表。
 //!
-//! Phase D's per-type sub-loops add `#[cfg_attr(feature = "python", pyclass)]`
-//! to each migrated type. This module collects them into a single
-//! `register()` entrypoint that `czsc-python` calls from the
-//! `_native` aggregator.
+//! Phase D 的逐类型子循环会给每个迁移过来的类型加 `#[cfg_attr(feature = "python", pyclass)]`。
+//! 本模块把它们汇总到一个 `register()` 入口，由 `czsc-python` 在
+//! `_native` aggregator 中调用。
 //!
-//! Pickle (`__getstate__` / `__setstate__`) per design doc §2.4 will
-//! land on a follow-up pass once Phase E/F/G land and the per-class
-//! identity tests can fully exercise it.
+//! 按 design doc §2.4 的 Pickle（`__getstate__` / `__setstate__`）将会
+//! 在 Phase E/F/G 落地后做一次后续提交，到时各类的 identity 测试可以充分覆盖它。
 
 use pyo3::prelude::*;
 
@@ -27,23 +25,22 @@ use crate::objects::position::{PyLiteBar, PyPos, PyPosition};
 use crate::objects::signal::{PyParsedSignalDoc, PySignal, parse_signal_doc_py};
 use crate::objects::zs::ZS;
 
-/// Python-friendly thin wrapper around `analyze::utils::check_fx`.
+/// 对 `analyze::utils::check_fx` 的 Python 友好的薄 wrapper。
 #[pyfunction]
 #[pyo3(name = "check_fx")]
 fn check_fx_py(k1: NewBar, k2: NewBar, k3: NewBar) -> Option<FX> {
     analyze_utils::check_fx(&k1, &k2, &k3)
 }
 
-/// Python-friendly thin wrapper around `analyze::utils::check_fxs`.
+/// 对 `analyze::utils::check_fxs` 的 Python 友好的薄 wrapper。
 #[pyfunction]
 #[pyo3(name = "check_fxs")]
 fn check_fxs_py(bars: Vec<NewBar>) -> Vec<FX> {
     analyze_utils::check_fxs(&bars)
 }
 
-/// Python-friendly thin wrapper around `analyze::utils::check_bi`.
-/// Drops the unused remainder slice; Python callers only ever consume
-/// the optional BI value.
+/// 对 `analyze::utils::check_bi` 的 Python 友好的薄 wrapper。
+/// 丢弃未使用的剩余切片；Python 调用方只消费可选的 BI 值。
 #[pyfunction]
 #[pyo3(name = "check_bi")]
 fn check_bi_py(bars: Vec<NewBar>) -> Option<BI> {
@@ -51,7 +48,7 @@ fn check_bi_py(bars: Vec<NewBar>) -> Option<BI> {
     bi
 }
 
-/// Python-friendly thin wrapper around `analyze::utils::remove_include`.
+/// 对 `analyze::utils::remove_include` 的 Python 友好的薄 wrapper。
 #[pyfunction]
 #[pyo3(name = "remove_include")]
 fn remove_include_py(k1: NewBar, k2: NewBar, k3: RawBar) -> PyResult<(bool, NewBar)> {
@@ -59,22 +56,20 @@ fn remove_include_py(k1: NewBar, k2: NewBar, k3: RawBar) -> PyResult<(bool, NewB
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
 }
 
-/// Python-friendly thin wrapper around `analyze::utils::format_standard_kline`.
-/// Polars DataFrame is bridged via the standard pyo3-polars / arrow path; for
-/// now we accept a list of pre-built RawBars to avoid the polars/python coupling
-/// during D.A. The full DataFrame entrypoint will be added when Phase E/F wire
-/// the polars Python bridge (see design doc §2.3).
+/// 对 `analyze::utils::format_standard_kline` 的 Python 友好的薄 wrapper。
+/// Polars DataFrame 通过标准的 pyo3-polars / arrow 路径桥接；目前
+/// 我们接受一个预构建好的 RawBar 列表，以避免在 D.A 阶段引入 polars/python 的耦合。
+/// 完整的 DataFrame 入口会等到 Phase E/F 接入 polars Python 桥时再添加（详见 design doc §2.3）。
 #[pyfunction]
 #[pyo3(name = "format_standard_kline")]
 fn format_standard_kline_py(bars: Vec<RawBar>) -> Vec<RawBar> {
     bars
 }
 
-/// Add the migrated czsc-core types onto the parent module that czsc-python
-/// passes in. Lives behind the `python` feature so plain Rust consumers
-/// don't pull pyo3 in transitively.
+/// 把迁移过来的 czsc-core 类型添加到 czsc-python 传入的父模块上。
+/// 隐藏在 `python` feature 后面，这样普通 Rust 消费者就不会传递性地引入 pyo3。
 pub fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Enums
+    // 枚举
     m.add_class::<Freq>()?;
     m.add_class::<Market>()?;
     m.add_class::<Mark>()?;
@@ -82,12 +77,12 @@ pub fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyOperate>()?;
     m.add_class::<PyPos>()?;
 
-    // Bar primitives
+    // Bar 基础类型
     m.add_class::<RawBar>()?;
     m.add_class::<NewBar>()?;
     m.add_class::<PyLiteBar>()?;
 
-    // Chan-theory data structures
+    // 缠论数据结构
     m.add_class::<FX>()?;
     m.add_class::<FakeBI>()?;
     m.add_class::<BI>()?;
@@ -99,11 +94,11 @@ pub fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyEvent>()?;
     m.add_class::<PyPosition>()?;
 
-    // Analyzer (CZSC)
+    // 分析器（CZSC）
     m.add_class::<CZSC>()?;
 
-    // Free functions: signal-doc parser + analyze helpers (the 4 promotions
-    // from design doc §2.5)
+    // 自由函数：signal-doc 解析器 + analyze helpers（来自 design doc §2.5
+    // 的 4 个 promotion）
     m.add_function(wrap_pyfunction!(parse_signal_doc_py, m)?)?;
     m.add_function(wrap_pyfunction!(check_fx_py, m)?)?;
     m.add_function(wrap_pyfunction!(check_fxs_py, m)?)?;

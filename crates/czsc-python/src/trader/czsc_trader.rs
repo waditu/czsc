@@ -344,7 +344,7 @@ impl PyCzscTrader {
     fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
         let bg_clone = self.inner.signals.bg.clone();
 
-        // positions: clone via PyPosition wrappers
+        // positions：通过 PyPosition wrapper 克隆
         let positions_list = PyList::empty(py);
         for pos in &self.inner.positions {
             let py_pos = PyPosition { inner: pos.clone() };

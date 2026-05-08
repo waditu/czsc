@@ -1,13 +1,12 @@
 //! 纯 Rust 实现
 
-/// Plain Simple Moving Average — talib.SMA-compatible.
+/// 简单移动平均 —— 与 talib.SMA 兼容。
 ///
-/// Returns the rolling mean of `series` with window size `n`. Indices
-/// 0..n-1 are filled with NaN to match the talib convention (so
-/// `np.isfinite(out[n:])` is fully True). This is intentionally
-/// distinct from `single_sma_positions`, which computes a double SMA
-/// then derives a [-1, 0, 1] position signal — `sma` here is the raw
-/// moving average needed by `czsc.ta.sma` per design doc §3.1.
+/// 返回 `series` 在窗口大小为 `n` 下的滚动均值。索引 0..n-1 用 NaN
+/// 填充以匹配 talib 约定（这样 `np.isfinite(out[n:])` 全为 True）。
+/// 它与 `single_sma_positions` 有意区分：后者先计算两次 SMA 再
+/// 派生 [-1, 0, 1] 持仓信号；这里的 `sma` 是 design doc §3.1 中
+/// `czsc.ta.sma` 所需的原始移动平均。
 pub fn sma(series: &[f64], n: usize) -> Vec<f64> {
     let len = series.len();
     if len == 0 || n == 0 {
@@ -904,13 +903,12 @@ pub fn rank_positions(series: &[f64], n: usize) -> Vec<f64> {
 /// 计算指数移动平均 (EMA)
 /// 返回每个点的 EMA 值
 pub fn ema(series: &[f64], period: usize) -> Vec<f64> {
-    // talib-compatible EMA: warmup [0, period-1) is NaN, position
-    // (period-1) is seeded with the simple mean of the first `period`
-    // samples, then the standard recurrence runs forward. This matches
-    // talib.EMA's output bit-for-bit (verified by Phase A's
-    // `test_ema_matches_talib`). The previous rs-czsc implementation
-    // seeded with `series[0]`, which produced visible divergence in
-    // the first ~30 bars.
+    // 与 talib 兼容的 EMA：warmup [0, period-1) 部分为 NaN，位置
+    // (period-1) 用前 `period` 个样本的简单平均作为种子，随后按
+    // 标准递推向前计算。这与 talib.EMA 的输出逐 bit 一致（已由
+    // Phase A 的 `test_ema_matches_talib` 验证）。早先 rs-czsc 的
+    // 实现以 `series[0]` 作为种子，在前约 30 根 bar 上会出现可见
+    // 偏差。
     let len = series.len();
     if len == 0 || period == 0 {
         return vec![];

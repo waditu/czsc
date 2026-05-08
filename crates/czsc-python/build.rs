@@ -1,10 +1,10 @@
-//! Build script for czsc-python.
+//! czsc-python 的 build script。
 //!
-//! On macOS the cdylib needs `-undefined dynamic_lookup` so that Python
-//! symbols are resolved at runtime by the host interpreter. PyO3's
-//! `extension-module` feature normally emits this, but when building via
-//! plain `cargo build --workspace` (without maturin) we make the link arg
-//! explicit so the workspace layout test stays GREEN.
+//! 在 macOS 上 cdylib 需要 `-undefined dynamic_lookup`，这样 Python 符号
+//! 才能在运行时由宿主解释器解析。PyO3 的 `extension-module` feature 一般
+//! 会自动加上这个 flag，但是当我们直接用
+//! `cargo build --workspace`（不走 maturin）构建时，需要显式声明这个
+//! 链接参数，以便 workspace layout test 保持 GREEN。
 
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {

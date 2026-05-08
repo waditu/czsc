@@ -1,8 +1,8 @@
-//! czsc-python — PyO3 aggregator that produces the `czsc._native` extension.
+//! czsc-python —— 产生 `czsc._native` 扩展的 PyO3 聚合器。
 //!
-//! Each business crate's PyO3 surface is registered here. The crate is
-//! the only one that links `pyo3 = { features = ["extension-module"] }`
-//! and produces the cdylib loaded by Python.
+//! 每个业务 crate 的 PyO3 表面都在这里注册。这个 crate 是 workspace
+//! 中唯一启用 `pyo3 = { features = ["extension-module"] }` 的，它产出
+//! Python 加载的 cdylib。
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -18,12 +18,12 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     czsc_utils::python::register(py, m)?;
     czsc_ta::python::register(py, m)?;
 
-    // czsc-signals contributes `SignalDescriptor` entries via
-    // `inventory::collect!`. The dummy iterator forces the crate
-    // into the final cdylib so the constructors run on import.
+    // czsc-signals 通过 `inventory::collect!` 贡献 `SignalDescriptor`
+    // 条目。这里用一次哑迭代强制把该 crate 链入最终的 cdylib，
+    // 这样 import 时构造器就会跑起来。
     let _signals_count = inventory::iter::<czsc_signals::types::SignalDescriptor>().count();
 
-    // Trader surface — CzscTrader, CzscSignals, generate_czsc_signals.
+    // Trader 表面 —— CzscTrader、CzscSignals、generate_czsc_signals。
     m.add_class::<trader::czsc_trader::PyCzscTrader>()?;
     m.add_class::<trader::czsc_signals::PyCzscSignals>()?;
     m.add_function(wrap_pyfunction!(
@@ -31,9 +31,9 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
-    // Research / optimize entrypoints (mirrors rs_czsc/python/src/lib.rs).
-    // These are the heavy-lift functions that strategies.py /
-    // research.py / optimize.py wrap thinly on the Python side.
+    // Research / optimize 入口（对齐 rs_czsc/python/src/lib.rs）。
+    // 这些是干重活的函数，Python 侧的 strategies.py / research.py /
+    // optimize.py 只做薄薄一层包装。
     m.add_function(wrap_pyfunction!(trader::api::list_all_signals, m)?)?;
     m.add_function(wrap_pyfunction!(trader::api::derive_signals_config, m)?)?;
     m.add_function(wrap_pyfunction!(trader::api::derive_signals_freqs, m)?)?;
@@ -52,13 +52,13 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
 
-    // czsc._native.signals namespace + per-category sub-modules
-    // (bar / cxt / tas / vol / pressure / obv / cvolp). The dispatcher
-    // is registered on each so that
+    // czsc._native.signals 命名空间 + 按类别分的子模块
+    // (bar / cxt / tas / vol / pressure / obv / cvolp)。分发器在每个子模块
+    // 上都注册一次，使得
     //     from czsc._native.signals import call_signal
-    // and
+    // 和
     //     from czsc._native.signals.bar import list_signal_names
-    // both resolve. See `signals_dispatcher.rs` for the design.
+    // 都能解析。设计细节见 `signals_dispatcher.rs`。
     let signals = PyModule::new(py, "signals")?;
     signals.setattr("__name__", "czsc._native.signals")?;
     let sys = py.import("sys")?;

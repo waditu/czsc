@@ -225,7 +225,7 @@ jobs:
 
     - name: Lint Rust with cargo clippy
       run: |
-        cargo clippy --workspace --all-targets -- -D warnings || true
+        cargo clippy --workspace --all-targets -- -D warnings
 
   security:
     name: Security Audit

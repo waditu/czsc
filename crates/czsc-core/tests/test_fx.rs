@@ -1,6 +1,6 @@
-//! Phase D.7 — RED test: FX (分型) constructs via FXBuilder, exposes
-//! power_str / power_volume / has_zs (non-python build), and compares
-//! by structural equality.
+//! Phase D.7 —— RED 测试：FX（分型）通过 FXBuilder 构造，
+//! 暴露 power_str / power_volume / has_zs（non-python 构建），
+//! 并按结构相等进行比较。
 
 use std::sync::Arc;
 
@@ -28,9 +28,9 @@ fn nb(ts: i64, high: f64, low: f64, vol: f64) -> NewBar {
 }
 
 fn sample_top_fx() -> FX {
-    // top fx (顶分型): middle bar's high is the highest
+    // 顶分型：中间 bar 的 high 是最高的
     let k1 = nb(1_700_000_000, 11.0, 9.0, 100.0);
-    let k2 = nb(1_700_001_800, 12.0, 10.0, 200.0); // top
+    let k2 = nb(1_700_001_800, 12.0, 10.0, 200.0); // 顶
     let k3 = nb(1_700_003_600, 11.5, 9.5, 100.0);
     FXBuilder::default()
         .symbol(Arc::<str>::from("000001"))

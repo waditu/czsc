@@ -23,7 +23,7 @@ pub fn expand_error_chain(err: &anyhow::Error) -> String {
     error_chain
 }
 
-/// Copy from anyhow::bail!
+/// 从 anyhow::bail! 复制而来
 #[macro_export]
 macro_rules! czsc_bail {
     ($msg:literal $(,)?) => {

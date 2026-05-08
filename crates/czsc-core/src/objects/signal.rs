@@ -1,7 +1,7 @@
-// czsc-only: pyo3 imports gated behind the `python` feature (rs-czsc 47ef6efa
-// relied on `#![allow(unused)]` to mask the bare imports when the feature was
-// off; we make the gating explicit so czsc-core builds in non-python mode).
-// See docs/MIGRATION_NOTES.md §2.4.
+// czsc-only: pyo3 import 通过 `python` feature 进行门控（rs-czsc 47ef6efa
+// 依赖 `#![allow(unused)]` 在 feature 关闭时屏蔽这些裸 import；我们把门控
+// 显式化，这样 czsc-core 在 non-python 模式下也能编译）。
+// 参见 docs/MIGRATION_NOTES.md §2.4。
 #![allow(unused)]
 use anyhow::{Context, anyhow, bail};
 use serde::{Deserialize, Deserializer, Serialize, Serializer, de::Visitor};
@@ -63,10 +63,9 @@ pub struct PySignal {
 }
 
 impl PySignal {
-    /// Wrap an inner [`Signal`] for Python exposure. The constructor is
-    /// public so downstream crates (notably `czsc-python`'s signal
-    /// dispatcher) can return signal objects without round-tripping
-    /// through the string parser.
+    /// 把内部 [`Signal`] 包装成 Python 可见对象。构造函数是 public 的，
+    /// 这样下游 crate（特别是 `czsc-python` 的信号分发器）可以直接返回
+    /// 信号对象，无需经过字符串解析器走一遭。
     pub fn from_inner(inner: Signal) -> Self {
         Self { inner }
     }
@@ -246,7 +245,7 @@ pub(crate) fn parse_signal_doc(doc: &str) -> ParsedSignalDoc {
     let mut param_template: Option<String> = None;
     let mut signals: Vec<Signal> = Vec::new();
 
-    // Helper: 给定起始索引，查找第一个引号并提取匹配的内容（支持中英文引号）
+    // 辅助函数：给定起始索引，查找第一个引号并提取匹配的内容（支持中英文引号）
     fn extract_quoted(s: &str, start: usize) -> Option<(String, usize)> {
         // 支持的开引号及其对应的闭引号
         let pairs: &[(char, char)] = &[
@@ -298,7 +297,7 @@ pub(crate) fn parse_signal_doc(doc: &str) -> ParsedSignalDoc {
     let mut pos = 0usize;
     let needle = "Signal(";
     while let Some(found) = doc[pos..].find(needle) {
-        let abs = pos + found + needle.len(); // index right after "("
+        let abs = pos + found + needle.len(); // 紧跟在 "(" 之后的索引
         if let Some((content, end_idx)) = extract_quoted(doc, abs) {
             let s = Signal::from_str(&content).ok();
             if let Some(signal) = s {

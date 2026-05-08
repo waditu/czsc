@@ -1,6 +1,5 @@
-//! Phase E.2 — RED test: czsc-ta pure operators preserve length, behave
-//! correctly on degenerate inputs, and produce sensible numeric output
-//! aligned with the rs-czsc 47ef6efa baseline.
+//! Phase E.2 — RED test：czsc-ta 纯算子保持长度、在退化输入上表现
+//! 正确，并产出与 rs-czsc 47ef6efa baseline 对齐的合理数值输出。
 
 use czsc_ta::pure::{
     boll_positions, double_sma_positions, ema, mid_positions, rolling_rank, single_ema_positions,
@@ -20,7 +19,7 @@ fn ultimate_smoother_preserves_length() {
 
 #[test]
 fn ultimate_smoother_first_4_passthrough() {
-    // First 4 values must equal input per the rs-czsc contract.
+    // 按 rs-czsc 契约，前 4 个值必须等于输入。
     let s = series(20);
     let out = ultimate_smoother(&s, 10.0);
     for i in 0..4 {
@@ -54,11 +53,11 @@ fn ema_preserves_length() {
 
 #[test]
 fn ema_zero_period_returns_empty() {
-    // rs-czsc's ema short-circuits to an empty Vec when period == 0;
-    // lock that behaviour so callers can rely on a stable contract.
+    // rs-czsc 的 ema 在 period == 0 时短路返回空 Vec；
+    // 锁定这个行为，让调用方可以依赖一个稳定的契约。
     let s = vec![1.0, 2.0, 3.0];
     let out = ema(&s, 0);
-    assert!(out.is_empty(), "ema(_, 0) must short-circuit to empty");
+    assert!(out.is_empty(), "ema(_, 0) 必须短路返回空 Vec");
 }
 
 #[test]
@@ -78,10 +77,7 @@ fn mid_positions_in_range() {
     let s = series(30);
     let out = mid_positions(&s, 5);
     for v in &out {
-        assert!(
-            *v >= -1.0 && *v <= 1.0,
-            "expected position in [-1, 1], got {v}"
-        );
+        assert!(*v >= -1.0 && *v <= 1.0, "持仓应在 [-1, 1] 区间，实际为 {v}");
     }
 }
 
@@ -98,7 +94,7 @@ fn boll_positions_in_signed_range() {
     let out = boll_positions(&s, 20, 2.0);
     assert_eq!(out.len(), s.len());
     for v in &out {
-        assert!(*v >= -1 && *v <= 1, "boll position must be -1/0/1, got {v}");
+        assert!(*v >= -1 && *v <= 1, "boll 持仓必须为 -1/0/1，实际为 {v}");
     }
 }
 
@@ -111,6 +107,6 @@ fn true_range_matches_input_length() {
     assert_eq!(tr.len(), 4);
     // tr[i] = max(high-low, |high-prev|, |low-prev|) >= 0
     for v in &tr {
-        assert!(*v >= 0.0, "true_range must be non-negative, got {v}");
+        assert!(*v >= 0.0, "true_range 必须非负，实际为 {v}");
     }
 }

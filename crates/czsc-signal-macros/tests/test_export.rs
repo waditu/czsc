@@ -1,14 +1,13 @@
-//! Phase E.last — smoke test: czsc-signal-macros compiles and the test
-//! binary can link against it. Proc-macros are compile-time constructs,
-//! so the real validation is that this test target builds at all.
+//! Phase E.last — smoke test：czsc-signal-macros 能编译，且测试二进制
+//! 能成功 link 到它。proc-macro 属于编译期构造，因此真正的验证就是
+//! 这个 test target 能不能编译通过。
 //!
-//! Full expansion testing requires czsc-signals types and lands in
-//! Phase F (every signal module under crates/czsc-signals/src/*.rs
-//! exercises `#[signal_module]` and `#[signal]` against the real
-//! types).
+//! 完整的展开测试需要 czsc-signals 的类型，安排在 Phase F
+//! 进行（crates/czsc-signals/src/*.rs 下的每个信号模块都会针对
+//! 真实类型走一遍 `#[signal_module]` 和 `#[signal]`）。
 
 #[test]
 fn proc_macro_crate_links() {
-    // Reaching this function means the crate compiled with both
-    // #[proc_macro_attribute] entrypoints exported.
+    // 能跑到这个函数就说明 crate 编译通过，并且两个
+    // #[proc_macro_attribute] 入口都已正常导出。
 }

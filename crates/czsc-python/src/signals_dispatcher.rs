@@ -1,21 +1,19 @@
-//! czsc._native signal dispatcher (design doc §3.3).
+//! czsc._native 信号分发器（设计文档 §3.3）。
 //!
-//! Per-signal PyO3 wrappers would require ~30+ hand-written `#[pyfunction]`
-//! definitions; instead we expose a single dispatcher that looks the
-//! signal up by name in the inventory table contributed by
-//! `czsc-signals`. The Python-side ``czsc/signals/{bar,cxt,...}.py``
-//! shims attach a per-name closure via ``__getattr__`` so user code
-//! reads naturally:
+//! 若给每个信号写独立的 PyO3 wrapper，会有 30+ 个手写的 `#[pyfunction]`；
+//! 这里改为暴露一个统一的分发器，通过名字在 `czsc-signals` 贡献的 inventory
+//! 表里查找信号。Python 端的 ``czsc/signals/{bar,cxt,...}.py`` 通过
+//! ``__getattr__`` 给每个名字挂上一个闭包，使用方代码因而读起来很自然：
 //!
 //! ```python
 //! from czsc.signals.bar import bar_amount_acc_V230214
 //! result = bar_amount_acc_V230214(czsc_obj, {"di": 1, "n": 5})
 //! ```
 //!
-//! The dispatcher only handles **kline** signals (``fn(&CZSC, &params,
-//! &mut TaCache) -> Vec<Signal>``). Trader-state signals require a
-//! ``CzscTrader`` instance and are dispatched via
-//! ``CzscTrader.update_signals`` / ``CzscSignals.update_signals``.
+//! 本分发器只处理 **K 线** 类信号（签名为 ``fn(&CZSC, &params,
+//! &mut TaCache) -> Vec<Signal>``）。依赖 trader 状态的信号需要
+//! ``CzscTrader`` 实例，走 ``CzscTrader.update_signals`` /
+//! ``CzscSignals.update_signals`` 路径分发。
 
 use crate::trader::czsc_signals::py_to_serde_value;
 use czsc_core::analyze::CZSC;
@@ -27,24 +25,22 @@ use pyo3::types::PyDict;
 use serde_json::Value;
 use std::collections::HashMap;
 
-/// Find a signal descriptor by name. Returns `None` if no descriptor
-/// has that name. Callers should treat this as a missing signal.
+/// 按名字查找信号 descriptor。找不到时返回 `None`，调用方应将其视为
+/// 信号未注册。
 fn lookup(name: &str) -> Option<&'static SignalDescriptor> {
     inventory::iter::<SignalDescriptor>()
         .into_iter()
         .find(|d| d.name == name)
 }
 
-/// Extract the category prefix from a signal name (e.g. ``bar`` from
-/// ``bar_amount_acc_V230214``). Returns ``None`` if the name has no
-/// underscore.
+/// 从信号名中提取分类前缀（如从 ``bar_amount_acc_V230214`` 中取出
+/// ``bar``）。名字里不含下划线时返回 ``None``。
 fn name_prefix(name: &str) -> Option<&str> {
     name.split_once('_').map(|(p, _)| p)
 }
 
-/// Convert a Python params dict (or `None`) into the
-/// ``HashMap<String, Value>`` shape used by all kline signal
-/// functions. Accepts ``None`` as an empty dict.
+/// 把 Python 端传入的 params 字典（或 ``None``）转换为所有 K 线类信号函数
+/// 都接受的 ``HashMap<String, Value>``。``None`` 视为空字典。
 fn extract_params(params: Option<&Bound<'_, PyDict>>) -> PyResult<HashMap<String, Value>> {
     let mut out: HashMap<String, Value> = HashMap::new();
     if let Some(d) = params {
@@ -57,10 +53,10 @@ fn extract_params(params: Option<&Bound<'_, PyDict>>) -> PyResult<HashMap<String
     Ok(out)
 }
 
-/// Invoke a kline signal by name on the supplied CZSC instance.
+/// 在给定的 CZSC 实例上按名字调用一个 K 线类信号。
 ///
-/// Returns a list of ``czsc.Signal`` objects (the same type
-/// produced by ``CzscSignals.update_signals``).
+/// 返回 ``czsc.Signal`` 列表（与 ``CzscSignals.update_signals`` 产出的
+/// 类型一致）。
 #[pyfunction]
 #[pyo3(signature = (name, czsc, params=None))]
 pub fn call_signal(
@@ -86,12 +82,11 @@ pub fn call_signal(
     Ok(signals.into_iter().map(PySignal::from).collect())
 }
 
-/// List signal names contributed by the inventory.
+/// 列出 inventory 中注册的所有信号名。
 ///
-/// ``category`` is matched against the signal-name prefix (the part
-/// before the first underscore). Common values: ``bar``, ``cxt``,
-/// ``tas``, ``vol``, ``pressure``, ``obv``, ``cvolp``. Pass ``None``
-/// to return every kline signal.
+/// ``category`` 用来按信号名前缀（首个下划线之前的部分）过滤；常见取值：
+/// ``bar``、``cxt``、``tas``、``vol``、``pressure``、``obv``、``cvolp``。
+/// 传 ``None`` 返回所有 K 线类信号。
 #[pyfunction]
 #[pyo3(signature = (category=None))]
 pub fn list_signal_names(category: Option<&str>) -> Vec<String> {
@@ -107,28 +102,25 @@ pub fn list_signal_names(category: Option<&str>) -> Vec<String> {
     out
 }
 
-/// Return the parameter template for ``name``, or ``None`` if no signal
-/// with that name is registered. The template is the schema string
-/// declared in the `#[signal(...)]` macro and matches what the legacy
-/// Python helpers parse.
+/// 返回 ``name`` 对应信号的参数模板字符串；若未注册则返回 ``None``。
+/// 模板即 `#[signal(...)]` 宏里声明的 schema，与历史 Python 辅助代码
+/// 解析的字符串保持一致。
 #[pyfunction]
 pub fn get_signal_template(name: &str) -> Option<String> {
     lookup(name).map(|d| d.template.to_string())
 }
 
-/// Return the category prefix for ``name`` (``"bar"`` / ``"cxt"`` /
-/// ...). ``None`` when the signal isn't registered or its name has no
-/// underscore.
+/// 返回 ``name`` 的分类前缀（``"bar"`` / ``"cxt"`` / ...）。信号未注册
+/// 或名字里不含下划线时返回 ``None``。
 #[pyfunction]
 pub fn get_signal_category(name: &str) -> Option<String> {
     let descriptor = lookup(name)?;
     name_prefix(descriptor.name).map(|p| p.to_string())
 }
 
-/// Register the dispatcher symbols on both ``czsc._native`` (top-level)
-/// and ``czsc._native.signals`` (submodule). The submodule entries
-/// give design-doc §3.3 the path ``from czsc._native.signals import
-/// call_signal``.
+/// 把分发器相关符号同时挂到 ``czsc._native``（顶层）和
+/// ``czsc._native.signals``（子模块）下。子模块入口对应设计文档 §3.3
+/// 描述的导入路径 ``from czsc._native.signals import call_signal``。
 pub fn register(
     py: Python<'_>,
     m: &Bound<'_, PyModule>,
@@ -146,14 +138,14 @@ pub fn register(
     signals_mod.add_function(wrap_pyfunction!(get_signal_template, signals_mod)?)?;
     signals_mod.add_function(wrap_pyfunction!(get_signal_category, signals_mod)?)?;
 
-    // Per-category sub-modules: czsc._native.signals.{bar,cxt,...}.
-    // Each gets the full dispatcher trio so user code can write:
+    // 按分类创建子模块：czsc._native.signals.{bar,cxt,...}。
+    // 每个子模块都挂上完整的分发器三件套，使用方代码可以这样写：
     //
     //   import czsc._native.signals.bar as bar_mod
-    //   bar_mod.list_signal_names()  # only bar_* names
+    //   bar_mod.list_signal_names()  # 只列 bar_* 信号
     //
-    // The Python-side `czsc/signals/<cat>.py` shim layers __getattr__
-    // on top of these to expose individual functions.
+    // Python 侧的 `czsc/signals/<cat>.py` 在此基础上叠加 __getattr__，
+    // 把单个信号函数暴露成可直接调用的属性。
     let categories = ["bar", "cxt", "tas", "vol", "pressure", "obv", "cvolp"];
     let sys = py.import("sys")?;
     let py_modules = sys.getattr("modules")?;

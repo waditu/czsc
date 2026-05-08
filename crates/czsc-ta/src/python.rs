@@ -1,10 +1,10 @@
-//! PyO3 binding registry for czsc-ta.
+//! czsc-ta 的 PyO3 绑定注册表。
 //!
-//! Mirrors the wrapper layer that rs-czsc kept inside its python crate
-//! (rs_czsc/python/src/utils/ta.rs); we move the `#[pyfunction]` shells
-//! into czsc-ta itself so czsc-python only orchestrates `register()`
-//! calls. All wrappers are dormant unless the `python` feature
-//! (or `rust-numpy` for the numpy-bound entries) is on.
+//! 镜像 rs-czsc 原本放在其 python crate 里的 wrapper 层
+//! （rs_czsc/python/src/utils/ta.rs）；我们把 `#[pyfunction]` 外壳
+//! 搬到 czsc-ta 自身，这样 czsc-python 只负责编排 `register()`
+//! 调用。除非启用 `python` feature（numpy-bound 条目则需要
+//! `rust-numpy`），否则所有 wrapper 都处于休眠状态。
 
 use pyo3::prelude::*;
 
@@ -17,10 +17,9 @@ fn ultimate_smoother(close: Vec<f64>, period: f64) -> Vec<f64> {
 
 #[pyfunction]
 fn rolling_rank(series: Vec<f64>, window: usize) -> Vec<f64> {
-    // Convert Option<usize> -> f64 (None -> NaN) so `np.asarray(...)` lands
-    // in float64 dtype and `np.isfinite(out[window:])` works as expected.
-    // Python callers consuming the rank position can `.dropna()` instead of
-    // filtering Nones.
+    // 把 Option<usize> 转成 f64（None -> NaN），这样 `np.asarray(...)` 落到
+    // float64 dtype，`np.isfinite(out[window:])` 也能按预期工作。
+    // 消费 rank 位置的 Python 调用方可以用 `.dropna()` 代替对 None 的过滤。
     pure::rolling_rank(&series, window)
         .into_iter()
         .map(|opt| opt.map(|r| r as f64).unwrap_or(f64::NAN))
@@ -35,9 +34,9 @@ fn sma(
     period: Option<usize>,
     length: Option<usize>,
 ) -> Vec<f64> {
-    // Same kwarg story as `ema` — talib's keyword is `timeperiod` /
-    // pandas-ta's is `length`; rs-czsc historical scripts pass `n` /
-    // `period`. Phase A parity test calls `ta.sma(series, length=20)`.
+    // 关键字参数情况和 `ema` 一样 —— talib 的关键字是 `timeperiod` /
+    // pandas-ta 的是 `length`；rs-czsc 历史脚本传 `n` / `period`。
+    // Phase A parity test 调用 `ta.sma(series, length=20)`。
     let p = n.or(period).or(length).unwrap_or(0);
     pure::sma(&series, p)
 }
@@ -111,12 +110,11 @@ fn ema(
     period: Option<usize>,
     length: Option<usize>,
 ) -> Vec<f64> {
-    // Accept any of: positional `n`, kwargs `period=` (legacy rs-czsc) or
-    // `length=` (talib / pandas-ta convention). The Phase A parity test
-    // in `test/unit/test_ta_parity.py::test_ema_matches_talib` calls
-    // `ta.ema(series, length=14)`; rs-czsc historical scripts pass
-    // `period=14`. Resolution order preserves the positional path first
-    // so existing positional callers keep working.
+    // 接受以下任一形式：位置参数 `n`、关键字参数 `period=`（rs-czsc 遗留）
+    // 或 `length=`（talib / pandas-ta 惯例）。Phase A parity test
+    // 中 `test/unit/test_ta_parity.py::test_ema_matches_talib` 调用
+    // `ta.ema(series, length=14)`；rs-czsc 历史脚本传 `period=14`。
+    // 解析顺序优先保留位置参数路径，让既有的位置参数调用方继续工作。
     let p = n.or(period).or(length).unwrap_or(0);
     pure::ema(&series, p)
 }
@@ -185,15 +183,15 @@ fn holt_winters(
     pure::holt_winters(&series, season_length, alpha, beta, gamma)
 }
 
-/// Add the migrated czsc-ta functions onto the parent module that
-/// czsc-python passes in. Build a `ta` submodule mirroring the design
-/// doc §3.1 namespace map (czsc.ta.* + repeated top-level exposure).
+/// 把迁移过来的 czsc-ta 函数挂到 czsc-python 传入的父模块上。构建一个
+/// `ta` 子模块，镜像 design doc §3.1 的命名空间映射（czsc.ta.* 以及在
+/// 顶层重复暴露）。
 pub fn register(py: Python<'_>, parent: &Bound<'_, PyModule>) -> PyResult<()> {
     let ta = PyModule::new(py, "ta")?;
-    // Set the fully-qualified __name__ so `czsc.ta` (aliased via
-    // sys.modules) reports `__name__ == "czsc._native.ta"`. Required
-    // by the public-API parity test that checks namespace origin and
-    // by pickle when classes living in this submodule get round-tripped.
+    // 设置全限定的 __name__，使 `czsc.ta`（通过 sys.modules 别名暴露）
+    // 报告 `__name__ == "czsc._native.ta"`。检查命名空间来源的
+    // public-API parity test 需要这个值；当该子模块里的类被
+    // pickle 往返序列化时也需要这个值。
     ta.setattr("__name__", "czsc._native.ta")?;
 
     macro_rules! add {
@@ -231,7 +229,7 @@ pub fn register(py: Python<'_>, parent: &Bound<'_, PyModule>) -> PyResult<()> {
         holt_winters,
     );
 
-    // numpy-bound entries
+    // numpy-bound 条目
     ta.add_function(wrap_pyfunction!(
         mixed::chip_dist::chip_distribution_triangle,
         &ta
@@ -241,19 +239,18 @@ pub fn register(py: Python<'_>, parent: &Bound<'_, PyModule>) -> PyResult<()> {
         parent
     )?)?;
 
-    // Register the submodule into sys.modules so `from czsc._native.ta
-    // import ema` (and `import czsc._native.ta`) works the same as a
-    // pure-Python package. `parent.add_submodule` only sets it as an
-    // attribute of the parent — sys.modules is the bit Python's import
-    // machinery actually consults for nested module resolution.
+    // 把子模块注册到 sys.modules，这样 `from czsc._native.ta
+    // import ema`（以及 `import czsc._native.ta`）就能像纯 Python
+    // 包一样工作。`parent.add_submodule` 只是把它设置为父模块的
+    // 一个属性 —— Python 的 import 机制在做嵌套模块解析时实际查询的
+    // 是 sys.modules。
     let sys = py.import("sys")?;
     let py_modules = sys.getattr("modules")?;
     py_modules.set_item("czsc._native.ta", &ta)?;
-    // Use `parent.add` instead of `add_submodule` so we control the
-    // attribute key (`parent.ta`) independently of the module's
-    // qualified __name__ (`czsc._native.ta`). add_submodule uses the
-    // qualified name as the attribute, which would expose the
-    // submodule as `parent.czsc._native.ta` instead of `parent.ta`.
+    // 使用 `parent.add` 而不是 `add_submodule`，这样可以让属性 key
+    // （`parent.ta`）与模块的全限定 __name__（`czsc._native.ta`）相互
+    // 独立地受控。add_submodule 用全限定名作为属性，会把子模块
+    // 暴露成 `parent.czsc._native.ta` 而不是 `parent.ta`。
     parent.add("ta", &ta)?;
     Ok(())
 }

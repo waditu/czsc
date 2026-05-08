@@ -1,6 +1,6 @@
-// czsc-only: pyo3 + Python wrapper imports gated behind the `python` feature
-// for non-python builds. polars + log are kept unconditional because Position
-// uses them outside cfg blocks. See docs/MIGRATION_NOTES.md §2.4.
+// czsc-only: pyo3 与 Python wrapper 的 import 通过 `python` feature 进行门控，
+// 以便 non-python 构建。polars 与 log 保持无条件 import，因为 Position
+// 在 cfg 块外面也会用到它们。参见 docs/MIGRATION_NOTES.md §2.4。
 #![allow(unused)]
 use anyhow::{Context, anyhow};
 use chrono::{DateTime, FixedOffset, NaiveDateTime};
@@ -657,7 +657,7 @@ impl Position {
                 return PositionUpdateProfile::default();
             }
         } else {
-            // init
+            // 初始化
             self.temp_state = Some(TempState {
                 end_dt: last_bar.dt,
                 last_lo_dt: None,

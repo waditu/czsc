@@ -119,7 +119,7 @@ pub fn pearson_corr(x: &[f64], y: &[f64]) -> Option<f64> {
 ///
 /// [wiki](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient)
 ///
-/// > Spearman's coefficient is appropriate for both continuous and discrete ordinal variables.
+/// > Spearman 系数对于连续变量和离散有序变量都适用。
 ///
 /// - 当数据为空或长度不一致时返回 None。
 pub fn spearman_rank_corr(x: &[f64], y: &[f64]) -> Option<f64> {

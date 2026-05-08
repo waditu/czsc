@@ -285,17 +285,15 @@ class CZSC:
     def __repr__(self) -> builtins.str: ...
     def __reduce__(self) -> typing.Any:
         r"""
-        Pickle support — `__reduce__` returns ``(CZSC, (fixed_point_bars, max_bi_num))``.
+        Pickle 支持 —— `__reduce__` 返回 ``(CZSC, (fixed_point_bars, max_bi_num))``。
         
-        `update_bar` drains older bars whose dt is below the current
-        first-BI's start (see `bars_raw.drain` block above), so a
-        freshly-constructed CZSC's `bars_raw` may still differ from the
-        fixed point reached after a single re-analysis. We run one extra
-        `CZSC::new` here to converge before serializing — guarantees that
-        `pickle.dumps(restored) == pickle.dumps(obj)` byte-for-byte even
-        when CzscSignals nests CZSC inside `kas[freq]` (Phase A's
-        `restored.__getstate__() == obj.__getstate__()` assertion relies
-        on this).
+        `update_bar` 会丢弃 dt 小于当前 first-BI 起始时间的旧 bar
+        （参见上面的 `bars_raw.drain` 块），因此刚构造出来的 CZSC 的
+        `bars_raw` 可能仍然和「再分析一次后到达的不动点」不同。这里多
+        跑一次 `CZSC::new`，让其在序列化前收敛 —— 保证即使 CzscSignals
+        在 `kas[freq]` 里嵌套了 CZSC，`pickle.dumps(restored) ==
+        pickle.dumps(obj)` 也是逐字节相等的（Phase A 的
+        `restored.__getstate__() == obj.__getstate__()` 断言依赖这一点）。
         """
 
 class CzscSignals:

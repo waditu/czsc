@@ -1,8 +1,8 @@
-//! Trading-time predicate. czsc-only addition; see docs/MIGRATION_NOTES.md §2.2.
+//! 交易时间判定。czsc-only 新增；详见 docs/MIGRATION_NOTES.md §2.2。
 //!
-//! Inputs are interpreted as the market's local naive datetime (no tz
-//! attached): A股 → CST, 港股 → HKT, crypto → any. The Python wrapper at
-//! `czsc.is_trading_time` keeps the same contract.
+//! 输入按市场本地的 naive datetime 解释（不附带 tz）：
+//! A股 → CST，港股 → HKT，crypto → 任意。Python wrapper
+//! `czsc.is_trading_time` 保持相同的契约。
 
 use chrono::{Datelike, NaiveDateTime, Timelike, Weekday};
 
@@ -20,9 +20,8 @@ fn is_weekday(dt: &NaiveDateTime) -> bool {
     !matches!(dt.weekday(), Weekday::Sat | Weekday::Sun)
 }
 
-/// Return true iff `dt` (local market time) falls inside the regular trading
-/// session for `market`. Recognised values: `astock`, `hk`, `crypto`. Any
-/// other string returns `false`.
+/// 当且仅当 `dt`（市场本地时间）落在 `market` 的常规交易时段内时返回 true。
+/// 识别的取值：`astock`、`hk`、`crypto`。其他字符串一律返回 `false`。
 pub fn is_trading_time(dt: NaiveDateTime, market: &str) -> bool {
     match market {
         "crypto" => true,
@@ -39,7 +38,7 @@ pub fn is_trading_time(dt: NaiveDateTime, market: &str) -> bool {
                 return false;
             }
             let m = minute_of_day(&dt);
-            // HK lunch break: 12:00-13:00 (12:00 is closed)
+            // 港股午休：12:00-13:00（12:00 已闭市）
             (hm_minutes(9, 30)..hm_minutes(12, 0)).contains(&m)
                 || (hm_minutes(13, 0)..=hm_minutes(16, 0)).contains(&m)
         }

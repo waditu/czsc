@@ -233,11 +233,11 @@ impl RawBar {
 
     /// 支持pickle序列化
     fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
-        // RawBar.new takes `freq: Freq` (the PyO3 enum), not a string —
-        // pass the enum directly through pickle so the unpickle path
-        // (`RawBar(*args)`) succeeds. Stringifying with
-        // `freq_to_chinese_string` here would force the constructor to
-        // accept str|Freq and silently change the public API.
+        // RawBar.new 接收 `freq: Freq`（PyO3 枚举），而不是字符串 ——
+        // 通过 pickle 直接传递枚举，这样 unpickle 路径
+        // （`RawBar(*args)`）才会成功。如果在这里用
+        // `freq_to_chinese_string` 字符串化，会迫使构造函数同时
+        // 接受 str|Freq，并悄悄地改动公共 API。
         let cls = py.get_type::<Self>();
         let args = (
             self.symbol.as_ref(),

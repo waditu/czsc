@@ -178,13 +178,13 @@ pub fn get_exit_optim_positions(
                 let event_str = py_repr_event_dump(&event);
                 let hash = hash_str(&event_str);
 
-                // mode = append
+                // mode = append（追加模式）
                 let mut pos_append = beta.clone();
                 pos_append.exits.push(event.clone());
                 pos_append.name = format!("{}#追加{}", beta.name, hash);
                 pos_list.push(pos_append);
 
-                // mode = replace
+                // mode = replace（替换模式）
                 let mut pos_replace = beta.clone();
                 pos_replace.exits = vec![event.clone()];
                 pos_replace.name = format!("{}#替换{}", beta.name, hash);

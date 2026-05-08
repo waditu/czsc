@@ -1,7 +1,7 @@
-//! Phase C.3 — RED test: is_trading_time across A股 / 港股 / crypto.
+//! Phase C.3 — RED 测试：is_trading_time 覆盖 A股 / 港股 / crypto。
 //!
-//! Mirrors the cases locked by test/unit/test_trading_time.py (Phase A.6).
-//! The function is czsc-only — see docs/MIGRATION_NOTES.md §2.2.
+//! 镜像 test/unit/test_trading_time.py（Phase A.6）锁定的用例。
+//! 该函数为 czsc-only —— 见 docs/MIGRATION_NOTES.md §2.2。
 
 use chrono::NaiveDate;
 use czsc_utils::is_trading_time;
@@ -15,7 +15,7 @@ fn dt(y: i32, mo: u32, d: u32, h: u32, mi: u32) -> chrono::NaiveDateTime {
 
 #[test]
 fn astock_regular_session() {
-    // 2024-01-08 is Monday
+    // 2024-01-08 是周一
     assert!(is_trading_time(dt(2024, 1, 8, 9, 30), "astock"));
     assert!(is_trading_time(dt(2024, 1, 8, 10, 0), "astock"));
     assert!(is_trading_time(dt(2024, 1, 8, 11, 30), "astock"));
@@ -31,7 +31,7 @@ fn astock_lunch_break_and_off_hours() {
 
 #[test]
 fn astock_weekend_closed() {
-    // 2024-01-06 is Saturday
+    // 2024-01-06 是周六
     assert!(!is_trading_time(dt(2024, 1, 6, 10, 0), "astock"));
 }
 

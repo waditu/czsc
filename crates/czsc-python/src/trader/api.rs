@@ -1268,7 +1268,7 @@ pub fn generate_signals(
         vec![]
     };
 
-    // 2) Arrow bytes -> bars
+    // 2) Arrow bytes 转换为 bars
     let raw_data = bars_bytes.as_bytes();
     let df = pyarrow_to_df(raw_data)
         .map_err(|e| PyValueError::new_err(format!("Arrow bytes 转 DataFrame 失败: {e}")))?;
