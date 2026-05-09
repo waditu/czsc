@@ -103,72 +103,88 @@ jobs:
           fi
           # CARGO_REGISTRY_TOKEN 已通过 env 注入，cargo publish 会自动读取
 
-      # 按依赖图分层发布。每层之间 sleep 30s 让 crates.io index 同步完成，
-      # 否则下一层 `cargo publish` 解析 version 时可能找不到刚发的 crate。
-      - name: Publish layer 0 (leaf crates)
+      # ------------------------------------------------------------------
+      # dry-run 模式：用 `cargo publish --workspace --dry-run` 统一处理
+      #
+      # cargo 1.84+ 的 --workspace 会自动按依赖拓扑遍历所有 workspace 成员
+      # （publish = false 的 czsc-python 自动跳过），且 dry-run 时跨 workspace
+      # 解析 path 依赖、不查 crates.io 索引 —— 完美避开「上一层未真发、下
+      # 一层找不到依赖」的 catch-22。
+      #
+      # 之所以不在 real 模式也用 --workspace：
+      #   1. cargo 不在每个 publish 之间等 crates.io index 同步，串行真发
+      #      时上一层刚 push 完、下一层立刻 publish 会偶发 404
+      #   2. 失败时回滚不便（已上传的 crate 只能 yank）
+      #   3. real 走分层 + sleep 30s 的传统方式更稳
+      # ------------------------------------------------------------------
+      - name: Dry-run (publish --workspace --dry-run)
+        if: env.PUBLISH_FOR_REAL != 'true'
+        shell: bash
+        run: |
+          echo "::notice::Running cargo publish --workspace --dry-run (no real upload)"
+          cargo publish --workspace --dry-run --no-verify --allow-dirty
+
+      # ------------------------------------------------------------------
+      # real 模式：按依赖图分层串行 publish。每层之间 sleep 30s 让 crates.io
+      # index 同步完成，否则下一层 cargo publish 解析 version 时可能找不到
+      # 刚发的 crate（404）。
+      # ------------------------------------------------------------------
+      - name: Real publish layer 0 (czsc-derive, czsc-signal-macros)
+        if: env.PUBLISH_FOR_REAL == 'true'
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           set -e
-          FLAGS="--no-verify"
-          if [ "$PUBLISH_FOR_REAL" != "true" ]; then
-            FLAGS="$FLAGS --dry-run"
-            echo "::notice::Running cargo publish in --dry-run mode"
-          fi
           for c in czsc-derive czsc-signal-macros; do
-            echo "::group::cargo publish -p $c"
-            cargo publish -p "$c" $FLAGS
+            echo "::group::publish $c"
+            cargo publish -p "$c" --no-verify
             echo "::endgroup::"
           done
-          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+          sleep 30
 
-      - name: Publish layer 1 (czsc-core)
+      - name: Real publish layer 1 (czsc-core)
+        if: env.PUBLISH_FOR_REAL == 'true'
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           set -e
-          FLAGS="--no-verify"
-          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
-          cargo publish -p czsc-core $FLAGS
-          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+          cargo publish -p czsc-core --no-verify
+          sleep 30
 
-      - name: Publish layer 2 (czsc-ta, czsc-utils)
+      - name: Real publish layer 2 (czsc-ta, czsc-utils)
+        if: env.PUBLISH_FOR_REAL == 'true'
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           set -e
-          FLAGS="--no-verify"
-          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
           for c in czsc-ta czsc-utils; do
-            echo "::group::cargo publish -p $c"
-            cargo publish -p "$c" $FLAGS
+            echo "::group::publish $c"
+            cargo publish -p "$c" --no-verify
             echo "::endgroup::"
           done
-          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+          sleep 30
 
-      - name: Publish layer 3 (czsc-signals)
+      - name: Real publish layer 3 (czsc-signals)
+        if: env.PUBLISH_FOR_REAL == 'true'
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           set -e
-          FLAGS="--no-verify"
-          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
-          cargo publish -p czsc-signals $FLAGS
-          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+          cargo publish -p czsc-signals --no-verify
+          sleep 30
 
-      - name: Publish layer 4 (czsc-trader)
+      - name: Real publish layer 4 (czsc-trader)
+        if: env.PUBLISH_FOR_REAL == 'true'
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
           set -e
-          FLAGS="--no-verify"
-          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
-          cargo publish -p czsc-trader $FLAGS
+          cargo publish -p czsc-trader --no-verify
 
       - name: Summary
         if: always()
