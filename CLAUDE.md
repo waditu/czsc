@@ -286,12 +286,13 @@ from czsc.utils.plotting.common import (
 - `utils.py`: 特征工程工具函数
 
 ### 探索性数据分析（`czsc/eda.py`）
-- `vwap`/`twap`: 成交量和时间加权平均价
-- `remove_beta_effects`: 去除beta对因子的影响
-- `judge_factor_direction`: 因子方向判断
 - `monotonicity`: 单调性分析
+- `weights_simple_ensemble`: 多策略权重集成
+- `cal_trade_price`: 交易价格表计算
+- `mark_cta_periods`: 标记CTA最易/最难赚钱时间段
+- `mark_volatility`: 标记高/低波动率时间段
+- `cal_yearly_days`: 年度交易日数量
 - `turnover_rate`: 换手率计算
-- `make_price_features`: 价格特征工程
 
 ## 重要文档和资源
 

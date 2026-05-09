@@ -58,15 +58,13 @@
 
 根包仍保留当前可运行的 `eda` 高频入口，例如：
 
-- `remove_beta_effects`
-- `vwap`
-- `twap`
-- `judge_factor_direction`
 - `monotonicity`
 - `weights_simple_ensemble`
-- `unify_weights`
+- `cal_trade_price`
+- `mark_cta_periods`
+- `mark_volatility`
+- `cal_yearly_days`
 - `turnover_rate`
-- `make_price_features`
 
 ### Lazy 模块
 
