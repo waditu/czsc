@@ -66,10 +66,12 @@ fn fx_and_bi_lists_are_consistent_with_zigzag() {
     let bars = synthetic_zigzag(60);
     let c = CZSC::new(bars, 50);
     let fxs = c.get_fx_list();
-    // 60 根 bar 的 zigzag 应该至少产出 2 个 fx（或者 0 个——
-    // 具体数量取决于合成出来的波形；这里只断言非负不变量）。
-    assert!(fxs.len() <= 60);
-    assert!(c.bi_list.len() <= 50);
+    // 60 根 zigzag bar 的正弦波形必须产出至少 2 个分型（顶底交替）
+    assert!(fxs.len() >= 2, "60 根 zigzag 应至少产出 2 个分型，实际 {}", fxs.len());
+    assert!(fxs.len() <= 60, "分型数量不得超过 bar 数");
+    // 有分型则必然有笔；max_bi_num=50 为上界
+    assert!(c.bi_list.len() >= 1, "有分型时应至少识别出 1 笔，实际 {}", c.bi_list.len());
+    assert!(c.bi_list.len() <= 50, "笔数量不得超过 max_bi_num=50");
 }
 
 #[test]

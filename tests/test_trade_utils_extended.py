@@ -64,11 +64,12 @@ class TestUpdateNxb:
 
     def test_multi_symbol(self):
         """测试多品种"""
+        rng = np.random.RandomState(42)
         dates = pd.date_range("20220101", periods=50, freq="D")
         data = []
         for sym in ["000001", "000002"]:
             for dt in dates:
-                data.append({"dt": dt, "symbol": sym, "price": np.random.uniform(10, 20)})
+                data.append({"dt": dt, "symbol": sym, "price": rng.uniform(10, 20)})
         df = pd.DataFrame(data)
         result = update_nxb(df, nseq=(1,), copy=True)
         assert len(result) == len(df)

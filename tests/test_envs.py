@@ -35,24 +35,27 @@ from czsc.envs import get_max_bi_num, get_min_bi_len, get_verbose
 class TestRetiredHelpers:
     """反向断言：确认所有已废弃的 helper 已经被移除。"""
 
-    # 参数化覆盖所有需要被废弃的旧符号；其中 _env 是私有助手，应当保留
-    @pytest.mark.parametrize("name", ["use_python", "get_welcome", "valid_true", "_env"])
+    # 参数化仅覆盖需要被废弃的旧符号（正向断言 _env 单独放在下方）
+    @pytest.mark.parametrize("name", ["use_python", "get_welcome", "valid_true"])
     def test_legacy_helper_removed(self, name: str) -> None:
-        """对每个旧名称做存在性检查。
+        """确认每个已废弃的公共 helper 已从模块中移除。
 
         测试场景：
-            遍历四个历史符号；其中 ``_env`` 是模块内私有 helper，仍然保留；
-            其余三个公共 helper 必须已经从 ``czsc.envs`` 模块中移除。
+            遍历三个历史符号，断言它们已从 ``czsc.envs`` 中移除。
 
         关键断言：
-            - ``_env`` 必须存在（私有实现细节，保留向下兼容）；
-            - 其他三个公共名称必须已移除。
+            ``not hasattr(envs_mod, name)`` —— 废弃符号必须不可访问。
         """
-        # `_env` 仍然作为模块内私有 helper 保留；其余符号必须已经移除
-        if name == "_env":
-            assert hasattr(envs_mod, name), "私有 _env helper 应当继续保留"
-        else:
-            assert not hasattr(envs_mod, name), f"czsc.envs.{name} 必须被移除"
+        assert not hasattr(envs_mod, name), f"czsc.envs.{name} 必须被移除"
+
+    def test_env_helper_still_exists(self) -> None:
+        """确认私有 helper ``_env`` 仍然保留在模块中。
+
+        ``_env`` 是模块内部的私有实现细节，不属于废弃列表。
+        此处对其做正向断言，与 ``test_legacy_helper_removed`` 的
+        反向断言语义明确分离，避免同一参数化列表中混用正反逻辑。
+        """
+        assert hasattr(envs_mod, "_env"), "私有 _env helper 应当继续保留"
 
     def test_no_czsc_use_python_branch(self) -> None:
         """验证 czsc.envs 源码中不再引用 CZSC_USE_PYTHON 环境变量。

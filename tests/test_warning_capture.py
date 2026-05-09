@@ -196,98 +196,74 @@ def test_warning_capture_context_manager_isolation():
 
 
 def test_execute_with_warning_capture_drop_duplicates_true():
-    """测试drop_duplicates=True时去除重复警告"""
+    """drop_duplicates=True 时实际函数产出的重复警告条数少于不去重时。
 
-    # 直接创建相同的警告消息来测试去重功能
-    def simulate_duplicate_warnings():
-        # 通过手动添加相同的警告消息来模拟重复情况
-        # 这样可以测试去重功能而不依赖Python警告系统的内部行为
-        return [
-            "UserWarning: 重复警告 (文件: test.py, 行号: 1)",
-            "UserWarning: 重复警告 (文件: test.py, 行号: 1)",  # 完全相同
-            "DeprecationWarning: 不同警告 (文件: test.py, 行号: 2)",
-        ]
+    测试策略：
+        让被测函数多次触发同一条警告（通过 warnings.warn 在循环中调用），
+        分别以 drop_duplicates=True / False 调用 execute_with_warning_capture，
+        断言去重后条数 <= 不去重条数，且去重后无重复项。
+    """
 
-    # 模拟去重逻辑测试
-    original_warnings = simulate_duplicate_warnings()
-    deduplicated = list(dict.fromkeys(original_warnings))
+    def emit_duplicate_warnings():
+        # 在 simplefilter("always") 下循环发出同一条消息，保证可重复捕获
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            for _ in range(3):
+                warnings.warn("重复警告消息", UserWarning, stacklevel=1)
+        return "完成"
 
-    assert len(original_warnings) == 3
-    assert len(deduplicated) == 2  # 去重后应该只有2条
+    with_dedup, _ = execute_with_warning_capture(emit_duplicate_warnings, drop_duplicates=True)
+    without_dedup, _ = execute_with_warning_capture(emit_duplicate_warnings, drop_duplicates=False)
 
-    # 测试实际的函数行为
-    def simple_warning_function():
-        warnings.warn("测试警告", UserWarning, stacklevel=2)
-        return "测试完成"
-
-    warnings_list, result = execute_with_warning_capture(simple_warning_function)
-
-    assert len(warnings_list) >= 1  # 至少有一条警告
-    assert result == "测试完成"
+    assert len(with_dedup) <= len(without_dedup), "去重后条数不得多于未去重条数"
+    # 去重后列表中不应有完全相同的元素
+    assert len(with_dedup) == len(set(with_dedup)), "drop_duplicates=True 时不得有重复警告"
 
 
 def test_execute_with_warning_capture_drop_duplicates_false():
-    """测试drop_duplicates=False时保留重复警告"""
+    """drop_duplicates=False 时所有警告均被保留（包括重复项）。
 
-    # 直接测试去重逻辑的差异
-    duplicate_warnings = [
-        "UserWarning: 重复警告 (文件: test.py, 行号: 1)",
-        "UserWarning: 重复警告 (文件: test.py, 行号: 1)",  # 完全相同
-        "DeprecationWarning: 不同警告 (文件: test.py, 行号: 2)",
-    ]
+    测试策略：
+        用同一函数以 drop_duplicates=False 调用，断言返回的警告列表
+        条数不少于去重后的结果，确认未发生静默去重。
+    """
 
-    # 测试drop_duplicates=True的行为
-    deduplicated_true = list(dict.fromkeys(duplicate_warnings))
-    assert len(deduplicated_true) == 2  # 去重后只有2条
+    def emit_two_distinct_warnings():
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            warnings.warn("警告A", UserWarning, stacklevel=1)
+            warnings.warn("警告B", UserWarning, stacklevel=1)
+        return "完成"
 
-    # 测试drop_duplicates=False的行为
-    deduplicated_false = duplicate_warnings  # 不去重，保持原样
-    assert len(deduplicated_false) == 3  # 保留所有3条
+    no_dedup, result = execute_with_warning_capture(emit_two_distinct_warnings, drop_duplicates=False)
+    with_dedup, _ = execute_with_warning_capture(emit_two_distinct_warnings, drop_duplicates=True)
 
-    # 测试实际函数
-    def simple_function():
-        warnings.warn("测试警告", UserWarning, stacklevel=2)
-        return "测试完成"
-
-    # drop_duplicates=False
-    warnings_list, result = execute_with_warning_capture(simple_function, drop_duplicates=False)
-
-    assert len(warnings_list) >= 1  # 至少有一条警告
-    assert result == "测试完成"
+    assert result == "完成"
+    assert len(no_dedup) >= len(with_dedup), "drop_duplicates=False 时条数不得少于去重结果"
 
 
 def test_execute_with_warning_capture_drop_duplicates_order():
-    """测试drop_duplicates=True时保持警告的顺序"""
+    """drop_duplicates=True 时去重结果按首次出现顺序排列。
 
-    # 测试去重时保持顺序的逻辑
-    ordered_warnings = [
-        "UserWarning: 第一个警告 (文件: test.py, 行号: 1)",
-        "DeprecationWarning: 第二个警告 (文件: test.py, 行号: 2)",
-        "UserWarning: 第一个警告 (文件: test.py, 行号: 1)",  # 重复第一个
-        "FutureWarning: 第三个警告 (文件: test.py, 行号: 3)",
-        "DeprecationWarning: 第二个警告 (文件: test.py, 行号: 2)",  # 重复第二个
-    ]
+    测试策略：
+        让函数按 A, B, A, C, B 顺序发出警告，断言去重后
+        第一条含 "警告A"、第二条含 "警告B"、第三条含 "警告C"。
+    """
 
-    # 使用list(dict.fromkeys())来去重并保持顺序
-    deduplicated = list(dict.fromkeys(ordered_warnings))
-
-    assert len(ordered_warnings) == 5  # 原始5条警告
-    assert len(deduplicated) == 3  # 去重后3条不同的警告
-
-    # 检查顺序是否正确（应该按第一次出现的顺序）
-    assert "UserWarning: 第一个警告" in deduplicated[0]
-    assert "DeprecationWarning: 第二个警告" in deduplicated[1]
-    assert "FutureWarning: 第三个警告" in deduplicated[2]
-
-    # 测试实际函数
-    def simple_function():
-        warnings.warn("顺序测试", UserWarning, stacklevel=2)
+    def emit_ordered_warnings():
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            for msg in ["警告A", "警告B", "警告A", "警告C", "警告B"]:
+                warnings.warn(msg, UserWarning, stacklevel=1)
         return "顺序测试完成"
 
-    warnings_list, result = execute_with_warning_capture(simple_function)
+    deduped, result = execute_with_warning_capture(emit_ordered_warnings, drop_duplicates=True)
 
-    assert len(warnings_list) >= 1
     assert result == "顺序测试完成"
+    assert len(deduped) == 3, f"去重后应只剩 3 条不同警告，实际 {len(deduped)} 条"
+    assert "警告A" in deduped[0], "第一条应为警告A（首次出现）"
+    assert "警告B" in deduped[1], "第二条应为警告B（首次出现）"
+    assert "警告C" in deduped[2], "第三条应为警告C（首次出现）"
 
 
 def test_execute_with_warning_capture_drop_duplicates_with_string_return():

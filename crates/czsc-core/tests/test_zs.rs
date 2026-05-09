@@ -149,7 +149,8 @@ fn gg_dd_envelope_zg_zd() {
 }
 
 #[test]
-fn is_valid_returns_bool() {
+fn is_valid_returns_true_for_standard_zs() {
+    // sample_zs() 由 3 笔组成、zg > zd 的标准中枢，must be valid
     let zs = sample_zs();
-    let _ = zs.is_valid(); // 返回 true 还是 false 都无所谓 —— 关键是不能 panic
+    assert!(zs.is_valid(), "标准 3 笔中枢（zg={} > zd={}）应通过有效性检查", zs.zg, zs.zd);
 }

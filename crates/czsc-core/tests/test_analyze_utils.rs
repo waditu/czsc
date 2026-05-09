@@ -75,14 +75,14 @@ fn check_fxs_extracts_fx_from_sequence() {
 }
 
 #[test]
-fn check_bi_returns_tuple_with_remainder() {
+fn check_bi_returns_none_for_monotone_sequence() {
+    // 严格单调递增序列既无顶分型也无底分型，不满足笔的识别条件
     let bars: Vec<NewBar> = (0..6)
         .map(|i| nb(i + 1, 10.0 + i as f64, 9.0 + i as f64))
         .collect();
     let (bi, remainder) = check_bi(&bars);
-    // 函数签名契约：总是返回 (Option<BI>, &[NewBar])
-    let _ = bi;
-    assert!(remainder.len() <= bars.len());
+    assert!(bi.is_none(), "单调递增序列不应识别出笔");
+    assert!(remainder.len() <= bars.len(), "remainder 长度不得超过输入长度");
 }
 
 #[test]

@@ -132,25 +132,45 @@ def test_rolling_rank_returns_finite() -> None:
     assert np.isfinite(out[20:]).all(), "rolling_rank 在预热窗口之后必须产出有限值"
 
 
-def test_boll_positions_signature() -> None:
-    """验证 czsc.ta 暴露了 boll_positions（布林通道位置）算子。
+def test_boll_positions_returns_valid_output() -> None:
+    """验证 czsc.ta.boll_positions 可正常调用并产出正确形状的有效输出。
+
+    测试场景：
+        在 1024 个随机样本上调用 boll_positions(window=20, std=2.0)，
+        验证输出长度与输入一致，且所有值均在 [-1, 0, 1] 范围内。
 
     关键断言：
-        ``hasattr(ta, "boll_positions")`` 为真。
+        - 输出长度等于输入长度；
+        - 预热期后 (20:) 所有值的绝对值 <= 1。
     """
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    assert hasattr(ta, "boll_positions"), "czsc.ta.boll_positions 必须暴露"
+    if not hasattr(ta, "boll_positions"):
+        pytest.fail("czsc.ta.boll_positions 尚未暴露")
+    series = _series()
+    out = np.asarray(ta.boll_positions(series, 20, 2.0))
+    assert len(out) == len(series), f"输出长度 {len(out)} 应与输入长度 {len(series)} 一致"
+    assert np.all(np.abs(out[20:]) <= 1), "boll_positions 输出必须在 [-1, 0, 1] 范围内"
 
 
-def test_ultimate_smoother_signature() -> None:
-    """验证 czsc.ta 暴露了 ultimate_smoother（终极平滑器）算子。
+def test_ultimate_smoother_returns_valid_output() -> None:
+    """验证 czsc.ta.ultimate_smoother 可正常调用并产出合理形状的有限值。
+
+    测试场景：
+        在 1024 个随机样本上调用 ultimate_smoother(period=10.0)，
+        验证输出长度与输入一致，且预热期后不含 NaN/Inf。
 
     关键断言：
-        ``hasattr(ta, "ultimate_smoother")`` 为真。
+        - 输出长度等于输入长度；
+        - 预热期后 (10:) 所有值有限（不含 NaN/Inf）。
     """
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    assert hasattr(ta, "ultimate_smoother"), "czsc.ta.ultimate_smoother 必须暴露"
+    if not hasattr(ta, "ultimate_smoother"):
+        pytest.fail("czsc.ta.ultimate_smoother 尚未暴露")
+    series = _series()
+    out = np.asarray(ta.ultimate_smoother(series, period=10.0))
+    assert len(out) == len(series), f"输出长度 {len(out)} 应与输入长度 {len(series)} 一致"
+    assert np.isfinite(out[10:]).all(), "ultimate_smoother 在预热期后必须产出有限值"

@@ -82,6 +82,20 @@ fn mid_positions_in_range() {
 }
 
 #[test]
+fn mid_positions_oscillating_produces_both_signs() {
+    // 正弦波振荡序列应同时产出正信号（多头）和负信号（空头）
+    let s: Vec<f64> = (0..60)
+        .map(|i| 100.0 + 5.0 * ((i as f64) * std::f64::consts::PI / 6.0).sin())
+        .collect();
+    let out = mid_positions(&s, 5);
+    assert_eq!(out.len(), s.len(), "输出长度应与输入一致");
+    let has_positive = out.iter().any(|&v| v > 0.0);
+    let has_negative = out.iter().any(|&v| v < 0.0);
+    assert!(has_positive, "振荡序列应产出至少一个正信号（多头持仓）");
+    assert!(has_negative, "振荡序列应产出至少一个负信号（空头持仓）");
+}
+
+#[test]
 fn double_sma_positions_returns_signal_length() {
     let s = series(30);
     let out = double_sma_positions(&s, 5, 10);

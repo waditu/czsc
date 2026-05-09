@@ -11,52 +11,6 @@ import pytest
 from czsc.utils.weights_convert import weights_convert
 
 
-def generate_mock_weights(
-    symbols: list,
-    freq: str,
-    sdt: str = "20240101",
-    edt: str = "20240110",
-    seed: int = 42,
-) -> pd.DataFrame:
-    """生成模拟持仓权重数据（仅用于测试）"""
-    np.random.seed(seed)
-    start_date = pd.to_datetime(sdt, format="%Y%m%d")
-    end_date = pd.to_datetime(edt, format="%Y%m%d")
-    dates = _generate_time_series(start_date, end_date, freq)
-
-    data = []
-    for symbol_idx, symbol in enumerate(symbols):
-        symbol_seed = seed + symbol_idx * 100
-        np.random.seed(symbol_seed)
-
-        for dt in dates:
-            weight = np.random.uniform(-0.5, 0.8)
-            if np.random.random() < 0.2:
-                weight = 0
-            data.append({"dt": dt, "symbol": symbol, "weight": weight})
-
-    return pd.DataFrame(data)
-
-
-def _generate_time_series(start_date: pd.Timestamp, end_date: pd.Timestamp, freq: str) -> pd.DatetimeIndex:
-    supported_freqs = ["1分钟", "5分钟", "15分钟", "30分钟"]
-    if freq not in supported_freqs:
-        raise ValueError(f"不支持的频率: {freq}。支持的频率: {', '.join(supported_freqs)}")
-
-    trading_days = pd.date_range(start=start_date, end=end_date, freq="D")
-    freq_minutes = int(freq.replace("分钟", ""))
-    dates = []
-
-    for day in trading_days:
-        day_str = day.strftime("%Y-%m-%d")
-        morning_times = pd.date_range(start=f"{day_str} 09:30", end=f"{day_str} 11:30", freq=f"{freq_minutes}min")
-        afternoon_times = pd.date_range(start=f"{day_str} 13:00", end=f"{day_str} 15:00", freq=f"{freq_minutes}min")
-        dates.extend(morning_times.tolist())
-        dates.extend(afternoon_times.tolist())
-
-    return pd.DatetimeIndex(dates)
-
-
 # ==================== 核心 T+1 规则测试用例 ====================
 
 
