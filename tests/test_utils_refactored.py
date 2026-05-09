@@ -10,8 +10,6 @@
       共享常量与 ``figure_to_html`` 工具函数）、回测绘图、权重绘图等子模块。
     - ``czsc.utils.data``：数据相关，包括 ``validators``（DataFrame 校验）、
       ``converters``（标准化转换）等。
-    - ``czsc.utils.crypto``：对称加密工具，从 ``czsc.utils.crypto.fernet`` 升级
-      为子包导出。
     - ``czsc.utils.analysis``：统计与相关性分析工具的统一入口。
 
     重构同时要求保持完整的向后兼容性，旧的导入路径（如 ``from czsc.utils
@@ -186,35 +184,6 @@ def test_data_converters():
     assert normalize_symbol("  tsla  ") == "TSLA"
 
 
-def test_crypto_module():
-    """验证加密子包 ``czsc.utils.crypto`` 的密钥生成与往返加密能力。
-
-    测试场景：
-        1. 生成 Fernet 密钥；
-        2. 用该密钥对字典做加密；
-        3. 用同一密钥解密并以字典形式还原。
-
-    关键断言：
-        - 密钥与密文类型为 ``bytes`` 或 ``str``（Fernet 实现允许两种形式）；
-        - 解密后字典与原始字典完全一致。
-    """
-    from czsc.utils.crypto import (
-        fernet_decrypt,
-        fernet_encrypt,
-        generate_fernet_key,
-    )
-
-    key = generate_fernet_key()
-    assert isinstance(key, (bytes, str))  # 密钥既可能是 bytes 也可能是 str
-
-    text = {"account": "test", "password": "123"}
-    encrypted = fernet_encrypt(text, key)
-    assert isinstance(encrypted, (bytes, str))
-
-    decrypted = fernet_decrypt(encrypted, key, is_dict=True)
-    assert decrypted == text
-
-
 def test_analysis_stats_imports():
     """验证统计分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
 
@@ -270,23 +239,20 @@ def test_backward_compatibility():
         DiskCache,
         KlineChart,
         daily_performance,
-        generate_fernet_key,
         home_path,
     )
 
     assert home_path is not None
     assert DiskCache is not None
     assert DataClient is not None
-    assert callable(generate_fernet_key)
     assert callable(daily_performance)
     assert KlineChart is not None
 
     # 测试向后兼容性 - 通过 czsc.utils 的 __init__.py 重新导出
-    from czsc.utils import DiskCache, generate_fernet_key, plot_colored_table
+    from czsc.utils import DiskCache, plot_colored_table
 
     assert callable(plot_colored_table)
     assert DiskCache is not None
-    assert callable(generate_fernet_key)
 
 
 if __name__ == "__main__":

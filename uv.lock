@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -930,7 +930,6 @@ version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "clickhouse-connect" },
-    { name = "cryptography" },
     { name = "deprecated" },
     { name = "dill" },
     { name = "fonttools" },
@@ -1008,7 +1007,6 @@ dev = [
 requires-dist = [
     { name = "build", marker = "extra == 'release'" },
     { name = "clickhouse-connect" },
-    { name = "cryptography" },
     { name = "czsc", extras = ["test", "dev", "release"], marker = "extra == 'all'" },
     { name = "deprecated" },
     { name = "dill" },

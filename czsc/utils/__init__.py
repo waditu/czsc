@@ -1,7 +1,7 @@
 """
 czsc.utils 工具子包
 
-本子包汇总了 CZSC 项目内的通用工具，包括：分析（analysis）、加解密（crypto）、
+本子包汇总了 CZSC 项目内的通用工具，包括：分析（analysis）、
 数据访问与缓存（data）、IO 助手（io）、技术指标（ta）、绘图（plotting）等。
 
 为了兼顾"导入即可用"和"按需懒加载"两种诉求，本模块采用如下策略：
@@ -25,7 +25,7 @@ import pandas as pd
 # 轻量级子模块的直接导入
 # ---------------------------------------------------------------------------
 # 这些子模块加载成本可控，且在 czsc 工程中被高频复用，因此直接 import
-from . import analysis, crypto, data, io, ta
+from . import analysis, data, io, ta
 
 # 从 analysis 子模块再次导出常用的统计 / 绩效函数，方便在 czsc.utils 顶层直接使用
 from .analysis import (
@@ -38,9 +38,6 @@ from .analysis import (
     single_linear,
     top_drawdowns,
 )
-
-# 加解密相关：Fernet 密钥生成与对称加解密
-from .crypto import fernet_decrypt, fernet_encrypt, generate_fernet_key
 
 # 数据访问、磁盘缓存以及统一数据客户端
 from .data import (
@@ -73,7 +70,6 @@ from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nx
 __all__ = [
     # 子模块
     "analysis",
-    "crypto",
     "data",
     "io",
     "ta",
@@ -86,10 +82,6 @@ __all__ = [
     "rolling_daily_performance",
     "single_linear",
     "top_drawdowns",
-    # crypto
-    "fernet_decrypt",
-    "fernet_encrypt",
-    "generate_fernet_key",
     # data
     "DataClient",
     "DiskCache",

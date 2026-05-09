@@ -72,7 +72,6 @@ dependencies = [
     "tenacity",
     "parse",
     "Deprecated",
-    "cryptography",
     "pytz",
     "fonttools>=4.61.0",
     "polars>=0.20.0",

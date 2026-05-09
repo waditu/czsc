@@ -29,27 +29,6 @@ def test_x_round():
     assert utils.x_round(1.000342, 5) == 1.00034
 
 
-def test_fernet():
-    """验证 Fernet 对称加密的 encrypt → decrypt 往返一致性。
-
-    测试场景：
-        1. 调用 ``generate_fernet_key`` 生成一把随机密钥；
-        2. 使用该密钥对一个字典对象做 ``fernet_encrypt`` 加密；
-        3. 再用同一密钥执行 ``fernet_decrypt`` 解密（``is_dict=True`` 表示
-           还原为字典而非字符串）。
-
-    关键断言：
-        解密后得到的字典与原始字典完全相等，证明加密往返不损失信息。
-    """
-    from czsc.utils.crypto.fernet import fernet_decrypt, fernet_encrypt, generate_fernet_key
-
-    key = generate_fernet_key()
-    text = {"account": "admin", "password": "123456"}
-    encrypted = fernet_encrypt(text, key)
-    decrypted = fernet_decrypt(encrypted, key, is_dict=True)
-    assert text == decrypted, f"{text} != {decrypted}"
-
-
 def test_timeout_decorator_success():
     """验证超时装饰器在被装饰函数耗时小于阈值时正常返回结果。
 
