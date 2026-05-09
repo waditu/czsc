@@ -52,6 +52,12 @@ on:
         default: '0'
         type: choice
         options: ['0', '1', '2', '3', '4', '5']
+      end_layer:
+        description: 'Stop after this layer (0..5). crates.io rate-limits new-crate creates to ~1 per 10 min, so each new crate may need its own run. Default 5 = run to the end.'
+        required: false
+        default: '5'
+        type: choice
+        options: ['0', '1', '2', '3', '4', '5']
 
 concurrency:
   group: rust-publish-${{ github.ref }}
@@ -70,6 +76,7 @@ jobs:
       # 面已发的 layer 即可。每个 layer step 用 fromJSON(START_LAYER) <= N
       # 比较。tag push 触发时 START_LAYER 取默认 '0'。
       START_LAYER: ${{ github.event.inputs.start_layer || '0' }}
+      END_LAYER:   ${{ github.event.inputs.end_layer   || '5' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -142,7 +149,7 @@ jobs:
       # 刚发的 crate（404）。
       # ------------------------------------------------------------------
       - name: Real publish layer 0 (czsc-derive, czsc-signal-macros)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 0
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 0 && fromJSON(env.END_LAYER) >= 0
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
@@ -156,7 +163,7 @@ jobs:
           sleep 30
 
       - name: Real publish layer 1 (czsc-core)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 1
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 1 && fromJSON(env.END_LAYER) >= 1
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
@@ -166,7 +173,7 @@ jobs:
           sleep 30
 
       - name: Real publish layer 2 (czsc-ta, czsc-utils)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 2
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 2 && fromJSON(env.END_LAYER) >= 2
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
@@ -180,7 +187,7 @@ jobs:
           sleep 30
 
       - name: Real publish layer 3 (czsc-signals)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 3
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 3 && fromJSON(env.END_LAYER) >= 3
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
@@ -190,7 +197,7 @@ jobs:
           sleep 30
 
       - name: Real publish layer 4 (czsc-trader)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 4
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 4 && fromJSON(env.END_LAYER) >= 4
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
@@ -200,7 +207,7 @@ jobs:
           sleep 30
 
       - name: Real publish layer 5 (czsc facade)
-        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 5
+        if: env.PUBLISH_FOR_REAL == 'true' && fromJSON(env.START_LAYER) <= 5 && fromJSON(env.END_LAYER) >= 5
         shell: bash
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
