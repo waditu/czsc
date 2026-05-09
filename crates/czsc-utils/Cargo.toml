@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC utilities: BarGenerator (multi-period kline aggregator), frequency calendar, and trading-time helpers."
+description             = "Utilities of the czsc framework (most users should depend on the `czsc` facade instead): BarGenerator, frequency calendar, trading-time helpers."
 
 [lib]
 name = "czsc_utils"

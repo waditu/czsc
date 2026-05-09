@@ -62,11 +62,6 @@ from .index_composition import index_composition
 # JSON / dill 等通用 IO 工具
 from .io import dill_dump, dill_load, read_json, save_json
 
-# 阿里云 OSS 客户端封装
-from .oss import AliyunOSS
-
-# 注意：``sig`` 模块依赖 ``czsc`` 顶层包，存在循环导入风险，故此处不预先 re-export，
-# 调用方需要按需通过 ``from czsc.utils.sig import ...`` 方式直接引用。
 # 交易/重采样相关工具
 from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
@@ -105,8 +100,6 @@ __all__ = [
     "dill_load",
     "read_json",
     "save_json",
-    # oss
-    "AliyunOSS",
     # trade
     "resample_to_daily",
     "risk_free_returns",

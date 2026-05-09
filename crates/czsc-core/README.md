@@ -1,5 +1,10 @@
 # czsc-core
 
+> 💡 **大多数用户应优先使用 facade crate [`czsc`](https://crates.io/crates/czsc)**：
+> `cargo add czsc` 一行拿到全部公共 API，本 crate 中的核心类型已在 facade
+> 顶层 re-export。仅当你**只想要缠论核心算法**、不需要工具/信号/trader 时
+> 才单独依赖本 crate。
+
 缠论（CZSC，缠中说禅技术分析理论）核心数据结构与算法的 Rust 实现。
 
 提供分型（`FX`）、笔（`BI`）、中枢（`ZS`）、`CZSC` 分析器等核心类型，以及 K 线

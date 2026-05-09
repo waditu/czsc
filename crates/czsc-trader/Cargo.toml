@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC multi-strategy trading engine: signal compilation, CzscTrader / CzscSignals state machines, and parameter optimization."
+description             = "Multi-strategy trading engine of the czsc framework (most users should depend on the `czsc` facade instead): signal compilation, CzscTrader/CzscSignals state machines, parameter optimization."
 
 [lib]
 name = "czsc_trader"

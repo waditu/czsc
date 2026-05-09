@@ -1,5 +1,10 @@
 # czsc-utils
 
+> 💡 **大多数用户应优先使用 facade crate [`czsc`](https://crates.io/crates/czsc)**：
+> `cargo add czsc` 一行拿到全部公共 API，本 crate 暴露的 `BarGenerator` /
+> `is_trading_time` / `freq_data` 已在 facade 中 re-export。仅当你**只用 K
+> 线合成或交易日历工具**、不需要其它 czsc 功能时才单独依赖本 crate。
+
 缠论分析的 K 线合成与交易日历工具。
 
 提供：

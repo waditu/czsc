@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC（缠中说禅）technical analysis core: fractal (FX), stroke (BI), pivot (ZS), and the CZSC analyzer."
+description             = "Core analyzer of the czsc framework (most users should depend on the `czsc` facade instead): fractal (FX), stroke (BI), pivot (ZS), CZSC analyzer."
 
 [lib]
 name = "czsc_core"

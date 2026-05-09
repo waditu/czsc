@@ -1,5 +1,13 @@
 # czsc-derive
 
+> ⚙️ **本 crate 是 czsc 框架的内部 proc-macro，普通用户不需要直接依赖。**
+> 想用 czsc 量化分析框架请 `cargo add czsc`（facade crate）。
+> 本 crate 之所以独立发布是因为 cargo 强制 proc-macro 必须为单独的 crate，
+> 仅供 [`czsc-core`](https://crates.io/crates/czsc-core) /
+> [`czsc-utils`](https://crates.io/crates/czsc-utils) /
+> [`czsc-trader`](https://crates.io/crates/czsc-trader) 等内部使用，也可被
+> 其它需要 anyhow ↔ enum 自动桥接的 Rust 项目复用。
+
 CZSC 工作区的过程式派生宏（procedural derive macros）。
 
 当前提供 `#[derive(CZSCErrorDerive)]`：为枚举错误类型自动实现

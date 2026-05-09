@@ -3,6 +3,9 @@
 [![crates.io](https://img.shields.io/crates/v/czsc.svg)](https://crates.io/crates/czsc)
 [![docs.rs](https://docs.rs/czsc/badge.svg)](https://docs.rs/czsc)
 
+> 🚀 **这是 czsc 量化分析框架的官方推荐入口（facade crate）。**
+> Rust 用户只需 `cargo add czsc` 即可获得全部公共 API。
+
 CZSC（缠中说禅）量化分析框架的 Rust 入口。
 
 本 crate 是一个 **facade**：本身不实现任何功能，只把 czsc Rust workspace 中

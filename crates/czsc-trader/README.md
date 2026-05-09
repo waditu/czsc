@@ -1,5 +1,11 @@
 # czsc-trader
 
+> 💡 **大多数用户应优先使用 facade crate [`czsc`](https://crates.io/crates/czsc)**：
+> `cargo add czsc` 一行拿到全部公共 API，`CzscTrader` / `CzscSignals` /
+> `SignalConfig` 等核心类型已在 facade 顶层 re-export。仅当你**已经
+> 单独依赖 czsc-core/signals 并自己组装 trader 状态机**时才直接依赖本
+> crate。
+
 缠论多策略交易引擎、信号编译与参数优化。
 
 核心组件：

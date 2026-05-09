@@ -11,7 +11,7 @@ authors.workspace       = true
 keywords                = ["czsc", "error", "anyhow", "derive", "proc-macro"]
 categories              = ["development-tools::procedural-macro-helpers", "rust-patterns"]
 readme                  = "README.md"
-description             = "CZSC derive macros: #[derive(CZSCErrorDerive)] auto-implements From<anyhow::Error> and serde::Serialize for enum error types."
+description             = "Internal proc-macro of the czsc framework (普通用户请用 `czsc` facade): #[derive(CZSCErrorDerive)] auto-implements From<anyhow::Error> and serde::Serialize for enum error types."
 
 [lib]
 name       = "czsc_derive"

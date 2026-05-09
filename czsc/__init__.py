@@ -117,7 +117,6 @@ from .traders import (
 
 # === 通用工具函数（czsc.utils）===
 from .utils import (
-    AliyunOSS,
     DataClient,
     DiskCache,
     clear_cache,
@@ -241,7 +240,6 @@ __all__ = [
     "run_replay",
     "run_research",
     # 通用工具
-    "AliyunOSS",
     "DataClient",
     "DiskCache",
     "clear_cache",

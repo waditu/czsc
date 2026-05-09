@@ -78,7 +78,6 @@ from .io import dill_dump as dill_dump
 from .io import dill_load as dill_load
 from .io import read_json as read_json
 from .io import save_json as save_json
-from .oss import AliyunOSS as AliyunOSS
 from .plotting.kline import KlineChart as KlineChart
 from .plotting.kline import plot_czsc_chart as plot_czsc_chart
 from .trade import (

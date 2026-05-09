@@ -47,8 +47,6 @@ dependencies = [
     # 数据库连接
     "redis",
     "clickhouse_connect",
-    # 云存储
-    "oss2",
     # 数学计算和统计
     "scipy",
     "statsmodels",

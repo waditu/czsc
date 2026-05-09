@@ -1,5 +1,12 @@
 # czsc-signal-macros
 
+> ⚙️ **本 crate 是 czsc 框架的内部 proc-macro，普通用户不需要直接依赖。**
+> 想用 czsc 量化分析框架请 `cargo add czsc`（facade crate）。
+> 本 crate 之所以独立发布是因为 cargo 强制 proc-macro 必须为单独的 crate，
+> 由 [`czsc-signals`](https://crates.io/crates/czsc-signals) 内部使用；
+> 仅当你想为自己的 Rust 项目集成 czsc 风格的 inventory 信号注册系统时才
+> 需要直接依赖。
+
 [`czsc-signals`](https://crates.io/crates/czsc-signals) 配套的过程宏 crate，
 为缠论信号函数提供编译期签名校验与自动注册。
 

@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC technical analysis operators (EMA, SMA, rolling_rank, ultimate_smoother, ...) with optional numpy interop."
+description             = "Technical analysis operators of the czsc framework (EMA, SMA, rolling_rank, ultimate_smoother, ...) with optional numpy interop. Standalone-friendly; otherwise prefer the `czsc` facade."
 
 [lib]
 name = "czsc_ta"

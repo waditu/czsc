@@ -1,5 +1,11 @@
 # czsc-ta
 
+> 💡 **如果你需要的是完整的缠论框架，请优先使用 facade crate
+> [`czsc`](https://crates.io/crates/czsc)**：`cargo add czsc` 一行拿到
+> 全部 API（含本 crate 的算子）。**本 crate 是少数适合单独依赖的场景**——
+> 当你**只想要纯算子库**（EMA/SMA/rolling_rank/...）、不需要任何缠论
+> 业务代码时，可以零额外依赖地 `cargo add czsc-ta`。
+
 技术分析算子库 —— 缠论分析与量化策略常用的一组高性能数值算子。
 
 包含 EMA、SMA、rolling_rank、ultimate_smoother 等纯 Rust 实现，附带可选的

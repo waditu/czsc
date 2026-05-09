@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC (缠中说禅) facade crate — re-exports the full czsc Rust workspace (core / utils / ta / signals / trader) under a single name."
+description             = "★ Recommended entry point ★ — czsc (缠中说禅) facade crate; re-exports the full Rust workspace (core/utils/ta/signals/trader) so a single `cargo add czsc` is enough."
 
 [lib]
 name = "czsc"

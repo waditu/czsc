@@ -1,5 +1,10 @@
 # czsc-signals
 
+> 💡 **大多数用户应优先使用 facade crate [`czsc`](https://crates.io/crates/czsc)**：
+> `cargo add czsc` 一行拿到全部公共 API，本 crate 已在 `czsc::signals`
+> 命名空间中 re-export。仅当你**只想接入 czsc 的信号函数库**到自己的
+> 框架（不用 czsc-trader 状态机）时才单独依赖本 crate。
+
 缠论信号函数库 —— 30+ 量化信号函数，按类别分组：
 
 - `bar`：基础 K 线形态信号

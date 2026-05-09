@@ -99,7 +99,6 @@
 - HTML 报告构建：`czsc.utils.html_report_builder`
 - PDF 报告构建：`czsc.utils.pdf_report_builder`
 - 图表绘制：`czsc.utils.plotting.*`
-- 信号工具：`czsc.utils.sig`
 - 数据分析工具：`czsc.utils.analysis.*`
 - 数据访问与缓存：`czsc.utils.data.*`
 

@@ -11,7 +11,7 @@ keywords.workspace      = true
 # proc-macro crate 用 development-tools 类目
 categories              = ["development-tools::procedural-macro-helpers"]
 readme                  = "README.md"
-description             = "Procedural macros (#[signal], #[signal_module]) for compile-time registration of CZSC signal functions."
+description             = "Internal proc-macro of the czsc framework (普通用户请用 `czsc` facade): #[signal] / #[signal_module] for compile-time registration of CZSC signal functions."
 
 [lib]
 name       = "czsc_signal_macros"

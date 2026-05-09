@@ -10,7 +10,7 @@ authors.workspace       = true
 keywords.workspace      = true
 categories.workspace    = true
 readme                  = "README.md"
-description             = "CZSC quantitative signal functions: bar / cxt / tas / vol / pressure / obv / cvolp categories, auto-registered via #[signal]."
+description             = "Quantitative signal functions of the czsc framework (most users should depend on the `czsc` facade instead): bar/cxt/tas/vol/pressure/obv/cvolp categories, auto-registered via #[signal]."
 
 [lib]
 name = "czsc_signals"
