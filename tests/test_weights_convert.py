@@ -4,12 +4,10 @@
 测试 A 股 T+1 交易规则：T 日买入的股票，T+1 日起方可卖出
 """
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from czsc.utils.weights_convert import weights_convert
-
 
 # ==================== 核心 T+1 规则测试用例 ====================
 

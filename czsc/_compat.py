@@ -121,7 +121,6 @@ def signal_config_to_runtime(cfg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-
 def position_dump_to_runtime(payload: dict[str, Any]) -> dict[str, Any]:
     """
     将 Position 的 JSON dump 结果转换为 Rust 运行时期望的事件/信号格式

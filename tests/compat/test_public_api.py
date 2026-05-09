@@ -59,7 +59,6 @@ def test_top_level_names_importable() -> None:
     assert not missing, f"czsc.* missing {len(missing)} required public names: {missing}"
 
 
-
 def test_traders_namespace_complete() -> None:
     """``czsc.traders.*`` 必须暴露快照中列出的所有公共名称。"""
     snap = _load_snapshot()
