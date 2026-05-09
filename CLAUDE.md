@@ -84,7 +84,7 @@ uv run flake8 czsc/ test/
    - `crypto/fernet.py`：URL token 加解密
    - `data/client.py`：统一数据客户端接口
    - `ta.py`：仅保留 czsc 仪表盘场景使用的 MACD 特殊约定（其余 TA 算子由 Rust `czsc.ta.*` 提供）
-   - `trade.py`：交易工具（含本轮 TDD 新增的 `stoploss_by_direction`）
+   - `trade.py`：交易工具
    - `plotting/{kline,backtest,weight,common}.py`：Plotly 图表绘制
    - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py`（迁至 `czsc/svc/`）、`echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer`（spec §9 完全删除）
    - `plot_backtest.py`: **回测可视化工具（已优化）**
@@ -296,7 +296,6 @@ from czsc.utils.plot_backtest import (
 ### 探索性数据分析（`czsc/eda.py`）
 - `vwap`/`twap`: 成交量和时间加权平均价
 - `remove_beta_effects`: 去除beta对因子的影响
-- `cross_sectional_strategy`: 横截面策略分析
 - `judge_factor_direction`: 因子方向判断
 - `monotonicity`: 单调性分析
 - `turnover_rate`: 换手率计算

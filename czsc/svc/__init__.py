@@ -23,8 +23,7 @@ from .backtest import (
     show_comprehensive_weight_backtest,
     show_holds_backtest,
     show_long_short_backtest,
-    show_stoploss_by_direction,
-    show_weight_backtest,
+show_weight_backtest,
     show_weight_distribution,
 )
 from .correlation import (
@@ -119,8 +118,7 @@ __all__ = [
     "show_weight_distribution",
     "show_weight_backtest",
     "show_holds_backtest",
-    "show_stoploss_by_direction",
-    "show_backtest_by_thresholds",
+"show_backtest_by_thresholds",
     "show_backtest_by_year",
     "show_backtest_by_symbol",
     "show_long_short_backtest",

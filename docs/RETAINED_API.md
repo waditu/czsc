@@ -61,7 +61,6 @@
 - `remove_beta_effects`
 - `vwap`
 - `twap`
-- `cross_sectional_strategy`
 - `judge_factor_direction`
 - `monotonicity`
 - `weights_simple_ensemble`

@@ -17,9 +17,6 @@ from .backtest import (
     show_long_short_backtest as show_long_short_backtest,
 )
 from .backtest import (
-    show_stoploss_by_direction as show_stoploss_by_direction,
-)
-from .backtest import (
     show_weight_backtest as show_weight_backtest,
 )
 from .backtest import (
@@ -183,7 +180,6 @@ __all__ = [
     "show_weight_distribution",
     "show_weight_backtest",
     "show_holds_backtest",
-    "show_stoploss_by_direction",
     "show_backtest_by_thresholds",
     "show_backtest_by_year",
     "show_backtest_by_symbol",
