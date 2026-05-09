@@ -3,12 +3,21 @@ resolver = "2"
 members  = ["crates/*"]
 
 [workspace.package]
-version    = "1.0.0"
-edition    = "2024"
-license    = "MIT"
-repository = "https://github.com/waditu/czsc"
+version       = "1.0.0"
+edition       = "2024"
+license       = "MIT"
+repository    = "https://github.com/waditu/czsc"
+homepage      = "https://github.com/waditu/czsc"
+documentation = "https://docs.rs/czsc-core"
+authors       = ["zengbin93 <zeng_bin8888@163.com>"]
+# crates.io 限制 keywords ≤ 5、每个 ≤ 20 chars，且只能字母数字-_，所以
+# 中文「缠论/技术分析」等只能放 description，关键词留 ASCII。
+keywords      = ["czsc", "quant", "technical-analysis", "trading", "finance"]
+# crates.io 上类目从 https://crates.io/category_slugs 选取，最多 5 个。
+categories    = ["finance", "mathematics", "science"]
 
 [workspace.dependencies]
+# 第三方依赖
 chrono        = "0.4"
 hashbrown     = "0.14"
 ordered-float = "5.0"
@@ -26,6 +35,19 @@ pyo3          = { version = "0.25" }
 numpy         = "0.25"
 rayon         = "1"
 serde         = { version = "1", features = ["derive"] }
+
+# 工作区内部 crate —— path + version 双声明：
+#   - path：本地/CI 走相对路径，`cargo build --workspace` 直接拉源码
+#   - version：`cargo publish` 时按 version 解析 crates.io 上的依赖
+# 业务 crate 用 `{ workspace = true }` 引用，避免在每个 Cargo.toml
+# 重复维护版本号；workspace.package.version 升级一次，全部跟随。
+czsc-core          = { path = "crates/czsc-core",          version = "1.0.0" }
+czsc-utils         = { path = "crates/czsc-utils",         version = "1.0.0" }
+czsc-ta            = { path = "crates/czsc-ta",            version = "1.0.0" }
+czsc-signals       = { path = "crates/czsc-signals",       version = "1.0.0" }
+czsc-trader        = { path = "crates/czsc-trader",        version = "1.0.0" }
+czsc-signal-macros = { path = "crates/czsc-signal-macros", version = "1.0.0" }
+czsc-derive        = { path = "crates/czsc-derive",        version = "1.0.0" }
 
 [profile.release]
 lto           = true

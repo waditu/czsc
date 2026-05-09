@@ -1,7 +1,7 @@
 //! Phase D.0a — RED test: CZSCErrorDerive must produce From<anyhow::Error>
 //! and serde::Serialize impls for an annotated enum.
 
-use error_macros::CZSCErrorDerive;
+use czsc_derive::CZSCErrorDerive;
 use thiserror::Error;
 
 #[derive(Debug, Error, CZSCErrorDerive)]

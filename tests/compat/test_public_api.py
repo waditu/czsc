@@ -118,13 +118,12 @@ def test_weight_backtest_comes_from_wbt() -> None:
     )
 
 
-@pytest.mark.parametrize("module_name", ["czsc.connectors", "czsc.sensors", "czsc.svc"])
+@pytest.mark.parametrize("module_name", ["czsc.connectors", "czsc.svc"])
 def test_retained_subpackages_importable(module_name: str) -> None:
     """保留的子包必须在迁移过程中始终可 import。
 
-    参数化覆盖三个保留子包：
+    参数化覆盖两个保留子包：
         * ``czsc.connectors`` —— 数据源连接器
-        * ``czsc.sensors``    —— 事件检测与特征分析
         * ``czsc.svc``        —— 统计与可视化服务
     """
     mod, err = _safe_import(module_name)

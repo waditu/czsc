@@ -1,18 +1,23 @@
 [package]
-name        = "czsc-core"
-version.workspace    = true
-edition.workspace    = true
-license.workspace    = true
-repository.workspace = true
-description = "CZSC core analyzer (FX/BI/ZS/CZSC) — placeholder, to be migrated from rs-czsc"
+name                    = "czsc-core"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+keywords.workspace      = true
+categories.workspace    = true
+readme                  = "README.md"
+description             = "CZSC（缠中说禅）technical analysis core: fractal (FX), stroke (BI), pivot (ZS), and the CZSC analyzer."
 
 [lib]
 name = "czsc_core"
 path = "src/lib.rs"
 
 [dependencies]
-error-macros   = { path = "../error-macros" }
-error-support  = { path = "../error-support" }
+czsc-derive    = { workspace = true }
 anyhow         = "1"
 chrono         = { workspace = true }
 derive_builder = "0.20"

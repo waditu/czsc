@@ -1,0 +1,181 @@
+# Publish Rust crates to crates.io
+#
+# 把 czsc Rust workspace 的可复用 crate 发布到 crates.io，让纯 Rust 用户
+# 也能 `cargo add czsc-core` / `czsc-signals` / `czsc-trader` 等。
+#
+# 发布顺序按依赖图严格分层（同层并行不安全：crates.io index 同步有延迟，
+# 后发的 crate `cargo publish` 时上一层可能还没 index 到）：
+#
+#   layer 0: czsc-derive / czsc-signal-macros
+#   layer 1: czsc-core    （依赖 czsc-derive，并内置 error_chain 模块，
+#                            原 error-support 已合并进来）
+#   layer 2: czsc-ta / czsc-utils
+#   layer 3: czsc-signals
+#   layer 4: czsc-trader
+#
+# 注：原 `error-support` crate 已合并到 czsc-core::error_chain；
+#     原 `error-macros` 重命名为 `czsc-derive`（保留独立 crate，因为
+#     proc-macro 必须独立，cargo 限制）。
+#
+# czsc-python **不发布**：
+#   - 它是 cdylib，靠 maturin 打成 wheel 给 Python 用，crates.io 上无意义
+#   - 它启用了 pyo3/extension-module，cargo publish 校验会拒绝
+#
+# 单一版本源仍是 Cargo.toml [workspace.package].version，与 Python wheel
+# 共享 tag。`cargo publish --workspace` 会自动按声明拓扑串行发布；显式
+# 列出顺序只是为了给"上一层 index 同步未完"留出 retry 空间。
+#
+# 触发：
+#   - push tag v* 时自动跑 dry-run（不真正上传），用来验证发布流程
+#   - workflow_dispatch 时由维护者勾选 do_publish 才真正发布
+#
+# 凭证：CRATES_IO_TOKEN（repo secret）。crates.io 目前还不支持 OIDC
+# Trusted Publishing；等 RFC 落地后改 OIDC。
+
+name: Publish Rust crates
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      do_publish:
+        description: 'Actually publish to crates.io (false = dry-run only)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: rust-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-crates:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    # tag push → 默认只 dry-run；workflow_dispatch 才能真正发布。
+    # 通过环境变量 PUBLISH_FOR_REAL 控制 cargo publish 是否带 --dry-run。
+    env:
+      PUBLISH_FOR_REAL: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.do_publish == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Verify version consistency (Cargo.toml vs git tag)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          CARGO_VERSION=$(awk '
+            /^\[workspace\.package\]/ {in_section=1; next}
+            in_section && /^\[/ {in_section=0}
+            in_section && /^version[[:space:]]*=/ {
+              gsub(/.*"([^"]+)".*/, "\\1"); print; exit
+            }
+          ' Cargo.toml)
+          echo "Tag version:        $TAG_VERSION"
+          echo "Cargo.toml version: $CARGO_VERSION"
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION 与 Cargo.toml 版本 $CARGO_VERSION 不一致"
+            exit 1
+          fi
+
+      # 先做一次完整 build，确保 workspace 整体可编译；
+      # publish-time 失败比发了一半再回滚代价高得多。
+      - name: cargo check --workspace
+        run: cargo check --workspace --all-targets
+
+      - name: Login to crates.io
+        if: env.PUBLISH_FOR_REAL == 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          if [ -z "$CARGO_REGISTRY_TOKEN" ]; then
+            echo "::error::Missing CRATES_IO_TOKEN secret"
+            exit 1
+          fi
+          # CARGO_REGISTRY_TOKEN 已通过 env 注入，cargo publish 会自动读取
+
+      # 按依赖图分层发布。每层之间 sleep 30s 让 crates.io index 同步完成，
+      # 否则下一层 `cargo publish` 解析 version 时可能找不到刚发的 crate。
+      - name: Publish layer 0 (leaf crates)
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          FLAGS="--no-verify"
+          if [ "$PUBLISH_FOR_REAL" != "true" ]; then
+            FLAGS="$FLAGS --dry-run"
+            echo "::notice::Running cargo publish in --dry-run mode"
+          fi
+          for c in czsc-derive czsc-signal-macros; do
+            echo "::group::cargo publish -p $c"
+            cargo publish -p "$c" $FLAGS
+            echo "::endgroup::"
+          done
+          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+
+      - name: Publish layer 1 (czsc-core)
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          FLAGS="--no-verify"
+          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
+          cargo publish -p czsc-core $FLAGS
+          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+
+      - name: Publish layer 2 (czsc-ta, czsc-utils)
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          FLAGS="--no-verify"
+          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
+          for c in czsc-ta czsc-utils; do
+            echo "::group::cargo publish -p $c"
+            cargo publish -p "$c" $FLAGS
+            echo "::endgroup::"
+          done
+          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+
+      - name: Publish layer 3 (czsc-signals)
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          FLAGS="--no-verify"
+          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
+          cargo publish -p czsc-signals $FLAGS
+          if [ "$PUBLISH_FOR_REAL" == "true" ]; then sleep 30; fi
+
+      - name: Publish layer 4 (czsc-trader)
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          FLAGS="--no-verify"
+          [ "$PUBLISH_FOR_REAL" != "true" ] && FLAGS="$FLAGS --dry-run"
+          cargo publish -p czsc-trader $FLAGS
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ "$PUBLISH_FOR_REAL" == "true" ]; then
+            echo "✅ Published czsc Rust crates v$(awk '/^\[workspace\.package\]/{f=1;next} f&&/^version/{gsub(/.*"([^"]+)".*/,"\\1");print;exit}' Cargo.toml) to crates.io"
+          else
+            echo "🟡 Dry-run completed; nothing was published. Trigger workflow_dispatch with do_publish=true to release for real."
+          fi

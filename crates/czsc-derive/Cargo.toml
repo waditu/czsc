@@ -1,0 +1,32 @@
+[package]
+name                    = "czsc-derive"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+# 通用 helper，但置于 czsc 命名空间以避免占用过于宽泛的名字
+keywords                = ["czsc", "error", "anyhow", "derive", "proc-macro"]
+categories              = ["development-tools::procedural-macro-helpers", "rust-patterns"]
+readme                  = "README.md"
+description             = "CZSC derive macros: #[derive(CZSCErrorDerive)] auto-implements From<anyhow::Error> and serde::Serialize for enum error types."
+
+[lib]
+name       = "czsc_derive"
+path       = "src/lib.rs"
+proc-macro = true
+
+[dependencies]
+anyhow      = "1"
+proc-macro2 = "1"
+quote       = "1"
+syn         = "2"
+thiserror   = "2"
+
+[dev-dependencies]
+anyhow      = "1"
+serde       = { workspace = true }
+serde_json  = "1"
+thiserror   = "2"

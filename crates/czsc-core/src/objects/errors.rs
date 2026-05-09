@@ -1,5 +1,5 @@
-use error_macros::CZSCErrorDerive;
-use error_support::expand_error_chain;
+use crate::error_chain::expand_error_chain;
+use czsc_derive::CZSCErrorDerive;
 use thiserror::Error;
 
 #[cfg(feature = "python")]

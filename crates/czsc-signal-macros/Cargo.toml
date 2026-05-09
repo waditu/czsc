@@ -1,10 +1,17 @@
 [package]
-name        = "czsc-signal-macros"
-version.workspace    = true
-edition.workspace    = true
-license.workspace    = true
-repository.workspace = true
-description = "Proc-macro for #[signal_module] registration. Placeholder, to be migrated."
+name                    = "czsc-signal-macros"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+keywords.workspace      = true
+# proc-macro crate 用 development-tools 类目
+categories              = ["development-tools::procedural-macro-helpers"]
+readme                  = "README.md"
+description             = "Procedural macros (#[signal], #[signal_module]) for compile-time registration of CZSC signal functions."
 
 [lib]
 name       = "czsc_signal_macros"

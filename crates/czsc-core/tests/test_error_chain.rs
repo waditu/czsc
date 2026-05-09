@@ -1,8 +1,9 @@
-//! Phase D.0b — RED test: expand_error_chain must walk the full source chain
-//! using `Caused by:` separators, and czsc_bail! must short-circuit with an
-//! anyhow-wrapped error.
+//! 由原 `error-support` crate 内联进来的测试（Phase J）：
+//! `expand_error_chain` 必须用 `Caused by:` 分隔遍历完整 source 链；
+//! `czsc_bail!` 必须以 `anyhow::Error` 包裹后短路。
 
-use error_support::{czsc_bail, expand_error_chain};
+use czsc_core::czsc_bail;
+use czsc_core::error_chain::expand_error_chain;
 
 #[test]
 fn expand_error_chain_walks_sources() {

@@ -926,7 +926,6 @@ wheels = [
 
 [[package]]
 name = "czsc"
-version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "clickhouse-connect" },
@@ -1045,7 +1044,7 @@ requires-dist = [
     { name = "twine", marker = "extra == 'release'" },
     { name = "wbt" },
 ]
-provides-extras = ["test", "dev", "release", "all"]
+provides-extras = ["all", "dev", "release", "test"]
 
 [package.metadata.requires-dev]
 dev = [

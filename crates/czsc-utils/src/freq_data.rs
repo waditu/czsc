@@ -1,6 +1,6 @@
 use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Timelike, Utc};
+use czsc_core::czsc_bail;
 use czsc_core::objects::{bar::RawBar, freq::Freq, market::Market};
-use error_support::czsc_bail;
 use hashbrown::HashMap;
 use once_cell::sync::Lazy;
 use polars::{frame::DataFrame, io::SerReader, prelude::IpcReader};

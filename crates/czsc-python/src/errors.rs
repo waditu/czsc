@@ -5,10 +5,10 @@
 //! `wbt` crate for weight backtests, so its error chain doesn't
 //! flow through this binding.
 
+use czsc_core::error_chain::expand_error_chain;
 use czsc_core::utils::errors::CoreUtilsErorr;
+use czsc_derive::CZSCErrorDerive;
 use czsc_utils::errors::UtilsError;
-use error_macros::CZSCErrorDerive;
-use error_support::expand_error_chain;
 use numpy::NotContiguousError;
 use polars::error::PolarsError;
 use pyo3::{PyErr, create_exception, exceptions::PyException};

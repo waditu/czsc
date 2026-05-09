@@ -82,7 +82,10 @@ fn check_bi_returns_none_for_monotone_sequence() {
         .collect();
     let (bi, remainder) = check_bi(&bars);
     assert!(bi.is_none(), "单调递增序列不应识别出笔");
-    assert!(remainder.len() <= bars.len(), "remainder 长度不得超过输入长度");
+    assert!(
+        remainder.len() <= bars.len(),
+        "remainder 长度不得超过输入长度"
+    );
 }
 
 #[test]

@@ -1,12 +1,12 @@
 use crate::{errors::UtilsError, freq_data::freq_end_time};
 use anyhow::Context;
 use chrono::{DateTime, Utc};
+use czsc_core::czsc_bail;
 use czsc_core::objects::{
     bar::{RawBar, RawBarBuilder, Symbol},
     freq::Freq,
     market::Market,
 };
-use error_support::czsc_bail;
 use parking_lot::{RwLock, RwLockWriteGuard};
 use std::collections::{BTreeMap, VecDeque};
 

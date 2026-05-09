@@ -538,9 +538,8 @@ dependencies = [
  "anyhow",
  "chrono",
  "criterion",
+ "czsc-derive",
  "derive_builder",
- "error-macros",
- "error-support",
  "hex",
  "log",
  "md5",
@@ -557,18 +556,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "czsc-derive"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn 2.0.117",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "czsc-python"
 version = "1.0.0"
 dependencies = [
  "anyhow",
  "chrono",
  "czsc-core",
+ "czsc-derive",
  "czsc-signals",
  "czsc-ta",
  "czsc-trader",
  "czsc-utils",
- "error-macros",
- "error-support",
  "inventory",
  "md5",
  "numpy",
@@ -625,10 +636,9 @@ dependencies = [
  "chrono",
  "csv",
  "czsc-core",
+ "czsc-derive",
  "czsc-signals",
  "czsc-utils",
- "error-macros",
- "error-support",
  "hashbrown 0.14.5",
  "hex",
  "log",
@@ -652,8 +662,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "czsc-core",
- "error-macros",
- "error-support",
+ "czsc-derive",
  "hashbrown 0.14.5",
  "once_cell",
  "parking_lot",
@@ -809,26 +818,6 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys",
-]
-
-[[package]]
-name = "error-macros"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "proc-macro2",
- "quote",
- "serde",
- "serde_json",
- "syn 2.0.117",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "error-support"
-version = "1.0.0"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]

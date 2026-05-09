@@ -2,7 +2,7 @@
 
 按 spec §3.1，所有公共 API 在导入期一次性 import；不再使用 PEP 562 lazy loading。
 - ``czsc._native``：Rust 扩展（PyO3），提供缠论核心类型、信号、交易器、TA 算子。
-- ``czsc.{connectors,sensors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
+- ``czsc.{connectors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
 - ``czsc.{ema,sma,...,ultimate_smoother,...}``：Rust TA 算子的顶层别名。
 - ``czsc.{WeightBacktest,daily_performance,top_drawdowns}``：来自硬依赖 ``wbt``。
 
@@ -18,7 +18,7 @@ import sys as _sys
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
 # svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
-from . import _native, connectors, envs, sensors, traders, utils
+from . import _native, connectors, envs, traders, utils
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===
@@ -160,7 +160,18 @@ ta = _native.ta
 _sys.modules["czsc.ta"] = _native.ta
 
 # === 包元信息 ===
-__version__ = "1.0.0"
+# 版本号唯一来源是 Cargo.toml [workspace.package].version；maturin 在打 wheel
+# 时把它写进 dist-info，这里通过 importlib.metadata 反查，杜绝硬编码漂移。
+# 本文件顶部 `# isort: skip_file` 禁止重排，importlib.metadata 必须放在
+# 前面 from . import _native 等 import 之后，因此带 noqa: E402 抑制。
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError  # noqa: E402
+from importlib.metadata import version as _pkg_version  # noqa: E402
+
+try:
+    __version__ = _pkg_version("czsc")
+except _PackageNotFoundError:
+    # 未安装（如直接从源码 tree 运行）时退化为占位值，避免 import 失败
+    __version__ = "0.0.0+unknown"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
 __date__ = "20260507"
@@ -205,7 +216,6 @@ __all__ = [
     # 始终预加载的子包
     "connectors",
     "envs",
-    "sensors",
     "traders",
     "utils",
     "svc",

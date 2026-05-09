@@ -1,10 +1,14 @@
 [package]
-name        = "czsc-python"
+name                 = "czsc-python"
 version.workspace    = true
 edition.workspace    = true
 license.workspace    = true
 repository.workspace = true
-description = "PyO3 binding aggregator that produces the czsc._native extension module."
+authors.workspace    = true
+# 内部 cdylib，给 maturin 打 wheel 用，不发布到 crates.io（cdylib +
+# pyo3/extension-module 在 publish 时也会被 cargo 拒绝）。
+publish              = false
+description          = "PyO3 binding aggregator producing the czsc._native extension module (internal; not published to crates.io)."
 
 [lib]
 name       = "czsc_python"
@@ -39,13 +43,12 @@ path             = "src/bin/stub_gen.rs"
 required-features = ["stub-gen"]
 
 [dependencies]
-czsc-core      = { path = "../czsc-core",    features = ["python"] }
-czsc-ta        = { path = "../czsc-ta",      features = ["rust-numpy"] }
-czsc-utils     = { path = "../czsc-utils",   features = ["python"] }
-czsc-signals   = { path = "../czsc-signals" }
-czsc-trader    = { path = "../czsc-trader" }
-error-macros   = { path = "../error-macros" }
-error-support  = { path = "../error-support" }
+czsc-core      = { workspace = true, features = ["python"] }
+czsc-ta        = { workspace = true, features = ["rust-numpy"] }
+czsc-utils     = { workspace = true, features = ["python"] }
+czsc-signals   = { workspace = true }
+czsc-trader    = { workspace = true }
+czsc-derive    = { workspace = true }
 anyhow         = "1"
 chrono         = { workspace = true }
 inventory      = "0.3"

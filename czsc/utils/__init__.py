@@ -53,6 +53,9 @@ from .data import (
     set_url_token,
 )
 
+# 股票持仓概念板块效应分析
+from .holds_concepts import holds_concepts_effect
+
 # 指数成分相关工具
 from .index_composition import index_composition
 
@@ -93,6 +96,8 @@ __all__ = [
     "get_url_token",
     "home_path",
     "set_url_token",
+    # holds_concepts
+    "holds_concepts_effect",
     # index_composition
     "index_composition",
     # io

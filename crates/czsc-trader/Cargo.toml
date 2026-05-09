@@ -1,21 +1,26 @@
 [package]
-name        = "czsc-trader"
-version.workspace    = true
-edition.workspace    = true
-license.workspace    = true
-repository.workspace = true
-description = "CZSC trader (CzscTrader / CzscSignals / signal compilation / weight backtest). Migrated from rs-czsc."
+name                    = "czsc-trader"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+keywords.workspace      = true
+categories.workspace    = true
+readme                  = "README.md"
+description             = "CZSC multi-strategy trading engine: signal compilation, CzscTrader / CzscSignals state machines, and parameter optimization."
 
 [lib]
 name = "czsc_trader"
 path = "src/lib.rs"
 
 [dependencies]
-czsc-core     = { path = "../czsc-core",     features = ["python"] }
-czsc-utils    = { path = "../czsc-utils" }
-czsc-signals  = { path = "../czsc-signals" }
-error-macros  = { path = "../error-macros" }
-error-support = { path = "../error-support" }
+czsc-core     = { workspace = true, features = ["python"] }
+czsc-utils    = { workspace = true }
+czsc-signals  = { workspace = true }
+czsc-derive   = { workspace = true }
 
 anyhow        = "1"
 chrono        = { workspace = true, features = ["serde"] }

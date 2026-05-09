@@ -6,8 +6,13 @@
 # We build per-platform abi3 wheels (Python 3.10+ ABI) so a single wheel
 # per (OS, arch) covers Python 3.10/3.11/3.12/3.13.
 #
-# Trusted Publishing (OIDC) is configured at https://pypi.org/p/czsc and
-# https://test.pypi.org/p/czsc — no API token secrets are kept in the repo.
+# 单一版本源：Cargo.toml [workspace.package].version。
+#   - pyproject.toml 设 dynamic = ["version"]，由 maturin 读取 Cargo.toml
+#   - czsc/__init__.py 通过 importlib.metadata.version("czsc") 反查
+#   - 本 workflow 校验 wheel 文件名版本 == git tag 版本 == Cargo.toml 版本
+#
+# Trusted Publishing (OIDC) 在 https://pypi.org/p/czsc 与
+# https://test.pypi.org/p/czsc 两个 project 上配置，仓库不存任何 token。
 
 name: Build & Publish Python Package
 
@@ -15,8 +20,6 @@ on:
   push:
     tags:
       - 'v*'  # 监听 v* 格式的 tag，例如 v1.0.0
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       publish_to_testpypi:
@@ -25,18 +28,33 @@ on:
         default: false
         type: boolean
 
+# 同一 ref（tag）只允许一份发布流程在跑，避免并发 push 多个 tag 时
+# 互相竞争 PyPI 上传。cancel-in-progress=false：不打断已经在跑的，
+# 但新触发的同 ref 任务会排队等。
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ------------------------------------------------------------------
-  # 1) Build per-platform abi3 wheels (Linux / macOS / Windows × x86_64+arm64)
+  # 1) Build per-platform abi3 wheels
+  #
+  #    平台覆盖：
+  #      Linux  : x86_64 (manylinux2014) + aarch64 (manylinux2014) + x86_64 (musllinux_1_2)
+  #      macOS  : x86_64 (macos-13) + aarch64 (macos-14, Apple Silicon)
+  #      Windows: x64
+  #    abi3-py310 → 单 wheel 覆盖 3.10/3.11/3.12/3.13
   # ------------------------------------------------------------------
   build-wheels:
-    name: Wheel ${{ matrix.platform.os }} ${{ matrix.platform.target }}
+    name: Wheel ${{ matrix.platform.os }} ${{ matrix.platform.target }} ${{ matrix.platform.manylinux }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       fail-fast: false
       matrix:
         platform:
           - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
+          - { os: ubuntu-latest,  target: aarch64, manylinux: '2014' }
+          - { os: ubuntu-latest,  target: x86_64,  manylinux: 'musllinux_1_2' }
           - { os: macos-13,       target: x86_64,  manylinux: '' }
           - { os: macos-14,       target: aarch64, manylinux: '' }
           - { os: windows-latest, target: x64,     manylinux: '' }
@@ -48,6 +66,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
+      # Rust toolchain & target cache（manylinux 容器内不复用，仅 native 路径生效）
+      - name: Cache cargo
+        if: matrix.platform.manylinux == ''
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          key: ${{ matrix.platform.os }}-${{ matrix.platform.target }}
 
       - name: Build wheel (maturin)
         uses: PyO3/maturin-action@v1
@@ -61,10 +87,17 @@ jobs:
         shell: bash
         run: ls -la dist/
 
+      # ⚠️ ARTIFACT NAMING CONTRACT ⚠️
+      # 命名公式：wheels-<os>-<target>-<manylinux|native>
+      # 这是 build-wheels 与 smoke-test 之间的单一约定，smoke-test 用同样的
+      # os/target/manylinux 三字段 + 同一表达式 ${manylinux || 'native'}
+      # 反推 artifact 名。任何一边修改公式都必须同步另一边。
+      # 不要把这个表达式抽到 env，actions/upload-artifact 的 name 字段
+      # 不能引用 env（会被字面量化），只能在 ${{ }} 里直接拼。
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.platform.os }}-${{ matrix.platform.target }}
+          name: wheels-${{ matrix.platform.os }}-${{ matrix.platform.target }}-${{ matrix.platform.manylinux || 'native' }}
           path: dist/*.whl
           retention-days: 30
           if-no-files-found: error
@@ -102,38 +135,68 @@ jobs:
           if-no-files-found: error
 
   # ------------------------------------------------------------------
-  # 3) Verify wheels can be installed and `import czsc` works
+  # 3) Smoke-test wheels
+  #
+  #    跨 4 平台 (Linux x86_64 / macOS x86_64 / macOS arm64 / Windows x64)
+  #    用 --no-deps 安装 wheel，仅装最小必需依赖（pandas/numpy/loguru/
+  #    deprecated/parse），然后实际调用 czsc._native 中的 Rust 实现，
+  #    确认扩展模块在该平台能加载并运行，避免被 wbt/TA-Lib 等运行时
+  #    重型依赖在 PyPI 上的 wheel 可用性卡死发布流程。
+  #
+  #    smoke matrix 字段（os/target/manylinux）必须与 build-wheels matrix
+  #    保持同名，这样能复用上面 ARTIFACT NAMING CONTRACT 中的同一公式
+  #    `wheels-<os>-<target>-<manylinux|native>` 反推 artifact，无需手动
+  #    维护 artifact 字符串映射表（上一版本的常见漂移源）。
+  #
+  #    Linux ARM64 与 musllinux 不在 smoke 范围（GitHub-hosted runner
+  #    没有原生 ARM Linux / Alpine 环境，发布前可在本地 docker 验证）。
   # ------------------------------------------------------------------
   smoke-test:
-    name: Smoke test (Linux x86_64)
+    name: Smoke ${{ matrix.smoke.os }} ${{ matrix.smoke.target }}
     needs: build-wheels
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.smoke.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        smoke:
+          - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
+          - { os: macos-13,       target: x86_64,  manylinux: '' }
+          - { os: macos-14,       target: aarch64, manylinux: '' }
+          - { os: windows-latest, target: x64,     manylinux: '' }
     steps:
       - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Download Linux wheel
+      - name: Download wheel
         uses: actions/download-artifact@v4
         with:
-          name: wheels-ubuntu-latest-x86_64
+          # 与 build-wheels::Upload wheel artifact 共用同一命名公式
+          # （见上方 ARTIFACT NAMING CONTRACT 注释）
+          name: wheels-${{ matrix.smoke.os }}-${{ matrix.smoke.target }}-${{ matrix.smoke.manylinux || 'native' }}
           path: dist/
 
-      - name: Install + import czsc
+      # 最小依赖集：__init__.py 顶层 import 需要的几个；运行时其余依赖
+      # （TA-Lib/wbt/streamlit/...）不在 import 路径上，--no-deps 跳过即可。
+      - name: Install + import czsc (no deps, then minimal deps)
+        shell: bash
         run: |
           python -m pip install --upgrade pip
-          # 安装 czsc wheel + PyPI 上的运行时依赖
-          python -m pip install dist/*.whl
-          python -c "import czsc; print('czsc version:', getattr(czsc, '__version__', 'unknown'))"
+          python -m pip install --no-deps dist/*.whl
+          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity
+          python -c "import czsc; print('czsc version:', czsc.__version__)"
           python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
+          python -c "from czsc._native import signals; print('native signals namespace OK:', sorted(dir(signals))[:5])"
+          python -c "from czsc._native.signals import bar; print('bar signals callables:', [n for n in dir(bar) if not n.startswith('_')][:5])"
+          python -c "import czsc._native.ta as ta; print('rust ta module OK:', sorted(dir(ta))[:5])"
 
   # ------------------------------------------------------------------
   # 4) (optional) Publish to TestPyPI via workflow_dispatch
   # ------------------------------------------------------------------
   publish-to-testpypi:
     name: Publish to TestPyPI
-    if: github.event.inputs.publish_to_testpypi == 'true'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_testpypi == 'true'
     needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment:
@@ -157,14 +220,20 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          # 测试场景下经常重传同版本，跳过已存在文件而非失败
+          skip-existing: true
           verbose: true
 
   # ------------------------------------------------------------------
-  # 5) Publish to PyPI on tag push / GitHub release
+  # 5) Publish to PyPI on tag push
+  #
+  #    只用 push tag 触发：去掉 release.published，避免本 workflow
+  #    自己的 `gh release create` 又把 release.published 触发回来，
+  #    导致同一个版本被发布两次（第二次会因为版本已存在而失败）。
   # ------------------------------------------------------------------
   publish-to-pypi:
     name: Publish to PyPI
-    if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [build-wheels, build-sdist, smoke-test]
     runs-on: ubuntu-latest
     environment:
@@ -173,17 +242,37 @@ jobs:
     permissions:
       id-token: write  # Trusted Publishing
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Extract version from tag
         id: extract_version
+        shell: bash
         run: |
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
-            echo "version=${{ github.event.release.tag_name }}" | sed 's/v//' >> "$GITHUB_OUTPUT"
-            echo "tag_name=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG_NAME, Version: $VERSION"
+
+      - name: Read version from Cargo.toml (single source of truth)
+        id: cargo_version
+        shell: bash
+        run: |
+          # 抽取 [workspace.package] 段下面第一个 version = "..."
+          CARGO_VERSION=$(awk '
+            /^\[workspace\.package\]/ {in_section=1; next}
+            in_section && /^\[/ {in_section=0}
+            in_section && /^version[[:space:]]*=/ {
+              gsub(/.*"([^"]+)".*/, "\\1"); print; exit
+            }
+          ' Cargo.toml)
+          if [ -z "$CARGO_VERSION" ]; then
+            echo "::error::Failed to read version from Cargo.toml"
+            exit 1
           fi
+          echo "version=$CARGO_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Cargo.toml version: $CARGO_VERSION"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -196,18 +285,26 @@ jobs:
           find dist-staging -type f \( -name "*.whl" -o -name "*.tar.gz" \) -exec mv {} dist/ \;
           ls -la dist/
 
-      - name: Verify version consistency
+      - name: Verify version consistency (tag == Cargo.toml == wheel filename)
+        shell: bash
         run: |
-          # 至少有一个 wheel 文件，把版本和 tag 比对
-          BUILT_VERSION=$(ls dist/*.whl | head -1 | grep -oP 'czsc-\K[0-9]+\.[0-9]+\.[0-9]+(?:[a-z0-9.+-]*)?')
-          TAG_VERSION=${{ steps.extract_version.outputs.version }}
-          echo "Built version: $BUILT_VERSION"
-          echo "Tag version:   $TAG_VERSION"
-          if [ "$BUILT_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Version mismatch: built $BUILT_VERSION != tag $TAG_VERSION"
+          TAG_VERSION="${{ steps.extract_version.outputs.version }}"
+          CARGO_VERSION="${{ steps.cargo_version.outputs.version }}"
+          # wheel 文件名格式 czsc-<VERSION>-cp<py>-abi3-<plat>.whl
+          # 显式锚定下一个 -cp，避免贪婪匹配把 -cp310-abi3-linux 吃进去
+          BUILT_VERSION=$(basename "$(ls dist/*.whl | head -1)" | sed -E 's/^czsc-([^-]+)-cp.*/\1/')
+          echo "Tag version:        $TAG_VERSION"
+          echo "Cargo.toml version: $CARGO_VERSION"
+          echo "Built wheel version:$BUILT_VERSION"
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Tag $TAG_VERSION 与 Cargo.toml 版本 $CARGO_VERSION 不一致 —— 请同步 Cargo.toml [workspace.package].version 后重打 tag"
             exit 1
           fi
-          echo "Version consistency verified"
+          if [ "$BUILT_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::Wheel 文件名版本 $BUILT_VERSION 与 Cargo.toml 版本 $CARGO_VERSION 不一致 —— maturin 元数据可能没正确读取 dynamic version"
+            exit 1
+          fi
+          echo "✅ Version consistency verified: $TAG_VERSION"
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -219,7 +316,7 @@ jobs:
   # ------------------------------------------------------------------
   create-github-release:
     name: Sign and upload to GitHub Release
-    if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: publish-to-pypi
     runs-on: ubuntu-latest
     permissions:
@@ -242,19 +339,14 @@ jobs:
 
       - name: Extract version info
         id: version_info
+        shell: bash
         run: |
-          if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            VERSION=${GITHUB_REF#refs/tags/v}
-          elif [[ $GITHUB_EVENT_NAME == "release" ]]; then
-            TAG_NAME=${{ github.event.release.tag_name }}
-            VERSION=${TAG_NAME#v}
-          fi
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG_NAME#v}"
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create Release (if tag push)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |

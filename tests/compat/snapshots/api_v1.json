@@ -40,7 +40,6 @@
     "ta",
     "utils",
     "connectors",
-    "sensors",
     "svc"
   ],
   "traders": [

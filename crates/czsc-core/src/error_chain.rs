@@ -1,5 +1,18 @@
+//! 错误链工具：把 `anyhow::Error` 的 source 链展开为带 "Caused by:" 前缀
+//! 的多行字符串，以及一个仿 `anyhow::bail!` 的便捷宏 [`czsc_bail!`]。
+//!
+//! 由 Phase J 从原 `error-support` crate 内联进来 —— 内容只有 38 行，独立成
+//! crate 收益不抵命名占用通用空间的代价；保留为内部模块，按需 re-export。
+
 use std::fmt::Write;
 
+/// 把 [`anyhow::Error`] 的 source 链展开为多行字符串：
+///
+/// ```text
+/// 顶层错误
+/// Caused by: 中间错误
+/// Caused by: 根因
+/// ```
 pub fn expand_error_chain(err: &anyhow::Error) -> String {
     let mut error_chain = String::new();
     let mut current_error: Option<&(dyn std::error::Error + 'static)> = Some(err.as_ref());
@@ -23,7 +36,11 @@ pub fn expand_error_chain(err: &anyhow::Error) -> String {
     error_chain
 }
 
-/// 从 anyhow::bail! 复制而来
+/// 从 anyhow::bail! 复制而来。
+///
+/// 与 `anyhow::bail!` 相比，本宏对返回类型更宽松 —— 任何实现了
+/// `From<anyhow::Error>` 的错误类型（典型如 `czsc-derive` 生成的枚举）
+/// 都能直接 `czsc_bail!`，省去手动 `?`。
 #[macro_export]
 macro_rules! czsc_bail {
     ($msg:literal $(,)?) => {

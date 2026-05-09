@@ -1,6 +1,6 @@
 use chrono::NaiveDate;
-use error_macros::CZSCErrorDerive;
-use error_support::expand_error_chain;
+use czsc_core::error_chain::expand_error_chain;
+use czsc_derive::CZSCErrorDerive;
 use polars::error::PolarsError;
 use thiserror::Error;
 

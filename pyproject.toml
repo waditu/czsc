@@ -16,7 +16,10 @@ features         = ["pyo3/extension-module"]
 
 [project]
 name = "czsc"
-version = "1.0.0"
+# 单一版本源：Cargo.toml [workspace.package].version。
+# maturin 1.7+ 在 dynamic = ["version"] 下会自动把 Cargo.toml 的 version
+# 注入到 wheel metadata，避免 Python/Rust 两侧版本漂移。
+dynamic = ["version"]
 description = "缠中说禅技术分析工具"
 readme = "README.md"
 license = "Apache-2.0"

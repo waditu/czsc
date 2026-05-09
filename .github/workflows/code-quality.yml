@@ -36,7 +36,9 @@ jobs:
     - name: cargo test (per-crate)
       run: |
         set -e
-        for crate in error-macros error-support czsc-core czsc-utils czsc-ta czsc-signal-macros; do
+        # 注：原 error-support 已合并到 czsc-core::error_chain；
+        #     原 error-macros 重命名为 czsc-derive。
+        for crate in czsc-derive czsc-core czsc-utils czsc-ta czsc-signal-macros; do
           echo "::group::cargo test -p $crate"
           cargo test -p "$crate" --no-fail-fast
           echo "::endgroup::"

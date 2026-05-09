@@ -1,10 +1,16 @@
 [package]
-name        = "czsc-ta"
-version.workspace    = true
-edition.workspace    = true
-license.workspace    = true
-repository.workspace = true
-description = "CZSC technical analysis operators (ema/sma/rolling_rank/...). Placeholder, to be migrated."
+name                    = "czsc-ta"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+keywords.workspace      = true
+categories.workspace    = true
+readme                  = "README.md"
+description             = "CZSC technical analysis operators (EMA, SMA, rolling_rank, ultimate_smoother, ...) with optional numpy interop."
 
 [lib]
 name = "czsc_ta"
