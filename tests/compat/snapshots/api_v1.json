@@ -48,8 +48,7 @@
     "CzscSignals",
     "generate_czsc_signals",
     "get_unique_signals",
-    "WeightBacktest",
-    "SignalsParser"
+    "WeightBacktest"
   ],
   "ta": [
     "ultimate_smoother",
@@ -62,7 +61,8 @@
     "DummyBacktest",
     "OpensOptimize",
     "ExitsOptimize",
-    "CTAResearch"
+    "CTAResearch",
+    "SignalsParser"
   ],
   "removed_envs": [
     "CZSC_USE_PYTHON"

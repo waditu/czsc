@@ -107,7 +107,6 @@ from .strategies import CzscJsonStrategy, CzscStrategyBase
 from .traders import (
     CzscSignals,
     CzscTrader,
-    SignalsParser,
     derive_signals_config,
     derive_signals_freqs,
     generate_czsc_signals,
@@ -219,7 +218,6 @@ __all__ = [
     # 交易器 / 信号 API
     "CzscSignals",
     "CzscTrader",
-    "SignalsParser",
     "derive_signals_config",
     "derive_signals_freqs",
     "generate_czsc_signals",

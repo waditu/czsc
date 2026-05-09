@@ -16,9 +16,6 @@ from czsc.traders.base import (
     get_unique_signals as get_unique_signals,
 )
 from czsc.traders.sig_parse import (
-    SignalsParser as SignalsParser,
-)
-from czsc.traders.sig_parse import (
     get_signals_config as get_signals_config,
 )
 from czsc.traders.sig_parse import (
