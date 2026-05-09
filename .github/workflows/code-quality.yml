@@ -148,7 +148,7 @@ jobs:
 
     - name: Run pytest
       run: |
-        uv run pytest test/ -v --cov=czsc --cov-report=xml --cov-report=term
+        uv run pytest tests/ -v --cov=czsc --cov-report=xml --cov-report=term
 
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.11'
@@ -181,7 +181,7 @@ jobs:
 
     - name: Check Python formatting with ruff
       run: |
-        uv run ruff format --check --diff czsc/ test/
+        uv run ruff format --check --diff czsc/ tests/
 
     - name: Check Rust formatting with cargo fmt
       run: |
@@ -217,7 +217,7 @@ jobs:
 
     - name: Lint Python with ruff
       run: |
-        uv run ruff check czsc/ test/
+        uv run ruff check czsc/ tests/
 
     - name: Type-check Python with basedpyright
       run: |

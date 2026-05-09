@@ -87,7 +87,7 @@ default = true
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    # rs_czsc baseline used by test/parity/ to prove czsc._native
+    # rs_czsc baseline used by tests/parity/ to prove czsc._native
     # outputs match the reference Rust implementation byte-for-byte.
     "rs-czsc",
 ]
