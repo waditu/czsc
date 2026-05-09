@@ -41,6 +41,7 @@ serde         = { version = "1", features = ["derive"] }
 #   - version：`cargo publish` 时按 version 解析 crates.io 上的依赖
 # 业务 crate 用 `{ workspace = true }` 引用，避免在每个 Cargo.toml
 # 重复维护版本号；workspace.package.version 升级一次，全部跟随。
+czsc               = { path = "crates/czsc",               version = "1.0.0" }
 czsc-core          = { path = "crates/czsc-core",          version = "1.0.0" }
 czsc-utils         = { path = "crates/czsc-utils",         version = "1.0.0" }
 czsc-ta            = { path = "crates/czsc-ta",            version = "1.0.0" }

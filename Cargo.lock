@@ -532,6 +532,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "czsc"
+version = "1.0.0"
+dependencies = [
+ "czsc-core",
+ "czsc-signals",
+ "czsc-ta",
+ "czsc-trader",
+ "czsc-utils",
+]
+
+[[package]]
 name = "czsc-core"
 version = "1.0.0"
 dependencies = [

@@ -12,6 +12,7 @@
 #   layer 2: czsc-ta / czsc-utils
 #   layer 3: czsc-signals
 #   layer 4: czsc-trader
+#   layer 5: czsc         （facade crate，re-export 上面 5 个业务 crate）
 #
 # 注：原 `error-support` crate 已合并到 czsc-core::error_chain；
 #     原 `error-macros` 重命名为 `czsc-derive`（保留独立 crate，因为
@@ -185,6 +186,16 @@ jobs:
         run: |
           set -e
           cargo publish -p czsc-trader --no-verify
+          sleep 30
+
+      - name: Real publish layer 5 (czsc facade)
+        if: env.PUBLISH_FOR_REAL == 'true'
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          set -e
+          cargo publish -p czsc --no-verify
 
       - name: Summary
         if: always()

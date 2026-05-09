@@ -18,7 +18,7 @@ use czsc_trader::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngin
 use czsc_trader::optimize::{
     get_exit_optim_positions, get_open_optim_positions, symbols_optim_parallel,
 };
-use czsc_trader::signals::sig_parse::{SignalConfig, get_signals_config, get_signals_freqs};
+use czsc_trader::sig_parse::{SignalConfig, get_signals_config, get_signals_freqs};
 use polars::prelude::*;
 
 fn write_df_parquet(path: &Path, mut df: DataFrame) -> PyResult<()> {

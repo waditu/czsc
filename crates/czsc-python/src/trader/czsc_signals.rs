@@ -1,8 +1,8 @@
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::utils::common::create_naive_pandas_timestamp;
-use czsc_trader::signals::czsc_signals::CzscSignals;
-use czsc_trader::signals::sig_parse::SignalConfig;
+use czsc_trader::czsc_signals::CzscSignals;
+use czsc_trader::sig_parse::SignalConfig;
 use czsc_utils::bar_generator::BarGenerator;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;

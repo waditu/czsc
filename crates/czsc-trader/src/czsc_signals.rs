@@ -1,6 +1,6 @@
 use crate::engine_v2::catalog::SignalCategory;
 use crate::engine_v2::compiler::CompiledSignalPlanV2;
-use crate::signals::sig_parse::SignalConfig;
+use crate::sig_parse::SignalConfig;
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::signal::Signal;

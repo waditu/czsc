@@ -7,7 +7,7 @@ use crate::engine_v2::catalog::{CatalogSignal, resolve_signal_category};
 use crate::engine_v2::compiler::event::compile_events;
 use crate::engine_v2::compiler::position::compile_positions;
 use crate::engine_v2::compiler::signal::{CompiledSignalPlan, compile_signals};
-use crate::signals::sig_parse::SignalConfig;
+use crate::sig_parse::SignalConfig;
 use czsc_core::objects::position::Position;
 use serde::{Deserialize, Serialize};
 

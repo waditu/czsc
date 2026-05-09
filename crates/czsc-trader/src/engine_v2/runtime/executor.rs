@@ -1,6 +1,6 @@
+use crate::czsc_signals::CzscSignals;
 use crate::engine_v2::catalog::SignalCategory;
 use crate::engine_v2::compiler::ExecutionPlan;
-use crate::signals::czsc_signals::CzscSignals;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
@@ -274,7 +274,7 @@ impl UnifiedExecEngine {
 
 fn collect_freqs(
     base_freq: Freq,
-    signals_config: &[crate::signals::sig_parse::SignalConfig],
+    signals_config: &[crate::sig_parse::SignalConfig],
 ) -> Result<Vec<Freq>, String> {
     let push_freq = |freq_str: &str, freq_set: &mut HashSet<Freq>| {
         if let Ok(f) = freq_str.parse::<Freq>()
@@ -354,7 +354,7 @@ fn parse_sdt_utc(s: &str) -> Option<DateTime<Utc>> {
 #[cfg(test)]
 mod tests {
     use super::{collect_freqs, infer_effective_market};
-    use crate::signals::sig_parse::SignalConfig;
+    use crate::sig_parse::SignalConfig;
     use chrono::{NaiveDateTime, TimeZone, Utc};
     use czsc_core::objects::{bar::RawBarBuilder, freq::Freq, market::Market};
     use serde_json::json;

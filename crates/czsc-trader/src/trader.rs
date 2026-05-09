@@ -1,5 +1,5 @@
-use crate::signals::czsc_signals::CzscSignals;
-use crate::signals::sig_parse::SignalConfig;
+use crate::czsc_signals::CzscSignals;
+use crate::sig_parse::SignalConfig;
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::position::{LiteBar, Position};

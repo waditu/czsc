@@ -1,5 +1,5 @@
 use crate::engine_v2::catalog::{CatalogSignal, SignalCategory};
-use crate::signals::sig_parse::SignalConfig;
+use crate::sig_parse::SignalConfig;
 use serde_json::Value;
 use std::collections::BTreeMap;
 

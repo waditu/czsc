@@ -1,6 +1,6 @@
 use crate::engine_v2::scheduler::split_positions_into_chunks;
 use crate::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngine};
-use crate::signals::sig_parse::{SignalConfig, get_signals_config};
+use crate::sig_parse::{SignalConfig, get_signals_config};
 use anyhow::{Context, Result};
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::event::Event;

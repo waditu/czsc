@@ -1,0 +1,38 @@
+[package]
+name                    = "czsc"
+version.workspace       = true
+edition.workspace       = true
+license.workspace       = true
+repository.workspace    = true
+homepage.workspace      = true
+documentation.workspace = true
+authors.workspace       = true
+keywords.workspace      = true
+categories.workspace    = true
+readme                  = "README.md"
+description             = "CZSC (缠中说禅) facade crate — re-exports the full czsc Rust workspace (core / utils / ta / signals / trader) under a single name."
+
+[lib]
+name = "czsc"
+path = "src/lib.rs"
+
+# Facade crate：本身不实现任何功能，只 re-export 业务子 crate。
+# 不依赖 czsc-derive / czsc-signal-macros（proc-macro 由业务 crate 内部使用，
+# 终端用户通常不直接调）。也不依赖 czsc-python（cdylib，只给 maturin 用）。
+[dependencies]
+czsc-core    = { workspace = true }
+czsc-utils   = { workspace = true }
+czsc-ta      = { workspace = true }
+czsc-signals = { workspace = true }
+czsc-trader  = { workspace = true }
+
+[features]
+# 默认不启用任何 feature；终端用户用 `cargo add czsc` 即获得纯 Rust API。
+default = []
+# 透传 czsc-core / czsc-utils / czsc-ta 的 python feature，给嵌入 PyO3 的
+# 用户使用。普通用户用不到。
+python = [
+    "czsc-core/python",
+    "czsc-utils/python",
+    "czsc-ta/python",
+]

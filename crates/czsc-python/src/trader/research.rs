@@ -8,7 +8,7 @@ use czsc_core::objects::position::Position;
 use czsc_signals::registry::{SIGNAL_REGISTRY, TRADER_SIGNAL_REGISTRY};
 use czsc_trader::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngine};
 use czsc_trader::optimize::{get_exit_optim_positions, get_open_optim_positions};
-use czsc_trader::signals::sig_parse::SignalConfig;
+use czsc_trader::sig_parse::SignalConfig;
 use polars::prelude::*;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;

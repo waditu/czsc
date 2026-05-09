@@ -4,7 +4,7 @@ use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::position::{LiteBar, Position, PyPosition};
 use czsc_core::utils::common::create_naive_pandas_timestamp;
-use czsc_trader::signals::sig_parse::SignalConfig;
+use czsc_trader::sig_parse::SignalConfig;
 use czsc_trader::trader::CzscTrader;
 use czsc_utils::bar_generator::BarGenerator;
 use pyo3::exceptions::PyValueError;

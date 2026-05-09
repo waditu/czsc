@@ -6,7 +6,20 @@
 //! Rust workspace 负责信号编译、trader 状态机，以及支撑 Python
 //! `run_backtest` / `run_optimize` 调用的 v2 执行引擎。
 
+pub mod czsc_signals;
 pub mod engine_v2;
 pub mod optimize;
-pub mod signals;
+pub mod sig_parse;
 pub mod trader;
+
+// 旧 `czsc_trader::signals::{czsc_signals,sig_parse}::*` 路径的兼容别名。
+// Phase J 把原 `signals/` 目录拍平了（避免与外部 `czsc-signals` crate 同名
+// 混淆，且去掉无意义的中间层）。新代码用顶层路径，本 mod 只为外部用户保留
+// 一个无破坏过渡。
+#[doc(hidden)]
+pub mod signals {
+    pub use super::czsc_signals;
+    pub use super::czsc_signals::CzscSignals;
+    pub use super::sig_parse;
+    pub use super::sig_parse::{SignalConfig, get_signals_config, get_signals_freqs};
+}

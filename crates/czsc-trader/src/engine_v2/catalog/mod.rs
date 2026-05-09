@@ -1,4 +1,4 @@
-use crate::signals::sig_parse::SignalConfig;
+use crate::sig_parse::SignalConfig;
 use czsc_signals::registry::{
     SIGNAL_REGISTRY, TRADER_SIGNAL_REGISTRY, list_generated_signal_descriptors,
 };
@@ -53,7 +53,7 @@ pub fn resolve_signal_category(sc: &SignalConfig) -> Result<CatalogSignal, Strin
 #[cfg(test)]
 mod tests {
     use super::{SignalCategory, resolve_signal_category};
-    use crate::signals::sig_parse::SignalConfig;
+    use crate::sig_parse::SignalConfig;
     use std::collections::HashMap;
 
     #[test]
