@@ -20,7 +20,23 @@ jobs:
   rust-tests:
     name: Rust per-crate tests
     runs-on: ubuntu-latest
+    env:
+      # 测试二进制只保留行号表，去掉完整 DWARF；可把 target/debug 从 ~10GB 压到 ~3GB，
+      # 避免 ubuntu-latest 14GB 根盘在 polars + tokio + rustls 全量依赖下被打爆。
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
     steps:
+    - name: Free disk space on runner
+      # GitHub-hosted runner 默认占了 ~25GB 在 Android SDK / .NET / Haskell / CodeQL 等
+      # 工具链上，本 job 用不到。删掉它们给 polars 重型依赖链留出编译空间。
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: false
+
     - name: Checkout code
       uses: actions/checkout@v4
 
