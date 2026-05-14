@@ -343,7 +343,7 @@ pub fn format_standard_kline(df: DataFrame, freq: Freq) -> Result<Vec<RawBar>, A
     let mut bars = Vec::with_capacity(len);
     for i in 0..len {
         // 时间戳数值
-        let ts = dt_col.get(i).unwrap();
+        let ts = dt_col.phys.get(i).unwrap();
         // 根据时间单位转换为纳秒
         let ns = match time_unit {
             TimeUnit::Milliseconds => ts * 1_000_000,

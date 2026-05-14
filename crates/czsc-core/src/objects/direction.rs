@@ -3,7 +3,7 @@ use pyo3::pyclass;
 #[cfg(feature = "python")]
 use pyo3::types::PyAnyMethods;
 #[cfg(feature = "python")]
-use pyo3::{Bound, IntoPyObject, PyAny, PyErr, PyObject, PyResult, Python, pymethods};
+use pyo3::{Bound, IntoPyObject, Py, PyAny, PyErr, PyResult, Python, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::gen_stub_pyclass_enum;
 #[cfg(feature = "python")]
@@ -12,7 +12,7 @@ use strum_macros::{AsRefStr, Display, EnumString};
 
 /// 方向
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Copy, PartialEq, EnumString, AsRefStr, Display)]
 pub enum Direction {
     /// 向上
@@ -33,8 +33,8 @@ impl Direction {
     }
 
     /// 支持pickle序列化
-    fn __reduce__(&self) -> PyResult<(PyObject, PyObject)> {
-        Python::with_gil(|py| {
+    fn __reduce__(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+        Python::attach(|py| {
             let cls = py.get_type::<Self>();
             let args = match self {
                 Direction::Up => ("Up",),

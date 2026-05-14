@@ -271,7 +271,7 @@ pub fn one_symbol_optim(
                     let n1b = n1b.fill_null(FillNullStrategy::Zero)?;
                     let _ = df.with_column(n1b);
                 }
-                let s_sym = Series::new("symbol", vec![symbol; df.height()]);
+                let s_sym = Series::new("symbol".into(), vec![symbol; df.height()]);
                 let _ = df.with_column(s_sym);
             }
 

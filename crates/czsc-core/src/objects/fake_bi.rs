@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 #[cfg(feature = "python")]
 use pyo3::types::{PyDict, PyDictMethods};
 #[cfg(feature = "python")]
-use pyo3::{Py, PyObject, PyResult, Python};
+use pyo3::{Py, PyAny, PyResult, Python};
 #[cfg(feature = "python")]
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
@@ -19,7 +19,7 @@ use std::sync::Arc;
 /// 虚拟笔
 /// 主要为笔的内部分析提供便利
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into))]
 pub struct FakeBI {
@@ -45,12 +45,12 @@ impl FakeBI {
     }
 
     #[getter]
-    fn sdt(&self, py: Python) -> PyResult<PyObject> {
+    fn sdt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.sdt)
     }
 
     #[getter]
-    fn edt(&self, py: Python) -> PyResult<PyObject> {
+    fn edt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.edt)
     }
 

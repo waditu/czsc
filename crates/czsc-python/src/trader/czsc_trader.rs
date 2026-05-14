@@ -22,7 +22,7 @@ pub struct PyCzscTrader {
     ensemble_method: String,
 }
 
-/// 从 PyObject 提取 Position：支持 PyPosition（Rust）和有 _inner 属性的 Python wrapper
+/// 从 Py<PyAny> 提取 Position：支持 PyPosition（Rust）和有 _inner 属性的 Python wrapper
 fn extract_position(_py: Python, obj: &Bound<PyAny>) -> PyResult<Position> {
     // 优先尝试提取 PyPosition
     if let Ok(py_pos) = obj.extract::<PyPosition>() {
@@ -97,7 +97,7 @@ impl PyCzscTrader {
 
     /// 返回信号字典 s
     #[getter]
-    fn s(&self, py: Python) -> PyResult<PyObject> {
+    fn s(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         for (k, v) in &self.inner.signals.s {
             dict.set_item(k, v)?;
@@ -138,7 +138,7 @@ impl PyCzscTrader {
 
     /// 返回最新时间，作为 pandas Timestamp
     #[getter]
-    fn end_dt(&self, py: Python) -> PyResult<Option<PyObject>> {
+    fn end_dt(&self, py: Python) -> PyResult<Option<Py<PyAny>>> {
         if let Some(dt_str) = self.inner.signals.s.get("dt")
             && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str)
         {
@@ -175,7 +175,7 @@ impl PyCzscTrader {
 
     /// 返回原始信号配置
     #[getter]
-    fn signals_config(&self, py: Python) -> PyResult<PyObject> {
+    fn signals_config(&self, py: Python) -> PyResult<Py<PyAny>> {
         let list = PyList::empty(py);
         for cfg in &self.signals_config {
             let dict = PyDict::new(py);
@@ -329,7 +329,7 @@ impl PyCzscTrader {
     }
 
     /// 获取当前信号字典
-    fn get_signals_by_conf(&self, py: Python) -> PyResult<PyObject> {
+    fn get_signals_by_conf(&self, py: Python) -> PyResult<Py<PyAny>> {
         self.s(py)
     }
 
@@ -341,7 +341,7 @@ impl PyCzscTrader {
     /// Pickle 支持：返回构造参数 (bg, positions, signals_config, ensemble_method)。
     /// 反序列化时由 ``__new__`` 重新构造一个 fresh trader；缓存的运行
     /// 状态不持久化（与 design doc §2.4 multiprocessing 用例一致）。
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         let bg_clone = self.inner.signals.bg.clone();
 
         // positions：通过 PyPosition wrapper 克隆

@@ -16,11 +16,11 @@ use pyo3::{
     types::{PyAnyMethods, PyString},
 };
 #[cfg(feature = "python")]
-use pyo3::{IntoPyObject, PyObject};
+use pyo3::{IntoPyObject, Py};
 
 /// 时间周期
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(
     Debug,
     PartialOrd,
@@ -164,8 +164,8 @@ impl Freq {
     }
 
     /// 支持pickle序列化
-    fn __reduce__(&self) -> PyResult<(PyObject, PyObject)> {
-        Python::with_gil(|py| {
+    fn __reduce__(&self) -> PyResult<(Py<PyAny>, Py<PyAny>)> {
+        Python::attach(|py| {
             let cls = py.get_type::<Self>();
             let args = (format!("{self:?}"),);
             Ok((cls.into(), args.into_pyobject(py)?.into_any().unbind()))
@@ -240,7 +240,7 @@ impl Freq {
     }
 
     #[classattr]
-    fn __members__(py: Python) -> PyResult<PyObject> {
+    fn __members__(py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         dict.set_item("Tick", Freq::Tick)?;
         dict.set_item("F1", Freq::F1)?;
@@ -305,7 +305,7 @@ impl TryFrom<&Bound<'_, PyAny>> for Freq {
     type Error = PyErr;
 
     fn try_from(value: &Bound<'_, PyAny>) -> PyResult<Self> {
-        if let Ok(py_str) = value.downcast::<PyString>() {
+        if let Ok(py_str) = value.cast::<PyString>() {
             let py_str = py_str.to_string();
             Freq::from_str(&py_str)
                 .map_err(|e| PyValueError::new_err(format!("解析成 Freq 失败: {e}")))

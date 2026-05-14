@@ -29,13 +29,13 @@ hex           = "0.4"
 log           = "0.4"
 md5           = "0.8"
 polars        = { workspace = true, features = ["lazy", "ipc", "parquet"] }
-polars-plan   = { version = "0.42" }
+polars-plan   = { version = "0.52" }
 rayon         = { workspace = true }
 serde         = { workspace = true }
 serde_json    = "1"
-sha2          = "0.10"
-strum         = "0.26"
-strum_macros  = "0.26"
+sha2          = "0.11"
+strum         = "0.28"
+strum_macros  = "0.28"
 thiserror     = "2"
 tracing       = "0.1"
 arrayvec      = "0.7"

@@ -27,7 +27,7 @@ pub fn generate_czsc_signals(
     sdt: &str,
     init_n: usize,
     df: bool,
-) -> PyResult<PyObject> {
+) -> PyResult<Py<PyAny>> {
     if bars.is_empty() {
         return Err(PyValueError::new_err("bars 不能为空"));
     }
@@ -82,7 +82,7 @@ pub fn generate_czsc_signals(
     }
 
     // 计算信号
-    let mut records: Vec<PyObject> = Vec::with_capacity(bars_right.len());
+    let mut records: Vec<Py<PyAny>> = Vec::with_capacity(bars_right.len());
     for bar in bars_right {
         signals.update_signals(bar, &configs);
         let dict = PyDict::new(py);

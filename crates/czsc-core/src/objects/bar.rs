@@ -4,7 +4,7 @@ use derive_builder::Builder;
 #[cfg(feature = "python")]
 use parking_lot::RwLock;
 #[cfg(feature = "python")]
-use pyo3::{Py, types::PyDict};
+use pyo3::types::PyDict;
 
 use std::sync::Arc;
 
@@ -16,9 +16,9 @@ use pyo3::basic::CompareOp;
 #[cfg(feature = "python")]
 use pyo3::types::PyDictMethods;
 #[cfg(feature = "python")]
-use pyo3::{Bound, PyAny, PyResult, Python, pyclass, pymethods};
+use pyo3::{Bound, Py, PyAny, PyResult, Python, pyclass, pymethods};
 #[cfg(feature = "python")]
-use pyo3::{IntoPyObject, PyObject};
+use pyo3::IntoPyObject;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
@@ -27,7 +27,7 @@ pub type Symbol = Arc<str>;
 
 /// 原始K线元素
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into), pattern = "owned")]
 pub struct RawBar {
@@ -110,7 +110,7 @@ impl RawBar {
     }
 
     #[getter]
-    fn dt(&self, py: Python) -> PyResult<PyObject> {
+    fn dt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.dt)
     }
 
@@ -216,23 +216,23 @@ impl RawBar {
 
     /// 直接支持 __dict__ 属性，让 pandas DataFrame() 能正确识别对象
     #[getter]
-    pub fn __dict__(&self, py: Python) -> PyResult<PyObject> {
+    pub fn __dict__(&self, py: Python) -> PyResult<Py<PyAny>> {
         // 直接返回缓存的字典，避免重复创建
         Ok(self.get_cache(py).into())
     }
 
     /// 让对象表现得像记录，pandas DataFrame构造器会调用这个
-    fn _asdict(&self, py: Python) -> PyResult<PyObject> {
+    fn _asdict(&self, py: Python) -> PyResult<Py<PyAny>> {
         self.__dict__(py)
     }
 
     /// 转换为字典，便于创建 pandas DataFrame
-    fn to_dict(&self, py: Python) -> PyResult<PyObject> {
+    fn to_dict(&self, py: Python) -> PyResult<Py<PyAny>> {
         self.__dict__(py)
     }
 
     /// 支持pickle序列化
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         // RawBar.new 接收 `freq: Freq`（PyO3 枚举），而不是字符串 ——
         // 通过 pickle 直接传递枚举，这样 unpickle 路径
         // （`RawBar(*args)`）才会成功。如果在这里用
@@ -307,7 +307,7 @@ impl PartialEq for RawBar {
 
 /// 去除包含关系后的K线元素
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into), pattern = "owned")]
 pub struct NewBar {
@@ -384,7 +384,7 @@ impl NewBar {
     }
 
     #[getter]
-    fn dt(&self, py: Python) -> PyResult<PyObject> {
+    fn dt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.dt)
     }
 

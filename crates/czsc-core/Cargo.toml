@@ -28,12 +28,12 @@ parking_lot    = { version = "0.12", optional = true }
 polars         = { workspace = true, features = ["lazy", "ipc"] }
 serde          = { workspace = true }
 serde_json     = "1"
-sha2           = "0.10"
-strum          = "0.26"
-strum_macros   = "0.26"
+sha2           = "0.11"
+strum          = "0.28"
+strum_macros   = "0.28"
 thiserror      = "2"
 pyo3           = { workspace = true, optional = true, features = ["chrono"] }
-pyo3-stub-gen  = { version = "0.12", optional = true }
+pyo3-stub-gen  = { version = "0.22", optional = true }
 
 [features]
 python = ["pyo3", "pyo3-stub-gen", "parking_lot"]
@@ -42,7 +42,7 @@ python = ["pyo3", "pyo3-stub-gen", "parking_lot"]
 anyhow     = "1"
 serde_json = "1"
 thiserror  = "2"
-criterion  = "0.7"
+criterion  = "0.8"
 
 # spec §6 P1 性能基准：10 万根 K 线 CZSC 完整分析 ≤ 200 ms（M2 Mac，单进程）
 [[bench]]

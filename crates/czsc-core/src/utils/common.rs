@@ -12,7 +12,7 @@ use pyo3::types::PyAnyMethods;
 
 /// 创建 OrderedDict，与 czsc 库兼容
 #[cfg(feature = "python")]
-pub fn create_ordered_dict(py: Python) -> PyResult<PyObject> {
+pub fn create_ordered_dict(py: Python) -> PyResult<Py<PyAny>> {
     let collections = py.import("collections")?;
     let ordered_dict = collections.getattr("OrderedDict")?;
     let result = ordered_dict.call0()?;
@@ -21,7 +21,7 @@ pub fn create_ordered_dict(py: Python) -> PyResult<PyObject> {
 
 /// 创建不带时区信息的 pandas Timestamp，与原版CZSC保持一致
 #[cfg(feature = "python")]
-pub fn create_naive_pandas_timestamp(py: Python, dt: DateTime<chrono::Utc>) -> PyResult<PyObject> {
+pub fn create_naive_pandas_timestamp(py: Python, dt: DateTime<chrono::Utc>) -> PyResult<Py<PyAny>> {
     let pandas = py.import("pandas")?;
     let timestamp_cls = pandas.getattr("Timestamp")?;
     let dt_naive = dt.naive_utc();

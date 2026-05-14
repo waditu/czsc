@@ -253,10 +253,11 @@ impl Event {
 }
 
 #[cfg(feature = "python")]
-impl<'py> FromPyObject<'py> for Event {
-    fn extract_bound(ob: &Bound<'py, pyo3::PyAny>) -> PyResult<Self> {
+impl<'py> FromPyObject<'_, 'py> for Event {
+    type Error = PyErr;
+    fn extract(ob: pyo3::Borrowed<'_, 'py, pyo3::PyAny>) -> Result<Self, Self::Error> {
         // 接受 dict 形式输入
-        if let Ok(dict) = ob.downcast::<PyDict>() {
+        if let Ok(dict) = ob.cast::<PyDict>() {
             // 1) operate 必须存在
             let operate = dict
                 .get_item("operate")?
@@ -315,7 +316,7 @@ impl<'py> FromPyObject<'py> for Event {
 
 /// Python可见的Event包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "Event", module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, name = "Event", module = "czsc._native"))]
 #[derive(Debug, Clone)]
 pub struct PyEvent {
     pub inner: Event,
@@ -354,7 +355,7 @@ impl PyEvent {
         _cls: &Bound<'_, pyo3::types::PyType>,
         dict: &Bound<'_, PyDict>,
     ) -> PyResult<Self> {
-        let event = Event::extract_bound(dict.as_any())?;
+        let event = dict.as_any().extract::<Event>()?;
         Ok(Self { inner: event })
     }
 
@@ -437,7 +438,7 @@ impl PyEvent {
     /// 判断事件是否匹配信号集合，返回是否匹配
     /// 支持多种参数类型：Dict[str, str] 或 Dict[str, Signal] 或 Vec<PySignal>
     fn is_match(&self, signals: &Bound<'_, pyo3::PyAny>) -> PyResult<bool> {
-        if let Ok(dict) = signals.downcast::<PyDict>() {
+        if let Ok(dict) = signals.cast::<PyDict>() {
             // 处理字典输入：转换为HashMap<String, String>
             let mut signal_dict = HashMap::new();
             for (key, value) in dict.iter() {
@@ -499,9 +500,9 @@ impl PyEvent {
     }
 
     /// 导出为字典
-    fn dump(&self) -> PyResult<PyObject> {
+    fn dump(&self) -> PyResult<Py<PyAny>> {
         let json_value = self.inner.dump();
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let dict = pyo3::types::PyDict::new(py);
 
             dict.set_item("name", json_value["name"].as_str().unwrap_or(""))?;
@@ -540,7 +541,7 @@ impl PyEvent {
     #[classmethod]
     fn load(_cls: &Bound<'_, pyo3::types::PyType>, data: &Bound<'_, PyDict>) -> PyResult<Self> {
         // 转换Python字典为JSON Value
-        let json_str = Python::with_gil(|py| -> PyResult<String> {
+        let json_str = Python::attach(|py| -> PyResult<String> {
             let json_module = py.import("json")?;
             let json_str = json_module.call_method1("dumps", (data,))?;
             json_str.extract::<String>()
@@ -560,7 +561,7 @@ impl PyEvent {
     }
 
     /// 支持 pickle 序列化 - 使用 __reduce__ 方法
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use super::operate::PyOperate;
         use super::signal::PySignal;
         use pyo3::IntoPyObject;

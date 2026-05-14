@@ -18,10 +18,13 @@ categories    = ["finance", "mathematics", "science"]
 
 [workspace.dependencies]
 # 第三方依赖
+# 注：polars 暂停在 0.52.0——polars-arrow 0.53.x 给 chrono 加了 `<=0.4.41`
+# 的死锁约束，会与 pyo3-stub-gen 0.21+ 要求的 chrono `^0.4.44` 冲突，
+# 等 polars 上游放宽后再升 0.53.x。
 chrono        = "0.4"
-hashbrown     = "0.14"
-ordered-float = "5.0"
-polars        = { version = "0.42.0", features = [
+hashbrown     = "0.17"
+ordered-float = "5.3"
+polars        = { version = "0.52.0", features = [
     "lazy", "serde", "strings", "concat_str", "pivot", "is_in",
     "cum_agg", "abs", "ipc", "round_series", "dtype-datetime",
     "temporal", "parquet", "timezones", "fmt", "partition_by",
@@ -31,8 +34,8 @@ polars        = { version = "0.42.0", features = [
 # PYO3_PYTHON. The cdylib producer (`czsc-python`) layers on
 # `abi3-py310` + `extension-module` so the published wheel uses the
 # abi3 stable API and dynamically loads at Python startup time.
-pyo3          = { version = "0.25" }
-numpy         = "0.25"
+pyo3          = { version = "0.28" }
+numpy         = "0.28"
 rayon         = "1"
 serde         = { version = "1", features = ["derive"] }
 

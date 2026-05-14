@@ -18,7 +18,7 @@ use pyo3::basic::CompareOp;
 #[cfg(feature = "python")]
 use pyo3::types::{PyDict, PyDictMethods};
 #[cfg(feature = "python")]
-use pyo3::{Py, PyObject, PyResult, Python};
+use pyo3::{Py, PyAny, PyResult, Python};
 #[cfg(feature = "python")]
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
@@ -26,7 +26,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 /// 笔
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 #[builder(setter(into))]
 pub struct BI {
@@ -123,18 +123,18 @@ impl BI {
 
     /// 直接支持 __dict__ 属性，让 pandas DataFrame() 能正确识别对象
     #[getter]
-    pub fn __dict__(&self, py: Python) -> PyResult<PyObject> {
+    pub fn __dict__(&self, py: Python) -> PyResult<Py<PyAny>> {
         // 直接返回缓存的字典，避免重复创建
         Ok(self.get_cache(py).into())
     }
 
     #[getter]
-    fn sdt(&self, py: Python) -> PyResult<PyObject> {
+    fn sdt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.start_dt())
     }
 
     #[getter]
-    fn edt(&self, py: Python) -> PyResult<PyObject> {
+    fn edt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.end_dt())
     }
 
@@ -246,7 +246,7 @@ impl BI {
 
     /// 缓存字典（与 czsc 库兼容）
     #[getter]
-    fn cache(&self, py: Python) -> PyResult<PyObject> {
+    fn cache(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_ordered_dict(py)
     }
 

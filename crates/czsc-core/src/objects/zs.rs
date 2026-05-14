@@ -9,13 +9,13 @@ use parking_lot::RwLock;
 #[cfg(feature = "python")]
 use pyo3::types::{PyDict, PyDictMethods};
 #[cfg(feature = "python")]
-use pyo3::{Py, PyObject, PyResult, Python, pyclass, pymethods};
+use pyo3::{Py, PyAny, PyResult, Python, pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use std::sync::Arc;
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 pub struct ZS {
     pub bis: Vec<BI>,
@@ -121,13 +121,13 @@ impl ZS {
 
     /// 中枢开始时间
     #[getter]
-    fn sdt(&self, py: Python) -> PyResult<PyObject> {
+    fn sdt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.sdt)
     }
 
     /// 中枢结束时间
     #[getter]
-    fn edt(&self, py: Python) -> PyResult<PyObject> {
+    fn edt(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_naive_pandas_timestamp(py, self.edt)
     }
 
