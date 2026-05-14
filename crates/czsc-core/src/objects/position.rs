@@ -981,7 +981,10 @@ const OP_DESC_NONE: &str = "无";
 
 /// Python可见的Pos枚举包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(from_py_object, name = "Pos", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Pos", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyPos {
     pub inner: Pos,
@@ -1061,7 +1064,10 @@ impl PyPos {
 
 /// Python可见的LiteBar包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(from_py_object, name = "LiteBar", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "LiteBar", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyLiteBar {
     pub inner: LiteBar,

@@ -12,13 +12,13 @@ use crate::utils::common::freq_to_chinese_string;
 #[cfg(feature = "python")]
 use crate::utils::common::{create_naive_pandas_timestamp, parse_python_datetime};
 #[cfg(feature = "python")]
+use pyo3::IntoPyObject;
+#[cfg(feature = "python")]
 use pyo3::basic::CompareOp;
 #[cfg(feature = "python")]
 use pyo3::types::PyDictMethods;
 #[cfg(feature = "python")]
 use pyo3::{Bound, Py, PyAny, PyResult, Python, pyclass, pymethods};
-#[cfg(feature = "python")]
-use pyo3::IntoPyObject;
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 

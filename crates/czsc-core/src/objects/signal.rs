@@ -56,7 +56,10 @@ pub type Signal = SignalRef<'static>;
 
 /// Python可见的Signal包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(from_py_object, name = "Signal", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Signal", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PySignal {
     pub(crate) inner: Signal,

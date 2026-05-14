@@ -316,7 +316,10 @@ impl<'py> FromPyObject<'_, 'py> for Event {
 
 /// Python可见的Event包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(from_py_object, name = "Event", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Event", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyEvent {
     pub inner: Event,

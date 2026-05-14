@@ -318,19 +318,18 @@ impl BarGenerator {
 
         Python::attach(|py| {
             // 转换base_freq - 支持字符串和枚举
-            let base_freq =
-                if let Ok(py_str) = base_freq.cast_bound::<pyo3::types::PyString>(py) {
-                    let py_str = py_str.to_string();
-                    Freq::from_str(&py_str).map_err(|e| {
-                        pyo3::exceptions::PyValueError::new_err(format!("解析base_freq失败: {e}"))
-                    })?
-                } else if let Ok(freq) = base_freq.extract::<Freq>(py) {
-                    freq
-                } else {
-                    return Err(pyo3::exceptions::PyValueError::new_err(
-                        "base_freq必须是字符串或Freq枚举",
-                    ));
-                };
+            let base_freq = if let Ok(py_str) = base_freq.cast_bound::<pyo3::types::PyString>(py) {
+                let py_str = py_str.to_string();
+                Freq::from_str(&py_str).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("解析base_freq失败: {e}"))
+                })?
+            } else if let Ok(freq) = base_freq.extract::<Freq>(py) {
+                freq
+            } else {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "base_freq必须是字符串或Freq枚举",
+                ));
+            };
 
             // 转换freqs - 支持字符串列表和枚举列表
             let freqs_list = freqs

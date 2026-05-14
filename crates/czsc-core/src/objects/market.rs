@@ -8,7 +8,10 @@ use strum_macros::{AsRefStr, Display, EnumString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, AsRefStr, Display)]
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
-#[cfg_attr(feature = "python", pyclass(from_py_object, eq, eq_int, module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, eq, eq_int, module = "czsc._native")
+)]
 pub enum Market {
     /// A股
     #[strum(serialize = "A股")]
