@@ -55,7 +55,6 @@ czsc (Python 包)
 
 ## 项目贡献
 
-* **[择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)**
 * 缠论的 `分型、笔` 的自动识别，由 Rust 实现并通过 `czsc._native` 暴露
 * 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
 * 定义并实现了 30+ 信号函数（Rust 实现），见 `czsc._native.signals`
@@ -265,7 +264,6 @@ uv run ruff check czsc/ tests/
 ## 使用前必看
 
 * 1.0.X 版本核心算法已迁移到 Rust，与 0.9.X 版本 **不兼容**；旧代码需按新 API 迁移；
-* 这是个人开发的项目，虽然我已经尽可能避坑，但可以很直接的说，这里面一定还有坑，使用前请仔细校验分析结果，发现新坑请告诉我，我来填；
 * 免责声明：项目开源仅用于技术交流！
 * 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
 
