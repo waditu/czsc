@@ -36,7 +36,7 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
     :param abs_weight: bool，是否对权重取绝对值后再统计；多空策略一般置 True
     :param kwargs: 其他关键字参数
         - percentiles: list，``describe`` 使用的分位数序列，默认包含从 5% 到 95% 的常用分位
-    :return: None；结果通过 :func:`statistics.show_df_describe` 写入 Streamlit 页面
+    :return: None；结果直接渲染到 Streamlit 页面
     """
     dfw = dfw.copy()
     if abs_weight:
@@ -48,11 +48,13 @@ def show_weight_distribution(dfw, abs_weight=True, **kwargs):
 
     # 按 symbol 分组，得到每个品种的描述性统计并展开成宽表
     dfs = dfw.groupby("symbol")["weight"].apply(lambda x: x.describe(percentiles=percentiles)).unstack().reset_index()
+    # symbol 字段无 describe 含义，渲染前剔除，避免渐变着色出错
+    dfs = dfs.set_index("symbol")
 
-    # 复用 statistics 模块中的 describe 渲染函数，确保样式与其他位置一致
-    from .statistics import show_df_describe
+    # 复用 statistics 模块内部的 describe 渲染 helper，确保样式与其他位置一致
+    from .statistics import _render_describe_table
 
-    show_df_describe(dfs)
+    _render_describe_table(dfs)
 
 
 def show_weight_backtest(dfw, **kwargs):

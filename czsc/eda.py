@@ -184,7 +184,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
         'is_best_period', 'is_best_up_period', 'is_best_down_period', 'is_normal_period'
         'is_worst_period', 'is_worst_up_period', 'is_worst_down_period'
     """
-    from czsc import CZSC, format_standard_kline
+    from czsc import CZSC, Freq, format_standard_kline
 
     q1 = kwargs.get("q1", 0.15)
     q2 = kwargs.get("q2", 0.4)
@@ -203,7 +203,7 @@ def mark_cta_periods(df: pd.DataFrame, **kwargs):
             logger.info(f"正在处理 {symbol} 数据，共 {len(dfg)} 根K线；时间范围：{dfg['dt'].min()} - {dfg['dt'].max()}")
 
         dfg = dfg.sort_values("dt").copy().reset_index(drop=True)
-        bars = format_standard_kline(dfg, freq="30分钟")
+        bars = format_standard_kline(dfg, freq=Freq.F30)
         c = CZSC(bars, max_bi_num=len(bars))
 
         bi_stats = []

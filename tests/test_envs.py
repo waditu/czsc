@@ -10,10 +10,10 @@
     - ``czsc_max_bi_num``：最大笔数量
     - ``czsc_verbose``：是否启用详细日志输出
 
-    历史遗留的 ``use_python``、``get_welcome``、``valid_true`` 等 helper
-    以及 ``CZSC_USE_PYTHON`` 环境变量分支均已废弃。本套件除了覆盖这些
-    保留接口的正确行为之外，还显式断言废弃符号的缺失，避免后续重构时
-    被无意中重新加入。
+    历史遗留的 ``use_python``、``get_welcome``、``valid_true`` 等 helper 均已废弃。
+    本套件除了覆盖保留接口的正确行为之外，还显式断言这些废弃 helper 的缺失，避免
+    后续重构时被无意中重新加入。``CZSC_USE_PYTHON`` 环境变量分支的反向断言由
+    ``tests/compat/test_public_api.py::test_no_czsc_use_python_branch`` 统一负责。
 
 测试覆盖：
     - 已废弃接口的"不存在"反向断言；
@@ -56,22 +56,6 @@ class TestRetiredHelpers:
         反向断言语义明确分离，避免同一参数化列表中混用正反逻辑。
         """
         assert hasattr(envs_mod, "_env"), "私有 _env helper 应当继续保留"
-
-    def test_no_czsc_use_python_branch(self) -> None:
-        """验证 czsc.envs 源码中不再引用 CZSC_USE_PYTHON 环境变量。
-
-        测试场景：
-            通过 ``inspect.getsource`` 获取整个 ``czsc.envs`` 模块的源码字符串，
-            搜索其中是否仍然包含 ``CZSC_USE_PYTHON`` 关键字。
-
-        关键断言：
-            源码中不得出现 ``CZSC_USE_PYTHON`` 字符串，确保迁移后已经
-            完全切断 Rust/Python 双实现的环境变量切换分支。
-        """
-        import inspect
-
-        src = inspect.getsource(envs_mod)
-        assert "CZSC_USE_PYTHON" not in src, "CZSC_USE_PYTHON 环境变量必须不被引用"
 
 
 class TestGetVerbose:

@@ -3,24 +3,21 @@
 
 本模块汇总了策略层面的常用 Streamlit 可视化组件，覆盖以下场景：
 
-1. :func:`show_optuna_study`：展示 Optuna 调参的可视化结果与最佳参数表；
-2. :func:`show_czsc_trader`：展示 ``CzscTrader`` 的多周期 K 线、分型、笔以及交易信号；
-3. :func:`show_strategies_recent`：展示多个策略最近 N 天的收益对比；
-4. :func:`show_returns_contribution`：分析子策略对组合总收益的贡献；
-5. :func:`show_symbols_bench`：展示多品种等权基准与品种间相关性；
-6. :func:`show_quarterly_effect`：展示四个季度分别的累计收益与绩效；
-7. :func:`show_multi_backtest`：多策略回测结果的统一对比表；
-8. :func:`show_cta_periods_classify` / :func:`show_volatility_classify`：按 CTA 行情阶段
+1. :func:`show_czsc_trader`：展示 ``CzscTrader`` 的多周期 K 线、分型、笔以及交易信号；
+2. :func:`show_strategies_recent`：展示多个策略最近 N 天的收益对比；
+3. :func:`show_returns_contribution`：分析子策略对组合总收益的贡献；
+4. :func:`show_symbols_bench`：展示多品种等权基准与品种间相关性；
+5. :func:`show_quarterly_effect`：展示四个季度分别的累计收益与绩效；
+6. :func:`show_multi_backtest`：多策略回测结果的统一对比表；
+7. :func:`show_cta_periods_classify` / :func:`show_volatility_classify`：按 CTA 行情阶段
    或波动率分类的回测对比；
-9. :func:`show_portfolio`：组合日收益绩效的综合展示；
-10. :func:`show_turnover_rate`：换手率的多维度展示；
-11. :func:`show_stats_compare`：多组策略回测的绩效对比；
-12. :func:`show_symbol_penalty`：依次剔除收益最高的 N 个品种，对比收益变化。
+8. :func:`show_portfolio`：组合日收益绩效的综合展示；
+9. :func:`show_turnover_rate`：换手率的多维度展示；
+10. :func:`show_stats_compare`：多组策略回测的绩效对比；
+11. :func:`show_symbol_penalty`：依次剔除收益最高的 N 个品种，对比收益变化。
 
 作者: 缠中说禅团队
 """
-
-import hashlib
 
 import numpy as np
 import pandas as pd
@@ -29,55 +26,6 @@ import streamlit as st
 from wbt import WeightBacktest
 
 from .base import apply_stats_style, generate_component_key
-
-
-def show_optuna_study(study, key=None, **kwargs):
-    """展示 Optuna Study 的可视化结果
-
-    依次绘制 Optuna 的 ``contour`` 与 ``slice`` 图，并展示 ``optuna_good_params``
-    输出的最佳参数列表。
-
-    :param study: optuna.study.Study，Optuna Study 对象
-    :param key: str，可选；组件基础标识符，每个图表会自动追加后缀
-    :param kwargs: 其他参数
-        - sub_title: str，子标题
-        - keep: float，保留最佳参数的比例，默认 0.2
-    :return: optuna.study.Study；原样返回，便于链式调用
-    """
-    try:
-        import optuna
-    except ImportError:
-        st.error("请安装 optuna 库, 执行命令：pip install optuna")
-        return
-
-    # Optuna 可视化文档：
-    # https://optuna.readthedocs.io/en/stable/reference/visualization/index.html
-    # https://zh-cn.optuna.org/reference/visualization.html
-    from czsc.utils.optuna import optuna_good_params
-
-    sub_title = kwargs.pop("sub_title", "Optuna Study Visualization")
-    if sub_title:
-        # 为 anchor 生成稳定且短小的 hash
-        anchor = hashlib.md5(sub_title.encode("utf-8")).hexdigest().upper()[:6]
-        st.subheader(sub_title, divider="rainbow", anchor=anchor)
-
-    # 等高线图
-    fig = optuna.visualization.plot_contour(study)
-
-    # 自动生成组件 key
-    if key is None:
-        key = generate_component_key(study, prefix="optuna", sub_title=sub_title)
-
-    st.plotly_chart(fig, key=f"{key}_contour", width="stretch")
-
-    # 切片图
-    fig = optuna.visualization.plot_slice(study)
-    st.plotly_chart(fig, key=f"{key}_slice", width="stretch")
-
-    with st.expander("最佳参数列表", expanded=False):
-        params = optuna_good_params(study, keep=kwargs.pop("keep", 0.2))
-        st.dataframe(params, width="stretch")
-    return study
 
 
 def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):

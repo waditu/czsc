@@ -86,9 +86,6 @@ from .statistics import (
     show_describe as show_describe,
 )
 from .statistics import (
-    show_df_describe as show_df_describe,
-)
-from .statistics import (
     show_normality_check as show_normality_check,
 )
 from .statistics import (
@@ -114,9 +111,6 @@ from .strategy import (
 )
 from .strategy import (
     show_multi_backtest as show_multi_backtest,
-)
-from .strategy import (
-    show_optuna_study as show_optuna_study,
 )
 from .strategy import (
     show_portfolio as show_portfolio,
@@ -194,8 +188,6 @@ __all__ = [
     "show_date_effect",
     "show_normality_check",
     "show_describe",
-    "show_df_describe",
-    "show_optuna_study",
     "show_czsc_trader",
     "show_strategies_recent",
     "show_returns_contribution",

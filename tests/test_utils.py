@@ -1,67 +1,31 @@
 """``czsc.utils`` 通用工具函数单元测试。
 
-本测试套件覆盖 ``czsc.utils`` 中若干通用工具函数的基础行为，包括数值四舍五入、
-对称加密往返以及超时装饰器在正常与超时两种场景下的表现。
-
 模块作者：
-    zengbin93 (zeng_bin8888@163.com)，创建于 2022/2/16 20:31
+    zengbin93 (zeng_bin8888@163.com)
 """
 
-import time
-
-from czsc import utils
-from czsc.utils import timeout_decorator
+from czsc.utils import freqs_sorted
 
 
-def test_x_round():
-    """验证 ``utils.x_round`` 按指定小数位进行四舍五入的行为。
+def test_freqs_sorted_basic():
+    """验证 ``freqs_sorted`` 按缠论惯用顺序对周期字符串去重并排序。
 
     测试场景：
-        - 整数输入：保留 3 位小数应保持原值；
-        - 浮点输入：分别在 3 / 4 / 5 位精度下校验截断与舍入结果。
+        - 输入打乱顺序的周期列表，包含重复项
+        - 应去重后按从高频到低频顺序输出
 
     关键断言：
-        ``x_round(1.000342, n)`` 在 n=3/4/5 时分别得到 1.0 / 1.0003 / 1.00034。
+        - ``'5分钟'`` 排在 ``'30分钟'`` 之前
+        - ``'30分钟'`` 排在 ``'日线'`` 之前
+        - 重复项被去重
     """
-    assert utils.x_round(100, 3) == 100
-    assert utils.x_round(1.000342, 3) == 1.0
-    assert utils.x_round(1.000342, 4) == 1.0003
-    assert utils.x_round(1.000342, 5) == 1.00034
+    result = freqs_sorted(["30分钟", "5分钟", "日线", "5分钟"])
+    assert result == ["5分钟", "30分钟", "日线"]
 
 
-def test_timeout_decorator_success():
-    """验证超时装饰器在被装饰函数耗时小于阈值时正常返回结果。
-
-    测试场景：
-        定义一个执行约 1 秒的 ``fast_function``，并用 ``timeout_decorator(2)``
-        装饰（超时阈值 2 秒）。
-
-    关键断言：
-        函数能够在阈值内正常完成并返回 ``"Completed"``。
-    """
-
-    @timeout_decorator(2)
-    def fast_function():
-        time.sleep(1)
-        return "Completed"
-
-    assert fast_function() == "Completed", "快速函数应该正常返回结果"
-
-
-def test_timeout_decorator_timeout():
-    """验证超时装饰器在被装饰函数耗时超过阈值时返回 None。
-
-    测试场景：
-        定义一个执行约 5 秒的 ``slow_function``，并用 ``timeout_decorator(1)``
-        装饰（超时阈值 1 秒）。
-
-    关键断言：
-        装饰器在 1 秒后中止函数执行并返回 ``None``。
-    """
-
-    @timeout_decorator(1)
-    def slow_function():
-        time.sleep(5)
-        return "Completed"
-
-    assert slow_function() is None, "慢函数应该超时返回None"
+def test_freqs_sorted_unknown_freq_to_tail():
+    """验证未登记的周期被排到末尾，并按字典序作次级排序。"""
+    result = freqs_sorted(["日线", "未知A", "5分钟", "未知B"])
+    assert result[:2] == ["5分钟", "日线"]
+    # 未登记的两个周期排在末尾，按字典序
+    assert set(result[2:]) == {"未知A", "未知B"}

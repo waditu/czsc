@@ -221,23 +221,21 @@ def test_analysis_corr_imports():
 
 
 def test_backward_compatibility():
-    """验证向后兼容性：重构前的旧导入路径仍然可用。
+    """验证向后兼容性：``czsc.utils`` 顶层仍稳定暴露非绘图类公共接口。
 
-    测试场景：
-        在重构后，仍然支持从 ``czsc.utils`` 顶层直接导入历史接口，包括：
-        ``DataClient``、``DiskCache``、``KlineChart``、``daily_performance``、
-        ``generate_fernet_key``、``home_path``、``plot_colored_table`` 等。
+    评审决议（L-5/L-6）已经移除了 ``czsc.utils`` 的 lazy loading 入口，
+    绘图相关 symbol 现在统一从 ``czsc.utils.plotting.*`` 显式获取。本测试
+    锁定这条契约，避免有人后续又把 lazy loading 加回来：
 
-    关键断言：
-        - 各个名称都能成功导入；
-        - 类对象 / 路径对象不为 None；
-        - 函数对象 ``callable(...)`` 为真。
+    - ``czsc.utils.*``：稳定暴露 ``DataClient`` / ``DiskCache`` / ``home_path`` /
+      ``daily_performance`` 等数据/统计接口
+    - ``czsc.utils.plotting.kline.KlineChart`` / ``czsc.utils.plotting.backtest.plot_colored_table``：
+      绘图类符号显式从 plotting 子模块拿
+    - ``czsc.*`` top-level：兼顾历史用法，``KlineChart`` 等仍可从 ``czsc`` 直接 import
     """
-    # 测试从主utils导入
     from czsc.utils import (
         DataClient,
         DiskCache,
-        KlineChart,
         daily_performance,
         home_path,
     )
@@ -246,13 +244,19 @@ def test_backward_compatibility():
     assert DiskCache is not None
     assert DataClient is not None
     assert callable(daily_performance)
+
+    # 绘图符号显式从 plotting 子模块获取
+    from czsc.utils.plotting.backtest import plot_colored_table
+    from czsc.utils.plotting.kline import KlineChart
+
     assert KlineChart is not None
-
-    # 测试向后兼容性 - 通过 czsc.utils 的 __init__.py 重新导出
-    from czsc.utils import DiskCache, plot_colored_table
-
     assert callable(plot_colored_table)
-    assert DiskCache is not None
+
+    # 兼顾历史用法：czsc top-level 仍静态暴露 KlineChart 和 plot_czsc_chart
+    import czsc
+
+    assert getattr(czsc, "KlineChart", None) is not None
+    assert callable(getattr(czsc, "plot_czsc_chart", None))
 
 
 if __name__ == "__main__":

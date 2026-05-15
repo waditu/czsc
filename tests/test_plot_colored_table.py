@@ -1,9 +1,11 @@
+import logging
+
 import pandas as pd
 
 from czsc.utils.plotting.backtest import TABLE_DARK_TEXT, TABLE_LIGHT_TEXT, plot_colored_table
 
 
-def test_plot_colored_table():
+def test_plot_colored_table(caplog):
     # 构造测试数据
     df = pd.DataFrame(
         {
@@ -50,10 +52,14 @@ def test_plot_colored_table():
     </html>
     """
 
-    with open("test_plot_colored_table_result.html", "w", encoding="utf-8") as f:
+    output_path = "test_plot_colored_table_result.html"
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(full_html)
 
-    print("测试完成，结果已保存至 test_plot_colored_table_result.html")
+    # 用 caplog 替代 print：保留诊断信息，同时让测试运行时不污染 stdout
+    with caplog.at_level(logging.INFO):
+        logging.getLogger(__name__).info("测试完成，结果已保存至 %s", output_path)
+    assert any("结果已保存" in rec.message for rec in caplog.records)
 
 
 def test_plot_colored_table_auto_adjusts_font_color():

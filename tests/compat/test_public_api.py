@@ -59,6 +59,25 @@ def test_top_level_names_importable() -> None:
     assert not missing, f"czsc.* missing {len(missing)} required public names: {missing}"
 
 
+def test_top_level_no_unsnapshotted_public_names() -> None:
+    """反向断言：``czsc.__all__`` 中的每一个名字都必须出现在快照里。
+
+    这是"代码全集 ⊆ 快照"方向的断言。原快照只验证"快照 ⊆ 代码"，
+    会漏检新增 API 的快照同步；本测试拦截这种漏检：任何新增到
+    ``czsc.__all__`` 但未同步到 ``snapshots/api_v1.json`` 的名字都会让本
+    用例失败，提醒维护者一并更新快照（公共契约不可隐式变更）。
+    """
+    snap = _load_snapshot()
+    czsc, err = _safe_import("czsc")
+    assert czsc is not None, f"failed to import czsc: {err}"
+    snapshotted = set(snap["top_level"])
+    extra = [name for name in getattr(czsc, "__all__", []) if name not in snapshotted]
+    assert not extra, (
+        f"czsc.__all__ exposes {len(extra)} public names not yet in snapshots/api_v1.json: {extra}. "
+        "Update the snapshot in the same commit as the public-API addition."
+    )
+
+
 def test_traders_namespace_complete() -> None:
     """``czsc.traders.*`` 必须暴露快照中列出的所有公共名称。"""
     snap = _load_snapshot()

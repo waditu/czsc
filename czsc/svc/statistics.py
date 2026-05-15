@@ -13,14 +13,13 @@
 6. :func:`show_classify`：单变量分层统计与单调性观察；
 7. :func:`show_date_effect`：星期效应与月份效应；
 8. :func:`show_normality_check`：正态性检验（Shapiro-Wilk、Jarque-Bera、KS）；
-9. :func:`show_describe` / :func:`show_df_describe`：DataFrame 描述性统计的着色版本。
+9. :func:`show_describe`：DataFrame 描述性统计的着色版本。
 """
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from deprecated import deprecated
 from wbt import daily_performance
 
 from .base import apply_stats_style, ensure_datetime_index, generate_component_key
@@ -416,7 +415,7 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
 
         weekday_effect = df.groupby("weekday")[ret_col].describe(percentiles=percentiles)
         weekday_effect = weekday_effect.loc[sorted_rows]
-        show_df_describe(weekday_effect)
+        _render_describe_table(weekday_effect)
 
     if show_month:
         st.write("##### 月份效应")
@@ -428,7 +427,7 @@ def show_date_effect(df: pd.DataFrame, ret_col: str, **kwargs):
         df["month"] = df["month"].map(month_map)
         month_effect = df.groupby("month")[ret_col].describe(percentiles=percentiles)
         month_effect = month_effect.loc[sorted_rows]
-        show_df_describe(month_effect)
+        _render_describe_table(month_effect)
 
     st.caption("数据说明：count 为样本数量，mean 为均值，std 为标准差，min 为最小值，n% 为分位数，max 为最大值")
 
@@ -494,10 +493,36 @@ def show_normality_check(data: pd.Series, alpha=0.05):
     st.divider()
 
 
+def _render_describe_table(
+    df_desc: pd.DataFrame,
+    digits: int = 4,
+    extra_subsets: tuple[str, ...] = (),
+) -> None:
+    """渲染一个"已 describe 过"的 DataFrame，带渐变色与统一小数位格式
+
+    :param df_desc: pd.DataFrame，已经过 ``.describe()`` 处理（行为变量名，列含 count/mean/std/分位数/max/min）
+    :param digits: int，小数位数
+    :param extra_subsets: 额外参与渐变着色的列名（如 ``("偏度", "峰度")``）
+    """
+    quantiles = [x for x in df_desc.columns if "%" in x]
+    df_styled = df_desc.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
+    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
+    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
+    for col in extra_subsets:
+        if col in df_desc.columns:
+            df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=[col])
+
+    fmt = f"{{:.{digits}f}}"
+    format_dict: dict[str, str] = {"count": "{:.0f}"}
+    for col in ["mean", "std", "min", "max", *quantiles, *extra_subsets]:
+        format_dict[col] = fmt
+
+    df_styled = df_styled.format(format_dict)
+    st.dataframe(df_styled, width="stretch")
+
+
 def show_describe(df: pd.DataFrame, **kwargs):
     """展示 DataFrame 的描述性统计信息
-
-    比 :func:`show_df_describe` 多了"偏度""峰度"以及自定义分位数和小数位数控制。
 
     :param df: pd.DataFrame，数据源
     :param kwargs: 其他参数
@@ -517,54 +542,7 @@ def show_describe(df: pd.DataFrame, **kwargs):
     df_desc["偏度"] = df_raw.skew()
     df_desc["峰度"] = df_raw.kurt()
 
-    quantiles = [x for x in df_desc.columns if "%" in x]
-    df_styled = df_desc.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["偏度"])
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["峰度"])
-
-    # 根据 digits 动态构造格式化字符串
-    format_dict = {
-        "count": "{:.0f}",
-        "mean": f"{{:.{digits}f}}",
-        "std": f"{{:.{digits}f}}",
-        "min": f"{{:.{digits}f}}",
-        "max": f"{{:.{digits}f}}",
-        "偏度": f"{{:.{digits}f}}",
-        "峰度": f"{{:.{digits}f}}",
-    }
-    for q in quantiles:
-        format_dict[q] = f"{{:.{digits}f}}"
-
-    df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, width="stretch")
+    _render_describe_table(df_desc, digits=digits, extra_subsets=("偏度", "峰度"))
     st.caption(
         "说明：描述性统计中 count 为非空值的个数，mean 为均值，std 为标准差，min 为最小值，max 为最大值，N% 为分位数。"
     )
-
-
-@deprecated(reason="建议直接使用 show_describe 函数")
-def show_df_describe(df: pd.DataFrame):
-    """展示 DataFrame 的描述性统计信息（旧版，已弃用）
-
-    :param df: pd.DataFrame，必须是 ``df.describe()`` 的结果
-    :return: None
-    """
-    quantiles = [x for x in df.columns if "%" in x]
-    df_styled = df.style.background_gradient(cmap="RdYlGn_r", axis=None, subset=["mean"])
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["std"])
-    df_styled = df_styled.background_gradient(cmap="RdYlGn_r", axis=None, subset=["max", "min"] + quantiles)
-
-    format_dict = {
-        "count": "{:.0f}",
-        "mean": "{:.4f}",
-        "std": "{:.4f}",
-        "min": "{:.4f}",
-        "max": "{:.4f}",
-    }
-    for q in quantiles:
-        format_dict[q] = "{:.4f}"
-
-    df_styled = df_styled.format(format_dict)
-    st.dataframe(df_styled, width="stretch")

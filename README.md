@@ -34,13 +34,12 @@ czsc (Python 包)
 │   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
-│   ├── signals.{bar,cxt,tas,vol,pressure,obv,cvolp}  ← 30+ 信号函数
+│   ├── signals.*         ← 250+ 信号函数（13+ 子模块；详见 crates/czsc-signals/src/）
 │   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等)
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
 ├── czsc.svc              ← Streamlit 量化研究组件库
-├── czsc.sensors          ← 事件检测与特征分析
 ├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
-├── czsc.connectors       ← 数据源连接器（天勤/Tushare/聚宽/CCXT）
+├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
 ├── czsc.eda              ← 探索性数据分析（因子/特征/权重）
 ├── czsc.strategies       ← 策略门面（CzscStrategyBase/CzscJsonStrategy）
 ├── czsc.fsa              ← 飞书自动化工具
@@ -48,8 +47,8 @@ czsc (Python 包)
 └── czsc.envs             ← 环境变量管理
 ```
 
-底层 Rust workspace 包含 9 个 crate：`czsc-core` / `czsc-signals` / `czsc-trader` /
-`czsc-utils` / `czsc-ta` / `czsc-signal-macros` / `error-macros` / `error-support` /
+底层 Rust workspace 包含 9 个 crate：`czsc` / `czsc-core` / `czsc-derive` / `czsc-signals` /
+`czsc-trader` / `czsc-utils` / `czsc-ta` / `czsc-signal-macros` /
 `czsc-python`（PyO3 绑定入口）。
 
 
@@ -57,7 +56,7 @@ czsc (Python 包)
 
 * 缠论的 `分型、笔` 的自动识别，由 Rust 实现并通过 `czsc._native` 暴露
 * 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
-* 定义并实现了 30+ 信号函数（Rust 实现），见 `czsc._native.signals`
+* 定义并实现了 250+ 信号函数（Rust 实现），见 `czsc._native.signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
 * **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**
 
@@ -90,6 +89,16 @@ git clone https://github.com/waditu/czsc.git
 cd czsc
 maturin develop --release
 ```
+
+> **Rust 构建环境约束**：底层依赖 `pyo3` / `pyo3-stub-gen` 0.22 要求 Python ≥ 3.10。
+> 当系统默认 Python 低于 3.10 时，请通过环境变量显式指定：
+>
+> ```bash
+> export PYO3_PYTHON=$(which python3.12)   # 或任意 3.10+ 的解释器
+> ```
+>
+> 否则 `cargo build` / `cargo test` 会在 `crates/czsc-python/build.rs` 提前 panic 并给出修复建议。
+> 用 `uv sync --extra dev` 走 UV 流程时，UV 会自动选择项目声明的 Python，不需要额外设置。
 
 
 ## 快速开始
@@ -214,9 +223,8 @@ fig.show()
 |------|--------|------|
 | `tq_connector.py` | 天勤（TQSdk） | 期货实时/历史行情 |
 | `ts_connector.py` | Tushare | A股历史数据 |
-| `jq_connector.py` | 聚宽 | A股/期货数据 |
 | `ccxt_connector.py` | CCXT | 数字货币交易所 |
-| `research.py` | 研究数据接口 | 内部研究数据 |
+| `local_data.py` | 投研数据本地缓存 | CZSC 共享数据本地读取入口 |
 
 
 ## Streamlit 组件库（czsc.svc）

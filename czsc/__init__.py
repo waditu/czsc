@@ -133,12 +133,10 @@ from .utils import (
     rolling_daily_performance,
     save_json,
     set_url_token,
-    timeout_decorator,
     to_arrow,
     update_bbars,
     update_nxb,
     update_tbars,
-    x_round,
 )
 
 # czsc.ta 别名再保险：from .utils import ... 链路上若有副作用 import czsc.utils.ta，
@@ -257,12 +255,10 @@ __all__ = [
     "save_json",
     "set_url_token",
     "ta",
-    "timeout_decorator",
     "to_arrow",
     "update_bbars",
     "update_nxb",
     "update_tbars",
-    "x_round",
     # 静态 import 的高频符号（曾经走 _LAZY_ATTRS）
     "capture_warnings",
     "execute_with_warning_capture",
