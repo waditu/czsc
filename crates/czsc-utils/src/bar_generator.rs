@@ -17,12 +17,12 @@ use pyo3::types::{PyAnyMethods, PyDict, PyListMethods};
 #[cfg(feature = "python")]
 use pyo3::{IntoPyObject, PyResult, pyclass, pymethods};
 #[cfg(feature = "python")]
-use pyo3::{PyObject, Python};
+use pyo3::{Py, PyAny, Python};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 pub struct BarGenerator {
     market: Market,
     /// 基准周期K线
@@ -309,37 +309,36 @@ impl BarGenerator {
     #[new]
     #[pyo3(signature = (base_freq, freqs, max_count = 2000, market = None))]
     fn new_py(
-        base_freq: PyObject,
-        freqs: PyObject,
+        base_freq: Py<PyAny>,
+        freqs: Py<PyAny>,
         max_count: usize,
-        market: Option<PyObject>,
+        market: Option<Py<PyAny>>,
     ) -> PyResult<Self> {
         use std::str::FromStr;
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             // 转换base_freq - 支持字符串和枚举
-            let base_freq =
-                if let Ok(py_str) = base_freq.downcast_bound::<pyo3::types::PyString>(py) {
-                    let py_str = py_str.to_string();
-                    Freq::from_str(&py_str).map_err(|e| {
-                        pyo3::exceptions::PyValueError::new_err(format!("解析base_freq失败: {e}"))
-                    })?
-                } else if let Ok(freq) = base_freq.extract::<Freq>(py) {
-                    freq
-                } else {
-                    return Err(pyo3::exceptions::PyValueError::new_err(
-                        "base_freq必须是字符串或Freq枚举",
-                    ));
-                };
+            let base_freq = if let Ok(py_str) = base_freq.cast_bound::<pyo3::types::PyString>(py) {
+                let py_str = py_str.to_string();
+                Freq::from_str(&py_str).map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!("解析base_freq失败: {e}"))
+                })?
+            } else if let Ok(freq) = base_freq.extract::<Freq>(py) {
+                freq
+            } else {
+                return Err(pyo3::exceptions::PyValueError::new_err(
+                    "base_freq必须是字符串或Freq枚举",
+                ));
+            };
 
             // 转换freqs - 支持字符串列表和枚举列表
             let freqs_list = freqs
-                .downcast_bound::<pyo3::types::PyList>(py)
+                .cast_bound::<pyo3::types::PyList>(py)
                 .map_err(|_| pyo3::exceptions::PyValueError::new_err("freqs必须是列表"))?;
 
             let mut converted_freqs = Vec::new();
             for freq_item in freqs_list.iter() {
-                let freq = if let Ok(py_str) = freq_item.downcast::<pyo3::types::PyString>() {
+                let freq = if let Ok(py_str) = freq_item.cast::<pyo3::types::PyString>() {
                     let py_str = py_str.to_string();
                     Freq::from_str(&py_str).map_err(|e| {
                         pyo3::exceptions::PyValueError::new_err(format!("解析freqs失败: {e}"))
@@ -356,7 +355,7 @@ impl BarGenerator {
 
             // 转换market - 支持字符串、枚举和None（默认为A股）
             let market = if let Some(market_obj) = market {
-                if let Ok(py_str) = market_obj.downcast_bound::<pyo3::types::PyString>(py) {
+                if let Ok(py_str) = market_obj.cast_bound::<pyo3::types::PyString>(py) {
                     let py_str = py_str.to_string();
                     Market::from_str(&py_str).map_err(|e| {
                         pyo3::exceptions::PyValueError::new_err(format!("解析market失败: {e}"))
@@ -390,12 +389,12 @@ impl BarGenerator {
     ///
     /// * `freq` - 周期名称 (支持字符串或Freq枚举)
     /// * `bars` - K线序列
-    fn init_freq_bars(&mut self, freq: PyObject, bars: Vec<RawBar>) -> PyResult<()> {
+    fn init_freq_bars(&mut self, freq: Py<PyAny>, bars: Vec<RawBar>) -> PyResult<()> {
         use std::str::FromStr;
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             // 转换freq - 支持字符串和枚举
-            let freq = if let Ok(py_str) = freq.downcast_bound::<pyo3::types::PyString>(py) {
+            let freq = if let Ok(py_str) = freq.cast_bound::<pyo3::types::PyString>(py) {
                 let py_str = py_str.to_string();
                 Freq::from_str(&py_str).map_err(|e| {
                     pyo3::exceptions::PyValueError::new_err(format!("解析freq失败: {e}"))
@@ -460,7 +459,7 @@ impl BarGenerator {
 
     /// 获取end_dt属性（Python兼容）
     #[getter]
-    fn end_dt(&self, py: Python) -> PyResult<Option<PyObject>> {
+    fn end_dt(&self, py: Python) -> PyResult<Option<Py<PyAny>>> {
         match self.latest_date() {
             Some(dt) => {
                 let timestamp = czsc_core::utils::common::create_naive_pandas_timestamp(py, dt)?;
@@ -472,7 +471,7 @@ impl BarGenerator {
 
     /// 获取各周期K线数据 - 返回字典，键为频率字符串，值为K线列表
     #[getter]
-    fn bars(&self, py: Python) -> PyResult<PyObject> {
+    fn bars(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
 
         // 遍历 BarGenerator 的所有周期数据
@@ -519,7 +518,7 @@ impl BarGenerator {
     }
 
     /// 支持 pickle 序列化 - 使用 __reduce__ 方法
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         // 构造函数参数
         let freqs: Vec<String> = self
             .freq_bars
@@ -550,10 +549,10 @@ impl BarGenerator {
     }
 
     /// 支持 pickle 反序列化
-    fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
+    fn __setstate__(&mut self, py: Python, state: Py<PyAny>) -> PyResult<()> {
         use std::str::FromStr;
 
-        let state_dict = state.downcast_bound::<PyDict>(py)?;
+        let state_dict = state.cast_bound::<PyDict>(py)?;
 
         // 恢复市场属性
         if let Some(market_item) = state_dict.get_item("market")? {
@@ -565,7 +564,7 @@ impl BarGenerator {
 
         // 恢复K线数据
         if let Some(freq_bars_item) = state_dict.get_item("freq_bars")? {
-            let freq_bars_dict = freq_bars_item.downcast::<PyDict>()?;
+            let freq_bars_dict = freq_bars_item.cast::<PyDict>()?;
             self.freq_bars.clear();
 
             for (freq_str, bars_obj) in freq_bars_dict.iter() {

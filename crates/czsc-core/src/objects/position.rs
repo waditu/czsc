@@ -981,7 +981,10 @@ const OP_DESC_NONE: &str = "无";
 
 /// Python可见的Pos枚举包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "Pos", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Pos", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyPos {
     pub inner: Pos,
@@ -1061,7 +1064,10 @@ impl PyPos {
 
 /// Python可见的LiteBar包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "LiteBar", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "LiteBar", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyLiteBar {
     pub inner: LiteBar,
@@ -1113,7 +1119,7 @@ impl PyLiteBar {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(
     feature = "python",
-    pyclass(name = "Position", module = "czsc._native")
+    pyclass(from_py_object, name = "Position", module = "czsc._native")
 )]
 #[derive(Debug, Clone)]
 pub struct PyPosition {
@@ -1257,7 +1263,7 @@ impl PyPosition {
 
     /// 获取操作记录列表
     #[getter]
-    fn operates(&self, py: Python) -> PyResult<Vec<PyObject>> {
+    fn operates(&self, py: Python) -> PyResult<Vec<Py<PyAny>>> {
         let mut result = Vec::new();
 
         for op_record in &self.inner.operates {
@@ -1302,11 +1308,11 @@ impl PyPosition {
 
     /// 更新仓位状态（兼容单参数调用）
     #[pyo3(signature = (arg1, arg2 = None))]
-    fn update(&mut self, arg1: PyObject, arg2: Option<PyObject>) -> PyResult<()> {
+    fn update(&mut self, arg1: Py<PyAny>, arg2: Option<Py<PyAny>>) -> PyResult<()> {
         use pyo3::types::{PyDict, PyMapping};
         use std::collections::HashSet;
 
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             if let Some(arg2_val) = arg2 {
                 // 两个参数的情况：update(last_bar, last_signals)
                 let last_bar: PyLiteBar = arg1.extract(py)?;
@@ -1320,7 +1326,7 @@ impl PyPosition {
                 // 一个参数的情况：update(signals_dict)
                 // Python版本期望字典格式: {'symbol': 'BTC', 'dt': Timestamp(...), 'id': 1, 'close': 100.0, '信号key': '信号value', ...}
 
-                if let Ok(signals_dict) = arg1.downcast_bound::<PyDict>(py) {
+                if let Ok(signals_dict) = arg1.cast_bound::<PyDict>(py) {
                     // 1. 提取必需字段：dt, id, close
                     let dt_obj = signals_dict.get_item("dt")?.ok_or_else(|| {
                         PyValueError::new_err("Missing 'dt' field in signals dict")
@@ -1448,7 +1454,7 @@ impl PyPosition {
             .map_err(|e| PyValueError::new_err(format!("生成交易对数据失败: {e}")))?;
 
         // 将DataFrame转换为记录列表
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let list = pyo3::types::PyList::empty(py);
 
             let height = df.height();
@@ -1538,7 +1544,7 @@ impl PyPosition {
     /// 获取持仓历史数据（返回记录列表，兼容历史版本）
     #[getter]
     fn holds(&self) -> PyResult<Py<pyo3::types::PyList>> {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let list = pyo3::types::PyList::empty(py);
 
             for hold_record in &self.inner.holds {
@@ -1603,7 +1609,7 @@ impl PyPosition {
     }
 
     /// 支持 pickle 序列化 - 使用 __reduce__ 方法
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObject;
 
         // 构造函数参数
@@ -1640,8 +1646,8 @@ impl PyPosition {
 
     /// 导出Position数据为Python字典
     #[pyo3(signature = (with_data = true))]
-    fn dump(&self, with_data: bool) -> PyResult<PyObject> {
-        Python::with_gil(|py| {
+    fn dump(&self, with_data: bool) -> PyResult<Py<PyAny>> {
+        Python::attach(|py| {
             let dict = pyo3::types::PyDict::new(py);
 
             // 基本属性 - 按期望顺序添加
@@ -1748,19 +1754,19 @@ impl PyPosition {
 
     /// 从字典数据加载Position
     #[classmethod]
-    fn load(_cls: &Bound<'_, pyo3::types::PyType>, data: PyObject) -> PyResult<Self> {
-        Python::with_gil(|py| {
+    fn load(_cls: &Bound<'_, pyo3::types::PyType>, data: Py<PyAny>) -> PyResult<Self> {
+        Python::attach(|py| {
             // 首先尝试直接转换为字典
-            let dict = match data.downcast_bound::<pyo3::types::PyDict>(py) {
+            let dict = match data.cast_bound::<pyo3::types::PyDict>(py) {
                 Ok(d) => d.clone(),
                 Err(_) => {
                     // 如果失败，尝试作为字符串处理
-                    if let Ok(s) = data.downcast_bound::<pyo3::types::PyString>(py) {
+                    if let Ok(s) = data.cast_bound::<pyo3::types::PyString>(py) {
                         let json_str: String = s.extract()?;
                         // 使用Python的json模块解析
                         let json_module = py.import("json")?;
                         let parsed = json_module.call_method1("loads", (json_str,))?;
-                        parsed.downcast::<pyo3::types::PyDict>()?.clone()
+                        parsed.cast::<pyo3::types::PyDict>()?.clone()
                     } else {
                         return Err(pyo3::exceptions::PyTypeError::new_err(
                             "Expected dict or JSON string",
@@ -1800,11 +1806,11 @@ impl PyPosition {
             let opens_data = dict
                 .get_item("opens")?
                 .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing 'opens' field"))?;
-            let opens_list = opens_data.downcast::<pyo3::types::PyList>()?;
+            let opens_list = opens_data.cast::<pyo3::types::PyList>()?;
             let mut opens = Vec::new();
 
             for item in opens_list.iter() {
-                let event_dict = item.downcast::<pyo3::types::PyDict>()?;
+                let event_dict = item.cast::<pyo3::types::PyDict>()?;
                 let event_name: String = event_dict
                     .get_item("name")?
                     .ok_or_else(|| {
@@ -1824,11 +1830,11 @@ impl PyPosition {
                 let signals_all_data = event_dict.get_item("signals_all")?.ok_or_else(|| {
                     pyo3::exceptions::PyKeyError::new_err("Missing 'signals_all' in event")
                 })?;
-                let signals_all_list = signals_all_data.downcast::<pyo3::types::PyList>()?;
+                let signals_all_list = signals_all_data.cast::<pyo3::types::PyList>()?;
                 let mut signals_all = Vec::new();
 
                 for signal_item in signals_all_list.iter() {
-                    let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                    let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                     let key: String = signal_dict
                         .get_item("key")?
                         .ok_or_else(|| {
@@ -1850,9 +1856,9 @@ impl PyPosition {
                 // 解析 signals_any
                 let mut signals_any = Vec::new();
                 if let Some(signals_any_data) = event_dict.get_item("signals_any")? {
-                    let signals_any_list = signals_any_data.downcast::<pyo3::types::PyList>()?;
+                    let signals_any_list = signals_any_data.cast::<pyo3::types::PyList>()?;
                     for signal_item in signals_any_list.iter() {
-                        let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                        let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                         let key: String = signal_dict
                             .get_item("key")?
                             .ok_or_else(|| {
@@ -1875,9 +1881,9 @@ impl PyPosition {
                 // 解析 signals_not
                 let mut signals_not = Vec::new();
                 if let Some(signals_not_data) = event_dict.get_item("signals_not")? {
-                    let signals_not_list = signals_not_data.downcast::<pyo3::types::PyList>()?;
+                    let signals_not_list = signals_not_data.cast::<pyo3::types::PyList>()?;
                     for signal_item in signals_not_list.iter() {
-                        let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                        let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                         let key: String = signal_dict
                             .get_item("key")?
                             .ok_or_else(|| {
@@ -1911,11 +1917,11 @@ impl PyPosition {
             let exits_data = dict
                 .get_item("exits")?
                 .ok_or_else(|| pyo3::exceptions::PyKeyError::new_err("Missing 'exits' field"))?;
-            let exits_list = exits_data.downcast::<pyo3::types::PyList>()?;
+            let exits_list = exits_data.cast::<pyo3::types::PyList>()?;
             let mut exits = Vec::new();
 
             for item in exits_list.iter() {
-                let event_dict = item.downcast::<pyo3::types::PyDict>()?;
+                let event_dict = item.cast::<pyo3::types::PyDict>()?;
                 let event_name: String = event_dict
                     .get_item("name")?
                     .ok_or_else(|| {
@@ -1935,11 +1941,11 @@ impl PyPosition {
                 let signals_all_data = event_dict.get_item("signals_all")?.ok_or_else(|| {
                     pyo3::exceptions::PyKeyError::new_err("Missing 'signals_all' in event")
                 })?;
-                let signals_all_list = signals_all_data.downcast::<pyo3::types::PyList>()?;
+                let signals_all_list = signals_all_data.cast::<pyo3::types::PyList>()?;
                 let mut signals_all = Vec::new();
 
                 for signal_item in signals_all_list.iter() {
-                    let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                    let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                     let key: String = signal_dict
                         .get_item("key")?
                         .ok_or_else(|| {
@@ -1961,9 +1967,9 @@ impl PyPosition {
                 // 解析 signals_any
                 let mut signals_any = Vec::new();
                 if let Some(signals_any_data) = event_dict.get_item("signals_any")? {
-                    let signals_any_list = signals_any_data.downcast::<pyo3::types::PyList>()?;
+                    let signals_any_list = signals_any_data.cast::<pyo3::types::PyList>()?;
                     for signal_item in signals_any_list.iter() {
-                        let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                        let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                         let key: String = signal_dict
                             .get_item("key")?
                             .ok_or_else(|| {
@@ -1986,9 +1992,9 @@ impl PyPosition {
                 // 解析 signals_not
                 let mut signals_not = Vec::new();
                 if let Some(signals_not_data) = event_dict.get_item("signals_not")? {
-                    let signals_not_list = signals_not_data.downcast::<pyo3::types::PyList>()?;
+                    let signals_not_list = signals_not_data.cast::<pyo3::types::PyList>()?;
                     for signal_item in signals_not_list.iter() {
-                        let signal_dict = signal_item.downcast::<pyo3::types::PyDict>()?;
+                        let signal_dict = signal_item.cast::<pyo3::types::PyDict>()?;
                         let key: String = signal_dict
                             .get_item("key")?
                             .ok_or_else(|| {

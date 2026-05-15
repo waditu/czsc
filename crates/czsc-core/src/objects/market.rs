@@ -8,7 +8,10 @@ use strum_macros::{AsRefStr, Display, EnumString};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, AsRefStr, Display)]
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
-#[cfg_attr(feature = "python", pyclass(eq, eq_int, module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, eq, eq_int, module = "czsc._native")
+)]
 pub enum Market {
     /// A股
     #[strum(serialize = "A股")]
@@ -36,7 +39,7 @@ impl TryFrom<&Bound<'_, PyAny>> for Market {
     type Error = PyErr;
 
     fn try_from(value: &Bound<'_, PyAny>) -> Result<Self, Self::Error> {
-        if let Ok(py_str) = value.downcast::<PyString>() {
+        if let Ok(py_str) = value.cast::<PyString>() {
             let py_str = py_str.to_string();
             Market::from_str(&py_str)
                 .map_err(|e| PyValueError::new_err(format!("解析成 Market 失败: {e}")))

@@ -9,7 +9,7 @@ use czsc_core::error_chain::expand_error_chain;
 use czsc_core::utils::errors::CoreUtilsErorr;
 use czsc_derive::CZSCErrorDerive;
 use czsc_utils::errors::UtilsError;
-use numpy::NotContiguousError;
+use numpy::AsSliceError;
 use polars::error::PolarsError;
 use pyo3::{PyErr, create_exception, exceptions::PyException};
 use thiserror::Error;
@@ -31,7 +31,7 @@ pub enum PythonError {
     CoreUtils(#[from] CoreUtilsErorr),
 
     #[error("Numpy: {0}")]
-    NotContiguous(#[from] NotContiguousError),
+    NotContiguous(#[from] AsSliceError),
 
     #[error("NotFound: {0}")]
     NotFound(String),

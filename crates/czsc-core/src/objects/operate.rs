@@ -76,8 +76,9 @@ impl Operate {
 }
 
 #[cfg(feature = "python")]
-impl<'py> FromPyObject<'py> for Operate {
-    fn extract_bound(ob: &Bound<'py, PyAny>) -> PyResult<Self> {
+impl<'py> FromPyObject<'_, 'py> for Operate {
+    type Error = pyo3::PyErr;
+    fn extract(ob: pyo3::Borrowed<'_, 'py, PyAny>) -> Result<Self, Self::Error> {
         if let Ok(s) = ob.extract::<String>() {
             let o = Self::from_str(&s).map_err(|_| {
                 PyValueError::new_err(format!(
@@ -97,7 +98,10 @@ impl<'py> FromPyObject<'py> for Operate {
 
 /// Python可见的Operate包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "Operate", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Operate", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PyOperate {
     pub inner: Operate,
@@ -236,7 +240,7 @@ impl PyOperate {
     }
 
     /// 支持pickle序列化
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObject;
 
         let class_method = py.get_type::<Self>().getattr("from_str")?;

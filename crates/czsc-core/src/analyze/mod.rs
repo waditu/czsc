@@ -30,14 +30,14 @@ use pyo3::prelude::{PyAnyMethods, PyDictMethods};
 #[cfg(feature = "python")]
 use pyo3::types::{PyBytesMethods, PyDict};
 #[cfg(feature = "python")]
-use pyo3::{Py, PyErr, PyObject, PyResult, Python};
+use pyo3::{Py, PyAny, PyErr, PyResult, Python};
 #[cfg(feature = "python")]
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(module = "czsc._native"))]
+#[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder)]
 pub struct CZSC {
     // verbose: bool,
@@ -374,8 +374,9 @@ impl CZSC {
         let required_columns = [
             "symbol", "dt", "open", "close", "high", "low", "vol", "amount",
         ];
+        let column_names = df.get_column_names();
         for col in &required_columns {
-            if !df.get_column_names().contains(col) {
+            if !column_names.iter().any(|name| name.as_str() == *col) {
                 return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                     "Missing required column: {col}"
                 )));
@@ -428,14 +429,14 @@ impl CZSC {
 
     /// 获取原始K线序列的DataFrame格式，便于绘图和分析
     #[getter]
-    fn bars_raw_df(&self, py: Python) -> PyResult<PyObject> {
+    fn bars_raw_df(&self, py: Python) -> PyResult<Py<PyAny>> {
         let pandas = py.import("pandas")?;
         let df_class = pandas.getattr("DataFrame")?;
 
-        let data: Vec<PyObject> = self
+        let data: Vec<Py<PyAny>> = self
             .bars_raw
             .iter()
-            .map(|bar| -> PyResult<PyObject> {
+            .map(|bar| -> PyResult<Py<PyAny>> {
                 let dict = PyDict::new(py);
                 dict.set_item("symbol", bar.symbol.as_ref())?;
                 dict.set_item("dt", create_naive_pandas_timestamp(py, bar.dt)?)?;
@@ -481,13 +482,13 @@ impl CZSC {
 
     /// 缓存字典（与 czsc 库兼容）
     #[getter]
-    fn cache(&self, py: Python) -> PyResult<PyObject> {
+    fn cache(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_ordered_dict(py)
     }
 
     /// 信号字典（与 czsc 库兼容）
     #[getter]
-    fn signals(&self, py: Python) -> PyResult<PyObject> {
+    fn signals(&self, py: Python) -> PyResult<Py<PyAny>> {
         create_ordered_dict(py)
     }
 
@@ -500,7 +501,7 @@ impl CZSC {
     /// 无包含关系K线（与 czsc 库兼容）
     /// 返回未完成的笔信息，格式与 Python 版本保持一致
     #[getter]
-    fn ubi(&self, py: Python) -> PyResult<PyObject> {
+    fn ubi(&self, py: Python) -> PyResult<Py<PyAny>> {
         let ubi_fxs = self.get_ubi_fxs().unwrap_or_default();
 
         if self.bars_ubi.is_empty() || self.bi_list.is_empty() || ubi_fxs.is_empty() {
@@ -669,7 +670,7 @@ impl CZSC {
     /// 在 `kas[freq]` 里嵌套了 CZSC，`pickle.dumps(restored) ==
     /// pickle.dumps(obj)` 也是逐字节相等的（Phase A 的
     /// `restored.__getstate__() == obj.__getstate__()` 断言依赖这一点）。
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObject;
         let trimmed = CZSC::new(self.bars_raw.clone(), self.max_bi_num);
         let args = (trimmed.bars_raw, self.max_bi_num).into_pyobject(py)?;

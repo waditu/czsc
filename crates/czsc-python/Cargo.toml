@@ -61,8 +61,8 @@ polars         = { workspace = true }
 # 业务 crate 都引用 workspace 裸 pyo3，`cargo test --workspace` 通过
 # PYO3_PYTHON 解析真实 libpython。
 pyo3           = { workspace = true, features = ["chrono"] }
-pyo3-stub-gen  = "0.12"
-rust_xlsxwriter = "0.79"
+pyo3-stub-gen  = "0.22"
+rust_xlsxwriter = "0.95"
 serde          = { workspace = true }
 serde_json     = "1"
 thiserror      = "2"

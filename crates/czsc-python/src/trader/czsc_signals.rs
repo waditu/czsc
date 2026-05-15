@@ -16,7 +16,7 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
     let mut result = Vec::with_capacity(configs.len());
     for item in configs.iter() {
         let dict = item
-            .downcast::<PyDict>()
+            .cast::<PyDict>()
             .map_err(|_| PyValueError::new_err("signals_config 中每个元素必须是 dict"))?;
 
         let name: String = dict
@@ -34,7 +34,7 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
         // 优先从 "params" 子字典取参数
         if let Some(params_obj) = dict.get_item("params")?
             && !params_obj.is_none()
-            && let Ok(params_dict) = params_obj.downcast::<PyDict>()
+            && let Ok(params_dict) = params_obj.cast::<PyDict>()
         {
             for (k, v) in params_dict.iter() {
                 let key: String = k.extract()?;
@@ -126,7 +126,7 @@ impl PyCzscSignals {
 
     /// 返回信号字典 s
     #[getter]
-    fn s(&self, py: Python) -> PyResult<PyObject> {
+    fn s(&self, py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);
         for (k, v) in &self.inner.s {
             dict.set_item(k, v)?;
@@ -165,7 +165,7 @@ impl PyCzscSignals {
 
     /// 返回最新时间，作为 pandas Timestamp
     #[getter]
-    fn end_dt(&self, py: Python) -> PyResult<Option<PyObject>> {
+    fn end_dt(&self, py: Python) -> PyResult<Option<Py<PyAny>>> {
         if let Some(dt_str) = self.inner.s.get("dt")
             && let Ok(dt) = chrono::DateTime::parse_from_rfc3339(dt_str)
         {
@@ -202,7 +202,7 @@ impl PyCzscSignals {
 
     /// 返回原始信号配置
     #[getter]
-    fn signals_config(&self, py: Python) -> PyResult<PyObject> {
+    fn signals_config(&self, py: Python) -> PyResult<Py<PyAny>> {
         let list = PyList::empty(py);
         for cfg in &self.signals_config {
             let dict = PyDict::new(py);
@@ -228,7 +228,7 @@ impl PyCzscSignals {
     }
 
     /// 获取当前信号字典（同 s 属性）
-    fn get_signals_by_conf(&self, py: Python) -> PyResult<PyObject> {
+    fn get_signals_by_conf(&self, py: Python) -> PyResult<Py<PyAny>> {
         self.s(py)
     }
 
@@ -236,7 +236,7 @@ impl PyCzscSignals {
     /// 反序列化时 PyCzscSignals 由原 ``__new__`` 重新构造；缓存的信号
     /// 状态不持久化（与 design doc §2.4 的 multiprocessing 用例一致：
     /// 子进程拿到的是构造参数 fresh trader）。
-    fn __reduce__(&self, py: Python) -> PyResult<PyObject> {
+    fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         let bg_clone = self.inner.bg.clone();
         let configs_list = signal_configs_to_pylist(py, &self.signals_config)?;
         let constructor = py.get_type::<Self>();
@@ -249,7 +249,10 @@ impl PyCzscSignals {
 /// 辅助函数：把 `Vec<SignalConfig>` 还原回与 ``parse_signals_config``
 /// 期望形状完全一致的 Python ``list[dict]``，让
 /// ``__reduce__`` -> ``__new__`` 能干净地往返序列化。
-pub(crate) fn signal_configs_to_pylist(py: Python, configs: &[SignalConfig]) -> PyResult<PyObject> {
+pub(crate) fn signal_configs_to_pylist(
+    py: Python,
+    configs: &[SignalConfig],
+) -> PyResult<Py<PyAny>> {
     let list = PyList::empty(py);
     for cfg in configs {
         let dict = PyDict::new(py);
@@ -269,7 +272,7 @@ pub(crate) fn signal_configs_to_pylist(py: Python, configs: &[SignalConfig]) -> 
 }
 
 /// 将 serde_json::Value 转换为 Python 对象
-pub(crate) fn serde_value_to_py(py: Python, val: &Value) -> PyResult<PyObject> {
+pub(crate) fn serde_value_to_py(py: Python, val: &Value) -> PyResult<Py<PyAny>> {
     match val {
         Value::Null => Ok(py.None()),
         Value::Bool(b) => Ok(b.into_pyobject(py)?.to_owned().into_any().unbind()),

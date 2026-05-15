@@ -39,14 +39,14 @@ pub(crate) fn build_signals_dataframe(rows: &[HashMap<String, String>]) -> PyRes
         keys.insert("cache".to_string());
     }
 
-    let mut cols: Vec<Series> = Vec::new();
+    let mut cols: Vec<Column> = Vec::new();
     for k in keys {
         let vals: Vec<Option<String>> = if k == "cache" {
             rows.iter().map(|_| Some("{}".to_string())).collect()
         } else {
             rows.iter().map(|r| r.get(&k).cloned()).collect()
         };
-        cols.push(Series::new(k.as_str(), vals));
+        cols.push(Series::new(k.as_str().into(), vals).into_column());
     }
     DataFrame::new(cols)
         .map_err(|e| PyRuntimeError::new_err(format!("构建 signals DataFrame 失败: {e}")))
@@ -101,7 +101,7 @@ fn align_signals_python_baseline(
     ];
     for (name, value) in base_cols {
         if head.column(name).is_ok() {
-            head.with_column(Series::new(name, &[Some(value.as_str())]))
+            head.with_column(Series::new(name.into(), &[Some(value.as_str())]))
                 .map_err(|e| {
                     PyRuntimeError::new_err(format!("补齐 signals 列 {name} 失败: {e}"))
                 })?;
@@ -169,7 +169,7 @@ fn combine_pairs_holds_for_backtest(positions: &[Position]) -> PyResult<(DataFra
             if df.height() == 0 {
                 continue;
             }
-            let pos_name = Series::new("pos_name", vec![pos.name.clone(); df.height()]);
+            let pos_name = Series::new("pos_name".into(), vec![pos.name.clone(); df.height()]);
             df.with_column(pos_name)
                 .map_err(|e| PyRuntimeError::new_err(format!("追加 pos_name 列失败: {e}")))?;
 
@@ -1392,7 +1392,7 @@ pub fn list_all_signals(
 #[pyfunction]
 #[pyo3(text_signature = "(unique_signals)")]
 #[pyo3(signature = (unique_signals))]
-pub fn derive_signals_config(py: Python<'_>, unique_signals: Vec<String>) -> PyResult<PyObject> {
+pub fn derive_signals_config(py: Python<'_>, unique_signals: Vec<String>) -> PyResult<Py<PyAny>> {
     let refs: Vec<&str> = unique_signals.iter().map(String::as_str).collect();
     let configs = get_signals_config(&refs);
     let json_str = serde_json::to_string(&configs)
@@ -1411,7 +1411,7 @@ pub fn derive_signals_config(py: Python<'_>, unique_signals: Vec<String>) -> PyR
 #[pyfunction]
 #[pyo3(text_signature = "(signals_config)")]
 #[pyo3(signature = (signals_config))]
-pub fn derive_signals_freqs(py: Python<'_>, signals_config: PyObject) -> PyResult<Vec<String>> {
+pub fn derive_signals_freqs(py: Python<'_>, signals_config: Py<PyAny>) -> PyResult<Vec<String>> {
     let json_mod = py.import("json")?;
     let json_str = json_mod
         .call_method1("dumps", (signals_config,))?

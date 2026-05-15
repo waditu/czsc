@@ -20,7 +20,23 @@ jobs:
   rust-tests:
     name: Rust per-crate tests
     runs-on: ubuntu-latest
+    env:
+      # 测试二进制只保留行号表，去掉完整 DWARF；可把 target/debug 从 ~10GB 压到 ~3GB，
+      # 避免 ubuntu-latest 14GB 根盘在 polars + tokio + rustls 全量依赖下被打爆。
+      CARGO_PROFILE_TEST_DEBUG: line-tables-only
     steps:
+    - name: Free disk space on runner
+      # GitHub-hosted runner 默认占了 ~25GB 在 Android SDK / .NET / Haskell / CodeQL 等
+      # 工具链上，本 job 用不到。删掉它们给 polars 重型依赖链留出编译空间。
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: false
+
     - name: Checkout code
       uses: actions/checkout@v4
 
@@ -45,22 +61,22 @@ jobs:
         done
 
   # ------------------------------------------------------------------
-  # 1.1) `czsc/_native.pyi` 漂移检查
+  # 1.1) `czsc/_native/__init__.pyi` 漂移检查
   #
-  #      `crates/czsc-python/src/bin/stub_gen.rs` 通过 pyo3-stub-gen 0.12
+  #      `crates/czsc-python/src/bin/stub_gen.rs` 通过 pyo3-stub-gen 0.22
   #      把 Rust 端 `#[gen_stub_pyclass]` / `#[gen_stub_pyfunction]` /
-  #      `#[gen_stub_pymethods]` 的元信息渲染成 `czsc/_native.pyi`。
+  #      `#[gen_stub_pymethods]` 的元信息渲染成 `czsc/_native/__init__.pyi`。
   #      这个 stub 文件与 Rust 源码会双向漂移：
   #
   #      - 改了 `gen_stub_*` 装饰器但忘了重跑 stub_gen → stub 反映旧 API
   #      - 手改了 stub 但 Rust 没改 → 下次重跑会把手改盖掉
   #
   #      本 job 的策略：在 CI 重新跑一次 stub_gen，再 `git diff --exit-code`
-  #      检查 `czsc/_native.pyi` 是否被改写，若变更则 PR 必须把新生成的 stub
+  #      检查 `czsc/_native/__init__.pyi` 是否被改写，若变更则 PR 必须把新生成的 stub
   #      也提交进来才能合入。
   # ------------------------------------------------------------------
   stub-drift:
-    name: czsc/_native.pyi drift check
+    name: czsc/_native/__init__.pyi drift check
     runs-on: ubuntu-latest
     needs: rust-tests
     steps:
@@ -84,15 +100,15 @@ jobs:
         cargo run --bin stub_gen -p czsc-python \
           --no-default-features --features stub-gen
 
-    - name: Assert czsc/_native.pyi is in sync with Rust source
+    - name: Assert czsc/_native/__init__.pyi is in sync with Rust source
       run: |
-        if ! git diff --exit-code czsc/_native.pyi; then
-          echo "::error::czsc/_native.pyi 与 Rust 装饰器不一致 ——"
+        if ! git diff --exit-code czsc/_native/__init__.pyi; then
+          echo "::error::czsc/_native/__init__.pyi 与 Rust 装饰器不一致 ——"
           echo "请在本地运行："
           echo "  PYO3_PYTHON=\$(uv run python -c 'import sys; print(sys.executable)') \\"
           echo "    cargo run --bin stub_gen -p czsc-python \\"
           echo "      --no-default-features --features stub-gen"
-          echo "并把更新后的 czsc/_native.pyi 一并 commit。"
+          echo "并把更新后的 czsc/_native/__init__.pyi 一并 commit。"
           exit 1
         fi
 

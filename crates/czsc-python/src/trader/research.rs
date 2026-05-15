@@ -110,7 +110,7 @@ fn combine_pairs_holds(positions: &[Position]) -> PyResult<(DataFrame, DataFrame
             if df.height() == 0 {
                 continue;
             }
-            let pos_name = Series::new("pos_name", vec![pos.name.clone(); df.height()]);
+            let pos_name = Series::new("pos_name".into(), vec![pos.name.clone(); df.height()]);
             df.with_column(pos_name)
                 .map_err(|e| PyRuntimeError::new_err(format!("追加 pos_name 列失败: {e}")))?;
             all_holds.push(df.lazy());

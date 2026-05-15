@@ -17,7 +17,7 @@ use pyo3::prelude::*;
 #[cfg(feature = "python")]
 use pyo3::types::{PyDict, PyDictMethods};
 #[cfg(feature = "python")]
-use pyo3::{IntoPyObject, Py, PyObject, PyResult, Python};
+use pyo3::{IntoPyObject, Py, PyAny, PyResult, Python};
 
 #[cfg(feature = "python")]
 use super::operate::Operate;
@@ -56,7 +56,10 @@ pub type Signal = SignalRef<'static>;
 
 /// Python可见的Signal包装器
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
-#[cfg_attr(feature = "python", pyclass(name = "Signal", module = "czsc._native"))]
+#[cfg_attr(
+    feature = "python",
+    pyclass(from_py_object, name = "Signal", module = "czsc._native")
+)]
 #[derive(Debug, Clone)]
 pub struct PySignal {
     pub(crate) inner: Signal,
@@ -175,8 +178,9 @@ impl<'a> PartialEq for SignalRef<'a> {
 impl<'a> Eq for SignalRef<'a> {}
 
 #[cfg(feature = "python")]
-impl<'py> FromPyObject<'py> for Signal {
-    fn extract_bound(ob: &Bound<'py, pyo3::PyAny>) -> PyResult<Self> {
+impl<'py> FromPyObject<'_, 'py> for Signal {
+    type Error = pyo3::PyErr;
+    fn extract(ob: pyo3::Borrowed<'_, 'py, pyo3::PyAny>) -> Result<Self, Self::Error> {
         // 如果是 str，直接解析
         if let Ok(s) = ob.extract::<String>() {
             let signal = Self::from_str(&s).map_err(|err| {
@@ -525,7 +529,7 @@ impl PySignal {
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(
     feature = "python",
-    pyclass(name = "ParsedSignalDoc", module = "czsc._native")
+    pyclass(from_py_object, name = "ParsedSignalDoc", module = "czsc._native")
 )]
 #[derive(Debug, Clone)]
 pub struct PyParsedSignalDoc {

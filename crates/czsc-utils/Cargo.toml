@@ -28,7 +28,7 @@ polars         = { workspace = true, features = ["ipc", "partition_by"] }
 serde          = { workspace = true }
 thiserror      = "2"
 pyo3           = { workspace = true, optional = true, features = ["chrono"] }
-pyo3-stub-gen  = { version = "0.12", optional = true }
+pyo3-stub-gen  = { version = "0.22", optional = true }
 
 [features]
 python = ["pyo3", "pyo3-stub-gen"]
