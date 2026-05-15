@@ -22,13 +22,6 @@ from typing import Any
 
 import pandas as pd
 
-# Rust/Python 兼容层：负责"用户层 dict <-> Rust 运行时 dict"的格式互转
-from czsc._compat import (
-    normalize_candidate_events,
-    position_dump_to_runtime,
-    signal_config_to_runtime,
-)
-
 # 直接调用 PyO3 暴露的 Rust 实现（带下划线别名表示"不要在调用方代码中再展开"）
 from czsc._native import (
     build_exit_optim_positions as _build_exit_optim_positions,
@@ -47,6 +40,13 @@ from czsc._native import (
 )
 from czsc._native import (
     run_research as _run_research,
+)
+
+# Rust/Python 运行时适配层：负责"用户层 dict <-> Rust 运行时 dict"的格式互转
+from czsc._runtime_adapters import (
+    normalize_candidate_events,
+    position_dump_to_runtime,
+    signal_config_to_runtime,
 )
 from czsc._utils._df_convert import pandas_to_arrow_bytes
 from czsc.models import OptimizeResult, ReplayResult, ResearchResult

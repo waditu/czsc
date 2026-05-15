@@ -30,20 +30,69 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-# 兼容层提供的辅助函数，统一处理 Python <-> Rust 之间的数据转换、
-# 序列化、哈希计算和事件归一化等跨语言桥接逻辑。
-from czsc._compat import (
+from czsc._native import Position
+
+# 运行时适配层：仅引入被多处共享的转换函数；哈希 / Python 字面量渲染等
+# 唯一被本模块使用的 helper 已下沉到文件末尾的私有函数段，避免拆解后
+# _runtime_adapters 又长成"什么都装"的中转站。
+from czsc._runtime_adapters import (
     bars_to_dataframe,
-    md5_upper8,
     normalize_candidate_event,
     normalize_candidate_events,
     position_dump_to_runtime,
-    py_repr_json,
-    py_repr_list_str,
 )
-from czsc._native import Position
 from czsc.research import run_optimize_batch
 from czsc.strategies import CzscStrategyBase
+
+
+# ----------------------------------------------------------------------------
+# 私有 helper：哈希与 Python 字面量渲染（用于任务哈希 + 生成策略骨架字面量）
+# ----------------------------------------------------------------------------
+def _md5_upper8(value: str) -> str:
+    """计算字符串 MD5 哈希并截取前 8 位大写表示（用于生成短任务 ID）。"""
+    return hashlib.md5(value.encode("utf-8")).hexdigest()[:8].upper()
+
+
+def _py_escape_str(value: str) -> str:
+    """转义字符串中的反斜杠和单引号，便于嵌入 Python 源代码字面量。"""
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
+def _py_repr_list_str(items: list[str]) -> str:
+    """把字符串列表渲染为 Python 字面量片段（``['a', 'b']``），空列表返回 ``"[]"``。"""
+    if not items:
+        return "[]"
+    return "[" + ", ".join(f"'{_py_escape_str(item)}'" for item in items) + "]"
+
+
+def _py_repr_json(value: Any) -> str:
+    """将 JSON 兼容值递归渲染为 Python 字面量字符串。
+
+    与内置 ``repr()`` 的差异：
+
+    - 字符串总是用单引号包裹，便于嵌入双引号 docstring
+    - 对反斜杠和单引号执行 :func:`_py_escape_str` 转义，避免破坏代码结构
+    - bool 单独处理（必须在 int 之前），避免被 ``isinstance(_, int)`` 错误吞掉
+
+    支持：None / bool / int / float / str / list / dict；其他类型走 ``str()`` 兜底再递归。
+    """
+    if value is None:
+        return "None"
+    if isinstance(value, bool):
+        # 必须先于 int 检查：bool 是 int 的子类，否则会被当成 0/1 输出
+        return "True" if value else "False"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return f"'{_py_escape_str(value)}'"
+    if isinstance(value, list):
+        return "[" + ", ".join(_py_repr_json(item) for item in value) + "]"
+    if isinstance(value, dict):
+        return (
+            "{" + ", ".join(f"'{_py_escape_str(str(key))}': {_py_repr_json(val)}" for key, val in value.items()) + "}"
+        )
+    # 兜底：把非典型类型按字符串处理，再走一次递归
+    return _py_repr_json(str(value))
 
 
 def _signal_to_kv(signal: dict[str, Any] | str) -> dict[str, str]:
@@ -288,8 +337,8 @@ class OpensOptimize:
         self.results_root = Path(kwargs["results_path"])
         # 用候选信号集合 + 标的列表的字符串拼接做 MD5，截前 8 位作任务哈希；
         # 相同输入会得到相同的输出目录，便于结果复用与覆盖。
-        self.task_hash = md5_upper8(
-            f"{py_repr_list_str(self.candidate_signals)}_{py_repr_list_str(sorted(self.symbols))}"
+        self.task_hash = _md5_upper8(
+            f"{_py_repr_list_str(self.candidate_signals)}_{_py_repr_list_str(sorted(self.symbols))}"
         )
         self.results_path = str(self.results_root / f"{self.task_name}_{self.task_hash}")
         self.poss_path = str(Path(self.results_path) / "poss")
@@ -424,7 +473,7 @@ class ExitsOptimize:
         )
         self.results_root = Path(kwargs["results_path"])
         # 候选事件用 JSON 化字符串再做 MD5，避免 dict 不同顺序导致哈希漂移。
-        self.task_hash = md5_upper8(f"{py_repr_json(self.candidate_events)}_{py_repr_list_str(self.symbols)}")
+        self.task_hash = _md5_upper8(f"{_py_repr_json(self.candidate_events)}_{_py_repr_list_str(self.symbols)}")
         self.results_path = str(self.results_root / f"{self.task_name}_{self.task_hash}")
         self.poss_path = str(Path(self.results_path) / "poss")
 

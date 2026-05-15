@@ -9,7 +9,7 @@ czsc.utils 工具子包
 1. 顶部直接 import 所有轻量级子模块及其常用函数；
 2. ``plotting`` 子包按需 ``import czsc.utils.plotting.xxx`` 显式访问，
    不再通过 ``__getattr__`` 暴露到本模块；
-3. 周期排序统一走 ``czsc._compat._FREQ_ORDER``，避免两份顺序表漂移。
+3. 周期排序统一走 ``czsc._runtime_adapters._FREQ_ORDER``，避免两份顺序表漂移。
 
 同时本模块还提供一组小工具函数：``import_by_name``、``freqs_sorted``、
 ``create_grid_params``、``mac_address``、``to_arrow`` 等。
@@ -192,12 +192,12 @@ def import_by_name(name):
 def freqs_sorted(freqs):
     """K 线周期列表排序并去重，第一个元素是基础周期
 
-    内部统一调用 :func:`czsc._compat.sort_freqs`，避免两份顺序表漂移。
+    内部统一调用 :func:`czsc._runtime_adapters.sort_freqs`，避免两份顺序表漂移。
 
     :param freqs: K 线周期列表（如 ``['日线', '5分钟', '30分钟']``）
     :return: list，从高频到低频去重后的结果
     """
-    from czsc._compat import sort_freqs
+    from czsc._runtime_adapters import sort_freqs
 
     return sort_freqs(freqs)
 

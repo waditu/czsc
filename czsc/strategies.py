@@ -10,7 +10,7 @@
 关键设计:
     1. 策略元数据（unique_signals / signals_config / freqs / base_freq）
        全部由 ``positions`` 自动派生，避免子类手工填写引起不一致
-    2. 用户层与运行时配置之间的格式互转集中在 czsc._compat，本模块只负责
+    2. 用户层与运行时配置之间的格式互转集中在 czsc._runtime_adapters，本模块只负责
        调度，不直接关心字段映射
     3. backtest / replay 委托给 czsc.research 中的 run_research / run_replay，
        本模块只组合参数与处理 IO（路径、刷新、是否落盘等）
@@ -25,12 +25,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from czsc._compat import (
-    bars_to_dataframe,
-    position_dump_to_runtime,
-    signal_config_to_runtime,
-    sort_freqs,
-)
 from czsc._native import Position
 
 # 直接调用 Rust 端的派生器（用下划线后缀别名，避免与同名公开 API 混淆）
@@ -39,6 +33,12 @@ from czsc._native import (
 )
 from czsc._native import (
     derive_signals_freqs as _derive_signals_freqs_impl,
+)
+from czsc._runtime_adapters import (
+    bars_to_dataframe,
+    position_dump_to_runtime,
+    signal_config_to_runtime,
+    sort_freqs,
 )
 from czsc.research import run_replay, run_research
 
