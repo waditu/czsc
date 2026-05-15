@@ -41,41 +41,31 @@ dependencies = [
     "numpy",
     "pyarrow",
     "openpyxl",
-    # 网络请求
+    "polars>=0.20.0",
+    # 网络请求（czsc.fsa 飞书 API 封装使用）
     "requests>=2.24.0",
     "requests_toolbelt",
-    # 数据库连接
-    "redis",
-    "clickhouse_connect",
     # 数学计算和统计
     "scipy",
     "statsmodels",
     "scikit-learn",
-    # 技术分析 (rs-czsc 已被 czsc._native 替代，czsc-python 通过 maturin
-    # 直接产出，wbt 为硬依赖提供 WeightBacktest / daily_performance /
-    # top_drawdowns / mock 函数)
-    "TA-Lib>=0.6",
+    # 技术分析
+    # - czsc._native 由 crates/czsc-python 通过 maturin 直接产出，无需 rs-czsc
+    # - wbt 为硬依赖，提供 WeightBacktest / daily_performance / top_drawdowns / mock 等
+    # - talib-rs 为 TA-Lib 的纯 Rust 替代（drop-in 兼容），仅用于 tests/unit/test_ta_parity.py
+    #   做与 czsc._native.ta 的 parity 校验；运行时代码不再依赖 C TA-Lib
     "wbt",
+    "talib-rs",
     # 图表和可视化
     "matplotlib",
     "seaborn",
     "plotly",
-    "pyecharts>=1.9.1",
-    "lightweight-charts",
     "streamlit",
-    # PDF 报告
-    "reportlab>=4.0",
-    "kaleido",
     # 工具库
     "tqdm>=4.66.4",
     "loguru",
     "dill",
     "tenacity",
-    "parse",
-    "Deprecated",
-    "pytz",
-    "fonttools>=4.61.0",
-    "polars>=0.20.0",
 ]
 
 [[tool.uv.index]]

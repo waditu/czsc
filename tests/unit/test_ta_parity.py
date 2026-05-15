@@ -1,14 +1,14 @@
-"""技术指标算子（TA Operators）与 Python TA-Lib 一致性单元测试。
+"""技术指标算子（TA Operators）与 talib-rs 一致性单元测试。
 
 本测试套件验证迁移后的 ``czsc.ta.*`` Rust + PyO3 算子在数值上与
-Python 版本的 ``talib`` 库结果保持高精度一致（相对误差 / 绝对误差
-均小于 1e-6），覆盖核心技术指标算子。
+``talib-rs`` 库（C TA-Lib 的纯 Rust drop-in 替代）结果保持高精度一致
+（相对误差 / 绝对误差均小于 1e-6），覆盖核心技术指标算子。
 
 业务背景：
     历史上 czsc 在 ``czsc.utils.ta`` 中提供了一层 Python 对 TA-Lib 的薄包装。
     迁移目标是用纯 Rust 实现替换该层，并通过 PyO3 暴露为 ``czsc._native.ta``，
-    再由 ``czsc.ta`` 重导出。在替换过程中，必须保证以下指标的输出与 talib
-    在相同输入下数值上完全一致：
+    再由 ``czsc.ta`` 重导出。在替换过程中，必须保证以下指标的输出与 talib-rs
+    （其内部与 C TA-Lib bit-exact 对齐）在相同输入下数值上完全一致：
 
     - ``ema``：指数移动平均
     - ``sma``：简单移动平均
@@ -73,7 +73,7 @@ def test_ta_module_sourced_from_native() -> None:
 
 
 def test_ema_matches_talib() -> None:
-    """验证 czsc.ta.ema 输出与 talib.EMA 在 timeperiod=14 时数值一致。
+    """验证 czsc.ta.ema 输出与 talib_rs.EMA 在 timeperiod=14 时数值一致。
 
     测试场景：
         在同一随机序列上分别调用两端的 EMA，跳过算子预热期（前 20 个点），
@@ -85,9 +85,9 @@ def test_ema_matches_talib() -> None:
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    talib_mod, terr = _safe_import("talib")
+    talib_mod, terr = _safe_import("talib_rs")
     if talib_mod is None:
-        pytest.fail(f"talib 不可用：{terr}")
+        pytest.fail(f"talib_rs 不可用：{terr}")
 
     series = _series()
     expected = talib_mod.EMA(series, timeperiod=14)
@@ -98,16 +98,16 @@ def test_ema_matches_talib() -> None:
 
 
 def test_sma_matches_talib() -> None:
-    """验证 czsc.ta.sma 输出与 talib.SMA 在 timeperiod=20 时数值一致。
+    """验证 czsc.ta.sma 输出与 talib_rs.SMA 在 timeperiod=20 时数值一致。
 
     测试场景：与 EMA 一致，跳过预热期后做高精度比较。
     """
     ta, err = _native_module()
     if ta is None:
         pytest.fail(f"czsc.ta 不可用：{err}")
-    talib_mod, terr = _safe_import("talib")
+    talib_mod, terr = _safe_import("talib_rs")
     if talib_mod is None:
-        pytest.fail(f"talib 不可用：{terr}")
+        pytest.fail(f"talib_rs 不可用：{terr}")
 
     series = _series()
     expected = talib_mod.SMA(series, timeperiod=20)

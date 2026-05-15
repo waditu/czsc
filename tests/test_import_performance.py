@@ -34,7 +34,7 @@ def test_czsc_import_time():
     elapsed = _measure_import_time("czsc")
     assert elapsed < MAX_IMPORT_TIME_SECONDS, (
         f"czsc 导入耗时 {elapsed:.2f}s，超过了阈值 {MAX_IMPORT_TIME_SECONDS}s。"
-        f"请检查是否在模块级引入了重型依赖（如 streamlit、scipy、clickhouse_connect、redis 等）。"
+        f"请检查是否在模块级引入了重型依赖（如 streamlit、scipy、statsmodels、scikit-learn 等）。"
     )
 
 
