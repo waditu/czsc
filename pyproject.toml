@@ -56,9 +56,8 @@ dependencies = [
     #   做与 czsc._native.ta 的 parity 校验；运行时代码不再依赖 C TA-Lib
     "wbt",
     "talib-rs",
-    # 图表和可视化
-    "matplotlib",
-    "seaborn",
+    # 图表和可视化（czsc 的所有可视化统一由 plotly 实现，
+    # 通过 streamlit 渲染或 fig.show() 在浏览器打开）
     "plotly",
     "streamlit",
     # 工具库
@@ -117,6 +116,9 @@ testpaths = ["test"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "--tb=short -v -s --log-cli-level=INFO"
+markers = [
+    "slow: 标记耗时测试，默认跳过；CI / 发布前用 `pytest --run-slow` 跑全套",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",

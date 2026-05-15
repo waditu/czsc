@@ -11,6 +11,7 @@ import tempfile
 import time
 
 import pandas as pd
+import pytest
 
 from czsc.utils.data.cache import (
     DiskCache,
@@ -157,6 +158,7 @@ def test_disk_cache_dataframe():
     cache.remove(test_key, suffix="parquet")
 
 
+@pytest.mark.slow
 def test_disk_cache_ttl():
     """测试 DiskCache 的 TTL 功能"""
     cache = DiskCache()
@@ -341,6 +343,7 @@ def test_clear_cache():
     assert not os.path.exists(sub2)
 
 
+@pytest.mark.slow
 def test_disk_cache_with_custom_ttl():
     """测试 disk_cache 装饰器的动态 TTL 功能"""
 

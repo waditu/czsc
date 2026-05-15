@@ -436,16 +436,15 @@ def show_normality_check(data: pd.Series, alpha=0.05):
     """展示正态性检验结果
 
     依次完成 Shapiro-Wilk、Jarque-Bera、Kolmogorov-Smirnov 三种检验，并附带绘制
-    直方图（叠加正态密度曲线）与 Q-Q 图。
+    直方图（叠加 KDE 与正态密度曲线）与 Q-Q 图。
 
     :param data: pd.Series，需要检验的数据
     :param alpha: float，显著性水平，默认 0.05
     :return: None
     """
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import statsmodels.api as sm
-    from scipy.stats import jarque_bera, kstest, norm, shapiro
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from scipy.stats import gaussian_kde, jarque_bera, kstest, norm, probplot, shapiro
 
     clean_data = data.dropna()
 
@@ -469,27 +468,53 @@ def show_normality_check(data: pd.Series, alpha=0.05):
 
     with c3.container(border=True):
         st.write("##### :red[Kolmogorov-Smirnov 检验]")
-        mu, std = np.mean(clean_data), np.std(clean_data)
+        mu, std = float(np.mean(clean_data)), float(np.std(clean_data))
         stat, p_ks = kstest(clean_data, "norm", args=(mu, std))
         __metric(stat, p_ks)
 
-    # matplotlib 中文负号修复 + 主题
-    plt.rcParams["axes.unicode_minus"] = False
-    plt.style.use("ggplot")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=(
+            f"Histogram => SKEW: {clean_data.skew():.2f}, KURT: {clean_data.kurt():.2f}",
+            "Q-Q",
+        ),
+    )
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+    # 左：直方图（密度归一） + KDE + 正态 PDF
+    fig.add_trace(
+        go.Histogram(x=clean_data, histnorm="probability density", name="Data", opacity=0.6),
+        row=1,
+        col=1,
+    )
+    x_grid = np.linspace(mu - 4 * std, mu + 4 * std, 200)
+    kde = gaussian_kde(clean_data.to_numpy())
+    fig.add_trace(go.Scatter(x=x_grid, y=kde(x_grid), mode="lines", name="KDE"), row=1, col=1)
+    fig.add_trace(
+        go.Scatter(x=x_grid, y=norm.pdf(x_grid, mu, std), mode="lines", name="Normal PDF",
+                   line={"color": "red", "width": 2}),
+        row=1,
+        col=1,
+    )
 
-    # 直方图 + 正态密度曲线
-    sns.histplot(clean_data, kde=True, stat="density", ax=ax1)
-    x = np.linspace(mu - 4 * std, mu + 4 * std, 100)
-    ax1.plot(x, norm.pdf(x, mu, std), "r", lw=2)
-    ax1.set_title(f"Histogram => SKEW: {clean_data.skew():.2f}, KURT: {clean_data.kurt():.2f}")
-    ax1.legend(["Normal PDF", "Data"])
+    # 右：Q-Q 图 —— scipy.stats.probplot 给出 (osm, osr) 散点与最佳拟合直线
+    (osm, osr), (slope, intercept, _r) = probplot(clean_data, dist="norm", fit=True)
+    fig.add_trace(go.Scatter(x=osm, y=osr, mode="markers", name="样本分位", showlegend=False), row=1, col=2)
+    line_x = np.array([osm.min(), osm.max()])
+    fig.add_trace(
+        go.Scatter(x=line_x, y=slope * line_x + intercept, mode="lines", name="拟合直线",
+                   line={"color": "red", "dash": "dash"}, showlegend=False),
+        row=1,
+        col=2,
+    )
 
-    # Q-Q 图
-    sm.qqplot(clean_data, line="45", fit=True, ax=ax2)
-    ax2.set_title("Q-Q")
-    st.pyplot(fig)
+    fig.update_xaxes(title_text="值", row=1, col=1)
+    fig.update_yaxes(title_text="密度", row=1, col=1)
+    fig.update_xaxes(title_text="理论分位", row=1, col=2)
+    fig.update_yaxes(title_text="样本分位", row=1, col=2)
+    fig.update_layout(height=420, bargap=0.02, legend={"orientation": "h", "yanchor": "bottom", "y": -0.25})
+
+    st.plotly_chart(fig, use_container_width=True, key=generate_component_key("normality_check"))
     st.divider()
 
 

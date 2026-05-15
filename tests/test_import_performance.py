@@ -8,6 +8,8 @@
 import subprocess
 import sys
 
+import pytest
+
 # 可接受的最大导入时间（秒）。该阈值在 CI 环境中会有一定冗余，
 # 主要用于检测灾难性的回归（如在模块级误引入 Streamlit / scipy 等重型依赖）。
 MAX_IMPORT_TIME_SECONDS = 10.0
@@ -29,6 +31,7 @@ def _measure_import_time(module_name: str) -> float:
     return float(result.stdout.strip())
 
 
+@pytest.mark.slow
 def test_czsc_import_time():
     """czsc 库的导入时间应在可接受范围内"""
     elapsed = _measure_import_time("czsc")

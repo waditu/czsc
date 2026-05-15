@@ -13,19 +13,13 @@ import numpy as np
 import pandas as pd
 
 
-def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
+def nmi_matrix(df: pd.DataFrame) -> pd.DataFrame:
     """计算高维标准化互信息并以矩阵形式输出
 
     :param df: 数据
-    :param heatmap: 是否绘制热力图
-    :return:
+    :return: pd.DataFrame，NMI 矩阵（行列均为 ``df.columns``）
     """
-    import matplotlib.pyplot as plt
-    import seaborn as sns
     from sklearn import metrics
-
-    plt.rcParams["font.sans-serif"] = ["SimHei"]  # 用来正常显示中文标签
-    plt.rcParams["axes.unicode_minus"] = False  # 用来正常显示负号
 
     cols = df.columns.to_list()
 
@@ -45,15 +39,7 @@ def nmi_matrix(df: pd.DataFrame, heatmap=False) -> pd.DataFrame:
             A.append(m_dict[f"{col1}_{col2}"])
         m.append(A)
 
-    dfm = pd.DataFrame(m, index=cols, columns=cols)
-
-    if heatmap:
-        print("NMI(标准化互信息) = \n", dfm)
-        plt.close()
-        figure, ax = plt.subplots(figsize=(len(cols), len(cols)))
-        sns.heatmap(dfm, square=True, annot=True, ax=ax)
-        plt.show()
-    return dfm
+    return pd.DataFrame(m, index=cols, columns=cols)
 
 
 def single_linear(y: np.ndarray | list, x: np.ndarray | list | None = None) -> dict:
