@@ -444,6 +444,22 @@ class TestBackwardCompat:
         assert callable(getattr(mod, "demo_multi", None))
 
 
+class TestSignalTimelinePane:
+    def test_html_contains_signal_timeline(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        assert "row-sig" in html
+        assert "SIGNAL TIMELINE" in html
+        assert "sigRowSeriesByKey" in html
+        assert "siglabels-" in html
+
+
 @pytest.mark.slow
 class TestStreamlitSlow:
     def test_i6_streamlit_app_smoke(self):

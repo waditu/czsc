@@ -153,12 +153,25 @@ _PAGE_TPL = Template(
     .row-main { height: ${h_main}px; }
     .row-vol  { height: ${h_vol}px; }
     .row-macd { height: ${h_macd}px; }
+    .row-sig  { height: ${h_signal}px; }
+    .row-sig[hidden] { display: none; }
     .row + .row { margin-top: 2px; }
     .row__label {
       position: absolute; left: 12px; top: 10px; z-index: 2;
       font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.15em;
       color: var(--muted); text-transform: uppercase; pointer-events: none;
       padding: 2px 6px; background: color-mix(in srgb, var(--bg) 80%, transparent); border-radius: 2px;
+    }
+    .row__rowlabels {
+      position: absolute; left: 12px; top: 26px; bottom: 4px; z-index: 2;
+      display: flex; flex-direction: column; justify-content: space-evenly;
+      pointer-events: none;
+    }
+    .row__rowlabel {
+      font-family: 'IBM Plex Mono', 'SF Mono', Menlo, monospace; font-size: 10px;
+      color: var(--muted); letter-spacing: 0.04em; white-space: nowrap;
+      background: color-mix(in srgb, var(--bg) 90%, transparent);
+      padding: 1px 4px; border-radius: 2px;
     }
 
     /* —— K 线 Tooltip ———————————————————————————————————— */
@@ -424,6 +437,7 @@ _PAGE_TPL = Template(
         + '<div class="chart-stack">'
         +   '<div class="row row-main" id="main-' + fi + '"><div class="row__label">PRICE · K + SMA + FX + BI</div></div>'
         +   '<div class="row row-vol"  id="vol-'  + fi + '"><div class="row__label">VOLUME</div></div>'
+        +   '<div class="row row-sig"  id="sig-'  + fi + '"><div class="row__label">SIGNAL TIMELINE</div><div class="row__rowlabels" id="siglabels-' + fi + '"></div></div>'
         +   '<div class="row row-macd" id="macd-' + fi + '"><div class="row__label">MACD · 12/26/9</div></div>'
         +   '<div class="tooltip mono" id="tip-' + fi + '"></div>'
         + '</div>';
@@ -566,10 +580,71 @@ _PAGE_TPL = Template(
         price: 0, color: theme.text, lineWidth: 1, lineStyle: dashedLineStyle, axisLabelVisible: true, title: '0',
       });
 
+      // —— SIGNAL TIMELINE pane ——
+      var sigEl = pane.querySelector('#sig-' + fi);
+      var sigLabelsEl = pane.querySelector('#siglabels-' + fi);
+      var cSig = LightweightCharts.createChart(sigEl, commonOpts({
+        timeScale: { borderColor: theme.grid, timeVisible: true, secondsVisible: false, rightOffset: 6, visible: false },
+        rightPriceScale: { visible: false },
+        leftPriceScale: { visible: false },
+        crosshair: { mode: 1 },
+        grid: { vertLines: { color: theme.grid, style: 1 }, horzLines: { visible: false } },
+      }, theme));
+      applySize(cSig, sigEl);
+
+      // 每行一个 Line series（用作时间锚 + marker 承载）
+      var sigRowSeriesByKey = {};
+      var sigRowMarkersAllByKey = {};   // key → markers 数组（独立于主图）
+      if (signalSeries.length > 0) {
+        var firstT = (freq.main.candles[0] || {}).time || 0;
+        var lastT  = (freq.main.candles[freq.main.candles.length - 1] || {}).time || (firstT + 1);
+        // 行号倒序，让第 0 行画在最上
+        signalSeries.forEach(function (s, ri) {
+          var rowY = signalSeries.length - ri;  // 顶部 > 1，底部 1
+          var line = cSig.addLineSeries({
+            color: 'transparent',
+            lineVisible: false,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          line.setData([{ time: firstT, value: rowY }, { time: lastT, value: rowY }]);
+          sigRowSeriesByKey[s.key] = line;
+          // 该行 markers：固定 position='aboveBar'（line series 本体不可见，仅显示 marker）
+          var rowMarkers = s.markers.map(function (m) {
+            return {
+              time: m.time,
+              position: 'aboveBar',
+              color: m.color,
+              shape: 'circle',
+              text: '',
+            };
+          });
+          sigRowMarkersAllByKey[s.key] = rowMarkers;
+          line.setMarkers(rowMarkers);
+          // HTML 行标签
+          var lab = document.createElement('span');
+          lab.className = 'row__rowlabel';
+          lab.textContent = s.key;
+          sigLabelsEl.appendChild(lab);
+        });
+        cSig.timeScale().fitContent();
+      } else {
+        // 没 signal → 隐藏整行
+        sigEl.hidden = true;
+      }
+
       // —— 跨子图 时间轴 & 十字光标 联动 ——
       var trio = [cMain, cVol, cMacd];
       var trioEls = [mainEl, volEl, macdEl];
       var primarySeries = [ks, volSeries, diffSeries];
+      if (signalSeries.length > 0) {
+        trio.push(cSig);
+        trioEls.push(sigEl);
+        // 用第一个行的 line series 作为 crosshair anchor
+        var firstRowKey = Object.keys(sigRowSeriesByKey)[0];
+        primarySeries.push(sigRowSeriesByKey[firstRowKey]);
+      }
       var lockTime = false, lockCh = false;
       trio.forEach(function (src, i) {
         src.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
@@ -665,6 +740,11 @@ _PAGE_TPL = Template(
             seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
             chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);
             applySignalMarkers();
+            // 同步隐藏该 key 在 timeline 行上的 markers
+            var rowSer = sigRowSeriesByKey[s.key];
+            if (rowSer) {
+              rowSer.setMarkers(seriesVisibleMap[s.key] ? sigRowMarkersAllByKey[s.key] : []);
+            }
           });
           meta.insertBefore(chip, meta.querySelector('.pane-meta__hint') || null);
         });
@@ -804,6 +884,7 @@ def render(
     height_main: int = 420,
     height_vol: int = 130,
     height_macd: int = 170,
+    height_signal: int = 80,
 ) -> str:
     """渲染整页 HTML 字符串。"""
     lwc_script = _CDN_URL
@@ -850,6 +931,7 @@ def render(
         h_main=height_main,
         h_vol=height_vol,
         h_macd=height_macd,
+        h_signal=height_signal,
     )
     payload_json = json.dumps(payload_dict, ensure_ascii=False, allow_nan=False, default=str)
     return page_no_payload.replace("__PAYLOAD_JSON__", payload_json)
