@@ -139,12 +139,6 @@ from .utils import (
     update_tbars,
 )
 
-# czsc.ta 别名：统一指向 Rust 实现的 _native.ta 子模块。
-# 历史上 czsc/utils/ta.py 曾占用 czsc.ta 命名空间，目前已彻底删除（PR-1），
-# 此处仅做一次绑定即可，不再担心被 Python 包装版本覆盖。
-ta = _native.ta
-_sys.modules["czsc.ta"] = _native.ta
-
 # === 包元信息 ===
 # 版本号唯一来源是 Cargo.toml [workspace.package].version；maturin 在打 wheel
 # 时把它写进 dist-info，这里通过 importlib.metadata 反查，杜绝硬编码漂移。
@@ -254,7 +248,6 @@ __all__ = [
     "rolling_daily_performance",
     "save_json",
     "set_url_token",
-    "ta",
     "to_arrow",
     "update_bbars",
     "update_nxb",

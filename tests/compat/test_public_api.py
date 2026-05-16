@@ -4,9 +4,9 @@
 
     * ``czsc.*`` 顶层应导出的核心名称
     * ``czsc.traders.*`` 应包含的公共名称
-    * ``czsc.ta.*`` 技术指标命名空间应包含的名称
     * ``czsc.WeightBacktest`` 必须来自 ``wbt`` 包（架构层面的约束）
-    * 已废弃的旧 API（如 ``czsc.dummy_backtest``）必须被移除
+    * 已废弃的旧 API（如 ``czsc.svc`` / ``czsc.ta`` / ``czsc.dummy_backtest``）
+      必须被移除（Rust 侧 ``czsc._native.ta`` 仍保留供信号内部使用）
 
 期望的 API 集合保存在 ``snapshots/api_v1.json`` 中，新增 / 删除任何
 公共名称都需要先更新这份快照，从而对所有破坏性变更形成显式审计。
@@ -87,13 +87,14 @@ def test_traders_namespace_complete() -> None:
     assert not missing, f"czsc.traders.* missing {len(missing)} required public names: {missing}"
 
 
-def test_ta_namespace_complete() -> None:
-    """``czsc.ta.*`` 必须暴露快照中列出的所有技术指标名称。"""
-    snap = _load_snapshot()
-    ta, err = _safe_import("czsc.ta")
-    assert ta is not None, f"failed to import czsc.ta: {err}"
-    missing = [name for name in snap["ta"] if not hasattr(ta, name)]
-    assert not missing, f"czsc.ta.* missing {len(missing)} required public names: {missing}"
+def test_ta_namespace_removed() -> None:
+    """`czsc.ta` 顶层别名已在 v2.0.0 删除；Rust `_native.ta` 仍保留供信号内部使用。"""
+    czsc, err = _safe_import("czsc")
+    assert czsc is not None, f"failed to import czsc: {err}"
+    assert not hasattr(czsc, "ta"), "czsc.ta 仍可访问，应已删除（v2.0.0 breaking change）"
+    # Rust 侧仍可用（信号函数依赖）
+    native_ta, err = _safe_import("czsc._native.ta")
+    assert native_ta is not None, f"Rust _native.ta 必须保留供信号内部使用: {err}"
 
 
 def test_no_legacy_dummy_backtest() -> None:
