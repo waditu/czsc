@@ -161,6 +161,13 @@ def plot_czsc_signals(
         sdt: 信号开始计算日期，透传给 ``generate_czsc_signals``。
         init_n: 预热 K 线数，透传给 ``generate_czsc_signals``。
         include_others: ``True`` 时不过滤 "其他"；默认 ``False``。
+
+    Note:
+        HTML 模式下当前在浏览器内切换 LIGHT/DARK 主题时，K 线 / SMA / FX / BI / MACD
+        会跟随重染色，但 signal marker 颜色保持构建时的 palette（即生成 HTML 时
+        ``theme=`` 决定 light 或 dark palette）。若需要切换主题后 marker 也重染色，
+        在调用本函数时按目标主题分别生成两份 HTML 即可。后续版本计划在 payload 中
+        同时携带 light / dark 两套 palette，由 JS 在 ``applyTheme`` 时切换。
     """
     from czsc._native import BarGenerator, CzscTrader  # noqa: PLC0415
     from czsc.traders import generate_czsc_signals, get_signals_freqs  # noqa: PLC0415
@@ -189,6 +196,8 @@ def plot_czsc_signals(
         title=title,
     )
 
+    # 注：generate_czsc_signals 容忍 params 缺失（Rust 端走 default），无需 normalize；
+    # 仅 derive_signals_freqs（上面 freqs 推断处）才必须显式 params={}。
     df = generate_czsc_signals(
         bars,
         signals_config=signals_config,
