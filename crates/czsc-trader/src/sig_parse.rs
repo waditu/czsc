@@ -40,11 +40,7 @@ impl<'de> Deserialize<'de> for SignalConfig {
             .ok_or_else(|| serde::de::Error::missing_field("name"))?
             .to_string();
         // 剥离模块前缀：Rust 端按短名直接派发
-        let name = name_raw
-            .rsplit('.')
-            .next()
-            .unwrap_or(&name_raw)
-            .to_string();
+        let name = name_raw.rsplit('.').next().unwrap_or(&name_raw).to_string();
 
         let freq = map
             .get("freq")
@@ -61,7 +57,10 @@ impl<'de> Deserialize<'de> for SignalConfig {
             }
         }
         for (k, v) in map.iter() {
-            if matches!(k.as_str(), "name" | "freq" | "params" | "signals_module" | "module") {
+            if matches!(
+                k.as_str(),
+                "name" | "freq" | "params" | "signals_module" | "module"
+            ) {
                 continue;
             }
             params.entry(k.clone()).or_insert_with(|| v.clone());

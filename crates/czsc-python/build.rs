@@ -47,8 +47,7 @@ fn main() {
 fn check_version_lockstep() {
     // 注意：file 路径相对于 cargo 调用目录（workspace 根），
     // 这里手动定位 workspace 根：CARGO_MANIFEST_DIR 是 crates/czsc-python。
-    let manifest_dir: std::path::PathBuf =
-        env!("CARGO_MANIFEST_DIR").into();
+    let manifest_dir: std::path::PathBuf = env!("CARGO_MANIFEST_DIR").into();
     let pyproject = manifest_dir
         .parent() // crates/
         .and_then(|p| p.parent()) // workspace 根

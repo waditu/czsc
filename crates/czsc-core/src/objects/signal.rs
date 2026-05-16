@@ -276,7 +276,7 @@ impl<'de> Deserialize<'de> for SignalRef<'static> {
                 let key = key.ok_or_else(|| serde::de::Error::missing_field("key"))?;
                 let value = value.ok_or_else(|| serde::de::Error::missing_field("value"))?;
                 let composed = format!("{key}_{value}");
-                Signal::from_str(&composed).map_err(|e| serde::de::Error::custom(e))
+                Signal::from_str(&composed).map_err(serde::de::Error::custom)
             }
         }
 

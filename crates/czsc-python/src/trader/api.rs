@@ -1409,9 +1409,8 @@ fn signal_config_to_flat_dict<'py>(
                 s.into_pyobject(py)?.into_any()
             } else {
                 // dict / list 等复合类型：走 json.loads 转 Python 对象
-                let json_str = serde_json::to_string(v).map_err(|e| {
-                    PyRuntimeError::new_err(format!("序列化 params 值失败: {e}"))
-                })?;
+                let json_str = serde_json::to_string(v)
+                    .map_err(|e| PyRuntimeError::new_err(format!("序列化 params 值失败: {e}")))?;
                 json_mod.call_method1("loads", (json_str,))?
             };
             dict.set_item(k, val)?;
@@ -1517,14 +1516,8 @@ pub fn get_unique_signals(
     }
 
     // 复用 generate_czsc_signals 的产出（list[dict]）。设置 df=false 以避免来回 DataFrame 转换。
-    let records = super::generate::generate_czsc_signals(
-        py,
-        bars,
-        signals_config,
-        sdt,
-        init_n,
-        false,
-    )?;
+    let records =
+        super::generate::generate_czsc_signals(py, bars, signals_config, sdt, init_n, false)?;
     let bound_records = records.bind(py);
     let list = bound_records
         .cast::<PyList>()
