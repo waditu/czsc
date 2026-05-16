@@ -108,3 +108,25 @@ class TestDetectTransitions:
         markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
         assert markers[0]["value"] == "向上_任意_任意_3"
         assert markers[0]["v1"] == "向上"
+
+
+class TestPaletteAssignment:
+    def test_u6_stable_color_for_same_key(self):
+        from czsc.utils.plotting.lightweight._signals import assign_palette
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+
+        keys = ["30分钟_D1_A", "30分钟_D1_B", "30分钟_D1_C"]
+        a = assign_palette(keys, SIGNAL_PALETTE_LIGHT)
+        b = assign_palette(keys, SIGNAL_PALETTE_LIGHT)
+        assert a == b
+        # 同 palette 长度内不同 key 颜色互异
+        assert len(set(a.values())) == len(keys)
+
+    def test_u7_palette_cycles_when_exceeds(self):
+        from czsc.utils.plotting.lightweight._signals import assign_palette
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+
+        keys = [f"30分钟_D1_K{i}" for i in range(len(SIGNAL_PALETTE_LIGHT) + 1)]
+        mapping = assign_palette(keys, SIGNAL_PALETTE_LIGHT)
+        # 第 N+1 个 key 回到 palette[0]
+        assert mapping[keys[-1]] == SIGNAL_PALETTE_LIGHT[0]

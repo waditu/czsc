@@ -14,6 +14,7 @@ import pandas as pd
 __all__ = [
     "SignalMarker",
     "SignalSeries",
+    "assign_palette",
     "build_signal_overlays",
     "detect_transitions",
 ]
@@ -65,6 +66,11 @@ def detect_transitions(
             )
             prev_value = cur
     return markers
+
+
+def assign_palette(keys: list[str], palette: list[str]) -> dict[str, str]:
+    """按 keys 出现顺序分配 palette 颜色；超过 palette 长度时循环回到 0。"""
+    return {k: palette[i % len(palette)] for i, k in enumerate(keys)}
 
 
 def build_signal_overlays(*args, **kwargs):
