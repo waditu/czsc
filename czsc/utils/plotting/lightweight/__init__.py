@@ -231,4 +231,33 @@ def plot_czsc_signals(
             ]
         pane.signals = series  # type: ignore[assignment]
 
+    # —— 子级别 signal overlay：当前 pane 内嵌"比自己更小级别"的信号 ——
+    from czsc.utils import freqs_sorted  # noqa: PLC0415
+
+    sorted_all = freqs_sorted(list(overlays.keys()))  # 从小到大
+    for pane in payload.panes:
+        try:
+            cur_idx = sorted_all.index(pane.freq_label)
+        except ValueError:
+            cur_idx = 0
+        sub_freqs = sorted_all[:cur_idx]  # 比当前更小的
+        sub = []
+        for f in sub_freqs:
+            sub.extend(overlays.get(f, []))
+        # 与主 signals 一样按 tail_bars 同步裁剪
+        if tail_bars is not None and pane.main.candles:
+            cutoff_ts = pane.main.candles[0]["time"]
+            sub = [
+                _signals.SignalSeries(
+                    key=s.key,
+                    short_label=s.short_label,
+                    color=s.color,
+                    shape=s.shape,
+                    position=s.position,
+                    markers=[m for m in s.markers if m["time"] >= cutoff_ts],
+                )
+                for s in sub
+            ]
+        pane.sub_signals = sub  # type: ignore[attr-defined]
+
     return _dispatch(payload, output=output, path=path)

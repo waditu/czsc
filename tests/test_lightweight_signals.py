@@ -310,6 +310,49 @@ class TestPlotCzscSignalsHTML:
         assert any_signals
 
 
+class TestSubFreqSignals:
+    def test_payload_pane_has_sub_signals_field(self, _bars_demo):
+        """大级别 pane 的 sub_signals 应包含小级别 series；小级别 pane 应为空。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,  # 30分钟 + 日线
+            output="html",
+            tail_bars=200,
+        )
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        payload = json.loads(m.group(1))
+        # panes 按从大到小排列：日线 在前，30分钟 在后
+        # 找到 30分钟 / 日线 pane（如果都存在）
+        small_panes = [p for p in payload["panes"] if p["freq_label"] == "30分钟"]
+        big_panes = [p for p in payload["panes"] if p["freq_label"] == "日线"]
+        # 小级别 pane.sub_signals 必为空
+        if small_panes:
+            assert small_panes[0]["sub_signals"] == [], (
+                f"小级别 pane sub_signals 应空，实际 {small_panes[0]['sub_signals']}"
+            )
+        # 大级别 pane.sub_signals 应包含 30 分钟相关 series
+        if big_panes and small_panes:
+            sub_keys = [s["key"] for s in big_panes[0]["sub_signals"]]
+            assert any("30分钟" in k for k in sub_keys), (
+                f"日线 pane sub_signals 应含 30分钟 series；实际 keys = {sub_keys}"
+            )
+
+    def test_html_contains_sub_freq_section(self, _bars_demo):
+        """HTML JS 模板必含 SUB-FREQ SIGNALS section 字符串。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        assert "SUB-FREQ SIGNALS @ THIS BAR" in html
+        assert "subEventsByCandle" in html
+
+
 class TestStreamlitMarkers:
     def test_build_groups_passes_markers_to_candle(self):
         from czsc.utils.plotting.lightweight._data import build_from_czsc
