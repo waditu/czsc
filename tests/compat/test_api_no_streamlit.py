@@ -62,8 +62,7 @@ def test_source_file_does_not_touch_streamlit(relpath: str) -> None:
     target = CZSC_ROOT / relpath
     assert target.exists(), f"baseline 文件 {target} 不存在，可能被误删或路径过时"
     assert not _file_touches_streamlit(target), (
-        f"{target} 不应包含 import streamlit / from streamlit；"
-        "可视化层应使用 plotly 直接渲染或返回 plotly Figure。"
+        f"{target} 不应包含 import streamlit / from streamlit；可视化层应使用 plotly 直接渲染或返回 plotly Figure。"
     )
 
 

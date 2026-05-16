@@ -11,8 +11,8 @@
 # 普通脚本
 uv run python docs/examples/01_quick_start.py
 
-# Streamlit UI 脚本
-uv run streamlit run docs/examples/10_streamlit_kline.py
+# HTML 可视化脚本（生成自包含 HTML，浏览器直接打开）
+uv run python docs/examples/13_lightweight_charts_html.py
 ```
 
 > **统一产物目录**：03/07/08/09 这类有落盘产物的脚本，全部把输出写到
@@ -85,13 +85,14 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 | 08 | [`08_weight_backtest.py`](./examples/08_weight_backtest.py) | `WeightBacktest` · `daily_performance` · `top_drawdowns` · `plot_backtest_stats` | 时序权重回测的完整链路 + 离线 HTML 报告（产物：`_output/08_weight_backtest.html`） |
 | 09 | [`09_eda_and_plotting.py`](./examples/09_eda_and_plotting.py) | `mark_cta_periods` · `mark_volatility` · `cal_trade_price` · `turnover_rate` · `weights_simple_ensemble` · `plot_colored_table` · `plot_long_short_comparison` | 探索性分析常用工具 + 多种离线绘图函数（产物：`_output/09_eda_and_plotting.html`） |
 
-### 第五组：Streamlit 交互面板（看图）
+### 第五组：lightweight-charts HTML（自包含交互看图）
 
-| #  | 文件 | 启动命令 | 你将看到 |
+| #  | 文件 | 关键 API | 你将看到 |
 |----|------|----------|----------|
-| 10 | [`10_streamlit_kline.py`](./examples/10_streamlit_kline.py) | `streamlit run docs/examples/10_streamlit_kline.py` | 缠论 K 线交互看图：品种/周期/时间窗 + 分型/笔/MA/MACD 子图 |
-| 11 | [`11_streamlit_trader.py`](./examples/11_streamlit_trader.py) | `streamlit run docs/examples/11_streamlit_trader.py` | 多级别 `CzscTrader`：每个周期一个 Tab，基础周期叠加开/平仓标记 |
-| 12 | [`12_streamlit_research.py`](./examples/12_streamlit_research.py) | `streamlit run docs/examples/12_streamlit_research.py` | 一站式研究面板：回测/收益/相关性/因子/统计 5 个页面 |
+| 13 | [`13_lightweight_charts_html.py`](./examples/13_lightweight_charts_html.py) | `plot_czsc` · `plot_czsc_trader` | 缠论 K 线 + 多周期联立，自包含 HTML（无需服务端） |
+| 15 | [`15_lightweight_signals_html.py`](./examples/15_lightweight_signals_html.py) | `plot_czsc_signals` | 信号叠加版本，含 signal timeline + tooltip |
+
+> v2.0.0 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/v2-cleanup.md`](./migration/v2-cleanup.md)。
 
 ---
 
@@ -142,7 +143,7 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
    ↓
 [09] 配合 EDA 工具（如 mark_cta_periods）做切片分析
    ↓
-[12] 在 Streamlit 面板里把以上结果交互式展示
+[13/15] 生成自包含 HTML 报告分享给协作者
 ```
 
 ### 3.2 "看盘 / Demo" 工作流
@@ -150,9 +151,9 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 ```
 [01] 跑通 mock 数据 → CZSC
    ↓
-[03] 离线生成一份 HTML 看图（不依赖 Streamlit）
+[03] 离线生成一份 HTML 看图（plotly）
    ↓
-[10] 启动 Streamlit 交互看图（实时调参数）
+[13/15] lightweight-charts 自包含 HTML，浏览器直接打开
 ```
 
 ---

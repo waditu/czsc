@@ -13,12 +13,11 @@
 # 顶层包的 import 顺序经过手工设计以处理子包间的循环依赖，
 # 不要让 isort/ruff 重排——会触发 partially-initialized module 错误。
 
-import sys as _sys
-
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
 # fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
-from . import _native, connectors, envs, traders, utils
+from . import _native as _native  # noqa: F401  # 通过 czsc._native.* 暴露
+from . import connectors, envs, traders, utils
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===

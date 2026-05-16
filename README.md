@@ -35,9 +35,8 @@ czsc (Python 包)
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
 │   ├── signals.*         ← 250+ 信号函数（13+ 子模块；详见 crates/czsc-signals/src/）
-│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等)
+│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，v2.0.0 起仅内部使用)
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
-├── czsc.svc              ← Streamlit 量化研究组件库
 ├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
 ├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
 ├── czsc.eda              ← 探索性数据分析（因子/特征/权重）
@@ -58,7 +57,7 @@ czsc (Python 包)
 * 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
 * 定义并实现了 250+ 信号函数（Rust 实现），见 `czsc._native.signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
-* **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**
+* HTML 可视化（plotly + lightweight-charts）：`czsc.utils.plotting.{kline,backtest,lightweight}.*`
 
 
 ## 安装使用
@@ -206,7 +205,7 @@ fig.show()
 | **枚举** | `Freq`, `Mark`, `Direction`, `Operate` | 方向/频率等枚举（Rust） |
 | **信号/事件** | `Signal`, `Event`, `Position` | 信号与持仓逻辑（Rust） |
 | **分析工具** | `check_fx`, `check_bi`, `remove_include` | 分型/笔校验工具（Rust） |
-| **TA算子** | `czsc.ta.ema`, `czsc.ta.sma`, ... | 技术指标算子（Rust） |
+| **TA算子顶层别名** | `czsc.ema`, `czsc.sma`, `czsc.rolling_rank`, `czsc.boll_positions`, `czsc.ultimate_smoother` | 技术指标算子顶层别名（Rust） |
 | **交易器** | `CzscTrader`, `CzscSignals` | 多级别交易决策（Rust） |
 | **信号生成** | `generate_czsc_signals` | 批量信号生成（Rust） |
 | **权重回测** | `WeightBacktest` | 权重序列回测（来自 wbt） |
@@ -227,19 +226,17 @@ fig.show()
 | `local_data.py` | 投研数据本地缓存 | CZSC 共享数据本地读取入口 |
 
 
-## Streamlit 组件库（czsc.svc）
+## 可视化（HTML 输出）
 
-`czsc.svc` 提供即开即用的量化研究可视化组件：
+v2.0.0 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight-charts 输出 HTML：
 
 | 模块 | 功能 |
 |------|------|
-| `svc.backtest` | 回测分析（累计收益/回撤/月度热力图） |
-| `svc.strategy` | 策略全貌展示 |
-| `svc.factor` | 因子分析 |
-| `svc.correlation` | 相关性分析 |
-| `svc.statistics` | 统计分析 |
-| `svc.returns` | 收益归因 |
-| `svc.weights` | 权重管理 |
+| `czsc.utils.plotting.kline` | 单周期 K 线 + 缠论结构（plotly Figure） |
+| `czsc.utils.plotting.backtest` | 累计收益 / 回撤 / 月度热力图 / 综合回测概览 |
+| `czsc.utils.plotting.lightweight` | lightweight-charts 自包含 HTML，多周期联立 + 信号叠加 |
+
+如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/v2-cleanup.md`](docs/migration/v2-cleanup.md)。
 
 
 ## 开发环境搭建

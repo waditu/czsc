@@ -7,6 +7,32 @@
 
 ---
 
+## [2.0.0] — 2026-05-16
+
+> **清理非缠论核心 API。** 移除 Streamlit 可视化命名空间 `czsc.svc`、Python 端 `czsc.ta` 顶层别名、streamlit 运行时依赖与 5 个 streamlit 示例。Rust 侧 `czsc._native.ta` 仍保留供信号内部使用；HTML 可视化路径（`czsc.utils.plotting.*` 与 `lightweight.plot_czsc*`）完整保留。
+
+### Breaking changes
+
+- **删除 `czsc.svc` 子包**。原 60+ 个 `show_*` Streamlit 组件全部移除（`czsc/svc/` 整目录，约 4800 行）。替代方案：用 `czsc.utils.plotting.backtest.plot_*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
+- **删除 `czsc.ta` 顶层 alias**。Rust 实现 `czsc._native.ta` 仍可用；信号函数内部继续依赖。顶层算子别名 `czsc.ema` / `czsc.sma` / `czsc.rolling_rank` / `czsc.boll_positions` / `czsc.ultimate_smoother` 保留（来自 `from czsc._native import ema, sma, ...`）。
+- **删除 `streamlit` 核心依赖**。`pyproject.toml` 不再依赖 streamlit；`uv pip install czsc` 后 streamlit **不会**被自动安装。需要 streamlit 集成时调用方自行 `pip install streamlit` 并 `st.components.v1.html(plot_czsc(c, output='html'))`。
+- **删除 lightweight 的 `output="streamlit"` 路径**。`czsc.utils.plotting.lightweight._streamlit_renderer` 整文件删除；`plot_czsc` / `plot_czsc_trader` / `plot_czsc_signals` 的 `output` 参数仅接受 `"html"`。
+- **删除 streamlit 示例**：`docs/examples/{10,11,12,14,16}_streamlit_*.py` 与 `_streamlit_smoke.py`。HTML 路径示例 `13_lightweight_charts_html.py` / `15_lightweight_signals_html.py` 完整保留。
+- **删除 ta 数值等价测试**：`tests/unit/test_ta_parity.py` 整文件删除；数值正确性由 Rust 侧 `cargo test --package czsc-ta` 覆盖。
+
+### 测试与防护
+
+- 新增 `tests/compat/test_api_no_streamlit.py`：源码 grep 锁定独立模块不许写入 streamlit + 运行时断言 `import czsc` / `import czsc.utils.plotting.lightweight` 不触达 streamlit。
+- 新增 `tests/compat/baselines/`：固化清理前 grep 现状供 review 对比。
+- `tests/compat/test_public_api.py` 同步：删 `test_ta_namespace_complete`，新增 `test_ta_namespace_removed` / `test_svc_subpackage_removed` 反向断言。
+- `tests/compat/snapshots/api_v1.json`：`top_level` 删 `"svc"` / `"ta"`；`removed` 追加；`ta` 整组迁入 `removed_ta`。
+
+### 迁移指引
+
+详见 [`docs/migration/v2-cleanup.md`](docs/migration/v2-cleanup.md)。
+
+---
+
 ## [1.0.0] — 2026-05-16
 
 > **里程碑版本。** 缠论核心算法（分型、笔、中枢、信号体系）从 Python 迁移到 Rust，

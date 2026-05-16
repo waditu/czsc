@@ -55,9 +55,8 @@ dependencies = [
     # - talib-rs 见 [project.optional-dependencies].test，运行时代码不依赖它
     "wbt",
     # 图表和可视化（czsc 的所有可视化统一由 plotly 实现，
-    # 通过 streamlit 渲染或 fig.show() 在浏览器打开）
+    # fig.show() 在浏览器打开或 plot_*(to_html=True) 写 HTML 文件）
     "plotly",
-    "streamlit",
     # 工具库
     "tqdm>=4.66.4",
     "loguru",

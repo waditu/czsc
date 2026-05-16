@@ -39,5 +39,3 @@ def test_czsc_import_time():
         f"czsc 导入耗时 {elapsed:.2f}s，超过了阈值 {MAX_IMPORT_TIME_SECONDS}s。"
         f"请检查是否在模块级引入了重型依赖（如 streamlit、scipy、statsmodels、scikit-learn 等）。"
     )
-
-

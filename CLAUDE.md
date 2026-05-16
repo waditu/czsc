@@ -55,7 +55,7 @@ uv run --no-sync ruff check czsc/ tests/
    - 暴露 `CZSC / FX / BI / ZS / RawBar / NewBar / Freq / Mark / Direction / Operate / Signal / Event / Position / BarGenerator` 等核心类型
    - 暴露 `check_bi / check_fx / check_fxs / remove_include / freq_end_time / is_trading_time` 等工具函数
    - 暴露 250+ 信号函数（完整分组以 `crates/czsc-signals/src/` 为准，13+ 子模块；可用 `ls crates/czsc-signals/src/` 自查最新清单）
-   - 暴露 `czsc._native.ta.*`（Rust TA 算子，对应 `czsc.ta.*`）
+   - 暴露 `czsc._native.ta.*`（Rust TA 算子，供信号函数内部使用；v2.0.0 起 Python 端不再暴露 `czsc.ta` 顶层 alias）
    - **不存在 Python 回退**：`czsc/py/` 与 `czsc/core.py` 已在 Phase H 删除；`CZSC_USE_PYTHON` 环境变量已退役（spec §3.4）
 
 2. **`crates/`** - Rust workspace（9 个 crate）：
@@ -78,10 +78,10 @@ uv run --no-sync ruff check czsc/ tests/
    - `data/cache.py` / `io.py` / `log.py` / `kline_quality.py`：缓存、IO、日志、K 线质量校验
    - `analysis/`（`stats.py` 业绩统计 / `corr.py` 相关性分析）
    - `data/client.py`：统一数据客户端接口
-   - TA 算子由 Rust `czsc.ta.*`（`czsc._native.ta`）提供；仪表盘场景的 MACD（×2 约定）已下沉为 `czsc/utils/plotting/_macd.py` 私有辅助
+   - TA 算子由 Rust `czsc._native.ta` 提供（信号内部依赖），顶层别名 `czsc.{ema,sma,rolling_rank,boll_positions,ultimate_smoother}` 保留；仪表盘场景的 MACD（×2 约定）已下沉为 `czsc/utils/plotting/_macd.py` 私有辅助
    - `trade.py`：交易工具
    - `plotting/{kline,backtest,weight,common}.py`：Plotly 图表绘制
-   - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py`（迁至 `czsc/svc/`）、`echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer` / `crypto/`（spec §9 完全删除）
+   - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py` / `echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer` / `crypto/` / `czsc/svc/`（v2.0.0 删除 Streamlit 组件库）
    - `plotting/backtest.py` 主要函数：
      - `plot_cumulative_returns()`: 累计收益曲线
      - `plot_drawdown_analysis()`: 回撤分析图
@@ -91,13 +91,7 @@ uv run --no-sync ruff check czsc/ tests/
      - `plot_colored_table()`: 带颜色编码的绩效表格
      - `plot_long_short_comparison()`: 多空收益对比
 
-7. **`czsc/svc/`** - 统计和可视化服务：
-   - `backtest.py`: 回测分析工具
-   - `factor.py`: 因子分析
-   - `correlation.py`: 相关性分析
-   - `statistics.py`: 统计分析工具
-
-8. **`czsc/connectors/`** - 数据源连接器：
+7. **`czsc/connectors/`** - 数据源连接器：
    - 支持天勤、Tushare、CCXT 等多个数据源
    - 统一的数据接口封装；`local_data.py`（原 `research.py`）提供 CZSC 投研共享数据的本地缓存读取入口
 
@@ -234,11 +228,15 @@ from czsc.utils.plotting.common import (
 - 监控大小：`czsc.get_dir_size(czsc.home_path)`
 - 当缓存超过1GB时 `czsc.welcome()` 会显示清理提示
 
-## Streamlit 集成
+## 可视化（Plotly + HTML）
 
-项目在 `czsc/svc/`（Streamlit Visualize Components）中提供完整的可视化组件库，覆盖回测、相关性、因子、统计、策略、权重等场景。`czsc.svc` 在 `czsc/__init__.py` 中按 spec §3.1 改为静态 import，**不再走 lazy loading**——访问 `czsc.svc` 即可，无需任何延迟初始化。
+v2.0.0 起项目不再依赖 streamlit。所有可视化统一由 plotly 实现，输出方式：
 
-> 注：原 `czsc/utils/st_components.py` 已在 Phase J 删除，所有 Streamlit 组件统一收敛到 `czsc/svc/`。
+- `czsc.utils.plotting.kline.KlineChart` / `plot_czsc_chart`：单周期 K 线 + 缠论结构（plotly Figure，可 `fig.show()` 或写 HTML）
+- `czsc.utils.plotting.backtest.plot_*`：累计收益 / 回撤 / 月度热力图 / 综合回测概览（plotly + HTML 字符串）
+- `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}`：lightweight-charts 自包含 HTML，多周期联立 + 信号叠加
+
+如需在 streamlit 中嵌入，调用方自行 `pip install streamlit` 后 `st.components.v1.html(plot_czsc(c, output='html'))` 即可（`czsc.svc` 已删除，参见 `docs/migration/v2-cleanup.md`）。
 
 ## Rust/Python 混合架构
 
@@ -295,9 +293,7 @@ from czsc.utils.plotting.common import (
 
 ## 示例代码和用例
 
-项目维护的示例代码集中在 `docs/examples/` 下（如 `12_streamlit_research.py`、`30分钟笔非多即空.py` 等）；
-历史上的 `examples/` / `examples/develop/` / `examples/signals_dev/` / `examples/animotion/`、
-`docs/source/` 等目录已不再保留，仅在历史 commit 中可查。
+项目维护的示例代码集中在 `docs/examples/` 下（如 `08_weight_backtest.py`、`13_lightweight_charts_html.py`、`15_lightweight_signals_html.py` 等）；历史上的 streamlit 示例（10/11/12/14/16）已在 v2.0.0 删除，HTML 路径示例（13/15）完整保留。
 
 ## 项目特色和最佳实践
 
@@ -306,7 +302,7 @@ from czsc.utils.plotting.common import (
 3. **系统化信号体系**: 信号→事件→交易的完整流程
 4. **丰富的数据源**: 支持A股、期货、数字货币等多市场
 5. **完善的测试框架**: 统一的模拟数据生成和测试规范
-6. **可视化工具**: Streamlit组件库支持快速分析展示
+6. **可视化工具**: Plotly + lightweight-charts HTML 输出，无 streamlit 强依赖
 7. **策略研究工具**: CTA框架、参数优化、回测分析一体化
 8. **代码质量优化**: 遵循 DRY、KISS、SOLID 原则
    - 使用模块级常量消除魔法值
