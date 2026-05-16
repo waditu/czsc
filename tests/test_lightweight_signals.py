@@ -361,60 +361,6 @@ class TestPlotCzscSignalsHTML:
         assert any_signals
 
 
-class TestStreamlitMarkers:
-    def test_build_groups_passes_markers_to_candle(self):
-        from czsc.utils.plotting.lightweight._data import build_from_czsc
-        from czsc.utils.plotting.lightweight._signals import SignalMarker, SignalSeries
-        from czsc.utils.plotting.lightweight._streamlit_renderer import _build_groups
-        from czsc.utils.plotting.lightweight._theme import get_theme
-
-        df = generate_symbol_kines("000001", "30分钟", "20230101", "20230201", seed=42)
-        from czsc import CZSC, Freq, format_standard_kline
-
-        c = CZSC(format_standard_kline(df, freq=Freq.F30))
-        payload = build_from_czsc(c)
-        freq = payload.panes[0]
-        freq.signals = [
-            SignalSeries(
-                key="30分钟_D1_X",
-                short_label="D1_X",
-                color="#1F3C6E",
-                shape="circle",
-                position="aboveBar",
-                markers=[
-                    SignalMarker(
-                        time=int(freq.main.candles[10]["time"]),
-                        value="A_x_x_0",
-                        v1="A",
-                        color="#1F3C6E",
-                        direction="neutral",
-                        vnum=0,
-                    ),
-                ],
-            )
-        ]
-        groups = _build_groups(freq, get_theme("light"), visible=None)
-        candle_cfg = groups[0]["series"][0]
-        markers = candle_cfg.get("markers", [])
-        assert any(m["time"] == int(freq.main.candles[10]["time"]) for m in markers)
-        assert markers[0]["color"] == "#1F3C6E"
-        assert markers[0]["text"] == "A"
-
-    def test_render_signal_kpi_callable(self):
-        """signal KPI 仅做"无 markers / 无 candles"两条早返路径的导入/早返冒烟。"""
-        from czsc.utils.plotting.lightweight._data import (
-            FreqPayload,
-            MacdPane,
-            MainPane,
-            VolumePane,
-        )
-        from czsc.utils.plotting.lightweight._streamlit_renderer import render_signal_kpi
-
-        # 无 signals → 直接 return，不会触发 streamlit 调用
-        empty = FreqPayload(freq_label="30分钟", main=MainPane(), volume=VolumePane(), macd=MacdPane())
-        render_signal_kpi(empty)  # 不抛
-
-
 class TestCase15HtmlPersistence:
     def test_i2_writes_html_file(self, tmp_path, _bars_demo):
         from czsc.utils.plotting.lightweight import plot_czsc_signals
@@ -501,26 +447,6 @@ class TestCrossPaneCrosshair:
         assert "crosshairTime" in html
         assert "applyCrosshairToTab" in html
         assert "setCrosshairPosition" in html
-
-
-@pytest.mark.slow
-class TestStreamlitSlow:
-    def test_i6_streamlit_app_smoke(self):
-        """通过 streamlit.testing.v1.AppTest 启动案例 16，确保不抛异常。"""
-        try:
-            from streamlit.testing.v1 import AppTest  # noqa: PLC0415
-        except ImportError:
-            pytest.skip("当前环境无 streamlit.testing.v1.AppTest")
-            return
-        at = AppTest.from_file("docs/examples/16_streamlit_signals.py", default_timeout=30)
-        at.run()
-        # 若无异常，通过；若因 streamlit-lightweight-charts 缺失而异常，skip
-        if at.exception:
-            exc_msg = str(at.exception[0].message) if at.exception else ""
-            if "streamlit-lightweight-charts" in exc_msg:
-                pytest.skip("当前环境无 streamlit-lightweight-charts，无法完整运行案例 16")
-            else:
-                raise AssertionError(f"案例 16 执行异常: {exc_msg}")
 
 
 class TestMarkerTimeAlignment:

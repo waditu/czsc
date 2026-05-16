@@ -2,17 +2,16 @@
 
 设计要点：
 
-- ``plot_czsc(c, output=...)``        — 接 ``CZSC`` 对象（单周期）
-- ``plot_czsc_trader(ct, output=...)`` — 接 ``CzscTrader`` / ``CzscSignals``（多周期）
-- ``output="html"``      → 写文件到 ``path``（或返回 HTML 字符串）
-- ``output="streamlit"`` → 通过 ``st.components.v1.html`` 嵌 iframe，复用 HTML
-  渲染器的全部交互（tab / tooltip / 主题切换 / 图例 toggle / 跨子图十字光标联动）
+- ``plot_czsc(c, output="html")``        — 接 ``CZSC`` 对象（单周期）
+- ``plot_czsc_trader(ct, output="html")`` — 接 ``CzscTrader`` / ``CzscSignals``（多周期）
+- 写文件到 ``path``（或 ``path=None`` 时返回 HTML 字符串）
 
 每个周期展开为 3 个 sub-pane：主图（K + SMA5 + SMA20 + 分型 + 笔）+ 副图1 成交量 +
 副图2 MACD。颜色与项目 Plotly 版 ``KlineChart`` 对齐，避免红绿互换迷惑。
 
-零第三方运行时依赖：HTML 模板用 Python 标准库 ``string.Template``；Streamlit 嵌入
-用 ``streamlit.components.v1.html``，不依赖 ``streamlit-lightweight-charts`` 等组件。
+零第三方运行时依赖：HTML 模板用 Python 标准库 ``string.Template``。v2.0.0
+起 streamlit 输出路径已删除——如需在 streamlit 中嵌入，由调用方自行用
+``st.components.v1.html(plot_czsc(c, output='html'))`` 完成。
 """
 
 from __future__ import annotations
@@ -24,25 +23,22 @@ from typing import Any, Literal
 
 from czsc._native import CZSC
 
-from . import _data, _html_renderer, _signals, _streamlit_renderer, _theme
+from . import _data, _html_renderer, _signals, _theme
 
-OutputType = Literal["html", "streamlit"]
+OutputType = Literal["html"]
 
 __all__ = ["plot_czsc", "plot_czsc_signals", "plot_czsc_trader"]
 
 
 def _dispatch(payload: _data.ChartPayload, *, output: OutputType, path: str | Path | None) -> str | None:
-    if output == "html":
-        html = _html_renderer.render(payload)
-        if path is None:
-            return html
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        Path(path).write_text(html, encoding="utf-8")
-        return str(path)
-    if output == "streamlit":
-        _streamlit_renderer.render(payload)
-        return None
-    raise ValueError(f"unknown output={output!r}; expected 'html' or 'streamlit'")
+    if output != "html":
+        raise ValueError(f"unknown output={output!r}; only 'html' is supported since v2.0.0")
+    html = _html_renderer.render(payload)
+    if path is None:
+        return html
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    Path(path).write_text(html, encoding="utf-8")
+    return str(path)
 
 
 def plot_czsc(
@@ -58,14 +54,14 @@ def plot_czsc(
     """单周期：把 ``CZSC`` 对象画成 lightweight-charts 三 sub-pane 图。
 
     :param c: ``CZSC`` 实例
-    :param output: ``"html"``（默认）或 ``"streamlit"``
+    :param output: 仅支持 ``"html"``（v2.0.0 起 streamlit 路径已删除）
     :param path: HTML 模式下落盘路径；为 ``None`` 时返回 HTML 字符串
     :param title: 网页 / 标题文字；默认 ``"<symbol> 缠论结构（<freq>）"``
     :param theme: ``"light"`` 或 ``"dark"``
     :param show_sma: 主图叠加的 SMA 周期序列；默认 ``(5, 20)``
     :param tail_bars: 只渲染最近 N 根 K 线；为 ``None`` 时全量
 
-    :return: HTML 模式下若 ``path`` 为空返回 HTML 字符串、否则返回写入路径；Streamlit 模式恒返回 ``None``
+    :return: ``path`` 为空时返回 HTML 字符串，否则返回写入路径
 
     示例::
 
@@ -148,12 +144,12 @@ def plot_czsc_signals(
     2. ``generate_czsc_signals(df=True)`` 拿到 key/value DataFrame
     3. ``build_signal_overlays`` 计算 transition marker + palette 分配
     4. 复用 ``build_from_trader`` 得到 K/缠论 payload，注入 signals 字段
-    5. 按 ``output`` 分发到 HTML / Streamlit 渲染器
+    5. 通过 HTML 渲染器输出（写文件或返回字符串）
 
     Args:
         bars: 基础周期 K 线列表（``RawBar``）。
         signals_config: 信号配置，结构同 ``generate_czsc_signals``。
-        output: ``"html"`` 或 ``"streamlit"``。
+        output: 仅支持 ``"html"``（v2.0.0 起 streamlit 路径已删除）。
         path: HTML 模式下落盘路径，为 ``None`` 时返回 HTML 字符串。
         title: 网页标题；缺省自动生成。
         theme: ``"light"`` / ``"dark"``。默认 ``"dark"``。
