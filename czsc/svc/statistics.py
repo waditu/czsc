@@ -491,8 +491,9 @@ def show_normality_check(data: pd.Series, alpha=0.05):
     kde = gaussian_kde(clean_data.to_numpy())
     fig.add_trace(go.Scatter(x=x_grid, y=kde(x_grid), mode="lines", name="KDE"), row=1, col=1)
     fig.add_trace(
-        go.Scatter(x=x_grid, y=norm.pdf(x_grid, mu, std), mode="lines", name="Normal PDF",
-                   line={"color": "red", "width": 2}),
+        go.Scatter(
+            x=x_grid, y=norm.pdf(x_grid, mu, std), mode="lines", name="Normal PDF", line={"color": "red", "width": 2}
+        ),
         row=1,
         col=1,
     )
@@ -502,8 +503,14 @@ def show_normality_check(data: pd.Series, alpha=0.05):
     fig.add_trace(go.Scatter(x=osm, y=osr, mode="markers", name="样本分位", showlegend=False), row=1, col=2)
     line_x = np.array([osm.min(), osm.max()])
     fig.add_trace(
-        go.Scatter(x=line_x, y=slope * line_x + intercept, mode="lines", name="拟合直线",
-                   line={"color": "red", "dash": "dash"}, showlegend=False),
+        go.Scatter(
+            x=line_x,
+            y=slope * line_x + intercept,
+            mode="lines",
+            name="拟合直线",
+            line={"color": "red", "dash": "dash"},
+            showlegend=False,
+        ),
         row=1,
         col=2,
     )

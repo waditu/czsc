@@ -199,5 +199,3 @@ def normalize_candidate_event(event: dict[str, Any]) -> dict[str, Any]:
 def normalize_candidate_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     """批量调用 :func:`normalize_candidate_event`，返回标准化后的事件列表"""
     return [normalize_candidate_event(event) for event in events]
-
-

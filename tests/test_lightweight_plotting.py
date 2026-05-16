@@ -25,6 +25,7 @@ from czsc.utils.plotting.lightweight import _data, _html_renderer, plot_czsc, pl
 
 # ---------- fixtures ----------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def czsc_30m() -> CZSC:
     df = generate_symbol_kines("000001", "30分钟", "20230101", "20230601", seed=42)
@@ -46,6 +47,7 @@ def _payload_dict(c: CZSC) -> dict[str, Any]:
 
 
 # ---------- L1 数据准备层 -----------------------------------------------------
+
 
 class TestBuildFromCzsc:
     def test_candle_count_equals_bars_raw(self, czsc_30m: CZSC):
@@ -149,6 +151,7 @@ class TestBuildFromTrader:
 
 
 # ---------- L2 渲染层 --------------------------------------------------------
+
 
 class TestHtmlRenderer:
     def test_dom_structure(self, czsc_30m: CZSC):
