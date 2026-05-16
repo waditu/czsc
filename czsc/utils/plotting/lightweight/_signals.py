@@ -61,9 +61,7 @@ def detect_transitions(
         if cur != prev_value:
             v1 = cur.split("_", 1)[0]
             ts = int(row["dt"].timestamp())
-            markers.append(
-                SignalMarker(time=ts, value=cur, v1=v1, color="")
-            )
+            markers.append(SignalMarker(time=ts, value=cur, v1=v1, color=""))
             prev_value = cur
     return markers
 
@@ -73,6 +71,70 @@ def assign_palette(keys: list[str], palette: list[str]) -> dict[str, str]:
     return {k: palette[i % len(palette)] for i, k in enumerate(keys)}
 
 
-def build_signal_overlays(*args, **kwargs):
-    """T5 实现。"""
-    raise NotImplementedError
+def _strip_freq_prefix(key: str, freq: str) -> str:
+    """信号 key 形如 ``{freq}_{k2}_{k3}``；去掉 freq 前缀只留 k2_k3。"""
+    prefix = f"{freq}_"
+    return key[len(prefix) :] if key.startswith(prefix) else key
+
+
+def _match_freq(key: str, freqs: list[str]) -> str | None:
+    """按最长前缀匹配 freq；找不到返回 None（跳过该 key）。"""
+    matches = [f for f in freqs if key.startswith(f"{f}_")]
+    if not matches:
+        return None
+    return max(matches, key=len)
+
+
+def build_signal_overlays(
+    df: pd.DataFrame,
+    *,
+    freqs: list[str],
+    palette: list[str],
+    shapes: list[str] | None = None,
+    positions: list[str] | None = None,
+    include_others: bool = False,
+) -> dict[str, list[SignalSeries]]:
+    """把信号 DataFrame 转成 {freq → [SignalSeries]} 嵌套结构。
+
+    - 列名前缀决定归属哪个 freq；列名不带任何已知 freq 前缀时跳过
+    - 同 freq 内的 keys 按 DataFrame 列顺序分配 palette / shape / position
+    - SignalMarker.color 在此函数内回填为所属 SignalSeries.color
+    """
+    from ._theme import SIGNAL_POSITIONS, SIGNAL_SHAPES
+
+    shapes = shapes or SIGNAL_SHAPES
+    positions = positions or SIGNAL_POSITIONS
+
+    signal_cols = [c for c in df.columns if c not in {"dt", "symbol", "freq"}]
+    buckets: dict[str, list[str]] = {f: [] for f in freqs}
+    for col in signal_cols:
+        freq = _match_freq(col, freqs)
+        if freq is None:
+            continue
+        buckets[freq].append(col)
+
+    out: dict[str, list[SignalSeries]] = {}
+    for freq, keys in buckets.items():
+        if not keys:
+            continue
+        color_map = assign_palette(keys, palette)
+        series_list: list[SignalSeries] = []
+        for idx, key in enumerate(keys):
+            color = color_map[key]
+            shape = shapes[idx % len(shapes)]
+            position = positions[idx % len(positions)]
+            markers = detect_transitions(df, key, include_others=include_others)
+            for m in markers:
+                m["color"] = color
+            series_list.append(
+                SignalSeries(
+                    key=key,
+                    short_label=_strip_freq_prefix(key, freq),
+                    color=color,
+                    shape=shape,
+                    position=position,
+                    markers=markers,
+                )
+            )
+        out[freq] = series_list
+    return out

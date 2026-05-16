@@ -73,9 +73,7 @@ class TestDetectTransitions:
         df = self._df(["A_x_x_0", "A_x_x_0", "B_x_x_0", "B_x_x_0", "C_x_x_0"])
         markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
         assert [m["v1"] for m in markers] == ["A", "B", "C"]
-        assert [m["time"] for m in markers] == [
-            int(df["dt"].iloc[i].timestamp()) for i in (0, 2, 4)
-        ]
+        assert [m["time"] for m in markers] == [int(df["dt"].iloc[i].timestamp()) for i in (0, 2, 4)]
 
     def test_u2_other_filtered_by_default(self):
         from czsc.utils.plotting.lightweight._signals import detect_transitions
@@ -130,3 +128,50 @@ class TestPaletteAssignment:
         mapping = assign_palette(keys, SIGNAL_PALETTE_LIGHT)
         # 第 N+1 个 key 回到 palette[0]
         assert mapping[keys[-1]] == SIGNAL_PALETTE_LIGHT[0]
+
+
+class TestBuildSignalOverlays:
+    def test_u8_multi_freq_bucketing(self):
+        from czsc.utils.plotting.lightweight._signals import build_signal_overlays
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+
+        df = pd.DataFrame(
+            {
+                "dt": pd.date_range("2023-01-01", periods=3, freq="30min"),
+                "30分钟_D1_A": ["向上_任意_任意_0", "向下_任意_任意_0", "向下_任意_任意_0"],
+                "30分钟_D1_B": ["多_任意_任意_0", "多_任意_任意_0", "空_任意_任意_0"],
+                "日线_D1_C": ["持平_任意_任意_0", "持平_任意_任意_0", "持平_任意_任意_0"],
+            }
+        )
+        out = build_signal_overlays(
+            df,
+            freqs=["30分钟", "日线"],
+            palette=SIGNAL_PALETTE_LIGHT,
+        )
+        assert set(out.keys()) == {"30分钟", "日线"}
+        keys_30m = [s.key for s in out["30分钟"]]
+        keys_day = [s.key for s in out["日线"]]
+        assert keys_30m == ["30分钟_D1_A", "30分钟_D1_B"]
+        assert keys_day == ["日线_D1_C"]
+        # 颜色独立分配（同 palette 池，同序号同色，但 series 在不同桶里）
+        assert out["30分钟"][0].color in SIGNAL_PALETTE_LIGHT
+        # 持平没有切换且仅 1 个值出现一次 → 第一条仍 trigger 一个 marker
+        assert len(out["日线"][0].markers) == 1
+        # short_label 去掉 freq 前缀
+        assert out["30分钟"][0].short_label == "D1_A"
+
+    def test_build_overlays_marker_color_filled(self):
+        """marker.color 应该被填成所属 SignalSeries.color，方便前端直接读。"""
+        from czsc.utils.plotting.lightweight._signals import build_signal_overlays
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+
+        df = pd.DataFrame(
+            {
+                "dt": pd.date_range("2023-01-01", periods=2, freq="30min"),
+                "30分钟_D1_A": ["x_v_v_0", "y_v_v_0"],
+            }
+        )
+        out = build_signal_overlays(df, freqs=["30分钟"], palette=SIGNAL_PALETTE_LIGHT)
+        series = out["30分钟"][0]
+        for marker in series.markers:
+            assert marker["color"] == series.color
