@@ -338,3 +338,40 @@ class TestCase15HtmlPersistence:
         # 自包含 + 关键 JS hook 存在
         assert html.startswith("<!DOCTYPE html")
         assert "setMarkers" in html
+
+
+class TestBackwardCompat:
+    def test_i5_case13_module_importable(self):
+        """跑案例 13 的模块 import，确认 demo 函数仍可调用。"""
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "case13",
+            "docs/examples/13_lightweight_charts_html.py",
+        )
+        assert spec is not None and spec.loader is not None
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # 案例 13 的关键 demo 函数仍存在
+        assert callable(getattr(mod, "demo_single", None))
+        assert callable(getattr(mod, "demo_multi", None))
+
+
+@pytest.mark.slow
+class TestStreamlitSlow:
+    def test_i6_streamlit_app_smoke(self):
+        """通过 streamlit.testing.v1.AppTest 启动案例 16，确保不抛异常。"""
+        try:
+            from streamlit.testing.v1 import AppTest  # noqa: PLC0415
+        except ImportError:
+            pytest.skip("当前环境无 streamlit.testing.v1.AppTest")
+            return
+        at = AppTest.from_file("docs/examples/16_streamlit_signals.py", default_timeout=30)
+        at.run()
+        # 若无异常，通过；若因 streamlit-lightweight-charts 缺失而异常，skip
+        if at.exception:
+            exc_msg = str(at.exception[0].message) if at.exception else ""
+            if "streamlit-lightweight-charts" in exc_msg:
+                pytest.skip("当前环境无 streamlit-lightweight-charts，无法完整运行案例 16")
+            else:
+                raise AssertionError(f"案例 16 执行异常: {exc_msg}")
