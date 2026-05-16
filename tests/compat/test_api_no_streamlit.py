@@ -91,34 +91,22 @@ def _run_isolated_import(modname: str) -> tuple[int, str]:
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR-2 删除 czsc/__init__.py 中 eager-import svc 后，import czsc 不再触发 "
-        "svc → streamlit。届时本用例从 xfail 转 unexpectedly-passed，CI 红，"
-        "提示维护者摘掉 xfail。"
-    ),
-)
 def test_import_czsc_does_not_require_streamlit() -> None:
     """B 组：``import czsc`` 顶层不依赖 streamlit。
 
-    PR-2 退出条件之一。
+    PR-2 删除 ``czsc/__init__.py`` 中 eager-import ``svc`` 后转正式 pass；
+    后续 PR 把 streamlit 再拉回顶层 import 链会让本用例立即红。
     """
     rc, output = _run_isolated_import("czsc")
     assert rc == 0, f"import czsc 仍触发 streamlit:\n{output}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "PR-4 删除 lightweight/_streamlit_renderer 后，HTML 路径应当可独立 import。"
-        "届时本用例从 xfail 转 unexpectedly-passed，CI 红，提示维护者摘标。"
-    ),
-)
 def test_lightweight_html_does_not_require_streamlit() -> None:
     """B 组：lightweight 子包的 HTML 路径不依赖 streamlit。
 
-    PR-4 退出条件之一。
+    早期 ``_streamlit_renderer.py`` 已经把 ``import streamlit`` 放在函数内
+    (lazy)，本测试即为正式 pass。PR-4 会进一步删除 ``_streamlit_renderer.py``
+    与 ``lightweight/__init__.py`` 中的 streamlit 分支；删完之后本用例仍应 pass。
     """
     rc, output = _run_isolated_import("czsc.utils.plotting.lightweight")
     assert rc == 0, f"import czsc.utils.plotting.lightweight 仍触发 streamlit:\n{output}"

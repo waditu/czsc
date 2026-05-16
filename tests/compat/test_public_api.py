@@ -137,13 +137,14 @@ def test_weight_backtest_comes_from_wbt() -> None:
     )
 
 
-@pytest.mark.parametrize("module_name", ["czsc.connectors", "czsc.svc"])
+@pytest.mark.parametrize("module_name", ["czsc.connectors"])
 def test_retained_subpackages_importable(module_name: str) -> None:
-    """保留的子包必须在迁移过程中始终可 import。
-
-    参数化覆盖两个保留子包：
-        * ``czsc.connectors`` —— 数据源连接器
-        * ``czsc.svc``        —— 统计与可视化服务
-    """
+    """保留的子包必须在迁移过程中始终可 import。"""
     mod, err = _safe_import(module_name)
     assert mod is not None, f"failed to import retained subpackage {module_name}: {err}"
+
+
+def test_svc_subpackage_removed() -> None:
+    """`czsc.svc` 已在 v2.0.0 删除，任何残留路径必须不可 import。"""
+    mod, _ = _safe_import("czsc.svc")
+    assert mod is None, "czsc.svc 仍可 import，应已删除（v2.0.0 breaking change）"

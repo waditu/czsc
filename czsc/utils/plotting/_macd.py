@@ -4,7 +4,7 @@
 额外乘以 2 不属于标准做法，因此不迁移到 Rust，改为收敛在 plotting 内部作为
 私有辅助函数。
 
-仅供 ``czsc.utils.plotting`` 与 ``czsc.svc.strategy`` 内部使用，不对外暴露。
+仅供 ``czsc.utils.plotting`` 内部使用（kline / lightweight），不对外暴露。
 """
 
 from __future__ import annotations

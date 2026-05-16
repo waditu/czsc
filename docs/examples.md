@@ -46,10 +46,10 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
                     │ pairs / holds / signals (Arrow)     │
                     └─────────────────────────────────────┘
                              │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-       WeightBacktest   plot_*绘图     czsc.svc 组件（Streamlit）
-       （时序/截面）      （离线 HTML）   （交互面板）
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+       WeightBacktest                 plot_*绘图
+       （时序/截面）                    （离线 HTML）
 ```
 
 ---
@@ -118,7 +118,6 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 | 换手率 / 集成 | `czsc.turnover_rate` / `weights_simple_ensemble` | 09 |
 | 离线 K 线绘图 | `czsc.plot_czsc_chart` / `KlineChart` | 03, 10, 11 |
 | 离线回测绘图 | `czsc.utils.plotting.backtest.*` | 08, 09 |
-| Streamlit 组件 | `czsc.svc.*`（80+ 组件，详见 `czsc/svc/__init__.py`） | 11, 12 |
 
 ---
 
@@ -206,13 +205,7 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 
 ## 5. 已知兼容性提示
 
-> 以下问题**不影响本案例库的脚本运行**（已在脚本中规避），但用户在直接调用某些 svc 组件时可能遇到，特此说明：
-
-| 组件 | 现象 | 规避办法 |
-|------|------|----------|
-| `czsc.svc.show_weight_backtest` | 内部使用 `WeightBacktest(dfw=…)` 旧关键字，与最新 wbt 不兼容 | 直接构造 `WeightBacktest(data=dfw, …)` 后用 `plot_backtest_stats` 画图（见 12 号案例 `page_backtest`） |
-| `czsc.svc.show_czsc_trader` | 内部用 `pd.DataFrame(c.bars_raw)`，新 RawBar 下解析失败 | 用 `c.bars_raw_df` 自行渲染 `KlineChart`（见 11 号案例 `render_freq_chart`） |
-| `czsc.svc.show_factor_layering` / `show_yearly_stats` | 内部用 `daily_performance(list)`，新 wbt 仅接受 numpy 数组 | 自行做 `pd.qcut` + 分组聚合（见 12 号案例 `page_factor`/`page_statistics`） |
+> v2.0.0 后已删除 `czsc.svc` 与 streamlit 依赖，相关示例与组件提示一并移除；如需可视化请直接使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
 
 ---
 

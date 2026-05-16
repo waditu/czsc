@@ -2,7 +2,7 @@
 
 按 spec §3.1，所有公共 API 在导入期一次性 import；不再使用 PEP 562 lazy loading。
 - ``czsc._native``：Rust 扩展（PyO3），提供缠论核心类型、信号、交易器、TA 算子。
-- ``czsc.{connectors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
+- ``czsc.{connectors,traders,utils,fsa,aphorism,mock,envs}``：Python 子包。
 - ``czsc.{ema,sma,...,ultimate_smoother,...}``：Rust TA 算子的顶层别名。
 - ``czsc.{WeightBacktest,daily_performance,top_drawdowns}``：来自硬依赖 ``wbt``。
 
@@ -16,7 +16,7 @@
 import sys as _sys
 
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
-# svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
+# fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
 from . import _native, connectors, envs, traders, utils
 
@@ -36,7 +36,7 @@ from czsc.utils.warning_capture import capture_warnings, execute_with_warning_ca
 
 # 第二批：会回头 import czsc 顶层符号（如 ``from czsc import top_drawdowns``）的重型子包。
 # 必须放在所有顶层符号都已经绑定之后，否则会触发 partially-initialized module 循环 import。
-from . import aphorism, fsa, mock, svc
+from . import aphorism, fsa, mock
 from ._native import (
     BI,
     CZSC,
@@ -204,7 +204,6 @@ __all__ = [
     "envs",
     "traders",
     "utils",
-    "svc",
     "fsa",
     "aphorism",
     "mock",

@@ -41,10 +41,3 @@ def test_czsc_import_time():
     )
 
 
-def test_czsc_svc_accessible():
-    """czsc.svc 子包在导入期就已可用（spec §3.1 移除 lazy loading 后）"""
-    import czsc
-
-    svc = czsc.svc
-    assert svc is not None
-    assert hasattr(svc, "show_daily_return")

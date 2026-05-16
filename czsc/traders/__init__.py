@@ -14,7 +14,7 @@
   回测能力。
 * ``check_signals_acc`` ：旧版 czsc 中以 HTML 截图方式辅助核对信号的工具，
   Rust 版本未提供等价实现，因此**不再**在此处导出；如需可视化校验信号，
-  请改用 ``czsc.svc`` 中提供的 Streamlit 组件。
+  请改用 ``czsc.utils.plotting.lightweight.plot_czsc_signals``（HTML 输出）。
 * ``OpensOptimize`` / ``ExitsOptimize`` / ``CzscOpenOptimStrategy`` /
   ``CzscExitOptimStrategy`` ：定义在 :mod:`czsc.traders.optimize` 中，是对
   ``czsc._native.run_optimize_batch`` 的轻量 Python 封装，用于开仓/平仓
