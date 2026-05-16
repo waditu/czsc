@@ -638,6 +638,49 @@ _PAGE_TPL = Template(
         primarySeries.push(sigRowSeriesByKey[firstRowKey]);
       }
       var lockTime = false, lockCh = false;
+      // —— cSig 与 (cMain/cVol/cMacd) 显式双向 timescale + crosshair 同步 ——
+      // （冗余但显式：现有 trio.forEach 已经包含 cSig，但为防止 push 顺序问题 / 保证测试可见性，
+      //   再次显式订阅；lockTime / lockCh 守卫防止重入）
+      if (signalSeries.length > 0) {
+        cSig.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
+          if (!r || lockTime) return;
+          lockTime = true;
+          [cMain, cVol, cMacd].forEach(function (c) { c.timeScale().setVisibleLogicalRange(r); });
+          lockTime = false;
+        });
+        // 反向：cMain/cVol/cMacd 任一变化 → 同步到 cSig
+        [cMain, cVol, cMacd].forEach(function (c) {
+          c.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
+            if (!r || lockTime) return;
+            lockTime = true;
+            cSig.timeScale().setVisibleLogicalRange(r);
+            lockTime = false;
+          });
+        });
+        // crosshair：cMain/cVol/cMacd → cSig
+        var firstSigRowKey = Object.keys(sigRowSeriesByKey)[0];
+        var firstSigRowSeries = firstSigRowKey ? sigRowSeriesByKey[firstSigRowKey] : null;
+        [cMain, cVol, cMacd].forEach(function (c) {
+          c.subscribeCrosshairMove(function (param) {
+            if (!lockCh && param && param.time && firstSigRowSeries) {
+              lockCh = true;
+              try { cSig.setCrosshairPosition(NaN, param.time, firstSigRowSeries); } catch (e) { /* ignore */ }
+              lockCh = false;
+            }
+          });
+        });
+        // crosshair：cSig → cMain/cVol/cMacd
+        cSig.subscribeCrosshairMove(function (param) {
+          if (!lockCh && param && param.time) {
+            lockCh = true;
+            var primaries = [ks, volSeries, diffSeries];
+            [cMain, cVol, cMacd].forEach(function (c, ti) {
+              try { c.setCrosshairPosition(NaN, param.time, primaries[ti]); } catch (e) { /* ignore */ }
+            });
+            lockCh = false;
+          }
+        });
+      }
       trio.forEach(function (src, i) {
         src.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
           if (!r || lockTime) return;

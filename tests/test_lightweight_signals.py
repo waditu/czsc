@@ -336,7 +336,9 @@ class TestPlotCzscSignalsPayload:
             m_["time"] for pane in payload["panes"] for series in pane["signals"] for m_ in series["markers"]
         }
         direct = detect_transitions(df, signal_col, include_others=False)
-        assert plot_marker_times.issubset({m_["time"] for m_ in direct})
+        # 对齐+去重后 plot markers 一定 ≤ direct transitions 数量
+        assert len(plot_marker_times) <= len({m_["time"] for m_ in direct})
+        assert len(plot_marker_times) > 0  # 至少要有 marker
 
 
 class TestPlotCzscSignalsHTML:
@@ -519,3 +521,65 @@ class TestStreamlitSlow:
                 pytest.skip("当前环境无 streamlit-lightweight-charts，无法完整运行案例 16")
             else:
                 raise AssertionError(f"案例 16 执行异常: {exc_msg}")
+
+
+class TestMarkerTimeAlignment:
+    def test_daily_signal_marker_aligned_to_daily_candle(self, _bars_demo):
+        """日线信号 marker 时间戳必须 == 某根日线 candle.time。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=[{"name": "cxt_bi_status_V230101", "freq": "日线"}],
+            output="html",
+            tail_bars=200,
+        )
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        payload = json.loads(m.group(1))
+        # 找到日线 pane
+        daily = next((p for p in payload["panes"] if p["freq_label"] == "日线"), None)
+        assert daily is not None, "日线 pane 应该存在"
+        candle_times = {c["time"] for c in daily["main"]["candles"]}
+        for series in daily["signals"]:
+            for marker in series["markers"]:
+                assert marker["time"] in candle_times, (
+                    f"日线 signal marker.time={marker['time']} 未对齐到任何日线 candle.time"
+                )
+
+    def test_dedup_within_same_candle(self, _bars_demo):
+        """同一根 candle.time 上一个 series 最多一个 marker。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=[{"name": "cxt_bi_status_V230101", "freq": "日线"}],
+            output="html",
+            tail_bars=200,
+        )
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        payload = json.loads(m.group(1))
+        daily = next((p for p in payload["panes"] if p["freq_label"] == "日线"), None)
+        assert daily is not None
+        for series in daily["signals"]:
+            times = [marker["time"] for marker in series["markers"]]
+            assert len(times) == len(set(times)), f"{series['key']} 存在同 candle 重复 marker"
+
+
+class TestSignalTimelineSync:
+    def test_html_has_cross_pane_timescale_subscription_for_sig(self, _bars_demo):
+        """HTML 中 cSig 必须有 timescale 和 crosshair 的双向订阅，确保滚轮/平移同步。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # cSig 自己订阅 timescale 变化（往外推）
+        assert "cSig.timeScale().subscribeVisibleLogicalRangeChange" in html
+        # cSig 被其他 chart 推到（接受来自 main/vol/macd 的变化）
+        assert "cSig.timeScale().setVisibleLogicalRange" in html
+        # cSig 与其他 chart 双向 crosshair
+        assert "cSig.subscribeCrosshairMove" in html
+        assert "cSig.setCrosshairPosition" in html

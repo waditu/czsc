@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import bisect
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal
@@ -215,6 +216,38 @@ def plot_czsc_signals(
 
     for pane in payload.panes:
         series = overlays.get(pane.freq_label, [])
+
+        # —— marker.time 对齐到所属 pane 的 candle.time ——
+        # detect_transitions 用的是 base freq 的 dt；对于更大级别的 pane（如 日线），
+        # 同一根日线内多次 base-freq 时间戳的 transition 需要折叠到该日线 candle.time 上
+        if pane.main.candles:
+            candle_times = sorted(c["time"] for c in pane.main.candles)
+            aligned_series: list[_signals.SignalSeries] = []
+            for s in series:
+                # 用 dict 按 aligned_time 去重，保留最后一次（同一 candle 内的"收盘状态"）
+                by_time: dict[int, _signals.SignalMarker] = {}
+                for m in s.markers:
+                    i = bisect.bisect_left(candle_times, m["time"])
+                    if i >= len(candle_times):
+                        continue  # 超出最后一根 candle，丢弃
+                    aligned_t = candle_times[i]
+                    new_m = dict(m)
+                    new_m["time"] = aligned_t
+                    by_time[aligned_t] = new_m  # type: ignore[assignment]  # 后写覆盖前写 → 保留最后一次
+                aligned_markers = [by_time[t] for t in sorted(by_time)]
+                aligned_series.append(
+                    _signals.SignalSeries(
+                        key=s.key,
+                        short_label=s.short_label,
+                        color=s.color,
+                        shape=s.shape,
+                        position=s.position,
+                        markers=aligned_markers,
+                        value_index=s.value_index,
+                    )
+                )
+            series = aligned_series
+
         # 按 tail_bars 同步裁剪 marker
         if tail_bars is not None and pane.main.candles:
             cutoff_ts = pane.main.candles[0]["time"]
@@ -226,6 +259,7 @@ def plot_czsc_signals(
                     shape=s.shape,
                     position=s.position,
                     markers=[m for m in s.markers if m["time"] >= cutoff_ts],
+                    value_index=s.value_index,
                 )
                 for s in series
             ]
