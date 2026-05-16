@@ -64,3 +64,26 @@ def get_theme(name: ThemeName = "light") -> ThemeColors:
     if name not in THEMES:
         raise ValueError(f"unknown theme: {name!r}; expected one of {list(THEMES)}")
     return THEMES[name]
+
+
+# —— Signal overlay 调色板 ——————————————————————————————————————
+# 10 色循环；颜色按 series 序号分配；超过 10 个 key 时循环回到 #0
+SIGNAL_PALETTE_LIGHT: list[str] = [
+    "#1F3C6E", "#C03A2B", "#2E7D32", "#C78A2E", "#7B4FA8",
+    "#0C7B93", "#A52A2A", "#5B7C0C", "#B86B25", "#6E2C82",
+]
+SIGNAL_PALETTE_DARK: list[str] = [
+    "#A8B8E8", "#E94B3C", "#5BB85B", "#E6A93B", "#C29CF2",
+    "#6FCFE0", "#E08989", "#B9D560", "#F2A56E", "#C99BE0",
+]
+
+# marker 形状/位置在 series 序号上交错，缓解同 bar 上多个 marker 视觉重叠
+SIGNAL_SHAPES: list[str] = ["circle", "square", "arrowUp", "arrowDown"]
+SIGNAL_POSITIONS: list[str] = ["aboveBar", "belowBar"]
+
+
+def get_signal_palette(name: ThemeName = "light") -> list[str]:
+    """按主题取信号调色板。"""
+    if name == "dark":
+        return SIGNAL_PALETTE_DARK
+    return SIGNAL_PALETTE_LIGHT
