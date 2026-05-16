@@ -319,7 +319,7 @@ _PAGE_TPL = Template(
       return String(Math.round(v));
     }
 
-    function tooltipHTML(c, prev, macd, signals, subEvents) {
+    function tooltipHTML(c, prev, macd, signals) {
       var change = prev ? (c.close - prev.close) : 0;
       var pct = prev && prev.close ? (change / prev.close * 100) : 0;
       var ccls = clsOf(change);
@@ -367,22 +367,6 @@ _PAGE_TPL = Template(
           html +=
             '<span class="tooltip__label" style="color:' + labelColor + '">' + s.key + '</span>'
             + '<span class="tooltip__value ' + dirCls + '">' + s.value + '</span>';
-        });
-        html += '</div>';
-      }
-      if (subEvents && subEvents.length) {
-        html += '<div class="tooltip__section">SUB-FREQ SIGNALS @ THIS BAR</div>'
-              + '<div class="tooltip__grid">';
-        subEvents.forEach(function (e) {
-          var dt = new Date(e.time * 1000);
-          var pad2 = function (n) { return n < 10 ? '0' + n : '' + n; };
-          var timeStr = pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate())
-                      + ' ' + pad2(dt.getHours()) + ':' + pad2(dt.getMinutes());
-          var dirCls = (e.direction === 'up') ? 'tooltip__value--up'
-                     : (e.direction === 'down') ? 'tooltip__value--down' : '';
-          html +=
-            '<span class="tooltip__label" style="color: var(--muted)">' + e.key + ' @ ' + timeStr + '</span>'
-            + '<span class="tooltip__value ' + dirCls + '">' + e.value + '</span>';
         });
         html += '</div>';
       }
@@ -535,50 +519,6 @@ _PAGE_TPL = Template(
         ks.setMarkers(visible);
       }
       applySignalMarkers();
-
-      // —— 子级别 sub_signals：每根 K 线的下一根时间 + 时间→事件索引 ——
-      var subSignalSeries = freq.sub_signals || [];
-      var nextTimeByTime = {};       // candleTime → 下一根 candle 的 time（最后一根用 gap 推算）
-      var subEventsByCandle = {};    // candleTime → [{ key, value, time, direction, color }, ...]
-      (function buildSubIndex() {
-        var candles = freq.main.candles || [];
-        if (candles.length === 0) return;
-        // 1) nextTimeByTime
-        var lastGap = (candles.length > 1)
-          ? (candles[candles.length - 1].time - candles[candles.length - 2].time)
-          : 60;
-        for (var i = 0; i < candles.length; i++) {
-          var nt = (i + 1 < candles.length) ? candles[i + 1].time : candles[i].time + lastGap;
-          nextTimeByTime[candles[i].time] = nt;
-        }
-        // 2) 用 binary insert 把每个 sub event 分到所属 candle 时间桶
-        // 简化版：对每个 sub marker 做线性扫描找到所属 candle（候选数很少时 OK）
-        for (var c = 0; c < candles.length; c++) {
-          subEventsByCandle[candles[c].time] = [];
-        }
-        var times = candles.map(function (c) { return c.time; });
-        function findCandleIdx(t) {
-          // 在 times 中找最大的 <= t；线性即可（用 binary search 优化留作 TODO）
-          for (var i = times.length - 1; i >= 0; i--) {
-            if (times[i] <= t) return i;
-          }
-          return -1;
-        }
-        subSignalSeries.forEach(function (s) {
-          s.markers.forEach(function (m) {
-            var ci = findCandleIdx(m.time);
-            if (ci < 0) return;
-            subEventsByCandle[times[ci]].push({
-              key: s.key, value: m.value, time: m.time,
-              direction: m.direction, color: m.color,
-            });
-          });
-        });
-        // sort each bucket by time ascending
-        Object.keys(subEventsByCandle).forEach(function (k) {
-          subEventsByCandle[k].sort(function (a, b) { return a.time - b.time; });
-        });
-      })();
 
       // VOL
       var cVol = LightweightCharts.createChart(volEl, commonOpts({
@@ -746,8 +686,7 @@ _PAGE_TPL = Template(
           var c = Object.assign({}, entry.ohlc, { volume: entry.volume });
           var m = macdByTime[param.time] || null;
           var sigs = signalsByTime[param.time] || [];
-          var subEvents = subEventsByCandle[param.time] || [];
-          tipEl.innerHTML = tooltipHTML(c, prev ? prev.ohlc : null, m, sigs, subEvents);
+          tipEl.innerHTML = tooltipHTML(c, prev ? prev.ohlc : null, m, sigs);
           tipEl.classList.add('visible');
           var px = param.point ? param.point.x : null;
           var py = param.point ? param.point.y : null;
