@@ -60,7 +60,9 @@ def detect_transitions(
             continue
         if cur != prev_value:
             v1 = cur.split("_", 1)[0]
-            ts = int(row["dt"].timestamp())
+            dt = row["dt"]
+            # 兼容 pd.Timestamp / datetime / ISO 字符串三种 dt 表达
+            ts = int(dt.timestamp()) if hasattr(dt, "timestamp") else int(pd.Timestamp(dt).timestamp())
             markers.append(SignalMarker(time=ts, value=cur, v1=v1, color=""))
             prev_value = cur
     return markers

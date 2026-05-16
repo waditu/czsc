@@ -189,3 +189,64 @@ class TestFreqPayloadSignalsField:
         # asdict 序列化不抛
         d = payload.to_dict()
         assert d["panes"][0]["signals"] == []
+
+
+SIGNALS_CONFIG_DEMO = [
+    {"name": "cxt_bi_status_V230101", "freq": "30分钟"},
+    {"name": "cxt_bi_status_V230101", "freq": "日线"},
+]
+
+
+@pytest.fixture(scope="module")
+def _bars_demo():
+    df = generate_symbol_kines("000001", "30分钟", "20230101", "20230601", seed=42)
+    return format_standard_kline(df, freq=Freq.F30)
+
+
+class TestPlotCzscSignalsPayload:
+    def test_i3_multi_freq_bucketing(self, _bars_demo):
+        """日线 key 不出现在 30 分钟 pane.signals，反之亦然。"""
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        assert isinstance(html, str)
+        # 提取 PAYLOAD JSON 检查 signals 分桶
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        assert m is not None
+        payload = json.loads(m.group(1))
+        for pane in payload["panes"]:
+            for series in pane["signals"]:
+                key = series["key"]
+                assert key.startswith(pane["freq_label"] + "_"), f"key {key} 落到了错误的 pane {pane['freq_label']}"
+
+    def test_i4_transition_count_matches_direct_calc(self, _bars_demo):
+        """plot 输出的 marker 数应当全部来自直接 detect_transitions 的结果。"""
+        from czsc.traders import generate_czsc_signals
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=[{"name": "cxt_bi_status_V230101", "freq": "30分钟"}],
+            output="html",
+            tail_bars=200,
+        )
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        payload = json.loads(m.group(1))
+
+        df = generate_czsc_signals(
+            _bars_demo,
+            signals_config=[{"name": "cxt_bi_status_V230101", "freq": "30分钟"}],
+            df=True,
+        )
+        signal_col = next(c for c in df.columns if "表里关系" in c)
+        plot_marker_times = {
+            m_["time"] for pane in payload["panes"] for series in pane["signals"] for m_ in series["markers"]
+        }
+        direct = detect_transitions(df, signal_col, include_others=False)
+        assert plot_marker_times.issubset({m_["time"] for m_ in direct})

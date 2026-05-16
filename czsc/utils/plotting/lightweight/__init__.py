@@ -23,11 +23,11 @@ from typing import Any, Literal
 
 from czsc._native import CZSC
 
-from . import _data, _html_renderer, _streamlit_renderer, _theme
+from . import _data, _html_renderer, _signals, _streamlit_renderer, _theme
 
 OutputType = Literal["html", "streamlit"]
 
-__all__ = ["plot_czsc", "plot_czsc_trader"]
+__all__ = ["plot_czsc", "plot_czsc_signals", "plot_czsc_trader"]
 
 
 def _dispatch(payload: _data.ChartPayload, *, output: OutputType, path: str | Path | None) -> str | None:
@@ -123,4 +123,103 @@ def plot_czsc_trader(
         tail_bars=tail_bars,
         title=title,
     )
+    return _dispatch(payload, output=output, path=path)
+
+
+def plot_czsc_signals(
+    bars: list,
+    *,
+    signals_config: list[dict],
+    output: OutputType = "html",
+    path: str | Path | None = None,
+    title: str | None = None,
+    theme: _theme.ThemeName = "light",
+    show_sma: Sequence[int] = (5, 20),
+    tail_bars: int | None = None,
+    sdt: str = "20170101",
+    init_n: int = 500,
+    include_others: bool = False,
+) -> str | None:
+    """把若干信号函数在 ``bars`` 上的历史触发点叠加到 lightweight-charts 主图。
+
+    流程：
+    1. 用 ``signals_config`` 推断需要的 freqs，构造 ``CzscTrader``
+    2. ``generate_czsc_signals(df=True)`` 拿到 key/value DataFrame
+    3. ``build_signal_overlays`` 计算 transition marker + palette 分配
+    4. 复用 ``build_from_trader`` 得到 K/缠论 payload，注入 signals 字段
+    5. 按 ``output`` 分发到 HTML / Streamlit 渲染器
+
+    Args:
+        bars: 基础周期 K 线列表（``RawBar``）。
+        signals_config: 信号配置，结构同 ``generate_czsc_signals``。
+        output: ``"html"`` 或 ``"streamlit"``。
+        path: HTML 模式下落盘路径，为 ``None`` 时返回 HTML 字符串。
+        title: 网页标题；缺省自动生成。
+        theme: ``"light"`` / ``"dark"``。
+        show_sma: 主图 SMA 周期序列。
+        tail_bars: 截断到最近 N 根；为 ``None`` 不截断。
+        sdt: 信号开始计算日期，透传给 ``generate_czsc_signals``。
+        init_n: 预热 K 线数，透传给 ``generate_czsc_signals``。
+        include_others: ``True`` 时不过滤 "其他"；默认 ``False``。
+    """
+    from czsc._native import BarGenerator, CzscTrader  # noqa: PLC0415
+    from czsc.traders import generate_czsc_signals, get_signals_freqs  # noqa: PLC0415
+
+    if not bars:
+        raise ValueError("bars 不能为空")
+
+    # 给缺失 ``params`` 的配置补上空字典，避免 Rust 端 derive_signals_freqs 反序列化失败
+    normalized_config = [({**cfg, "params": {}} if "params" not in cfg else cfg) for cfg in signals_config]
+    freqs = get_signals_freqs(normalized_config) or [str(bars[0].freq)]
+    base_freq = str(bars[0].freq)
+    if base_freq not in freqs:
+        freqs = [base_freq, *freqs]
+
+    bg = BarGenerator(base_freq=base_freq, freqs=freqs, max_count=max(10000, len(bars)))
+    for bar in bars:
+        bg.update(bar)
+    ct = CzscTrader(bg, positions=[], signals_config=[])
+
+    theme_cols = _theme.get_theme(theme)
+    payload = _data.build_from_trader(
+        ct,
+        theme=theme_cols,
+        show_sma=show_sma,
+        tail_bars=tail_bars,
+        title=title,
+    )
+
+    df = generate_czsc_signals(
+        bars,
+        signals_config=signals_config,
+        sdt=sdt,
+        init_n=init_n,
+        df=True,
+    )
+    palette = _theme.get_signal_palette(theme)
+    overlays = _signals.build_signal_overlays(
+        df,
+        freqs=freqs,
+        palette=palette,
+        include_others=include_others,
+    )
+
+    for pane in payload.panes:
+        series = overlays.get(pane.freq_label, [])
+        # 按 tail_bars 同步裁剪 marker
+        if tail_bars is not None and pane.main.candles:
+            cutoff_ts = pane.main.candles[0]["time"]
+            series = [
+                _signals.SignalSeries(
+                    key=s.key,
+                    short_label=s.short_label,
+                    color=s.color,
+                    shape=s.shape,
+                    position=s.position,
+                    markers=[m for m in s.markers if m["time"] >= cutoff_ts],
+                )
+                for s in series
+            ]
+        pane.signals = series  # type: ignore[assignment]
+
     return _dispatch(payload, output=output, path=path)
