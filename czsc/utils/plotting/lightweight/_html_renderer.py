@@ -343,9 +343,12 @@ _PAGE_TPL = Template(
         html += '<div class="tooltip__section">SIGNALS · @CURRENT BAR</div>'
               + '<div class="tooltip__grid">';
         signals.forEach(function (s) {
+          var labelColor = 'var(--muted)';  // key 用淡色，让 value 突出
+          var dirCls = (s.direction === 'up') ? 'tooltip__value--up'
+                     : (s.direction === 'down') ? 'tooltip__value--down' : '';
           html +=
-            '<span class="tooltip__label" style="color:' + s.color + '">' + s.key + '</span>'
-            + '<span class="tooltip__value">' + s.value + '</span>';
+            '<span class="tooltip__label" style="color:' + labelColor + '">' + s.key + '</span>'
+            + '<span class="tooltip__value ' + dirCls + '">' + s.value + '</span>';
         });
         html += '</div>';
       }
@@ -444,23 +447,28 @@ _PAGE_TPL = Template(
       // —— Signal markers（每个 key 一个 SignalSeries，合并到 candle series 上）——
       var signalSeries = freq.signals || [];
       var signalMarkersAll = [];      // 当前可见的 markers 数组
-      var signalsByTime = {};         // tooltip 用：time → [{ key, v1, value, color }, ...]
+      var signalsByTime = {};         // tooltip 用：time → [{ key, v1, value, color, direction }, ...]
       var seriesVisibleMap = {};      // key → bool
       signalSeries.forEach(function (s) {
         seriesVisibleMap[s.key] = true;
         s.markers.forEach(function (m) {
+          // marker.direction 决定 position；marker.color 已是直接的红/绿/灰
+          var pos = (m.direction === 'down') ? 'belowBar' : 'aboveBar';
           var entry = {
             time: m.time,
-            position: s.position,
-            color: m.color || s.color,
-            shape: s.shape || 'circle',
-            text: m.v1 || '',
+            position: pos,
+            color: m.color,
+            shape: 'circle',
+            text: '',  // 不渲染中文文字，保持主图整洁
           };
           entry.__key = s.key;
           entry.__value = m.value;
+          entry.__direction = m.direction;
           signalMarkersAll.push(entry);
           if (!signalsByTime[m.time]) signalsByTime[m.time] = [];
-          signalsByTime[m.time].push({ key: s.key, v1: m.v1, value: m.value, color: m.color || s.color });
+          signalsByTime[m.time].push({
+            key: s.key, v1: m.v1, value: m.value, color: m.color, direction: m.direction,
+          });
         });
       });
       function applySignalMarkers() {
@@ -591,7 +599,7 @@ _PAGE_TPL = Template(
           chip.setAttribute('data-signal-key', s.key);
           chip.innerHTML =
             '<span class="pane-meta__swatch" style="background:' + s.color + ';height:6px;border-radius:50%;width:6px"></span>'
-            + s.short_label;
+            + s.key;
           chip.addEventListener('click', function () {
             seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
             chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);
