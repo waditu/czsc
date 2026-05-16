@@ -270,3 +270,50 @@ class TestPlotCzscSignalsHTML:
         payload = json.loads(m.group(1))
         any_signals = any(pane["signals"] for pane in payload["panes"])
         assert any_signals
+
+
+class TestStreamlitMarkers:
+    def test_build_groups_passes_markers_to_candle(self):
+        from czsc.utils.plotting.lightweight._data import build_from_czsc
+        from czsc.utils.plotting.lightweight._signals import SignalMarker, SignalSeries
+        from czsc.utils.plotting.lightweight._streamlit_renderer import _build_groups
+        from czsc.utils.plotting.lightweight._theme import get_theme
+
+        df = generate_symbol_kines("000001", "30分钟", "20230101", "20230201", seed=42)
+        from czsc import CZSC, Freq, format_standard_kline
+
+        c = CZSC(format_standard_kline(df, freq=Freq.F30))
+        payload = build_from_czsc(c)
+        freq = payload.panes[0]
+        freq.signals = [
+            SignalSeries(
+                key="30分钟_D1_X",
+                short_label="D1_X",
+                color="#1F3C6E",
+                shape="circle",
+                position="aboveBar",
+                markers=[
+                    SignalMarker(time=int(freq.main.candles[10]["time"]), value="A_x_x_0", v1="A", color="#1F3C6E"),
+                ],
+            )
+        ]
+        groups = _build_groups(freq, get_theme("light"), visible=None)
+        candle_cfg = groups[0]["series"][0]
+        markers = candle_cfg.get("markers", [])
+        assert any(m["time"] == int(freq.main.candles[10]["time"]) for m in markers)
+        assert markers[0]["color"] == "#1F3C6E"
+        assert markers[0]["text"] == "A"
+
+    def test_render_signal_kpi_callable(self):
+        """signal KPI 仅做"无 markers / 无 candles"两条早返路径的导入/早返冒烟。"""
+        from czsc.utils.plotting.lightweight._data import (
+            FreqPayload,
+            MacdPane,
+            MainPane,
+            VolumePane,
+        )
+        from czsc.utils.plotting.lightweight._streamlit_renderer import render_signal_kpi
+
+        # 无 signals → 直接 return，不会触发 streamlit 调用
+        empty = FreqPayload(freq_label="30分钟", main=MainPane(), volume=VolumePane(), macd=MacdPane())
+        render_signal_kpi(empty)  # 不抛
