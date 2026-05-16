@@ -317,3 +317,24 @@ class TestStreamlitMarkers:
         # 无 signals → 直接 return，不会触发 streamlit 调用
         empty = FreqPayload(freq_label="30分钟", main=MainPane(), volume=VolumePane(), macd=MacdPane())
         render_signal_kpi(empty)  # 不抛
+
+
+class TestCase15HtmlPersistence:
+    def test_i2_writes_html_file(self, tmp_path, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        out = tmp_path / "15_lwc_signals.html"
+        ret = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            path=out,
+            tail_bars=200,
+        )
+        assert str(ret) == str(out)
+        assert out.exists()
+        assert out.stat().st_size > 50 * 1024  # > 50KB
+        html = out.read_text(encoding="utf-8")
+        # 自包含 + 关键 JS hook 存在
+        assert html.startswith("<!DOCTYPE html")
+        assert "setMarkers" in html
