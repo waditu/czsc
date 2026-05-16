@@ -98,6 +98,57 @@ SIGNAL_SHAPES: list[str] = ["circle", "square", "arrowUp", "arrowDown"]
 SIGNAL_POSITIONS: list[str] = ["aboveBar", "belowBar"]
 
 
+# —— Signal direction 语义集合 + 红绿点配色 ——
+# 语义上偏多/偏看涨/做多类信号的 v1 取值
+SEMANTIC_UP: frozenset[str] = frozenset(
+    {
+        "向上",
+        "多头",
+        "多",
+        "做多",
+        "买入",
+        "涨停",
+        "金叉",
+        "上行",
+    }
+)
+# 语义上偏空/偏看跌/做空类信号的 v1 取值
+SEMANTIC_DOWN: frozenset[str] = frozenset(
+    {
+        "向下",
+        "空头",
+        "空",
+        "做空",
+        "卖出",
+        "跌停",
+        "死叉",
+        "下行",
+    }
+)
+# Marker 固定 3 色（与 candle up/down 一致的中国股市直觉）
+MARKER_COLOR_UP: str = "#C03A2B"  # 红 = aboveBar / up
+MARKER_COLOR_DOWN: str = "#2E7D32"  # 绿 = belowBar / down
+MARKER_COLOR_NEUTRAL: str = "#888888"  # 灰 = neutral
+
+
+def classify_direction(v1: str) -> str:
+    """根据 v1 文字判定 marker 方向：'up' / 'down' / 'neutral'。"""
+    if v1 in SEMANTIC_UP:
+        return "up"
+    if v1 in SEMANTIC_DOWN:
+        return "down"
+    return "neutral"
+
+
+def direction_color(direction: str) -> str:
+    """direction → marker hex 颜色。"""
+    if direction == "up":
+        return MARKER_COLOR_UP
+    if direction == "down":
+        return MARKER_COLOR_DOWN
+    return MARKER_COLOR_NEUTRAL
+
+
 def get_signal_palette(name: ThemeName = "light") -> list[str]:
     """按主题取信号调色板。"""
     if name == "dark":

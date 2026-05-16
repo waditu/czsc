@@ -11,6 +11,8 @@ from typing import TypedDict
 
 import pandas as pd
 
+from ._theme import classify_direction, direction_color
+
 __all__ = [
     "SignalMarker",
     "SignalSeries",
@@ -22,9 +24,10 @@ __all__ = [
 
 class SignalMarker(TypedDict):
     time: int  # unix 秒
-    value: str  # 完整 value，例如 "向上_任意_任意_0"
-    v1: str  # value 第一段，用作 marker 上的文字
-    color: str  # 与所属 SignalSeries.color 相同；前端渲染时直接读
+    value: str  # 完整 value
+    v1: str  # value 第一段（保留用于 tooltip 显示）
+    color: str  # marker 显示色（来自 direction_color；与 SignalSeries.color 区分）
+    direction: str  # "up" | "down" | "neutral"，由 v1 经 classify_direction 得出
 
 
 @dataclass
@@ -60,10 +63,13 @@ def detect_transitions(
             continue
         if cur != prev_value:
             v1 = cur.split("_", 1)[0]
+            direction = classify_direction(v1)
             dt = row["dt"]
             # 兼容 pd.Timestamp / datetime / ISO 字符串三种 dt 表达
             ts = int(dt.timestamp()) if hasattr(dt, "timestamp") else int(pd.Timestamp(dt).timestamp())
-            markers.append(SignalMarker(time=ts, value=cur, v1=v1, color=""))
+            markers.append(
+                SignalMarker(time=ts, value=cur, v1=v1, color=direction_color(direction), direction=direction)
+            )
             prev_value = cur
     return markers
 
@@ -92,21 +98,14 @@ def build_signal_overlays(
     *,
     freqs: list[str],
     palette: list[str],
-    shapes: list[str] | None = None,
-    positions: list[str] | None = None,
     include_others: bool = False,
 ) -> dict[str, list[SignalSeries]]:
     """把信号 DataFrame 转成 {freq → [SignalSeries]} 嵌套结构。
 
     - 列名前缀决定归属哪个 freq；列名不带任何已知 freq 前缀时跳过
-    - 同 freq 内的 keys 按 DataFrame 列顺序分配 palette / shape / position
-    - SignalMarker.color 在此函数内回填为所属 SignalSeries.color
+    - 同 freq 内的 keys 按 DataFrame 列顺序分配 palette（legend chip 用）
+    - marker 颜色不再来自 palette，而是在 ``detect_transitions`` 中按 direction 决定
     """
-    from ._theme import SIGNAL_POSITIONS, SIGNAL_SHAPES
-
-    shapes = shapes or SIGNAL_SHAPES
-    positions = positions or SIGNAL_POSITIONS
-
     signal_cols = [c for c in df.columns if c not in {"dt", "symbol", "freq"}]
     buckets: dict[str, list[str]] = {f: [] for f in freqs}
     for col in signal_cols:
@@ -121,20 +120,19 @@ def build_signal_overlays(
             continue
         color_map = assign_palette(keys, palette)
         series_list: list[SignalSeries] = []
-        for idx, key in enumerate(keys):
-            color = color_map[key]
-            shape = shapes[idx % len(shapes)]
-            position = positions[idx % len(positions)]
+        for key in keys:
+            chip_color = color_map[key]  # legend chip 颜色用 palette per-key
             markers = detect_transitions(df, key, include_others=include_others)
-            for m in markers:
-                m["color"] = color
+            # position 由 direction 决定，而非按序号交错
+            # up → aboveBar, down → belowBar, neutral → aboveBar
+            # （legend chip 颜色用 palette；marker 颜色已在 detect_transitions 内根据 direction 设好）
             series_list.append(
                 SignalSeries(
                     key=key,
-                    short_label=_strip_freq_prefix(key, freq),
-                    color=color,
-                    shape=shape,
-                    position=position,
+                    short_label=_strip_freq_prefix(key, freq),  # 暂保留字段，下游可能不再用
+                    color=chip_color,
+                    shape="circle",  # 全部统一 circle
+                    position="aboveBar",  # 无意义，per-marker position 由前端按 direction 决定
                     markers=markers,
                 )
             )

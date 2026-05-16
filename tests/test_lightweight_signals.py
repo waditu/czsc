@@ -33,6 +33,19 @@ class TestPaletteConstants:
             assert isinstance(color, str)
             assert color.startswith("#") and len(color) == 7
 
+    def test_direction_constants_present(self):
+        from czsc.utils.plotting.lightweight import _theme
+
+        assert "向上" in _theme.SEMANTIC_UP
+        assert "向下" in _theme.SEMANTIC_DOWN
+        # 3 色都是 #RRGGBB
+        for color in (_theme.MARKER_COLOR_UP, _theme.MARKER_COLOR_DOWN, _theme.MARKER_COLOR_NEUTRAL):
+            assert color.startswith("#") and len(color) == 7
+        assert _theme.classify_direction("向上") == "up"
+        assert _theme.classify_direction("向下") == "down"
+        assert _theme.classify_direction("XYZ") == "neutral"
+        assert _theme.direction_color("up") == _theme.MARKER_COLOR_UP
+
 
 class TestSignalsModuleSkeleton:
     def test_types_importable(self):
@@ -41,7 +54,13 @@ class TestSignalsModuleSkeleton:
             SignalSeries,
         )
 
-        marker: SignalMarker = {"time": 1, "value": "v1_v2_v3_0", "v1": "v1", "color": "#000000"}
+        marker: SignalMarker = {
+            "time": 1,
+            "value": "v1_v2_v3_0",
+            "v1": "v1",
+            "color": "#000000",
+            "direction": "neutral",
+        }
         series = SignalSeries(
             key="30分钟_D1_X",
             short_label="X",
@@ -106,6 +125,18 @@ class TestDetectTransitions:
         markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
         assert markers[0]["value"] == "向上_任意_任意_3"
         assert markers[0]["v1"] == "向上"
+        assert markers[0]["direction"] == "up"  # "向上" ∈ SEMANTIC_UP
+        assert markers[0]["color"] == "#C03A2B"  # MARKER_COLOR_UP
+
+    def test_direction_classification(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["向上_a_b_0", "向下_a_b_0", "未知_a_b_0"])
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
+        assert [m["direction"] for m in markers] == ["up", "down", "neutral"]
+        assert markers[0]["color"] == "#C03A2B"
+        assert markers[1]["color"] == "#2E7D32"
+        assert markers[2]["color"] == "#888888"
 
 
 class TestPaletteAssignment:
@@ -160,21 +191,28 @@ class TestBuildSignalOverlays:
         # short_label 去掉 freq 前缀
         assert out["30分钟"][0].short_label == "D1_A"
 
-    def test_build_overlays_marker_color_filled(self):
-        """marker.color 应该被填成所属 SignalSeries.color，方便前端直接读。"""
+    def test_build_overlays_marker_color_from_direction(self):
+        """marker.color 来自 direction（不再等于 SignalSeries.color）。"""
         from czsc.utils.plotting.lightweight._signals import build_signal_overlays
-        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+        from czsc.utils.plotting.lightweight._theme import (
+            MARKER_COLOR_DOWN,
+            MARKER_COLOR_UP,
+            SIGNAL_PALETTE_LIGHT,
+        )
 
         df = pd.DataFrame(
             {
                 "dt": pd.date_range("2023-01-01", periods=2, freq="30min"),
-                "30分钟_D1_A": ["x_v_v_0", "y_v_v_0"],
+                "30分钟_D1_A": ["向上_v_v_0", "向下_v_v_0"],
             }
         )
         out = build_signal_overlays(df, freqs=["30分钟"], palette=SIGNAL_PALETTE_LIGHT)
         series = out["30分钟"][0]
-        for marker in series.markers:
-            assert marker["color"] == series.color
+        # legend chip 颜色仍来自 palette
+        assert series.color == SIGNAL_PALETTE_LIGHT[0]
+        # marker 颜色来自 direction
+        assert series.markers[0]["color"] == MARKER_COLOR_UP
+        assert series.markers[1]["color"] == MARKER_COLOR_DOWN
 
 
 class TestFreqPayloadSignalsField:
@@ -293,7 +331,13 @@ class TestStreamlitMarkers:
                 shape="circle",
                 position="aboveBar",
                 markers=[
-                    SignalMarker(time=int(freq.main.candles[10]["time"]), value="A_x_x_0", v1="A", color="#1F3C6E"),
+                    SignalMarker(
+                        time=int(freq.main.candles[10]["time"]),
+                        value="A_x_x_0",
+                        v1="A",
+                        color="#1F3C6E",
+                        direction="neutral",
+                    ),
                 ],
             )
         ]
