@@ -34,6 +34,7 @@ __all__ = [
 
 # -- TypedDicts（JSON 友好）------------------------------------------------------
 
+
 class Candle(TypedDict):
     time: int
     open: float
@@ -55,13 +56,14 @@ class Histogram(TypedDict):
 
 # -- Dataclasses（业务侧使用）---------------------------------------------------
 
+
 @dataclass
 class MainPane:
     candles: list[Candle] = field(default_factory=list)
     sma5: list[LinePoint] = field(default_factory=list)
     sma20: list[LinePoint] = field(default_factory=list)
-    fx_line: list[LinePoint] = field(default_factory=list)   # 虚线，连接所有分型
-    bi_line: list[LinePoint] = field(default_factory=list)   # 实线，仅笔的端点
+    fx_line: list[LinePoint] = field(default_factory=list)  # 虚线，连接所有分型
+    bi_line: list[LinePoint] = field(default_factory=list)  # 实线，仅笔的端点
 
 
 @dataclass
@@ -99,6 +101,7 @@ class ChartPayload:
 
 # -- 构造逻辑 ------------------------------------------------------------------
 
+
 def _ts(dt: Any) -> int:
     """pd.Timestamp / datetime → unix 秒整数。"""
     if hasattr(dt, "timestamp"):
@@ -124,7 +127,7 @@ def _sma(close: np.ndarray, n: int) -> np.ndarray:
     if res.shape[0] != close.shape[0]:
         # 防御：理论上 Rust 端返回等长序列，这里只做安全兜底
         padded = np.full_like(close, np.nan, dtype=float)
-        padded[-res.shape[0]:] = res
+        padded[-res.shape[0] :] = res
         return padded
     return res
 
@@ -158,8 +161,7 @@ def _build_main_pane(c: CZSC, theme: _theme.ThemeColors, *, show_sma: Sequence[i
             return []
         values = _sma(close_arr, n)
         return [
-            cast(LinePoint, {"time": times[i], "value": _none_if_nan(float(values[i]))})
-            for i in range(close_arr.size)
+            cast(LinePoint, {"time": times[i], "value": _none_if_nan(float(values[i]))}) for i in range(close_arr.size)
         ]
 
     sma5 = _sma_series(5)

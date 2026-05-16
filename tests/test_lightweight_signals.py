@@ -250,3 +250,23 @@ class TestPlotCzscSignalsPayload:
         }
         direct = detect_transitions(df, signal_col, include_others=False)
         assert plot_marker_times.issubset({m_["time"] for m_ in direct})
+
+
+class TestPlotCzscSignalsHTML:
+    def test_i1_html_contains_signal_blocks(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # JS 必含 setMarkers 调用 + SIGNALS tooltip 段标题
+        assert "setMarkers" in html
+        assert "SIGNALS · @CURRENT BAR" in html
+        # short_label 渲染到图例区
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        payload = json.loads(m.group(1))
+        any_signals = any(pane["signals"] for pane in payload["panes"])
+        assert any_signals

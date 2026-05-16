@@ -301,7 +301,7 @@ _PAGE_TPL = Template(
       return String(Math.round(v));
     }
 
-    function tooltipHTML(c, prev, macd) {
+    function tooltipHTML(c, prev, macd, signals) {
       var change = prev ? (c.close - prev.close) : 0;
       var pct = prev && prev.close ? (change / prev.close * 100) : 0;
       var ccls = clsOf(change);
@@ -311,7 +311,7 @@ _PAGE_TPL = Template(
                   + ' ' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
       var macdCls = (macd && macd.macd != null) ? clsOf(macd.macd) : '';
       var diffCls = (macd && macd.diff != null) ? clsOf(macd.diff) : '';
-      return ''
+      var html = ''
         + '<div class="tooltip__time">' + timeStr + '</div>'
         + '<div class="tooltip__grid">'
         + '<span class="tooltip__label">Open</span>'
@@ -339,6 +339,17 @@ _PAGE_TPL = Template(
             + '<span class="tooltip__value tooltip__value--' + macdCls + '">' + fmt(macd.macd) + '</span>'
             + '</div>'
             : '');
+      if (signals && signals.length) {
+        html += '<div class="tooltip__section">SIGNALS · @CURRENT BAR</div>'
+              + '<div class="tooltip__grid">';
+        signals.forEach(function (s) {
+          html +=
+            '<span class="tooltip__label" style="color:' + s.color + '">' + s.key + '</span>'
+            + '<span class="tooltip__value">' + s.value + '</span>';
+        });
+        html += '</div>';
+      }
+      return html;
     }
 
     function placeTooltip(tooltipEl, mainEl, x, y) {
@@ -430,6 +441,39 @@ _PAGE_TPL = Template(
         ? cMain.addLineSeries(Object.assign({ color: theme.bi, lineWidth: 2 }, { priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false })) : null;
       if (bi) bi.setData(freq.main.bi_line);
 
+      // —— Signal markers（每个 key 一个 SignalSeries，合并到 candle series 上）——
+      var signalSeries = freq.signals || [];
+      var signalMarkersAll = [];      // 当前可见的 markers 数组
+      var signalsByTime = {};         // tooltip 用：time → [{ key, v1, value, color }, ...]
+      var seriesVisibleMap = {};      // key → bool
+      signalSeries.forEach(function (s) {
+        seriesVisibleMap[s.key] = true;
+        s.markers.forEach(function (m) {
+          var entry = {
+            time: m.time,
+            position: s.position,
+            color: m.color || s.color,
+            shape: s.shape || 'circle',
+            text: m.v1 || '',
+          };
+          entry.__key = s.key;
+          entry.__value = m.value;
+          signalMarkersAll.push(entry);
+          if (!signalsByTime[m.time]) signalsByTime[m.time] = [];
+          signalsByTime[m.time].push({ key: s.key, v1: m.v1, value: m.value, color: m.color || s.color });
+        });
+      });
+      function applySignalMarkers() {
+        var visible = signalMarkersAll
+          .filter(function (m) { return seriesVisibleMap[m.__key]; })
+          .sort(function (a, b) { return a.time - b.time; })
+          .map(function (m) {
+            return { time: m.time, position: m.position, color: m.color, shape: m.shape, text: m.text };
+          });
+        ks.setMarkers(visible);
+      }
+      applySignalMarkers();
+
       // VOL
       var cVol = LightweightCharts.createChart(volEl, commonOpts({
         timeScale: { borderColor: theme.grid, timeVisible: true, secondsVisible: false, rightOffset: 6, visible: false },
@@ -506,7 +550,8 @@ _PAGE_TPL = Template(
           var prev = entry.idx > 0 ? candleByTime[orderedCandles[entry.idx - 1].time] : null;
           var c = Object.assign({}, entry.ohlc, { volume: entry.volume });
           var m = macdByTime[param.time] || null;
-          tipEl.innerHTML = tooltipHTML(c, prev ? prev.ohlc : null, m);
+          var sigs = signalsByTime[param.time] || [];
+          tipEl.innerHTML = tooltipHTML(c, prev ? prev.ohlc : null, m, sigs);
           tipEl.classList.add('visible');
           var px = param.point ? param.point.x : null;
           var py = param.point ? param.point.y : null;
@@ -533,6 +578,28 @@ _PAGE_TPL = Template(
         trio: trio, els: trioEls, paneEl: pane, tipEl: tipEl,
         series: seriesRefs, raw: rawRefs,
       });
+
+      // —— Signal 图例条目（动态注入到 pane-meta 末尾）——
+      if (signalSeries.length) {
+        var meta = pane.querySelector('.pane-meta');
+        var divider = document.createElement('span');
+        divider.className = 'pane-meta__divider';
+        meta.insertBefore(divider, meta.querySelector('.pane-meta__hint') || null);
+        signalSeries.forEach(function (s) {
+          var chip = document.createElement('span');
+          chip.className = 'pane-meta__legend';
+          chip.setAttribute('data-signal-key', s.key);
+          chip.innerHTML =
+            '<span class="pane-meta__swatch" style="background:' + s.color + ';height:6px;border-radius:50%;width:6px"></span>'
+            + s.short_label;
+          chip.addEventListener('click', function () {
+            seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
+            chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);
+            applySignalMarkers();
+          });
+          meta.insertBefore(chip, meta.querySelector('.pane-meta__hint') || null);
+        });
+      }
 
       // 图例点击 → toggle series 可见
       pane.querySelectorAll('.pane-meta__legend').forEach(function (item) {
@@ -691,13 +758,25 @@ def render(
         title=payload.title,
         symbol=payload.symbol,
         # light theme CSS vars
-        l_bg=light["background"], l_text=light["text"], l_grid=light["grid"],
-        l_up=light["up"], l_down=light["down"], l_bi=light["bi"],
-        l_sma5=light["sma5"], l_sma20=light["sma20"], l_fx_dashed=light["fx_dashed"],
+        l_bg=light["background"],
+        l_text=light["text"],
+        l_grid=light["grid"],
+        l_up=light["up"],
+        l_down=light["down"],
+        l_bi=light["bi"],
+        l_sma5=light["sma5"],
+        l_sma20=light["sma20"],
+        l_fx_dashed=light["fx_dashed"],
         # dark theme CSS vars
-        d_bg=dark["background"], d_text=dark["text"], d_grid=dark["grid"],
-        d_up=dark["up"], d_down=dark["down"], d_bi=dark["bi"],
-        d_sma5=dark["sma5"], d_sma20=dark["sma20"], d_fx_dashed=dark["fx_dashed"],
+        d_bg=dark["background"],
+        d_text=dark["text"],
+        d_grid=dark["grid"],
+        d_up=dark["up"],
+        d_down=dark["down"],
+        d_bi=dark["bi"],
+        d_sma5=dark["sma5"],
+        d_sma20=dark["sma20"],
+        d_fx_dashed=dark["fx_dashed"],
         lwc_script=lwc_script,
         h_main=height_main,
         h_vol=height_vol,
