@@ -52,10 +52,8 @@ dependencies = [
     # 技术分析
     # - czsc._native 由 crates/czsc-python 通过 maturin 直接产出，无需 rs-czsc
     # - wbt 为硬依赖，提供 WeightBacktest / daily_performance / top_drawdowns / mock 等
-    # - talib-rs 为 TA-Lib 的纯 Rust 替代（drop-in 兼容），仅用于 tests/unit/test_ta_parity.py
-    #   做与 czsc._native.ta 的 parity 校验；运行时代码不再依赖 C TA-Lib
+    # - talib-rs 见 [project.optional-dependencies].test，运行时代码不依赖它
     "wbt",
-    "talib-rs",
     # 图表和可视化（czsc 的所有可视化统一由 plotly 实现，
     # 通过 streamlit 渲染或 fig.show() 在浏览器打开）
     "plotly",
@@ -73,9 +71,14 @@ default = true
 
 [project.optional-dependencies]
 # 测试依赖
+# talib-rs 仅用于 tests/unit/test_ta_parity.py 做与 czsc._native.ta 的 parity 校验。
+# 当前 PyPI 上 talib-rs==0.1.2 的 wheel 矩阵只覆盖 (cp312 × macOS-arm64) 与
+# (cp312 × Windows-x64)（Linux 上仅 cp38-cp38-manylinux，cp310-cp313 都无可装 wheel），
+# 所以用 PEP 508 marker 限定只在能装的环境解析，其余环境由 pytest.importorskip 优雅跳过。
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "talib-rs; python_version == '3.12' and ((sys_platform == 'darwin' and platform_machine == 'arm64') or sys_platform == 'win32')",
 ]
 
 # 开发工具

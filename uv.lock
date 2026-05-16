@@ -577,7 +577,6 @@ dependencies = [
     { name = "scipy", version = "1.16.2", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "statsmodels" },
     { name = "streamlit" },
-    { name = "talib-rs" },
     { name = "tenacity" },
     { name = "tqdm" },
     { name = "wbt" },
@@ -591,6 +590,7 @@ all = [
     { name = "jupyter" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "talib-rs", marker = "(python_full_version == '3.12.*' and platform_machine == 'arm64' and sys_platform == 'darwin') or (python_full_version == '3.12.*' and sys_platform == 'win32')" },
     { name = "twine" },
 ]
 dev = [
@@ -605,6 +605,7 @@ release = [
 test = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "talib-rs", marker = "(python_full_version == '3.12.*' and platform_machine == 'arm64' and sys_platform == 'darwin') or (python_full_version == '3.12.*' and sys_platform == 'win32')" },
 ]
 
 [package.dev-dependencies]
@@ -642,7 +643,7 @@ requires-dist = [
     { name = "scipy" },
     { name = "statsmodels" },
     { name = "streamlit" },
-    { name = "talib-rs" },
+    { name = "talib-rs", marker = "(python_full_version == '3.12.*' and platform_machine == 'arm64' and sys_platform == 'darwin' and extra == 'test') or (python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'test')" },
     { name = "tenacity" },
     { name = "tqdm", specifier = ">=4.66.4" },
     { name = "twine", marker = "extra == 'release'" },
@@ -3264,8 +3265,7 @@ name = "talib-rs"
 version = "0.1.2"
 source = { registry = "https://pypi.python.org/simple" }
 dependencies = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "numpy", version = "2.3.3", source = { registry = "https://pypi.python.org/simple" }, marker = "python_full_version >= '3.12' and python_full_version < '3.14'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b1/c9/987155b8c632edc773b0957fe898067cd7f1733904a6396c177153a307e9/talib_rs-0.1.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:afa3e6704db776338c82eed4f2b799f7729da3acf104cbe17bb3e58705e6b016", size = 418950, upload-time = "2026-03-23T15:13:16.97Z" },
