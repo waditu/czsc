@@ -52,3 +52,59 @@ class TestSignalsModuleSkeleton:
         )
         assert series.key == "30分钟_D1_X"
         assert series.markers[0]["v1"] == "v1"
+
+
+class TestDetectTransitions:
+    """飞书评审 §9.1 U1–U5：transition 检测核心逻辑。"""
+
+    @staticmethod
+    def _df(values: list[str | float]) -> pd.DataFrame:
+        """构造一个 dt + key 列的小 DataFrame。"""
+        return pd.DataFrame(
+            {
+                "dt": pd.date_range("2023-01-01", periods=len(values), freq="30min"),
+                "30分钟_D1_X": values,
+            }
+        )
+
+    def test_u1_strict_switching(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["A_x_x_0", "A_x_x_0", "B_x_x_0", "B_x_x_0", "C_x_x_0"])
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
+        assert [m["v1"] for m in markers] == ["A", "B", "C"]
+        assert [m["time"] for m in markers] == [
+            int(df["dt"].iloc[i].timestamp()) for i in (0, 2, 4)
+        ]
+
+    def test_u2_other_filtered_by_default(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["向上_任意_任意_0", "其他_任意_任意_0", "向上_任意_任意_0"])
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
+        # '其他' 既不画也不更新 prev_value → 仅首行触发，第 3 行不算切换
+        assert len(markers) == 1
+        assert markers[0]["v1"] == "向上"
+
+    def test_u3_include_others(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["向上_任意_任意_0", "其他_任意_任意_0", "向上_任意_任意_0"])
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=True)
+        assert [m["v1"] for m in markers] == ["向上", "其他", "向上"]
+
+    def test_u4_skip_non_string(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["A_x_x_0", float("nan"), "", 1.5, "B_x_x_0"])  # type: ignore[list-item]
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
+        # NaN/空串/数字都跳过且不更新 prev_value
+        assert [m["v1"] for m in markers] == ["A", "B"]
+
+    def test_u5_marker_full_value_preserved(self):
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        df = self._df(["向上_任意_任意_3"])
+        markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
+        assert markers[0]["value"] == "向上_任意_任意_3"
+        assert markers[0]["v1"] == "向上"

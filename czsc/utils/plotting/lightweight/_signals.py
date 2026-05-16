@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TypedDict
 
+import pandas as pd
+
 __all__ = [
     "SignalMarker",
     "SignalSeries",
@@ -34,9 +36,35 @@ class SignalSeries:
     markers: list[SignalMarker] = field(default_factory=list)
 
 
-def detect_transitions(*args, **kwargs):
-    """T3 实现。"""
-    raise NotImplementedError
+def detect_transitions(
+    df: pd.DataFrame,
+    key: str,
+    *,
+    include_others: bool = False,
+) -> list[SignalMarker]:
+    """逐行扫描 ``df[key]``，仅在 value 与上一条不同处输出 marker。
+
+    - 非字符串 cell（NaN / 数字 / 空串）一律跳过，且**不更新** prev_value
+    - 默认 ``include_others=False`` 时，``"其他"`` 视为未触发，既不画 marker 也不更新 prev_value
+    - 首条有效值无论是否变化都会输出 marker（prev=None ≠ cur）
+    """
+    markers: list[SignalMarker] = []
+    prev_value: str | None = None
+
+    for _, row in df.iterrows():
+        cur = row[key]
+        if not isinstance(cur, str) or cur == "":
+            continue
+        if (not include_others) and ("其他" in cur):
+            continue
+        if cur != prev_value:
+            v1 = cur.split("_", 1)[0]
+            ts = int(row["dt"].timestamp())
+            markers.append(
+                SignalMarker(time=ts, value=cur, v1=v1, color="")
+            )
+            prev_value = cur
+    return markers
 
 
 def build_signal_overlays(*args, **kwargs):
