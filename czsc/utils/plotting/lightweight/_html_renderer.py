@@ -138,6 +138,10 @@ _PAGE_TPL = Template(
     }
     .pane-meta__legend:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
     .pane-meta__legend.legend--off { opacity: 0.35; text-decoration: line-through; }
+    .pane-meta__legend.legend--hover {
+      background: color-mix(in srgb, var(--text) 12%, transparent);
+      color: var(--text); font-weight: 500;
+    }
     .pane-meta__swatch { width: 14px; height: 2px; flex-shrink: 0; }
     .pane-meta__swatch--bi { background: var(--accent); height: 2px; }
     .pane-meta__swatch--fx {
@@ -501,12 +505,31 @@ _PAGE_TPL = Template(
           });
         });
       });
+      var highlightedKey = null;
+
+      function hexToRgba(hex, alpha) {
+        // hex format #RRGGBB
+        var r = parseInt(hex.slice(1, 3), 16);
+        var g = parseInt(hex.slice(3, 5), 16);
+        var b = parseInt(hex.slice(5, 7), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+      }
+
       function applySignalMarkers() {
         var visible = signalMarkersAll
           .filter(function (m) { return seriesVisibleMap[m.__key]; })
           .sort(function (a, b) { return a.time - b.time; })
           .map(function (m) {
-            return { time: m.time, position: m.position, color: m.color, shape: m.shape, text: m.text };
+            var isHi = (highlightedKey !== null && m.__key === highlightedKey);
+            var isDim = (highlightedKey !== null && m.__key !== highlightedKey);
+            return {
+              time: m.time,
+              position: m.position,
+              color: isDim ? hexToRgba(m.color, 0.25) : m.color,
+              shape: m.shape,
+              text: m.text,
+              size: isHi ? 2 : 1,
+            };
           });
         ks.setMarkers(visible);
       }
@@ -621,7 +644,6 @@ _PAGE_TPL = Template(
             };
           });
           sigRowMarkersAllByKey[s.key] = rowMarkers;
-          line.setMarkers(rowMarkers);
           // HTML 行标签
           var lab = document.createElement('span');
           lab.className = 'row__rowlabel';
@@ -633,6 +655,31 @@ _PAGE_TPL = Template(
         // 没 signal → 隐藏整行
         sigEl.hidden = true;
       }
+
+      function applyRowMarkers() {
+        Object.keys(sigRowSeriesByKey).forEach(function (key) {
+          var rowSer = sigRowSeriesByKey[key];
+          if (!seriesVisibleMap[key]) {
+            rowSer.setMarkers([]);
+            return;
+          }
+          var origMarkers = sigRowMarkersAllByKey[key] || [];
+          var mapped = origMarkers.map(function (m) {
+            var isHi = (highlightedKey !== null && key === highlightedKey);
+            var isDim = (highlightedKey !== null && key !== highlightedKey);
+            return {
+              time: m.time,
+              position: 'aboveBar',
+              color: isDim ? hexToRgba(m.color, 0.25) : m.color,
+              shape: 'circle',
+              text: '',
+              size: isHi ? 2 : 1,
+            };
+          });
+          rowSer.setMarkers(mapped);
+        });
+      }
+      applyRowMarkers();
 
       // —— 跨子图 时间轴 & 十字光标 联动 ——
       var trio = [cMain, cVol, cMacd];
@@ -706,6 +753,23 @@ _PAGE_TPL = Template(
           } else {
             placeTooltip(tipEl, mainEl, px, py);
           }
+
+          // 反向高亮：crosshair param.hoveredSeries 命中 sigRow series 时高亮对应 chip
+          var hovered = null;
+          if (param && param.hoveredSeries) {
+            Object.keys(sigRowSeriesByKey).forEach(function (k) {
+              if (sigRowSeriesByKey[k] === param.hoveredSeries) hovered = k;
+            });
+          }
+          // 仅在状态变化时更新（避免反复刷新 markers）
+          if (hovered !== highlightedKey) {
+            highlightedKey = hovered;
+            pane.querySelectorAll('.pane-meta__legend[data-signal-key]').forEach(function (el) {
+              el.classList.toggle('legend--hover', el.getAttribute('data-signal-key') === hovered);
+            });
+            applySignalMarkers();
+            applyRowMarkers();
+          }
         });
       });
 
@@ -740,11 +804,19 @@ _PAGE_TPL = Template(
             seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
             chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);
             applySignalMarkers();
-            // 同步隐藏该 key 在 timeline 行上的 markers
-            var rowSer = sigRowSeriesByKey[s.key];
-            if (rowSer) {
-              rowSer.setMarkers(seriesVisibleMap[s.key] ? sigRowMarkersAllByKey[s.key] : []);
-            }
+            applyRowMarkers();
+          });
+          chip.addEventListener('mouseenter', function () {
+            highlightedKey = s.key;
+            chip.classList.add('legend--hover');
+            applySignalMarkers();
+            applyRowMarkers();
+          });
+          chip.addEventListener('mouseleave', function () {
+            highlightedKey = null;
+            chip.classList.remove('legend--hover');
+            applySignalMarkers();
+            applyRowMarkers();
           });
           meta.insertBefore(chip, meta.querySelector('.pane-meta__hint') || null);
         });

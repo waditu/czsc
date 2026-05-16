@@ -460,6 +460,24 @@ class TestSignalTimelinePane:
         assert "siglabels-" in html
 
 
+class TestHoverHighlight:
+    def test_html_contains_hover_handlers(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # mouseenter handler 出现
+        assert "mouseenter" in html
+        assert "highlightedKey" in html
+        assert "hexToRgba" in html
+        assert ".legend--hover" in html
+        assert "applyRowMarkers" in html
+
+
 @pytest.mark.slow
 class TestStreamlitSlow:
     def test_i6_streamlit_app_smoke(self):
