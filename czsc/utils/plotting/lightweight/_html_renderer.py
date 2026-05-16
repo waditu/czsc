@@ -265,6 +265,7 @@ _PAGE_TPL = Template(
     var tabsBar = document.getElementById("tabs");
     var root = document.getElementById("root");
     var groups = [];     // 每周期一个 { trio, els, paneEl, tipEl, series, raw, candleByTime, macdByTime }
+    var crosshairTime = null;  // 最近一次 hover 的 unix 秒；用于跨 tab 联动
     var dashedLineStyle = LightweightCharts && LightweightCharts.LineStyle
       ? LightweightCharts.LineStyle.Dashed : 2;
     var MIN_AXIS_W = 64;
@@ -723,6 +724,10 @@ _PAGE_TPL = Template(
 
       trio.forEach(function (src, i) {
         src.subscribeCrosshairMove(function (param) {
+          // 记录最后一次 hover 的时间，用于跨 tab 联动
+          if (param && param.time != null) {
+            crosshairTime = param.time;
+          }
           if (!lockCh && param && param.time) {
             lockCh = true;
             for (var j = 0; j < trio.length; j++) {
@@ -904,6 +909,27 @@ _PAGE_TPL = Template(
       g.trio.forEach(function (chart, i) { applySize(chart, g.els[i]); });
       setTimeout(alignAxes, 0);
     }
+    function applyCrosshairToTab(idx) {
+      if (crosshairTime == null) return;
+      var g = groups[idx];
+      if (!g) return;
+      var candles = (PAYLOAD.panes[idx].main.candles) || [];
+      var nearest = null;
+      for (var i = candles.length - 1; i >= 0; i--) {
+        if (candles[i].time <= crosshairTime) {
+          nearest = candles[i].time;
+          break;
+        }
+      }
+      if (nearest == null) return;
+      // 三个主图（main / vol / macd）的 primary series
+      var primaries = [g.series.candles, g.series.volume, g.series.macdDiff];
+      g.trio.forEach(function (chart, ti) {
+        if (primaries[ti]) {
+          try { chart.setCrosshairPosition(NaN, nearest, primaries[ti]); } catch (e) { /* ignore */ }
+        }
+      });
+    }
     function resizeAll() { for (var i = 0; i < groups.length; i++) resizePane(i); }
     window.addEventListener("resize", resizeAll);
 
@@ -922,7 +948,10 @@ _PAGE_TPL = Template(
             groups[i].paneEl.hidden = !active;
             tabsBar.children[i].classList.toggle("active", active);
           }
-          setTimeout(function () { resizePane(idx); }, 0);
+          setTimeout(function () {
+            resizePane(idx);
+            applyCrosshairToTab(idx);
+          }, 0);
         });
         tabsBar.appendChild(btn);
       });

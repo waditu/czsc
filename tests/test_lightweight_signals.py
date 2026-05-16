@@ -478,6 +478,22 @@ class TestHoverHighlight:
         assert "applyRowMarkers" in html
 
 
+class TestCrossPaneCrosshair:
+    def test_html_contains_cross_tab_crosshair_logic(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # 跨 tab crosshair 关键标识
+        assert "crosshairTime" in html
+        assert "applyCrosshairToTab" in html
+        assert "setCrosshairPosition" in html
+
+
 @pytest.mark.slow
 class TestStreamlitSlow:
     def test_i6_streamlit_app_smoke(self):
