@@ -32,12 +32,10 @@ FREQ_MAP = {
 
 def render_chart(c: CZSC, max_k: int) -> None:
     """渲染缠论 K 线图：3 行子图（K 线 / 成交量 / MACD），叠加分型/笔。"""
-    from czsc.utils.ta import MACD
-
     # 用 bars_raw_df 拿到规范化的 DataFrame，避免 pd.DataFrame(RawBar 列表) 的兼容性问题
     df = c.bars_raw_df.tail(max_k).reset_index(drop=True).copy()
-    df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"])
 
+    # add_macd 在缺少 DIFF/DEA/MACD 列时会自动计算
     chart = KlineChart(n_rows=3, row_heights=(0.6, 0.2, 0.2), title="", height=900)
     chart.add_kline(df, name="")
     chart.add_sma(df, ma_seq=(5, 20, 60), row=1, line_width=1, visible=False)

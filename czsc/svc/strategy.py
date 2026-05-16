@@ -42,7 +42,7 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
     :return: None
     """
     import czsc
-    from czsc.utils.ta import MACD
+    from czsc.utils.plotting._macd import compute_macd
 
     sub_title = kwargs.get("sub_title", "缠中说禅交易员详情")
     if sub_title:
@@ -61,7 +61,9 @@ def show_czsc_trader(trader, max_k_num=300, key=None, **kwargs):
         # 仅显示最近 max_k_num 根 K 线，避免数据量过大造成前端卡顿
         sdt = c.bars_raw[-max_k_num].dt if len(c.bars_raw) > max_k_num else c.bars_raw[0].dt
         df = pd.DataFrame(c.bars_raw)
-        df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"], fastperiod=12, slowperiod=26, signalperiod=9)
+        df["DIFF"], df["DEA"], df["MACD"] = compute_macd(
+            df["close"].to_numpy(), fastperiod=12, slowperiod=26, signalperiod=9
+        )
 
         df = df[df["dt"] >= sdt].copy()
         kline = czsc.KlineChart(n_rows=3, row_heights=(0.5, 0.3, 0.2), title="", width="100%", height=800)

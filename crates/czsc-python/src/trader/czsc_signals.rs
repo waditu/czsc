@@ -12,6 +12,12 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// 将 Python list[dict] 解析为 Vec<SignalConfig>
+///
+/// 同时归一化两种用户风格：
+/// - 风格 A：`{name, freq, params: {di, n, ...}}`
+/// - 风格 B：`{name, freq, di, n, ...}`（参数平铺在顶层）
+///
+/// 并对 `name` 做模块前缀剥离：例如 `"czsc.signals.tas.cci_V230402"` → `"cci_V230402"`。
 pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<SignalConfig>> {
     let mut result = Vec::with_capacity(configs.len());
     for item in configs.iter() {
@@ -19,10 +25,12 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
             .cast::<PyDict>()
             .map_err(|_| PyValueError::new_err("signals_config 中每个元素必须是 dict"))?;
 
-        let name: String = dict
+        let raw_name: String = dict
             .get_item("name")?
             .ok_or_else(|| PyValueError::new_err("signals_config dict 缺少 'name' 字段"))?
             .extract()?;
+        // 剥离模块前缀：Rust 侧按短名直接派发到信号实现
+        let name = strip_signal_name(&raw_name);
 
         let freq: Option<String> = match dict.get_item("freq")? {
             Some(v) if !v.is_none() => Some(v.extract()?),
@@ -31,7 +39,7 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
 
         let mut params: HashMap<String, Value> = HashMap::new();
 
-        // 优先从 "params" 子字典取参数
+        // 风格 A：优先从 "params" 子字典取参数
         if let Some(params_obj) = dict.get_item("params")?
             && !params_obj.is_none()
             && let Ok(params_dict) = params_obj.cast::<PyDict>()
@@ -43,10 +51,14 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
             }
         }
 
-        // 也支持 flat params：dict 中除 name/freq/params 以外的 key 直接作为参数
+        // 风格 B：dict 中除 name/freq/params/signals_module/module 以外的 key 直接作为参数
+        // signals_module / module 是老版本遗留字段，不应进入 params
         for (k, v) in dict.iter() {
             let key: String = k.extract()?;
-            if key == "name" || key == "freq" || key == "params" {
+            if matches!(
+                key.as_str(),
+                "name" | "freq" | "params" | "signals_module" | "module"
+            ) {
                 continue;
             }
             if let std::collections::hash_map::Entry::Vacant(e) = params.entry(key) {
@@ -58,6 +70,15 @@ pub(crate) fn parse_signals_config(configs: &Bound<PyList>) -> PyResult<Vec<Sign
         result.push(SignalConfig { name, freq, params });
     }
     Ok(result)
+}
+
+/// 截取信号 name 中以最后一个 `.` 分隔的末段
+///
+/// 示例：
+/// - `"czsc.signals.tas.cci_V230402"` → `"cci_V230402"`
+/// - `"cci_V230402"`                  → `"cci_V230402"`
+pub(crate) fn strip_signal_name(name: &str) -> String {
+    name.rsplit('.').next().unwrap_or(name).to_string()
 }
 
 /// 将 Python 值转换为 serde_json::Value

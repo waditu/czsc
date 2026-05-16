@@ -181,6 +181,8 @@ impl<'a> Eq for SignalRef<'a> {}
 impl<'py> FromPyObject<'_, 'py> for Signal {
     type Error = pyo3::PyErr;
     fn extract(ob: pyo3::Borrowed<'_, 'py, pyo3::PyAny>) -> Result<Self, Self::Error> {
+        use pyo3::types::{PyDict, PyDictMethods};
+
         // 如果是 str，直接解析
         if let Ok(s) = ob.extract::<String>() {
             let signal = Self::from_str(&s).map_err(|err| {
@@ -189,9 +191,32 @@ impl<'py> FromPyObject<'_, 'py> for Signal {
             return Ok(signal);
         }
 
+        // 兼容 Position dump / Event 配置中的字典形式：{"key": "...", "value": "..."}
+        // 与历史 Python 包装层 _signal_kv_to_string 行为一致，合并为
+        // "<key>_<value>" 字符串后再走标准解析。
+        if let Ok(dict) = ob.cast::<PyDict>() {
+            let key: String = dict
+                .get_item("key")?
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err("Signal 字典缺少字段 'key'")
+                })?
+                .extract()?;
+            let value: String = dict
+                .get_item("value")?
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err("Signal 字典缺少字段 'value'")
+                })?
+                .extract()?;
+            let composed = format!("{key}_{value}");
+            let signal = Self::from_str(&composed).map_err(|err| {
+                pyo3::exceptions::PyValueError::new_err(format!("无法解析 Signal：{err}"))
+            })?;
+            return Ok(signal);
+        }
+
         // 非法类型
         Err(pyo3::exceptions::PyValueError::new_err(
-            "期望 str：示例 'k1_k2_k3_v1_v2_v3_score'。",
+            "期望 str（'k1_k2_k3_v1_v2_v3_score'）或 dict（{'key': ..., 'value': ...}）。",
         ))
     }
 }
@@ -218,7 +243,9 @@ impl<'de> Deserialize<'de> for SignalRef<'static> {
             type Value = SignalRef<'a>;
 
             fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                f.write_str("键(3 个段)_值(4 个段，最后一段是分数)")
+                f.write_str(
+                    "Signal：要么是字符串 \"k1_k2_k3_v1_v2_v3_score\"，要么是 {key, value} 字典",
+                )
             }
 
             fn visit_str<E>(self, s: &str) -> Result<Self::Value, E>
@@ -227,9 +254,34 @@ impl<'de> Deserialize<'de> for SignalRef<'static> {
             {
                 Signal::from_str(s).map_err(|e| E::custom(e))
             }
+
+            // 兼容 Python 端 Position dump 中的字典形式：{"key": "k1_k2_k3", "value": "v1_v2_v3"}
+            // 或 {"key": "k1_k2_k3", "value": "v1_v2_v3_score"}，合并后按字符串路径解析
+            fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+            where
+                M: serde::de::MapAccess<'de>,
+            {
+                let mut key: Option<String> = None;
+                let mut value: Option<String> = None;
+                while let Some(k) = map.next_key::<String>()? {
+                    match k.as_str() {
+                        "key" => key = Some(map.next_value()?),
+                        "value" => value = Some(map.next_value()?),
+                        _ => {
+                            // 忽略未知字段，沿用 serde 默认 ignore 行为以保持向前兼容
+                            let _: serde::de::IgnoredAny = map.next_value()?;
+                        }
+                    }
+                }
+                let key = key.ok_or_else(|| serde::de::Error::missing_field("key"))?;
+                let value = value.ok_or_else(|| serde::de::Error::missing_field("value"))?;
+                let composed = format!("{key}_{value}");
+                Signal::from_str(&composed).map_err(|e| serde::de::Error::custom(e))
+            }
         }
 
-        deserializer.deserialize_str(SignalVisitor {
+        // 用 deserialize_any 而不是 deserialize_str，让 visitor 同时接受字符串和 map
+        deserializer.deserialize_any(SignalVisitor {
             marker: std::marker::PhantomData,
         })
     }

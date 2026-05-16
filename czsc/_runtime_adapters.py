@@ -2,17 +2,17 @@
 Rust/Python 运行时适配层（Runtime Adapters）
 
 把 Python 端用户层的 ``dict`` / ``list`` / ``RawBar`` 等结构，转换为 Rust 后端
-（``czsc._native``）期望的运行时格式。本模块是评审决议 2026-05-15 把
-``czsc/_compat.py`` 拆解后的产物，只保留**被 2+ 处生产代码共享**的核心
-适配逻辑；其他唯一调用方私有的工具函数已下沉到各调用方文件内。
+（``czsc._native``）期望的运行时格式。
 
-被以下调用方共享：
+PR-2 / PR-4 之后，原先位于本模块的 ``signal_config_to_runtime`` 与
+``position_dump_to_runtime`` 已被 Rust 端的归一化逻辑替代（前者吸收进
+``derive_signals_config``，后者通过 ``Signal::Deserialize`` 同时接受
+字符串与 ``{key, value}`` 字典形态），不再需要 Python 端转换。
 
-- :mod:`czsc.research`         —— ``signal_config_to_runtime`` /
-                                   ``position_dump_to_runtime`` /
-                                   ``normalize_candidate_events``
-- :mod:`czsc.strategies`       —— ``sort_freqs`` / ``signal_config_to_runtime`` /
-                                   ``position_dump_to_runtime`` / ``bars_to_dataframe``
+当前仅保留**被 2+ 处生产代码共享**的边界胶水：
+
+- :mod:`czsc.research`         —— ``normalize_candidate_events``
+- :mod:`czsc.strategies`       —— ``sort_freqs`` / ``bars_to_dataframe``
 - :mod:`czsc.traders.optimize` —— ``bars_to_dataframe`` / ``normalize_candidate_event``
 - :func:`czsc.utils.freqs_sorted` —— 间接调用 ``sort_freqs``
 
@@ -72,75 +72,6 @@ def sort_freqs(freqs: Iterable[str]) -> list[str]:
     """
     unique = {str(x) for x in freqs if x}
     return sorted(unique, key=lambda x: (_FREQ_ORDER.get(x, 10_000), x))
-
-
-def signal_config_to_runtime(cfg: dict[str, Any]) -> dict[str, Any]:
-    """将"用户层"信号配置 dict 转换为 Rust 后端期望的运行时三段式结构
-
-    用户在 Python 端常以两种风格书写信号配置：
-
-    - 风格 A（带 ``params`` 子字典）::
-
-        {"name": "tas.cci_V230402", "freq": "30分钟", "params": {"di": 1, "n": 14}}
-
-    - 风格 B（参数与 name/freq 平铺在同一层）::
-
-        {"name": "tas.cci_V230402", "freq": "30分钟", "di": 1, "n": 14}
-
-    本函数把以上两种写法都归一为::
-
-        {"name": "cci_V230402", "freq": "30分钟", "params": {"di": 1, "n": 14}}
-
-    其中 ``name`` 会被截断为最后一段（去模块前缀），便于 Rust 端按短名直接派发到信号实现。
-
-    :param cfg: 任意一种风格的信号配置 dict
-    :return: 三段式 dict（``name`` / ``freq`` / ``params``），可直接喂给 Rust API
-    """
-    # 风格 A：已经显式区分 params，仅做名称清洗与浅拷贝
-    if "params" in cfg:
-        return {
-            "name": _strip_signal_name(cfg["name"]),
-            "freq": cfg.get("freq"),
-            "params": dict(cfg.get("params", {})),
-        }
-
-    # 风格 B：除 name/freq/signals_module/module 以外的所有键都视为参数
-    # signals_module/module 是旧版本遗留字段，不应进入 params
-    params = {}
-    for key, value in cfg.items():
-        if key in {"name", "freq", "signals_module", "module"}:
-            continue
-        params[key] = value
-    return {
-        "name": _strip_signal_name(cfg["name"]),
-        "freq": cfg.get("freq"),
-        "params": params,
-    }
-
-
-def position_dump_to_runtime(payload: dict[str, Any]) -> dict[str, Any]:
-    """将 Position 的 JSON dump 结果转换为 Rust 运行时期望的事件/信号格式
-
-    Python 端 Position 的 ``opens`` / ``exits`` 字段中，每个 Event 的
-    ``signals_all`` / ``signals_any`` / ``signals_not`` 元素既可能是
-    ``"key_value"`` 字符串，也可能是 ``{"key": ..., "value": ...}`` 字典。
-    Rust 端只接受字符串形式，本函数统一转为字符串。
-
-    :param payload: ``Position.dump()`` 的输出（dict 形式）
-    :return: 浅拷贝后的 dict，opens/exits 内的信号字段已全部规范化为字符串列表
-    """
-    out = dict(payload)
-    # 同时处理"开仓事件"与"平仓事件"两个分支
-    for event_key in ("opens", "exits"):
-        events = []
-        for event in list(out.get(event_key) or []):
-            event_copy = dict(event)
-            # 三种信号关系字段：必须存在但允许为空列表
-            for sig_key in ("signals_all", "signals_any", "signals_not"):
-                event_copy[sig_key] = [_signal_kv_to_string(sig) for sig in list(event_copy.get(sig_key) or [])]
-            events.append(event_copy)
-        out[event_key] = events
-    return out
 
 
 def bars_to_dataframe(bars: Any, symbol: str | None = None) -> pd.DataFrame:
@@ -270,25 +201,3 @@ def normalize_candidate_events(events: Iterable[dict[str, Any]]) -> list[dict[st
     return [normalize_candidate_event(event) for event in events]
 
 
-def _strip_signal_name(name: str) -> str:
-    """截取信号 name 中以最后一个 ``.`` 分隔的末段
-
-    示例::
-
-        "czsc.signals.tas.cci_V230402" -> "cci_V230402"
-        "cci_V230402"                  -> "cci_V230402"
-
-    Rust 端按短名直接派发到信号实现，因此调用底层前需要剥离模块前缀。
-    """
-    return str(name).split(".")[-1]
-
-
-def _signal_kv_to_string(signal: dict[str, Any] | str) -> str:
-    """将信号的 ``{"key": ..., "value": ...}`` 字典形式合并为 ``"key_value"`` 字符串
-
-    若入参已经是字符串则原样返回，便于在批量处理时统一调用而不必预判类型。
-    Rust 端只接受字符串形式的信号匹配条件，故所有 Python 端的信号最终都会经此函数。
-    """
-    if isinstance(signal, str):
-        return signal
-    return f"{signal['key']}_{signal['value']}"

@@ -79,11 +79,9 @@ def build_trader(symbol: str, sdt: str, edt: str, seed: int) -> CzscTrader:
 def render_freq_chart(trader: CzscTrader, freq: str, max_k: int) -> None:
     """单个周期：K 线 + 均线 + 成交量 + MACD + 分型 + 笔，
     并在基础周期上叠加各 Position 的开/平仓标记。"""
-    from czsc.utils.ta import MACD
-
     c = trader.kas[freq]
     df = c.bars_raw_df.tail(max_k).reset_index(drop=True).copy()
-    df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"])
+    # add_macd 在缺少 DIFF/DEA/MACD 列时会自动计算
     sdt = df["dt"].iloc[0]
 
     chart = KlineChart(n_rows=3, row_heights=(0.55, 0.2, 0.25), title="", height=820)

@@ -226,7 +226,7 @@ class KlineChart:
         2. 读取 ``fastperiod`` / ``slowperiod`` / ``signalperiod`` / ``line_width`` 参数，
            默认值分别为 12 / 26 / 9 / 0.6；
         3. 若 ``df`` 已包含 ``DIFF / DEA / MACD`` 列则直接复用，否则调用
-           ``czsc.utils.ta.MACD`` 计算；
+           plotting 内部的 ``compute_macd``（柱状图 ×2 约定）计算；
         4. 根据 MACD 是否大于 0 给柱体上色（大于 0 红色，否则绿色）；
         5. 用 :meth:`add_scatter_indicator` 把 ``DIFF`` / ``DEA`` 绘制为折线，
            用 :meth:`add_bar_indicator` 把 ``MACD`` 绘制为柱体。
@@ -240,9 +240,11 @@ class KlineChart:
         if "DIFF" in df.columns and "DEA" in df.columns and "MACD" in df.columns:
             diff, dea, macd = df["DIFF"], df["DEA"], df["MACD"]
         else:
-            from czsc.utils.ta import MACD
+            from czsc.utils.plotting._macd import compute_macd
 
-            diff, dea, macd = MACD(df["close"], fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod)
+            diff, dea, macd = compute_macd(
+                df["close"].to_numpy(), fastperiod=fastperiod, slowperiod=slowperiod, signalperiod=signalperiod
+            )
 
         macd_colors = np.where(macd > 0, self.color_red, self.color_green)
         self.add_scatter_indicator(

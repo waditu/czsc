@@ -1380,45 +1380,180 @@ pub fn list_all_signals(
     Ok(list.unbind())
 }
 
-/// 从 `unique_signals` 反推出 Rust 运行时 `signals_config`。
+/// 把单个 SignalConfig 转换为展平的三段式 dict：`{name, freq?, ...params}`。
 ///
-/// 这是 PyO3 暴露给 Python 兼容层的核心反解析入口：
-/// - 输入：信号字符串列表，例如 `['60分钟_D1SMA#5_分类V221101_多头_向上_任意_0']`
-/// - 输出：可直接放入策略 JSON 的 `list[dict]`
+/// 这个布局直接对应 czsc 策略 JSON 中 `signals_config` 的标准格式：
+/// 用户既不用 wrap `params`，也不用再做一次展平后处理。
+fn signal_config_to_flat_dict<'py>(
+    py: Python<'py>,
+    cfg: &SignalConfig,
+) -> PyResult<Bound<'py, PyDict>> {
+    let dict = PyDict::new(py);
+    dict.set_item("name", &cfg.name)?;
+    if let Some(freq) = &cfg.freq {
+        dict.set_item("freq", freq)?;
+    }
+    // 把 params 平铺到顶层。serde_json::Value → Python 对象走 json.loads 兜底。
+    if !cfg.params.is_empty() {
+        let json_mod = py.import("json")?;
+        for (k, v) in &cfg.params {
+            let val: Bound<'_, PyAny> = if v.is_null() {
+                py.None().into_bound(py)
+            } else if let Some(b) = v.as_bool() {
+                b.into_pyobject(py)?.to_owned().into_any()
+            } else if let Some(i) = v.as_i64() {
+                i.into_pyobject(py)?.into_any()
+            } else if let Some(f) = v.as_f64() {
+                f.into_pyobject(py)?.into_any()
+            } else if let Some(s) = v.as_str() {
+                s.into_pyobject(py)?.into_any()
+            } else {
+                // dict / list 等复合类型：走 json.loads 转 Python 对象
+                let json_str = serde_json::to_string(v).map_err(|e| {
+                    PyRuntimeError::new_err(format!("序列化 params 值失败: {e}"))
+                })?;
+                json_mod.call_method1("loads", (json_str,))?
+            };
+            dict.set_item(k, val)?;
+        }
+    }
+    Ok(dict)
+}
+
+/// 从 `unique_signals` 反推出展平的 `signals_config`。
 ///
-/// 这个函数依赖 Rust 注册表中的 `param_template` 做反解析，因此适合：
-/// - `CzscStrategyBase.unique_signals -> signals_config`
-/// - parity benchmark 中的 same-source import-swap 场景
+/// 输入：信号字符串列表，例如 `['60分钟_D1SMA#5_分类V221101_多头_向上_任意_0']`
+/// 输出：`list[dict]`，每个 dict 形如 `{name, freq?, di, ma_type, timeperiod, ...}`
+///
+/// 与历史 Python wrapper 行为对齐：params 已平铺到顶层；name 已剥离模块前缀。
+/// 重复配置按 dict 等值去重。
 #[pyfunction]
 #[pyo3(text_signature = "(unique_signals)")]
 #[pyo3(signature = (unique_signals))]
 pub fn derive_signals_config(py: Python<'_>, unique_signals: Vec<String>) -> PyResult<Py<PyAny>> {
     let refs: Vec<&str> = unique_signals.iter().map(String::as_str).collect();
     let configs = get_signals_config(&refs);
-    let json_str = serde_json::to_string(&configs)
-        .map_err(|e| PyRuntimeError::new_err(format!("序列化 signals_config 失败: {e}")))?;
-    let json_mod = py.import("json")?;
-    Ok(json_mod.call_method1("loads", (json_str,))?.unbind())
+
+    // 转成展平 dict 列表，并按 dict 等值去重（与历史 Python 行为一致）
+    let out = PyList::empty(py);
+    for cfg in &configs {
+        let dict = signal_config_to_flat_dict(py, cfg)?;
+        let mut seen = false;
+        for existing in out.iter() {
+            if existing.eq(&dict)? {
+                seen = true;
+                break;
+            }
+        }
+        if !seen {
+            out.append(dict)?;
+        }
+    }
+    Ok(out.into_any().unbind())
 }
 
 /// 从 `signals_config` 中提取执行所需的全部周期列表。
 ///
-/// 返回结果已经按 `czsc` 习惯的中文周期顺序排序，而不是字典序。
-/// 这个入口通常给 Python 兼容层用于自动填充：
-/// - `freqs`
-/// - `sorted_freqs`
-/// - `base_freq` 推导前的候选周期集合
+/// 支持两种入参：
+/// - `list[str]`：原始 unique-signal 字符串，会先经 `get_signals_config` 解析；
+/// - `list[dict]`：已解析的 signals_config dict 列表（风格 A：含 `params`；
+///   风格 B：参数平铺在顶层）。
+///
+/// 返回结果按 czsc 习惯的中文周期顺序排序，而不是字典序。
 #[pyfunction]
 #[pyo3(text_signature = "(signals_config)")]
 #[pyo3(signature = (signals_config))]
 pub fn derive_signals_freqs(py: Python<'_>, signals_config: Py<PyAny>) -> PyResult<Vec<String>> {
-    let json_mod = py.import("json")?;
-    let json_str = json_mod
-        .call_method1("dumps", (signals_config,))?
-        .extract::<String>()?;
-    let configs: Vec<SignalConfig> = serde_json::from_str(&json_str)
-        .map_err(|e| PyValueError::new_err(format!("signals_config 解析失败: {e}")))?;
+    let bound = signals_config.bind(py);
+
+    let list = bound
+        .cast::<PyList>()
+        .map_err(|_| PyValueError::new_err("signals_config 必须是 list"))?;
+    if list.len() == 0 {
+        return Ok(Vec::new());
+    }
+
+    // 探测首元素类型
+    let first = list.iter().next().unwrap();
+    if first.cast::<pyo3::types::PyString>().is_ok() {
+        // 风格：原始 unique-signal 字符串列表
+        let strings: Vec<String> = list
+            .iter()
+            .map(|item| item.extract::<String>())
+            .collect::<PyResult<_>>()?;
+        let refs: Vec<&str> = strings.iter().map(String::as_str).collect();
+        let configs = get_signals_config(&refs);
+        return Ok(get_signals_freqs(&configs));
+    }
+
+    // 风格：已解析 dict 列表（A 或 B 风格均可）
+    // 走 parse_signals_config，里面会归一两种写法并剥离 name 模块前缀
+    let configs = super::czsc_signals::parse_signals_config(&list)?;
     Ok(get_signals_freqs(&configs))
+}
+
+/// 从原始 K 线和 signals_config 出发，直接计算所有 unique 信号字符串。
+///
+/// 行为对应历史 Python 版本 `czsc.traders.base.get_unique_signals`：
+/// 1. K 线长度 < 600 时直接返回空列表（避免冷启动噪声）；
+/// 2. 调用 `generate_czsc_signals` 计算所有信号 → DataFrame；
+/// 3. 仅识别列名按 `"a_b_c"` 三段式命名的信号列；
+/// 4. 对每列收集所有不含 `"其他"` 的取值，按 `"<列名>_<取值>"` 格式拼装并去重。
+#[pyfunction]
+#[pyo3(text_signature = "(bars, signals_config, sdt=\"20170101\", init_n=500)")]
+#[pyo3(signature = (bars, signals_config, sdt="20170101", init_n=500))]
+pub fn get_unique_signals(
+    py: Python<'_>,
+    bars: Vec<RawBar>,
+    signals_config: &Bound<'_, PyList>,
+    sdt: &str,
+    init_n: usize,
+) -> PyResult<Vec<String>> {
+    use std::collections::BTreeSet;
+
+    // 样本不足兜底
+    if bars.len() < 600 {
+        return Ok(Vec::new());
+    }
+
+    // 复用 generate_czsc_signals 的产出（list[dict]）。设置 df=false 以避免来回 DataFrame 转换。
+    let records = super::generate::generate_czsc_signals(
+        py,
+        bars,
+        signals_config,
+        sdt,
+        init_n,
+        false,
+    )?;
+    let bound_records = records.bind(py);
+    let list = bound_records
+        .cast::<PyList>()
+        .map_err(|_| PyValueError::new_err("generate_czsc_signals 应返回 list"))?;
+
+    // 收集 (列名, 取值) 对：仅保留三段式列名、且取值不包含 "其他"
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut out: Vec<String> = Vec::new();
+    for record in list.iter() {
+        let dict = record
+            .cast::<PyDict>()
+            .map_err(|_| PyValueError::new_err("信号记录应为 dict"))?;
+        for (k, v) in dict.iter() {
+            let col: String = k.extract()?;
+            // 仅保留 "a_b_c" 三段式列名
+            if col.split('_').count() != 3 {
+                continue;
+            }
+            let value: String = v.extract()?;
+            if value.contains("其他") {
+                continue;
+            }
+            let composed = format!("{col}_{value}");
+            if seen.insert(composed.clone()) {
+                out.push(composed);
+            }
+        }
+    }
+    Ok(out)
 }
 
 #[cfg(test)]

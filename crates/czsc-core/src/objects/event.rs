@@ -208,32 +208,41 @@ impl Event {
             _ => return Err(anyhow!("Unknown operate: {operate_str}")),
         };
 
-        let signals_all: Vec<Signal> = data
-            .get("signals_all")
-            .and_then(|v| v.as_array())
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|v| v.as_str().unwrap())
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
+        // 单个信号项允许两种 JSON 表达：字符串 "k1_k2_k3_v1_v2_v3_score"
+        // 或字典 {"key": "k1_k2_k3", "value": "v1_v2_v3" 或 "v1_v2_v3_score"}。
+        // 后者用于兼容 Python Position dump 的 signal_kv 形态。
+        fn signal_from_value(v: &serde_json::Value) -> anyhow::Result<Signal> {
+            if let Some(s) = v.as_str() {
+                return s.parse().map_err(|e| anyhow!("解析 Signal 失败: {e}"));
+            }
+            if let Some(obj) = v.as_object() {
+                let key = obj
+                    .get("key")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow!("Signal 字典缺少字段 'key'"))?;
+                let value = obj
+                    .get("value")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow!("Signal 字典缺少字段 'value'"))?;
+                return format!("{key}_{value}")
+                    .parse()
+                    .map_err(|e| anyhow!("解析 Signal 失败: {e}"));
+            }
+            Err(anyhow!("Signal 必须是字符串或 {{key, value}} 字典"))
+        }
 
-        let signals_any: Vec<Signal> = data
-            .get("signals_any")
-            .and_then(|v| v.as_array())
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|v| v.as_str().unwrap())
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
+        fn collect_signals(data: &serde_json::Value, field: &str) -> anyhow::Result<Vec<Signal>> {
+            data.get(field)
+                .and_then(|v| v.as_array())
+                .unwrap_or(&vec![])
+                .iter()
+                .map(signal_from_value)
+                .collect()
+        }
 
-        let signals_not: Vec<Signal> = data
-            .get("signals_not")
-            .and_then(|v| v.as_array())
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|v| v.as_str().unwrap())
-            .map(|s| s.parse())
-            .collect::<Result<Vec<_>, _>>()?;
+        let signals_all = collect_signals(data, "signals_all")?;
+        let signals_any = collect_signals(data, "signals_any")?;
+        let signals_not = collect_signals(data, "signals_not")?;
 
         let name = data
             .get("name")

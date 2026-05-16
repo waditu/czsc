@@ -2,7 +2,10 @@
 czsc.utils 工具子包
 
 本子包汇总了 CZSC 项目内的通用工具，包括：分析（analysis）、
-数据访问与缓存（data）、IO 助手（io）、技术指标（ta）、绘图（plotting）等。
+数据访问与缓存（data）、IO 助手（io）、绘图（plotting）等。
+
+技术指标（TA）算子已统一由 Rust 端 ``czsc._native.ta`` 提供，从顶层
+``czsc.ta`` 直接访问；本子包不再暴露 ``ta`` 子模块。
 
 加载策略（2026-05 评审后已统一）：
 
@@ -22,7 +25,7 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # 轻量级子模块的直接导入
 # ---------------------------------------------------------------------------
-from . import analysis, data, io, ta
+from . import analysis, data, io
 
 # 从 analysis 子模块再次导出常用的统计 / 绩效函数，方便在 czsc.utils 顶层直接使用
 from .analysis import (
@@ -67,7 +70,6 @@ __all__ = [
     "analysis",
     "data",
     "io",
-    "ta",
     # analysis
     "cross_sectional_ic",
     "daily_performance",

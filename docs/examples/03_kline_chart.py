@@ -37,13 +37,10 @@ def chart_with_plot_czsc_chart(c: CZSC) -> str:
 
 def chart_with_kline_chart_class(c: CZSC) -> str:
     """方式 B：用 ``KlineChart`` 自定义子图布局，叠加分型/笔/均线/成交量/MACD。"""
-    from czsc.utils.ta import MACD  # czsc 仪表盘场景的特殊 MACD 约定
-
     # CZSC.bars_raw_df 已经是规范化的 DataFrame，避免直接 pd.DataFrame(RawBar 列表) 的兼容性问题
     df = c.bars_raw_df.tail(300).reset_index(drop=True).copy()
-    df["DIFF"], df["DEA"], df["MACD"] = MACD(df["close"])
 
-    # 3 行子图：K 线 / 成交量 / MACD
+    # 3 行子图：K 线 / 成交量 / MACD（add_macd 在缺少 DIFF/DEA/MACD 列时会自动计算）
     chart = KlineChart(n_rows=3, row_heights=(0.6, 0.2, 0.2), title="自定义 KlineChart 演示")
     chart.add_kline(df, name="")
     chart.add_sma(df, ma_seq=(5, 20, 60), row=1, line_width=1, visible=False)

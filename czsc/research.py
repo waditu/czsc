@@ -42,11 +42,11 @@ from czsc._native import (
     run_research as _run_research,
 )
 
-# Rust/Python 运行时适配层：负责"用户层 dict <-> Rust 运行时 dict"的格式互转
+# Rust/Python 运行时适配层：candidate events 归一仍由 Python 处理；
+# signal config 与 Position dump 的归一逻辑已在 PR-2 / PR-4 下沉到 Rust，
+# 直接把用户层 dict 透传给 Rust 即可。
 from czsc._runtime_adapters import (
     normalize_candidate_events,
-    position_dump_to_runtime,
-    signal_config_to_runtime,
 )
 from czsc._utils._df_convert import pandas_to_arrow_bytes
 from czsc.models import OptimizeResult, ReplayResult, ResearchResult
@@ -133,19 +133,9 @@ def run_research(
     # 选项序列化为 JSON，传给 Rust 解析；None 直接透传，由 Rust 处理默认
     opts_json = json.dumps(opts, ensure_ascii=False) if opts else None
 
-    # 浅拷贝避免修改调用方传入的 dict
+    # 浅拷贝避免修改调用方传入的 dict；
+    # positions / signals_config 直接透传，由 Rust 端归一化（PR-2 / PR-4）
     strategy_payload = dict(strategy)
-
-    # positions / signals_config 都是用户层格式，需要先归一化为 Rust 运行时期望的紧凑布局
-    if "positions" in strategy_payload:
-        strategy_payload["positions"] = [
-            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos for pos in strategy_payload["positions"]
-        ]
-    if "signals_config" in strategy_payload:
-        strategy_payload["signals_config"] = [
-            signal_config_to_runtime(cfg) if isinstance(cfg, dict) else cfg
-            for cfg in strategy_payload["signals_config"]
-        ]
 
     # 进入 Rust：bars 转字节，strategy 转 JSON 字符串
     payload = _run_research(
@@ -186,16 +176,8 @@ def run_replay(
     path_str = str(res_path) if res_path is not None else None
     opts_json = json.dumps(opts, ensure_ascii=False) if opts else None
 
+    # positions / signals_config 直接透传，由 Rust 端归一化（PR-2 / PR-4）
     strategy_payload = dict(strategy)
-    if "positions" in strategy_payload:
-        strategy_payload["positions"] = [
-            position_dump_to_runtime(pos) if isinstance(pos, dict) else pos for pos in strategy_payload["positions"]
-        ]
-    if "signals_config" in strategy_payload:
-        strategy_payload["signals_config"] = [
-            signal_config_to_runtime(cfg) if isinstance(cfg, dict) else cfg
-            for cfg in strategy_payload["signals_config"]
-        ]
 
     payload = _run_replay(
         _ensure_arrow_bytes(bars),

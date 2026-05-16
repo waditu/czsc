@@ -31,11 +31,10 @@ from czsc._native import (
     derive_signals_config,
     derive_signals_freqs,
     generate_czsc_signals,
+    get_signals_config,
+    get_signals_freqs,
+    get_unique_signals,
 )
-
-# 兼容老的导入路径：保留 Python 侧的薄封装函数 get_unique_signals。
-from czsc.traders.base import get_unique_signals
-from czsc.traders.sig_parse import get_signals_config, get_signals_freqs
 
 # __all__ 显式声明对外公开的符号集合，限定 `from czsc.traders import *` 的行为，
 # 同时方便 IDE 与文档工具识别模块的公共 API。

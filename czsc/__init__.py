@@ -139,8 +139,9 @@ from .utils import (
     update_tbars,
 )
 
-# czsc.ta 别名再保险：from .utils import ... 链路上若有副作用 import czsc.utils.ta，
-# 可能把 sys.modules["czsc.ta"] 覆盖回 Python 包装版本，这里再绑一次确保 Rust 子模块胜出。
+# czsc.ta 别名：统一指向 Rust 实现的 _native.ta 子模块。
+# 历史上 czsc/utils/ta.py 曾占用 czsc.ta 命名空间，目前已彻底删除（PR-1），
+# 此处仅做一次绑定即可，不再担心被 Python 包装版本覆盖。
 ta = _native.ta
 _sys.modules["czsc.ta"] = _native.ta
 

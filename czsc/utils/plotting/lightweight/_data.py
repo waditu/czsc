@@ -114,10 +114,10 @@ def _none_if_nan(value: float) -> float | None:
 
 
 def _macd(close: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """局部封装 czsc.utils.ta.MACD，避免在 import 阶段拉入 utils.ta。"""
-    from czsc.utils.ta import MACD  # noqa: PLC0415
+    """局部封装 plotting 内部 MACD（×2 约定），避免在 import 阶段拉入。"""
+    from czsc.utils.plotting._macd import compute_macd  # noqa: PLC0415
 
-    diff, dea, macd = MACD(close)
+    diff, dea, macd = compute_macd(close)
     return diff, dea, macd
 
 

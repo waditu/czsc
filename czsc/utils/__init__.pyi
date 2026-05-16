@@ -3,7 +3,6 @@ import pandas as pd
 from . import analysis as analysis
 from . import data as data
 from . import io as io
-from . import ta as ta
 from .analysis import (
     cross_sectional_ic as cross_sectional_ic,
 )

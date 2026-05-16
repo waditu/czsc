@@ -39,7 +39,6 @@ from czsc._runtime_adapters import (
     bars_to_dataframe,
     normalize_candidate_event,
     normalize_candidate_events,
-    position_dump_to_runtime,
 )
 from czsc.research import run_optimize_batch
 from czsc.strategies import CzscStrategyBase
@@ -404,8 +403,9 @@ class OpensOptimize:
         files = []
         for file in self.files_position:
             payload = json.loads(Path(file).read_text(encoding="utf-8"))
-            # 通过兼容层把"持久化 dump"格式转成 Rust 引擎期望的"运行时"结构。
-            runtime = position_dump_to_runtime(payload)
+            # PR-4：Rust 端 Position load 已经能识别两种 signal 字段写法，
+            # 直接使用持久化 dump 作为运行时结构即可。
+            runtime = payload
             # 移除回测/校验类字段，避免 Rust 端误用历史结果污染本次优化。
             runtime.pop("md5", None)
             runtime.pop("pairs", None)
@@ -532,8 +532,8 @@ class ExitsOptimize:
         files = []
         for file in self.files_position:
             payload = json.loads(Path(file).read_text(encoding="utf-8"))
-            # 转换成 Rust 端期望的 runtime 结构，并清理掉历史回测产物字段。
-            runtime = position_dump_to_runtime(payload)
+            # PR-4：Rust 端 Position load 已经能识别两种 signal 字段写法，直接透传。
+            runtime = payload
             runtime.pop("md5", None)
             runtime.pop("pairs", None)
             runtime.pop("holds", None)

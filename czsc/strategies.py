@@ -36,8 +36,6 @@ from czsc._native import (
 )
 from czsc._runtime_adapters import (
     bars_to_dataframe,
-    position_dump_to_runtime,
-    signal_config_to_runtime,
     sort_freqs,
 )
 from czsc.research import run_replay, run_research
@@ -105,8 +103,9 @@ class CzscStrategyBase(ABC):
             先把 signals_config 转回运行时格式，再交给 Rust 派生器返回所有
             涉及的周期；最后用 :func:`sort_freqs` 做去重与排序。
         """
-        runtime = [signal_config_to_runtime(cfg) for cfg in self.signals_config]
-        return sort_freqs(_derive_signals_freqs_impl(runtime))
+        # signals_config 已经是 derive_signals_config 返回的扁平 dict；
+        # Rust 端 derive_signals_freqs 直接接受这种形态，无需再做适配（PR-2）。
+        return sort_freqs(_derive_signals_freqs_impl(self.signals_config))
 
     @property
     def sorted_freqs(self):
@@ -194,7 +193,9 @@ class CzscStrategyBase(ABC):
         out_dir = Path(path)
         out_dir.mkdir(parents=True, exist_ok=True)
         for pos in self.positions:
-            payload = position_dump_to_runtime(pos.dump(with_data=False))
+            # Position dump 直接落盘；Rust 端 Position load 已经能识别两种
+            # signal 字段写法（PR-4），不需要在 Python 侧做归一化
+            payload = pos.dump(with_data=False)
             # symbol 与策略实例耦合，落盘时移除以便 Position 可被复用到不同标的
             payload.pop("symbol", None)
             # md5 校验码：基于序列化字符串生成，加载时可校验配置完整性
@@ -241,8 +242,9 @@ class CzscStrategyBase(ABC):
             "name": self.kwargs.get("name", self.__class__.__name__),
             "symbol": self.symbol,
             "base_freq": self.base_freq,
-            "signals_config": [signal_config_to_runtime(cfg) for cfg in self.signals_config],
-            "positions": [position_dump_to_runtime(pos.dump(with_data=False)) for pos in self.positions],
+            # PR-2 / PR-4：signals_config 与 Position dump 的归一化已由 Rust 处理，直接透传
+            "signals_config": list(self.signals_config),
+            "positions": [pos.dump(with_data=False) for pos in self.positions],
             "market": self.kwargs.get("market", "默认"),
             "bg_max_count": int(self.kwargs.get("bg_max_count", 5000)),
             # 仅当 sdt 存在时才注入字段，避免显式写 None 触发 Rust 端 schema 错误

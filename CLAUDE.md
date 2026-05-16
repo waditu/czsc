@@ -78,7 +78,7 @@ uv run --no-sync ruff check czsc/ tests/
    - `data/cache.py` / `io.py` / `log.py` / `kline_quality.py`：缓存、IO、日志、K 线质量校验
    - `analysis/`（`stats.py` 业绩统计 / `corr.py` 相关性分析）
    - `data/client.py`：统一数据客户端接口
-   - `ta.py`：仅保留 czsc 仪表盘场景使用的 MACD 特殊约定（其余 TA 算子由 Rust `czsc.ta.*` 提供）
+   - TA 算子由 Rust `czsc.ta.*`（`czsc._native.ta`）提供；仪表盘场景的 MACD（×2 约定）已下沉为 `czsc/utils/plotting/_macd.py` 私有辅助
    - `trade.py`：交易工具
    - `plotting/{kline,backtest,weight,common}.py`：Plotly 图表绘制
    - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py`（迁至 `czsc/svc/`）、`echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer` / `crypto/`（spec §9 完全删除）
@@ -246,8 +246,11 @@ from czsc.utils.plotting.common import (
 - **构建方式**：`maturin + Rust workspace`，扩展模块名 `czsc._native`
 - **唯一架构**：Rust 是缠论核心算法的唯一实现；Python 端不再保留任何回退（spec §3.1 / §3.4）
 - **API 暴露**：所有面向用户的 API 都通过 `czsc.xxx` 顶层命名空间暴露，禁止用户感知 `czsc._native`
+- **Python/Rust 分工**：Python 端**不承担**"为 Python 用户做参数适配 / 返回值转换"的职责。这类逻辑统一下沉到 Rust 端实现（修改现有 API 或新增 API），Python 侧仅保留**纯透传**或**不可避免的 PyO3 边界胶水**（如 DataFrame ↔ Arrow IPC 序列化）。**目标**：让 `cargo add czsc` 的 Rust 用户与 `pip install czsc` 的 Python 用户拿到行为一致的接口，避免"两种语言用户调同一个名字但拿到不同结果"。新增 Python wrapper 前必须先评估"能不能改成 Rust 实现"
 - **类型 stub**：`czsc/py.typed` 启用 inline 类型注解；扩展模块 stub 已生成于 `czsc/_native/__init__.pyi`，由 `pyo3-stub-gen` 自动维护
 - **构建环境约束**：`pyo3-stub-gen` 与 `pyo3` 0.22 都要求 Python ≥ 3.10；通过 `crates/czsc-python/build.rs` 在编译期校验 `PYO3_PYTHON`，低于 3.10 时直接报错
+- **版本号锁死**（PR-5）：crates.io 与 PyPI 必须使用同一版本号。**唯一版本源**是 `Cargo.toml [workspace.package].version`；`pyproject.toml` 用 `dynamic = ["version"]`，由 maturin 在打 wheel 时从 Cargo workspace 注入。`crates/czsc-python/build.rs` 会在编译期校验 pyproject.toml 仍然走 dynamic 路径，禁止硬编码 `version = "..."`
+- **发版流程**：bump `Cargo.toml [workspace.package].version` 后，同步 publish 到 crates.io（`cargo publish`）与 PyPI（`maturin publish`）；CHANGELOG 必须列出本次 release 的 breaking changes
 - **rs-czsc 关系**：czsc 一次性 fork rs-czsc 的 Rust 实现进本仓库，**不再做季度同步**；`tests/parity/` 目录已删除，不再保留 rs-czsc parity 比对测试
 
 ## 数据连接器支持
