@@ -175,3 +175,17 @@ class TestBuildSignalOverlays:
         series = out["30分钟"][0]
         for marker in series.markers:
             assert marker["color"] == series.color
+
+
+class TestFreqPayloadSignalsField:
+    def test_u9_signals_defaults_empty(self):
+        from czsc import CZSC, Freq, format_standard_kline
+        from czsc.utils.plotting.lightweight import _data
+
+        df = generate_symbol_kines("000001", "30分钟", "20230101", "20230301", seed=42)
+        c = CZSC(format_standard_kline(df, freq=Freq.F30))
+        payload = _data.build_from_czsc(c)
+        assert payload.panes[0].signals == []
+        # asdict 序列化不抛
+        d = payload.to_dict()
+        assert d["panes"][0]["signals"] == []

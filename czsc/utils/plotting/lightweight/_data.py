@@ -82,6 +82,7 @@ class FreqPayload:
     main: MainPane
     volume: VolumePane
     macd: MacdPane
+    signals: list[Any] = field(default_factory=list)  # list[SignalSeries]，避免循环 import 用 Any
 
 
 @dataclass
