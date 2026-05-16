@@ -143,6 +143,9 @@ _PAGE_TPL = Template(
       color: var(--text); font-weight: 500;
     }
     .pane-meta__swatch { width: 14px; height: 2px; flex-shrink: 0; }
+    .pane-meta__chip-vlegend {
+      color: var(--muted); font-size: 9px; opacity: 0.7; letter-spacing: 0.04em;
+    }
     .pane-meta__swatch--bi { background: var(--accent); height: 2px; }
     .pane-meta__swatch--fx {
       background: linear-gradient(90deg, var(--fx) 0 4px, transparent 4px 8px, var(--fx) 8px 12px);
@@ -477,8 +480,8 @@ _PAGE_TPL = Template(
             time: m.time,
             position: pos,
             color: m.color,
-            shape: 'circle',
-            text: '',  // 不渲染中文文字，保持主图整洁
+            shape: s.shape || 'circle',
+            text: m.vnum != null ? String(m.vnum) : '',
           };
           entry.__key = s.key;
           entry.__value = m.value;
@@ -574,14 +577,15 @@ _PAGE_TPL = Template(
           });
           line.setData([{ time: firstT, value: rowY }, { time: lastT, value: rowY }]);
           sigRowSeriesByKey[s.key] = line;
+          line._signalShape = s.shape || 'circle';
           // 该行 markers：固定 position='aboveBar'（line series 本体不可见，仅显示 marker）
           var rowMarkers = s.markers.map(function (m) {
             return {
               time: m.time,
               position: 'aboveBar',
               color: m.color,
-              shape: 'circle',
-              text: '',
+              shape: s.shape || 'circle',
+              text: m.vnum != null ? String(m.vnum) : '',
             };
           });
           sigRowMarkersAllByKey[s.key] = rowMarkers;
@@ -612,8 +616,8 @@ _PAGE_TPL = Template(
               time: m.time,
               position: 'aboveBar',
               color: isDim ? hexToRgba(m.color, 0.25) : m.color,
-              shape: 'circle',
-              text: '',
+              shape: rowSer._signalShape || 'circle',
+              text: m.text != null ? m.text : '',
               size: isHi ? 2 : 1,
             };
           });
@@ -741,9 +745,21 @@ _PAGE_TPL = Template(
           var chip = document.createElement('span');
           chip.className = 'pane-meta__legend';
           chip.setAttribute('data-signal-key', s.key);
+          // shape icon（用 Unicode 表示 shape）+ key + 数字图例
+          var shapeIcon = {
+            circle: '●', square: '■', arrowUp: '▲', arrowDown: '▼',
+          }[s.shape] || '●';
+          // value_index 是 {value: vnum}, 按 vnum 升序得到 "1=v1 2=v2 ..." legend
+          var vEntries = Object.keys(s.value_index || {}).sort(function (a, b) {
+            return s.value_index[a] - s.value_index[b];
+          });
+          var vLegend = vEntries.map(function (val) {
+            return s.value_index[val] + '=' + val.split('_')[0];
+          }).join(' ');
           chip.innerHTML =
-            '<span class="pane-meta__swatch" style="background:' + s.color + ';height:6px;border-radius:50%;width:6px"></span>'
-            + s.key;
+            '<span class="pane-meta__swatch" style="color:' + s.color + ';font-size:11px;line-height:1">' + shapeIcon + '</span>'
+            + ' ' + s.key
+            + (vLegend ? ' <span class="pane-meta__chip-vlegend">· ' + vLegend + '</span>' : '');
           chip.addEventListener('click', function () {
             seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
             chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);

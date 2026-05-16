@@ -28,6 +28,7 @@ class SignalMarker(TypedDict):
     v1: str  # value 第一段（保留用于 tooltip 显示）
     color: str  # marker 显示色（来自 direction_color；与 SignalSeries.color 区分）
     direction: str  # "up" | "down" | "neutral"，由 v1 经 classify_direction 得出
+    vnum: int  # 在所属 SignalSeries.value_index 中的编号（1..N）
 
 
 @dataclass
@@ -38,6 +39,7 @@ class SignalSeries:
     shape: str
     position: str
     markers: list[SignalMarker] = field(default_factory=list)
+    value_index: dict[str, int] = field(default_factory=dict)  # 完整 value → 1-based 编号
 
 
 def detect_transitions(
@@ -68,7 +70,14 @@ def detect_transitions(
             # 兼容 pd.Timestamp / datetime / ISO 字符串三种 dt 表达
             ts = int(dt.timestamp()) if hasattr(dt, "timestamp") else int(pd.Timestamp(dt).timestamp())
             markers.append(
-                SignalMarker(time=ts, value=cur, v1=v1, color=direction_color(direction), direction=direction)
+                SignalMarker(
+                    time=ts,
+                    value=cur,
+                    v1=v1,
+                    color=direction_color(direction),
+                    direction=direction,
+                    vnum=0,  # 占位，build_signal_overlays 会回填
+                )
             )
             prev_value = cur
     return markers
@@ -114,26 +123,35 @@ def build_signal_overlays(
             continue
         buckets[freq].append(col)
 
+    from ._theme import SIGNAL_SHAPES  # noqa: PLC0415
+
     out: dict[str, list[SignalSeries]] = {}
     for freq, keys in buckets.items():
         if not keys:
             continue
         color_map = assign_palette(keys, palette)
         series_list: list[SignalSeries] = []
-        for key in keys:
+        for idx, key in enumerate(keys):
             chip_color = color_map[key]  # legend chip 颜色用 palette per-key
+            shape = SIGNAL_SHAPES[idx % len(SIGNAL_SHAPES)]
             markers = detect_transitions(df, key, include_others=include_others)
-            # position 由 direction 决定，而非按序号交错
-            # up → aboveBar, down → belowBar, neutral → aboveBar
-            # （legend chip 颜色用 palette；marker 颜色已在 detect_transitions 内根据 direction 设好）
+            # 构建 value_index：按首次出现时间排序，1-based
+            value_index: dict[str, int] = {}
+            for m in markers:
+                if m["value"] not in value_index:
+                    value_index[m["value"]] = len(value_index) + 1
+            # 回填每个 marker 的 vnum
+            for m in markers:
+                m["vnum"] = value_index[m["value"]]
             series_list.append(
                 SignalSeries(
                     key=key,
                     short_label=_strip_freq_prefix(key, freq),  # 暂保留字段，下游可能不再用
                     color=chip_color,
-                    shape="circle",  # 全部统一 circle
+                    shape=shape,
                     position="aboveBar",  # 无意义，per-marker position 由前端按 direction 决定
                     markers=markers,
+                    value_index=value_index,
                 )
             )
         out[freq] = series_list

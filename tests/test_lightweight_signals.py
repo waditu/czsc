@@ -60,6 +60,7 @@ class TestSignalsModuleSkeleton:
             "v1": "v1",
             "color": "#000000",
             "direction": "neutral",
+            "vnum": 0,
         }
         series = SignalSeries(
             key="30分钟_D1_X",
@@ -127,6 +128,8 @@ class TestDetectTransitions:
         assert markers[0]["v1"] == "向上"
         assert markers[0]["direction"] == "up"  # "向上" ∈ SEMANTIC_UP
         assert markers[0]["color"] == "#C03A2B"  # MARKER_COLOR_UP
+        # vnum 是占位 0；正式编号在 build_signal_overlays 内回填
+        assert markers[0]["vnum"] == 0
 
     def test_direction_classification(self):
         from czsc.utils.plotting.lightweight._signals import detect_transitions
@@ -213,6 +216,52 @@ class TestBuildSignalOverlays:
         # marker 颜色来自 direction
         assert series.markers[0]["color"] == MARKER_COLOR_UP
         assert series.markers[1]["color"] == MARKER_COLOR_DOWN
+
+    def test_value_index_and_vnum(self):
+        """每个 series 内 unique value 按首次出现顺序得到 1-based 编号；marker.vnum 与之对应。"""
+        from czsc.utils.plotting.lightweight._signals import build_signal_overlays
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT
+
+        df = pd.DataFrame(
+            {
+                "dt": pd.date_range("2023-01-01", periods=5, freq="30min"),
+                "30分钟_D1_A": [
+                    "向上_a_a_0",
+                    "向上_a_a_0",
+                    "向下_a_a_0",
+                    "向下_a_a_0",
+                    "持平_a_a_0",
+                ],
+            }
+        )
+        out = build_signal_overlays(df, freqs=["30分钟"], palette=SIGNAL_PALETTE_LIGHT)
+        s = out["30分钟"][0]
+        # 首次出现顺序：向上_a_a_0 → 1，向下_a_a_0 → 2，持平_a_a_0 → 3
+        assert s.value_index["向上_a_a_0"] == 1
+        assert s.value_index["向下_a_a_0"] == 2
+        assert s.value_index["持平_a_a_0"] == 3
+        # marker.vnum 与 value_index 对齐
+        assert [m["vnum"] for m in s.markers] == [1, 2, 3]
+
+    def test_shape_cycles_per_signal_key(self):
+        """每个 signal key 按 idx 循环 SIGNAL_SHAPES。"""
+        from czsc.utils.plotting.lightweight._signals import build_signal_overlays
+        from czsc.utils.plotting.lightweight._theme import SIGNAL_PALETTE_LIGHT, SIGNAL_SHAPES
+
+        df = pd.DataFrame(
+            {
+                "dt": pd.date_range("2023-01-01", periods=2, freq="30min"),
+                "30分钟_D1_A": ["a_x_y_0", "b_x_y_0"],
+                "30分钟_D1_B": ["c_x_y_0", "d_x_y_0"],
+                "30分钟_D1_C": ["e_x_y_0", "f_x_y_0"],
+                "30分钟_D1_D": ["g_x_y_0", "h_x_y_0"],
+                "30分钟_D1_E": ["i_x_y_0", "j_x_y_0"],
+            }
+        )
+        out = build_signal_overlays(df, freqs=["30分钟"], palette=SIGNAL_PALETTE_LIGHT)
+        shapes = [s.shape for s in out["30分钟"]]
+        # 5 个 key 在 4 个 shape 上循环：[circle, square, arrowUp, arrowDown, circle]
+        assert shapes == [SIGNAL_SHAPES[i % len(SIGNAL_SHAPES)] for i in range(5)]
 
 
 class TestFreqPayloadSignalsField:
@@ -337,6 +386,7 @@ class TestStreamlitMarkers:
                         v1="A",
                         color="#1F3C6E",
                         direction="neutral",
+                        vnum=0,
                     ),
                 ],
             )
