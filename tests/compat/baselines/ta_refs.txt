@@ -1,0 +1,14 @@
+tests/compat/test_public_api.py:7:    * ``czsc.ta.*`` 技术指标命名空间应包含的名称
+tests/compat/test_public_api.py:91:    """``czsc.ta.*`` 必须暴露快照中列出的所有技术指标名称。"""
+tests/compat/test_public_api.py:96:    assert not missing, f"czsc.ta.* missing {len(missing)} required public names: {missing}"
+tests/unit/test_ta_parity.py:3:本测试套件验证迁移后的 ``czsc.ta.*`` Rust + PyO3 算子在数值上与
+tests/unit/test_ta_parity.py:76:    """验证 czsc.ta.ema 输出与 talib_rs.EMA 在 timeperiod=14 时数值一致。
+tests/unit/test_ta_parity.py:95:        pytest.fail("czsc.ta.ema 尚未暴露")
+tests/unit/test_ta_parity.py:101:    """验证 czsc.ta.sma 输出与 talib_rs.SMA 在 timeperiod=20 时数值一致。
+tests/unit/test_ta_parity.py:115:        pytest.fail("czsc.ta.sma 尚未暴露")
+tests/unit/test_ta_parity.py:121:    """验证 czsc.ta.rolling_rank 在预热期之后输出有限值（不出现 NaN/Inf）。
+tests/unit/test_ta_parity.py:130:        pytest.fail("czsc.ta.rolling_rank 尚未暴露")
+tests/unit/test_ta_parity.py:136:    """验证 czsc.ta.boll_positions 可正常调用并产出正确形状的有效输出。
+tests/unit/test_ta_parity.py:150:        pytest.fail("czsc.ta.boll_positions 尚未暴露")
+tests/unit/test_ta_parity.py:158:    """验证 czsc.ta.ultimate_smoother 可正常调用并产出合理形状的有限值。
+tests/unit/test_ta_parity.py:172:        pytest.fail("czsc.ta.ultimate_smoother 尚未暴露")
