@@ -143,9 +143,6 @@ _PAGE_TPL = Template(
       color: var(--text); font-weight: 500;
     }
     .pane-meta__swatch { width: 14px; height: 2px; flex-shrink: 0; }
-    .pane-meta__chip-vlegend {
-      color: var(--muted); font-size: 9px; opacity: 0.7; letter-spacing: 0.04em;
-    }
     .pane-meta__swatch--bi { background: var(--accent); height: 2px; }
     .pane-meta__swatch--fx {
       background: linear-gradient(90deg, var(--fx) 0 4px, transparent 4px 8px, var(--fx) 8px 12px);
@@ -469,7 +466,6 @@ _PAGE_TPL = Template(
       // —— Signal markers（每个 key 一个 SignalSeries，合并到 candle series 上）——
       var signalSeries = freq.signals || [];
       var signalMarkersAll = [];      // 当前可见的 markers 数组
-      var signalsByTime = {};         // tooltip 用：time → [{ key, v1, value, color, direction }, ...]
       var seriesVisibleMap = {};      // key → bool
       signalSeries.forEach(function (s) {
         seriesVisibleMap[s.key] = true;
@@ -487,11 +483,34 @@ _PAGE_TPL = Template(
           entry.__value = m.value;
           entry.__direction = m.direction;
           signalMarkersAll.push(entry);
-          if (!signalsByTime[m.time]) signalsByTime[m.time] = [];
-          signalsByTime[m.time].push({
-            key: s.key, v1: m.v1, value: m.value, color: m.color, direction: m.direction,
-          });
         });
+      });
+
+      // —— 持续态索引 signalLatestByCandle：每根 candle.time 都映射到该时刻所有 signal 的"当前生效值" ——
+      // 用途：tooltip hover 任意 candle 时显示该周期下所有 signal 的当前态，而非仅"变化态"
+      // 算法：candles 已按 time 升序，对每个 signal 维护指针线性扫描（O(N + M)）
+      var sortedMarkersByKey = {};
+      signalSeries.forEach(function (s) {
+        sortedMarkersByKey[s.key] = s.markers.slice().sort(function (a, b) { return a.time - b.time; });
+      });
+      var ptrByKey = {};
+      signalSeries.forEach(function (s) { ptrByKey[s.key] = 0; });
+      var signalLatestByCandle = {};
+      freq.main.candles.forEach(function (c) {
+        var snapshot = [];
+        signalSeries.forEach(function (s) {
+          var ms = sortedMarkersByKey[s.key];
+          // 推进 ptr 到 ms[ptr].time > c.time 的最小 ptr；ptr-1 就是"≤ c.time 的最近 marker"
+          while (ptrByKey[s.key] < ms.length && ms[ptrByKey[s.key]].time <= c.time) {
+            ptrByKey[s.key]++;
+          }
+          var i = ptrByKey[s.key] - 1;
+          if (i >= 0) {
+            var m = ms[i];
+            snapshot.push({ key: s.key, v1: m.v1, value: m.value, color: m.color, direction: m.direction });
+          }
+        });
+        signalLatestByCandle[c.time] = snapshot;
       });
       var highlightedKey = null;
 
@@ -560,11 +579,11 @@ _PAGE_TPL = Template(
       applySize(cSig, sigEl);
 
       // 每行一个 Line series（用作时间锚 + marker 承载）
+      // 关键：line series 的数据点必须与主图 candles 等长，否则 logical index 范围
+      // 不一致会导致 setVisibleLogicalRange 被夹紧 + 反弹（参见 BUG 1 修复说明）
       var sigRowSeriesByKey = {};
       var sigRowMarkersAllByKey = {};   // key → markers 数组（独立于主图）
       if (signalSeries.length > 0) {
-        var firstT = (freq.main.candles[0] || {}).time || 0;
-        var lastT  = (freq.main.candles[freq.main.candles.length - 1] || {}).time || (firstT + 1);
         // 行号倒序，让第 0 行画在最上
         signalSeries.forEach(function (s, ri) {
           var rowY = signalSeries.length - ri;  // 顶部 > 1，底部 1
@@ -575,7 +594,8 @@ _PAGE_TPL = Template(
             lastValueVisible: false,
             crosshairMarkerVisible: false,
           });
-          line.setData([{ time: firstT, value: rowY }, { time: lastT, value: rowY }]);
+          // 每根 candle.time 一个数据点 → cSig 与 cMain logical index 数量一致
+          line.setData(freq.main.candles.map(function (cd) { return { time: cd.time, value: rowY }; }));
           sigRowSeriesByKey[s.key] = line;
           line._signalShape = s.shape || 'circle';
           // 该行 markers：固定 position='aboveBar'（line series 本体不可见，仅显示 marker）
@@ -638,49 +658,11 @@ _PAGE_TPL = Template(
         primarySeries.push(sigRowSeriesByKey[firstRowKey]);
       }
       var lockTime = false, lockCh = false;
-      // —— cSig 与 (cMain/cVol/cMacd) 显式双向 timescale + crosshair 同步 ——
-      // （冗余但显式：现有 trio.forEach 已经包含 cSig，但为防止 push 顺序问题 / 保证测试可见性，
-      //   再次显式订阅；lockTime / lockCh 守卫防止重入）
-      if (signalSeries.length > 0) {
-        cSig.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
-          if (!r || lockTime) return;
-          lockTime = true;
-          [cMain, cVol, cMacd].forEach(function (c) { c.timeScale().setVisibleLogicalRange(r); });
-          lockTime = false;
-        });
-        // 反向：cMain/cVol/cMacd 任一变化 → 同步到 cSig
-        [cMain, cVol, cMacd].forEach(function (c) {
-          c.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
-            if (!r || lockTime) return;
-            lockTime = true;
-            cSig.timeScale().setVisibleLogicalRange(r);
-            lockTime = false;
-          });
-        });
-        // crosshair：cMain/cVol/cMacd → cSig
-        var firstSigRowKey = Object.keys(sigRowSeriesByKey)[0];
-        var firstSigRowSeries = firstSigRowKey ? sigRowSeriesByKey[firstSigRowKey] : null;
-        [cMain, cVol, cMacd].forEach(function (c) {
-          c.subscribeCrosshairMove(function (param) {
-            if (!lockCh && param && param.time && firstSigRowSeries) {
-              lockCh = true;
-              try { cSig.setCrosshairPosition(NaN, param.time, firstSigRowSeries); } catch (e) { /* ignore */ }
-              lockCh = false;
-            }
-          });
-        });
-        // crosshair：cSig → cMain/cVol/cMacd
-        cSig.subscribeCrosshairMove(function (param) {
-          if (!lockCh && param && param.time) {
-            lockCh = true;
-            var primaries = [ks, volSeries, diffSeries];
-            [cMain, cVol, cMacd].forEach(function (c, ti) {
-              try { c.setCrosshairPosition(NaN, param.time, primaries[ti]); } catch (e) { /* ignore */ }
-            });
-            lockCh = false;
-          }
-        });
-      }
+      // —— 跨子图同步统一通过 trio.forEach（含 cSig）：timescale 与 crosshair 同步
+      //    均由下面的 trio.forEach 完成。之前的"显式 cSig 双向同步"代码块已删除——
+      //    它与 trio.forEach 双重订阅，在 cSig 数据点不足时会引发 setVisibleLogicalRange
+      //    夹紧 + 反弹（BUG 1 根因）。sigRow line.setData 已扩展为与 candles 等长，
+      //    单条 trio.forEach 链路足够。
       trio.forEach(function (src, i) {
         src.timeScale().subscribeVisibleLogicalRangeChange(function (r) {
           if (!r || lockTime) return;
@@ -732,7 +714,11 @@ _PAGE_TPL = Template(
           var prev = entry.idx > 0 ? candleByTime[orderedCandles[entry.idx - 1].time] : null;
           var c = Object.assign({}, entry.ohlc, { volume: entry.volume });
           var m = macdByTime[param.time] || null;
-          var sigs = signalsByTime[param.time] || [];
+          // tooltip 使用"持续态"快照：每根 candle 上显示该周期所有 signal 的当前生效值
+          // 同时按 seriesVisibleMap 过滤已被 legend 点击关闭的 series
+          var sigs = (signalLatestByCandle[param.time] || []).filter(function (s) {
+            return seriesVisibleMap[s.key];
+          });
           tipEl.innerHTML = tooltipHTML(c, prev ? prev.ohlc : null, m, sigs);
           tipEl.classList.add('visible');
           var px = param.point ? param.point.x : null;
@@ -788,21 +774,13 @@ _PAGE_TPL = Template(
           var chip = document.createElement('span');
           chip.className = 'pane-meta__legend';
           chip.setAttribute('data-signal-key', s.key);
-          // shape icon（用 Unicode 表示 shape）+ key + 数字图例
+          // shape icon（用 Unicode 表示 shape）+ key（数字编号仍保留在 marker.text 上，legend 不冗余展示）
           var shapeIcon = {
             circle: '●', square: '■', arrowUp: '▲', arrowDown: '▼',
           }[s.shape] || '●';
-          // value_index 是 {value: vnum}, 按 vnum 升序得到 "1=v1 2=v2 ..." legend
-          var vEntries = Object.keys(s.value_index || {}).sort(function (a, b) {
-            return s.value_index[a] - s.value_index[b];
-          });
-          var vLegend = vEntries.map(function (val) {
-            return s.value_index[val] + '=' + val.split('_')[0];
-          }).join(' ');
           chip.innerHTML =
             '<span class="pane-meta__swatch" style="color:' + s.color + ';font-size:11px;line-height:1">' + shapeIcon + '</span>'
-            + ' ' + s.key
-            + (vLegend ? ' <span class="pane-meta__chip-vlegend">· ' + vLegend + '</span>' : '');
+            + ' ' + s.key;
           chip.addEventListener('click', function () {
             seriesVisibleMap[s.key] = !seriesVisibleMap[s.key];
             chip.classList.toggle('legend--off', !seriesVisibleMap[s.key]);

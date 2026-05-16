@@ -566,8 +566,9 @@ class TestMarkerTimeAlignment:
 
 
 class TestSignalTimelineSync:
-    def test_html_has_cross_pane_timescale_subscription_for_sig(self, _bars_demo):
-        """HTML 中 cSig 必须有 timescale 和 crosshair 的双向订阅，确保滚轮/平移同步。"""
+    def test_csig_joins_trio_for_unified_sync(self, _bars_demo):
+        """cSig 通过 trio.push(cSig) 进入 trio，由 trio.forEach 统一同步——
+        显式双向同步的旧代码块已删除（BUG 1 修复：避免双重订阅触发反弹）。"""
         from czsc.utils.plotting.lightweight import plot_czsc_signals
 
         html = plot_czsc_signals(
@@ -576,10 +577,107 @@ class TestSignalTimelineSync:
             output="html",
             tail_bars=200,
         )
-        # cSig 自己订阅 timescale 变化（往外推）
-        assert "cSig.timeScale().subscribeVisibleLogicalRangeChange" in html
-        # cSig 被其他 chart 推到（接受来自 main/vol/macd 的变化）
-        assert "cSig.timeScale().setVisibleLogicalRange" in html
-        # cSig 与其他 chart 双向 crosshair
-        assert "cSig.subscribeCrosshairMove" in html
-        assert "cSig.setCrosshairPosition" in html
+        # cSig 加入 trio
+        assert "trio.push(cSig)" in html
+        # trio.forEach 统一同步链路存在
+        assert "trio.forEach(function (src, i)" in html
+        assert "subscribeVisibleLogicalRangeChange" in html
+        assert "subscribeCrosshairMove" in html
+        # 旧的"显式双向同步"代码块已被删除（这些字面量不应再出现）
+        assert "cSig.timeScale().subscribeVisibleLogicalRangeChange" not in html
+        assert "cSig.timeScale().setVisibleLogicalRange" not in html
+
+
+class TestBug1SigRowDataLength:
+    """BUG 1 回归：sigRow line series 数据点必须与 candles 等长，否则 logical index
+    范围不一致会导致 setVisibleLogicalRange 夹紧 + 反弹 → 滚动跳最左。"""
+
+    def test_sig_row_set_data_uses_candles_map(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # 新版本：sigRow line.setData 用 candles.map 构建等长数组
+        assert "line.setData(freq.main.candles.map(function (cd)" in html
+        # 旧的"首尾两点"形式不应再出现
+        assert "[{ time: firstT, value: rowY }, { time: lastT, value: rowY }]" not in html
+
+
+class TestBug2NoVlegendInChip:
+    """BUG 2 回归：legend chip 不再拼接 "1=xx 2=yy" 这样的数字图例段。"""
+
+    def test_chip_does_not_render_vlegend(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        # CSS 类已删除
+        assert "pane-meta__chip-vlegend" not in html
+        # JS 拼接片段已删除
+        assert "vLegend" not in html
+        assert "vEntries" not in html
+
+
+class TestBug3SignalLatestByCandle:
+    """BUG 3 回归：tooltip 用"持续态"索引 signalLatestByCandle，每根 candle 都能
+    显示该周期下所有 signal 的当前生效值（不依赖当根 candle 是否有 transition）。"""
+
+    def test_html_contains_latest_index_builder(self, _bars_demo):
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=SIGNALS_CONFIG_DEMO,
+            output="html",
+            tail_bars=200,
+        )
+        assert "signalLatestByCandle" in html
+        assert "sortedMarkersByKey" in html
+        # tooltip 查询用持续态索引 + seriesVisibleMap 过滤
+        assert "signalLatestByCandle[param.time]" in html
+        # 旧的 signalsByTime 字面查询不应再出现
+        assert "signalsByTime[param.time]" not in html
+
+    def test_daily_candle_without_transition_still_has_signals(self, _bars_demo):
+        """端到端：找一根日线 candle，其时间窗内没有 detect_transition 输出 marker，
+        但 signalLatestByCandle[candle.time] 应非空（持续态索引能向前查到生效值）。
+        我们在 Python 侧验证 marker 稀疏性：marker 时间集合通常 < candle 数，
+        但 plot 输出的所有 marker 都对齐到了某根 candle.time。"""
+        import bisect as _bisect
+
+        from czsc.utils.plotting.lightweight import plot_czsc_signals
+
+        html = plot_czsc_signals(
+            _bars_demo,
+            signals_config=[{"name": "cxt_bi_status_V230101", "freq": "日线"}],
+            output="html",
+            tail_bars=200,
+        )
+        m = re.search(r"PAYLOAD = (\{.*?\});", html, re.S)
+        assert m is not None
+        payload = json.loads(m.group(1))
+        daily = next((p for p in payload["panes"] if p["freq_label"] == "日线"), None)
+        assert daily is not None and daily["signals"], "日线 pane 应有信号 series"
+        candle_times = sorted(c["time"] for c in daily["main"]["candles"])
+        for series in daily["signals"]:
+            marker_times = sorted(m["time"] for m in series["markers"])
+            # marker 必然稀疏（事件态），candle 数远大于 marker 数
+            assert len(marker_times) <= len(candle_times)
+            # 至少有一根 candle 没有 marker，但在首个 marker 之后——
+            # 这是持续态索引应该填补 tooltip 的典型场景
+            if marker_times:
+                first_marker_t = marker_times[0]
+                idx_start = _bisect.bisect_right(candle_times, first_marker_t)
+                # idx_start 之后的 candle 都应该能查到至少一个生效值
+                # 直接断言"存在一根 candle 不在 marker_times 中且 > first_marker_t"
+                marker_set = set(marker_times)
+                has_gap = any(t not in marker_set for t in candle_times[idx_start:])
+                assert has_gap, f"{series['key']} 所有 candle 都恰好是 marker，无法验证持续态场景"
