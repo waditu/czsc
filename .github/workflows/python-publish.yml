@@ -82,6 +82,15 @@ jobs:
           manylinux: ${{ matrix.platform.manylinux }}
           args: --release --strip --out dist
           sccache: 'true'
+          # ring 0.17.x cross-compile 到 aarch64 manylinux2014 时，
+          # manylinux2014 镜像里的 cross-gcc 没把 __ARM_ARCH 宏传给 ASM，
+          # 导致 sha256-armv8-linux64.S 编译失败（"ARM assembler must
+          # define __ARM_ARCH"）。这里对 aarch64 manylinux build 显式
+          # 注入 CFLAGS_aarch64_unknown_linux_gnu，让 cc-rs 把宏带上。
+          # 对其他 target 这条 env 无副作用（cc-rs 按 target triple 取
+          # 对应 CFLAGS_<triple>），所以无需 case 分支。
+          before-script-linux: |
+            export CFLAGS_aarch64_unknown_linux_gnu="-D__ARM_ARCH=8"
 
       - name: List built wheels
         shell: bash
