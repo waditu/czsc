@@ -32,7 +32,6 @@ from czsc import (
     Event,
     Position,
     WeightBacktest,
-    cal_yearly_days,
     format_standard_kline,
 )
 from czsc.mock import generate_symbol_kines
@@ -199,7 +198,7 @@ def run_one(tag: str, strategy: CzscStrategyBase, bars: list, sdt: str) -> dict[
 
     # 2) holds -> wbt 权重表
     dfw = holds_to_weight_df(holds)
-    yearly = cal_yearly_days(dts=dfw["dt"].unique())
+    yearly = 252  # A 股标准；其它市场按需调整
     print(f"  权重表 shape = {dfw.shape} | yearly_days = {yearly}")
 
     # 3) WeightBacktest 拿绩效指标（不依赖 HTML 路径，方便单测 / 对比）

@@ -7,7 +7,8 @@
 - 写文件到 ``path``（或 ``path=None`` 时返回 HTML 字符串）
 
 每个周期展开为 3 个 sub-pane：主图（K + SMA5 + SMA20 + 分型 + 笔）+ 副图1 成交量 +
-副图2 MACD。颜色与项目 Plotly 版 ``KlineChart`` 对齐，避免红绿互换迷惑。
+副图2 MACD。颜色沿用项目历史 Plotly 版的红绿语义（涨红跌绿），避免与上游
+``lightweight-charts`` 默认主题红绿互换导致的迷惑性差异。
 
 零第三方运行时依赖：HTML 模板用 Python 标准库 ``string.Template``。本次清理
 起 streamlit 输出路径已删除——如需在 streamlit 中嵌入，由调用方自行用

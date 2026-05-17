@@ -122,44 +122,6 @@ def daily_performance(daily_returns, **kwargs):
     return sta
 
 
-def rolling_daily_performance(df: pd.DataFrame, ret_col, window=252, min_periods=100, **kwargs):
-    """计算滚动日收益的各项指标
-
-    :param df: pd.DataFrame, 日收益数据，columns=['dt', ret_col] 或者 index 为 datetime64[ns]
-    :param ret_col: str, 收益列名
-    :param window: int, 滚动窗口, 自然天数
-    :param min_periods: int, 最小样本数
-    :param kwargs: 其他参数
-
-        - yearly_days: int, 252, 一年的交易日数
-    """
-    from wbt import daily_performance
-
-    from czsc.eda import cal_yearly_days
-
-    if df.index.dtype != "datetime64[ns]":
-        df["dt"] = pd.to_datetime(df["dt"])
-        df.set_index("dt", inplace=True)
-    assert df.index.dtype == "datetime64[ns]", "index必须是datetime64[ns]类型, 请先使用 pd.to_datetime 进行转换"
-
-    yearly_days = kwargs.get("yearly_days", cal_yearly_days(df.index.tolist()))
-
-    df = df[[ret_col]].copy().fillna(0)
-    df.sort_index(inplace=True, ascending=True)
-    dts = sorted(df.index.to_list())
-    res = []
-    for edt in dts[min_periods:]:
-        sdt = edt - pd.Timedelta(days=window)
-        dfg = df[(df.index >= sdt) & (df.index <= edt)].copy()
-        s = daily_performance(dfg[ret_col].to_list(), yearly_days=yearly_days)
-        s["sdt"] = sdt
-        s["edt"] = edt
-        res.append(s)
-
-    dfr = pd.DataFrame(res)
-    return dfr
-
-
 def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
     """评估开平交易记录的表现
 
@@ -238,40 +200,6 @@ def evaluate_pairs(pairs: pd.DataFrame, trade_dir: str = "多空") -> dict:
         p["单笔盈亏比"] = round(p["单笔盈利"] / abs(p["单笔亏损"]), 4)
 
     return p
-
-
-def holds_performance(df, **kwargs):
-    """组合持仓权重表现
-
-    :param df: pd.DataFrame, columns=['dt', 'symbol', 'weight', 'n1b']
-        数据说明，dt: 交易时间，symbol: 标的代码，weight: 权重，n1b: 名义收益率
-        必须是每个时间点都有数据，如果某个时间点没有数据，可以增加一行数据，权重为0
-    :param kwargs:
-
-        - fee: float, 单边费率，BP
-        - digits: int, 保留小数位数
-
-    :return: pd.DataFrame, columns=['date', 'change', 'edge_pre_fee', 'cost', 'edge_post_fee']
-    """
-    fee = kwargs.get("fee", 15)
-    digits = kwargs.get("digits", 2)  # 保留小数位数
-
-    df = df.copy()
-    df["weight"] = df["weight"].round(digits)
-    df = df.sort_values(["dt", "symbol"]).reset_index(drop=True)
-
-    dft = pd.pivot_table(df, index="dt", columns="symbol", values="weight", aggfunc="sum").fillna(0)
-    df_turns = dft.diff().abs().sum(axis=1).reset_index()
-    df_turns.columns = ["date", "change"]
-    sdt = df["dt"].min()
-    df_turns.loc[(df_turns["date"] == sdt), "change"] = df[df["dt"] == sdt]["weight"].sum()
-
-    df_edge = df.groupby("dt")[["weight", "n1b"]].apply(lambda x: (x["weight"] * x["n1b"]).sum()).reset_index()
-    df_edge.columns = ["date", "edge_pre_fee"]
-    dfr = pd.merge(df_turns, df_edge, on="date", how="left")
-    dfr["cost"] = dfr["change"] * fee / 10000  # 换手成本
-    dfr["edge_post_fee"] = dfr["edge_pre_fee"] - dfr["cost"]  # 净收益
-    return dfr
 
 
 def top_drawdowns(returns: pd.Series, top: int = 10) -> pd.DataFrame:

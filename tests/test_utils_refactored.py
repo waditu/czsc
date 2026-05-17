@@ -20,68 +20,6 @@ import pandas as pd
 import pytest
 
 
-def test_plotting_common_module():
-    """验证 ``czsc.utils.plotting.common`` 中的常量与 figure_to_html 工具函数。
-
-    测试场景：
-        1. 校验四个核心常量值：颜色、Sigma 等级数、月份标签数；
-        2. 用空 ``go.Figure`` 调用 ``figure_to_html``：
-           - ``to_html=False`` 时返回原 Figure 对象；
-           - ``to_html=True`` 时返回包含 plotly 标识的 HTML 字符串。
-
-    关键断言：
-        - ``COLOR_DRAWDOWN`` 与 ``COLOR_RETURN`` 为预定义颜色字符串；
-        - ``SIGMA_LEVELS`` 长度为 6（覆盖 ±1/±2/±3 sigma）；
-        - ``MONTH_LABELS`` 长度为 12（一月到十二月）；
-        - ``figure_to_html`` 在两种模式下分别返回 Figure 与 str。
-    """
-    from czsc.utils.plotting.common import (
-        COLOR_DRAWDOWN,
-        COLOR_RETURN,
-        MONTH_LABELS,
-        SIGMA_LEVELS,
-        figure_to_html,
-    )
-
-    # 测试常量
-    assert COLOR_DRAWDOWN == "salmon"
-    assert COLOR_RETURN == "#34a853"
-    assert len(SIGMA_LEVELS) == 6
-    assert len(MONTH_LABELS) == 12
-
-    # 测试 figure_to_html
-    import plotly.graph_objects as go
-
-    fig = go.Figure()
-
-    # 测试返回 Figure
-    result = figure_to_html(fig, to_html=False)
-    assert isinstance(result, go.Figure)
-
-    # 测试返回 HTML
-    result = figure_to_html(fig, to_html=True)
-    assert isinstance(result, str)
-    assert "plotly" in result.lower()
-
-
-def test_plotting_backtest_imports():
-    """验证回测绘图模块的关键 API 可以从 ``czsc.utils.plotting`` 顶层导入。
-
-    关键断言：
-        ``plot_cumulative_returns``、``plot_colored_table``、``plot_czsc_chart``
-        三个函数均可被导入且为可调用对象。
-    """
-    from czsc.utils.plotting import (
-        plot_colored_table,
-        plot_cumulative_returns,
-        plot_czsc_chart,
-    )
-
-    assert callable(plot_cumulative_returns)
-    assert callable(plot_colored_table)
-    assert callable(plot_czsc_chart)
-
-
 def test_plotting_weight_imports():
     """验证权重绘图相关统计函数可以从 ``czsc.utils.plotting`` 导入。
 
@@ -188,17 +126,16 @@ def test_analysis_stats_imports():
     """验证统计分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
 
     关键断言：
-        ``daily_performance``、``holds_performance``、``top_drawdowns`` 三个统计
-        函数均为可调用对象。
+        ``daily_performance``、``top_drawdowns`` 两个统计函数均为可调用对象。
+        （``holds_performance`` / ``rolling_daily_performance`` 已在
+        二阶段清理 PR-B 删除。）
     """
     from czsc.utils.analysis import (
         daily_performance,
-        holds_performance,
         top_drawdowns,
     )
 
     assert callable(daily_performance)
-    assert callable(holds_performance)
     assert callable(top_drawdowns)
 
 
@@ -229,9 +166,10 @@ def test_backward_compatibility():
 
     - ``czsc.utils.*``：稳定暴露 ``DataClient`` / ``DiskCache`` / ``home_path`` /
       ``daily_performance`` 等数据/统计接口
-    - ``czsc.utils.plotting.kline.KlineChart`` / ``czsc.utils.plotting.backtest.plot_colored_table``：
-      绘图类符号显式从 plotting 子模块拿
-    - ``czsc.*`` top-level：兼顾历史用法，``KlineChart`` 等仍可从 ``czsc`` 直接 import
+    - ``czsc.utils.plotting.kline.plot_nx_graph`` / ``czsc.utils.plotting.weight.*``：
+      保留的绘图符号显式从 plotting 子模块拿
+    - ``czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}``：
+      缠论 K 线可视化的唯一对外接口（二阶段清理 PR-C 起）
     """
     from czsc.utils import (
         DataClient,
@@ -245,18 +183,14 @@ def test_backward_compatibility():
     assert DataClient is not None
     assert callable(daily_performance)
 
-    # 绘图符号显式从 plotting 子模块获取
-    from czsc.utils.plotting.backtest import plot_colored_table
-    from czsc.utils.plotting.kline import KlineChart
+    # 保留的绘图符号显式从 plotting 子模块获取
+    from czsc.utils.plotting.kline import plot_nx_graph
+    from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_signals, plot_czsc_trader
 
-    assert KlineChart is not None
-    assert callable(plot_colored_table)
-
-    # 兼顾历史用法：czsc top-level 仍静态暴露 KlineChart 和 plot_czsc_chart
-    import czsc
-
-    assert getattr(czsc, "KlineChart", None) is not None
-    assert callable(getattr(czsc, "plot_czsc_chart", None))
+    assert callable(plot_nx_graph)
+    assert callable(plot_czsc)
+    assert callable(plot_czsc_trader)
+    assert callable(plot_czsc_signals)
 
 
 if __name__ == "__main__":

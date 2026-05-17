@@ -2,30 +2,16 @@
 author: zengbin93
 email: zeng_bin8888@163.com
 create_dt: 2023/3/21 16:09
-describe: 测试交易价格计算
+describe: 测试交易工具函数（``czsc.resample_to_daily`` 等）
+
+    ``cal_trade_price`` 已在二阶段清理 PR-B 删除，原 ``test_trade_price`` 测试
+    随之移除；本文件保留 ``czsc.resample_to_daily`` 的覆盖。
 """
 
 import numpy as np
 import pandas as pd
 
 import czsc
-from czsc import mock
-
-
-def test_trade_price():
-    """测试交易价格计算功能"""
-    df = mock.generate_symbol_kines("000001", "1分钟", sdt="20240101", edt="20240102", seed=42)
-    df = df[["dt", "symbol", "open", "high", "low", "close", "vol"]].copy()
-    df = czsc.cal_trade_price(df, digits=3)
-
-    # 使用近似对比，允许0.002的误差
-    expected_twap = round(df["close"].iloc[1:21].mean(), 3)
-    assert abs(df["TP_TWAP20"].iloc[0] - expected_twap) <= 0.002
-
-    close = df["close"].iloc[1:21]
-    vol = df["vol"].iloc[1:21]
-    expected_vwap = round(np.average(close, weights=vol), 3)
-    assert abs(df["TP_VWAP20"].iloc[0] - expected_vwap) <= 0.002
 
 
 def test_make_it_daily():

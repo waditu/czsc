@@ -29,7 +29,6 @@ from czsc._format_standard_kline import format_standard_kline
 # === 之前的 lazy 属性，改为静态 import（spec §3.1 移除 lazy loading）===
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.utils.log import log_strategy_info
-from czsc.utils.plotting.kline import KlineChart, plot_czsc_chart
 from czsc.utils.trade import adjust_holding_weights
 from czsc.utils.warning_capture import capture_warnings, execute_with_warning_capture
 
@@ -69,13 +68,9 @@ from ._native import (
 
 # === EDA 工具（来自 czsc.eda）===
 from .eda import (
-    cal_trade_price,
-    cal_yearly_days,
     mark_cta_periods,
     mark_volatility,
     monotonicity,
-    turnover_rate,
-    weights_simple_ensemble,
 )
 
 # === 研究/优化入口（czsc.research，Rust 后端）===
@@ -109,7 +104,6 @@ from .utils import (
     clear_cache,
     clear_expired_cache,
     code_namespace,
-    create_grid_params,
     cross_sectional_ic,
     dill_dump,
     dill_load,
@@ -119,17 +113,14 @@ from .utils import (
     get_dir_size,
     get_py_namespace,
     get_url_token,
-    holds_performance,
     home_path,
     import_by_name,
     index_composition,
-    mac_address,
     print_df_sample,
     psi,
     read_json,
     resample_to_daily,
     risk_free_returns,
-    rolling_daily_performance,
     save_json,
     set_url_token,
     to_arrow,
@@ -224,7 +215,6 @@ __all__ = [
     "clear_cache",
     "clear_expired_cache",
     "code_namespace",
-    "create_grid_params",
     "cross_sectional_ic",
     "dill_dump",
     "dill_load",
@@ -234,17 +224,14 @@ __all__ = [
     "get_dir_size",
     "get_py_namespace",
     "get_url_token",
-    "holds_performance",
     "home_path",
     "import_by_name",
     "index_composition",
-    "mac_address",
     "print_df_sample",
     "psi",
     "read_json",
     "resample_to_daily",
     "risk_free_returns",
-    "rolling_daily_performance",
     "save_json",
     "set_url_token",
     "to_arrow",
@@ -256,17 +243,11 @@ __all__ = [
     "execute_with_warning_capture",
     "adjust_holding_weights",
     "log_strategy_info",
-    "plot_czsc_chart",
-    "KlineChart",
     "check_kline_quality",
     # EDA
     "monotonicity",
-    "weights_simple_ensemble",
-    "cal_trade_price",
     "mark_cta_periods",
     "mark_volatility",
-    "cal_yearly_days",
-    "turnover_rate",
     # 元信息
     "__version__",
     "__author__",
