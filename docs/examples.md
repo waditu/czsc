@@ -62,7 +62,6 @@ uv run python docs/examples/13_lightweight_charts_html.py
 |----|------|----------|----------|
 | 01 | [`01_quick_start.py`](./examples/01_quick_start.py) | `czsc.mock.generate_symbol_kines` · `format_standard_kline` · `CZSC` | 数据准备、构造分析对象、增量 update 推进 |
 | 02 | [`02_chan_structures.py`](./examples/02_chan_structures.py) | `FX` · `BI` · `ZS` · `Mark` · `Direction` | 分型/笔/中枢的属性、力度（power/SNR/slope/angle）、未完成笔（ubi） |
-| 03 | [`03_kline_chart.py`](./examples/03_kline_chart.py) | `plot_czsc_chart` · `KlineChart` | 把缠论结构画成离线 HTML 报告（产物：`_output/03_kline_chart.html`） |
 
 ### 第二组：多级别与信号
 
@@ -82,7 +81,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 
 | #  | 文件 | 核心 API | 你将学到 |
 |----|------|----------|----------|
-| 08 | [`08_weight_backtest.py`](./examples/08_weight_backtest.py) | `WeightBacktest` · `daily_performance` · `top_drawdowns` · `plot_backtest_stats` | 时序权重回测的完整链路 + 离线 HTML 报告（产物：`_output/08_weight_backtest.html`） |
+| 08 | [`08_weight_backtest.py`](./examples/08_weight_backtest.py) | `WeightBacktest` · `daily_performance` · `top_drawdowns` | 时序权重回测的完整链路 + 核心绩效指标 |
 
 ### 第五组：lightweight-charts HTML（自包含交互看图）
 
@@ -115,8 +114,8 @@ uv run python docs/examples/13_lightweight_charts_html.py
 | 权重回测 | `czsc.WeightBacktest`（来自 wbt） | 08, 12 |
 | 绩效指标 | `czsc.daily_performance` / `top_drawdowns` | 08 |
 | 后验时段标记 | `czsc.mark_cta_periods` / `mark_volatility` | — |
-| 离线 K 线绘图 | `czsc.plot_czsc_chart` / `KlineChart` | 03 |
-| 离线回测绘图 | `czsc.utils.plotting.backtest.*` | 08 |
+| 离线 K 线绘图 | `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}` | 13, 15 |
+| 回测 HTML 报告 | `wbt.generate_backtest_report` | 13 |
 
 ---
 

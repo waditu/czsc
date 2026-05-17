@@ -7,28 +7,26 @@
 
 1. 用 ``czsc.mock.generate_klines_with_weights`` 直接生成回测打样数据
 2. 调用 ``WeightBacktest`` 完成回测，查看核心绩效字段
-3. 用 ``czsc.utils.plot_*`` 系列函数把结果画成 HTML 报告
+3. 用 ``daily_performance`` / ``top_drawdowns``（来自 wbt）拿更精细的绩效指标
 
 权重数据格式约定：``[dt, symbol, weight, price]``，weight ∈ [-1, 1]
 （>0 多头权重，<0 空头权重，0 空仓）。
 
+可视化提示：二阶段清理 PR-C 起 ``czsc.utils.plotting.backtest.plot_*`` 系列已删除。
+如需 HTML 报告，调用方自行用 ``plotly.express`` / ``wbt.generate_backtest_report``
+（参见 ``docs/examples/13_event_weight_backtest.py`` 的实现）。
+
 运行：
     uv run python docs/examples/08_weight_backtest.py
-    # 产物落在 docs/examples/_output/08_weight_backtest.html （已在 .gitignore 中忽略）
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pandas as pd
 
 from czsc import WeightBacktest, daily_performance, top_drawdowns
 from czsc.mock import generate_klines_with_weights
 
-OUTPUT_DIR = Path(__file__).resolve().parent / "_output"
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-OUT_HTML = OUTPUT_DIR / "08_weight_backtest.html"
 
 
 def main() -> None:
@@ -78,20 +76,9 @@ def main() -> None:
         dd_df = top_drawdowns(daily["total"], top=5)
         print(dd_df.to_string(index=False))
 
-    # 5) 用 czsc.utils 中的绘图函数生成离线 HTML
-    from czsc.utils.plotting.backtest import plot_backtest_stats, plot_cumulative_returns
-
-    fig_cum = plot_cumulative_returns(daily, title="WeightBacktest 累计收益")
-    fig_stats = plot_backtest_stats(daily, ret_col=daily.columns[0], title="WeightBacktest 综合统计")
-
-    with open(OUT_HTML, "w", encoding="utf-8") as f:
-        f.write(fig_cum.to_html(include_plotlyjs="cdn", full_html=False))
-        f.write("<hr>")
-        f.write(fig_stats.to_html(include_plotlyjs=False, full_html=False))
-    print(f"\n[输出] HTML 报告已生成: {OUT_HTML}")
-
+    # 5) 如需 HTML 报告，调用方自行用 plotly 直绘或 wbt.generate_backtest_report
     print("\n下一步：")
-    print("  - 在 Streamlit 面板里互动地查看本回测 -> 12_streamlit_research.py")
+    print("  - 13_event_weight_backtest.py 展示用 wbt.generate_backtest_report 一键产出 HTML")
 
 
 if __name__ == "__main__":

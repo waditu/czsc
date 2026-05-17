@@ -1,7 +1,7 @@
 """lightweight_charts 渲染层用到的颜色 / 主题常量。
 
-颜色取值与项目内 Plotly 版 ``czsc.utils.plotting.kline.KlineChart`` 对齐，避免两套
-路径在视觉上出现"红绿互换"等迷惑性差异。
+颜色取值沿用项目历史 Plotly 版的红绿语义（涨红跌绿），避免与上游
+``lightweight-charts`` 默认主题"红绿互换"导致的迷惑性差异。
 """
 
 from __future__ import annotations

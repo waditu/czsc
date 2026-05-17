@@ -29,7 +29,6 @@ from czsc._format_standard_kline import format_standard_kline
 # === 之前的 lazy 属性，改为静态 import（spec §3.1 移除 lazy loading）===
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.utils.log import log_strategy_info
-from czsc.utils.plotting.kline import KlineChart, plot_czsc_chart
 from czsc.utils.trade import adjust_holding_weights
 from czsc.utils.warning_capture import capture_warnings, execute_with_warning_capture
 
@@ -244,8 +243,6 @@ __all__ = [
     "execute_with_warning_capture",
     "adjust_holding_weights",
     "log_strategy_info",
-    "plot_czsc_chart",
-    "KlineChart",
     "check_kline_quality",
     # EDA
     "monotonicity",

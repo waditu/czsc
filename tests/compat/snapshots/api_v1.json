@@ -1,5 +1,5 @@
 {
-  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。 | 2026-05-17 二阶段清理 PR-A 占位字段 removed_v2_batch（17 个非缠论核心 API + 3 个整删模块，PR-B / PR-C 落地）。",
+  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。 | 2026-05-17 二阶段清理 PR-B/PR-C 落地：removed_v2_batch 含 10 个被从 czsc.* 顶层移除的 API（8 个工具/分析函数 + KlineChart + plot_czsc_chart）。",
   "top_level": [
     "BI",
     "CZSC",
@@ -87,8 +87,6 @@
     "execute_with_warning_capture",
     "adjust_holding_weights",
     "log_strategy_info",
-    "plot_czsc_chart",
-    "KlineChart",
     "check_kline_quality",
     "monotonicity",
     "mark_cta_periods",
@@ -138,6 +136,8 @@
     "create_grid_params",
     "mac_address",
     "holds_performance",
-    "rolling_daily_performance"
+    "rolling_daily_performance",
+    "KlineChart",
+    "plot_czsc_chart"
   ]
 }

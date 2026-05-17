@@ -181,18 +181,18 @@ run_replay(bars, signals_seq, pos_seq, res_path='./results/')
 run_research(symbols, signals_seq, pos_seq, res_path='./results/')
 ```
 
-### 回测可视化
+### 缠论可视化与回测报告
 
 ```python
-from czsc.utils.plotting.backtest import plot_backtest_stats, plot_cumulative_returns
+# 缠论 K 线（多周期联立，自包含 HTML，离线即可打开）
+from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_trader
 
-# 综合回测统计图（含回撤/收益分布/月度热力图）
-fig = plot_backtest_stats(dret, ret_col='total', title='策略回测统计')
-fig.show()
+html = plot_czsc(c, output="html")  # 单周期
+plot_czsc_trader(ct, output="html", path="trader.html")  # 多周期
 
-# 累计收益曲线
-fig = plot_cumulative_returns(dret, title='策略累计收益')
-fig.show()
+# 回测 HTML 报告：用 wbt.generate_backtest_report 一键产出
+from wbt import generate_backtest_report
+generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 ```
 
 
