@@ -55,6 +55,10 @@ from .index_composition import index_composition
 # JSON / dill 等通用 IO 工具
 from .io import dill_dump, dill_load, read_json, save_json
 
+# CTA / 波动率区间后验标注工具（2026-05-17 PR-B 从 czsc/eda.py 拆分而来）
+from .mark_cta_periods import mark_cta_periods
+from .mark_volatility import mark_volatility
+
 # 交易/重采样相关工具
 from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
@@ -80,6 +84,9 @@ __all__ = [
     "holds_concepts_effect",
     # index_composition
     "index_composition",
+    # mark_*（后验区间标注，PR-B 从 czsc/eda.py 拆分而来）
+    "mark_cta_periods",
+    "mark_volatility",
     # io
     "dill_dump",
     "dill_load",

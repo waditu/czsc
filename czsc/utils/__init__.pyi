@@ -42,6 +42,8 @@ from .io import dill_dump as dill_dump
 from .io import dill_load as dill_load
 from .io import read_json as read_json
 from .io import save_json as save_json
+from .mark_cta_periods import mark_cta_periods as mark_cta_periods
+from .mark_volatility import mark_volatility as mark_volatility
 from .trade import (
     resample_to_daily as resample_to_daily,
 )

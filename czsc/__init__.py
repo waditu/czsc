@@ -66,12 +66,12 @@ from ._native import (
     ultimate_smoother,
 )
 
-# === EDA 工具（来自 czsc.eda）===
-from .eda import (
-    mark_cta_periods,
-    mark_volatility,
-    monotonicity,
-)
+# === EDA 工具 ===
+# 2026-05-17 PR-B：``mark_cta_periods`` / ``mark_volatility`` 已迁到 czsc.utils 独立文件。
+# ``monotonicity`` 仍暂留 czsc.eda，下一阶段 PR-D 改为 Rust 实现后整体下线 czsc/eda.py。
+from .eda import monotonicity
+from .utils.mark_cta_periods import mark_cta_periods
+from .utils.mark_volatility import mark_volatility
 
 # === 研究/优化入口（czsc.research，Rust 后端）===
 from .research import (
