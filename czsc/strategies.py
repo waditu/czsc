@@ -28,11 +28,16 @@ from typing import Any
 from czsc._native import Position
 
 # 直接调用 Rust 端的派生器（用下划线后缀别名，避免与同名公开 API 混淆）
+# 2026-05-17 PR-F：unique_signals 已下沉 Rust（strategy_unique_signals），
+# 与 Rust crate 上 `czsc::unique_signals_across` 共享算法，开发宪法第一条对齐。
 from czsc._native import (
     derive_signals_config as _derive_signals_config_impl,
 )
 from czsc._native import (
     derive_signals_freqs as _derive_signals_freqs_impl,
+)
+from czsc._native import (
+    strategy_unique_signals as _strategy_unique_signals_impl,
 )
 from czsc._runtime_adapters import (
     bars_to_dataframe,
@@ -71,23 +76,15 @@ class CzscStrategyBase(ABC):
 
     @property
     def unique_signals(self):
-        """
-        汇总所有 Position 中出现过的信号 key，去重并保持首次出现顺序
+        """汇总所有 Position 中出现过的信号 key，去重并保持首次出现顺序。
 
-        为什么不用 ``set``？
-            - set 不保证顺序，会让最终生成的 signals_config 顺序在不同
-              Python 版本/运行环境中飘移
-            - 显式维护一个 ``ordered`` 列表 + ``seen`` 集合既能去重又能
-              保留稳定顺序，便于 diff 与产物比对
+        实现下沉到 Rust（``czsc._native.strategy_unique_signals`` /
+        ``czsc_trader::strategy::unique_signals_across``），保证 ``cargo
+        add czsc`` 的 Rust 用户与 ``pip install czsc`` 的 Python 用户拿到
+        完全一致的语义（参见 CLAUDE.md「🏛️ 开发宪法 · 第一条」）。
+        Python 侧只做一次列表透传，不再维护任何去重 / 排序逻辑。
         """
-        seen = set()
-        ordered = []
-        for pos in self.positions:
-            for signal in pos.unique_signals:
-                if signal not in seen:
-                    seen.add(signal)
-                    ordered.append(signal)
-        return ordered
+        return list(_strategy_unique_signals_impl(self.positions))
 
     @property
     def signals_config(self):

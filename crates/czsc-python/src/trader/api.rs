@@ -12,7 +12,7 @@ use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, Utc};
 use czsc_core::analyze::utils::format_standard_kline;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::freq::Freq;
-use czsc_core::objects::position::Position;
+use czsc_core::objects::position::{PyPosition, Position};
 use czsc_signals::registry::list_all_signals as list_all_registered_signals;
 use czsc_trader::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngine};
 use czsc_trader::optimize::{
@@ -1547,6 +1547,19 @@ pub fn get_unique_signals(
         }
     }
     Ok(out)
+}
+
+/// 跨 positions 扁平化 + 保序去重的 signal key 列表。
+///
+/// 给 Python `czsc.strategies.CzscStrategyBase.unique_signals` 用：Python
+/// 端构造 Position 列表后调一次本函数，Rust 端做所有去重/排序工作。语义与
+/// 历史 Python 实现完全一致（首次出现位置保留），实现走
+/// [`czsc_trader::strategy::unique_signals_across`]。
+#[pyfunction]
+#[pyo3(signature = (positions))]
+pub fn strategy_unique_signals(positions: Vec<PyPosition>) -> Vec<String> {
+    let positions: Vec<Position> = positions.into_iter().map(|p| p.inner).collect();
+    czsc_trader::strategy::unique_signals_across(&positions)
 }
 
 #[cfg(test)]
