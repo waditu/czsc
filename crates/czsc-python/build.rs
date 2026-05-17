@@ -25,6 +25,7 @@ use std::process::Command;
 
 fn main() {
     println!("cargo:rerun-if-env-changed=PYO3_PYTHON");
+    println!("cargo:rerun-if-env-changed=PYO3_CONFIG_FILE");
     println!("cargo:rerun-if-env-changed=CARGO_CFG_TARGET_OS");
 
     check_python_version();
@@ -113,6 +114,15 @@ fn check_version_lockstep() {
 /// - 任一步骤失败都打印明确建议（设置 `PYO3_PYTHON` 指向 Python 3.10+），并直接 `panic!`，
 ///   避免 cargo 报“神秘的 `Py_3_10` cfg 缺失”错误。
 fn check_python_version() {
+    // maturin 在 manylinux container 中 cross-compile wheel 时，会通过
+    // PYO3_CONFIG_FILE（而非 PYO3_PYTHON）精确指定目标解释器与 ABI 版本。
+    // 此时容器 PATH 上的 python3 默认是 3.9，无法反映实际目标 ABI，盲跑
+    // 这段 check 会让 wheel build 直接 panic。信任 maturin 的精确配置，
+    // 在 PYO3_CONFIG_FILE 存在时跳过预检（maturin 自己已经管控版本一致性）。
+    if std::env::var_os("PYO3_CONFIG_FILE").is_some() {
+        return;
+    }
+
     let interpreter = std::env::var("PYO3_PYTHON")
         .ok()
         .or_else(|| which("python3"))

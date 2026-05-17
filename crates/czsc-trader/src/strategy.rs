@@ -261,7 +261,7 @@ fn expect_object_mut<'v>(value: &'v mut Value, path: &Path) -> Result<&'v mut Ma
 #[cfg(test)]
 mod tests {
     use super::*;
-    use czsc_core::objects::position::Position;
+    use czsc_core::objects::position::{Position, load_position};
     use serde_json::json;
     use std::fs;
     use tempfile::TempDir;
