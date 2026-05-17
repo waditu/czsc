@@ -196,3 +196,59 @@ uv run --no-sync pytest --run-slow
 | `from czsc.utils.plotting.kline import plot_nx_graph` | 见上表 networkx + plotly 替代示例 |
 | `from czsc.utils.plotting.weight import *` | 见上表 wbt + plotly.express 替代示例 |
 | `from czsc.utils.plotting import calculate_turnover_stats, plot_weight_cdf` | 同上 |
+
+---
+
+## 四阶段：2026-05-17 PR-G — Position 文件校验契约重设计（md5 → sha256 canonical）
+
+> 关联：
+> - 父方案：[《20260517 修改任务实现方案》](https://www.feishu.cn/wiki/WPutw1giXiwH47kZ4V1cdULMnk6) 任务 1 后续工作
+> - 开发宪法第一条完整收口（CLAUDE.md「🏛️ 开发宪法 · 第一条」）
+
+### 背景
+
+历史上 `CzscStrategyBase.save_positions / load_positions` 用
+`hashlib.md5(str(payload).encode("utf-8")).hexdigest()` 作为完整性校验。
+`str(payload)` 依赖 CPython 字典 `__repr__()`，**无法**在 Rust 端 byte-for-byte 复现，
+违反开发宪法第一条。PR-G 把该路径整段下沉 Rust，并切换为可跨语言复现的校验算法。
+
+### 契约变化
+
+| 维度 | PR-G 之前（v1） | PR-G 之后（v2） |
+|---|---|---|
+| 校验字段名 | `md5` | `checksum` |
+| 算法 | `md5(str(payload))` | `sha256(canonical_json(payload))` |
+| canonical form | 不存在 — `str(dict)` 是 CPython repr() | serde_json BTreeMap 键序 + 紧凑无空白 |
+| 实现位置 | `czsc/strategies.py` 纯 Python | `crates/czsc-trader/src/strategy.rs` Rust |
+| Python 端 | `hashlib` + `json` 手写循环 | 1 行 `_strategy_save_position_impl(pos, target)` 透传 |
+| `cargo add czsc` 用户 | 没有等价 API | `czsc::save_position_to_file` / `load_position_from_file` |
+
+### 加载策略（兼容性）
+
+| 文件状态 | `check=true` 行为 | `check=false` 行为 |
+|---|---|---|
+| 含新字段 `checksum`（v2） | 按 canonical SHA256 验证；不匹配抛 `ValueError("checksum 不匹配...")` | 跳过验证 |
+| 仅含旧字段 `md5`（v1） | **静默跳过**（旧算法不可跨语言复现） | 静默跳过 |
+| 既无 `checksum` 也无 `md5` | 静默通过（手写 JSON 场景） | 静默通过 |
+
+> **重要**：旧 v1 文件不会被自动升级。用户调用一次 `tactic.save_positions(path)` 即可把目录下所有 Position 写回为 v2 格式。
+
+### 篡改检测
+
+新格式 v2 在 `check=True` 模式下任何 byte 级篡改都会让 `checksum` 不匹配。
+Rust 单测覆盖 `tampered_file_fails_checksum_check`，Python parity 测试覆盖
+`test_tampered_file_fails_check`。
+
+### 升级清单
+
+| 旧调用 | 新调用 / 行为 |
+|---|---|
+| `tactic.save_positions(path)` 写出含 `md5` 字段的 JSON | 改写 `checksum` 字段，自动剥离 `md5`（如有） |
+| `tactic.load_positions(files, check=True)` 期望 `assert md5 ==` 命中 | 现按 `checksum` 验证；含 v1 `md5` 的旧文件静默通过 |
+| `assert` 失败抛 `AssertionError` | `checksum` 不匹配抛 `ValueError`（适合 try/except 捕获） |
+
+### ratchet 测试位置
+
+- Rust：`crates/czsc-trader/src/strategy.rs` 内 `#[cfg(test)] mod tests` 7 个新增用例
+- Python：`tests/unit/test_strategy_save_load_parity.py` 5 个新增用例，其中
+  `test_strategies_module_no_longer_uses_hashlib_or_json` 是开发宪法第一条的源码级 ratchet

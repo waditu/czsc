@@ -39,6 +39,8 @@ fn _native(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(trader::api::derive_signals_freqs, m)?)?;
     m.add_function(wrap_pyfunction!(trader::api::get_unique_signals, m)?)?;
     m.add_function(wrap_pyfunction!(trader::api::strategy_unique_signals, m)?)?;
+    m.add_function(wrap_pyfunction!(trader::api::strategy_save_position, m)?)?;
+    m.add_function(wrap_pyfunction!(trader::api::strategy_load_position, m)?)?;
     // 别名：`get_signals_config` / `get_signals_freqs` 复用 derive_* 实现
     // Python 端 `from czsc._native import get_signals_config` 即可纯透传。
     m.add("get_signals_config", m.getattr("derive_signals_config")?)?;

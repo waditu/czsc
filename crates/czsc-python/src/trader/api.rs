@@ -1562,6 +1562,37 @@ pub fn strategy_unique_signals(positions: Vec<PyPosition>) -> Vec<String> {
     czsc_trader::strategy::unique_signals_across(&positions)
 }
 
+/// 把单个 [`PyPosition`] 写到 `path`，附带 SHA256(canonical JSON) checksum 字段。
+///
+/// 给 Python `CzscStrategyBase.save_positions` 用：Python 端只需要遍历
+/// positions 调一次本函数，所有 IO + 校验逻辑都在 Rust 完成（PR-G 开发宪法
+/// 第一条收口）。
+///
+/// 写出契约详见 [`czsc_trader::strategy::save_position_to_file`]。
+#[pyfunction]
+#[pyo3(signature = (position, path))]
+pub fn strategy_save_position(position: PyPosition, path: PathBuf) -> PyResult<()> {
+    czsc_trader::strategy::save_position_to_file(&position.inner, &path)
+        .map_err(|e| PyValueError::new_err(format!("{e:#}")))
+}
+
+/// 从 `path` 加载 [`PyPosition`]，可选启用 checksum 校验，加载后强制绑定
+/// `symbol`。
+///
+/// 给 Python `CzscStrategyBase.load_positions` 用，对应
+/// [`czsc_trader::strategy::load_position_from_file`]。
+#[pyfunction]
+#[pyo3(signature = (path, symbol, check=true))]
+pub fn strategy_load_position(
+    path: PathBuf,
+    symbol: String,
+    check: bool,
+) -> PyResult<PyPosition> {
+    czsc_trader::strategy::load_position_from_file(&path, &symbol, check)
+        .map(|inner| PyPosition { inner })
+        .map_err(|e| PyValueError::new_err(format!("{e:#}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::parse_sdt_utc;
