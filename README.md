@@ -239,6 +239,19 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 
 
+## 相关项目（生态依赖）
+
+czsc 在权重回测、权重落地与 TA 算子一致性校验上依赖以下三个独立开源项目，它们与 czsc 形成"分析 + 回测 + 落地 + 校验"的完整闭环：
+
+| 项目 | GitHub | 角色 | 与 czsc 的关系 |
+|------|--------|------|----------------|
+| **wbt** | <https://github.com/zengbin93/wbt> | 策略持仓权重回测引擎（Weight Back Test） | **硬依赖**。提供 `WeightBacktest / daily_performance / top_drawdowns / generate_backtest_report` 等；`czsc.mock` 也转发自 `wbt.mock`。czsc 顶层 `from czsc import WeightBacktest` 即来自此包。 |
+| **wmr** | <https://github.com/zengbin93/wmr> | 策略持仓权重管理系统（Weight Manager，DuckDB / ClickHouse 双后端） | **下游配套**（非硬依赖）。wbt 负责"离线回测权重"，wmr 负责"实盘 / 投研环境下权重的持久化、版本管理与查询"。czsc 产出信号 / 持仓 → wbt 跑回测 → wmr 落库供下游消费。 |
+| **talib-rs** | <https://github.com/0xcjun/talib-rs> | 纯 Rust 实现的 TA-Lib 替代库 | **测试可选依赖**。仅 `tests/unit/test_ta_parity.py` 用它对 `czsc._native.ta`（EMA / SMA 等）做数值 parity 校验，确保 czsc 自研 TA 算子与 TA-Lib 行为一致。运行时代码不依赖。 |
+
+简言之：**wbt = 回测**，**wmr = 权重落地**，**talib-rs = TA 基准**；czsc 自身专注缠论核心算法（Rust）与信号-事件-交易体系，其余环节通过这三个项目解耦协同。
+
+
 ## 开发环境搭建
 
 ```bash

@@ -80,16 +80,8 @@ uv run --no-sync ruff check czsc/ tests/
    - `data/client.py`：统一数据客户端接口
    - TA 算子由 Rust `czsc._native.ta` 提供（信号内部依赖），顶层别名 `czsc.{ema,sma,rolling_rank,boll_positions,ultimate_smoother}` 保留；仪表盘场景的 MACD（×2 约定）已下沉为 `czsc/utils/plotting/_macd.py` 私有辅助
    - `trade.py`：交易工具
-   - `plotting/{kline,backtest,weight,common}.py`：Plotly 图表绘制
-   - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py` / `echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer` / `crypto/` / `czsc/svc/`（本次清理 删除 Streamlit 组件库）
-   - `plotting/backtest.py` 主要函数：
-     - `plot_cumulative_returns()`: 累计收益曲线
-     - `plot_drawdown_analysis()`: 回撤分析图
-     - `plot_daily_return_distribution()`: 日收益分布
-     - `plot_monthly_heatmap()`: 月度收益热力图
-     - `plot_backtest_stats()`: 回测统计概览（3图组合）
-     - `plot_colored_table()`: 带颜色编码的绩效表格
-     - `plot_long_short_comparison()`: 多空收益对比
+   - `plotting/{kline,weight}.py` + `plotting/lightweight/`：plotly 单周期 K 线 + 权重时序图 / lightweight-charts 自包含 HTML
+   - 已删除：`bar_generator.py` / `bi_info.py`（Rust 已实现）、`st_components.py` / `echarts_*` / `pdf_report` / `html_report_builder` / `word_writer` / `signal_analyzer` / `crypto/` / `czsc/svc/` / `plotting/backtest.py` / `plotting/common.py`（本次清理 删除 Streamlit 组件库与回测可视化函数；迁移详见 `docs/migration/cleanup-non-czsc-core.md`）
 
 7. **`czsc/connectors/`** - 数据源连接器：
    - 支持天勤、Tushare、CCXT 等多个数据源
@@ -151,58 +143,14 @@ bars = format_standard_kline(df, freq=Freq.F30)
 czsc_obj = CZSC(bars)
 ```
 
-### 回测可视化最佳实践
-```python
-# 使用 plotting/backtest.py 绘制回测图表（或通过 czsc.utils 懒加载）
-from czsc.utils.plotting.backtest import (
-    plot_cumulative_returns,
-    plot_backtest_stats,
-    plot_monthly_heatmap
-)
+### 回测可视化
 
-# 准备日收益数据（index为日期，columns为策略收益）
-dret = ...  # DataFrame with datetime index and returns columns
+`czsc.utils.plotting.backtest` 模块已在二阶段清理 PR-C 删除。推荐做法：
 
-# 1. 绘制累计收益曲线
-fig = plot_cumulative_returns(
-    dret,
-    title="策略累计收益",
-    template="plotly",  # 或 "plotly_dark"
-    to_html=False  # 返回 Figure 对象，True 则返回 HTML 字符串
-)
-fig.show()
-
-# 2. 绘制综合回测统计图（包含回撤分析、收益分布、月度热力图）
-fig = plot_backtest_stats(
-    dret,
-    ret_col="total",  # 指定收益列
-    title="回测统计概览",
-    template="plotly"
-)
-fig.show()
-
-# 3. 单独绘制月度收益热力图
-fig = plot_monthly_heatmap(dret, ret_col="total")
-fig.show()
-
-# 4. 导出为 HTML（用于报告）
-html_str = plot_cumulative_returns(dret, to_html=True)
-with open("backtest_report.html", "w", encoding="utf-8") as f:
-    f.write(html_str)
-```
-
-**模块级常量使用：**
-```python
-from czsc.utils.plotting.common import (
-    COLOR_DRAWDOWN,
-    COLOR_RETURN,
-    SIGMA_LEVELS,
-    MONTH_LABELS
-)
-
-# 使用预定义常量确保图表风格统一
-# 避免硬编码颜色值和配置参数
-```
+- **权重回测报告**：`wbt.generate_backtest_report(dfw, ...)` 生成自包含 HTML（参见 `docs/examples/13_event_weight_backtest.py`）
+- **缠论 + 多周期联立**：`czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}` 输出 lightweight-charts HTML
+- **单周期 K 线 + 缠论结构**：`czsc.utils.plotting.kline.KlineChart` / `plot_czsc_chart`
+- **自定义统计图**：直接用 `plotly.express` / `plotly.graph_objects`，迁移示例见 `docs/migration/cleanup-non-czsc-core.md`
 
 ### 依赖管理（UV配置）
 - 核心运行时依赖定义在 `pyproject.toml` 的 `[project.dependencies]` 中
@@ -233,7 +181,7 @@ from czsc.utils.plotting.common import (
 本次清理 起项目不再依赖 streamlit。所有可视化统一由 plotly 实现，输出方式：
 
 - `czsc.utils.plotting.kline.KlineChart` / `plot_czsc_chart`：单周期 K 线 + 缠论结构（plotly Figure，可 `fig.show()` 或写 HTML）
-- `czsc.utils.plotting.backtest.plot_*`：累计收益 / 回撤 / 月度热力图 / 综合回测概览（plotly + HTML 字符串）
+- `czsc.utils.plotting.weight.*`：权重时序图（plotly）
 - `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}`：lightweight-charts 自包含 HTML，多周期联立 + 信号叠加
 
 如需在 streamlit 中嵌入，调用方自行 `pip install streamlit` 后 `st.components.v1.html(plot_czsc(c, output='html'))` 即可（`czsc.svc` 已删除，参见 `docs/migration/cleanup-non-czsc-core.md`）。
@@ -310,52 +258,3 @@ from czsc.utils.plotting.common import (
    - 完善的类型提示（Type Hints）
    - 清晰的函数职责分离
    - 保持向后兼容性的 API 设计
-
-### 代码优化案例（plotting/backtest.py）
-
-`czsc/utils/plotting/backtest.py` 模块展示了代码优化的最佳实践：
-
-**优化前的问题：**
-- HTML 转换逻辑重复 8 次
-- 年度分隔线添加代码重复 3 次
-- 回撤计算逻辑重复 2 次
-- 大量魔法值（颜色、分位数等）散落各处
-- 函数过于复杂（`plot_backtest_stats` 有 165 行）
-
-**优化措施：**
-
-1. **提取辅助函数**（6 个）：
-   ```python
-   _figure_to_html()              # 统一 HTML 转换
-   _add_year_boundary_lines()     # 统一年度分隔线
-   _calculate_drawdown()          # 统一回撤计算
-   _create_monthly_heatmap_data() # 统一月度数据准备
-   _add_drawdown_annotation()     # 统一回撤标注
-   _add_sigma_lines()             # 统一 Sigma 标注
-   ```
-
-2. **定义模块级常量**（10 个）：
-   ```python
-   COLOR_DRAWDOWN = "salmon"
-   COLOR_RETURN = "#34a853"
-   QUANTILES_DRAWDOWN = [0.05, 0.1, 0.2]
-   SIGMA_LEVELS = [-3, -2, -1, 1, 2, 3]
-   MONTH_LABELS = ['1月', '2月', ..., '12月']
-   ```
-
-3. **完善类型提示**：
-   ```python
-   TemplateType = Literal['plotly', 'plotly_dark', ...]
-   def plot_cumulative_returns(..., template: TemplateType = "plotly", ...)
-   ```
-
-**优化效果：**
-- ✅ 消除所有 HTML 转换重复代码（8 处 → 1 处）
-- ✅ 消除所有年度分隔线重复（3 处 → 1 处）
-- ✅ 消除所有回撤计算重复（2 处 → 1 处）
-- ✅ 使用模块级常量替代魔法值
-- ✅ 函数更简洁易读（165 行 → 129 行）
-- ✅ 提升可维护性和可测试性
-- ✅ 保持向后兼容性（API 未改变）
-
-**参考文件：** `czsc/utils/plotting/backtest.py`

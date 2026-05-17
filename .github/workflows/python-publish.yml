@@ -177,14 +177,17 @@ jobs:
           name: wheels-${{ matrix.smoke.os }}-${{ matrix.smoke.target }}-${{ matrix.smoke.manylinux || 'native' }}
           path: dist/
 
-      # 最小依赖集：__init__.py 顶层 import 需要的几个；运行时其余依赖
-      # （TA-Lib/wbt/streamlit/...）不在 import 路径上，--no-deps 跳过即可。
+      # 最小依赖集：czsc/__init__.py + czsc/fsa/__init__.py + czsc/traders/__init__.py
+      # 顶层 import 链上必须的几个。
+      # 注意：wbt 是 czsc 顶层 import（pyproject.toml 硬依赖）；requests 是 czsc.fsa
+      # 顶层 import；漏装任一项 smoke import czsc 会直接崩。
+      # 其余运行时依赖（pyarrow/polars/scipy/...）不在 import 路径上，--no-deps 跳过即可。
       - name: Install + import czsc (no deps, then minimal deps)
         shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-deps dist/*.whl
-          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity
+          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity wbt requests
           python -c "import czsc; print('czsc version:', czsc.__version__)"
           python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
           python -c "from czsc._native import signals; print('native signals namespace OK:', sorted(dir(signals))[:5])"

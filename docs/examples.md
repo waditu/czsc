@@ -82,6 +82,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 | #  | 文件 | 核心 API | 你将学到 |
 |----|------|----------|----------|
 | 08 | [`08_weight_backtest.py`](./examples/08_weight_backtest.py) | `WeightBacktest` · `daily_performance` · `top_drawdowns` | 时序权重回测的完整链路 + 核心绩效指标 |
+| 13 | [`13_event_weight_backtest.py`](./examples/13_event_weight_backtest.py) | `CzscStrategyBase.backtest` · `wbt.generate_backtest_report` | 从 `Event` 出发的策略回测 + 一键生成 HTML 报告（single / multi-event） |
 
 ### 第五组：lightweight-charts HTML（自包含交互看图）
 
@@ -89,6 +90,12 @@ uv run python docs/examples/13_lightweight_charts_html.py
 |----|------|----------|----------|
 | 13 | [`13_lightweight_charts_html.py`](./examples/13_lightweight_charts_html.py) | `plot_czsc` · `plot_czsc_trader` | 缠论 K 线 + 多周期联立，自包含 HTML（无需服务端） |
 | 15 | [`15_lightweight_signals_html.py`](./examples/15_lightweight_signals_html.py) | `plot_czsc_signals` | 信号叠加版本，含 signal timeline + tooltip |
+
+### 第六组：性能基准
+
+| #  | 文件 | 核心 API | 你将看到 |
+|----|------|----------|----------|
+| 17 | [`17_perf_benchmark.py`](./examples/17_perf_benchmark.py) | `CZSC` · `CzscTrader` | 20 年 5 分钟 K 线下 CZSC / CzscTrader 两条路径的吞吐量基准（纯文本输出） |
 
 > 本次清理 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/cleanup-non-czsc-core.md`](./migration/cleanup-non-czsc-core.md)。
 
@@ -169,7 +176,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 
 ### 4.2 信号函数命名
 
-- Rust 端注册的信号函数名是简短形式（**不带** `czsc.signals.` 前缀，版本号大写 V），
+- Rust 端注册的信号函数名是简短形式（**不带** `czsc.signals.` 前缀；`#[signal]` 宏自动注册，不再使用 `V<yyMMdd>` 版本后缀），
   例如：`cxt_bi_status_V230101`、`bar_zdt_V230331`、`tas_ma_base_V221101`。
 - 完整列表：`czsc._native.signals.bar.list_signal_names()`
   （`bar / cxt / tas / vol / pressure / obv / cvolp` 七个子模块入口都返回**全集**）。

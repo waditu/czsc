@@ -140,7 +140,7 @@ def main() -> None:
 
     print("\n下一步：")
     print("  - 把回测得到的权重序列做更精细的回测分析 -> 08_weight_backtest.py")
-    print("  - 用 Streamlit 看每个 Position 的开平仓点 -> 11_streamlit_trader.py")
+    print("  - 用 lightweight-charts HTML 看每个 Position 的开平仓点 -> 13_lightweight_charts_html.py")
 
 
 if __name__ == "__main__":
