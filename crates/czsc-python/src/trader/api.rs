@@ -1487,7 +1487,7 @@ pub fn derive_signals_freqs(py: Python<'_>, signals_config: Py<PyAny>) -> PyResu
 
     // 风格：已解析 dict 列表（A 或 B 风格均可）
     // 走 parse_signals_config，里面会归一两种写法并剥离 name 模块前缀
-    let configs = super::czsc_signals::parse_signals_config(&list)?;
+    let configs = super::czsc_signals::parse_signals_config(list)?;
     Ok(get_signals_freqs(&configs))
 }
 
