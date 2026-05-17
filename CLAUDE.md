@@ -101,7 +101,7 @@ uv run --no-sync ruff check czsc/ tests/
 
 5. **`czsc/utils/`** - 工具模块（Phase J 精简后）：
    - `data/cache.py` / `io.py` / `log.py` / `kline_quality.py`：缓存、IO、日志、K 线质量校验
-   - `analysis/`（`stats.py` 业绩统计 / `corr.py` 相关性分析）
+   - `analysis/corr.py`（仅剩 `cross_sectional_ic`；`stats.py` 与 `nmi_matrix` / `single_linear` 已于 2026-05-17 PR-A 删除，`daily_performance` / `top_drawdowns` 改由顶层 `czsc.*` 透传 wbt）
    - `data/client.py`：统一数据客户端接口
    - TA 算子由 Rust `czsc._native.ta` 提供（信号内部依赖），顶层别名 `czsc.{ema,sma,rolling_rank,boll_positions,ultimate_smoother}` 保留；仪表盘场景的 MACD（×2 约定）已下沉为 `czsc/utils/plotting/_macd.py` 私有辅助
    - `trade.py`：交易工具

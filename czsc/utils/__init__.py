@@ -28,14 +28,9 @@ import pandas as pd
 from . import analysis, data, io
 
 # 从 analysis 子模块再次导出常用的统计 / 绩效函数，方便在 czsc.utils 顶层直接使用
-from .analysis import (
-    cross_sectional_ic,
-    daily_performance,
-    nmi_matrix,
-    psi,
-    single_linear,
-    top_drawdowns,
-)
+# 2026-05-17 PR-A 起，analysis 仅保留 cross_sectional_ic；daily_performance /
+# top_drawdowns 改由调用方走 wbt（czsc 顶层 ``czsc.daily_performance`` 仍可用）。
+from .analysis import cross_sectional_ic
 
 # 数据访问、磁盘缓存以及统一数据客户端
 from .data import (
@@ -70,11 +65,6 @@ __all__ = [
     "io",
     # analysis
     "cross_sectional_ic",
-    "daily_performance",
-    "nmi_matrix",
-    "psi",
-    "single_linear",
-    "top_drawdowns",
     # data
     "DataClient",
     "DiskCache",

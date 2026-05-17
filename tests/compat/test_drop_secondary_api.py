@@ -54,12 +54,13 @@ SECONDARY_API_REMOVALS: list[tuple[str, str]] = [
     ("czsc.utils.analysis", "holds_performance"),
     ("czsc.utils.analysis", "rolling_daily_performance"),
     # --- PR-C：plotting/kline.py 2 个（KlineChart + plot_czsc_chart） ---
+    # 注：``czsc.utils.plotting.kline`` 整模块本身已在 2026-05-17 PR-A
+    # git rm（见下方 REMOVED_MODULES），故 ``("czsc.utils.plotting.kline", ...)``
+    # 两条入口断言已并入模块级断言，本处仅保留 czsc / czsc.utils.plotting 顶层断言。
     ("czsc", "KlineChart"),
     ("czsc", "plot_czsc_chart"),
     ("czsc.utils.plotting", "KlineChart"),
     ("czsc.utils.plotting", "plot_czsc_chart"),
-    ("czsc.utils.plotting.kline", "KlineChart"),
-    ("czsc.utils.plotting.kline", "plot_czsc_chart"),
     # --- PR-C：plotting/backtest.py 7 个 plot_* 函数 ---
     # 注：backtest 模块本身已被 git rm（见下方 REMOVED_MODULES），这里仅检查从
     # plotting/__init__.py 的 re-export 入口也已移除。
@@ -70,13 +71,42 @@ SECONDARY_API_REMOVALS: list[tuple[str, str]] = [
     ("czsc.utils.plotting", "plot_backtest_stats"),
     ("czsc.utils.plotting", "plot_colored_table"),
     ("czsc.utils.plotting", "plot_long_short_comparison"),
+    # --- 2026-05-17 PR-A：删除 nmi_matrix / single_linear（corr.py 内部） ---
+    ("czsc.utils", "nmi_matrix"),
+    ("czsc.utils", "single_linear"),
+    ("czsc.utils.analysis", "nmi_matrix"),
+    ("czsc.utils.analysis", "single_linear"),
+    # --- 2026-05-17 PR-A：删除 czsc/utils/analysis/stats.py 整模块 5 个函数 ---
+    ("czsc", "psi"),
+    ("czsc.utils", "daily_performance"),
+    ("czsc.utils", "top_drawdowns"),
+    ("czsc.utils", "psi"),
+    ("czsc.utils.analysis", "daily_performance"),
+    ("czsc.utils.analysis", "top_drawdowns"),
+    ("czsc.utils.analysis", "psi"),
+    ("czsc.utils.analysis", "evaluate_pairs"),
+    ("czsc.utils.analysis", "cal_break_even_point"),
+    # --- 2026-05-17 PR-A：删除 czsc/utils/plotting/kline.py 整模块（plot_nx_graph） ---
+    ("czsc.utils.plotting", "plot_nx_graph"),
+    # --- 2026-05-17 PR-A：删除 czsc/utils/plotting/weight.py 整模块 6 个绘图/统计函数 ---
+    ("czsc.utils.plotting", "calculate_turnover_stats"),
+    ("czsc.utils.plotting", "calculate_weight_stats"),
+    ("czsc.utils.plotting", "plot_weight_histogram_kde"),
+    ("czsc.utils.plotting", "plot_weight_cdf"),
+    ("czsc.utils.plotting", "plot_turnover_overview"),
+    ("czsc.utils.plotting", "plot_turnover_cost_analysis"),
+    ("czsc.utils.plotting", "plot_weight_time_series"),
 ]
 
-# 完全删除的模块（PR-C 整文件 git rm）。
+# 完全删除的模块（整文件 git rm）。
 # ``_macd.py`` 原计划整删，但 lightweight 仍 lazy import compute_macd，故保留。
 REMOVED_MODULES: list[str] = [
     "czsc.utils.plotting.backtest",
     "czsc.utils.plotting.common",
+    # 2026-05-17 PR-A 整删模块
+    "czsc.utils.analysis.stats",
+    "czsc.utils.plotting.kline",
+    "czsc.utils.plotting.weight",
 ]
 
 

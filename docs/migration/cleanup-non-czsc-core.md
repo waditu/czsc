@@ -143,3 +143,56 @@ uv run --no-sync pytest --run-slow
 - [x] PR-B：删除 8 个工具/分析函数
 - [x] PR-C：删除 9 个绘图 API + 附带清理
 - [x] PR-D：反转上一波防护测试 + 文档收尾
+
+---
+
+## 三阶段：2026-05-17 PR-A 批量删除
+
+> 关联：
+> - 飞书任务：[《20260517 修改一批功能代码》](https://s0cqcxuy3p.feishu.cn/wiki/HCrswPWnZinUHcko1VtcQqvynqn)
+> - 执行方案：[《20260517 修改任务实现方案》](https://www.feishu.cn/wiki/WPutw1giXiwH47kZ4V1cdULMnk6)
+> - 执行细节：[《20260517 实施细节 - PR-A 批量删除》](https://www.feishu.cn/wiki/Sv0AwDm5pig48skMnM5cGwAgnAg)
+
+### 删除清单
+
+| 来源 | API | 替代方案 |
+|---|---|---|
+| `czsc/utils/analysis/corr.py` | `nmi_matrix` | 调用方自行 `pip install scikit-learn` 后 `sklearn.metrics.normalized_mutual_info_score` |
+| `czsc/utils/analysis/corr.py` | `single_linear` | 直接用 `numpy.polyfit(x, y, 1)` 或最小二乘公式（czsc 内部 `cross_sectional_ic` 已内联） |
+| `czsc/utils/analysis/stats.py` 全文件 | `cal_break_even_point` | 自行 `numpy.cumsum(sorted(seq))` + 计数 |
+| `czsc/utils/analysis/stats.py` 全文件 | `daily_performance` | 用 `wbt.daily_performance`（顶层 `czsc.daily_performance` 仍是该函数的透传） |
+| `czsc/utils/analysis/stats.py` 全文件 | `evaluate_pairs` | 自行用 pandas 聚合 `pairs[['盈亏比例', '持仓K线数', '持仓天数']]` |
+| `czsc/utils/analysis/stats.py` 全文件 | `top_drawdowns` | 用 `wbt.top_drawdowns`（顶层 `czsc.top_drawdowns` 仍是该函数的透传） |
+| `czsc/utils/analysis/stats.py` 全文件 | `psi` | 自行 `(实际占比 - 基准占比) * np.log(实际占比 / 基准占比)`，10 行代码可重写 |
+| `czsc/utils/plotting/kline.py` 全文件 | `plot_nx_graph` | 调用方 `pip install networkx plotly` 后直接用 `networkx.spring_layout` + `plotly.graph_objects.Scatter` |
+| `czsc/utils/plotting/weight.py` 全文件 | `calculate_turnover_stats` / `calculate_weight_stats` | 自行 `dfw.groupby('symbol')['weight'].diff().abs().sum()`、`dfw.groupby('dt')['weight'].describe()` |
+| `czsc/utils/plotting/weight.py` 全文件 | `plot_weight_histogram_kde` / `plot_weight_cdf` | 自行 `plotly.express.histogram(dfw['weight'])` / `plotly.express.ecdf(dfw['weight'])` |
+| `czsc/utils/plotting/weight.py` 全文件 | `plot_turnover_overview` / `plot_turnover_cost_analysis` | 改用 `wbt.generate_backtest_report(dfw, fee_rate=...)`（自包含 HTML） |
+| `czsc/utils/plotting/weight.py` 全文件 | `plot_weight_time_series` | 改用 `wbt.generate_backtest_report` 或自行 `plotly.express.line(dfw, x='dt', y='weight', color='symbol')` |
+
+### 附带清理
+
+| 项目 | 处理 | 原因 |
+|---|---|---|
+| `czsc/utils/analysis/stats.py` + `.pyi` | 整文件 `git rm` | 5 个函数全部移除后无剩余逻辑 |
+| `czsc/utils/plotting/kline.py` + `.pyi` | 整文件 `git rm` | 仅剩的 `plot_nx_graph` 与缠论核心无关 |
+| `czsc/utils/plotting/weight.py` + `.pyi` | 整文件 `git rm` | 6 个函数全部下线后无残留 |
+| `scikit-learn` | 从 `pyproject.toml` `[project.dependencies]` 移除 | 唯一调用点 `nmi_matrix` 已删除 |
+| `czsc.psi` 顶层别名 | 从 `czsc.__all__` 与 `czsc/utils/__init__.py` 移除 | 跟随 stats.py 整体下线 |
+
+### ratchet 测试位置
+
+`tests/compat/test_drop_secondary_api.py` 新增：
+
+- A 组 13 个新增条目（nmi_matrix / single_linear / psi / evaluate_pairs / cal_break_even_point / plot_nx_graph + 7 个 weight 绘图函数）
+- B 组 3 个整删模块条目（analysis/stats、plotting/kline、plotting/weight）
+
+### 升级清单
+
+| 旧调用 | 新调用 |
+|---|---|
+| `from czsc import psi` | 自行 10 行实现，或 `pip install statsmodels` 后查询其 PSI 函数 |
+| `from czsc.utils.analysis import nmi_matrix, single_linear, psi, daily_performance, top_drawdowns` | 顶层 `czsc.daily_performance` / `czsc.top_drawdowns` 仍可用；其它 3 个见上表替代方案 |
+| `from czsc.utils.plotting.kline import plot_nx_graph` | 见上表 networkx + plotly 替代示例 |
+| `from czsc.utils.plotting.weight import *` | 见上表 wbt + plotly.express 替代示例 |
+| `from czsc.utils.plotting import calculate_turnover_stats, plot_weight_cdf` | 同上 |

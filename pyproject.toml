@@ -48,7 +48,8 @@ dependencies = [
     # 数学计算和统计
     "scipy",
     "statsmodels",
-    "scikit-learn",
+    # scikit-learn 已于 2026-05-17 PR-A 删除：唯一调用点 `czsc.utils.analysis.corr.nmi_matrix` 同步下线，
+    # 项目不再依赖 sklearn；如需归一化互信息矩阵，调用方自行 `pip install scikit-learn` 一行实现即可。
     # 技术分析
     # - czsc._native 由 crates/czsc-python 通过 maturin 直接产出，无需 rs-czsc
     # - wbt 为硬依赖，提供 WeightBacktest / daily_performance / top_drawdowns / mock 等

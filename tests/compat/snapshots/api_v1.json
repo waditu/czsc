@@ -1,5 +1,5 @@
 {
-  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。 | 2026-05-17 二阶段清理 PR-B/PR-C 落地：removed_v2_batch 含 10 个被从 czsc.* 顶层移除的 API（8 个工具/分析函数 + KlineChart + plot_czsc_chart）。",
+  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。 | 2026-05-17 二阶段清理 PR-B/PR-C 落地：removed_v2_batch 含 10 个被从 czsc.* 顶层移除的 API（8 个工具/分析函数 + KlineChart + plot_czsc_chart）。 | 2026-05-17 PR-A 批量删除：top_level 移除 'psi'；新增 removed_pr_a 字段记录本次删除的 13 个 API（nmi_matrix / single_linear / psi / evaluate_pairs / cal_break_even_point / plot_nx_graph / 6 个权重绘图函数）+ 3 个整删模块（plotting/kline.py、plotting/weight.py、analysis/stats.py）。",
   "top_level": [
     "BI",
     "CZSC",
@@ -73,7 +73,6 @@
     "import_by_name",
     "index_composition",
     "print_df_sample",
-    "psi",
     "read_json",
     "resample_to_daily",
     "risk_free_returns",
@@ -139,5 +138,25 @@
     "rolling_daily_performance",
     "KlineChart",
     "plot_czsc_chart"
+  ],
+  "removed_pr_a": [
+    "nmi_matrix",
+    "single_linear",
+    "psi",
+    "evaluate_pairs",
+    "cal_break_even_point",
+    "plot_nx_graph",
+    "calculate_turnover_stats",
+    "calculate_weight_stats",
+    "plot_weight_histogram_kde",
+    "plot_weight_cdf",
+    "plot_turnover_overview",
+    "plot_turnover_cost_analysis",
+    "plot_weight_time_series"
+  ],
+  "removed_pr_a_modules": [
+    "czsc.utils.analysis.stats",
+    "czsc.utils.plotting.kline",
+    "czsc.utils.plotting.weight"
   ]
 }

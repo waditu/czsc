@@ -6,21 +6,6 @@ from . import io as io
 from .analysis import (
     cross_sectional_ic as cross_sectional_ic,
 )
-from .analysis import (
-    daily_performance as daily_performance,
-)
-from .analysis import (
-    nmi_matrix as nmi_matrix,
-)
-from .analysis import (
-    psi as psi,
-)
-from .analysis import (
-    single_linear as single_linear,
-)
-from .analysis import (
-    top_drawdowns as top_drawdowns,
-)
 from .data import (
     DataClient as DataClient,
 )

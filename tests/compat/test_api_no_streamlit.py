@@ -44,16 +44,16 @@ def _file_touches_streamlit(p: Path) -> bool:
 
 # 这些路径的边界含义：
 #   _macd.py             - 私有 helper，仅 numpy
-#   kline.py             - plotly，networkx 图绘制（二阶段清理 PR-C 起 KlineChart / plot_czsc_chart 已删）
 #   data/cache.py        - 缓存 / IO，与可视化无关
 #   utils/data/__init__  - 数据 IO 命名空间
 #
-# 注：``utils/plotting/backtest.py`` 已在二阶段清理 PR-C 整文件 git rm，故移出本列表。
+# 注：
+# - ``utils/plotting/backtest.py`` 已在二阶段清理 PR-C 整文件 git rm，故移出本列表；
+# - ``utils/plotting/kline.py`` 已在 2026-05-17 PR-A 整文件 git rm，故移出本列表。
 INDEPENDENT_FILES = pytest.mark.parametrize(
     "relpath",
     [
         "utils/plotting/_macd.py",
-        "utils/plotting/kline.py",
         "utils/data/cache.py",
         "utils/data/__init__.py",
     ],
@@ -128,18 +128,16 @@ def test_macd_helper_still_importable() -> None:
     assert hasattr(mod, "compute_macd"), "_macd.compute_macd 必须保留（kline/lightweight 下游）"
 
 
-def test_plot_kline_no_longer_exposes_kline_chart() -> None:
-    """二阶段清理 PR-C 起：KlineChart / plot_czsc_chart 已删除。
+def test_plot_kline_module_removed() -> None:
+    """2026-05-17 PR-A 起：``czsc.utils.plotting.kline`` 整文件已 git rm。
 
-    上一波 PR-1 此处断言"必须保留"，本次清理把缠论 K 线可视化统一收敛到
-    :mod:`czsc.utils.plotting.lightweight`（离线 HTML，多周期联立）。本测试反向
-    锁定该决议，避免有人后续把 KlineChart 加回来。
+    上一波二阶段清理 PR-C 仅删除 ``KlineChart`` / ``plot_czsc_chart``，留下
+    ``plot_nx_graph`` 一个 networkx 图渲染函数。本次清理整体放弃，调用方
+    自行 ``pip install networkx plotly`` 即可一行重写，详见
+    ``docs/migration/cleanup-non-czsc-core.md``。
     """
-    mod = importlib.import_module("czsc.utils.plotting.kline")
-    assert not hasattr(mod, "KlineChart"), "kline.KlineChart 应已删除（二阶段清理 PR-C breaking change）"
-    assert not hasattr(mod, "plot_czsc_chart"), "kline.plot_czsc_chart 应已删除（二阶段清理 PR-C breaking change）"
-    # plot_nx_graph 仍保留（networkx 图渲染，与缠论 K 线无关）
-    assert hasattr(mod, "plot_nx_graph"), "kline.plot_nx_graph 必须保留"
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.plotting.kline")
 
 
 def test_plot_backtest_module_removed() -> None:

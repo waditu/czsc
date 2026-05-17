@@ -20,19 +20,29 @@ import pandas as pd
 import pytest
 
 
-def test_plotting_weight_imports():
-    """验证权重绘图相关统计函数可以从 ``czsc.utils.plotting`` 导入。
+def test_plotting_weight_module_removed():
+    """2026-05-17 PR-A：``czsc.utils.plotting.weight`` 整文件已 git rm。
 
-    关键断言：
-        ``calculate_turnover_stats`` 与 ``calculate_weight_stats`` 都是可调用对象。
+    上一波保留 ``calculate_turnover_stats`` / ``calculate_weight_stats`` 等 6 个
+    权重分析函数，本次清理整体放弃，调用方改用 ``plotly.express`` 或
+    ``wbt.generate_backtest_report``，迁移说明见 ``docs/migration/cleanup-non-czsc-core.md``。
     """
-    from czsc.utils.plotting import (
-        calculate_turnover_stats,
-        calculate_weight_stats,
-    )
+    import importlib
 
-    assert callable(calculate_turnover_stats)
-    assert callable(calculate_weight_stats)
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.plotting.weight")
+
+    from czsc.utils import plotting
+
+    for name in (
+        "calculate_turnover_stats",
+        "calculate_weight_stats",
+        "plot_weight_histogram_kde",
+        "plot_weight_cdf",
+        "plot_turnover_overview",
+        "plot_turnover_cost_analysis",
+    ):
+        assert not hasattr(plotting, name), f"czsc.utils.plotting.{name} 应已删除"
 
 
 def test_data_validators():
@@ -122,38 +132,37 @@ def test_data_converters():
     assert normalize_symbol("  tsla  ") == "TSLA"
 
 
-def test_analysis_stats_imports():
-    """验证统计分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
+def test_analysis_stats_module_removed():
+    """2026-05-17 PR-A：``czsc.utils.analysis.stats`` 整文件已 git rm。
 
-    关键断言：
-        ``daily_performance``、``top_drawdowns`` 两个统计函数均为可调用对象。
-        （``holds_performance`` / ``rolling_daily_performance`` 已在
-        二阶段清理 PR-B 删除。）
+    ``daily_performance`` / ``top_drawdowns`` 改由 ``wbt`` 提供，czsc 顶层
+    ``czsc.daily_performance`` / ``czsc.top_drawdowns`` 仍可用（透传 wbt）。
     """
-    from czsc.utils.analysis import (
-        daily_performance,
-        top_drawdowns,
-    )
+    import importlib
 
-    assert callable(daily_performance)
-    assert callable(top_drawdowns)
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.analysis.stats")
+
+    from czsc.utils import analysis
+
+    for name in (
+        "daily_performance",
+        "top_drawdowns",
+        "psi",
+        "evaluate_pairs",
+        "cal_break_even_point",
+    ):
+        assert not hasattr(analysis, name), f"czsc.utils.analysis.{name} 应已删除"
 
 
 def test_analysis_corr_imports():
     """验证相关性分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
 
-    关键断言：
-        ``nmi_matrix``、``single_linear``、``cross_sectional_ic`` 三个相关性分析
-        函数均为可调用对象。
+    2026-05-17 PR-A 起：``nmi_matrix`` / ``single_linear`` 已删除，本测试只断言
+    ``cross_sectional_ic`` 仍可用。
     """
-    from czsc.utils.analysis import (
-        cross_sectional_ic,
-        nmi_matrix,
-        single_linear,
-    )
+    from czsc.utils.analysis import cross_sectional_ic
 
-    assert callable(nmi_matrix)
-    assert callable(single_linear)
     assert callable(cross_sectional_ic)
 
 
@@ -164,30 +173,22 @@ def test_backward_compatibility():
     绘图相关 symbol 现在统一从 ``czsc.utils.plotting.*`` 显式获取。本测试
     锁定这条契约，避免有人后续又把 lazy loading 加回来：
 
-    - ``czsc.utils.*``：稳定暴露 ``DataClient`` / ``DiskCache`` / ``home_path`` /
-      ``daily_performance`` 等数据/统计接口
-    - ``czsc.utils.plotting.kline.plot_nx_graph`` / ``czsc.utils.plotting.weight.*``：
-      保留的绘图符号显式从 plotting 子模块拿
-    - ``czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}``：
-      缠论 K 线可视化的唯一对外接口（二阶段清理 PR-C 起）
+    - ``czsc.utils.*``：稳定暴露 ``DataClient`` / ``DiskCache`` / ``home_path`` 等
+      数据接口（``daily_performance`` 已下沉 wbt，本子包不再 re-export，2026-05-17 PR-A）；
+    - ``czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}``：缠论 K 线
+      可视化的唯一对外接口（二阶段清理 PR-C 起）。
     """
-    from czsc.utils import (
-        DataClient,
-        DiskCache,
-        daily_performance,
-        home_path,
-    )
+    from czsc import daily_performance
+    from czsc.utils import DataClient, DiskCache, home_path
 
     assert home_path is not None
     assert DiskCache is not None
     assert DataClient is not None
     assert callable(daily_performance)
 
-    # 保留的绘图符号显式从 plotting 子模块获取
-    from czsc.utils.plotting.kline import plot_nx_graph
+    # 唯一保留的缠论 K 线可视化入口
     from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_signals, plot_czsc_trader
 
-    assert callable(plot_nx_graph)
     assert callable(plot_czsc)
     assert callable(plot_czsc_trader)
     assert callable(plot_czsc_signals)

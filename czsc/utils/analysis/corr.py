@@ -1,8 +1,12 @@
-"""
-author: zengbin93
-email: zeng_bin8888@163.com
-create_dt: 2022/1/29 15:01
-describe: 相关系数计算、可视化
+"""相关性分析工具。
+
+历史上本模块还包含 ``nmi_matrix`` 与 ``single_linear``，在 2026-05-17 PR-A
+中已删除：
+
+- ``nmi_matrix`` 依赖 ``scikit-learn``，是 czsc 唯一的 sklearn 调用点，删除后
+  整个项目不再依赖 sklearn。
+- ``single_linear`` 仅被 :func:`cross_sectional_ic` 内部使用，已在本文件中
+  内联为最小二乘公式，不再暴露为公共 API。
 
 References:
 1. https://zhuanlan.zhihu.com/p/362258222
@@ -11,71 +15,6 @@ References:
 
 import numpy as np
 import pandas as pd
-
-
-def nmi_matrix(df: pd.DataFrame) -> pd.DataFrame:
-    """计算高维标准化互信息并以矩阵形式输出
-
-    :param df: 数据
-    :return: pd.DataFrame，NMI 矩阵（行列均为 ``df.columns``）
-    """
-    from sklearn import metrics
-
-    cols = df.columns.to_list()
-
-    m_dict = {}
-    for i, col1 in enumerate(cols):
-        X = df[col1]
-        for col2 in cols[i:]:
-            Y = df[col2]
-            nmi = metrics.normalized_mutual_info_score(X, Y)
-            m_dict[f"{col1}_{col2}"] = nmi
-            m_dict[f"{col2}_{col1}"] = nmi
-
-    m = []
-    for col1 in cols:
-        A = []
-        for col2 in cols:
-            A.append(m_dict[f"{col1}_{col2}"])
-        m.append(A)
-
-    return pd.DataFrame(m, index=cols, columns=cols)
-
-
-def single_linear(y: np.ndarray | list, x: np.ndarray | list | None = None) -> dict:
-    """单变量线性拟合
-
-    :param y: 目标序列
-    :param x: 单变量值
-    :return res: 拟合结果，样例如下
-        {'slope': 1.565, 'intercept': 67.9783, 'r2': 0.9967}
-
-        slope       标识斜率
-        intercept   截距
-        r2          拟合优度
-    """
-    if not x:
-        x = list(range(len(y)))
-
-    x_squred_sum = sum([x1 * x1 for x1 in x])
-    xy_product_sum = sum([x[i] * y[i] for i in range(len(x))])
-    num = len(x)
-    x_sum = sum(x)
-    y_sum = sum(y)
-    delta = float(num * x_squred_sum - x_sum * x_sum)
-    if delta == 0:
-        return {"slope": 0, "intercept": 0, "r2": 0}
-
-    y_intercept = (1 / delta) * (x_squred_sum * y_sum - x_sum * xy_product_sum)
-    slope = (1 / delta) * (num * xy_product_sum - x_sum * y_sum)
-
-    y_mean = np.mean(y)
-    ss_tot = sum([(y1 - y_mean) * (y1 - y_mean) for y1 in y]) + 0.00001
-    ss_err = sum([(y[i] - slope * x[i] - y_intercept) * (y[i] - slope * x[i] - y_intercept) for i in range(len(x))])
-    rsq = 1 - ss_err / ss_tot
-
-    res = {"slope": round(slope, 4), "intercept": round(y_intercept, 4), "r2": round(rsq, 4)}
-    return res
 
 
 def cross_sectional_ic(df, x_col="open", y_col="n1b", method="spearman", **kwargs):
@@ -131,8 +70,26 @@ def cross_sectional_ic(df, x_col="open", y_col="n1b", method="spearman", **kwarg
 
     res["IC绝对值>2%占比"] = round(len(df[df["ic"].abs() > 0.02]) / len(df), 4)
 
-    lr_ = single_linear(y=df["ic"].cumsum().to_list())
-    res.update({"累计IC回归R2": lr_["r2"], "累计IC回归斜率": lr_["slope"]})
+    # 累计 IC 的线性回归：用最小二乘公式直接算出 slope / R²。
+    # 内联原 ``single_linear`` 的算术（含 ss_tot += 1e-5 的稳定化项），保持
+    # 输出与旧版 byte-for-byte 一致；不再依赖被删除的公共 API。
+    y_arr = df["ic"].cumsum().to_numpy(dtype=np.float64)
+    n = len(y_arr)
+    if n >= 2:
+        x_arr = np.arange(n, dtype=np.float64)
+        x_sum = float(x_arr.sum())
+        y_sum = float(y_arr.sum())
+        x_sq_sum = float((x_arr * x_arr).sum())
+        xy_sum = float((x_arr * y_arr).sum())
+        delta = n * x_sq_sum - x_sum * x_sum
+        if delta != 0:
+            slope = (n * xy_sum - x_sum * y_sum) / delta
+            intercept = (x_sq_sum * y_sum - x_sum * xy_sum) / delta
+            ss_tot = float(((y_arr - y_arr.mean()) ** 2).sum()) + 0.00001
+            ss_err = float(((y_arr - slope * x_arr - intercept) ** 2).sum())
+            r2 = 1.0 - ss_err / ss_tot
+            res["累计IC回归R2"] = round(r2, 4)
+            res["累计IC回归斜率"] = round(slope, 4)
 
     monthly_ic = df.groupby(df["dt"].dt.strftime("%Y年%m月"))["ic"].mean().to_dict()
     monthly_win_rate = len([1 for x in monthly_ic.values() if np.sign(x) == np.sign(res["IC均值"])]) / len(monthly_ic)
