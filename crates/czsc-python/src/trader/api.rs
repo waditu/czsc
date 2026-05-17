@@ -12,7 +12,7 @@ use chrono::{DateTime, FixedOffset, NaiveDate, NaiveDateTime, Utc};
 use czsc_core::analyze::utils::format_standard_kline;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::freq::Freq;
-use czsc_core::objects::position::{PyPosition, Position};
+use czsc_core::objects::position::{Position, PyPosition};
 use czsc_signals::registry::list_all_signals as list_all_registered_signals;
 use czsc_trader::engine_v2::{ExecutionPlan, ExecutionPlanInput, UnifiedExecEngine};
 use czsc_trader::optimize::{
@@ -1583,11 +1583,7 @@ pub fn strategy_save_position(position: PyPosition, path: PathBuf) -> PyResult<(
 /// [`czsc_trader::strategy::load_position_from_file`]。
 #[pyfunction]
 #[pyo3(signature = (path, symbol, check=true))]
-pub fn strategy_load_position(
-    path: PathBuf,
-    symbol: String,
-    check: bool,
-) -> PyResult<PyPosition> {
+pub fn strategy_load_position(path: PathBuf, symbol: String, check: bool) -> PyResult<PyPosition> {
     czsc_trader::strategy::load_position_from_file(&path, &symbol, check)
         .map(|inner| PyPosition { inner })
         .map_err(|e| PyValueError::new_err(format!("{e:#}")))

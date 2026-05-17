@@ -81,7 +81,7 @@ uv run --no-sync ruff check czsc/ tests/
    - 由 `crates/czsc-python` 通过 `maturin` 打包，扩展模块名 `czsc._native`
    - 暴露 `CZSC / FX / BI / ZS / RawBar / NewBar / Freq / Mark / Direction / Operate / Signal / Event / Position / BarGenerator` 等核心类型
    - 暴露 `check_bi / check_fx / check_fxs / remove_include / freq_end_time / is_trading_time` 等工具函数
-   - 暴露 250+ 信号函数（完整分组以 `crates/czsc-signals/src/` 为准，13+ 子模块；可用 `ls crates/czsc-signals/src/` 自查最新清单）
+   - 暴露 220+ 信号函数（Python 端 7 个子模块：bar/cvolp/cxt/obv/pressure/tas/vol；底层 `crates/czsc-signals/src/` 有 22 个 .rs 源文件，可用 `ls crates/czsc-signals/src/` 自查最新清单）
    - 暴露 `czsc._native.ta.*`（Rust TA 算子，供信号函数内部使用；本次清理 起 Python 端不再暴露 `czsc.ta` 顶层 alias）
    - **不存在 Python 回退**：`czsc/py/` 与 `czsc/core.py` 已在 Phase H 删除；`CZSC_USE_PYTHON` 环境变量已退役（spec §3.4）
 
@@ -96,7 +96,7 @@ uv run --no-sync ruff check czsc/ tests/
    - `optimize.py` 已于 2026-05-17 PR-C `git mv` 到 `czsc/utils/optimize.py`（职责更贴近 utils）；调用方请用 `from czsc.utils.optimize import OpensOptimize, ExitsOptimize, CzscOpenOptimStrategy, CzscExitOptimStrategy`
 
 4. **`czsc/_native.signals`** - 信号函数（Rust 实现，通过 PyO3 暴露）：
-   - 完整分组以 `crates/czsc-signals/src/` 为准（13+ 子模块），自查命令：`ls crates/czsc-signals/src/`
+   - Python 端暴露 7 个子模块（bar/cvolp/cxt/obv/pressure/tas/vol）；底层 `crates/czsc-signals/src/` 有 22 个 .rs 源文件，自查命令：`ls crates/czsc-signals/src/`
    - 原 `czsc/signals/` Python 命名空间层已在 Phase J **彻底删除**
    - 通过 `czsc.traders.generate_czsc_signals` 等接口调用信号
    - 信号解析 API：`get_signals_config` / `get_signals_freqs`（`czsc.traders`）；`SignalsParser` 类已删除
@@ -245,19 +245,17 @@ czsc_obj = CZSC(bars)
 
 ### 信号函数体系（`czsc._native.signals`）
 - 信号函数由 Rust 实现，通过 PyO3 暴露为 `czsc._native.signals.*`
-- 完整分组以 `crates/czsc-signals/src/` 为准（13+ 子模块）；自查命令：`ls crates/czsc-signals/src/`
+- Python 端暴露 7 个子模块（bar/cvolp/cxt/obv/pressure/tas/vol）；底层 `crates/czsc-signals/src/` 有 22 个 .rs 源文件，自查命令：`ls crates/czsc-signals/src/`
 - 注册机制：`#[signal]` 宏自动注册到 `SIGNAL_REGISTRY`，不再使用 `V<yyMMdd>` 版本后缀
 - 原 Python `czsc/signals/` 目录已彻底删除（Phase J）
 - 信号配置解析：`get_signals_config` / `get_signals_freqs`（`czsc.traders`），底层调用 Rust 端 `derive_signals_config` / `derive_signals_freqs`
 
-### 探索性数据分析（`czsc/eda.py`）
-- `monotonicity`: 单调性分析
-- `weights_simple_ensemble`: 多策略权重集成
-- `cal_trade_price`: 交易价格表计算
-- `mark_cta_periods`: 标记CTA最易/最难赚钱时间段
-- `mark_volatility`: 标记高/低波动率时间段
-- `cal_yearly_days`: 年度交易日数量
-- `turnover_rate`: 换手率计算
+### 探索性数据分析（顶层 `czsc.*`，原 `czsc/eda.py` 已下线）
+- `monotonicity`: 单调性分析（PR-D 已下沉 Rust 实现）
+- `mark_cta_periods`: 标记 CTA 最易/最难赚钱时间段（PR-B 拆到 `czsc/utils/`）
+- `mark_volatility`: 标记高/低波动率时间段（PR-B 拆到 `czsc/utils/`）
+
+> 其余历史函数 `weights_simple_ensemble` / `cal_trade_price` / `cal_yearly_days` / `turnover_rate` 已于 PR-A 二阶段清理中删除；迁移说明见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 
 ## 重要文档和资源
 

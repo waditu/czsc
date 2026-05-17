@@ -28,7 +28,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
-use czsc_core::objects::position::{Position, load_position};
+use czsc_core::objects::position::Position;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
@@ -150,8 +150,8 @@ const STRIPPED_FIELDS_FOR_CHECKSUM: &[&str] = &[CHECKSUM_FIELD, LEGACY_MD5_FIELD
 /// 4. 写回到 payload 的 `checksum` 字段；
 /// 5. 以紧凑 JSON 写入文件。
 pub fn save_position_to_file(pos: &Position, path: &Path) -> Result<()> {
-    let mut payload = serde_json::to_value(pos)
-        .with_context(|| format!("序列化 Position 失败: {path:?}"))?;
+    let mut payload =
+        serde_json::to_value(pos).with_context(|| format!("序列化 Position 失败: {path:?}"))?;
     {
         let map = expect_object_mut(&mut payload, path)?;
         // 剥离 symbol（运行时绑定，复用配置时由调用方注入）
@@ -164,10 +164,7 @@ pub fn save_position_to_file(pos: &Position, path: &Path) -> Result<()> {
     let checksum = compute_checksum(&payload);
     {
         let map = expect_object_mut(&mut payload, path)?;
-        map.insert(
-            CHECKSUM_FIELD.to_string(),
-            Value::String(checksum),
-        );
+        map.insert(CHECKSUM_FIELD.to_string(), Value::String(checksum));
     }
     let content = serde_json::to_string(&payload)
         .with_context(|| format!("序列化最终 payload 失败: {path:?}"))?;
@@ -255,10 +252,7 @@ fn compute_checksum(value: &Value) -> String {
     hex::encode(hasher.finalize())
 }
 
-fn expect_object_mut<'v>(
-    value: &'v mut Value,
-    path: &Path,
-) -> Result<&'v mut Map<String, Value>> {
+fn expect_object_mut<'v>(value: &'v mut Value, path: &Path) -> Result<&'v mut Map<String, Value>> {
     value.as_object_mut().ok_or_else(|| {
         anyhow!("期望文件根节点是 JSON Object（Position payload），但实际不是: {path:?}")
     })
@@ -337,8 +331,7 @@ mod tests {
         save_position_to_file(&pos1, &p1_path).unwrap();
         save_position_to_file(&pos2, &p2_path).unwrap();
 
-        let strategy =
-            JsonStrategy::from_files("MY_SYMBOL", [&p1_path, &p2_path], true).unwrap();
+        let strategy = JsonStrategy::from_files("MY_SYMBOL", [&p1_path, &p2_path], true).unwrap();
         assert_eq!(strategy.symbol, "MY_SYMBOL");
         assert_eq!(strategy.positions.len(), 2);
         for pos in &strategy.positions {
@@ -372,8 +365,14 @@ mod tests {
         let obj = value.as_object().unwrap();
 
         assert!(obj.contains_key("checksum"), "新格式必须写出 checksum 字段");
-        assert!(!obj.contains_key("symbol"), "save 必须剥离 symbol，让配置可复用");
-        assert!(!obj.contains_key("md5"), "新写出的文件不应再有遗留的 md5 字段");
+        assert!(
+            !obj.contains_key("symbol"),
+            "save 必须剥离 symbol，让配置可复用"
+        );
+        assert!(
+            !obj.contains_key("md5"),
+            "新写出的文件不应再有遗留的 md5 字段"
+        );
         let checksum = obj["checksum"].as_str().unwrap();
         assert_eq!(checksum.len(), 64, "SHA256 hex 字符串应为 64 位");
     }

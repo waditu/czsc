@@ -34,12 +34,11 @@ czsc (Python 包)
 │   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
-│   ├── signals.*         ← 250+ 信号函数（13+ 子模块；详见 crates/czsc-signals/src/）
+│   ├── signals.*         ← 220+ 信号函数（Python 端 7 个子模块；详见 crates/czsc-signals/src/）
 │   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，本次清理 起仅内部使用)
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
 ├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
 ├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
-├── czsc.eda              ← 探索性数据分析（因子/特征/权重）
 ├── czsc.strategies       ← 策略门面（CzscStrategyBase/CzscJsonStrategy）
 ├── czsc.fsa              ← 飞书自动化工具
 ├── czsc.mock             ← 测试用模拟数据（转发自 wbt）
@@ -55,9 +54,9 @@ czsc (Python 包)
 
 * 缠论的 `分型、笔` 的自动识别，由 Rust 实现并通过 `czsc._native` 暴露
 * 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
-* 定义并实现了 250+ 信号函数（Rust 实现），见 `czsc._native.signals`
+* 定义并实现了 220+ 信号函数（Rust 实现），见 `czsc._native.signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
-* HTML 可视化（plotly + lightweight-charts）：`czsc.utils.plotting.{kline,backtest,lightweight}.*`
+* HTML 可视化（plotly + lightweight-charts）：`czsc.utils.plotting.{kline,weight,lightweight}.*`
 
 
 ## 安装使用
@@ -233,8 +232,9 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 | 模块 | 功能 |
 |------|------|
 | `czsc.utils.plotting.kline` | 单周期 K 线 + 缠论结构（plotly Figure） |
-| `czsc.utils.plotting.backtest` | 累计收益 / 回撤 / 月度热力图 / 综合回测概览 |
+| `czsc.utils.plotting.weight` | 权重时序图（plotly Figure） |
 | `czsc.utils.plotting.lightweight` | lightweight-charts 自包含 HTML，多周期联立 + 信号叠加 |
+| 累计收益 / 回撤 / 月度热力图 / 综合回测概览 | 改用 `wbt.generate_backtest_report` 或直接 plotly，见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md) |
 
 如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 

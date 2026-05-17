@@ -7,12 +7,12 @@
 
 ---
 
-## [1.0.0] — 2026-05-16
+## [1.0.0-rc.1] — 2026-05-17
 
-> **里程碑版本。** 缠论核心算法（分型、笔、中枢、信号体系）从 Python 迁移到 Rust，
+> **1.0.0 候选预发布版本。** 缠论核心算法（分型、笔、中枢、信号体系）从 Python 迁移到 Rust，
 > 通过 PyO3 扩展 `czsc._native` 暴露给 Python 用户；Rust 用户可直接
 > `cargo add czsc`（或子 crate）使用。本版本含大量 **breaking changes**，从
-> 0.9.X / 0.10.X 升级请阅读下方「迁移指引」。
+> 0.9.X / 0.10.X 升级请阅读下方「迁移指引」。final 1.0.0 在该 RC 通过下游验证后 promote。
 
 ### 架构总览
 
@@ -23,10 +23,10 @@ czsc (Python 包)
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
 │   ├── signals.*         ← 250+ 信号函数（13+ 子模块）
-│   └── ta.*              ← Rust TA 算子（ema/sma/boll 等）
+│   └── ta.*              ← Rust TA 算子（ema/sma/boll 等，仅内部使用）
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
-├── czsc.svc              ← Streamlit 量化研究组件库（静态 import）
-├── czsc.utils.plotting   ← Plotly 可视化 + lightweight_charts
+├── czsc.utils.plotting   ← Plotly 可视化（kline / weight）+ lightweight_charts HTML
+├── czsc.strategies       ← 策略门面（CzscStrategyBase / CzscJsonStrategy，全部走 Rust 透传）
 └── czsc.connectors       ← 数据源接入（tq / ts / ccxt / local_data）
 ```
 
@@ -102,11 +102,13 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
 - 新增 `tests/compat/test_api_no_streamlit.py` 防护测试 + `tests/compat/baselines/` 基线快照；`test_public_api.py` 增 `test_ta_namespace_removed` / `test_svc_subpackage_removed`；snapshot `top_level` 移除 `"svc"` / `"ta"`、`ta` 整组迁入 `removed_ta`。
 - 迁移详见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 
-#### 清理非缠论核心 API · 二阶段（PR-A/B/C/D，1.0.0 核心重构延续）
+#### 清理非缠论核心 API · 二阶段（PR-A/B/C，1.0.0 核心重构延续）
 
 > 上一波清理后，继续删除 17 个无明显业务依赖的工具 / 分析 / 绘图 API。Rust 缠论核心（`czsc._native`）零影响；缠论 K 线可视化统一收敛到 `czsc.utils.plotting.lightweight`。
 
-- **删除 8 个工具 / 分析函数**（PR-B）：
+- **删除 13 个非核心 API + 3 个整删模块**（PR-A）：批量删除入口；旧 `czsc.eda.py`、`czsc.utils.analysis.stats` 等模块整目录下线。
+- **拆分 mark_cta_periods / mark_volatility 到 utils 独立文件**（PR-B）：从原 `czsc/eda.py` 搬到 `czsc/utils/`，导出路径保持 `czsc.mark_cta_periods` / `czsc.mark_volatility` 不变。
+- **删除 8 个工具 / 分析函数**：
   - `czsc.eda.{cal_yearly_days, weights_simple_ensemble, cal_trade_price, turnover_rate}` —— 一行 pandas 可替代，详见迁移文档。
   - `czsc.utils.{create_grid_params, mac_address}` —— 直接用 `sklearn.ParameterGrid` / `uuid.getnode()`。
   - `czsc.utils.analysis.{holds_performance, rolling_daily_performance}` —— 用 `wbt.WeightBacktest` + `daily_performance`。
@@ -114,12 +116,27 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
   - `czsc.utils.plotting.kline.{KlineChart, plot_czsc_chart}` —— 改用 `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}`（离线 HTML，多周期联立）；`kline.plot_nx_graph` 保留。
   - `czsc.utils.plotting.backtest.{plot_cumulative_returns, plot_drawdown_analysis, plot_daily_return_distribution, plot_monthly_heatmap, plot_backtest_stats, plot_colored_table, plot_long_short_comparison}` —— 整文件 `git rm`；HTML 报告改用 `wbt.generate_backtest_report` 或自行 `plotly.express` 直绘。
   - 附带删除 `czsc.utils.plotting.{backtest.py, common.py}` 整文件；`_macd.py` 因 `lightweight/_data.py` 仍 lazy import `compute_macd`，保留为内部模块。
+- **PR-C 同步**：`czsc.traders.base` / `czsc.traders.sig_parse` 两个纯透传文件整文件 `git rm`，调用方改为 `from czsc.traders import ...` 直取 facade；`czsc.traders.optimize` 整文件 `git mv` 到 `czsc.utils.optimize`（职责更贴近 utils），调用方用 `from czsc.utils.optimize import OpensOptimize, ExitsOptimize, CzscOpenOptimStrategy, CzscExitOptimStrategy`。
 - **测试 / 文档同步**：
   - 新增 `tests/compat/test_drop_secondary_api.py` 双轨防回归（hasattr × 31 组合 + 模块 import × 2）。
   - `tests/compat/test_api_no_streamlit.py` 中 `test_plot_kline_still_importable` / `test_plot_backtest_still_importable` 反转为"必须删除"；INDEPENDENT_FILES 移出已删的 `backtest.py`。
   - `tests/compat/snapshots/api_v1.json` 新增 `removed_v2_batch` 字段（10 个被从 `czsc.*` 顶层移除的 API）。
   - 删除 `tests/test_plotly_plot.py` / `test_plot_colored_table.py` / `test_plot_long_short_comparison.py` 及 `docs/examples/{03,09}.py`。
   - `README.md` / `docs/examples.md` / `docs/migration/cleanup-non-czsc-core.md` 同步精修。
+
+#### 开发宪法第一条收口 · Rust 下沉（PR-D 至 PR-G，1.0.0 核心重构延续）
+
+> 落实 [`CLAUDE.md` 开发宪法第一条](CLAUDE.md#第一条--rust--python-行为一致)："需要 Rust 实现的部分必须同时满足 Rust crate 与 Python wheel 行为一致（Python 端纯透传，禁止再写适配层）"。本批 PR 把 Python 侧 4 处仍残留的"适配层"代码全部下沉到 Rust，Python 顶层 import 路径保持不变。
+
+- **PR-D · `monotonicity` 改为 Rust 实现**：原 `czsc/eda.py` 中基于 `scipy.stats.spearmanr` / `kendalltau` / `pearsonr` 的实现整段下沉到 `crates/czsc-utils` Rust 端（Spearman 自行实现 fractional ranking + tie correction，Kendall O(n²) τ-b，Pearson 标准公式）。`czsc.monotonicity` 现在是 1 行 `_native.*` 透传；运行时不再依赖 `scipy`（数值上与 scipy 在 1e-12 级误差内一致，已在 `tests/unit/test_monotonicity_parity.py` 校验）。
+- **PR-E · Rust 端新增 strategy 模块**：在 `crates/czsc-trader/src/strategy.rs` 中新增 `Strategy` trait 与 `JsonStrategy` struct，沉淀策略门面的纯 Rust 数据模型（持仓集合、唯一信号集合、symbol 绑定等），为 PR-F/G 的 Python 端透传提供底座；`cargo test -p czsc-trader::strategy` 全套覆盖。
+- **PR-F · `CzscStrategyBase.unique_signals` 走 Rust 纯透传**：Python 端原本基于 `set` + `sorted` 的去重逻辑下沉到 `JsonStrategy::unique_signals`（保序去重，按 positions 输入顺序遍历，与 Python `CzscStrategyBase.unique_signals` 旧实现 byte-for-byte 一致）。Python 侧只剩 1 行 `return self._native.unique_signals()`。
+- **PR-G · `save_positions` / `load_positions` 整段下沉 Rust**：
+  - 原 Python 端用 `hashlib.md5(json.dumps(...))` 校验文件完整性，且 Python 侧手工剥离 `symbol` 字段。本次全部下沉到 `czsc_trader::strategy::{save_position_to_file, load_position_from_file}`：
+    - 文件完整性校验改用 `sha256(canonical JSON)`，可在 Rust / Python 端 byte-for-byte 一致复现，并兼容老文件中遗留的 `md5` 字段（已加迁移路径）。
+    - `symbol` 字段在 save 时自动剥离（让配置可复用），load 时由调用方注入。
+  - Python 端 `CzscStrategyBase.save_positions` / `load_positions` 现在是纯 `_native.*` 透传；新增源码级 ratchet `tests/unit/test_strategy_save_load_parity.py::test_strategies_module_no_longer_uses_hashlib_or_json` 防止后续 PR 再在 Python 侧引入 `hashlib` / `json` 写文件逻辑。
+- **CLAUDE.md 同步**：开发宪法第一条章节补"PR-G 落地参考（2026-05-17）"小节，明确 `unique_signals` / `save_positions` / `load_positions` 已 100% 下沉 Rust，违反本条的新 PR 会被 ratchet 测试拦下。
 
 ### Added
 
@@ -285,4 +302,4 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
-[1.0.0]: https://github.com/waditu/czsc/releases/tag/v1.0.0
+[1.0.0-rc.1]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.1
