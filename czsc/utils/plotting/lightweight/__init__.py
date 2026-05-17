@@ -9,7 +9,7 @@
 每个周期展开为 3 个 sub-pane：主图（K + SMA5 + SMA20 + 分型 + 笔）+ 副图1 成交量 +
 副图2 MACD。颜色与项目 Plotly 版 ``KlineChart`` 对齐，避免红绿互换迷惑。
 
-零第三方运行时依赖：HTML 模板用 Python 标准库 ``string.Template``。v2.0.0
+零第三方运行时依赖：HTML 模板用 Python 标准库 ``string.Template``。本次清理
 起 streamlit 输出路径已删除——如需在 streamlit 中嵌入，由调用方自行用
 ``st.components.v1.html(plot_czsc(c, output='html'))`` 完成。
 """
@@ -32,7 +32,7 @@ __all__ = ["plot_czsc", "plot_czsc_signals", "plot_czsc_trader"]
 
 def _dispatch(payload: _data.ChartPayload, *, output: OutputType, path: str | Path | None) -> str | None:
     if output != "html":
-        raise ValueError(f"unknown output={output!r}; only 'html' is supported since v2.0.0")
+        raise ValueError(f"unknown output={output!r}; only 'html' is supported since 本次清理")
     html = _html_renderer.render(payload)
     if path is None:
         return html
@@ -54,7 +54,7 @@ def plot_czsc(
     """单周期：把 ``CZSC`` 对象画成 lightweight-charts 三 sub-pane 图。
 
     :param c: ``CZSC`` 实例
-    :param output: 仅支持 ``"html"``（v2.0.0 起 streamlit 路径已删除）
+    :param output: 仅支持 ``"html"``（本次清理 起 streamlit 路径已删除）
     :param path: HTML 模式下落盘路径；为 ``None`` 时返回 HTML 字符串
     :param title: 网页 / 标题文字；默认 ``"<symbol> 缠论结构（<freq>）"``
     :param theme: ``"light"`` 或 ``"dark"``
@@ -149,7 +149,7 @@ def plot_czsc_signals(
     Args:
         bars: 基础周期 K 线列表（``RawBar``）。
         signals_config: 信号配置，结构同 ``generate_czsc_signals``。
-        output: 仅支持 ``"html"``（v2.0.0 起 streamlit 路径已删除）。
+        output: 仅支持 ``"html"``（本次清理 起 streamlit 路径已删除）。
         path: HTML 模式下落盘路径，为 ``None`` 时返回 HTML 字符串。
         title: 网页标题；缺省自动生成。
         theme: ``"light"`` / ``"dark"``。默认 ``"dark"``。

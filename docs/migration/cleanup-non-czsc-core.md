@@ -1,4 +1,4 @@
-# v2.0.0 清理非缠论核心 API 迁移指南
+# 清理非缠论核心 API 迁移指南（1.0.0 核心重构延续，PR #313）
 
 > 关联：
 > - 飞书任务：[《清理非缠论核心 API》](https://s0cqcxuy3p.feishu.cn/wiki/OGUUwZMZdi2jtykaFpKcAPz4nig)
@@ -62,9 +62,9 @@ st.components.v1.html(html, height=900, scrolling=True)
 
 ## 升级步骤
 
-1. **安装新版本**：
+1. **安装新版本**（继续 1.0.0 系列，本次清理含 breaking change）：
    ```bash
-   uv pip install --upgrade "czsc==2.0.0"
+   uv pip install --upgrade "czsc==1.0.0"
    # 若仍需 streamlit 集成
    uv pip install streamlit
    ```

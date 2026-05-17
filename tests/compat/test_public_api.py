@@ -88,10 +88,10 @@ def test_traders_namespace_complete() -> None:
 
 
 def test_ta_namespace_removed() -> None:
-    """`czsc.ta` 顶层别名已在 v2.0.0 删除；Rust `_native.ta` 仍保留供信号内部使用。"""
+    """`czsc.ta` 顶层别名已在 本次清理 删除；Rust `_native.ta` 仍保留供信号内部使用。"""
     czsc, err = _safe_import("czsc")
     assert czsc is not None, f"failed to import czsc: {err}"
-    assert not hasattr(czsc, "ta"), "czsc.ta 仍可访问，应已删除（v2.0.0 breaking change）"
+    assert not hasattr(czsc, "ta"), "czsc.ta 仍可访问，应已删除（本次清理 breaking change）"
     # Rust 侧仍可用（信号函数依赖）
     native_ta, err = _safe_import("czsc._native.ta")
     assert native_ta is not None, f"Rust _native.ta 必须保留供信号内部使用: {err}"
@@ -146,6 +146,6 @@ def test_retained_subpackages_importable(module_name: str) -> None:
 
 
 def test_svc_subpackage_removed() -> None:
-    """`czsc.svc` 已在 v2.0.0 删除，任何残留路径必须不可 import。"""
+    """`czsc.svc` 已在 本次清理 删除，任何残留路径必须不可 import。"""
     mod, _ = _safe_import("czsc.svc")
-    assert mod is None, "czsc.svc 仍可 import，应已删除（v2.0.0 breaking change）"
+    assert mod is None, "czsc.svc 仍可 import，应已删除（本次清理 breaking change）"

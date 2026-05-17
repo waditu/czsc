@@ -1,5 +1,5 @@
 {
-  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（v2.0.0 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（v2.0.0 breaking）。Rust _native.ta 保留。",
+  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。",
   "top_level": [
     "BI",
     "CZSC",

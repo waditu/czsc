@@ -35,7 +35,7 @@ czsc (Python 包)
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
 │   ├── signals.*         ← 250+ 信号函数（13+ 子模块；详见 crates/czsc-signals/src/）
-│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，v2.0.0 起仅内部使用)
+│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，本次清理 起仅内部使用)
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
 ├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
 ├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
@@ -228,7 +228,7 @@ fig.show()
 
 ## 可视化（HTML 输出）
 
-v2.0.0 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight-charts 输出 HTML：
+本次清理 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight-charts 输出 HTML：
 
 | 模块 | 功能 |
 |------|------|
@@ -236,7 +236,7 @@ v2.0.0 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight
 | `czsc.utils.plotting.backtest` | 累计收益 / 回撤 / 月度热力图 / 综合回测概览 |
 | `czsc.utils.plotting.lightweight` | lightweight-charts 自包含 HTML，多周期联立 + 信号叠加 |
 
-如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/v2-cleanup.md`](docs/migration/v2-cleanup.md)。
+如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 
 
 ## 开发环境搭建

@@ -92,7 +92,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 | 13 | [`13_lightweight_charts_html.py`](./examples/13_lightweight_charts_html.py) | `plot_czsc` · `plot_czsc_trader` | 缠论 K 线 + 多周期联立，自包含 HTML（无需服务端） |
 | 15 | [`15_lightweight_signals_html.py`](./examples/15_lightweight_signals_html.py) | `plot_czsc_signals` | 信号叠加版本，含 signal timeline + tooltip |
 
-> v2.0.0 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/v2-cleanup.md`](./migration/v2-cleanup.md)。
+> 本次清理 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/cleanup-non-czsc-core.md`](./migration/cleanup-non-czsc-core.md)。
 
 ---
 
@@ -206,7 +206,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 
 ## 5. 已知兼容性提示
 
-> v2.0.0 后已删除 `czsc.svc` 与 streamlit 依赖，相关示例与组件提示一并移除；如需可视化请直接使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
+> 本次清理 后已删除 `czsc.svc` 与 streamlit 依赖，相关示例与组件提示一并移除；如需可视化请直接使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
 
 ---
 
