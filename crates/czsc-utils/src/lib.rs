@@ -10,8 +10,10 @@
 pub mod bar_generator;
 pub mod errors;
 pub mod freq_data;
+pub mod monotonicity;
 pub mod trading_time;
 
+pub use monotonicity::monotonicity;
 pub use trading_time::is_trading_time;
 
 #[cfg(feature = "python")]

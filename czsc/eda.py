@@ -1,32 +1,21 @@
-"""探索性分析（EDA）入口。
+"""探索性分析（EDA）模块的兼容入口。
 
-历史上本模块汇集 ``monotonicity`` / ``mark_cta_periods`` / ``mark_volatility``
-三个工具函数。
+2026-05-17 PR-D 起：
 
-- 2026-05-17 PR-B 起：``mark_cta_periods`` 与 ``mark_volatility`` 已拆分到
-  :mod:`czsc.utils.mark_cta_periods` / :mod:`czsc.utils.mark_volatility` 独立
-  文件，本模块仅为不破坏 ``from czsc.eda import mark_cta_periods`` 的历史
-  导入路径做 re-export，新增代码请直接走 ``czsc.utils.*``。
-- ``monotonicity`` 留待下一阶段 PR-D Rust 化（届时本文件会进一步精简或删除）。
+- ``monotonicity`` 已迁到 Rust 实现（:mod:`czsc._native.monotonicity`），
+  本模块只做 re-export，行为与原 Python 版本一致（与
+  ``scipy.stats.spearmanr`` 等价），但去掉了对 scipy 的直接依赖；
+- ``mark_cta_periods`` / ``mark_volatility`` 已于 PR-B 拆到
+  :mod:`czsc.utils.mark_cta_periods` / :mod:`czsc.utils.mark_volatility`，
+  本模块仅保留 re-export 以维持 ``from czsc.eda import ...`` 的历史路径。
+
+新代码请直接走 ``czsc.*`` 顶层或 ``czsc.utils.*`` / ``czsc._native.*``。
 """
 
 from __future__ import annotations
 
+from czsc._native import monotonicity
 from czsc.utils.mark_cta_periods import mark_cta_periods
 from czsc.utils.mark_volatility import mark_volatility
-
-
-def monotonicity(sequence):
-    """计算序列的单调性
-
-    原理：计算序列与自然数序列的相关系数，系数越接近1，表示单调递增；系数越接近-1，表示单调递减；接近0表示无序
-
-    :param sequence: list, tuple 序列
-    :return: float, 单调性系数
-    """
-    from scipy.stats import spearmanr
-
-    return spearmanr(sequence, range(len(sequence)))[0]
-
 
 __all__ = ["mark_cta_periods", "mark_volatility", "monotonicity"]

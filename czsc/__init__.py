@@ -68,8 +68,8 @@ from ._native import (
 
 # === EDA 工具 ===
 # 2026-05-17 PR-B：``mark_cta_periods`` / ``mark_volatility`` 已迁到 czsc.utils 独立文件。
-# ``monotonicity`` 仍暂留 czsc.eda，下一阶段 PR-D 改为 Rust 实现后整体下线 czsc/eda.py。
-from .eda import monotonicity
+# 2026-05-17 PR-D：``monotonicity`` 已改为 Rust 实现（czsc._native），与 scipy.stats.spearmanr 等价。
+from ._native import monotonicity
 from .utils.mark_cta_periods import mark_cta_periods
 from .utils.mark_volatility import mark_volatility
 

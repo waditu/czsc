@@ -29,6 +29,7 @@ __all__ = [
     "Signal",
     "ZS",
     "chip_distribution_triangle",
+    "monotonicity",
     "parse_signal_doc",
 ]
 
@@ -1263,6 +1264,15 @@ def chip_distribution_triangle(data: numpy.typing.NDArray[numpy.float64], price_
     - `chip_distribution`: 一维数组，对应每个价格中心的筹码强度（权重/密度）。
     
     返回的两个数组长度相同，可用于绘制筹码分布图或进一步分析。
+    """
+
+def monotonicity(sequence: typing.Sequence[builtins.float]) -> builtins.float:
+    r"""
+    `czsc.monotonicity(sequence)` → float。
+    
+    计算序列与自然数序列的 Spearman 秩相关，等价于
+    `scipy.stats.spearmanr(sequence, range(len(sequence))).statistic`。
+    详见 [`crate::monotonicity::monotonicity`] 的算法说明与对齐口径。
     """
 
 def parse_signal_doc(doc: builtins.str) -> ParsedSignalDoc:
