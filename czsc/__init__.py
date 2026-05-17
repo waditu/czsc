@@ -2,7 +2,7 @@
 
 按 spec §3.1，所有公共 API 在导入期一次性 import；不再使用 PEP 562 lazy loading。
 - ``czsc._native``：Rust 扩展（PyO3），提供缠论核心类型、信号、交易器、TA 算子。
-- ``czsc.{connectors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
+- ``czsc.{connectors,traders,utils,fsa,aphorism,mock,envs}``：Python 子包。
 - ``czsc.{ema,sma,...,ultimate_smoother,...}``：Rust TA 算子的顶层别名。
 - ``czsc.{WeightBacktest,daily_performance,top_drawdowns}``：来自硬依赖 ``wbt``。
 
@@ -13,12 +13,11 @@
 # 顶层包的 import 顺序经过手工设计以处理子包间的循环依赖，
 # 不要让 isort/ruff 重排——会触发 partially-initialized module 错误。
 
-import sys as _sys
-
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
-# svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
+# fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
-from . import _native, connectors, envs, traders, utils
+from . import _native as _native  # noqa: F401  # 通过 czsc._native.* 暴露
+from . import connectors, envs, traders, utils
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===
@@ -36,7 +35,7 @@ from czsc.utils.warning_capture import capture_warnings, execute_with_warning_ca
 
 # 第二批：会回头 import czsc 顶层符号（如 ``from czsc import top_drawdowns``）的重型子包。
 # 必须放在所有顶层符号都已经绑定之后，否则会触发 partially-initialized module 循环 import。
-from . import aphorism, fsa, mock, svc
+from . import aphorism, fsa, mock
 from ._native import (
     BI,
     CZSC,
@@ -139,12 +138,6 @@ from .utils import (
     update_tbars,
 )
 
-# czsc.ta 别名：统一指向 Rust 实现的 _native.ta 子模块。
-# 历史上 czsc/utils/ta.py 曾占用 czsc.ta 命名空间，目前已彻底删除（PR-1），
-# 此处仅做一次绑定即可，不再担心被 Python 包装版本覆盖。
-ta = _native.ta
-_sys.modules["czsc.ta"] = _native.ta
-
 # === 包元信息 ===
 # 版本号唯一来源是 Cargo.toml [workspace.package].version；maturin 在打 wheel
 # 时把它写进 dist-info，这里通过 importlib.metadata 反查，杜绝硬编码漂移。
@@ -204,7 +197,6 @@ __all__ = [
     "envs",
     "traders",
     "utils",
-    "svc",
     "fsa",
     "aphorism",
     "mock",
@@ -255,7 +247,6 @@ __all__ = [
     "rolling_daily_performance",
     "save_json",
     "set_url_token",
-    "ta",
     "to_arrow",
     "update_bbars",
     "update_nxb",

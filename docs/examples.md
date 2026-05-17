@@ -11,8 +11,8 @@
 # 普通脚本
 uv run python docs/examples/01_quick_start.py
 
-# Streamlit UI 脚本
-uv run streamlit run docs/examples/10_streamlit_kline.py
+# HTML 可视化脚本（生成自包含 HTML，浏览器直接打开）
+uv run python docs/examples/13_lightweight_charts_html.py
 ```
 
 > **统一产物目录**：03/07/08/09 这类有落盘产物的脚本，全部把输出写到
@@ -46,10 +46,10 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
                     │ pairs / holds / signals (Arrow)     │
                     └─────────────────────────────────────┘
                              │
-              ┌──────────────┼──────────────┐
-              ▼              ▼              ▼
-       WeightBacktest   plot_*绘图     czsc.svc 组件（Streamlit）
-       （时序/截面）      （离线 HTML）   （交互面板）
+              ┌──────────────┴──────────────┐
+              ▼                             ▼
+       WeightBacktest                 plot_*绘图
+       （时序/截面）                    （离线 HTML）
 ```
 
 ---
@@ -85,13 +85,14 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 | 08 | [`08_weight_backtest.py`](./examples/08_weight_backtest.py) | `WeightBacktest` · `daily_performance` · `top_drawdowns` · `plot_backtest_stats` | 时序权重回测的完整链路 + 离线 HTML 报告（产物：`_output/08_weight_backtest.html`） |
 | 09 | [`09_eda_and_plotting.py`](./examples/09_eda_and_plotting.py) | `mark_cta_periods` · `mark_volatility` · `cal_trade_price` · `turnover_rate` · `weights_simple_ensemble` · `plot_colored_table` · `plot_long_short_comparison` | 探索性分析常用工具 + 多种离线绘图函数（产物：`_output/09_eda_and_plotting.html`） |
 
-### 第五组：Streamlit 交互面板（看图）
+### 第五组：lightweight-charts HTML（自包含交互看图）
 
-| #  | 文件 | 启动命令 | 你将看到 |
+| #  | 文件 | 关键 API | 你将看到 |
 |----|------|----------|----------|
-| 10 | [`10_streamlit_kline.py`](./examples/10_streamlit_kline.py) | `streamlit run docs/examples/10_streamlit_kline.py` | 缠论 K 线交互看图：品种/周期/时间窗 + 分型/笔/MA/MACD 子图 |
-| 11 | [`11_streamlit_trader.py`](./examples/11_streamlit_trader.py) | `streamlit run docs/examples/11_streamlit_trader.py` | 多级别 `CzscTrader`：每个周期一个 Tab，基础周期叠加开/平仓标记 |
-| 12 | [`12_streamlit_research.py`](./examples/12_streamlit_research.py) | `streamlit run docs/examples/12_streamlit_research.py` | 一站式研究面板：回测/收益/相关性/因子/统计 5 个页面 |
+| 13 | [`13_lightweight_charts_html.py`](./examples/13_lightweight_charts_html.py) | `plot_czsc` · `plot_czsc_trader` | 缠论 K 线 + 多周期联立，自包含 HTML（无需服务端） |
+| 15 | [`15_lightweight_signals_html.py`](./examples/15_lightweight_signals_html.py) | `plot_czsc_signals` | 信号叠加版本，含 signal timeline + tooltip |
+
+> 本次清理 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/cleanup-non-czsc-core.md`](./migration/cleanup-non-czsc-core.md)。
 
 ---
 
@@ -118,7 +119,6 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 | 换手率 / 集成 | `czsc.turnover_rate` / `weights_simple_ensemble` | 09 |
 | 离线 K 线绘图 | `czsc.plot_czsc_chart` / `KlineChart` | 03, 10, 11 |
 | 离线回测绘图 | `czsc.utils.plotting.backtest.*` | 08, 09 |
-| Streamlit 组件 | `czsc.svc.*`（80+ 组件，详见 `czsc/svc/__init__.py`） | 11, 12 |
 
 ---
 
@@ -143,7 +143,7 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
    ↓
 [09] 配合 EDA 工具（如 mark_cta_periods）做切片分析
    ↓
-[12] 在 Streamlit 面板里把以上结果交互式展示
+[13/15] 生成自包含 HTML 报告分享给协作者
 ```
 
 ### 3.2 "看盘 / Demo" 工作流
@@ -151,9 +151,9 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 ```
 [01] 跑通 mock 数据 → CZSC
    ↓
-[03] 离线生成一份 HTML 看图（不依赖 Streamlit）
+[03] 离线生成一份 HTML 看图（plotly）
    ↓
-[10] 启动 Streamlit 交互看图（实时调参数）
+[13/15] lightweight-charts 自包含 HTML，浏览器直接打开
 ```
 
 ---
@@ -206,13 +206,7 @@ uv run streamlit run docs/examples/10_streamlit_kline.py
 
 ## 5. 已知兼容性提示
 
-> 以下问题**不影响本案例库的脚本运行**（已在脚本中规避），但用户在直接调用某些 svc 组件时可能遇到，特此说明：
-
-| 组件 | 现象 | 规避办法 |
-|------|------|----------|
-| `czsc.svc.show_weight_backtest` | 内部使用 `WeightBacktest(dfw=…)` 旧关键字，与最新 wbt 不兼容 | 直接构造 `WeightBacktest(data=dfw, …)` 后用 `plot_backtest_stats` 画图（见 12 号案例 `page_backtest`） |
-| `czsc.svc.show_czsc_trader` | 内部用 `pd.DataFrame(c.bars_raw)`，新 RawBar 下解析失败 | 用 `c.bars_raw_df` 自行渲染 `KlineChart`（见 11 号案例 `render_freq_chart`） |
-| `czsc.svc.show_factor_layering` / `show_yearly_stats` | 内部用 `daily_performance(list)`，新 wbt 仅接受 numpy 数组 | 自行做 `pd.qcut` + 分组聚合（见 12 号案例 `page_factor`/`page_statistics`） |
+> 本次清理 后已删除 `czsc.svc` 与 streamlit 依赖，相关示例与组件提示一并移除；如需可视化请直接使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
 
 ---
 

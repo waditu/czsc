@@ -39,12 +39,3 @@ def test_czsc_import_time():
         f"czsc 导入耗时 {elapsed:.2f}s，超过了阈值 {MAX_IMPORT_TIME_SECONDS}s。"
         f"请检查是否在模块级引入了重型依赖（如 streamlit、scipy、statsmodels、scikit-learn 等）。"
     )
-
-
-def test_czsc_svc_accessible():
-    """czsc.svc 子包在导入期就已可用（spec §3.1 移除 lazy loading 后）"""
-    import czsc
-
-    svc = czsc.svc
-    assert svc is not None
-    assert hasattr(svc, "show_daily_return")

@@ -1,5 +1,5 @@
 {
-  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py.",
+  "_doc": "Phase A baseline snapshot for public API. Updated 2026-05-15 to cover all entries in czsc.__all__ plus a reverse-direction assertion ('code superset ⊆ snapshot') in tests/compat/test_public_api.py. | 2026-05-16 PR-2 删除 czsc.svc 子包（本次清理 breaking）。 | 2026-05-16 PR-3 删除 czsc.ta 顶层 alias（本次清理 breaking）。Rust _native.ta 保留。",
   "top_level": [
     "BI",
     "CZSC",
@@ -37,7 +37,6 @@
     "envs",
     "traders",
     "utils",
-    "svc",
     "fsa",
     "aphorism",
     "mock",
@@ -84,7 +83,6 @@
     "rolling_daily_performance",
     "save_json",
     "set_url_token",
-    "ta",
     "to_arrow",
     "update_bbars",
     "update_nxb",
@@ -116,13 +114,7 @@
     "get_unique_signals",
     "WeightBacktest"
   ],
-  "ta": [
-    "ultimate_smoother",
-    "rolling_rank",
-    "ema",
-    "sma",
-    "boll_positions"
-  ],
+  "ta": [],
   "removed": [
     "DummyBacktest",
     "OpensOptimize",
@@ -132,9 +124,18 @@
     "show_df_describe",
     "show_optuna_study",
     "x_round",
-    "timeout_decorator"
+    "timeout_decorator",
+    "svc",
+    "ta"
   ],
   "removed_envs": [
     "CZSC_USE_PYTHON"
+  ],
+  "removed_ta": [
+    "ultimate_smoother",
+    "rolling_rank",
+    "ema",
+    "sma",
+    "boll_positions"
   ]
 }

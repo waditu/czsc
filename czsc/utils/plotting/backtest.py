@@ -1,7 +1,7 @@
-"""
-权重回测可视化 Plotly 绘图函数
+"""权重回测可视化 Plotly 绘图函数集。
 
-从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
+基于 plotly 实现，覆盖累计收益、回撤、分布、月度热力图等场景；
+独立于已删除的 ``czsc.svc``，无 streamlit 依赖。
 """
 
 import re
@@ -183,9 +183,9 @@ def plot_cumulative_returns(
     to_html: bool = False,
     include_plotlyjs: bool = True,
 ) -> go.Figure | str:
-    """绘制累计收益曲线
+    """绘制累计收益曲线。
 
-    参考 czsc.svc.returns.show_cumulative_returns
+    按年度自动分隔，可选 dark 主题；支持返回 plotly Figure 或 HTML 字符串。
 
     :param dret: 日收益数据，index为日期，columns为策略收益
     :param title: 图表标题
@@ -230,9 +230,9 @@ def plot_drawdown_analysis(
     to_html: bool = False,
     include_plotlyjs: bool = True,
 ) -> go.Figure | str:
-    """绘制回撤分析图
+    """绘制回撤分析图。
 
-    参考 czsc.svc.returns.show_drawdowns
+    含分位数标注与最大回撤区间高亮，独立于 streamlit。
 
     :param dret: 日收益数据，包含 ret_col 列
     :param ret_col: 收益列名

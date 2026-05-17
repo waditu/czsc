@@ -89,6 +89,19 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
   的下限要求）。
 - **wheel 改用 abi3**。一个 wheel 覆盖 Python 3.10 / 3.11 / 3.12 / 3.13。
 
+#### 清理非缠论核心 API（PR #313，1.0.0 核心重构延续）
+
+> 移除 Streamlit 可视化命名空间 `czsc.svc`、Python 端 `czsc.ta` 顶层别名、streamlit 运行时依赖与 5 个 streamlit 示例。Rust 侧 `czsc._native.ta` 仍保留供信号内部使用；HTML 可视化路径（`czsc.utils.plotting.*` 与 `lightweight.plot_czsc*`）完整保留。
+
+- **删除 `czsc.svc` 子包**。原 60+ 个 `show_*` Streamlit 组件全部移除（`czsc/svc/` 整目录，约 4800 行）。替代方案：用 `czsc.utils.plotting.backtest.plot_*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
+- **删除 `czsc.ta` 顶层 alias**。Rust 实现 `czsc._native.ta` 仍可用；信号函数内部继续依赖。顶层算子别名 `czsc.ema` / `czsc.sma` / `czsc.rolling_rank` / `czsc.boll_positions` / `czsc.ultimate_smoother` 保留（来自 `from czsc._native import ema, sma, ...`）。
+- **删除 `streamlit` 核心依赖**。`pyproject.toml` 不再依赖 streamlit；`uv pip install czsc` 后 streamlit **不会**被自动安装。需要 streamlit 集成时调用方自行 `pip install streamlit` 并 `st.components.v1.html(plot_czsc(c, output='html'))`。
+- **删除 lightweight 的 `output="streamlit"` 路径**。`czsc.utils.plotting.lightweight._streamlit_renderer` 整文件删除；`plot_czsc` / `plot_czsc_trader` / `plot_czsc_signals` 的 `output` 参数仅接受 `"html"`。
+- **删除 streamlit 示例**：`docs/examples/{10,11,12,14,16}_streamlit_*.py` 与 `_streamlit_smoke.py`。HTML 路径示例 `13_lightweight_charts_html.py` / `15_lightweight_signals_html.py` 完整保留。
+- **删除 ta 数值等价测试**：`tests/unit/test_ta_parity.py` 整文件删除；数值正确性由 Rust 侧 `cargo test --package czsc-ta` 覆盖。
+- 新增 `tests/compat/test_api_no_streamlit.py` 防护测试 + `tests/compat/baselines/` 基线快照；`test_public_api.py` 增 `test_ta_namespace_removed` / `test_svc_subpackage_removed`；snapshot `top_level` 移除 `"svc"` / `"ta"`、`ta` 整组迁入 `removed_ta`。
+- 迁移详见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
+
 ### Added
 
 - **Rust workspace 同步发布到 crates.io**：7 个 crate 按依赖图分层串行发布，
