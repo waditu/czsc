@@ -3,7 +3,7 @@ resolver = "2"
 members  = ["crates/*"]
 
 [workspace.package]
-version       = "1.0.0-rc.1"
+version       = "1.0.0-rc.2"
 edition       = "2024"
 license       = "MIT"
 repository    = "https://github.com/waditu/czsc"
@@ -44,14 +44,14 @@ serde         = { version = "1", features = ["derive"] }
 #   - version：`cargo publish` 时按 version 解析 crates.io 上的依赖
 # 业务 crate 用 `{ workspace = true }` 引用，避免在每个 Cargo.toml
 # 重复维护版本号；workspace.package.version 升级一次，全部跟随。
-czsc               = { path = "crates/czsc",               version = "1.0.0-rc.1" }
-czsc-core          = { path = "crates/czsc-core",          version = "1.0.0-rc.1" }
-czsc-utils         = { path = "crates/czsc-utils",         version = "1.0.0-rc.1" }
-czsc-ta            = { path = "crates/czsc-ta",            version = "1.0.0-rc.1" }
-czsc-signals       = { path = "crates/czsc-signals",       version = "1.0.0-rc.1" }
-czsc-trader        = { path = "crates/czsc-trader",        version = "1.0.0-rc.1" }
-czsc-signal-macros = { path = "crates/czsc-signal-macros", version = "1.0.0-rc.1" }
-czsc-derive        = { path = "crates/czsc-derive",        version = "1.0.0-rc.1" }
+czsc               = { path = "crates/czsc",               version = "1.0.0-rc.2" }
+czsc-core          = { path = "crates/czsc-core",          version = "1.0.0-rc.2" }
+czsc-utils         = { path = "crates/czsc-utils",         version = "1.0.0-rc.2" }
+czsc-ta            = { path = "crates/czsc-ta",            version = "1.0.0-rc.2" }
+czsc-signals       = { path = "crates/czsc-signals",       version = "1.0.0-rc.2" }
+czsc-trader        = { path = "crates/czsc-trader",        version = "1.0.0-rc.2" }
+czsc-signal-macros = { path = "crates/czsc-signal-macros", version = "1.0.0-rc.2" }
+czsc-derive        = { path = "crates/czsc-derive",        version = "1.0.0-rc.2" }
 
 [profile.release]
 lto           = true

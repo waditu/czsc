@@ -7,9 +7,19 @@
 
 ---
 
+## [1.0.0-rc.2] — 2026-05-17
+
+> **1.0.0-rc.1 的紧急重发**。1.0.0-rc.1 的 git tag 已 push 到 GitHub，但 CI workflow（`rust-publish.yml` / `python-publish.yml`）的 `Verify version consistency` step 使用了 `awk gsub(/.../, "\\1")` 反向引用——gawk 不支持，导致 `CARGO_VERSION` 被解析为字面量 `\1` 而非 `1.0.0-rc.1`，PyPI / crates.io 发布双双失败。本版本同时修了两个 workflow 文件（改用 `awk -F'"'` 切字段，POSIX 兼容），并按 SemVer 规范 bump 到 rc.2 重发（1.0.0-rc.1 未实际上传到任何 registry，但 RC 失败号不复用是惯例）。
+
+### Fixed
+
+- **CI** `verify_version_consistency` 步骤改用 `awk -F'"' '{print $2}'` 抽取 Cargo.toml 版本号，避免 gawk 的 backreference 限制。
+
+---
+
 ## [1.0.0-rc.1] — 2026-05-17
 
-> **1.0.0 候选预发布版本。** 缠论核心算法（分型、笔、中枢、信号体系）从 Python 迁移到 Rust，
+> **1.0.0 候选预发布版本（未发布——见上方 1.0.0-rc.2 重发说明）。** 缠论核心算法（分型、笔、中枢、信号体系）从 Python 迁移到 Rust，
 > 通过 PyO3 扩展 `czsc._native` 暴露给 Python 用户；Rust 用户可直接
 > `cargo add czsc`（或子 crate）使用。本版本含大量 **breaking changes**，从
 > 0.9.X / 0.10.X 升级请阅读下方「迁移指引」。final 1.0.0 在该 RC 通过下游验证后 promote。
@@ -302,4 +312,5 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
+[1.0.0-rc.2]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.1

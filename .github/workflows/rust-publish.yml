@@ -92,12 +92,11 @@ jobs:
         shell: bash
         run: |
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          CARGO_VERSION=$(awk '
+          # 用 awk -F'"' 切分字段（POSIX 兼容；gawk gsub 不支持 \\1 backreference，所以避免用它）
+          CARGO_VERSION=$(awk -F'"' '
             /^\[workspace\.package\]/ {in_section=1; next}
             in_section && /^\[/ {in_section=0}
-            in_section && /^version[[:space:]]*=/ {
-              gsub(/.*"([^"]+)".*/, "\\1"); print; exit
-            }
+            in_section && /^version[[:space:]]*=/ {print $2; exit}
           ' Cargo.toml)
           echo "Tag version:        $TAG_VERSION"
           echo "Cargo.toml version: $CARGO_VERSION"
