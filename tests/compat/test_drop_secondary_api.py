@@ -107,6 +107,12 @@ REMOVED_MODULES: list[str] = [
     "czsc.utils.analysis.stats",
     "czsc.utils.plotting.kline",
     "czsc.utils.plotting.weight",
+    # 2026-05-17 PR-C 整删 / 搬运的模块
+    # - base / sig_parse 纯透传层 git rm
+    # - optimize 整文件 git mv 到 czsc.utils.optimize，原路径已不可 import
+    "czsc.traders.base",
+    "czsc.traders.sig_parse",
+    "czsc.traders.optimize",
 ]
 
 

@@ -59,6 +59,14 @@ from .io import dill_dump, dill_load, read_json, save_json
 from .mark_cta_periods import mark_cta_periods
 from .mark_volatility import mark_volatility
 
+# 开仓 / 平仓参数批量优化（2026-05-17 PR-C 从 czsc/traders/optimize.py 搬运过来）
+from .optimize import (
+    CzscExitOptimStrategy,
+    CzscOpenOptimStrategy,
+    ExitsOptimize,
+    OpensOptimize,
+)
+
 # 交易/重采样相关工具
 from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
@@ -87,6 +95,11 @@ __all__ = [
     # mark_*（后验区间标注，PR-B 从 czsc/eda.py 拆分而来）
     "mark_cta_periods",
     "mark_volatility",
+    # optimize（PR-C 从 czsc/traders/ 搬运而来）
+    "OpensOptimize",
+    "ExitsOptimize",
+    "CzscOpenOptimStrategy",
+    "CzscExitOptimStrategy",
     # io
     "dill_dump",
     "dill_load",

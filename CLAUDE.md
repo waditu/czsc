@@ -89,9 +89,9 @@ uv run --no-sync ruff check czsc/ tests/
    - `czsc-python`（PyO3 binding 总入口，唯一启用 `pyo3/extension-module` 的 crate）
 
 3. **`czsc/traders/`** - 交易执行框架：
-   - `base.py`: CzscSignals / CzscTrader / generate_czsc_signals / get_signals_config / get_signals_freqs
-   - `optimize.py`: 开仓 / 平仓参数优化（`build_open_optim_positions` / `build_exit_optim_positions` / `run_optimize_batch`）
-   - `sig_parse.py`: 信号字符串解析（`parse_signal_doc` / `ParsedSignalDoc`，原 `SignalsParser` 类已删除）
+   - `__init__.py`：facade，统一 re-export `CzscSignals / CzscTrader / generate_czsc_signals / get_signals_config / get_signals_freqs / derive_signals_config / derive_signals_freqs / get_unique_signals / WeightBacktest`，全部来自 `czsc._native` 或 `wbt`
+   - `base.py` / `sig_parse.py` 纯透传文件已于 2026-05-17 PR-C 整文件 git rm，新代码请直接走 `czsc.traders` 或 `czsc._native`
+   - `optimize.py` 已于 2026-05-17 PR-C `git mv` 到 `czsc/utils/optimize.py`（职责更贴近 utils）；调用方请用 `from czsc.utils.optimize import OpensOptimize, ExitsOptimize, CzscOpenOptimStrategy, CzscExitOptimStrategy`
 
 4. **`czsc/_native.signals`** - 信号函数（Rust 实现，通过 PyO3 暴露）：
    - 完整分组以 `crates/czsc-signals/src/` 为准（13+ 子模块），自查命令：`ls crates/czsc-signals/src/`

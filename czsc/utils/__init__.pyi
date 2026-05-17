@@ -44,6 +44,18 @@ from .io import read_json as read_json
 from .io import save_json as save_json
 from .mark_cta_periods import mark_cta_periods as mark_cta_periods
 from .mark_volatility import mark_volatility as mark_volatility
+from .optimize import (
+    CzscExitOptimStrategy as CzscExitOptimStrategy,
+)
+from .optimize import (
+    CzscOpenOptimStrategy as CzscOpenOptimStrategy,
+)
+from .optimize import (
+    ExitsOptimize as ExitsOptimize,
+)
+from .optimize import (
+    OpensOptimize as OpensOptimize,
+)
 from .trade import (
     resample_to_daily as resample_to_daily,
 )
