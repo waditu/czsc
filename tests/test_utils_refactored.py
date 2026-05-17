@@ -188,17 +188,16 @@ def test_analysis_stats_imports():
     """验证统计分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
 
     关键断言：
-        ``daily_performance``、``holds_performance``、``top_drawdowns`` 三个统计
-        函数均为可调用对象。
+        ``daily_performance``、``top_drawdowns`` 两个统计函数均为可调用对象。
+        （``holds_performance`` / ``rolling_daily_performance`` 已在
+        二阶段清理 PR-B 删除。）
     """
     from czsc.utils.analysis import (
         daily_performance,
-        holds_performance,
         top_drawdowns,
     )
 
     assert callable(daily_performance)
-    assert callable(holds_performance)
     assert callable(top_drawdowns)
 
 

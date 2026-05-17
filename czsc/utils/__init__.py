@@ -15,7 +15,7 @@ czsc.utils 工具子包
 3. 周期排序统一走 ``czsc._runtime_adapters._FREQ_ORDER``，避免两份顺序表漂移。
 
 同时本模块还提供一组小工具函数：``import_by_name``、``freqs_sorted``、
-``create_grid_params``、``mac_address``、``to_arrow`` 等。
+``to_arrow`` 等。
 """
 
 from pathlib import Path
@@ -31,10 +31,8 @@ from . import analysis, data, io
 from .analysis import (
     cross_sectional_ic,
     daily_performance,
-    holds_performance,
     nmi_matrix,
     psi,
-    rolling_daily_performance,
     single_linear,
     top_drawdowns,
 )
@@ -73,10 +71,8 @@ __all__ = [
     # analysis
     "cross_sectional_ic",
     "daily_performance",
-    "holds_performance",
     "nmi_matrix",
     "psi",
-    "rolling_daily_performance",
     "single_linear",
     "top_drawdowns",
     # data
@@ -110,9 +106,7 @@ __all__ = [
     "code_namespace",
     "import_by_name",
     "freqs_sorted",
-    "create_grid_params",
     "print_df_sample",
-    "mac_address",
     "to_arrow",
 ]
 
@@ -204,53 +198,6 @@ def freqs_sorted(freqs):
     return sort_freqs(freqs)
 
 
-def create_grid_params(prefix: str = "", multiply=3, **kwargs) -> dict:
-    """创建 grid search 参数组合
-
-    基于 ``sklearn.model_selection.ParameterGrid`` 生成参数笛卡尔积，并按用户
-    指定的命名风格输出，便于在批量回测、网格搜索时复用。
-
-    :param prefix: str，参数组前缀
-    :param multiply: int，参数组合编号的位数；为 0 时改用 ``#`` 连接的可读 key
-    :param kwargs: 任意参数的候选序列；推荐使用 list/tuple，单个值也会被自动包装
-    :return: dict，``{key: 参数字典}`` 形式的参数组合
-
-    示例：
-        >>> x = create_grid_params("test", x=(1, 2), y=('a', 'b'), detail=True)
-        >>> print(x)
-        Out[0]:
-            {'test_x=1_y=a': {'x': 1, 'y': 'a'},
-             'test_x=1_y=b': {'x': 1, 'y': 'b'},
-             'test_x=2_y=a': {'x': 2, 'y': 'a'},
-             'test_x=2_y=b': {'x': 2, 'y': 'b'}}
-
-        # 单个参数传入单个值也是可以的，但类型必须是 int, float, str 中的任一
-        >>> x = create_grid_params("test", x=2, y=('a', 'b'), detail=False)
-        >>> print(x)
-        Out[1]:
-            {'test001': {'x': 2, 'y': 'a'},
-             'test002': {'x': 2, 'y': 'b'}}
-    """
-    from sklearn.model_selection import ParameterGrid
-
-    params_grid = dict(kwargs)
-    for k, v in params_grid.items():
-        # 标量值自动包装为单元素列表，便于 ParameterGrid 处理
-        if type(v) in [int, float, str]:
-            v = [v]
-        assert type(v) in [tuple, list], f"输入参数值必须是 list 或 tuple 类型，当前参数 {k} 值：{v}"
-        params_grid[k] = v
-
-    params = {}
-    for i, row in enumerate(ParameterGrid(params_grid), 1):
-        # multiply == 0 时使用可读的 key，否则使用补零后的序号
-        key = "#".join([f"{k}={v}" for k, v in row.items()]) if multiply == 0 else str(i).zfill(multiply)
-
-        row["version"] = f"{prefix}{key}"
-        params[f"{prefix}@{key}"] = row
-    return params
-
-
 def print_df_sample(df, n=5):
     """以 reST 表格形式打印 DataFrame 的前 n 行，便于在文档中粘贴
 
@@ -260,22 +207,6 @@ def print_df_sample(df, n=5):
     from tabulate import tabulate
 
     print(tabulate(df.head(n).values, headers=df.columns, tablefmt="rst"))
-
-
-def mac_address():
-    """获取本机 MAC 地址
-
-    MAC 地址（Media Access Control Address），又称为局域网地址（LAN Address）、
-    以太网地址（Ethernet Address）或物理地址（Physical Address），用于唯一标识
-    网络中的网卡。一台设备若有多块网卡，则每块网卡都会拥有各自的 MAC 地址。
-
-    :return: str，本机 MAC 地址，形如 ``"AA-BB-CC-DD-EE-FF"``
-    """
-    import uuid
-
-    x = uuid.UUID(int=uuid.getnode()).hex[-12:].upper()
-    x = "-".join([x[i : i + 2] for i in range(0, 11, 2)])
-    return x
 
 
 def to_arrow(df: pd.DataFrame):

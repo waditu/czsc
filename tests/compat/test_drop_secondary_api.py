@@ -15,14 +15,13 @@
 
 ### A 组（运行时 hasattr）
 
-锚定 (module_path, attr_name) 的 31 个组合：
+锚定 (module_path, attr_name) 的 31 个组合，分两阶段：
 
-  - ``czsc.*`` 顶层 10 个：4 个 eda、2 个 stats、2 个 utils、KlineChart / plot_czsc_chart
-  - ``czsc.utils.*`` 4 个：stats 2 个 + utils 2 个
-  - ``czsc.utils.analysis.*`` 2 个：stats 2 个
-  - ``czsc.utils.plotting.*`` 9 个：KlineChart / plot_czsc_chart + 7 plot_*
-  - ``czsc.utils.plotting.kline.*`` 2 个：仅删除 KlineChart + plot_czsc_chart（plot_nx_graph 保留）
-  - ``czsc.eda.*`` 4 个
+  - **PR-B 已落地（18 个，常规 PASS）**：4 个 eda、2 个 stats、2 个 utils 共 8 个
+    API × 多模块入口（czsc / czsc.utils / czsc.utils.analysis / czsc.eda） = 18 个组合。
+  - **PR-C 待落地（13 个，xfail strict）**：KlineChart + plot_czsc_chart × 3
+    模块入口（czsc / czsc.utils.plotting / czsc.utils.plotting.kline）= 6 个 +
+    7 个 plot_* 在 czsc.utils.plotting = 13 个组合。
 
 ### B 组（模块级 import）
 
@@ -47,28 +46,34 @@ from typing import Any
 import pytest
 
 # (parent_module, attr_name, batch_marker) —— batch 仅作可读注释，无运行时语义
-SECONDARY_API_REMOVALS: list[tuple[str, str, str]] = [
-    # --- PR-B：czsc.eda 4 个工具函数 + 顶层别名 ---
-    ("czsc", "cal_yearly_days", "B"),
-    ("czsc", "weights_simple_ensemble", "B"),
-    ("czsc", "cal_trade_price", "B"),
-    ("czsc", "turnover_rate", "B"),
-    ("czsc.eda", "cal_yearly_days", "B"),
-    ("czsc.eda", "weights_simple_ensemble", "B"),
-    ("czsc.eda", "cal_trade_price", "B"),
-    ("czsc.eda", "turnover_rate", "B"),
+#
+# PR-B 已删除 18 个 B-batch 条目，对应用例转为常规 PASS（在 PR-B commit 中已摘 xfail）。
+# 下方仅保留 PR-C 待删的 13 个 C-batch 条目，仍 xfail strict。
+SECONDARY_API_REMOVALS_DONE_B: list[tuple[str, str]] = [
+    # --- PR-B：czsc.eda 4 个工具函数 + czsc 顶层别名 ---
+    ("czsc", "cal_yearly_days"),
+    ("czsc", "weights_simple_ensemble"),
+    ("czsc", "cal_trade_price"),
+    ("czsc", "turnover_rate"),
+    ("czsc.eda", "cal_yearly_days"),
+    ("czsc.eda", "weights_simple_ensemble"),
+    ("czsc.eda", "cal_trade_price"),
+    ("czsc.eda", "turnover_rate"),
     # --- PR-B：czsc/utils/__init__.py 2 个工具函数 ---
-    ("czsc", "create_grid_params", "B"),
-    ("czsc", "mac_address", "B"),
-    ("czsc.utils", "create_grid_params", "B"),
-    ("czsc.utils", "mac_address", "B"),
+    ("czsc", "create_grid_params"),
+    ("czsc", "mac_address"),
+    ("czsc.utils", "create_grid_params"),
+    ("czsc.utils", "mac_address"),
     # --- PR-B：czsc/utils/analysis/stats.py 2 个统计函数 ---
-    ("czsc", "holds_performance", "B"),
-    ("czsc", "rolling_daily_performance", "B"),
-    ("czsc.utils", "holds_performance", "B"),
-    ("czsc.utils", "rolling_daily_performance", "B"),
-    ("czsc.utils.analysis", "holds_performance", "B"),
-    ("czsc.utils.analysis", "rolling_daily_performance", "B"),
+    ("czsc", "holds_performance"),
+    ("czsc", "rolling_daily_performance"),
+    ("czsc.utils", "holds_performance"),
+    ("czsc.utils", "rolling_daily_performance"),
+    ("czsc.utils.analysis", "holds_performance"),
+    ("czsc.utils.analysis", "rolling_daily_performance"),
+]
+
+SECONDARY_API_REMOVALS: list[tuple[str, str, str]] = [
     # --- PR-C：plotting/kline.py 2 个（KlineChart + plot_czsc_chart） ---
     ("czsc", "KlineChart", "C"),
     ("czsc", "plot_czsc_chart", "C"),
@@ -101,9 +106,23 @@ def _safe_import(name: str) -> tuple[Any | None, str | None]:
         return None, f"{type(exc).__name__}: {exc}"
 
 
+@pytest.mark.parametrize(
+    ("parent_module", "attr_name"),
+    SECONDARY_API_REMOVALS_DONE_B,
+    ids=[f"{m}.{n}" for m, n in SECONDARY_API_REMOVALS_DONE_B],
+)
+def test_secondary_api_removed_done_b(parent_module: str, attr_name: str) -> None:
+    """PR-B 已落地：18 个工具/分析函数的入口已删，这是常规防回归断言。"""
+    mod, err = _safe_import(parent_module)
+    assert mod is not None, f"failed to import {parent_module}: {err}"
+    assert not hasattr(mod, attr_name), f"{parent_module}.{attr_name} 应已被 PR-B 删除，但仍可访问"
+
+
 @pytest.mark.xfail(
     strict=True,
-    reason=("ratchet：17 个 API 待 PR-B / PR-C 删除。删完后此用例 XPASS strict，在 *同一 PR* 内删除 @xfail 标记即可。"),
+    reason=(
+        "ratchet：13 个 C-batch API 待 PR-C 删除。删完后此用例 XPASS strict，在 *同一 PR* 内删除 @xfail 标记即可。"
+    ),
 )
 @pytest.mark.parametrize(
     ("parent_module", "attr_name", "batch"),

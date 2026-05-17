@@ -110,6 +110,20 @@ def test_no_legacy_dummy_backtest() -> None:
     assert not leftover, f"czsc.* still exposes legacy names that must be removed: {leftover}"
 
 
+def test_no_secondary_api_left() -> None:
+    """二阶段清理 PR-B：8 个非缠论核心 API 必须从 ``czsc.*`` 顶层移除。
+
+    关键断言：``snap["removed_v2_batch"]`` 中的每一个名字都不应再可访问；任何
+    残留都会被视为兼容性回归。PR-C 完成后会追加更多名字（KlineChart /
+    plot_czsc_chart / 7 plot_* 等）到本字段。
+    """
+    snap = _load_snapshot()
+    czsc, err = _safe_import("czsc")
+    assert czsc is not None, f"failed to import czsc: {err}"
+    leftover = [name for name in snap["removed_v2_batch"] if hasattr(czsc, name)]
+    assert not leftover, f"czsc.* still exposes legacy names removed in v2 cleanup batch: {leftover}"
+
+
 def test_no_czsc_use_python_branch() -> None:
     """已废弃的环境变量必须从 ``czsc.envs`` 中移除。
 

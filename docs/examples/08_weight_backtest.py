@@ -23,7 +23,6 @@ from pathlib import Path
 
 import pandas as pd
 
-import czsc
 from czsc import WeightBacktest, daily_performance, top_drawdowns
 from czsc.mock import generate_klines_with_weights
 
@@ -43,8 +42,8 @@ def main() -> None:
     # 2) 跑回测
     #    - fee_rate=2 BP（双边手续费）
     #    - weight_type='ts' 表示时序策略；'cs' 是截面
-    #    - yearly_days 用 cal_yearly_days 自动推断更稳妥
-    yearly_days = czsc.cal_yearly_days(dts=dfw["dt"].unique())
+    #    - yearly_days：A 股 252 是标准默认值；其它市场（数字货币、港股等）按需调整
+    yearly_days = 252
     wb = WeightBacktest(
         data=dfw,
         fee_rate=0.0002,
