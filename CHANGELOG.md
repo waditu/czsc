@@ -102,6 +102,25 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
 - 新增 `tests/compat/test_api_no_streamlit.py` 防护测试 + `tests/compat/baselines/` 基线快照；`test_public_api.py` 增 `test_ta_namespace_removed` / `test_svc_subpackage_removed`；snapshot `top_level` 移除 `"svc"` / `"ta"`、`ta` 整组迁入 `removed_ta`。
 - 迁移详见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
 
+#### 清理非缠论核心 API · 二阶段（PR-A/B/C/D，1.0.0 核心重构延续）
+
+> 上一波清理后，继续删除 17 个无明显业务依赖的工具 / 分析 / 绘图 API。Rust 缠论核心（`czsc._native`）零影响；缠论 K 线可视化统一收敛到 `czsc.utils.plotting.lightweight`。
+
+- **删除 8 个工具 / 分析函数**（PR-B）：
+  - `czsc.eda.{cal_yearly_days, weights_simple_ensemble, cal_trade_price, turnover_rate}` —— 一行 pandas 可替代，详见迁移文档。
+  - `czsc.utils.{create_grid_params, mac_address}` —— 直接用 `sklearn.ParameterGrid` / `uuid.getnode()`。
+  - `czsc.utils.analysis.{holds_performance, rolling_daily_performance}` —— 用 `wbt.WeightBacktest` + `daily_performance`。
+- **删除 9 个绘图 API**（PR-C）：
+  - `czsc.utils.plotting.kline.{KlineChart, plot_czsc_chart}` —— 改用 `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}`（离线 HTML，多周期联立）；`kline.plot_nx_graph` 保留。
+  - `czsc.utils.plotting.backtest.{plot_cumulative_returns, plot_drawdown_analysis, plot_daily_return_distribution, plot_monthly_heatmap, plot_backtest_stats, plot_colored_table, plot_long_short_comparison}` —— 整文件 `git rm`；HTML 报告改用 `wbt.generate_backtest_report` 或自行 `plotly.express` 直绘。
+  - 附带删除 `czsc.utils.plotting.{backtest.py, common.py}` 整文件；`_macd.py` 因 `lightweight/_data.py` 仍 lazy import `compute_macd`，保留为内部模块。
+- **测试 / 文档同步**：
+  - 新增 `tests/compat/test_drop_secondary_api.py` 双轨防回归（hasattr × 31 组合 + 模块 import × 2）。
+  - `tests/compat/test_api_no_streamlit.py` 中 `test_plot_kline_still_importable` / `test_plot_backtest_still_importable` 反转为"必须删除"；INDEPENDENT_FILES 移出已删的 `backtest.py`。
+  - `tests/compat/snapshots/api_v1.json` 新增 `removed_v2_batch` 字段（10 个被从 `czsc.*` 顶层移除的 API）。
+  - 删除 `tests/test_plotly_plot.py` / `test_plot_colored_table.py` / `test_plot_long_short_comparison.py` 及 `docs/examples/{03,09}.py`。
+  - `README.md` / `docs/examples.md` / `docs/migration/cleanup-non-czsc-core.md` 同步精修。
+
 ### Added
 
 - **Rust workspace 同步发布到 crates.io**：7 个 crate 按依赖图分层串行发布，

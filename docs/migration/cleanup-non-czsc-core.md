@@ -25,14 +25,16 @@
 
 ### Streamlit 组件 → plotly + HTML
 
-| 旧调用 | 新调用 |
-|---|---|
-| `czsc.svc.show_cumulative_returns(dret)` | `czsc.utils.plotting.backtest.plot_cumulative_returns(dret)` |
-| `czsc.svc.show_drawdowns(dret)` | `czsc.utils.plotting.backtest.plot_drawdown_analysis(dret)` |
-| `czsc.svc.show_monthly_return(dret)` | `czsc.utils.plotting.backtest.plot_monthly_heatmap(dret)` |
-| `czsc.svc.show_weight_backtest(dfw)` | `wbt.WeightBacktest(data=dfw, ...)` + `plot_backtest_stats` |
-| `czsc.svc.show_czsc_trader(ct)` | `czsc.utils.plotting.lightweight.plot_czsc_trader(ct, output="html")` |
-| `czsc.svc.show_correlation(df)` | 自行 `plotly.express.imshow(df.corr())` |
+> ⚠️ **二阶段清理 PR-C 起**：`czsc.utils.plotting.backtest.plot_*` 系列已整体删除。下表中曾推荐过这些函数，请改用 `plotly.express` 直绘 / `wbt.generate_backtest_report` / `czsc.utils.plotting.lightweight.plot_czsc_trader`。
+
+| 旧调用 | 新调用（阶段一推荐） | 阶段二实际状态 |
+|---|---|---|
+| `czsc.svc.show_cumulative_returns(dret)` | `czsc.utils.plotting.backtest.plot_cumulative_returns(dret)` | **已删除**，改用 `plotly.express.line((1 + dret).cumprod())` |
+| `czsc.svc.show_drawdowns(dret)` | `czsc.utils.plotting.backtest.plot_drawdown_analysis(dret)` | **已删除**，改用 `wbt.top_drawdowns` + 自行画图 |
+| `czsc.svc.show_monthly_return(dret)` | `czsc.utils.plotting.backtest.plot_monthly_heatmap(dret)` | **已删除**，改用 `dret.resample("M").sum().unstack()` + `px.imshow` |
+| `czsc.svc.show_weight_backtest(dfw)` | `wbt.WeightBacktest(data=dfw, ...)` + `plot_backtest_stats` | `WeightBacktest` 仍可用；`plot_backtest_stats` **已删除**，改用 `wbt.generate_backtest_report` |
+| `czsc.svc.show_czsc_trader(ct)` | `czsc.utils.plotting.lightweight.plot_czsc_trader(ct, output="html")` | 仍可用（lightweight 保留） |
+| `czsc.svc.show_correlation(df)` | 自行 `plotly.express.imshow(df.corr())` | 仍可用 |
 
 完整 `show_*` 与 `plot_*` 的一一映射建议参考 PR-2 删除前的 `czsc/svc/` 源码（git 历史）。
 
@@ -128,7 +130,8 @@ uv run --no-sync pytest --run-slow
 |---|---|---|
 | `czsc/utils/plotting/backtest.py` | PR-C | 7 个 plot_* 删除后无残留逻辑 |
 | `czsc/utils/plotting/common.py` | PR-C | 仅为 `backtest.py` 提供常量与辅助函数 |
-| `czsc/utils/plotting/_macd.py` | PR-C | 仅被 `KlineChart.add_macd` 使用 |
+
+> `_macd.py` 原计划与 backtest / common 一起 git rm，但 `lightweight/_data.py` 仍 lazy import `compute_macd`，故保留为 `czsc.utils.plotting` 内部模块（不对外暴露）。
 
 ### ratchet 测试位置
 
@@ -137,6 +140,6 @@ uv run --no-sync pytest --run-slow
 ### 详细完成状态
 
 - [x] PR-A：防护测试 + 基线快照 + 迁移占位
-- [ ] PR-B：删除 8 个工具/分析函数
-- [ ] PR-C：删除 9 个绘图 API + 附带清理
-- [ ] PR-D：反转上一波防护测试 + 文档收尾
+- [x] PR-B：删除 8 个工具/分析函数
+- [x] PR-C：删除 9 个绘图 API + 附带清理
+- [x] PR-D：反转上一波防护测试 + 文档收尾

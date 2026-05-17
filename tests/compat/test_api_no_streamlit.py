@@ -13,6 +13,10 @@
 不在测试里用 monkeypatch 直接 ``import czsc``：因为 ``czsc/__init__.py``
 当前 eager-import ``svc``，这条链在 PR-2 之前必然触发 streamlit；运行时
 断言只能通过 ``xfail`` 表达基线，源码层面的边界用 grep 锁定。
+
+二阶段清理 PR-D 更新：原"KlineChart / plot_czsc_chart / plot_cumulative_returns /
+plot_backtest_stats 必须保留"的兜底断言已反转为"必须删除"，与
+``test_drop_secondary_api.py`` 共同守护本次清理决议。
 """
 
 from __future__ import annotations
@@ -40,16 +44,16 @@ def _file_touches_streamlit(p: Path) -> bool:
 
 # 这些路径的边界含义：
 #   _macd.py             - 私有 helper，仅 numpy
-#   kline.py             - plotly + numpy，K 线绘图主入口
-#   backtest.py          - svc 的"无 streamlit 重构版"，PR-2 删 svc 后这里仍要可用
+#   kline.py             - plotly，networkx 图绘制（二阶段清理 PR-C 起 KlineChart / plot_czsc_chart 已删）
 #   data/cache.py        - 缓存 / IO，与可视化无关
 #   utils/data/__init__  - 数据 IO 命名空间
+#
+# 注：``utils/plotting/backtest.py`` 已在二阶段清理 PR-C 整文件 git rm，故移出本列表。
 INDEPENDENT_FILES = pytest.mark.parametrize(
     "relpath",
     [
         "utils/plotting/_macd.py",
         "utils/plotting/kline.py",
-        "utils/plotting/backtest.py",
         "utils/data/cache.py",
         "utils/data/__init__.py",
     ],
@@ -124,15 +128,26 @@ def test_macd_helper_still_importable() -> None:
     assert hasattr(mod, "compute_macd"), "_macd.compute_macd 必须保留（kline/lightweight 下游）"
 
 
-def test_plot_kline_still_importable() -> None:
-    """K 线绘图主入口必须始终可 import。"""
+def test_plot_kline_no_longer_exposes_kline_chart() -> None:
+    """二阶段清理 PR-C 起：KlineChart / plot_czsc_chart 已删除。
+
+    上一波 PR-1 此处断言"必须保留"，本次清理把缠论 K 线可视化统一收敛到
+    :mod:`czsc.utils.plotting.lightweight`（离线 HTML，多周期联立）。本测试反向
+    锁定该决议，避免有人后续把 KlineChart 加回来。
+    """
     mod = importlib.import_module("czsc.utils.plotting.kline")
-    assert hasattr(mod, "KlineChart"), "kline.KlineChart 必须保留"
-    assert hasattr(mod, "plot_czsc_chart"), "kline.plot_czsc_chart 必须保留"
+    assert not hasattr(mod, "KlineChart"), "kline.KlineChart 应已删除（二阶段清理 PR-C breaking change）"
+    assert not hasattr(mod, "plot_czsc_chart"), "kline.plot_czsc_chart 应已删除（二阶段清理 PR-C breaking change）"
+    # plot_nx_graph 仍保留（networkx 图渲染，与缠论 K 线无关）
+    assert hasattr(mod, "plot_nx_graph"), "kline.plot_nx_graph 必须保留"
 
 
-def test_plot_backtest_still_importable() -> None:
-    """svc 的 plotly 重构版必须始终可 import（PR-2 删 svc 后这是唯一替代）。"""
-    mod = importlib.import_module("czsc.utils.plotting.backtest")
-    assert hasattr(mod, "plot_cumulative_returns")
-    assert hasattr(mod, "plot_backtest_stats")
+def test_plot_backtest_module_removed() -> None:
+    """二阶段清理 PR-C 起：``czsc.utils.plotting.backtest`` 整文件已 git rm。
+
+    上一波 PR-1 在这里断言 "plot_cumulative_returns / plot_backtest_stats 必须可
+    import"，本次清理整体放弃这套绘图 API，改由调用方自行用 ``plotly.express`` 或
+    ``wbt.generate_backtest_report`` 渲染。
+    """
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.plotting.backtest")
