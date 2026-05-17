@@ -56,8 +56,13 @@ pub mod trader {
     //! 来源 [`czsc_trader`]。
     pub use czsc_trader::czsc_signals::CzscSignals;
     pub use czsc_trader::sig_parse::{SignalConfig, get_signals_config, get_signals_freqs};
-    pub use czsc_trader::{engine_v2, optimize, trader};
+    pub use czsc_trader::{engine_v2, optimize, strategy, trader};
 }
+
+/// 策略门面（Strategy facade）—— 让 cargo 用户拿到与 Python
+/// `czsc.CzscStrategyBase` / `czsc.CzscJsonStrategy` 等价的抽象。
+/// 详见 [`czsc_trader::strategy`]。
+pub use czsc_trader::strategy::{JsonStrategy, Strategy, unique_signals_across};
 
 // ── 顶层 re-export：常用类型直接挂在 czsc::* ────────────────────────────────
 pub use czsc_core::analyze::CZSC;
