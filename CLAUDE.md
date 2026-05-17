@@ -6,6 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CZSC（缠中说禅技术分析工具）是基于缠中说禅理论的综合性量化交易Python库，提供技术分析、信号生成、回测和市场分析等功能。本项目专注于实现缠论的分型、笔、线段等核心概念的自动识别，以及基于此的多级别量化交易策略。
 
+## 🏛️ 开发宪法（Constitution）
+
+以下规则是本项目长期演进的**硬约束**，任何 PR、任何重构、任何"为了赶进度的临时变通"都不得违反。与此冲突的代码审查意见、个人偏好、历史代码一律以本节为准；违反本节的代码即便已合入，也按 bug 处理、必须回滚或修复。
+
+### 第一条 · Rust ↔ Python 行为一致
+
+**需要 Rust 实现的部分必须同时满足 Rust crate 与 Python wheel 行为一致（Python 端纯透传，禁止再写适配层）。**
+
+具体含义：
+
+- 同一个名字（如 `monotonicity` / `CzscStrategyBase` / `generate_czsc_signals` / `CZSC`），`cargo add czsc` 的 Rust 用户与 `pip install czsc` 的 Python 用户调用后**行为必须一致**——同样的输入产生同样的输出，默认参数、错误处理、边界条件、字段命名都一致。
+- Python 侧**只允许**做下面两类工作：
+  1. **纯透传**：`from czsc._native import xxx` 后直接 re-export，不做任何包装；
+  2. **不可避免的 PyO3 边界胶水**：DataFrame ↔ Arrow IPC 序列化、`pathlib.Path` ↔ `String` 转换等，PyO3 类型系统无法跨越的边界处理。
+- **禁止**在 Python 侧做参数归一化、默认值补齐、返回值字段重命名、错误码翻译、`isinstance` 多态分支等"适配层"工作——这类逻辑必须下沉到 Rust 端实现（修改现有 API 或新增 API）。
+- 新增 Python wrapper 之前，PR 描述里必须先回答"为什么不能改成 Rust 实现"，并经过 reviewer 显式批准。
+
+**违反本条的常见信号（在 review 中视为红线）**：
+
+- Python 函数体内出现 `if isinstance(bars, pd.DataFrame): ... elif isinstance(bars, list): ...` 等多态分支；
+- Python 函数返回的 dict 字段顺序 / 命名与 Rust 端 `serde` 输出不一致；
+- 同一份功能在 Python 测试覆盖完整，但 `cargo test` 没有等价用例；
+- CHANGELOG 写 "Python 端默认参数从 X 改为 Y"，但 Rust 端无对应改动；
+- `czsc/_runtime_adapters.py` 等"适配层"文件持续膨胀，而不是被逐步搬空到 Rust。
+
 ## 常用开发命令
 
 ### UV 包管理 (项目使用UV管理依赖)
@@ -192,7 +217,7 @@ czsc_obj = CZSC(bars)
 - **构建方式**：`maturin + Rust workspace`，扩展模块名 `czsc._native`
 - **唯一架构**：Rust 是缠论核心算法的唯一实现；Python 端不再保留任何回退（spec §3.1 / §3.4）
 - **API 暴露**：所有面向用户的 API 都通过 `czsc.xxx` 顶层命名空间暴露，禁止用户感知 `czsc._native`
-- **Python/Rust 分工**：Python 端**不承担**"为 Python 用户做参数适配 / 返回值转换"的职责。这类逻辑统一下沉到 Rust 端实现（修改现有 API 或新增 API），Python 侧仅保留**纯透传**或**不可避免的 PyO3 边界胶水**（如 DataFrame ↔ Arrow IPC 序列化）。**目标**：让 `cargo add czsc` 的 Rust 用户与 `pip install czsc` 的 Python 用户拿到行为一致的接口，避免"两种语言用户调同一个名字但拿到不同结果"。新增 Python wrapper 前必须先评估"能不能改成 Rust 实现"
+- **Python/Rust 分工**：见本文件顶部「🏛️ 开发宪法 · 第一条」。该条款是硬约束，与此冲突的任何"局部例外"都不成立。
 - **类型 stub**：`czsc/py.typed` 启用 inline 类型注解；扩展模块 stub 已生成于 `czsc/_native/__init__.pyi`，由 `pyo3-stub-gen` 自动维护
 - **构建环境约束**：`pyo3-stub-gen` 与 `pyo3` 0.22 都要求 Python ≥ 3.10；通过 `crates/czsc-python/build.rs` 在编译期校验 `PYO3_PYTHON`，低于 3.10 时直接报错
 - **版本号锁死**（PR-5）：crates.io 与 PyPI 必须使用同一版本号。**唯一版本源**是 `Cargo.toml [workspace.package].version`；`pyproject.toml` 用 `dynamic = ["version"]`，由 maturin 在打 wheel 时从 Cargo workspace 注入。`crates/czsc-python/build.rs` 会在编译期校验 pyproject.toml 仍然走 dynamic 路径，禁止硬编码 `version = "..."`
