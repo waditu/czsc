@@ -10,7 +10,7 @@ build-backend = "maturin"
 module-name      = "czsc._native"
 manifest-path    = "crates/czsc-python/Cargo.toml"
 python-source    = "."
-include          = ["czsc/**/*.pyi", "czsc/py.typed"]
+include          = ["czsc/**/*.pyi", "czsc/py.typed", "LICENSE"]
 features         = ["pyo3/extension-module"]
 
 
@@ -23,6 +23,11 @@ dynamic = ["version"]
 description = "缠中说禅技术分析工具"
 readme = "README.md"
 license = "Apache-2.0"
+# PEP 639 license-files：显式声明哪些文件作为 License-File metadata。
+# PyPI 在校验 sdist/wheel 时要求 license-files 实际存在于 distribution 内，
+# 否则 upload 返回 400（license-files glob 与 distribution 不匹配）。
+# v1.0.0-rc.5 因没声明该字段导致 sdist 上传失败（wheel 已成功）。
+license-files = ["LICENSE"]
 authors = [
     { name = "zengbin93", email = "zeng_bin8888@163.com" }
 ]
