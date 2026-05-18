@@ -7,9 +7,27 @@
 
 ---
 
+## [1.0.0-rc.3] — 2026-05-18
+
+> **1.0.0-rc.2 的紧急重发**。rc.2 push tag 后 CI 又踩到两个新坑：
+> 1. `crates/czsc-trader/src/strategy.rs` 顶层 `use` 在 PR-G 时删了 `load_position`，但 test 模块 line 466 仍然调它——本地 `cargo build` 不 check tests 没发现，CI 的 `cargo check --workspace --all-targets` 把 tests 也 typecheck 一遍，挂在 E0425；
+> 2. `crates/czsc-python/build.rs::check_python_version()` 在 manylinux container 内强制检查 PATH 上 python3 ≥ 3.10，但 maturin cross-compile 时通过 `PYO3_CONFIG_FILE` 精确指定目标解释器，PATH 默认 python3 是容器自带 3.9——4 个 Linux wheel build 全挂；
+> 3. `ring 0.17.14` cross-compile 到 aarch64 manylinux2014 时 cross-gcc 没把 `__ARM_ARCH` 宏传给 ASM，sha256-armv8-linux64.S 编译失败；
+> 4. workflow `.github/workflows/python-publish.yml` 的 `Build wheel (maturin)` step 没给 manylinux container 注入 cross-compile CFLAGS。
+>
+> 本版本一次性修齐 1+2+3+4，dispatch 端到端验证 5/6 平台（macOS x86_64 因 GitHub 公开 runner pool 高负载排队 13h 未跑到 build wheel step，但代码层无问题）。
+
+### Fixed
+
+- **`build.rs`**: 在 `PYO3_CONFIG_FILE` 存在时跳过 PATH python3 版本预检（信任 maturin 的精确配置，避免 manylinux container 内 PATH 默认 python3=3.9 误伤 wheel build）。
+- **`strategy.rs`**: 在 `#[cfg(test)] mod tests` 的 `use czsc_core::objects::position::{Position, ...}` 中恢复 `load_position` import（PR-G 删主代码 import 时漏看 test 仍调用）。
+- **`.github/workflows/python-publish.yml`**: 给 maturin-action `before-script-linux` 加 `export CFLAGS_aarch64_unknown_linux_gnu="-D__ARM_ARCH=8"`，修 ring 0.17.x 在 aarch64 manylinux2014 cross-compile 时的 ASM 编译错。
+
+---
+
 ## [1.0.0-rc.2] — 2026-05-17
 
-> **1.0.0-rc.1 的紧急重发**。1.0.0-rc.1 的 git tag 已 push 到 GitHub，但 CI workflow（`rust-publish.yml` / `python-publish.yml`）的 `Verify version consistency` step 使用了 `awk gsub(/.../, "\\1")` 反向引用——gawk 不支持，导致 `CARGO_VERSION` 被解析为字面量 `\1` 而非 `1.0.0-rc.1`，PyPI / crates.io 发布双双失败。本版本同时修了两个 workflow 文件（改用 `awk -F'"'` 切字段，POSIX 兼容），并按 SemVer 规范 bump 到 rc.2 重发（1.0.0-rc.1 未实际上传到任何 registry，但 RC 失败号不复用是惯例）。
+> **1.0.0-rc.1 的紧急重发**（未发布——见上方 1.0.0-rc.3 重发说明）。1.0.0-rc.1 的 git tag 已 push 到 GitHub，但 CI workflow（`rust-publish.yml` / `python-publish.yml`）的 `Verify version consistency` step 使用了 `awk gsub(/.../, "\\1")` 反向引用——gawk 不支持，导致 `CARGO_VERSION` 被解析为字面量 `\1` 而非 `1.0.0-rc.1`，PyPI / crates.io 发布双双失败。本版本同时修了两个 workflow 文件（改用 `awk -F'"'` 切字段，POSIX 兼容），并按 SemVer 规范 bump 到 rc.2 重发（1.0.0-rc.1 未实际上传到任何 registry，但 RC 失败号不复用是惯例）。
 
 ### Fixed
 
@@ -312,5 +330,6 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
+[1.0.0-rc.3]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.1
