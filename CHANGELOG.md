@@ -7,9 +7,19 @@
 
 ---
 
+## [1.0.0-rc.4] — 2026-05-18
+
+> **1.0.0-rc.3 的紧急重发**。rc.3 wheel build 5/6 平台成功，但卡在 `macos-13` (Intel native) GitHub-hosted runner pool——单 job 排队 1h+ 没分到 runner，让 publish-to-pypi `needs: [build-wheels, smoke-test]` 永远 wait。代码层面 rc.3 已无问题；本版本仅改 CI runner 选择。
+
+### Fixed
+
+- **`.github/workflows/python-publish.yml`**: macOS wheel runner 改用 `macos-latest`（Apple Silicon 池子充裕），x86_64 wheel 走 cross-compile（Apple 工具链原生支持 `-arch x86_64`），不再依赖资源紧张的 `macos-13` Intel runner。同步移除 smoke-test 里的 `macos-13` smoke 项（x86_64 wheel 无法在 Apple Silicon runner 上 import 验证）。dispatch 端到端跑通：sdist 20s / 3 Linux wheels 8-9min / Windows 14m52s / macos-latest x86_64 cross 18m11s / macos-latest aarch64 native + smoke 47s / Linux smoke 25s，全绿。
+
+---
+
 ## [1.0.0-rc.3] — 2026-05-18
 
-> **1.0.0-rc.2 的紧急重发**。rc.2 push tag 后 CI 又踩到两个新坑：
+> **1.0.0-rc.2 的紧急重发**（未发布——见上方 1.0.0-rc.4 重发说明）。rc.2 push tag 后 CI 又踩到两个新坑：
 > 1. `crates/czsc-trader/src/strategy.rs` 顶层 `use` 在 PR-G 时删了 `load_position`，但 test 模块 line 466 仍然调它——本地 `cargo build` 不 check tests 没发现，CI 的 `cargo check --workspace --all-targets` 把 tests 也 typecheck 一遍，挂在 E0425；
 > 2. `crates/czsc-python/build.rs::check_python_version()` 在 manylinux container 内强制检查 PATH 上 python3 ≥ 3.10，但 maturin cross-compile 时通过 `PYO3_CONFIG_FILE` 精确指定目标解释器，PATH 默认 python3 是容器自带 3.9——4 个 Linux wheel build 全挂；
 > 3. `ring 0.17.14` cross-compile 到 aarch64 manylinux2014 时 cross-gcc 没把 `__ARM_ARCH` 宏传给 ASM，sha256-armv8-linux64.S 编译失败；
@@ -330,6 +340,7 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
+[1.0.0-rc.4]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.1
