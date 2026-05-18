@@ -7,9 +7,21 @@
 
 ---
 
+## [1.0.0-rc.5] — 2026-05-18
+
+> **1.0.0-rc.4 的紧急重发**。rc.4 wheel build + smoke 全部 6 平台都成功，但 `publish-to-pypi` step 的 `Verify version consistency` 检查写错了：把 Cargo `1.0.0-rc.4` (SemVer) 与 wheel filename `1.0.0rc4` (PEP 440) 直接字符串对比——maturin 必然要把 SemVer 的 `-rc.N` 翻译成 PEP 440 的 `rcN`，所以这个检查在任何 prerelease tag 上都会必然失败。
+> 这个 bug 之前没 surface 是因为前面 4 轮 RC 都没跑到 publish step——一直被前置 step 拦下。
+> rc.4 的 wheel 已经成功 build 但**未上传 PyPI**（publish 在 verify 失败时 skip），所以版本号未占名，bump rc.5 安全。
+
+### Fixed
+
+- **`.github/workflows/python-publish.yml::publish-to-pypi::Verify version consistency`**: 比对 wheel filename 之前先把 SemVer prerelease 翻译到 PEP 440 normalized form（`-alpha.N`/`-beta.N`/`-rc.N`/`-dev.N`/`-post.N` → `aN`/`bN`/`rcN`/`.devN`/`.postN`），与 [`packaging.version.canonicalize_version`](https://packaging.pypa.io/en/latest/version.html) 对齐。
+
+---
+
 ## [1.0.0-rc.4] — 2026-05-18
 
-> **1.0.0-rc.3 的紧急重发**。rc.3 wheel build 5/6 平台成功，但卡在 `macos-13` (Intel native) GitHub-hosted runner pool——单 job 排队 1h+ 没分到 runner，让 publish-to-pypi `needs: [build-wheels, smoke-test]` 永远 wait。代码层面 rc.3 已无问题；本版本仅改 CI runner 选择。
+> **1.0.0-rc.3 的紧急重发**（未发布——见上方 1.0.0-rc.5 重发说明）。rc.3 wheel build 5/6 平台成功，但卡在 `macos-13` (Intel native) GitHub-hosted runner pool——单 job 排队 1h+ 没分到 runner，让 publish-to-pypi `needs: [build-wheels, smoke-test]` 永远 wait。代码层面 rc.3 已无问题；本版本仅改 CI runner 选择。
 
 ### Fixed
 
@@ -340,6 +352,8 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
+[1.0.0-rc.5]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.5
+[1.0.0-rc.5]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.2
