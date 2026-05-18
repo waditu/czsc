@@ -55,8 +55,12 @@ jobs:
           - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
           - { os: ubuntu-latest,  target: aarch64, manylinux: '2014' }
           - { os: ubuntu-latest,  target: x86_64,  manylinux: 'musllinux_1_2' }
-          - { os: macos-13,       target: x86_64,  manylinux: '' }
-          - { os: macos-14,       target: aarch64, manylinux: '' }
+          # macOS x86_64 用 macos-latest runner cross-compile（macos-13 Intel
+          # runner pool 极度紧张，单 job 排队常 1h+ 卡 publish；macos-latest
+          # 当前指向 Apple Silicon runner，池子充裕）。Apple 工具链原生支持
+          # x86_64 cross-build，等价于 `cargo build --target x86_64-apple-darwin`。
+          - { os: macos-latest,   target: x86_64,  manylinux: '' }
+          - { os: macos-latest,   target: aarch64, manylinux: '' }
           - { os: windows-latest, target: x64,     manylinux: '' }
     steps:
       - name: Checkout code
@@ -169,8 +173,11 @@ jobs:
       matrix:
         smoke:
           - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
-          - { os: macos-13,       target: x86_64,  manylinux: '' }
-          - { os: macos-14,       target: aarch64, manylinux: '' }
+          # macOS x86_64 wheel 是 cross-compile 出来的（见 build-wheels 注释），
+          # 不能在 Apple Silicon runner 上原生 import 验证（platform mismatch），
+          # 而 macos-13 Intel runner pool 紧张到不可用——故 CI 不 smoke 它，
+          # 信任 Apple 工具链 cross-build 的稳定性。
+          - { os: macos-latest,   target: aarch64, manylinux: '' }
           - { os: windows-latest, target: x64,     manylinux: '' }
     steps:
       - name: Set up Python 3.10
