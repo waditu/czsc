@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn empty_or_single_returns_nan() {
         assert!(monotonicity(&[]).is_nan());
-        assert!(monotonicity(&[3.14]).is_nan());
+        assert!(monotonicity(&[2.71]).is_nan());
     }
 
     #[test]

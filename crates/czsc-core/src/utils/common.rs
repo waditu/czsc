@@ -48,9 +48,7 @@ pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
             // 引入系统时区偏移（如 UTC+8 上 15:00 → 07:00 的 bug）
             let calendar = py.import("calendar")?;
             let timetuple = dt.call_method0("timetuple")?;
-            let secs: i64 = calendar
-                .call_method1("timegm", (timetuple,))?
-                .extract()?;
+            let secs: i64 = calendar.call_method1("timegm", (timetuple,))?.extract()?;
             let microsecond: u32 = dt.getattr("microsecond")?.extract()?;
             DateTime::from_timestamp(secs, microsecond * 1_000)
                 .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?

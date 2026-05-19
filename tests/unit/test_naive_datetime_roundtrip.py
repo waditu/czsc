@@ -5,7 +5,7 @@ Python 按系统时区解释，UTC+8 上 15:00 → 07:00 UTC。
 修复：naive datetime 改用 calendar.timegm，数值直接当 UTC。
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pytest
@@ -47,8 +47,6 @@ def test_naive_datetime_preserves_hour(dt_input):
 
 def test_aware_datetime_still_converts():
     """带时区信息的 datetime 仍应正确转换。"""
-    from datetime import timezone, timedelta
-
     cst = timezone(timedelta(hours=8))
     aware = datetime(2024, 1, 2, 15, 0, tzinfo=cst)
     bar = _make_bar(aware)
@@ -59,8 +57,6 @@ def test_aware_datetime_still_converts():
 
 def test_integer_epoch_unchanged():
     """整数 epoch 输入行为不变。"""
-    import time
-
     epoch = 1704067200  # 2024-01-01 00:00:00 UTC
     bar = _make_bar(epoch)
     assert bar.dt.hour == 0
