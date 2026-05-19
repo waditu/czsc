@@ -195,6 +195,19 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 ```
 
 
+## 使用案例
+
+更多端到端案例汇总见飞书 wiki：[CZSC 1.0.X 版本使用说明和案例](https://s0cqcxuy3p.feishu.cn/wiki/X0mAwSZyqiuebek2EUacbyPMnDd)。
+
+| 序号 | 案例 | 一句话介绍 |
+|------|------|------------|
+| 1 | [基于 Event 的策略回测 + wbt HTML 报告](https://s0cqcxuy3p.feishu.cn/wiki/Li7ewsbReiQlWokEEVpcvLjznJU) | 5 行命令跑通 Event → Position → 回测 → 可交互 HTML 报告的完整闭环。 |
+| 2 | [lightweight_charts 缠论可视化](https://s0cqcxuy3p.feishu.cn/wiki/VF7Gwq3N8iuplckG1Tmcmp1Qn3d) | 几行代码把缠论结构（分型/笔/线段/中枢）导出为自包含离线 HTML，便于分享与嵌入。 |
+| 3 | [把信号函数画到 K 线主图（plot_czsc_signals）](https://s0cqcxuy3p.feishu.cn/wiki/ULxhwFyVkiavqhkZ2Xkc0N3fnYc) | 把信号触发点叠在 K 线主图上，直观调试 signals_config 与多周期联立。 |
+| 4 | [性能基准测试：在本地复现 CZSC / CzscTrader 吞吐量](https://s0cqcxuy3p.feishu.cn/wiki/ReRfw9WUjiVgEckZbMxcT87WnRc) | 一行命令本地评估吞吐量，配套关键指标速查表，用于容量规划与加速效果核对。 |
+| 5 | [信号函数模块深入介绍](https://s0cqcxuy3p.feishu.cn/wiki/WxU8wKTBViekKbkCyKzcwa7SnJd) | 系统讲解 czsc-signals 架构与 246 个信号函数的模块划分、参数模板、信号表达示例。 |
+
+
 ## 核心 API 一览
 
 | 类型 | 符号 | 说明 |
