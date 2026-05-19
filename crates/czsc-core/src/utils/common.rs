@@ -35,54 +35,42 @@ pub fn create_naive_pandas_timestamp(py: Python, dt: DateTime<chrono::Utc>) -> P
 
 /// 通用的日期时间解析函数，支持多种Python日期时间格式
 /// 这个函数被RawBar、NewBar和FX共同使用，避免重复代码
+///
+/// naive datetime（无 tzinfo）的数值直接当 UTC 解释，不经过 .timestamp()
+/// 的系统时区转换，与项目"市场本地时间以 UTC 数值存储"的约定一致。
 #[cfg(feature = "python")]
 pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
-    // 尝试解析dt参数，支持多种输入格式
+    let py = dt.py();
+
     let datetime_utc = if dt.hasattr("timestamp")? {
-        // 如果是Python datetime对象（有timestamp方法）
-        let timestamp = dt.call_method0("timestamp")?;
-        let timestamp_f64: f64 = timestamp.extract()?;
-        DateTime::from_timestamp(
-            timestamp_f64 as i64,
-            (timestamp_f64.fract() * 1_000_000_000.0) as u32,
-        )
-        .ok_or(ObjectError::Unexpected(anyhow!(
-            "Invalid datetime for building object"
-        )))?
-    } else if dt.hasattr("tz_localize")? {
-        // 如果是pandas Timestamp，可能没有时区信息
-        let localized_dt = if dt.getattr("tz")?.is_none() {
-            // 如果没有时区，添加UTC时区
-            dt.call_method1("tz_localize", ("UTC",))?
+        if dt.getattr("tzinfo")?.is_none() {
+            // Naive datetime: 数值直接当 UTC，用 calendar.timegm 避免 .timestamp()
+            // 引入系统时区偏移（如 UTC+8 上 15:00 → 07:00 的 bug）
+            let calendar = py.import("calendar")?;
+            let timetuple = dt.call_method0("timetuple")?;
+            let secs: i64 = calendar
+                .call_method1("timegm", (timetuple,))?
+                .extract()?;
+            let microsecond: u32 = dt.getattr("microsecond")?.extract()?;
+            DateTime::from_timestamp(secs, microsecond * 1_000)
+                .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?
         } else {
-            dt.clone()
-        };
-        let timestamp = localized_dt.call_method0("timestamp")?;
-        let timestamp_f64: f64 = timestamp.extract()?;
-        DateTime::from_timestamp(
-            timestamp_f64 as i64,
-            (timestamp_f64.fract() * 1_000_000_000.0) as u32,
-        )
-        .ok_or(ObjectError::Unexpected(anyhow!(
-            "Invalid datetime for building object"
-        )))?
+            // Aware datetime: .timestamp() 已正确处理时区
+            let ts: f64 = dt.call_method0("timestamp")?.extract()?;
+            DateTime::from_timestamp(ts as i64, (ts.fract() * 1_000_000_000.0) as u32)
+                .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?
+        }
     } else if let Ok(timestamp) = dt.extract::<i64>() {
         // 如果是时间戳（保持向后兼容）
         DateTime::from_timestamp(timestamp, 0).ok_or(ObjectError::Unexpected(anyhow!(
             "Invalid timestamp for building object"
         )))?
-    } else if let Ok(timestamp_f64) = dt.extract::<f64>() {
-        // 如果是浮点数时间戳
-        DateTime::from_timestamp(
-            timestamp_f64 as i64,
-            (timestamp_f64.fract() * 1_000_000_000.0) as u32,
-        )
-        .ok_or(ObjectError::Unexpected(anyhow!(
-            "Invalid timestamp for building object"
-        )))?
+    } else if let Ok(ts) = dt.extract::<f64>() {
+        DateTime::from_timestamp(ts as i64, (ts.fract() * 1_000_000_000.0) as u32)
+            .ok_or(ObjectError::Unexpected(anyhow!("Invalid timestamp")))?
     } else {
         return Err(ObjectError::Unexpected(anyhow!(
-            "dt parameter must be a Python datetime object, pandas Timestamp, integer timestamp, or float timestamp"
+            "dt must be datetime, Timestamp, or numeric timestamp"
         ))
         .into());
     };
