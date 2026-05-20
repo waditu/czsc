@@ -14,6 +14,7 @@ use pyo3::{Py, PyAny, PyResult, Python};
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+#[cfg(feature = "python")]
 use std::sync::Arc;
 
 /// 虚拟笔

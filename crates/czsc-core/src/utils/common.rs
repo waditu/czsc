@@ -1,4 +1,5 @@
 use crate::objects::freq::Freq;
+#[cfg(feature = "python")]
 use chrono::{DateTime, Utc};
 
 #[cfg(feature = "python")]

@@ -2,6 +2,7 @@
 use crate::objects::bar::RawBar;
 #[cfg(feature = "python")]
 use parking_lot::RwLock;
+#[cfg(feature = "python")]
 use std::sync::Arc;
 
 use super::{

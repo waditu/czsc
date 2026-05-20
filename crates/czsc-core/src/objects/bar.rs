@@ -8,6 +8,7 @@ use pyo3::types::PyDict;
 
 use std::sync::Arc;
 
+#[cfg(feature = "python")]
 use crate::utils::common::freq_to_chinese_string;
 #[cfg(feature = "python")]
 use crate::utils::common::{create_naive_pandas_timestamp, parse_python_datetime};
