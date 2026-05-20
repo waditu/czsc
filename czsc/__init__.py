@@ -143,7 +143,7 @@ except _PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20260507"
+__date__ = "20260520"
 
 # === 公共 API 契约 ===
 # 修改本列表等价于修改公共契约；新增/移除符号必须在 release notes 与 MIGRATION_NOTES 中说明。
