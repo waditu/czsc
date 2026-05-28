@@ -143,7 +143,7 @@
 | API | 用途 | 实现位置 | 内部依赖 |
 |-----|------|----------|----------|
 | `format_standard_kline` | 将标准 K 线 DataFrame 转换为 `list[RawBar]` | `czsc/_format_standard_kline.py:57` | `czsc._native.{RawBar, Freq}` |
-| `resample_bars` | 将基础周期 K 线（`DataFrame` 或 `list[RawBar]`）重采样到目标周期 | `czsc/_resample_bars.py:46` | `czsc._native.{resample_bars, RawBar, Freq}` |
+| `resample_bars` | 将基础周期 K 线（`DataFrame` 或 `list[RawBar]`）重采样到目标周期 | `czsc/_resample_bars.py:61` | `czsc._native.{resample_bars, RawBar, Freq}` |
 
 ---
 

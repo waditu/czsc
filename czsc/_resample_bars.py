@@ -41,17 +41,21 @@ from czsc._native import resample_bars as _resample_bars_native
 
 __all__ = ["resample_bars"]
 
-# DataFrame 输出的固定列序，与 ``format_standard_kline`` 的输入约定对齐。
-_OUTPUT_COLUMNS: tuple[str, ...] = (
-    "symbol",
-    "dt",
-    "open",
-    "close",
-    "high",
-    "low",
-    "vol",
-    "amount",
-)
+# DataFrame 输出的固定列序 + 列 dtype，与 ``format_standard_kline`` 的输入约定对齐。
+# 空结果走 ``_empty_output_dataframe`` 构造，保证空 / 非空 DataFrame 的 dtype 一致——
+# 否则 ``pd.Series(dtype=object)`` 会让空 df 的 dt 列拿不到 ``.dt`` accessor，OHLCV
+# 列也会在 ``pd.concat([empty, full])`` 时退化成 object。
+_OUTPUT_DTYPES: dict[str, str] = {
+    "symbol": "object",
+    "dt": "datetime64[ns]",
+    "open": "float64",
+    "close": "float64",
+    "high": "float64",
+    "low": "float64",
+    "vol": "float64",
+    "amount": "float64",
+}
+_OUTPUT_COLUMNS: tuple[str, ...] = tuple(_OUTPUT_DTYPES.keys())
 
 
 def resample_bars(
@@ -106,9 +110,11 @@ def resample_bars(
         return out
 
     if not out:
-        # 空结果：保留 8 列 schema，避免 pd.DataFrame([]) 退化成 0 列
-        # 引发下游 df["dt"] KeyError。
-        return pd.DataFrame({col: pd.Series(dtype=object) for col in _OUTPUT_COLUMNS})
+        # 空结果：保留 8 列 + 与非空路径一致的 dtype，避免：
+        # 1. ``pd.DataFrame([])`` 退化成 0 列引发下游 df["dt"] KeyError；
+        # 2. dtype 全 object 让 ``df["dt"].dt.year`` 抛 AttributeError，或
+        #    ``pd.concat([empty, full])`` 把 OHLCV 列降级成 object。
+        return pd.DataFrame({col: pd.Series(dtype=dt) for col, dt in _OUTPUT_DTYPES.items()})
 
     return pd.DataFrame(
         [

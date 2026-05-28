@@ -189,8 +189,12 @@ def test_raw_bars_false_returns_dataframe_with_standard_columns():
 
 
 def test_raw_bars_false_empty_input_preserves_schema():
-    """空结果 + raw_bars=False 必须返回 8 列 schema 的空 DataFrame，
-    避免 ``pd.DataFrame([])`` 退化成 0 列引发下游 KeyError。"""
+    """空结果 + raw_bars=False 必须返回 8 列 + 与非空一致 dtype 的空 DataFrame。
+
+    若退化成 ``pd.DataFrame([])``：0 列引发下游 ``df['dt']`` KeyError。
+    若 dtype 全 ``object``：``df['dt'].dt.year`` 抛 AttributeError，
+    且 ``pd.concat([empty, full])`` 把 OHLCV 列降级成 object。
+    """
     out = resample_bars([], Freq.F5, raw_bars=False)
     assert isinstance(out, pd.DataFrame)
     assert len(out) == 0
@@ -204,6 +208,13 @@ def test_raw_bars_false_empty_input_preserves_schema():
         "vol",
         "amount",
     )
+    # dtype 与非空路径对齐：symbol object / dt datetime64[ns] / OHLCV float64
+    assert str(out["symbol"].dtype) == "object"
+    assert str(out["dt"].dtype) == "datetime64[ns]"
+    for col in ("open", "close", "high", "low", "vol", "amount"):
+        assert str(out[col].dtype) == "float64", f"{col} dtype 应当是 float64"
+    # 空 dt 列也应当能用 .dt accessor，证明 dtype 真的是 datetime64[ns]
+    _ = out["dt"].dt  # noqa: B018  — 不抛 AttributeError 即通过
 
 
 def test_target_freq_accepts_string():
@@ -247,7 +258,7 @@ def test_mixed_symbol_input_raises():
         amount=bars[1].amount,
         id=bars[1].id,
     )
-    with pytest.raises(Exception, match="symbol"):
+    with pytest.raises(ValueError, match="symbol"):
         resample_bars(bars, Freq.F5)
 
 
@@ -266,7 +277,7 @@ def test_mixed_freq_input_raises():
         amount=bars[1].amount,
         id=bars[1].id,
     )
-    with pytest.raises(Exception, match="freq"):
+    with pytest.raises(ValueError, match="freq"):
         resample_bars(bars, Freq.F5)
 
 
@@ -286,7 +297,7 @@ def test_duplicate_dt_input_raises():
         amount=bars[2].amount,
         id=bars[2].id,
     )
-    with pytest.raises(Exception, match="重复"):
+    with pytest.raises(ValueError, match="重复"):
         resample_bars(bars, Freq.F5)
 
 
@@ -294,7 +305,7 @@ def test_out_of_order_dt_input_raises():
     """乱序 dt 必须显式报错，避免静默错合并。"""
     bars = _make_ashare_1min_bars(3)
     bars[1], bars[2] = bars[2], bars[1]  # 交换次序
-    with pytest.raises(Exception, match="乱序"):
+    with pytest.raises(ValueError, match="乱序"):
         resample_bars(bars, Freq.F5)
 
 
@@ -317,7 +328,7 @@ def test_nan_ohlcv_input_raises():
         }
         kwargs[field] = float("nan")
         bars[1] = RawBar(**kwargs)
-        with pytest.raises(Exception, match=field):
+        with pytest.raises(ValueError, match=field):
             resample_bars(bars, Freq.F5)
 
 

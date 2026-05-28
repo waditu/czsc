@@ -57,8 +57,10 @@ pub fn resample_bars(
     let base_freq = bars[0].freq;
     let market = infer_market_from_bars(bars, base_freq);
 
-    // 上界：base 与 target 1:1 时输出与 bars 同长，再 +1 给未完成的尾桶留位。
-    // BarGenerator 用 `VecDeque::with_capacity(max_count)` 预分配，不能传 usize::MAX。
+    // 上界：base 与 target 1:1 时输出与 bars 同长；BarGenerator 用
+    // `VecDeque::with_capacity(max_count)` 预分配，不能传 usize::MAX。
+    // +1 是防御性 padding（base==target 时严格 bars.len() 已够），便于未来
+    // 行为变更（例如 BarGenerator 临时持有未完成尾桶 + 完成桶共存）不踩雷。
     let max_count = bars.len().saturating_add(1);
     let bg = BarGenerator::new(base_freq, vec![target_freq], max_count, market)?;
 
@@ -129,9 +131,9 @@ fn validate_batch_invariants(bars: &[RawBar]) -> Result<(), UtilsError> {
                 "resample_bars: bars[{}].dt={} 与 bars[{}].dt={} {}（要求严格单调递增），\
                  请在调用前去重并按 dt 升序排列",
                 idx,
-                bar.dt,
+                bar.dt.format("%Y-%m-%d %H:%M:%S"),
                 idx - 1,
-                prev_dt,
+                prev_dt.format("%Y-%m-%d %H:%M:%S"),
                 reason,
             )));
         }
@@ -155,7 +157,7 @@ fn check_no_nan(bar: &RawBar, idx: usize) -> Result<(), UtilsError> {
              dropna 或填充后再调用",
             idx,
             field,
-            bar.dt,
+            bar.dt.format("%Y-%m-%d %H:%M:%S"),
         )));
     }
     Ok(())

@@ -158,8 +158,12 @@ impl UnifiedExecEngine {
         let mut positions = plan.positions.clone();
 
         // 先用左侧 bars 初始化 BG / CZSC。
+        // warmup_bar 现在 propagate BarGenerator 的硬错（NaN OHLCV / freq mismatch / 非交易时间），
+        // 避免上游脏数据让 BG 进入 stale 状态后续算出"幻象"信号。
         for bar in bars.iter().take(start_idx) {
-            signals.warmup_bar(bar);
+            signals
+                .warmup_bar(bar)
+                .map_err(|e| format!("warmup_bar 失败 (dt={}): {e}", bar.dt))?;
         }
 
         // 对齐 Python `CzscSignals(bg)`：warmup 完成后会立刻计算一次当前信号，
@@ -201,7 +205,9 @@ impl UnifiedExecEngine {
 
         for bar in bars.drain(start_idx..) {
             let t_signals = Instant::now();
-            signals.update_signals(&bar, &plan.signals_config);
+            signals
+                .update_signals(&bar, &plan.signals_config)
+                .map_err(|e| format!("update_signals 失败 (dt={}): {e}", bar.dt))?;
             let signals_update_ns = t_signals.elapsed().as_nanos();
 
             let t_trader_sig = Instant::now();

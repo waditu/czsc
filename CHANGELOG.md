@@ -7,6 +7,31 @@
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`czsc.resample_bars`**：把基础周期 K 线（`pandas.DataFrame` 或 `list[RawBar]`）聚合到目标周期。Rust 实现位于 `crates/czsc-utils/src/resample.rs`，通过 `czsc._native.resample_bars` 透传；Python 端 `czsc/_resample_bars.py` 仅做 DataFrame ↔ `list[RawBar]` 边界胶水。复用 `BarGenerator` 单桶聚合 + `infer_market_from_bars` 自动推断市场。
+
+### Breaking changes
+
+- **`RawBar` 构造拒绝 tz-aware datetime**（`crates/czsc-core/src/utils/common.rs::parse_python_datetime`）：历史上 tz-aware 入参走 `.timestamp()` 静默转 UTC（如 `09:31 Asia/Shanghai → 01:31 UTC`），下游 `freq_end_time` 桶定位全部错位。现改为 `PyValueError`，调用方需先 `df['dt'] = df['dt'].dt.tz_localize(None)`。同时 `parse_python_datetime` 的所有失败路径统一返回 `PyValueError`（历史混用 `PyException` + `PyValueError`），方便 Python 端 `except ValueError` 一次性捕获。
+- **`BarGenerator.update_bar` / `init_freq_with_bars` 拒绝 NaN OHLCV**（`crates/czsc-utils/src/bar_generator.rs`）：历史上 `last.vol + bar.vol` 会让 NaN 沿桶传染（与 pandas `sum(skipna=True)` 不一致）。现改为显式 Err，沿 `signals.update_signals` / `trader.update` 等调用链 propagate，避免 trader 路径吞 Err 后用 stale 状态算出"幻象"信号。
+- **`CzscTrader.update` / `on_bar` / `update_signals`、`CzscSignals.update_signals`**（`crates/czsc-python/src/trader/`）：PyO3 method 改返回 `PyResult<()>`，NaN / freq mismatch 等硬错 fail-loud 上抛 `ValueError`。Python 端调用方需准备好 `try/except` 或让异常冒泡。
+
+### Fixed
+
+- **`czsc/connectors/tq_connector.py::get_raw_bars`**：调用 `czsc.resample_bars` 时显式传 `base_freq=freq`，修复默认 `Freq.F1` 误标导致的 silent 时间漂移（review finding C5）。
+- **`czsc.resample_bars` 边界**：空输入 + `raw_bars=False` 现在返回 8 列 + 与非空一致 dtype 的空 DataFrame（`symbol=object` / `dt=datetime64[ns]` / OHLCV=`float64`），避免 `pd.DataFrame([])` 退化成 0 列 KeyError，以及 dtype 全 `object` 让 `df["dt"].dt` accessor 抛 AttributeError。
+
+### Notes
+
+- 本批改动有两项**已知限制**（已 docstring 标注，留单独 PR 处理）：
+  - `resample_bars` 的 `drop_unfinished=True` 对非分钟 target（D/W/M/S/Y）实际是 no-op，因 `freq_end_time` 把日级以上桶 dt 归到 `00:00:00`。
+  - `BarGenerator::new` 为 base 桶也预分配 `bars.len()+1` 容量，单次大输入（百万级）会有一倍内存浪费。
+
+---
+
 ## [1.0.0-rc.5] — 2026-05-18
 
 > **1.0.0-rc.4 的紧急重发**。rc.4 wheel build + smoke 全部 6 平台都成功，但 `publish-to-pypi` step 的 `Verify version consistency` 检查写错了：把 Cargo `1.0.0-rc.4` (SemVer) 与 wheel filename `1.0.0rc4` (PEP 440) 直接字符串对比——maturin 必然要把 SemVer 的 `-rc.N` 翻译成 PEP 440 的 `rcN`，所以这个检查在任何 prerelease tag 上都会必然失败。

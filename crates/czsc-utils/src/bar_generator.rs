@@ -329,9 +329,10 @@ impl BarGenerator {
 
 /// 返回首个含 NaN 的 OHLCV 字段名，全部正常则返回 None。
 ///
-/// 公开（`pub`）以便 `resample::validate_batch_invariants` 复用，避免两处 NaN
+/// `pub(crate)`：仅给 `resample::validate_batch_invariants` 复用，避免两处 NaN
 /// 校验定义漂移；调用方各自拼上下文（如 batch 模式可加 `bars[idx]` 前缀）。
-pub fn nan_ohlcv_field(bar: &RawBar) -> Option<&'static str> {
+/// 不下放成 `pub` 以免成为对外公开 API 锁死签名。
+pub(crate) fn nan_ohlcv_field(bar: &RawBar) -> Option<&'static str> {
     const FIELDS: [(&str, fn(&RawBar) -> f64); 6] = [
         ("open", |b| b.open),
         ("close", |b| b.close),

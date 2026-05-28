@@ -3,9 +3,7 @@ use crate::objects::freq::Freq;
 use chrono::{DateTime, Utc};
 
 #[cfg(feature = "python")]
-use crate::objects::errors::ObjectError;
-#[cfg(feature = "python")]
-use anyhow::anyhow;
+use pyo3::exceptions::PyValueError;
 #[cfg(feature = "python")]
 use pyo3::prelude::*;
 #[cfg(feature = "python")]
@@ -42,6 +40,11 @@ pub fn create_naive_pandas_timestamp(py: Python, dt: DateTime<chrono::Utc>) -> P
 /// 分支用 `.timestamp()` 会把 09:31 Asia/Shanghai 转成 01:31 UTC，与
 /// "本地时间即 UTC 数值"的约定冲突，下游 freq_end_time 桶定位全部错位。
 /// 调用方应在 Python 端 `df['dt'].dt.tz_localize(None)` 后再传入。
+///
+/// 所有失败路径统一返回 [`PyValueError`]（语义上都是 invalid value），
+/// 这样 Python 端可以用 `except ValueError` 一次性捕获，避免历史上
+/// `PyException`（来自 `ObjectError::Unexpected`）与 `PyValueError`
+/// 混用导致 `except ValueError` 漏掉部分失败模式。
 #[cfg(feature = "python")]
 pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
     let py = dt.py();
@@ -55,12 +58,12 @@ pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
             let secs: i64 = calendar.call_method1("timegm", (timetuple,))?.extract()?;
             let microsecond: u32 = dt.getattr("microsecond")?.extract()?;
             DateTime::from_timestamp(secs, microsecond * 1_000)
-                .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?
+                .ok_or_else(|| PyValueError::new_err("Invalid datetime"))?
         } else {
             // tz-aware 入参：fail-loud，避免 silent 8h 漂移
             // （history: aware 分支用 .timestamp() 把 09:31 Asia/Shanghai → 01:31 UTC，
             //  导致 freq_end_time 桶定位错位）
-            return Err(pyo3::exceptions::PyValueError::new_err(
+            return Err(PyValueError::new_err(
                 "dt 必须是 tz-naive datetime/Timestamp（项目约定：市场本地时间以 UTC 数值存储）；\
                  tz-aware 入参会导致桶边界静默错位。请先在 Python 端 \
                  `df['dt'] = df['dt'].dt.tz_localize(None)`（或 `dt.replace(tzinfo=None)`）后再调用。",
@@ -68,17 +71,15 @@ pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
         }
     } else if let Ok(timestamp) = dt.extract::<i64>() {
         // 如果是时间戳（保持向后兼容）
-        DateTime::from_timestamp(timestamp, 0).ok_or(ObjectError::Unexpected(anyhow!(
-            "Invalid timestamp for building object"
-        )))?
+        DateTime::from_timestamp(timestamp, 0)
+            .ok_or_else(|| PyValueError::new_err("Invalid timestamp for building object"))?
     } else if let Ok(ts) = dt.extract::<f64>() {
         DateTime::from_timestamp(ts as i64, (ts.fract() * 1_000_000_000.0) as u32)
-            .ok_or(ObjectError::Unexpected(anyhow!("Invalid timestamp")))?
+            .ok_or_else(|| PyValueError::new_err("Invalid timestamp"))?
     } else {
-        return Err(ObjectError::Unexpected(anyhow!(
-            "dt must be datetime, Timestamp, or numeric timestamp"
-        ))
-        .into());
+        return Err(PyValueError::new_err(
+            "dt must be datetime, Timestamp, or numeric timestamp",
+        ));
     };
 
     Ok(datetime_utc)
