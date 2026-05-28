@@ -37,8 +37,11 @@ pub fn create_naive_pandas_timestamp(py: Python, dt: DateTime<chrono::Utc>) -> P
 /// 通用的日期时间解析函数，支持多种Python日期时间格式
 /// 这个函数被RawBar、NewBar和FX共同使用，避免重复代码
 ///
-/// naive datetime（无 tzinfo）的数值直接当 UTC 解释，不经过 .timestamp()
-/// 的系统时区转换，与项目"市场本地时间以 UTC 数值存储"的约定一致。
+/// 项目约定："市场本地时间以 UTC 数值存储"。naive datetime（无 tzinfo）的
+/// 数值直接当 UTC 解释，**tz-aware datetime 一律拒绝**——历史上 tz-aware
+/// 分支用 `.timestamp()` 会把 09:31 Asia/Shanghai 转成 01:31 UTC，与
+/// "本地时间即 UTC 数值"的约定冲突，下游 freq_end_time 桶定位全部错位。
+/// 调用方应在 Python 端 `df['dt'].dt.tz_localize(None)` 后再传入。
 #[cfg(feature = "python")]
 pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
     let py = dt.py();
@@ -54,10 +57,14 @@ pub fn parse_python_datetime(dt: &Bound<PyAny>) -> PyResult<DateTime<Utc>> {
             DateTime::from_timestamp(secs, microsecond * 1_000)
                 .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?
         } else {
-            // Aware datetime: .timestamp() 已正确处理时区
-            let ts: f64 = dt.call_method0("timestamp")?.extract()?;
-            DateTime::from_timestamp(ts as i64, (ts.fract() * 1_000_000_000.0) as u32)
-                .ok_or(ObjectError::Unexpected(anyhow!("Invalid datetime")))?
+            // tz-aware 入参：fail-loud，避免 silent 8h 漂移
+            // （history: aware 分支用 .timestamp() 把 09:31 Asia/Shanghai → 01:31 UTC，
+            //  导致 freq_end_time 桶定位错位）
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "dt 必须是 tz-naive datetime/Timestamp（项目约定：市场本地时间以 UTC 数值存储）；\
+                 tz-aware 入参会导致桶边界静默错位。请先在 Python 端 \
+                 `df['dt'] = df['dt'].dt.tz_localize(None)`（或 `dt.replace(tzinfo=None)`）后再调用。",
+            ));
         }
     } else if let Ok(timestamp) = dt.extract::<i64>() {
         // 如果是时间戳（保持向后兼容）
