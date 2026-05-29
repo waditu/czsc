@@ -312,17 +312,21 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="后复权", raw_bar=True):
     adj = "qfq" if fq == "前复权" else "hfq"
 
     if "分钟" in freq:
+        raw_freq = freq
         freq = freq.replace("分钟", "min")
         bars = pro_bar_minutes(ts_code, sdt=sdt, edt=edt, freq=freq, asset=asset, adj=adj)
         if raw_bar:
-            bars = format_kline(bars, Freq(freq))
+            # pro_bar_minutes 返回列名为 symbol/dt，format_kline 需要 ts_code/trade_time
+            bars = bars.rename(columns={"symbol": "ts_code", "dt": "trade_time"})
+            bars = format_kline(bars, Freq(raw_freq))
 
     else:
         import tushare as ts
 
         _map = {"日线": "D", "周线": "W", "月线": "M"}
+        raw_freq = freq
         freq = _map[freq]
         bars = ts.pro_bar(ts_code, start_date=sdt, end_date=edt, freq=freq, asset=asset, adj=adj)
         if raw_bar:
-            bars = format_kline(bars, Freq(freq))
+            bars = format_kline(bars, Freq(raw_freq))
     return bars

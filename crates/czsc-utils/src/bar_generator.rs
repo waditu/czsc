@@ -107,7 +107,7 @@ impl BarGenerator {
             czsc_bail!("self.bars['{}'] 不为空，不允许执行初始化", freq);
         }
 
-        let bars = bars
+        let bars: VecDeque<RawBar> = bars
             .into_iter()
             .enumerate()
             .map(|(id, mut bar)| {
@@ -115,6 +115,20 @@ impl BarGenerator {
                 bar
             })
             .collect();
+
+        // 与 update_bar 对齐：拒绝 NaN OHLCV 输入，防止后续 update_freq 的
+        // `last + bar` 让 NaN 沿桶传染。
+        for (idx, bar) in bars.iter().enumerate() {
+            if let Some(field) = nan_ohlcv_field(bar) {
+                czsc_bail!(
+                    "init_freq_with_bars: bars[{}].{} = NaN（dt={}），\
+                     BarGenerator 拒绝 NaN OHLCV 输入以避免桶聚合静默污染",
+                    idx,
+                    field,
+                    bar.dt
+                );
+            }
+        }
 
         self.freq_bars.insert(freq, RwLock::new(bars));
         Ok(())
@@ -285,6 +299,17 @@ impl BarGenerator {
             );
         }
 
+        // 2. 校验 OHLCV 无 NaN：update_freq 的 `last + bar` 会让 NaN 沿桶传染，
+        //    与历史 pandas sum(skipna=True) 不一致。所有调用方
+        //    （trader / czsc_signals / executor / resample）都不应推入 NaN。
+        if let Some(field) = nan_ohlcv_field(bar) {
+            czsc_bail!(
+                "bar.{} = NaN（dt={}），BarGenerator 拒绝 NaN OHLCV 输入以避免桶聚合静默污染",
+                field,
+                bar.dt
+            );
+        }
+
         // 3. 检查是否存在重复的K线
         if let Some(base_bars) = self.freq_bars.get(&self.base_freq)
             && let Some(last_bar) = base_bars.read().back()
@@ -300,6 +325,31 @@ impl BarGenerator {
 
         Ok(())
     }
+}
+
+/// OHLCV 字段取值器：`(字段名, 取值函数)`。提到 module 顶层是为了
+/// 避开 clippy::type_complexity 对内联 `fn(&RawBar) -> f64` 的告警。
+type OhlcvFieldGetter = (&'static str, fn(&RawBar) -> f64);
+
+const OHLCV_FIELDS: [OhlcvFieldGetter; 6] = [
+    ("open", |b| b.open),
+    ("close", |b| b.close),
+    ("high", |b| b.high),
+    ("low", |b| b.low),
+    ("vol", |b| b.vol),
+    ("amount", |b| b.amount),
+];
+
+/// 返回首个含 NaN 的 OHLCV 字段名，全部正常则返回 None。
+///
+/// `pub(crate)`：仅给 `resample::validate_batch_invariants` 复用，避免两处 NaN
+/// 校验定义漂移；调用方各自拼上下文（如 batch 模式可加 `bars[idx]` 前缀）。
+/// 不下放成 `pub` 以免成为对外公开 API 锁死签名。
+pub(crate) fn nan_ohlcv_field(bar: &RawBar) -> Option<&'static str> {
+    OHLCV_FIELDS
+        .iter()
+        .find(|(_, getter)| getter(bar).is_nan())
+        .map(|(name, _)| *name)
 }
 
 #[cfg(feature = "python")]
@@ -993,6 +1043,77 @@ mod tests {
             bg_other_market.symbol(),
             Some(Arc::from("IF2403".to_string())),
             "市场符号应该更新为IF2403"
+        );
+    }
+
+    /// 流式 update_bar 也必须拒绝任一 OHLCV 字段为 NaN 的 bar，
+    /// 防止 update_freq 的 `last + bar` 让 NaN 沿桶传染。
+    #[test]
+    fn test_update_bar_rejects_nan_ohlcv() {
+        let dt = Utc.from_utc_datetime(
+            &NaiveDateTime::parse_from_str("2024-12-12 10:01:00", "%Y-%m-%d %H:%M:%S").unwrap(),
+        );
+        let bg = BarGenerator::new(Freq::F1, vec![Freq::F5], 10, Market::AShare).unwrap();
+
+        for field in ["open", "close", "high", "low", "vol", "amount"] {
+            let mut builder = RawBarBuilder::default();
+            builder = builder
+                .symbol("000016.SH".to_string())
+                .id(1)
+                .dt(dt)
+                .freq(Freq::F1)
+                .open(4000.0)
+                .high(4010.0)
+                .low(3990.0)
+                .close(4005.0)
+                .vol(1000.0)
+                .amount(4000.0);
+            // 覆盖单一字段为 NaN，其余保持有效，确保错误信息指向具体字段
+            builder = match field {
+                "open" => builder.open(f64::NAN),
+                "close" => builder.close(f64::NAN),
+                "high" => builder.high(f64::NAN),
+                "low" => builder.low(f64::NAN),
+                "vol" => builder.vol(f64::NAN),
+                "amount" => builder.amount(f64::NAN),
+                _ => unreachable!(),
+            };
+            let bar = builder.build().unwrap();
+
+            let err = bg.update_bar(&bar).unwrap_err();
+            let msg = err.to_string();
+            assert!(
+                msg.contains(field) && msg.contains("NaN"),
+                "{field} 的 NaN 错误信息应当点名字段与 NaN：{err}"
+            );
+        }
+    }
+
+    /// init_freq_with_bars 也是写入路径，同样必须拒绝 NaN OHLCV。
+    #[test]
+    fn test_init_freq_with_bars_rejects_nan_ohlcv() {
+        let mut bg = BarGenerator::new(Freq::F1, vec![Freq::F5], 10, Market::AShare).unwrap();
+        let bar = RawBarBuilder::default()
+            .symbol("000016.SH".to_string())
+            .id(0)
+            .dt(Utc.from_utc_datetime(
+                &NaiveDateTime::parse_from_str("2024-12-12 10:05:00", "%Y-%m-%d %H:%M:%S").unwrap(),
+            ))
+            .freq(Freq::F5)
+            .open(4000.0)
+            .high(4010.0)
+            .low(3990.0)
+            .close(4005.0)
+            .vol(f64::NAN) // 故意污染 vol
+            .amount(4000.0)
+            .build()
+            .unwrap();
+
+        let err = bg.init_freq_with_bars(Freq::F5, vec![bar]).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("vol") && msg.contains("NaN") && msg.contains("bars[0]"),
+            "init_freq_with_bars 应当拒绝 NaN 且点名 bars[0]：{err}"
         );
     }
 }

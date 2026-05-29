@@ -5,6 +5,11 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  # security / dependency-check 改为 master push + 每周日夜间触发（见各 job 的 if 条件）。
+  # 这两个 job 单独都在 25-30 分钟级别，且每个 step 后接 `|| true` 不阻塞 merge，
+  # 留在 PR critical path 上只会把 wall time 拉满 runner 时长却不产生约束，所以移出。
+  schedule:
+    - cron: '0 19 * * 0'   # 周日 UTC 19:00 ≈ 周一北京时间 03:00
 
 jobs:
   # ------------------------------------------------------------------
@@ -46,10 +51,10 @@ jobs:
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
 
-    - name: cargo build --workspace
-      run: cargo build --workspace --release
-
     - name: cargo test (per-crate)
+      # 不预跑 `cargo build --workspace --release`：release profile 的产物
+      # 与下方 `cargo test`（debug profile）不共享 codegen 缓存，热身后 test
+      # 仍要全量重编一次，等于多花 5-10 分钟做无用功。直接进 test step。
       run: |
         set -e
         # 注：原 error-support 已合并到 czsc-core::error_chain；
@@ -190,16 +195,12 @@ jobs:
       with:
         version: "latest"
 
-    - name: Set up Python
-      run: uv python install 3.11
-
-    - name: Install dev tools (no native build needed)
-      run: |
-        uv sync --extra all
-
     - name: Check Python formatting with ruff
+      # ruff 是纯文本工具，不需要解析项目类型，直接 `uvx` 跑一份临时环境
+      # 即可——之前用 `uv sync --extra all` 装 plotly/tushare/ccxt 等几 GB
+      # runtime 重依赖，纯浪费（80%+ 的 wall time 在装无关包）。
       run: |
-        uv run ruff format --check --diff czsc/ tests/
+        uvx --from "ruff>=0.9.0" ruff format --check --diff czsc/ tests/
 
     - name: Check Rust formatting with cargo fmt
       run: |
@@ -231,7 +232,12 @@ jobs:
       run: uv python install 3.11
 
     - name: Install dependencies
-      run: uv sync --extra all
+      # 用 `uv sync` 而不是 `uv sync --extra all`：
+      #   - `[project.dependencies]` 装运行时依赖（basedpyright 需要解析这些 import）
+      #   - `[dependency-groups].dev` 默认装（含 ruff / basedpyright）
+      # 避开 `extra=all` 里的 test 临时包（talib-rs marker 各平台 wheel 不全，
+      # 经常触发额外 resolve）+ release 包（twine/build），lint 都用不到。
+      run: uv sync
 
     - name: Lint Python with ruff
       run: |
@@ -249,6 +255,9 @@ jobs:
     name: Security Audit
     runs-on: ubuntu-latest
     needs: test
+    # 只在 master push 和 schedule 触发时跑：safety/bandit 每 step 都 `|| true` 不阻塞
+    # PR merge，放在 PR critical path 上只会把 wall time 拉到 25+ 分钟却不产生约束。
+    if: github.event_name == 'push' || github.event_name == 'schedule'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -287,6 +296,8 @@ jobs:
     name: Dependency Analysis
     runs-on: ubuntu-latest
     needs: test
+    # 与 security 同款：每 step `|| true`，PR 上不阻塞、不约束，挪到 master + schedule。
+    if: github.event_name == 'push' || github.event_name == 'schedule'
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

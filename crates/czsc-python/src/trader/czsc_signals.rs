@@ -243,9 +243,16 @@ impl PyCzscSignals {
         Ok(list.into_any().unbind())
     }
 
-    /// 更新信号
-    fn update_signals(&mut self, bar: &RawBar) {
-        self.inner.update_signals(bar, &self.signals_config);
+    /// 更新信号。
+    ///
+    /// BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+    /// 这里 propagate 成 Python ValueError，避免吞 Err 让信号链路用 stale 状态。
+    fn update_signals(&mut self, bar: &RawBar) -> PyResult<()> {
+        self.inner
+            .update_signals(bar, &self.signals_config)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}"))
+            })
     }
 
     /// 获取当前信号字典（同 s 属性）

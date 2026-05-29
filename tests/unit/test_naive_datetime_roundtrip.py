@@ -45,14 +45,19 @@ def test_naive_datetime_preserves_hour(dt_input):
     assert bar.dt.minute == dt_input.minute, f"minute mismatch: input={dt_input.minute}, bar.dt={bar.dt.minute}"
 
 
-def test_aware_datetime_still_converts():
-    """带时区信息的 datetime 仍应正确转换。"""
+def test_aware_datetime_is_rejected():
+    """带时区信息的 datetime 必须被 RawBar 构造器拒绝。
+
+    历史行为：tz-aware → `.timestamp()` 转换为真实 UTC（15:00 CST → 07:00 UTC），
+    但与项目"市场本地时间以 UTC 数值存储"的约定矛盾——下游 freq_end_time
+    会按 07:00 去 A 股 1 分钟表查桶，产生 silent 桶错位（参见 review finding
+    "tz-aware 8h shift"）。
+    现行为：拒绝 tz-aware，强制调用方在 Python 端 ``.tz_localize(None)``。
+    """
     cst = timezone(timedelta(hours=8))
     aware = datetime(2024, 1, 2, 15, 0, tzinfo=cst)
-    bar = _make_bar(aware)
-    # 15:00 CST = 07:00 UTC，出站 naive 输出应为 07:00
-    assert bar.dt.hour == 7
-    assert bar.dt.minute == 0
+    with pytest.raises(ValueError, match="tz-naive"):
+        _make_bar(aware)
 
 
 def test_integer_epoch_unchanged():

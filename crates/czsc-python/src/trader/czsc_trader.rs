@@ -211,14 +211,21 @@ impl PyCzscTrader {
         self.inner.positions.iter().any(|p| p.get_pos_changed())
     }
 
-    /// 更新信号和仓位
-    fn update(&mut self, bar: &RawBar) {
-        self.inner.update(bar, &self.signals_config);
+    /// 更新信号和仓位。
+    ///
+    /// BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+    /// 这里 propagate 成 Python ValueError 避免吞 Err 让信号 / 仓位用 stale 状态。
+    fn update(&mut self, bar: &RawBar) -> PyResult<()> {
+        self.inner
+            .update(bar, &self.signals_config)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("update 失败: {e}")))
     }
 
     /// 更新信号和仓位（同 update）
-    fn on_bar(&mut self, bar: &RawBar) {
-        self.inner.update(bar, &self.signals_config);
+    fn on_bar(&mut self, bar: &RawBar) -> PyResult<()> {
+        self.inner
+            .update(bar, &self.signals_config)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("on_bar 失败: {e}")))
     }
 
     /// 基于信号字典更新仓位
@@ -333,9 +340,16 @@ impl PyCzscTrader {
         self.s(py)
     }
 
-    /// 仅更新信号（不更新仓位）
-    fn update_signals(&mut self, bar: &RawBar) {
-        self.inner.signals.update_signals(bar, &self.signals_config);
+    /// 仅更新信号（不更新仓位）。
+    ///
+    /// 同 update：BarGenerator 硬错 propagate 成 Python ValueError。
+    fn update_signals(&mut self, bar: &RawBar) -> PyResult<()> {
+        self.inner
+            .signals
+            .update_signals(bar, &self.signals_config)
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}"))
+            })
     }
 
     /// Pickle 支持：返回构造参数 (bg, positions, signals_config, ensemble_method)。

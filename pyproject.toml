@@ -59,7 +59,7 @@ dependencies = [
     # - czsc._native 由 crates/czsc-python 通过 maturin 直接产出，无需 rs-czsc
     # - wbt 为硬依赖，提供 WeightBacktest / daily_performance / top_drawdowns / mock 等
     # - talib-rs 见 [project.optional-dependencies].test，运行时代码不依赖它
-    "wbt",
+    "wbt>=0.2.1",
     # 图表和可视化（czsc 的所有可视化统一由 plotly 实现，
     # fig.show() 在浏览器打开或 plot_*(to_html=True) 写 HTML 文件）
     "plotly",

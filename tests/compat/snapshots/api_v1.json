@@ -27,6 +27,7 @@
     "is_trading_time",
     "parse_signal_doc",
     "remove_include",
+    "resample_bars",
     "rolling_rank",
     "sma",
     "ultimate_smoother",

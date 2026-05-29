@@ -26,6 +26,9 @@ from wbt import WeightBacktest, daily_performance, top_drawdowns
 # format_standard_kline: Python 适配层，把 DataFrame -> List[RawBar]（详见模块 docstring）
 from czsc._format_standard_kline import format_standard_kline
 
+# resample_bars: Python 适配层，把 DataFrame / list[RawBar] 重采样为目标周期（详见模块 docstring）
+from czsc._resample_bars import resample_bars
+
 # === 之前的 lazy 属性，改为静态 import（spec §3.1 移除 lazy loading）===
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.utils.log import log_strategy_info
@@ -175,6 +178,7 @@ __all__ = [
     "is_trading_time",
     "parse_signal_doc",
     "remove_include",
+    "resample_bars",
     "rolling_rank",
     "sma",
     "ultimate_smoother",

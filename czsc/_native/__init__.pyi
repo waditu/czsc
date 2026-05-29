@@ -376,7 +376,10 @@ class CzscSignals:
     def __new__(cls, bg: BarGenerator, signals_config: list) -> CzscSignals: ...
     def update_signals(self, bar: RawBar) -> None:
         r"""
-        更新信号
+        更新信号。
+        
+        BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+        这里 propagate 成 Python ValueError，避免吞 Err 让信号链路用 stale 状态。
         """
     def get_signals_by_conf(self) -> typing.Any:
         r"""
@@ -458,7 +461,10 @@ class CzscTrader:
     def __new__(cls, bg: BarGenerator, positions: list, signals_config: list, ensemble_method: builtins.str = 'mean') -> CzscTrader: ...
     def update(self, bar: RawBar) -> None:
         r"""
-        更新信号和仓位
+        更新信号和仓位。
+        
+        BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+        这里 propagate 成 Python ValueError 避免吞 Err 让信号 / 仓位用 stale 状态。
         """
     def on_bar(self, bar: RawBar) -> None:
         r"""
@@ -482,7 +488,9 @@ class CzscTrader:
         """
     def update_signals(self, bar: RawBar) -> None:
         r"""
-        仅更新信号（不更新仓位）
+        仅更新信号（不更新仓位）。
+        
+        同 update：BarGenerator 硬错 propagate 成 Python ValueError。
         """
     def __reduce__(self) -> typing.Any:
         r"""
