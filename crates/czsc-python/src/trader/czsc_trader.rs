@@ -347,7 +347,9 @@ impl PyCzscTrader {
         self.inner
             .signals
             .update_signals(bar, &self.signals_config)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}")))
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}"))
+            })
     }
 
     /// Pickle 支持：返回构造参数 (bg, positions, signals_config, ensemble_method)。

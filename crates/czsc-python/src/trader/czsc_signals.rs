@@ -250,7 +250,9 @@ impl PyCzscSignals {
     fn update_signals(&mut self, bar: &RawBar) -> PyResult<()> {
         self.inner
             .update_signals(bar, &self.signals_config)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}")))
+            .map_err(|e| {
+                pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}"))
+            })
     }
 
     /// 获取当前信号字典（同 s 属性）
