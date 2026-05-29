@@ -12,6 +12,9 @@
 ### Added
 
 - **`czsc.resample_bars`**：把基础周期 K 线（`pandas.DataFrame` 或 `list[RawBar]`）聚合到目标周期。Rust 实现位于 `crates/czsc-utils/src/resample.rs`，通过 `czsc._native.resample_bars` 透传；Python 端 `czsc/_resample_bars.py` 仅做 DataFrame ↔ `list[RawBar]` 边界胶水。复用 `BarGenerator` 单桶聚合 + `infer_market_from_bars` 自动推断市场。
+- **PyO3 enum 暴露 `.name` getter**（`Freq` / `Mark` / `Direction` / `Operate`）：与 Python 标准库 `enum.Enum.name` 对齐，返回 Rust variant 英文名（如 `Freq.F30.name == "F30"`、`Operate.HL.name == "HL"`），便于在序列化、日志、配置文件里使用语言无关的稳定标识符。`.value`（中文显示串）行为不变。Rust 实现位于 `crates/czsc-core/src/objects/{freq,mark,direction,operate}.rs`。
+- **PyO3 enum 全部可哈希**（`Freq` / `Mark` / `Direction` —— `Operate` 此前已可哈希）：显式实现 `__hash__`，让实例可作为 `dict` / `set` 的 key。此前 PyO3 因 `__richcmp__` 存在而把 `__hash__` 强制设为 `None`，即使 Rust 端 `#[derive(Hash)]` 也透不到 Python。`Mark` / `Direction` derive 列表补 `Eq, Hash`；`Operate` derive 补 `Eq`。
+- **`Mark` 补齐 `__new__` / `__reduce__` / `__deepcopy__`**：之前不能 pickle、不能从字符串构造（"G" / "顶分型"），是与 `Freq` / `Direction` 不对齐的 pre-existing gap，本次一并补完。`Mark("G") == Mark.G`、`pickle.loads(pickle.dumps(Mark.G)) == Mark.G` 现已可工作。
 
 ### Breaking changes
 
@@ -23,6 +26,7 @@
 
 - **`czsc/connectors/tq_connector.py::get_raw_bars`**：调用 `czsc.resample_bars` 时显式传 `base_freq=freq`，修复默认 `Freq.F1` 误标导致的 silent 时间漂移（review finding C5）。
 - **`czsc.resample_bars` 边界**：空输入 + `raw_bars=False` 现在返回 8 列 + 与非空一致 dtype 的空 DataFrame（`symbol=object` / `dt=datetime64[ns]` / OHLCV=`float64`），避免 `pd.DataFrame([])` 退化成 0 列 KeyError，以及 dtype 全 `object` 让 `df["dt"].dt` accessor 抛 AttributeError。
+- **`PyOperate.__repr__` 一致性**（`crates/czsc-core/src/objects/operate.rs`）：此前返回 `"PyOperate::HL"`，泄漏内部 Rust 结构名；现修正为 `"Operate.HL"`，与三个兄弟 enum（`Freq` / `Mark` / `Direction`）的 `EnumName.Variant` 形式一致，对齐 Python `enum.Enum` 约定。
 
 ### Notes
 
