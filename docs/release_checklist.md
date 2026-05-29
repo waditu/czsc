@@ -168,7 +168,16 @@ CI smoke 仅覆盖 Linux x86_64 / macOS x86_64 / macOS arm64 / Windows x64。**L
   pip install czsc==<X.Y.Z>
   python -c "import czsc; print(czsc.__version__)"
   ```
-- [ ] `cargo add czsc@<X.Y.Z>` 在干净 Rust 项目中可解析
+- [ ] **`cargo add czsc@=<X.Y.Z>` 在干净 Rust 项目里能 `cargo check` 真编通过**（注意：仅"可解析"不够 —— 1.0.0-rc.8 发版时踩过坑，下游 cargo add 后解析成功但 cargo check 失败。完整命令：
+  ```bash
+  TMPD=$(mktemp -d); cd "$TMPD"
+  cargo init --name release_smoke --quiet
+  cargo add 'czsc@=<X.Y.Z>' --quiet
+  cargo check 2>&1 | tail -20   # 必须 0 错误
+  cargo tree -i polars-core 2>&1 | head -10   # 必须单一版本，无 0.42/0.52 双版本冲突
+  cd - && rm -rf "$TMPD"
+  ```
+  常见失败：(a) **SemVer prerelease 解析**：crates.io 同时有 `1.0.0` stable 与 `1.0.0-rc.*` 时，cargo 会优先选 stable，造成依赖图错位 —— 必须用 `=` 严格匹配 + `cargo yank` 误发 stable；(b) **pyo3 / pyo3-stub-gen / numpy 被无条件依赖** —— 纯 Rust 用户也被强制拉 Python 工具链，撞上游兼容性 bug，必须 feature-gate。详见 §8 雷达表）
 - [ ] 至少跑一个最小 CZSC + 信号配置的 demo（如 `docs/examples/13_lightweight_charts_html.py`）确认运行时无回归
 
 ---
@@ -187,6 +196,8 @@ CI smoke 仅覆盖 Linux x86_64 / macOS x86_64 / macOS arm64 / Windows x64。**L
 | crates.io rate-limit | 新 crate 创建 ~1/10min | `start_layer`/`end_layer` 断点续发 |
 | PyPI 已存在版本无法覆盖 | 发布失败后误以为可重发 | §6 step 5：bump patch 重发，不要 yank |
 | 下游升级炸裂 | breaking change 没写迁移说明 | §1 CHANGELOG + `docs/migration/` |
+| **SemVer prerelease 被 stable 抢解析** | crates.io 同时有 `1.0.0` 与 `1.0.0-rc.*`，下游 `cargo add czsc` 会解析到 stable 而非 rc，导致依赖图错位（rc.8 实战遇到）| **必须** workspace.dependencies 全用 `version = "=<X.Y.Z>"` 严格匹配；**误发的 stable 必须 `cargo yank`**；§7 cargo check ratchet 抓得到 |
+| **pyo3 / pyo3-stub-gen / numpy 无条件硬依赖** | 纯 Rust 下游被强制拉 Python 工具链，撞上游兼容性 bug 编不出（rc.8 实战遇到） | czsc-core / czsc-utils / czsc-signals / czsc-trader 把 pyo3 系列 dep 改 `optional = true` + `[features] python = [...]`；§7 cargo check ratchet 抓得到 |
 
 ---
 
@@ -208,6 +219,13 @@ uv run --no-sync ruff format --check czsc/ tests/
 uv run --no-sync ruff check czsc/ tests/
 uv run --no-sync pytest --run-slow
 uv run python -c "import czsc; print('version:', czsc.__version__)"
+
+# §7 cargo check ratchet（rc.8 教训）—— 模拟下游纯 Rust 用户拉发布产物
+# 注意：本地 cargo check --workspace 会因 path = "..." 短路，看不到
+# crates.io 上的版本解析问题；必须在干净项目里 cargo add 才能复现。
+# 这一段建议在 PR push tag **之后**、cargo publish dispatch **之前**
+# 跑一次（用 dry-run 产物或 TestPyPI/crates.io-staging 镜像）。
+
 echo "✅ 本地预检全部通过"
 ```
 

@@ -9,7 +9,15 @@
 
 ## [Unreleased]
 
-_（待填）_
+### Notes
+
+- **1.0.0-rc.8 在纯 Rust 下游不可用（PyPI 用户不受影响）**：发布后验证发现 cargo 用户 `cargo add czsc@=1.0.0-rc.8` 无法编译。两个根因：
+  1. **SemVer prerelease 解析坑**：crates.io 上同时存在 `czsc-* 1.0.0` (stable) 与 `1.0.0-rc.*`，workspace 内部 dep 写 `version = "1.0.0-rc.8"`（不带 `=`）会被 cargo 解析到 1.0.0 stable（按 SemVer，stable > prerelease），导致 polars 0.42 与 0.52 双版本冲突。已对 8 个 czsc-* 1.0.0 stable 执行 `cargo yank` 缓解。
+  2. **pyo3 / pyo3-stub-gen / numpy 是无条件硬依赖**（不在 feature gate 后），纯 Rust 用户也被强制拉 PyO3 工具链，撞 pyo3-stub-gen 0.22.x ↔ pyo3 0.28.3 的 `PyEncodingWarning` 兼容性 bug。
+- **rc.9 计划**：(a) 把 4 个 czsc-* crate 的 pyo3 系列 dep 改 `optional = true` + 引入 `python` feature gate；(b) workspace dep 改 `version = "=1.0.0-rc.9"` 严格锁定 prerelease；(c) `docs/release_checklist.md` §7 已升级"cargo add 可解析" → "cargo check 真编"，下次再踩同样坑被立即拦下。
+- **PyPI 1.0.0rc8 完全可用**，Python 用户无需做任何处理。
+
+---
 
 ---
 
