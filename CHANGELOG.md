@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+_（待填）_
+
+---
+
+## [1.0.0-rc.8] — 2026-05-29
+
 ### Added
 
 - **`czsc.resample_bars`**：把基础周期 K 线（`pandas.DataFrame` 或 `list[RawBar]`）聚合到目标周期。Rust 实现位于 `crates/czsc-utils/src/resample.rs`，通过 `czsc._native.resample_bars` 透传；Python 端 `czsc/_resample_bars.py` 仅做 DataFrame ↔ `list[RawBar]` 边界胶水。复用 `BarGenerator` 单桶聚合 + `infer_market_from_bars` 自动推断市场。
