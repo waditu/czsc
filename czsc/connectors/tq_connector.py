@@ -319,9 +319,7 @@ def get_raw_bars(symbol, freq, sdt, edt, fq="前复权", **kwargs):
     # base_freq=freq：df 由 api.get_kline_serial(duration_seconds=...) 拉到目标 freq，
     # 必须显式声明，否则 resample_bars 会用默认 Freq.F1 误标 RawBar.freq 导致 Rust 端
     # 市场推断与桶边界全部错位（参见 review finding C5）。
-    return czsc.resample_bars(
-        df, target_freq=freq, raw_bars=kwargs.get("raw_bars", True), base_freq=freq
-    )
+    return czsc.resample_bars(df, target_freq=freq, raw_bars=kwargs.get("raw_bars", True), base_freq=freq)
 
 
 def get_daily_backup(api: TqApi, **kwargs):
