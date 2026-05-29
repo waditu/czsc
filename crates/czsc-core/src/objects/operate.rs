@@ -21,7 +21,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 pub const ANY: &str = "任意";
 
 #[derive(
-    Clone, Copy, Debug, PartialEq, Hash, EnumString, EnumIter, AsRefStr, Serialize, Deserialize,
+    Clone, Copy, Debug, PartialEq, Eq, Hash, EnumString, EnumIter, AsRefStr, Serialize, Deserialize,
 )]
 pub enum Operate {
     /// 持多（Hold Long）
@@ -218,7 +218,10 @@ impl PyOperate {
     }
 
     fn __repr__(&self) -> String {
-        format!("PyOperate::{:?}", self.inner)
+        // 对齐 Python `enum.Enum` 的 `repr(EnumName.Variant) == "EnumName.Variant"` 约定，
+        // 也与 Freq / Mark / Direction 的 __repr__ 形式一致；
+        // 之前返回 "PyOperate::HL" 暴露了内部 Rust 结构名，是 pre-existing 不一致。
+        format!("Operate.{:?}", self.inner)
     }
 
     fn __eq__(&self, other: &Self) -> bool {
@@ -237,6 +240,22 @@ impl PyOperate {
     #[getter]
     fn value(&self) -> String {
         self.inner.to_chinese().to_string()
+    }
+
+    /// 返回 Rust variant 名（"HL" / "HS" / "HO" / "LO" / "LE" / "SO" / "SE"），
+    /// 对齐 Python `enum.Enum.name`：英文标识符稳定且与序列化路径
+    /// (`from_str` / `to_string`) 一致，适合做配置 key / 日志短码。
+    #[getter]
+    fn name(&self) -> &'static str {
+        match self.inner {
+            Operate::HL => "HL",
+            Operate::HS => "HS",
+            Operate::HO => "HO",
+            Operate::LO => "LO",
+            Operate::LE => "LE",
+            Operate::SO => "SO",
+            Operate::SE => "SE",
+        }
     }
 
     /// 支持pickle序列化

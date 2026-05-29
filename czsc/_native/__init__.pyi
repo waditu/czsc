@@ -716,6 +716,13 @@ class Operate:
         r"""
         兼容性属性：返回操作类型的中文字符串值
         """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"HL" / "HS" / "HO" / "LO" / "LE" / "SO" / "SE"），
+        对齐 Python `enum.Enum.name`：英文标识符稳定且与序列化路径
+        (`from_str` / `to_string`) 一致，适合做配置 key / 日志短码。
+        """
     @classmethod
     def hl(cls) -> Operate: ...
     @classmethod
@@ -1082,6 +1089,11 @@ class Direction(enum.Enum):
         r"""
         获取方向的字符串值（与 czsc 库兼容）
         """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"Up" / "Down"），对齐 Python `enum.Enum.name`。
+        """
     def __deepcopy__(self, _memo: typing.Any) -> Direction:
         r"""
         支持深拷贝
@@ -1093,6 +1105,10 @@ class Direction(enum.Enum):
     def __new__(cls, value: builtins.str) -> Direction: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        显式实现 `__hash__`，原因见 freq.rs 中同名方法的说明。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
@@ -1188,6 +1204,13 @@ class Freq(enum.Enum):
     __members__: typing.Any
     @property
     def value(self) -> builtins.str: ...
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"F30" / "D" / "Tick" / ...），
+        对齐 Python `enum.Enum.name` 的习惯——便于在序列化、日志、
+        配置文件里使用稳定且语言无关的英文标识符。
+        """
     def __deepcopy__(self, _memo: typing.Any) -> Freq:
         r"""
         支持深拷贝
@@ -1199,6 +1222,14 @@ class Freq(enum.Enum):
     def __new__(cls, value: builtins.str) -> Freq: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        用 derived `Hash` 暴露 `__hash__`：PyO3 不会自动从 Rust 端
+        `#[derive(Hash)]` 派生 Python `__hash__`，且一旦写了 `__richcmp__`
+        又不显式给 `__hash__`，PyO3 会把 `__hash__` 显式设为 `None`，导致
+        实例不可哈希（无法做 dict/set 的 key）。这里显式实现以恢复
+        与 Python `enum.Enum` 一致的可哈希语义。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
@@ -1220,8 +1251,32 @@ class Mark(enum.Enum):
         r"""
         获取标记的字符串值（与 czsc 库兼容）
         """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"G" / "D"），对齐 Python `enum.Enum.name`。
+        """
+    def __deepcopy__(self, _memo: typing.Any) -> Mark:
+        r"""
+        支持深拷贝
+        """
+    def __reduce__(self) -> tuple[typing.Any, typing.Any]:
+        r"""
+        支持 pickle 序列化：参考 Direction 的实现，通过 `__reduce__`
+        把实例还原成 `Mark("G")` / `Mark("D")` 的构造调用。
+        """
+    def __new__(cls, value: builtins.str) -> Mark:
+        r"""
+        支持从字符串构造（接受 Rust variant 名或中文显示串）。
+        """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        显式实现 `__hash__`，原因见 freq.rs 中同名方法的说明：PyO3 不会
+        自动从 Rust `Hash` derive 派生 Python `__hash__`，且写了 `__richcmp__`
+        后会把 `__hash__` 置 None。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
