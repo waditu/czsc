@@ -23,15 +23,26 @@ class _PositionsStrategy(CzscStrategyBase):
         return self._position_list
 
 
-def _holds_to_weight(holds: pd.DataFrame) -> pd.DataFrame:
-    """holds_df -> 权重表 {dt,symbol,weight,price}；多 position 按 (dt,symbol) 等权聚合。"""
-    return holds.groupby(["dt", "symbol"], as_index=False).agg(weight=("pos", "mean"), price=("price", "first"))
+def _holds_to_weight(holds: pd.DataFrame, symbol: str) -> pd.DataFrame:
+    """holds_df -> 权重表 {dt,symbol,weight,price}；多 position 按 dt 等权聚合。
+
+    holds 为空（该 symbol 零成交）时返回空表；symbol 列强制用回测标的，避免
+    被 position 自带的 symbol 串味（holds_df 的 symbol 取自 position.symbol）。
+    """
+    cols = ["dt", "symbol", "weight", "price"]
+    if holds is None or holds.empty:
+        return pd.DataFrame(columns=cols)
+    w = holds.groupby(["dt"], as_index=False).agg(weight=("pos", "mean"), price=("price", "first"))
+    w["symbol"] = symbol
+    return w[cols]
 
 
 def _backtest_symbol(positions, bars, symbol: str) -> pd.DataFrame:
     strat = _PositionsStrategy(positions, symbol=symbol)
+    if not strat.signals_config:
+        raise ValueError("position 未解析出任何有效信号（请检查 Position JSON 里的信号名是否正确）")
     res = strat.backtest(bars)
-    return _holds_to_weight(res.holds_df())
+    return _holds_to_weight(res.holds_df(), symbol)
 
 
 def backtest(
@@ -70,16 +81,27 @@ def backtest(
                 bars = _io.resolve_bars_for_symbol(sym, source=source, freq=freq, sdt=sdt, edt=edt)
                 weight_frames[sym] = _backtest_symbol(pos_objs, bars, sym)
 
-        per_symbol = {sym: WeightBacktest(w, fee_rate=fee_rate).stats for sym, w in weight_frames.items()}
-        portfolio_w = pd.concat(weight_frames.values(), ignore_index=True)
-        portfolio = WeightBacktest(portfolio_w, fee_rate=fee_rate).stats
+        # 零成交的 symbol 不进 WeightBacktest（空权重表会抛底层转换错），单独标注
+        per_symbol = {}
+        for sym, w in weight_frames.items():
+            per_symbol[sym] = {"warning": "无成交"} if w.empty else WeightBacktest(w, fee_rate=fee_rate).stats
 
-        if html:
+        nonempty = [w for w in weight_frames.values() if not w.empty]
+        if nonempty:
+            portfolio_w = pd.concat(nonempty, ignore_index=True)
+            portfolio = WeightBacktest(portfolio_w, fee_rate=fee_rate).stats
+        else:
+            portfolio_w = pd.DataFrame(columns=["dt", "symbol", "weight", "price"])
+            portfolio = {"warning": "全部 symbol 无成交"}
+
+        html_written = None
+        if html and not portfolio_w.empty:
             from wbt import generate_backtest_report
 
             generate_backtest_report(portfolio_w, output_path=html, title="CZSC 回测报告")
+            html_written = html
 
-        result = {"symbols": per_symbol, "portfolio": portfolio, "html": html}
+        result = {"symbols": per_symbol, "portfolio": portfolio, "html": html_written}
         if output:
             with open(output, "w", encoding="utf-8") as fh:
                 fh.write(_json.dumps(result, ensure_ascii=False, default=str))

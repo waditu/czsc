@@ -46,16 +46,32 @@ def quality(
 ) -> None:
     """K 线质量校验（czsc.check_kline_quality）。"""
     with _io.error_boundary(json_out):
+        import contextlib
+        import io
+
         import czsc
 
         df = _io.load_bars_df(input)
-        report = czsc.check_kline_quality(df)
-        slim = {sym: {k: v.get("description") for k, v in checks.items()} for sym, checks in report.items()}
+        # check_kline_quality 在发现问题时会把问题行 print 到 stdout，会污染 --json
+        # 的纯 JSON 契约 —— 重定向吃掉这个副作用，问题行数从返回结构里另行给出。
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            report = czsc.check_kline_quality(df)
+        slim = {}
+        for sym, checks in report.items():
+            slim[sym] = {}
+            for k, v in checks.items():
+                rows = v.get("rows")
+                slim[sym][k] = {
+                    "description": v.get("description"),
+                    "n_bad_rows": int(len(rows)) if rows is not None else 0,
+                }
 
         def human(d):
             for sym, checks in d.items():
                 typer.echo(f"[{sym}]")
-                for k, desc in checks.items():
-                    typer.echo(f"  {k}: {desc}")
+                for k, info in checks.items():
+                    flag = "" if info["n_bad_rows"] == 0 else f"  ⚠️ {info['n_bad_rows']} 行异常"
+                    typer.echo(f"  {k}: {info['description']}{flag}")
 
         _io.emit(slim, json_out=json_out, human=human)

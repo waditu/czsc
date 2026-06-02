@@ -15,32 +15,7 @@ import typer
 from czsc import Freq, format_standard_kline
 
 REQUIRED_OHLCV = ["dt", "symbol", "open", "close", "high", "low", "vol", "amount"]
-
-# czsc._native.Freq 是 PyO3 枚举：不可下标、不可迭代，只能 getattr 取成员。
-_FREQ_NAMES = [
-    "Tick",
-    "F1",
-    "F2",
-    "F3",
-    "F4",
-    "F5",
-    "F6",
-    "F10",
-    "F12",
-    "F15",
-    "F20",
-    "F30",
-    "F60",
-    "F120",
-    "F240",
-    "F360",
-    "D",
-    "W",
-    "M",
-    "S",
-    "Y",
-]
-_FREQ_CN = {m.value for m in (getattr(Freq, n, None) for n in _FREQ_NAMES) if m is not None}
+_NUMERIC_OHLCV = ["open", "close", "high", "low", "vol", "amount"]
 
 # ccxt 连接器只认 ccxt 周期串（1m/1h/1d…），需把中文频率映射过去
 _CN_TO_CCXT = {
@@ -57,13 +32,15 @@ _CN_TO_CCXT = {
 
 
 def freq_to_cn(freq: str) -> str:
-    """把 Freq 枚举名（F30/D…）或中文（30分钟）统一成中文频率字符串。"""
-    member = getattr(Freq, freq, None)
-    if member is not None and hasattr(member, "value"):
-        return member.value  # "F30" -> "30分钟"
-    if freq in _FREQ_CN:
-        return freq
-    raise ValueError(f"无法识别的频率: {freq}；可用枚举名如 F30/D 或中文如 30分钟")
+    """把 Freq 枚举名（F30/D…）或中文（30分钟）统一成中文频率字符串。
+
+    直接走 ``czsc.Freq`` 构造器：它同时接受枚举名与中文值，非法值抛 ValueError，
+    与 Rust 端的频率定义保持单一来源，避免在 Python 侧手抄枚举清单造成漂移。
+    """
+    try:
+        return Freq(freq).value
+    except (ValueError, KeyError) as e:
+        raise ValueError(f"无法识别的频率: {freq}；可用枚举名如 F30/D 或中文如 30分钟") from e
 
 
 def load_bars_df(path: str) -> pd.DataFrame:
@@ -86,8 +63,10 @@ def load_bars_df(path: str) -> pd.DataFrame:
     if missing:
         raise ValueError(f"行情数据缺少必需列: {missing}；需要 {REQUIRED_OHLCV}")
     df["dt"] = pd.to_datetime(df["dt"])
-    if "symbol" in df.columns:
-        df["symbol"] = df["symbol"].astype(str)
+    # symbol 统一为字符串（避免 000001 被当整数）；OHLCV 数值列统一为 float —— 否则
+    # run_research / run_replay 透传给 Rust(Polars) 时 int64 的 vol 会被拒（要求 Float64）。
+    df["symbol"] = df["symbol"].astype(str)
+    df[_NUMERIC_OHLCV] = df[_NUMERIC_OHLCV].astype(float)
     return df
 
 
