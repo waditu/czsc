@@ -68,7 +68,11 @@ dependencies = [
     "loguru",
     "dill",
     "tenacity",
+    "typer>=0.12.0",
 ]
+
+[project.scripts]
+czsc = "czsc.cli:app"
 
 [[tool.uv.index]]
 url = "https://pypi.python.org/simple"
@@ -145,6 +149,10 @@ extend-exclude = ["czsc/_native/__init__.pyi"]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501", "SIM112"]
 extend-safe-fixes = ["UP"]
+
+[tool.ruff.lint.flake8-bugbear]
+# typer 的惯用法：Argument/Option 作为参数默认值的工厂调用，B008 应放行
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["czsc"]
