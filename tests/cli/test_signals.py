@@ -28,4 +28,4 @@ def test_signals_doc_known_name():
 def test_signals_doc_unknown_name_fails():
     r = runner.invoke(app, ["signals", "doc", "不存在的信号xyz", "--json"])
     assert r.exit_code != 0
-    assert json.loads(r.stderr)["error"]["message"]
+    assert "未找到信号" in json.loads(r.stderr)["error"]["message"]

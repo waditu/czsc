@@ -42,6 +42,19 @@ _FREQ_NAMES = [
 ]
 _FREQ_CN = {m.value for m in (getattr(Freq, n, None) for n in _FREQ_NAMES) if m is not None}
 
+# ccxt 连接器只认 ccxt 周期串（1m/1h/1d…），需把中文频率映射过去
+_CN_TO_CCXT = {
+    "1分钟": "1m",
+    "5分钟": "5m",
+    "15分钟": "15m",
+    "30分钟": "30m",
+    "60分钟": "1h",
+    "120分钟": "2h",
+    "240分钟": "4h",
+    "360分钟": "6h",
+    "日线": "1d",
+}
+
 
 def freq_to_cn(freq: str) -> str:
     """把 Freq 枚举名（F30/D…）或中文（30分钟）统一成中文频率字符串。"""
@@ -120,7 +133,10 @@ def resolve_bars_for_symbol(symbol: str, *, source: str, freq: str, sdt: str, ed
     if source == "ccxt":
         from czsc.connectors import ccxt_connector
 
-        df = ccxt_connector.get_raw_bars(symbol=symbol, period=cn, sdt=sdt, edt=edt)
+        ccxt_period = _CN_TO_CCXT.get(cn)
+        if ccxt_period is None:
+            raise ValueError(f"ccxt 数据源不支持频率 {cn}；支持 {sorted(_CN_TO_CCXT)}")
+        df = ccxt_connector.get_raw_bars(symbol=symbol, period=ccxt_period, sdt=sdt, edt=edt)
         if "symbol" not in df.columns:
             df = df.assign(symbol=symbol)
         return format_standard_kline(df, cn)

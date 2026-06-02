@@ -36,4 +36,4 @@ def test_backtest_html_report(tmp_path, position_file):
 def test_backtest_requires_data_source(position_file):
     r = runner.invoke(app, ["backtest", str(position_file), "--json"])
     assert r.exit_code != 0
-    assert json.loads(r.stderr)["error"]["message"]
+    assert "必须提供" in json.loads(r.stderr)["error"]["message"]

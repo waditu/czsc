@@ -31,10 +31,12 @@ def mock(
                 json_out=json_out,
                 human=lambda d: typer.echo(f"已写入 {d['output']}（{d['rows']} 行）"),
             )
-        elif json_out:
-            typer.echo(df.to_json(orient="records", force_ascii=False, date_format="iso"))
         else:
-            typer.echo(df.to_string(index=False))
+            _io.emit(
+                df.to_dict("records"),
+                json_out=json_out,
+                human=lambda d: typer.echo(df.to_string(index=False)),
+            )
 
 
 @app.command("quality")
