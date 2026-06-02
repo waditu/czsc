@@ -31,10 +31,11 @@ def _holds_to_weight(holds: pd.DataFrame, symbol: str) -> pd.DataFrame:
     """
     cols = ["dt", "symbol", "weight", "price"]
     if holds is None or holds.empty:
-        return pd.DataFrame(columns=cols)
-    w = holds.groupby(["dt"], as_index=False).agg(weight=("pos", "mean"), price=("price", "first"))
-    w["symbol"] = symbol
-    return w[cols]
+        return pd.DataFrame(columns=pd.Index(cols))
+    # groupby().agg() 在 pandas stub 下被推断为 DataFrame|Series union，这里实为 DataFrame
+    w = holds.groupby("dt", as_index=False).agg(weight=("pos", "mean"), price=("price", "first"))
+    w["symbol"] = symbol  # type: ignore[index]
+    return w[cols]  # type: ignore[return-value]
 
 
 def _backtest_symbol(positions, bars, symbol: str) -> pd.DataFrame:
@@ -91,7 +92,7 @@ def backtest(
             portfolio_w = pd.concat(nonempty, ignore_index=True)
             portfolio = WeightBacktest(portfolio_w, fee_rate=fee_rate).stats
         else:
-            portfolio_w = pd.DataFrame(columns=["dt", "symbol", "weight", "price"])
+            portfolio_w = pd.DataFrame(columns=pd.Index(["dt", "symbol", "weight", "price"]))
             portfolio = {"warning": "全部 symbol 无成交"}
 
         html_written = None

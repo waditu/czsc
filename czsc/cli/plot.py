@@ -27,7 +27,7 @@ def czsc_cmd(
 
         df = _io.load_bars_df(input)
         c = CZSC(format_standard_kline(df, _io.freq_to_cn(freq)))
-        plot_czsc(c, output="html", path=output, theme=theme, tail_bars=tail_bars)
+        plot_czsc(c, output="html", path=output, theme=theme, tail_bars=tail_bars)  # type: ignore[arg-type]  # theme 为用户字符串，由 plot_czsc 内部校验
         _io.emit(
             {"output": output},
             json_out=json_out,

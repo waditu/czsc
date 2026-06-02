@@ -18,7 +18,7 @@ def list_(
     with _io.error_boundary(json_out):
         import czsc._native as native
 
-        items = native.list_all_signals()
+        items = native.list_all_signals()  # type: ignore[attr-defined]  # 运行时存在，stub 未声明
         if category:
             items = [it for it in items if it.get("category") == category]
 
@@ -39,7 +39,7 @@ def doc(
     with _io.error_boundary(json_out):
         import czsc._native as native
 
-        entry = next((it for it in native.list_all_signals() if it["name"] == name), None)
+        entry = next((it for it in native.list_all_signals() if it["name"] == name), None)  # type: ignore[attr-defined]
         if entry is None:
             raise ValueError(f"未找到信号: {name}")
 

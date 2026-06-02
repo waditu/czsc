@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import typer
 
@@ -46,7 +47,7 @@ def run(
         with open(strategy, encoding="utf-8") as fh:
             strat = json.loads(fh.read())
         res = czsc.run_research(df, strat, sdt=sdt)
-        out = {"meta": res.meta}
+        out: dict[str, Any] = {"meta": res.meta}
         if output:
             res.holds_df().to_csv(output, index=False)
             out["holds_csv"] = output
