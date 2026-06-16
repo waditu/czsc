@@ -28,7 +28,7 @@ pub type Symbol = Arc<str>;
 /// 原始K线元素
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
 #[builder(setter(into), pattern = "owned")]
 pub struct RawBar {
     pub symbol: Symbol,
@@ -45,6 +45,7 @@ pub struct RawBar {
     pub amount: f64,
 
     #[cfg(feature = "python")]
+    #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
 }
@@ -308,7 +309,7 @@ impl PartialEq for RawBar {
 /// 去除包含关系后的K线元素
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
 #[builder(setter(into), pattern = "owned")]
 pub struct NewBar {
     pub symbol: Symbol,
@@ -328,6 +329,7 @@ pub struct NewBar {
     pub elements: Vec<RawBar>,
 
     #[cfg(feature = "python")]
+    #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
 }

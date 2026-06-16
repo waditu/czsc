@@ -14,7 +14,9 @@ use pyo3_stub_gen::derive::gen_stub_pymethods;
 /// 分型类型
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, PartialEq, EnumString, AsRefStr, Display)]
+#[derive(
+    Debug, Clone, PartialEq, EnumString, AsRefStr, Display, serde::Serialize, serde::Deserialize,
+)]
 pub enum Mark {
     /// 底分型
     #[strum(serialize = "底分型")]

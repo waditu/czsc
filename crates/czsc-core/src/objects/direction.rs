@@ -13,7 +13,17 @@ use strum_macros::{AsRefStr, Display, EnumString};
 /// 方向
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, Copy, PartialEq, EnumString, AsRefStr, Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    EnumString,
+    AsRefStr,
+    Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum Direction {
     /// 向上
     #[strum(serialize = "向上")]

@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 /// MACD 缓存三元组
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct MacdSeries {
     pub ids: Vec<i32>,
     pub dif: Vec<f64>,
@@ -13,7 +13,7 @@ pub struct MacdSeries {
 }
 
 /// BOLL 缓存三元组
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct BollSeries {
     pub upper: Vec<f64>,
     pub mid: Vec<f64>,
@@ -21,7 +21,7 @@ pub struct BollSeries {
 }
 
 /// KDJ 缓存三元组
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct KdjSeries {
     pub ids: Vec<i32>,
     pub k: Vec<f64>,
@@ -30,7 +30,7 @@ pub struct KdjSeries {
 }
 
 /// TA 指标增量缓存，存放所有由纯 Rust 计算产生的序列数据
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TaCache {
     /// 简单单点序列（如 EMA/SMA/RSI/ATR）的缓存
     pub series: HashMap<String, Vec<f64>>,

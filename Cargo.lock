@@ -796,6 +796,7 @@ dependencies = [
  "polars",
  "polars-plan",
  "rayon",
+ "rmp-serde",
  "serde",
  "serde_json",
  "sha2 0.11.0",

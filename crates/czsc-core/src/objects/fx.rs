@@ -31,7 +31,7 @@ const POWER_WEAK: &str = "弱";
 /// 分型
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
 #[builder(setter(into))]
 pub struct FX {
     pub symbol: Symbol,
@@ -43,6 +43,7 @@ pub struct FX {
     #[builder(default = "Vec::new()")]
     pub elements: Vec<NewBar>,
     #[cfg(feature = "python")]
+    #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
 }
