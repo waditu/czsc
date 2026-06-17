@@ -9,6 +9,7 @@ use chrono::{DateTime, Utc};
 use derive_builder::Builder;
 #[cfg(feature = "python")]
 use parking_lot::RwLock;
+#[cfg(feature = "python")]
 use std::sync::Arc;
 
 #[cfg(feature = "python")]

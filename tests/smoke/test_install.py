@@ -52,6 +52,7 @@ def test_pyproject_uses_maturin_backend() -> None:
     )
 
 
+@pytest.mark.slow
 def test_native_extension_present_in_install() -> None:
     """验证当前安装环境中已包含编译后的 czsc._native 扩展。
 

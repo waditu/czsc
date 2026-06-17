@@ -7,6 +7,7 @@ use czsc_core::objects::signal::Signal;
 use czsc_signals::registry;
 use czsc_signals::types::TaCache;
 use czsc_utils::bar_generator::BarGenerator;
+use czsc_utils::errors::UtilsError;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 #[derive(Clone)]
@@ -250,14 +251,19 @@ impl CzscSignals {
     }
 
     /// 执行主更新流程
-    pub fn update_signals(&mut self, bar: &RawBar, signals_config: &[SignalConfig]) {
+    pub fn update_signals(
+        &mut self,
+        bar: &RawBar,
+        signals_config: &[SignalConfig],
+    ) -> Result<(), UtilsError> {
         self.ensure_compiled_kline_ops(signals_config);
 
         // 1. 驱动 bg 喂入新 Bar，并同步各周期 CZSC
-        let changed_freqs = self.advance_kas(bar, true);
+        let changed_freqs = self.advance_kas(bar, true)?;
 
         self.reset_signal_state(bar);
         self.compute_kline_signals(Some(&changed_freqs));
+        Ok(())
     }
 
     /// 预热后用当前状态 prime 一次信号缓存，对齐 Python `CzscSignals(bg)` 构造语义。
@@ -334,8 +340,11 @@ impl CzscSignals {
     /// 对齐 Python `generate_czsc_signals`：`bars_left` 只用于初始化 `BarGenerator`，
     /// 不会在 warmup 阶段调用 `update_signals`。CZSC 会在 warmup 结束后由
     /// `prime_signals` 基于 BG 快照一次性重建。
-    pub fn warmup_bar(&mut self, bar: &RawBar) {
-        let _ = self.bg.update_bar(bar);
+    ///
+    /// `BarGenerator::update_bar` 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+    /// 这里直接 propagate 而不再 `let _` 吞掉，避免下游用 stale 状态继续算出"幻象"信号。
+    pub fn warmup_bar(&mut self, bar: &RawBar) -> Result<(), UtilsError> {
+        self.bg.update_bar(bar)
     }
 
     fn rebuild_kas_from_bg(&mut self) {
@@ -353,8 +362,12 @@ impl CzscSignals {
         }
     }
 
-    fn advance_kas(&mut self, bar: &RawBar, update_fingerprint: bool) -> HashSet<String> {
-        let _ = self.bg.update_bar(bar);
+    fn advance_kas(
+        &mut self,
+        bar: &RawBar,
+        update_fingerprint: bool,
+    ) -> Result<HashSet<String>, UtilsError> {
+        self.bg.update_bar(bar)?;
 
         let mut changed_freqs: HashSet<String> = HashSet::new();
         for (freq, bars_lock) in &self.bg.freq_bars {
@@ -394,6 +407,6 @@ impl CzscSignals {
                 changed_freqs.insert(freq_str);
             }
         }
-        changed_freqs
+        Ok(changed_freqs)
     }
 }

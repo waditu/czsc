@@ -1,13 +1,19 @@
 use czsc_core::objects::freq::Freq;
 use czsc_signals::registry::{SIGNAL_REGISTRY, TRADER_SIGNAL_REGISTRY};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use tracing::error;
 
-/// 单个信号函数配置
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// 单个信号函数配置。
+///
+/// 反序列化时同时支持两种 JSON 形态（PR-2 / PR-3 后下沉到 Rust 端）：
+/// - 嵌套：`{"name": "...", "freq": "...", "params": {"di": 1}}`
+/// - 展平：`{"name": "...", "freq": "...", "di": 1, "ma_type": "SMA"}`
+///
+/// 同时对 `name` 做模块前缀剥离：`"czsc.signals.tas.cci_V230402"` → `"cci_V230402"`。
+#[derive(Debug, Clone, Serialize)]
 pub struct SignalConfig {
     /// 函数名，如 "tas_ma_base_V221101"
     pub name: String,
@@ -15,6 +21,53 @@ pub struct SignalConfig {
     pub freq: Option<String>,
     /// 函数参数（di/ma_type/timeperiod 等）
     pub params: HashMap<String, Value>,
+}
+
+impl<'de> Deserialize<'de> for SignalConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // 用 serde_json::Value 作为中间形态，避免手写 Visitor 维护两套字段集
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let map = value
+            .as_object()
+            .ok_or_else(|| serde::de::Error::custom("SignalConfig 必须是 object"))?;
+
+        let name_raw = map
+            .get("name")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| serde::de::Error::missing_field("name"))?
+            .to_string();
+        // 剥离模块前缀：Rust 端按短名直接派发
+        let name = name_raw.rsplit('.').next().unwrap_or(&name_raw).to_string();
+
+        let freq = map
+            .get("freq")
+            .and_then(|v| if v.is_null() { None } else { v.as_str() })
+            .map(|s| s.to_string());
+
+        // 风格 A：含 params 子字典；风格 B：参数平铺在顶层
+        let mut params: HashMap<String, Value> = HashMap::new();
+        if let Some(params_val) = map.get("params")
+            && let Some(params_obj) = params_val.as_object()
+        {
+            for (k, v) in params_obj {
+                params.insert(k.clone(), v.clone());
+            }
+        }
+        for (k, v) in map.iter() {
+            if matches!(
+                k.as_str(),
+                "name" | "freq" | "params" | "signals_module" | "module"
+            ) {
+                continue;
+            }
+            params.entry(k.clone()).or_insert_with(|| v.clone());
+        }
+
+        Ok(SignalConfig { name, freq, params })
+    }
 }
 
 impl SignalConfig {

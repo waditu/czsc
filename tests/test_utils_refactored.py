@@ -20,81 +20,29 @@ import pandas as pd
 import pytest
 
 
-def test_plotting_common_module():
-    """验证 ``czsc.utils.plotting.common`` 中的常量与 figure_to_html 工具函数。
+def test_plotting_weight_module_removed():
+    """2026-05-17 PR-A：``czsc.utils.plotting.weight`` 整文件已 git rm。
 
-    测试场景：
-        1. 校验四个核心常量值：颜色、Sigma 等级数、月份标签数；
-        2. 用空 ``go.Figure`` 调用 ``figure_to_html``：
-           - ``to_html=False`` 时返回原 Figure 对象；
-           - ``to_html=True`` 时返回包含 plotly 标识的 HTML 字符串。
-
-    关键断言：
-        - ``COLOR_DRAWDOWN`` 与 ``COLOR_RETURN`` 为预定义颜色字符串；
-        - ``SIGMA_LEVELS`` 长度为 6（覆盖 ±1/±2/±3 sigma）；
-        - ``MONTH_LABELS`` 长度为 12（一月到十二月）；
-        - ``figure_to_html`` 在两种模式下分别返回 Figure 与 str。
+    上一波保留 ``calculate_turnover_stats`` / ``calculate_weight_stats`` 等 6 个
+    权重分析函数，本次清理整体放弃，调用方改用 ``plotly.express`` 或
+    ``wbt.generate_backtest_report``，迁移说明见 ``docs/migration/cleanup-non-czsc-core.md``。
     """
-    from czsc.utils.plotting.common import (
-        COLOR_DRAWDOWN,
-        COLOR_RETURN,
-        MONTH_LABELS,
-        SIGMA_LEVELS,
-        figure_to_html,
-    )
+    import importlib
 
-    # 测试常量
-    assert COLOR_DRAWDOWN == "salmon"
-    assert COLOR_RETURN == "#34a853"
-    assert len(SIGMA_LEVELS) == 6
-    assert len(MONTH_LABELS) == 12
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.plotting.weight")
 
-    # 测试 figure_to_html
-    import plotly.graph_objects as go
+    from czsc.utils import plotting
 
-    fig = go.Figure()
-
-    # 测试返回 Figure
-    result = figure_to_html(fig, to_html=False)
-    assert isinstance(result, go.Figure)
-
-    # 测试返回 HTML
-    result = figure_to_html(fig, to_html=True)
-    assert isinstance(result, str)
-    assert "plotly" in result.lower()
-
-
-def test_plotting_backtest_imports():
-    """验证回测绘图模块的关键 API 可以从 ``czsc.utils.plotting`` 顶层导入。
-
-    关键断言：
-        ``plot_cumulative_returns``、``plot_colored_table``、``plot_czsc_chart``
-        三个函数均可被导入且为可调用对象。
-    """
-    from czsc.utils.plotting import (
-        plot_colored_table,
-        plot_cumulative_returns,
-        plot_czsc_chart,
-    )
-
-    assert callable(plot_cumulative_returns)
-    assert callable(plot_colored_table)
-    assert callable(plot_czsc_chart)
-
-
-def test_plotting_weight_imports():
-    """验证权重绘图相关统计函数可以从 ``czsc.utils.plotting`` 导入。
-
-    关键断言：
-        ``calculate_turnover_stats`` 与 ``calculate_weight_stats`` 都是可调用对象。
-    """
-    from czsc.utils.plotting import (
-        calculate_turnover_stats,
-        calculate_weight_stats,
-    )
-
-    assert callable(calculate_turnover_stats)
-    assert callable(calculate_weight_stats)
+    for name in (
+        "calculate_turnover_stats",
+        "calculate_weight_stats",
+        "plot_weight_histogram_kde",
+        "plot_weight_cdf",
+        "plot_turnover_overview",
+        "plot_turnover_cost_analysis",
+    ):
+        assert not hasattr(plotting, name), f"czsc.utils.plotting.{name} 应已删除"
 
 
 def test_data_validators():
@@ -184,75 +132,66 @@ def test_data_converters():
     assert normalize_symbol("  tsla  ") == "TSLA"
 
 
-def test_analysis_stats_imports():
-    """验证统计分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
+def test_analysis_stats_module_removed():
+    """2026-05-17 PR-A：``czsc.utils.analysis.stats`` 整文件已 git rm。
 
-    关键断言：
-        ``daily_performance``、``holds_performance``、``top_drawdowns`` 三个统计
-        函数均为可调用对象。
+    ``daily_performance`` / ``top_drawdowns`` 改由 ``wbt`` 提供，czsc 顶层
+    ``czsc.daily_performance`` / ``czsc.top_drawdowns`` 仍可用（透传 wbt）。
     """
-    from czsc.utils.analysis import (
-        daily_performance,
-        holds_performance,
-        top_drawdowns,
-    )
+    import importlib
 
-    assert callable(daily_performance)
-    assert callable(holds_performance)
-    assert callable(top_drawdowns)
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module("czsc.utils.analysis.stats")
+
+    from czsc.utils import analysis
+
+    for name in (
+        "daily_performance",
+        "top_drawdowns",
+        "psi",
+        "evaluate_pairs",
+        "cal_break_even_point",
+    ):
+        assert not hasattr(analysis, name), f"czsc.utils.analysis.{name} 应已删除"
 
 
 def test_analysis_corr_imports():
     """验证相关性分析模块 ``czsc.utils.analysis`` 的关键函数可被导入。
 
-    关键断言：
-        ``nmi_matrix``、``single_linear``、``cross_sectional_ic`` 三个相关性分析
-        函数均为可调用对象。
+    2026-05-17 PR-A 起：``nmi_matrix`` / ``single_linear`` 已删除，本测试只断言
+    ``cross_sectional_ic`` 仍可用。
     """
-    from czsc.utils.analysis import (
-        cross_sectional_ic,
-        nmi_matrix,
-        single_linear,
-    )
+    from czsc.utils.analysis import cross_sectional_ic
 
-    assert callable(nmi_matrix)
-    assert callable(single_linear)
     assert callable(cross_sectional_ic)
 
 
 def test_backward_compatibility():
-    """验证向后兼容性：重构前的旧导入路径仍然可用。
+    """验证向后兼容性：``czsc.utils`` 顶层仍稳定暴露非绘图类公共接口。
 
-    测试场景：
-        在重构后，仍然支持从 ``czsc.utils`` 顶层直接导入历史接口，包括：
-        ``DataClient``、``DiskCache``、``KlineChart``、``daily_performance``、
-        ``generate_fernet_key``、``home_path``、``plot_colored_table`` 等。
+    评审决议（L-5/L-6）已经移除了 ``czsc.utils`` 的 lazy loading 入口，
+    绘图相关 symbol 现在统一从 ``czsc.utils.plotting.*`` 显式获取。本测试
+    锁定这条契约，避免有人后续又把 lazy loading 加回来：
 
-    关键断言：
-        - 各个名称都能成功导入；
-        - 类对象 / 路径对象不为 None；
-        - 函数对象 ``callable(...)`` 为真。
+    - ``czsc.utils.*``：稳定暴露 ``DataClient`` / ``DiskCache`` / ``home_path`` 等
+      数据接口（``daily_performance`` 已下沉 wbt，本子包不再 re-export，2026-05-17 PR-A）；
+    - ``czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}``：缠论 K 线
+      可视化的唯一对外接口（二阶段清理 PR-C 起）。
     """
-    # 测试从主utils导入
-    from czsc.utils import (
-        DataClient,
-        DiskCache,
-        KlineChart,
-        daily_performance,
-        home_path,
-    )
+    from czsc import daily_performance
+    from czsc.utils import DataClient, DiskCache, home_path
 
     assert home_path is not None
     assert DiskCache is not None
     assert DataClient is not None
     assert callable(daily_performance)
-    assert KlineChart is not None
 
-    # 测试向后兼容性 - 通过 czsc.utils 的 __init__.py 重新导出
-    from czsc.utils import DiskCache, plot_colored_table
+    # 唯一保留的缠论 K 线可视化入口
+    from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_signals, plot_czsc_trader
 
-    assert callable(plot_colored_table)
-    assert DiskCache is not None
+    assert callable(plot_czsc)
+    assert callable(plot_czsc_trader)
+    assert callable(plot_czsc_signals)
 
 
 if __name__ == "__main__":

@@ -29,6 +29,7 @@ __all__ = [
     "Signal",
     "ZS",
     "chip_distribution_triangle",
+    "monotonicity",
     "parse_signal_doc",
 ]
 
@@ -375,7 +376,10 @@ class CzscSignals:
     def __new__(cls, bg: BarGenerator, signals_config: list) -> CzscSignals: ...
     def update_signals(self, bar: RawBar) -> None:
         r"""
-        更新信号
+        更新信号。
+        
+        BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+        这里 propagate 成 Python ValueError，避免吞 Err 让信号链路用 stale 状态。
         """
     def get_signals_by_conf(self) -> typing.Any:
         r"""
@@ -457,7 +461,10 @@ class CzscTrader:
     def __new__(cls, bg: BarGenerator, positions: list, signals_config: list, ensemble_method: builtins.str = 'mean') -> CzscTrader: ...
     def update(self, bar: RawBar) -> None:
         r"""
-        更新信号和仓位
+        更新信号和仓位。
+        
+        BarGenerator 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+        这里 propagate 成 Python ValueError 避免吞 Err 让信号 / 仓位用 stale 状态。
         """
     def on_bar(self, bar: RawBar) -> None:
         r"""
@@ -481,7 +488,9 @@ class CzscTrader:
         """
     def update_signals(self, bar: RawBar) -> None:
         r"""
-        仅更新信号（不更新仓位）
+        仅更新信号（不更新仓位）。
+        
+        同 update：BarGenerator 硬错 propagate 成 Python ValueError。
         """
     def dump_state(self) -> bytes:
         r"""
@@ -720,6 +729,13 @@ class Operate:
     def value(self) -> builtins.str:
         r"""
         兼容性属性：返回操作类型的中文字符串值
+        """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"HL" / "HS" / "HO" / "LO" / "LE" / "SO" / "SE"），
+        对齐 Python `enum.Enum.name`：英文标识符稳定且与序列化路径
+        (`from_str` / `to_string`) 一致，适合做配置 key / 日志短码。
         """
     @classmethod
     def hl(cls) -> Operate: ...
@@ -1087,6 +1103,11 @@ class Direction(enum.Enum):
         r"""
         获取方向的字符串值（与 czsc 库兼容）
         """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"Up" / "Down"），对齐 Python `enum.Enum.name`。
+        """
     def __deepcopy__(self, _memo: typing.Any) -> Direction:
         r"""
         支持深拷贝
@@ -1098,6 +1119,10 @@ class Direction(enum.Enum):
     def __new__(cls, value: builtins.str) -> Direction: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        显式实现 `__hash__`，原因见 freq.rs 中同名方法的说明。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
@@ -1193,6 +1218,13 @@ class Freq(enum.Enum):
     __members__: typing.Any
     @property
     def value(self) -> builtins.str: ...
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"F30" / "D" / "Tick" / ...），
+        对齐 Python `enum.Enum.name` 的习惯——便于在序列化、日志、
+        配置文件里使用稳定且语言无关的英文标识符。
+        """
     def __deepcopy__(self, _memo: typing.Any) -> Freq:
         r"""
         支持深拷贝
@@ -1204,6 +1236,14 @@ class Freq(enum.Enum):
     def __new__(cls, value: builtins.str) -> Freq: ...
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        用 derived `Hash` 暴露 `__hash__`：PyO3 不会自动从 Rust 端
+        `#[derive(Hash)]` 派生 Python `__hash__`，且一旦写了 `__richcmp__`
+        又不显式给 `__hash__`，PyO3 会把 `__hash__` 显式设为 `None`，导致
+        实例不可哈希（无法做 dict/set 的 key）。这里显式实现以恢复
+        与 Python `enum.Enum` 一致的可哈希语义。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
@@ -1225,8 +1265,32 @@ class Mark(enum.Enum):
         r"""
         获取标记的字符串值（与 czsc 库兼容）
         """
+    @property
+    def name(self) -> builtins.str:
+        r"""
+        返回 Rust variant 名（"G" / "D"），对齐 Python `enum.Enum.name`。
+        """
+    def __deepcopy__(self, _memo: typing.Any) -> Mark:
+        r"""
+        支持深拷贝
+        """
+    def __reduce__(self) -> tuple[typing.Any, typing.Any]:
+        r"""
+        支持 pickle 序列化：参考 Direction 的实现，通过 `__reduce__`
+        把实例还原成 `Mark("G")` / `Mark("D")` 的构造调用。
+        """
+    def __new__(cls, value: builtins.str) -> Mark:
+        r"""
+        支持从字符串构造（接受 Rust variant 名或中文显示串）。
+        """
     def __str__(self) -> builtins.str: ...
     def __repr__(self) -> builtins.str: ...
+    def __hash__(self) -> builtins.int:
+        r"""
+        显式实现 `__hash__`，原因见 freq.rs 中同名方法的说明：PyO3 不会
+        自动从 Rust `Hash` derive 派生 Python `__hash__`，且写了 `__richcmp__`
+        后会把 `__hash__` 置 None。
+        """
     def __richcmp__(self, other: typing.Any, op: int) -> builtins.bool: ...
 
 @typing.final
@@ -1277,6 +1341,15 @@ def chip_distribution_triangle(data: numpy.typing.NDArray[numpy.float64], price_
     - `chip_distribution`: 一维数组，对应每个价格中心的筹码强度（权重/密度）。
     
     返回的两个数组长度相同，可用于绘制筹码分布图或进一步分析。
+    """
+
+def monotonicity(sequence: typing.Sequence[builtins.float]) -> builtins.float:
+    r"""
+    `czsc.monotonicity(sequence)` → float。
+    
+    计算序列与自然数序列的 Spearman 秩相关，等价于
+    `scipy.stats.spearmanr(sequence, range(len(sequence))).statistic`。
+    详见 [`crate::monotonicity::monotonicity`] 的算法说明与对齐口径。
     """
 
 def parse_signal_doc(doc: builtins.str) -> ParsedSignalDoc:

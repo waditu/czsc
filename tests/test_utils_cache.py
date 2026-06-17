@@ -11,6 +11,7 @@ import tempfile
 import time
 
 import pandas as pd
+import pytest
 
 from czsc.utils.data.cache import (
     DiskCache,
@@ -157,6 +158,7 @@ def test_disk_cache_dataframe():
     cache.remove(test_key, suffix="parquet")
 
 
+@pytest.mark.slow
 def test_disk_cache_ttl():
     """测试 DiskCache 的 TTL 功能"""
     cache = DiskCache()
@@ -262,8 +264,10 @@ def test_disk_cache_decorator():
     assert isinstance(df, pd.DataFrame)
 
 
-def test_clear_expired_cache():
+def test_clear_expired_cache(caplog):
     """测试清理过期缓存功能"""
+    import logging as _stdlib_logging
+
     # 创建临时目录
     test_dir = tempfile.mkdtemp()
 
@@ -283,11 +287,15 @@ def test_clear_expired_cache():
     age = current_time - old_file_stat.st_mtime
     max_age = 3600 * 24 * 30  # 30天
 
-    print(f"当前时间: {current_time}")
-    print(f"文件修改时间: {old_file_stat.st_mtime}")
-    print(f"文件年龄: {age} 秒 ({age / (3600 * 24):.1f} 天)")
-    print(f"最大年龄: {max_age} 秒 ({max_age / (3600 * 24):.1f} 天)")
-    print(f"是否过期: {age > max_age}")
+    # 用 caplog 替代 print：保留诊断信息，但不污染测试 stdout
+    with caplog.at_level(_stdlib_logging.INFO):
+        _log = _stdlib_logging.getLogger(__name__)
+        _log.info("当前时间: %s", current_time)
+        _log.info("文件修改时间: %s", old_file_stat.st_mtime)
+        _log.info("文件年龄: %s 秒 (%.1f 天)", age, age / (3600 * 24))
+        _log.info("最大年龄: %s 秒 (%.1f 天)", max_age, max_age / (3600 * 24))
+        _log.info("是否过期: %s", age > max_age)
+    assert any("文件年龄" in rec.message for rec in caplog.records)
 
     # 确保文件存在
     assert os.path.exists(old_file)
@@ -335,6 +343,7 @@ def test_clear_cache():
     assert not os.path.exists(sub2)
 
 
+@pytest.mark.slow
 def test_disk_cache_with_custom_ttl():
     """测试 disk_cache 装饰器的动态 TTL 功能"""
 

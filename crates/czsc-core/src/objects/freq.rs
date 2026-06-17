@@ -241,6 +241,49 @@ impl Freq {
         format!("Freq.{self:?}")
     }
 
+    /// 返回 Rust variant 名（"F30" / "D" / "Tick" / ...），
+    /// 对齐 Python `enum.Enum.name` 的习惯——便于在序列化、日志、
+    /// 配置文件里使用稳定且语言无关的英文标识符。
+    #[getter]
+    fn name(&self) -> &'static str {
+        match self {
+            Freq::Tick => "Tick",
+            Freq::F1 => "F1",
+            Freq::F2 => "F2",
+            Freq::F3 => "F3",
+            Freq::F4 => "F4",
+            Freq::F5 => "F5",
+            Freq::F6 => "F6",
+            Freq::F10 => "F10",
+            Freq::F12 => "F12",
+            Freq::F15 => "F15",
+            Freq::F20 => "F20",
+            Freq::F30 => "F30",
+            Freq::F60 => "F60",
+            Freq::F120 => "F120",
+            Freq::F240 => "F240",
+            Freq::F360 => "F360",
+            Freq::D => "D",
+            Freq::W => "W",
+            Freq::M => "M",
+            Freq::S => "S",
+            Freq::Y => "Y",
+        }
+    }
+
+    /// 用 derived `Hash` 暴露 `__hash__`：PyO3 不会自动从 Rust 端
+    /// `#[derive(Hash)]` 派生 Python `__hash__`，且一旦写了 `__richcmp__`
+    /// 又不显式给 `__hash__`，PyO3 会把 `__hash__` 显式设为 `None`，导致
+    /// 实例不可哈希（无法做 dict/set 的 key）。这里显式实现以恢复
+    /// 与 Python `enum.Enum` 一致的可哈希语义。
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
+    }
+
     #[classattr]
     fn __members__(py: Python) -> PyResult<Py<PyAny>> {
         let dict = PyDict::new(py);

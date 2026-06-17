@@ -2,7 +2,7 @@
 
 按 spec §3.1，所有公共 API 在导入期一次性 import；不再使用 PEP 562 lazy loading。
 - ``czsc._native``：Rust 扩展（PyO3），提供缠论核心类型、信号、交易器、TA 算子。
-- ``czsc.{connectors,traders,utils,svc,fsa,aphorism,mock,envs}``：Python 子包。
+- ``czsc.{connectors,traders,utils,fsa,aphorism,mock,envs}``：Python 子包。
 - ``czsc.{ema,sma,...,ultimate_smoother,...}``：Rust TA 算子的顶层别名。
 - ``czsc.{WeightBacktest,daily_performance,top_drawdowns}``：来自硬依赖 ``wbt``。
 
@@ -13,12 +13,11 @@
 # 顶层包的 import 顺序经过手工设计以处理子包间的循环依赖，
 # 不要让 isort/ruff 重排——会触发 partially-initialized module 错误。
 
-import sys as _sys
-
 # 第一批：纯薄壳子包（不会回头 import czsc 顶层符号）。
-# svc/fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
+# fsa/aphorism/mock 中含 ``from czsc import top_drawdowns`` 等回环 import，
 # 必须放到 wbt / .traders / .utils 之后再加载，避免循环 import。
-from . import _native, connectors, envs, traders, utils
+from . import _native as _native  # noqa: F401  # 通过 czsc._native.* 暴露
+from . import connectors, envs, traders, utils
 
 # === 缠论核心数据类型与算法（来自 Rust 扩展 czsc._native）===
 # === wbt（硬依赖，提供回测/绩效组件）===
@@ -27,16 +26,18 @@ from wbt import WeightBacktest, daily_performance, top_drawdowns
 # format_standard_kline: Python 适配层，把 DataFrame -> List[RawBar]（详见模块 docstring）
 from czsc._format_standard_kline import format_standard_kline
 
+# resample_bars: Python 适配层，把 DataFrame / list[RawBar] 重采样为目标周期（详见模块 docstring）
+from czsc._resample_bars import resample_bars
+
 # === 之前的 lazy 属性，改为静态 import（spec §3.1 移除 lazy loading）===
 from czsc.utils.kline_quality import check_kline_quality
 from czsc.utils.log import log_strategy_info
-from czsc.utils.plotting.kline import KlineChart, plot_czsc_chart
 from czsc.utils.trade import adjust_holding_weights
 from czsc.utils.warning_capture import capture_warnings, execute_with_warning_capture
 
 # 第二批：会回头 import czsc 顶层符号（如 ``from czsc import top_drawdowns``）的重型子包。
 # 必须放在所有顶层符号都已经绑定之后，否则会触发 partially-initialized module 循环 import。
-from . import aphorism, fsa, mock, svc
+from . import aphorism, fsa, mock
 from ._native import (
     BI,
     CZSC,
@@ -68,16 +69,12 @@ from ._native import (
     ultimate_smoother,
 )
 
-# === EDA 工具（来自 czsc.eda）===
-from .eda import (
-    cal_trade_price,
-    cal_yearly_days,
-    mark_cta_periods,
-    mark_volatility,
-    monotonicity,
-    turnover_rate,
-    weights_simple_ensemble,
-)
+# === EDA 工具 ===
+# 2026-05-17 PR-B：``mark_cta_periods`` / ``mark_volatility`` 已迁到 czsc.utils 独立文件。
+# 2026-05-17 PR-D：``monotonicity`` 已改为 Rust 实现（czsc._native），与 scipy.stats.spearmanr 等价。
+from ._native import monotonicity
+from .utils.mark_cta_periods import mark_cta_periods
+from .utils.mark_volatility import mark_volatility
 
 # === 研究/优化入口（czsc.research，Rust 后端）===
 from .research import (
@@ -110,7 +107,6 @@ from .utils import (
     clear_cache,
     clear_expired_cache,
     code_namespace,
-    create_grid_params,
     cross_sectional_ic,
     dill_dump,
     dill_load,
@@ -120,31 +116,20 @@ from .utils import (
     get_dir_size,
     get_py_namespace,
     get_url_token,
-    holds_performance,
     home_path,
     import_by_name,
     index_composition,
-    mac_address,
     print_df_sample,
-    psi,
     read_json,
     resample_to_daily,
     risk_free_returns,
-    rolling_daily_performance,
     save_json,
     set_url_token,
-    timeout_decorator,
     to_arrow,
     update_bbars,
     update_nxb,
     update_tbars,
-    x_round,
 )
-
-# czsc.ta 别名再保险：from .utils import ... 链路上若有副作用 import czsc.utils.ta，
-# 可能把 sys.modules["czsc.ta"] 覆盖回 Python 包装版本，这里再绑一次确保 Rust 子模块胜出。
-ta = _native.ta
-_sys.modules["czsc.ta"] = _native.ta
 
 # === 包元信息 ===
 # 版本号唯一来源是 Cargo.toml [workspace.package].version；maturin 在打 wheel
@@ -161,7 +146,7 @@ except _PackageNotFoundError:
     __version__ = "0.0.0+unknown"
 __author__ = "zengbin93"
 __email__ = "zeng_bin8888@163.com"
-__date__ = "20260507"
+__date__ = "20260520"
 
 # === 公共 API 契约 ===
 # 修改本列表等价于修改公共契约；新增/移除符号必须在 release notes 与 MIGRATION_NOTES 中说明。
@@ -193,6 +178,7 @@ __all__ = [
     "is_trading_time",
     "parse_signal_doc",
     "remove_include",
+    "resample_bars",
     "rolling_rank",
     "sma",
     "ultimate_smoother",
@@ -205,7 +191,6 @@ __all__ = [
     "envs",
     "traders",
     "utils",
-    "svc",
     "fsa",
     "aphorism",
     "mock",
@@ -233,7 +218,6 @@ __all__ = [
     "clear_cache",
     "clear_expired_cache",
     "code_namespace",
-    "create_grid_params",
     "cross_sectional_ic",
     "dill_dump",
     "dill_load",
@@ -243,42 +227,29 @@ __all__ = [
     "get_dir_size",
     "get_py_namespace",
     "get_url_token",
-    "holds_performance",
     "home_path",
     "import_by_name",
     "index_composition",
-    "mac_address",
     "print_df_sample",
-    "psi",
     "read_json",
     "resample_to_daily",
     "risk_free_returns",
-    "rolling_daily_performance",
     "save_json",
     "set_url_token",
-    "ta",
-    "timeout_decorator",
     "to_arrow",
     "update_bbars",
     "update_nxb",
     "update_tbars",
-    "x_round",
     # 静态 import 的高频符号（曾经走 _LAZY_ATTRS）
     "capture_warnings",
     "execute_with_warning_capture",
     "adjust_holding_weights",
     "log_strategy_info",
-    "plot_czsc_chart",
-    "KlineChart",
     "check_kline_quality",
     # EDA
     "monotonicity",
-    "weights_simple_ensemble",
-    "cal_trade_price",
     "mark_cta_periods",
     "mark_volatility",
-    "cal_yearly_days",
-    "turnover_rate",
     # 元信息
     "__version__",
     "__author__",

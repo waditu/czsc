@@ -18,6 +18,8 @@ use strum_macros::{AsRefStr, Display, EnumString};
     Clone,
     Copy,
     PartialEq,
+    Eq,
+    Hash,
     EnumString,
     AsRefStr,
     Display,
@@ -88,6 +90,24 @@ impl Direction {
                 Direction::Down => "Down",
             }
         )
+    }
+
+    /// 返回 Rust variant 名（"Up" / "Down"），对齐 Python `enum.Enum.name`。
+    #[getter]
+    fn name(&self) -> &'static str {
+        match self {
+            Direction::Up => "Up",
+            Direction::Down => "Down",
+        }
+    }
+
+    /// 显式实现 `__hash__`，原因见 freq.rs 中同名方法的说明。
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 
     fn __richcmp__(

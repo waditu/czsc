@@ -55,8 +55,12 @@ jobs:
           - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
           - { os: ubuntu-latest,  target: aarch64, manylinux: '2014' }
           - { os: ubuntu-latest,  target: x86_64,  manylinux: 'musllinux_1_2' }
-          - { os: macos-13,       target: x86_64,  manylinux: '' }
-          - { os: macos-14,       target: aarch64, manylinux: '' }
+          # macOS x86_64 用 macos-latest runner cross-compile（macos-13 Intel
+          # runner pool 极度紧张，单 job 排队常 1h+ 卡 publish；macos-latest
+          # 当前指向 Apple Silicon runner，池子充裕）。Apple 工具链原生支持
+          # x86_64 cross-build，等价于 `cargo build --target x86_64-apple-darwin`。
+          - { os: macos-latest,   target: x86_64,  manylinux: '' }
+          - { os: macos-latest,   target: aarch64, manylinux: '' }
           - { os: windows-latest, target: x64,     manylinux: '' }
     steps:
       - name: Checkout code
@@ -82,6 +86,15 @@ jobs:
           manylinux: ${{ matrix.platform.manylinux }}
           args: --release --strip --out dist
           sccache: 'true'
+          # ring 0.17.x cross-compile 到 aarch64 manylinux2014 时，
+          # manylinux2014 镜像里的 cross-gcc 没把 __ARM_ARCH 宏传给 ASM，
+          # 导致 sha256-armv8-linux64.S 编译失败（"ARM assembler must
+          # define __ARM_ARCH"）。这里对 aarch64 manylinux build 显式
+          # 注入 CFLAGS_aarch64_unknown_linux_gnu，让 cc-rs 把宏带上。
+          # 对其他 target 这条 env 无副作用（cc-rs 按 target triple 取
+          # 对应 CFLAGS_<triple>），所以无需 case 分支。
+          before-script-linux: |
+            export CFLAGS_aarch64_unknown_linux_gnu="-D__ARM_ARCH=8"
 
       - name: List built wheels
         shell: bash
@@ -160,8 +173,11 @@ jobs:
       matrix:
         smoke:
           - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
-          - { os: macos-13,       target: x86_64,  manylinux: '' }
-          - { os: macos-14,       target: aarch64, manylinux: '' }
+          # macOS x86_64 wheel 是 cross-compile 出来的（见 build-wheels 注释），
+          # 不能在 Apple Silicon runner 上原生 import 验证（platform mismatch），
+          # 而 macos-13 Intel runner pool 紧张到不可用——故 CI 不 smoke 它，
+          # 信任 Apple 工具链 cross-build 的稳定性。
+          - { os: macos-latest,   target: aarch64, manylinux: '' }
           - { os: windows-latest, target: x64,     manylinux: '' }
     steps:
       - name: Set up Python 3.10
@@ -177,14 +193,17 @@ jobs:
           name: wheels-${{ matrix.smoke.os }}-${{ matrix.smoke.target }}-${{ matrix.smoke.manylinux || 'native' }}
           path: dist/
 
-      # 最小依赖集：__init__.py 顶层 import 需要的几个；运行时其余依赖
-      # （TA-Lib/wbt/streamlit/...）不在 import 路径上，--no-deps 跳过即可。
+      # 最小依赖集：czsc/__init__.py + czsc/fsa/__init__.py + czsc/traders/__init__.py
+      # 顶层 import 链上必须的几个。
+      # 注意：wbt 是 czsc 顶层 import（pyproject.toml 硬依赖）；requests 是 czsc.fsa
+      # 顶层 import；漏装任一项 smoke import czsc 会直接崩。
+      # 其余运行时依赖（pyarrow/polars/scipy/...）不在 import 路径上，--no-deps 跳过即可。
       - name: Install + import czsc (no deps, then minimal deps)
         shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install --no-deps dist/*.whl
-          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity
+          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity wbt requests
           python -c "import czsc; print('czsc version:', czsc.__version__)"
           python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
           python -c "from czsc._native import signals; print('native signals namespace OK:', sorted(dir(signals))[:5])"
@@ -260,12 +279,11 @@ jobs:
         shell: bash
         run: |
           # 抽取 [workspace.package] 段下面第一个 version = "..."
-          CARGO_VERSION=$(awk '
+          # 用 awk -F'"' 切分字段（POSIX 兼容；gawk gsub 不支持 \\1 backreference，所以避免用它）
+          CARGO_VERSION=$(awk -F'"' '
             /^\[workspace\.package\]/ {in_section=1; next}
             in_section && /^\[/ {in_section=0}
-            in_section && /^version[[:space:]]*=/ {
-              gsub(/.*"([^"]+)".*/, "\\1"); print; exit
-            }
+            in_section && /^version[[:space:]]*=/ {print $2; exit}
           ' Cargo.toml)
           if [ -z "$CARGO_VERSION" ]; then
             echo "::error::Failed to read version from Cargo.toml"
@@ -293,18 +311,32 @@ jobs:
           # wheel 文件名格式 czsc-<VERSION>-cp<py>-abi3-<plat>.whl
           # 显式锚定下一个 -cp，避免贪婪匹配把 -cp310-abi3-linux 吃进去
           BUILT_VERSION=$(basename "$(ls dist/*.whl | head -1)" | sed -E 's/^czsc-([^-]+)-cp.*/\1/')
-          echo "Tag version:        $TAG_VERSION"
-          echo "Cargo.toml version: $CARGO_VERSION"
-          echo "Built wheel version:$BUILT_VERSION"
+          # SemVer prerelease (Cargo: 1.0.0-rc.4) 与 PEP 440 normalized form
+          # (PyPI wheel: 1.0.0rc4) 字符串形式不同但语义等价。maturin/setuptools
+          # 在打 wheel 时强制按 PEP 440 归一化，所以 Cargo SemVer 形式需要先
+          # 翻译到 PEP 440 再跟 wheel filename 比对。
+          # 翻译规则（与 packaging.version.canonicalize_version 对齐）：
+          #   -alpha.N → aN  -beta.N → bN  -rc.N → rcN  -dev.N → .devN  -post.N → .postN
+          NORMALIZED_CARGO=$(echo "$CARGO_VERSION" | sed -E '
+            s/-alpha\.([0-9]+)/a\1/;
+            s/-beta\.([0-9]+)/b\1/;
+            s/-rc\.([0-9]+)/rc\1/;
+            s/-dev\.([0-9]+)/.dev\1/;
+            s/-post\.([0-9]+)/.post\1/;
+          ')
+          echo "Tag version:                $TAG_VERSION"
+          echo "Cargo.toml version (SemVer): $CARGO_VERSION"
+          echo "Cargo PEP 440 normalized:    $NORMALIZED_CARGO"
+          echo "Built wheel version:         $BUILT_VERSION"
           if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
             echo "::error::Tag $TAG_VERSION 与 Cargo.toml 版本 $CARGO_VERSION 不一致 —— 请同步 Cargo.toml [workspace.package].version 后重打 tag"
             exit 1
           fi
-          if [ "$BUILT_VERSION" != "$CARGO_VERSION" ]; then
-            echo "::error::Wheel 文件名版本 $BUILT_VERSION 与 Cargo.toml 版本 $CARGO_VERSION 不一致 —— maturin 元数据可能没正确读取 dynamic version"
+          if [ "$BUILT_VERSION" != "$NORMALIZED_CARGO" ]; then
+            echo "::error::Wheel 文件名版本 $BUILT_VERSION 与 Cargo.toml PEP 440 归一化版本 $NORMALIZED_CARGO 不一致 —— maturin 元数据可能没正确读取 dynamic version"
             exit 1
           fi
-          echo "✅ Version consistency verified: $TAG_VERSION"
+          echo "✅ Version consistency verified: tag=$TAG_VERSION  cargo=$CARGO_VERSION  wheel=$BUILT_VERSION"
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

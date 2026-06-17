@@ -1,86 +1,19 @@
 """
 绘图工具模块
 
-统一的可视化工具，包括回测图表、权重分析图表、K线图表等
+本子包目前只保留缠论 K 线可视化能力：
+``czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}``（离线 HTML，
+多周期联立）。
+
+历史模块清单（已删除）：
+
+- 二阶段清理 PR-C：``KlineChart`` / ``plot_czsc_chart`` 及 ``backtest.py`` 中 7 个 ``plot_*`` 函数；
+- 2026-05-17 PR-A：``kline.py``（仅剩 ``plot_nx_graph``）整文件删除；
+  ``weight.py`` 整文件删除（含 ``calculate_turnover_stats`` / ``calculate_weight_stats``
+  / 4 个 ``plot_weight_*`` / ``plot_turnover_*``）。
+
+需要权重时序图或 networkx 图的调用方，请直接使用 ``plotly.express`` /
+``wbt.generate_backtest_report``，参考 ``docs/migration/cleanup-non-czsc-core.md``。
 """
 
-# 从 backtest 导入回测相关绘图函数
-from .backtest import (
-    get_performance_metrics_cards,
-    plot_backtest_stats,
-    plot_colored_table,
-    plot_cumulative_returns,
-    plot_daily_return_distribution,
-    plot_drawdown_analysis,
-    plot_long_short_comparison,
-    plot_monthly_heatmap,
-)
-
-# 从 common 导出常用常量
-from .common import (
-    COLOR_ANNO_GRAY,
-    COLOR_ANNO_RED,
-    COLOR_BORDER,
-    COLOR_DRAWDOWN,
-    COLOR_HEADER_BG,
-    COLOR_RETURN,
-    MONTH_LABELS,
-    QUANTILES_DRAWDOWN,
-    QUANTILES_DRAWDOWN_ANALYSIS,
-    SIGMA_LEVELS,
-    TemplateType,
-    add_year_boundary_lines,
-    figure_to_html,
-)
-
-# 从 kline 导入K线相关绘图类和函数
-from .kline import (
-    KlineChart,
-    plot_czsc_chart,
-)
-
-# 从 weight 导入权重相关绘图函数
-from .weight import (
-    calculate_turnover_stats,
-    calculate_weight_stats,
-    plot_turnover_cost_analysis,
-    plot_turnover_overview,
-    plot_weight_cdf,
-    plot_weight_histogram_kde,
-)
-
-__all__ = [
-    # Backtest plotting functions
-    "plot_cumulative_returns",
-    "plot_drawdown_analysis",
-    "plot_daily_return_distribution",
-    "plot_monthly_heatmap",
-    "plot_backtest_stats",
-    "plot_colored_table",
-    "plot_long_short_comparison",
-    "get_performance_metrics_cards",
-    # Weight plotting functions
-    "calculate_turnover_stats",
-    "calculate_weight_stats",
-    "plot_weight_histogram_kde",
-    "plot_weight_cdf",
-    "plot_turnover_overview",
-    "plot_turnover_cost_analysis",
-    # Kline plotting
-    "KlineChart",
-    "plot_czsc_chart",
-    # Common constants and utilities
-    "COLOR_DRAWDOWN",
-    "COLOR_RETURN",
-    "COLOR_ANNO_GRAY",
-    "COLOR_ANNO_RED",
-    "COLOR_BORDER",
-    "COLOR_HEADER_BG",
-    "QUANTILES_DRAWDOWN",
-    "QUANTILES_DRAWDOWN_ANALYSIS",
-    "SIGMA_LEVELS",
-    "MONTH_LABELS",
-    "TemplateType",
-    "figure_to_html",
-    "add_year_boundary_lines",
-]
+__all__: list[str] = []

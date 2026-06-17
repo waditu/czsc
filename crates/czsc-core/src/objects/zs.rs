@@ -12,6 +12,7 @@ use pyo3::types::{PyDict, PyDictMethods};
 use pyo3::{Py, PyAny, PyResult, Python, pyclass, pymethods};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+#[cfg(feature = "python")]
 use std::sync::Arc;
 
 #[cfg_attr(feature = "python", gen_stub_pyclass)]

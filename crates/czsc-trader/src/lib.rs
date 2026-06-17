@@ -10,7 +10,10 @@ pub mod czsc_signals;
 pub mod engine_v2;
 pub mod optimize;
 pub mod sig_parse;
+pub mod strategy;
 pub mod trader;
+
+pub use strategy::{JsonStrategy, Strategy, unique_signals_across};
 
 // 旧 `czsc_trader::signals::{czsc_signals,sig_parse}::*` 路径的兼容别名。
 // Phase J 把原 `signals/` 目录拍平了（避免与外部 `czsc-signals` crate 同名

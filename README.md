@@ -34,33 +34,29 @@ czsc (Python 包)
 │   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
-│   ├── signals.{bar,cxt,tas,vol,pressure,obv,cvolp}  ← 30+ 信号函数
-│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等)
+│   ├── signals.*         ← 220+ 信号函数（Python 端 7 个子模块；详见 crates/czsc-signals/src/）
+│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，本次清理 起仅内部使用)
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
-├── czsc.svc              ← Streamlit 量化研究组件库
-├── czsc.sensors          ← 事件检测与特征分析
 ├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
-├── czsc.connectors       ← 数据源连接器（天勤/Tushare/聚宽/CCXT）
-├── czsc.eda              ← 探索性数据分析（因子/特征/权重）
+├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
 ├── czsc.strategies       ← 策略门面（CzscStrategyBase/CzscJsonStrategy）
 ├── czsc.fsa              ← 飞书自动化工具
 ├── czsc.mock             ← 测试用模拟数据（转发自 wbt）
 └── czsc.envs             ← 环境变量管理
 ```
 
-底层 Rust workspace 包含 9 个 crate：`czsc-core` / `czsc-signals` / `czsc-trader` /
-`czsc-utils` / `czsc-ta` / `czsc-signal-macros` / `error-macros` / `error-support` /
+底层 Rust workspace 包含 9 个 crate：`czsc` / `czsc-core` / `czsc-derive` / `czsc-signals` /
+`czsc-trader` / `czsc-utils` / `czsc-ta` / `czsc-signal-macros` /
 `czsc-python`（PyO3 绑定入口）。
 
 
 ## 项目贡献
 
-* **[择时策略研究框架](https://s0cqcxuy3p.feishu.cn/wiki/wikcnhizrtIOQakwVcZLMKJNaib)**
 * 缠论的 `分型、笔` 的自动识别，由 Rust 实现并通过 `czsc._native` 暴露
 * 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
-* 定义并实现了 30+ 信号函数（Rust 实现），见 `czsc._native.signals`
+* 定义并实现了 220+ 信号函数（Rust 实现），见 `czsc._native.signals`
 * 缠论多级别联立决策分析交易，详见 `CzscTrader`
-* **[Streamlit 量化研究组件库](https://s0cqcxuy3p.feishu.cn/wiki/AATuw5vN7iN9XbkVPuwcE186n9f)**
+* HTML 可视化（plotly + lightweight-charts）：`czsc.utils.plotting.{kline,weight,lightweight}.*`
 
 
 ## 安装使用
@@ -91,6 +87,16 @@ git clone https://github.com/waditu/czsc.git
 cd czsc
 maturin develop --release
 ```
+
+> **Rust 构建环境约束**：底层依赖 `pyo3` / `pyo3-stub-gen` 0.22 要求 Python ≥ 3.10。
+> 当系统默认 Python 低于 3.10 时，请通过环境变量显式指定：
+>
+> ```bash
+> export PYO3_PYTHON=$(which python3.12)   # 或任意 3.10+ 的解释器
+> ```
+>
+> 否则 `cargo build` / `cargo test` 会在 `crates/czsc-python/build.rs` 提前 panic 并给出修复建议。
+> 用 `uv sync --extra dev` 走 UV 流程时，UV 会自动选择项目声明的 Python，不需要额外设置。
 
 
 ## 快速开始
@@ -174,19 +180,32 @@ run_replay(bars, signals_seq, pos_seq, res_path='./results/')
 run_research(symbols, signals_seq, pos_seq, res_path='./results/')
 ```
 
-### 回测可视化
+### 缠论可视化与回测报告
 
 ```python
-from czsc.utils.plotting.backtest import plot_backtest_stats, plot_cumulative_returns
+# 缠论 K 线（多周期联立，自包含 HTML，离线即可打开）
+from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_trader
 
-# 综合回测统计图（含回撤/收益分布/月度热力图）
-fig = plot_backtest_stats(dret, ret_col='total', title='策略回测统计')
-fig.show()
+html = plot_czsc(c, output="html")  # 单周期
+plot_czsc_trader(ct, output="html", path="trader.html")  # 多周期
 
-# 累计收益曲线
-fig = plot_cumulative_returns(dret, title='策略累计收益')
-fig.show()
+# 回测 HTML 报告：用 wbt.generate_backtest_report 一键产出
+from wbt import generate_backtest_report
+generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 ```
+
+
+## 使用案例
+
+更多端到端案例汇总见飞书 wiki：[CZSC 1.0.X 版本使用说明和案例](https://s0cqcxuy3p.feishu.cn/wiki/X0mAwSZyqiuebek2EUacbyPMnDd)。
+
+| 序号 | 案例 | 一句话介绍 |
+|------|------|------------|
+| 1 | [基于 Event 的策略回测 + wbt HTML 报告](https://s0cqcxuy3p.feishu.cn/wiki/Li7ewsbReiQlWokEEVpcvLjznJU) | 5 行命令跑通 Event → Position → 回测 → 可交互 HTML 报告的完整闭环。 |
+| 2 | [lightweight_charts 缠论可视化](https://s0cqcxuy3p.feishu.cn/wiki/VF7Gwq3N8iuplckG1Tmcmp1Qn3d) | 几行代码把缠论结构（分型/笔/线段/中枢）导出为自包含离线 HTML，便于分享与嵌入。 |
+| 3 | [把信号函数画到 K 线主图（plot_czsc_signals）](https://s0cqcxuy3p.feishu.cn/wiki/ULxhwFyVkiavqhkZ2Xkc0N3fnYc) | 把信号触发点叠在 K 线主图上，直观调试 signals_config 与多周期联立。 |
+| 4 | [性能基准测试：在本地复现 CZSC / CzscTrader 吞吐量](https://s0cqcxuy3p.feishu.cn/wiki/ReRfw9WUjiVgEckZbMxcT87WnRc) | 一行命令本地评估吞吐量，配套关键指标速查表，用于容量规划与加速效果核对。 |
+| 5 | [信号函数模块深入介绍](https://s0cqcxuy3p.feishu.cn/wiki/WxU8wKTBViekKbkCyKzcwa7SnJd) | 系统讲解 czsc-signals 架构与 246 个信号函数的模块划分、参数模板、信号表达示例。 |
 
 
 ## 核心 API 一览
@@ -198,7 +217,7 @@ fig.show()
 | **枚举** | `Freq`, `Mark`, `Direction`, `Operate` | 方向/频率等枚举（Rust） |
 | **信号/事件** | `Signal`, `Event`, `Position` | 信号与持仓逻辑（Rust） |
 | **分析工具** | `check_fx`, `check_bi`, `remove_include` | 分型/笔校验工具（Rust） |
-| **TA算子** | `czsc.ta.ema`, `czsc.ta.sma`, ... | 技术指标算子（Rust） |
+| **TA算子顶层别名** | `czsc.ema`, `czsc.sma`, `czsc.rolling_rank`, `czsc.boll_positions`, `czsc.ultimate_smoother` | 技术指标算子顶层别名（Rust） |
 | **交易器** | `CzscTrader`, `CzscSignals` | 多级别交易决策（Rust） |
 | **信号生成** | `generate_czsc_signals` | 批量信号生成（Rust） |
 | **权重回测** | `WeightBacktest` | 权重序列回测（来自 wbt） |
@@ -215,24 +234,35 @@ fig.show()
 |------|--------|------|
 | `tq_connector.py` | 天勤（TQSdk） | 期货实时/历史行情 |
 | `ts_connector.py` | Tushare | A股历史数据 |
-| `jq_connector.py` | 聚宽 | A股/期货数据 |
 | `ccxt_connector.py` | CCXT | 数字货币交易所 |
-| `research.py` | 研究数据接口 | 内部研究数据 |
+| `local_data.py` | 投研数据本地缓存 | CZSC 共享数据本地读取入口 |
 
 
-## Streamlit 组件库（czsc.svc）
+## 可视化（HTML 输出）
 
-`czsc.svc` 提供即开即用的量化研究可视化组件：
+本次清理 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight-charts 输出 HTML：
 
 | 模块 | 功能 |
 |------|------|
-| `svc.backtest` | 回测分析（累计收益/回撤/月度热力图） |
-| `svc.strategy` | 策略全貌展示 |
-| `svc.factor` | 因子分析 |
-| `svc.correlation` | 相关性分析 |
-| `svc.statistics` | 统计分析 |
-| `svc.returns` | 收益归因 |
-| `svc.weights` | 权重管理 |
+| `czsc.utils.plotting.kline` | 单周期 K 线 + 缠论结构（plotly Figure） |
+| `czsc.utils.plotting.weight` | 权重时序图（plotly Figure） |
+| `czsc.utils.plotting.lightweight` | lightweight-charts 自包含 HTML，多周期联立 + 信号叠加 |
+| 累计收益 / 回撤 / 月度热力图 / 综合回测概览 | 改用 `wbt.generate_backtest_report` 或直接 plotly，见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md) |
+
+如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
+
+
+## 相关项目（生态依赖）
+
+czsc 在权重回测、权重落地与 TA 算子一致性校验上依赖以下三个独立开源项目，它们与 czsc 形成"分析 + 回测 + 落地 + 校验"的完整闭环：
+
+| 项目 | GitHub | 角色 | 与 czsc 的关系 |
+|------|--------|------|----------------|
+| **wbt** | <https://github.com/zengbin93/wbt> | 策略持仓权重回测引擎（Weight Back Test） | **硬依赖**。提供 `WeightBacktest / daily_performance / top_drawdowns / generate_backtest_report` 等；`czsc.mock` 也转发自 `wbt.mock`。czsc 顶层 `from czsc import WeightBacktest` 即来自此包。 |
+| **wmr** | <https://github.com/zengbin93/wmr> | 策略持仓权重管理系统（Weight Manager，DuckDB / ClickHouse 双后端） | **下游配套**（非硬依赖）。wbt 负责"离线回测权重"，wmr 负责"实盘 / 投研环境下权重的持久化、版本管理与查询"。czsc 产出信号 / 持仓 → wbt 跑回测 → wmr 落库供下游消费。 |
+| **talib-rs** | <https://github.com/0xcjun/talib-rs> | 纯 Rust 实现的 TA-Lib 替代库 | **测试可选依赖**。仅 `tests/unit/test_ta_parity.py` 用它对 `czsc._native.ta`（EMA / SMA 等）做数值 parity 校验，确保 czsc 自研 TA 算子与 TA-Lib 行为一致。运行时代码不依赖。 |
+
+简言之：**wbt = 回测**，**wmr = 权重落地**，**talib-rs = TA 基准**；czsc 自身专注缠论核心算法（Rust）与信号-事件-交易体系，其余环节通过这三个项目解耦协同。
 
 
 ## 开发环境搭建
@@ -265,7 +295,6 @@ uv run ruff check czsc/ tests/
 ## 使用前必看
 
 * 1.0.X 版本核心算法已迁移到 Rust，与 0.9.X 版本 **不兼容**；旧代码需按新 API 迁移；
-* 这是个人开发的项目，虽然我已经尽可能避坑，但可以很直接的说，这里面一定还有坑，使用前请仔细校验分析结果，发现新坑请告诉我，我来填；
 * 免责声明：项目开源仅用于技术交流！
 * 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
 

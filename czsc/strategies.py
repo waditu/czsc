@@ -10,35 +10,45 @@
 关键设计:
     1. 策略元数据（unique_signals / signals_config / freqs / base_freq）
        全部由 ``positions`` 自动派生，避免子类手工填写引起不一致
-    2. 用户层与运行时配置之间的格式互转集中在 czsc._compat，本模块只负责
+    2. 用户层与运行时配置之间的格式互转集中在 czsc._runtime_adapters，本模块只负责
        调度，不直接关心字段映射
     3. backtest / replay 委托给 czsc.research 中的 run_research / run_replay，
        本模块只组合参数与处理 IO（路径、刷新、是否落盘等）
+    4. save_positions / load_positions 整段下沉 Rust（PR-G）：新契约采用
+       sha256(canonical JSON) 作为 ``checksum`` 字段，可在 Rust / Python 端
+       byte-for-byte 一致地复现。旧的 ``md5`` 字段（CPython 字典 repr() 计算）
+       在加载时**静默忽略**，用户可调用 ``save_positions`` 写回升级。
 """
 
 from __future__ import annotations
 
-import hashlib
-import json
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from czsc._compat import (
-    bars_to_dataframe,
-    position_dump_to_runtime,
-    signal_config_to_runtime,
-    sort_freqs,
-)
-from czsc._native import Position
-
 # 直接调用 Rust 端的派生器（用下划线后缀别名，避免与同名公开 API 混淆）
+# 2026-05-17 PR-F / PR-G：unique_signals / save_position / load_position 全部
+# 下沉 Rust（czsc_trader::strategy），与 Rust crate 上同名 API 共享实现，
+# 开发宪法第一条完整收口。
 from czsc._native import (
     derive_signals_config as _derive_signals_config_impl,
 )
 from czsc._native import (
     derive_signals_freqs as _derive_signals_freqs_impl,
+)
+from czsc._native import (
+    strategy_load_position as _strategy_load_position_impl,
+)
+from czsc._native import (
+    strategy_save_position as _strategy_save_position_impl,
+)
+from czsc._native import (
+    strategy_unique_signals as _strategy_unique_signals_impl,
+)
+from czsc._runtime_adapters import (
+    bars_to_dataframe,
+    sort_freqs,
 )
 from czsc.research import run_replay, run_research
 
@@ -73,23 +83,15 @@ class CzscStrategyBase(ABC):
 
     @property
     def unique_signals(self):
-        """
-        汇总所有 Position 中出现过的信号 key，去重并保持首次出现顺序
+        """汇总所有 Position 中出现过的信号 key，去重并保持首次出现顺序。
 
-        为什么不用 ``set``？
-            - set 不保证顺序，会让最终生成的 signals_config 顺序在不同
-              Python 版本/运行环境中飘移
-            - 显式维护一个 ``ordered`` 列表 + ``seen`` 集合既能去重又能
-              保留稳定顺序，便于 diff 与产物比对
+        实现下沉到 Rust（``czsc._native.strategy_unique_signals`` /
+        ``czsc_trader::strategy::unique_signals_across``），保证 ``cargo
+        add czsc`` 的 Rust 用户与 ``pip install czsc`` 的 Python 用户拿到
+        完全一致的语义（参见 CLAUDE.md「🏛️ 开发宪法 · 第一条」）。
+        Python 侧只做一次列表透传，不再维护任何去重 / 排序逻辑。
         """
-        seen = set()
-        ordered = []
-        for pos in self.positions:
-            for signal in pos.unique_signals:
-                if signal not in seen:
-                    seen.add(signal)
-                    ordered.append(signal)
-        return ordered
+        return list(_strategy_unique_signals_impl(self.positions))
 
     @property
     def signals_config(self):
@@ -105,8 +107,9 @@ class CzscStrategyBase(ABC):
             先把 signals_config 转回运行时格式，再交给 Rust 派生器返回所有
             涉及的周期；最后用 :func:`sort_freqs` 做去重与排序。
         """
-        runtime = [signal_config_to_runtime(cfg) for cfg in self.signals_config]
-        return sort_freqs(_derive_signals_freqs_impl(runtime))
+        # signals_config 已经是 derive_signals_config 返回的扁平 dict；
+        # Rust 端 derive_signals_freqs 直接接受这种形态，无需再做适配（PR-2）。
+        return sort_freqs(_derive_signals_freqs_impl(self.signals_config))
 
     @property
     def sorted_freqs(self):
@@ -182,11 +185,11 @@ class CzscStrategyBase(ABC):
         )
 
     def save_positions(self, path):
-        """
-        将策略持仓序列化为 JSON 文件落盘（兼容 ``Position.dump`` 格式）
+        """将策略持仓序列化为 JSON 文件落盘，附带 sha256 ``checksum`` 字段。
 
-        每个 Position 写为一个独立 JSON 文件（``<position_name>.json``），
-        文件中包含一个 ``md5`` 字段，用于后续加载时校验文件未被篡改。
+        每个 Position 写为一个独立 JSON 文件（``<position_name>.json``）。
+        IO + 校验逻辑由 Rust 端 ``czsc._native.strategy_save_position`` 完成
+        （见 ``czsc_trader::strategy::save_position_to_file``，开发宪法第一条收口）。
 
         参数:
             path: 输出目录；不存在会自动创建
@@ -194,36 +197,26 @@ class CzscStrategyBase(ABC):
         out_dir = Path(path)
         out_dir.mkdir(parents=True, exist_ok=True)
         for pos in self.positions:
-            payload = position_dump_to_runtime(pos.dump(with_data=False))
-            # symbol 与策略实例耦合，落盘时移除以便 Position 可被复用到不同标的
-            payload.pop("symbol", None)
-            # md5 校验码：基于序列化字符串生成，加载时可校验配置完整性
-            payload["md5"] = hashlib.md5(str(payload).encode("utf-8")).hexdigest()
-            (out_dir / f"{payload['name']}.json").write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            target = out_dir / f"{pos.name}.json"
+            _strategy_save_position_impl(pos, target)
 
     def load_positions(self, files, check=True):
-        """
-        从多个 JSON 文件加载 Position 列表，并自动绑定当前策略的 symbol
+        """从多个 JSON 文件加载 Position 列表，自动绑定当前策略的 symbol。
+
+        IO + 校验逻辑由 Rust 端 ``czsc._native.strategy_load_position`` 完成
+        （见 ``czsc_trader::strategy::load_position_from_file``）。
 
         参数:
             files: JSON 文件路径列表
-            check: 是否校验文件中的 md5 字段；默认开启。出现不一致即抛 AssertionError，
-                   防止持仓配置被外部静默修改。
+            check: 是否校验文件中的 ``checksum`` 字段；默认开启。
+                   - 新格式（PR-G+）``checksum`` 缺失或不匹配时抛 ``ValueError``；
+                   - 旧格式 ``md5`` 字段（CPython repr，无法跨语言复现）静默跳过；
+                   - 既无 ``checksum`` 也无 ``md5`` 的手写 JSON 也跳过校验。
 
         返回:
             list[Position]
         """
-        positions = []
-        for file in files:
-            payload = json.loads(Path(file).read_text(encoding="utf-8"))
-            md5 = payload.pop("md5", None)
-            # md5 校验：确保 dump/load 之间文件内容一致；md5 不存在时跳过校验（兼容旧文件）
-            if check and md5 is not None:
-                assert md5 == hashlib.md5(str(payload).encode("utf-8")).hexdigest()
-            # 把当前策略的 symbol 注入到 Position 配置中（save_positions 时被剥离）
-            payload["symbol"] = self.symbol
-            positions.append(Position.load(payload))
-        return positions
+        return [_strategy_load_position_impl(file, self.symbol, check) for file in files]
 
     def _build_runtime_strategy(self, overrides: dict[str, Any]) -> dict[str, Any]:
         """
@@ -241,8 +234,9 @@ class CzscStrategyBase(ABC):
             "name": self.kwargs.get("name", self.__class__.__name__),
             "symbol": self.symbol,
             "base_freq": self.base_freq,
-            "signals_config": [signal_config_to_runtime(cfg) for cfg in self.signals_config],
-            "positions": [position_dump_to_runtime(pos.dump(with_data=False)) for pos in self.positions],
+            # PR-2 / PR-4：signals_config 与 Position dump 的归一化已由 Rust 处理，直接透传
+            "signals_config": list(self.signals_config),
+            "positions": [pos.dump(with_data=False) for pos in self.positions],
             "market": self.kwargs.get("market", "默认"),
             "bg_max_count": int(self.kwargs.get("bg_max_count", 5000)),
             # 仅当 sdt 存在时才注入字段，避免显式写 None 触发 Rust 端 schema 错误

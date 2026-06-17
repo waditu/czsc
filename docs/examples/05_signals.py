@@ -32,7 +32,7 @@ from czsc import (
 )
 from czsc.mock import generate_symbol_kines
 
-# 信号配置：name 是 Rust 端注册名（不带 ``czsc.signals.`` 前缀，版本号大写 V）
+# 信号配置：name 是 Rust 端注册名（不带 ``czsc.signals.`` 前缀；`#[signal]` 宏自动注册，不再使用 ``V<yyMMdd>`` 版本后缀）
 # 模板可通过 czsc._native.signals.cxt.get_signal_template(name) 查询
 SIGNALS_CONFIG = [
     # 笔的表里关系（30 分钟 / 日线 各算一份）

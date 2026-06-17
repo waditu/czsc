@@ -6,6 +6,7 @@ use czsc_core::objects::position::{LiteBar, Position, PositionRuntimeState};
 use czsc_core::objects::state::TraderState;
 use czsc_signals::types::TraderSignalFn;
 use czsc_utils::bar_generator::BarGenerator;
+use czsc_utils::errors::UtilsError;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -114,9 +115,17 @@ impl CzscTrader {
         self.compiled_cfg_len = len;
     }
 
-    /// 输入基础周期已完成K线，更新信号，更新仓位
-    pub fn update(&mut self, bar: &RawBar, signals_config: &[SignalConfig]) {
-        let _ = self.update_profiled(bar, signals_config);
+    /// 输入基础周期已完成K线，更新信号，更新仓位。
+    ///
+    /// `BarGenerator::update_bar` 现在会对 NaN OHLCV / freq mismatch 等硬错返回 Err，
+    /// 调用链 update → update_profiled → signals.update_signals → bg.update_bar 全部
+    /// propagate；不再用 `let _ =` 吞 Err 让 silent corruption 漏过去。
+    pub fn update(
+        &mut self,
+        bar: &RawBar,
+        signals_config: &[SignalConfig],
+    ) -> Result<(), UtilsError> {
+        self.update_profiled(bar, signals_config).map(|_| ())
     }
 
     /// 与 update 行为一致，但返回分段耗时（纳秒）
@@ -124,12 +133,12 @@ impl CzscTrader {
         &mut self,
         bar: &RawBar,
         signals_config: &[SignalConfig],
-    ) -> UpdateProfile {
+    ) -> Result<UpdateProfile, UtilsError> {
         self.ensure_compiled_trader_ops(signals_config);
 
         let t_signals = Instant::now();
         // 1. 调用 signals 获得本根K线上的所有状态更新
-        self.signals.update_signals(bar, signals_config);
+        self.signals.update_signals(bar, signals_config)?;
         let signals_update_ns = t_signals.elapsed().as_nanos();
 
         // 1.5 执行 trader 级别的 signals（pos 系列：需要访问仓位状态）
@@ -170,7 +179,7 @@ impl CzscTrader {
         }
         let position_update_ns = t_pos.elapsed().as_nanos();
 
-        UpdateProfile {
+        Ok(UpdateProfile {
             signals_update_ns,
             trader_signals_ns,
             position_update_ns,
@@ -178,7 +187,7 @@ impl CzscTrader {
             pos_fsm_ns,
             pos_risk_ns,
             pos_holds_ns,
-        }
+        })
     }
 
     /// 导出完整状态快照（热启动用），序列化为 MessagePack 字节。

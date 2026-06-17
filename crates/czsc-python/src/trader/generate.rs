@@ -71,9 +71,12 @@ pub fn generate_czsc_signals(
     let symbol = bars[0].symbol.to_string();
     let mut signals = CzscSignals::new(symbol, bg);
 
-    // 预热
+    // 预热：让 BarGenerator 的硬错（NaN OHLCV / freq mismatch）冒泡到 Python，
+    // 避免吞掉 Err 后续用 stale 状态算出"幻象"信号。
     for bar in bars_left {
-        signals.bg.update_bar(bar).ok();
+        signals.bg.update_bar(bar).map_err(|e| {
+            PyValueError::new_err(format!("warmup 阶段 update_bar 失败 (dt={}): {e}", bar.dt))
+        })?;
     }
 
     // prime_signals 用最后一根预热 bar
@@ -84,7 +87,9 @@ pub fn generate_czsc_signals(
     // 计算信号
     let mut records: Vec<Py<PyAny>> = Vec::with_capacity(bars_right.len());
     for bar in bars_right {
-        signals.update_signals(bar, &configs);
+        signals.update_signals(bar, &configs).map_err(|e| {
+            PyValueError::new_err(format!("update_signals 失败 (dt={}): {e}", bar.dt))
+        })?;
         let dict = PyDict::new(py);
         for (k, v) in &signals.s {
             dict.set_item(k, v)?;

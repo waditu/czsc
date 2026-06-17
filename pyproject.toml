@@ -10,7 +10,7 @@ build-backend = "maturin"
 module-name      = "czsc._native"
 manifest-path    = "crates/czsc-python/Cargo.toml"
 python-source    = "."
-include          = ["czsc/**/*.pyi", "czsc/py.typed"]
+include          = ["czsc/**/*.pyi", "czsc/py.typed", "LICENSE"]
 features         = ["pyo3/extension-module"]
 
 
@@ -23,6 +23,11 @@ dynamic = ["version"]
 description = "缠中说禅技术分析工具"
 readme = "README.md"
 license = "Apache-2.0"
+# PEP 639 license-files：显式声明哪些文件作为 License-File metadata。
+# PyPI 在校验 sdist/wheel 时要求 license-files 实际存在于 distribution 内，
+# 否则 upload 返回 400（license-files glob 与 distribution 不匹配）。
+# v1.0.0-rc.5 因没声明该字段导致 sdist 上传失败（wheel 已成功）。
+license-files = ["LICENSE"]
 authors = [
     { name = "zengbin93", email = "zeng_bin8888@163.com" }
 ]
@@ -41,42 +46,33 @@ dependencies = [
     "numpy",
     "pyarrow",
     "openpyxl",
-    # 网络请求
+    "polars>=0.20.0",
+    # 网络请求（czsc.fsa 飞书 API 封装使用）
     "requests>=2.24.0",
     "requests_toolbelt",
-    # 数据库连接
-    "redis",
-    "clickhouse_connect",
     # 数学计算和统计
     "scipy",
     "statsmodels",
-    "scikit-learn",
-    # 技术分析 (rs-czsc 已被 czsc._native 替代，czsc-python 通过 maturin
-    # 直接产出，wbt 为硬依赖提供 WeightBacktest / daily_performance /
-    # top_drawdowns / mock 函数)
-    "TA-Lib>=0.6",
-    "wbt",
-    # 图表和可视化
-    "matplotlib",
-    "seaborn",
+    # scikit-learn 已于 2026-05-17 PR-A 删除：唯一调用点 `czsc.utils.analysis.corr.nmi_matrix` 同步下线，
+    # 项目不再依赖 sklearn；如需归一化互信息矩阵，调用方自行 `pip install scikit-learn` 一行实现即可。
+    # 技术分析
+    # - czsc._native 由 crates/czsc-python 通过 maturin 直接产出，无需 rs-czsc
+    # - wbt 为硬依赖，提供 WeightBacktest / daily_performance / top_drawdowns / mock 等
+    # - talib-rs 见 [project.optional-dependencies].test，运行时代码不依赖它
+    "wbt>=0.2.1",
+    # 图表和可视化（czsc 的所有可视化统一由 plotly 实现，
+    # fig.show() 在浏览器打开或 plot_*(to_html=True) 写 HTML 文件）
     "plotly",
-    "pyecharts>=1.9.1",
-    "lightweight-charts",
-    "streamlit",
-    # PDF 报告
-    "reportlab>=4.0",
-    "kaleido",
     # 工具库
     "tqdm>=4.66.4",
     "loguru",
     "dill",
     "tenacity",
-    "parse",
-    "Deprecated",
-    "pytz",
-    "fonttools>=4.61.0",
-    "polars>=0.20.0",
+    "typer>=0.12.0",
 ]
+
+[project.scripts]
+czsc = "czsc.cli:app"
 
 [[tool.uv.index]]
 url = "https://pypi.python.org/simple"
@@ -84,12 +80,14 @@ default = true
 
 [project.optional-dependencies]
 # 测试依赖
+# talib-rs 仅用于 tests/unit/test_ta_parity.py 做与 czsc._native.ta 的 parity 校验。
+# 当前 PyPI 上 talib-rs==0.1.2 的 wheel 矩阵只覆盖 (cp312 × macOS-arm64) 与
+# (cp312 × Windows-x64)（Linux 上仅 cp38-cp38-manylinux，cp310-cp313 都无可装 wheel），
+# 所以用 PEP 508 marker 限定只在能装的环境解析，其余环境由 pytest.importorskip 优雅跳过。
 test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    # rs_czsc baseline used by tests/parity/ to prove czsc._native
-    # outputs match the reference Rust implementation byte-for-byte.
-    "rs-czsc",
+    "talib-rs; python_version == '3.12' and ((sys_platform == 'darwin' and platform_machine == 'arm64') or sys_platform == 'win32')",
 ]
 
 # 开发工具
@@ -126,10 +124,13 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["test"]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "--tb=short -v -s --log-cli-level=INFO"
+markers = [
+    "slow: 标记耗时测试，默认跳过；CI / 发布前用 `pytest --run-slow` 跑全套",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
@@ -148,6 +149,10 @@ extend-exclude = ["czsc/_native/__init__.pyi"]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501", "SIM112"]
 extend-safe-fixes = ["UP"]
+
+[tool.ruff.lint.flake8-bugbear]
+# typer 的惯用法：Argument/Option 作为参数默认值的工厂调用，B008 应放行
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["czsc"]

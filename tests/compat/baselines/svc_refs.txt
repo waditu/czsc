@@ -1,0 +1,17 @@
+czsc/svc/backtest.py:265:    from czsc.svc.strategy import show_multi_backtest
+czsc/svc/base.py:4:本模块为 ``czsc.svc`` 子包内其他可视化组件提供通用的基础设施，主要包含：
+czsc/svc/strategy.py:455:    from czsc.svc.base import apply_stats_style
+czsc/svc/strategy.py:456:    from czsc.svc.returns import show_cumulative_returns
+czsc/svc/strategy.py:457:    from czsc.svc.statistics import show_describe
+czsc/traders/__init__.py:17:  请改用 ``czsc.svc`` 中提供的 Streamlit 组件。
+czsc/utils/plotting/_macd.py:7:仅供 ``czsc.utils.plotting`` 与 ``czsc.svc.strategy`` 内部使用，不对外暴露。
+czsc/utils/plotting/backtest.py:4:从 czsc.svc 模块中提取的 WeightBacktest 相关的绘图代码，按功能整理
+czsc/utils/plotting/backtest.py:188:    参考 czsc.svc.returns.show_cumulative_returns
+czsc/utils/plotting/backtest.py:235:    参考 czsc.svc.returns.show_drawdowns
+docs/examples/12_streamlit_research.py:9:- **相关性**：``czsc.svc.show_correlation`` 与 ``show_ts_rolling_corr``
+docs/examples/12_streamlit_research.py:11:- **因子分析**：``czsc.svc.show_factor_layering`` / ``show_feature_returns``
+docs/examples/12_streamlit_research.py:12:- **统计分析**：``czsc.svc.show_yearly_stats`` / ``show_describe``
+docs/examples/12_streamlit_research.py:14:> 注：``czsc.svc.show_weight_backtest`` 当前在内部使用了旧版
+docs/examples/12_streamlit_research.py:192:        f"czsc=={czsc.__version__}  |  组件来自 czsc.svc + czsc.utils.plotting"
+tests/compat/test_public_api.py:140:@pytest.mark.parametrize("module_name", ["czsc.connectors", "czsc.svc"])
+tests/compat/test_public_api.py:146:        * ``czsc.svc``        —— 统计与可视化服务

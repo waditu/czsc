@@ -2,42 +2,35 @@
 czsc.utils 工具子包
 
 本子包汇总了 CZSC 项目内的通用工具，包括：分析（analysis）、
-数据访问与缓存（data）、IO 助手（io）、技术指标（ta）、绘图（plotting）等。
+数据访问与缓存（data）、IO 助手（io）、绘图（plotting）等。
 
-为了兼顾"导入即可用"和"按需懒加载"两种诉求，本模块采用如下策略：
+技术指标（TA）算子已统一由 Rust 端 ``czsc._native.ta`` 提供，从顶层
+``czsc.ta`` 直接访问；本子包不再暴露 ``ta`` 子模块。
 
-1. 顶部直接导入轻量级子模块及其常用函数；
-2. ``plotting`` 子包以及绘图相关函数采用 :func:`__getattr__` 实现的懒加载，
-   在首次访问时才真正导入，避免启动时拖慢 ``import czsc``；
-3. ``logger`` 也通过懒加载从 ``loguru`` 暴露，便于其他模块统一使用同一实例。
+加载策略（2026-05 评审后已统一）：
 
-同时本模块还提供一组小工具函数：``x_round``、``import_by_name``、``freqs_sorted``、
-``create_grid_params``、``mac_address``、``to_arrow``、``timeout_decorator`` 等。
+1. 顶部直接 import 所有轻量级子模块及其常用函数；
+2. ``plotting`` 子包按需 ``import czsc.utils.plotting.xxx`` 显式访问，
+   不再通过 ``__getattr__`` 暴露到本模块；
+3. 周期排序统一走 ``czsc._runtime_adapters._FREQ_ORDER``，避免两份顺序表漂移。
+
+同时本模块还提供一组小工具函数：``import_by_name``、``freqs_sorted``、
+``to_arrow`` 等。
 """
 
-import functools
-import os
-import threading
+from pathlib import Path
 
 import pandas as pd
 
 # ---------------------------------------------------------------------------
 # 轻量级子模块的直接导入
 # ---------------------------------------------------------------------------
-# 这些子模块加载成本可控，且在 czsc 工程中被高频复用，因此直接 import
-from . import analysis, data, io, ta
+from . import analysis, data, io
 
 # 从 analysis 子模块再次导出常用的统计 / 绩效函数，方便在 czsc.utils 顶层直接使用
-from .analysis import (
-    cross_sectional_ic,
-    daily_performance,
-    holds_performance,
-    nmi_matrix,
-    psi,
-    rolling_daily_performance,
-    single_linear,
-    top_drawdowns,
-)
+# 2026-05-17 PR-A 起，analysis 仅保留 cross_sectional_ic；daily_performance /
+# top_drawdowns 改由调用方走 wbt（czsc 顶层 ``czsc.daily_performance`` 仍可用）。
+from .analysis import cross_sectional_ic
 
 # 数据访问、磁盘缓存以及统一数据客户端
 from .data import (
@@ -62,6 +55,18 @@ from .index_composition import index_composition
 # JSON / dill 等通用 IO 工具
 from .io import dill_dump, dill_load, read_json, save_json
 
+# CTA / 波动率区间后验标注工具（2026-05-17 PR-B 从 czsc/eda.py 拆分而来）
+from .mark_cta_periods import mark_cta_periods
+from .mark_volatility import mark_volatility
+
+# 开仓 / 平仓参数批量优化（2026-05-17 PR-C 从 czsc/traders/optimize.py 搬运过来）
+from .optimize import (
+    CzscExitOptimStrategy,
+    CzscOpenOptimStrategy,
+    ExitsOptimize,
+    OpensOptimize,
+)
+
 # 交易/重采样相关工具
 from .trade import resample_to_daily, risk_free_returns, update_bbars, update_nxb, update_tbars
 
@@ -70,16 +75,8 @@ __all__ = [
     "analysis",
     "data",
     "io",
-    "ta",
     # analysis
     "cross_sectional_ic",
-    "daily_performance",
-    "holds_performance",
-    "nmi_matrix",
-    "psi",
-    "rolling_daily_performance",
-    "single_linear",
-    "top_drawdowns",
     # data
     "DataClient",
     "DiskCache",
@@ -95,6 +92,14 @@ __all__ = [
     "holds_concepts_effect",
     # index_composition
     "index_composition",
+    # mark_*（后验区间标注，PR-B 从 czsc/eda.py 拆分而来）
+    "mark_cta_periods",
+    "mark_volatility",
+    # optimize（PR-C 从 czsc/traders/ 搬运而来）
+    "OpensOptimize",
+    "ExitsOptimize",
+    "CzscOpenOptimStrategy",
+    "CzscExitOptimStrategy",
     # io
     "dill_dump",
     "dill_load",
@@ -107,84 +112,20 @@ __all__ = [
     "update_nxb",
     "update_tbars",
     # 本模块函数
-    "x_round",
     "get_py_namespace",
     "code_namespace",
     "import_by_name",
     "freqs_sorted",
-    "create_grid_params",
     "print_df_sample",
-    "mac_address",
     "to_arrow",
-    "timeout_decorator",
-    "sorted_freqs",
-    # 延迟加载模块
-    "plotting",
-    # 延迟加载属性
-    "KlineChart",
-    "plot_czsc_chart",
-    "plot_cumulative_returns",
-    "plot_drawdown_analysis",
-    "plot_daily_return_distribution",
-    "plot_monthly_heatmap",
-    "plot_backtest_stats",
-    "plot_colored_table",
-    "plot_long_short_comparison",
-    "plot_weight_histogram_kde",
-    "plot_weight_cdf",
-    "plot_turnover_overview",
-    "plot_turnover_cost_analysis",
-    "plot_weight_time_series",
-    "logger",
-]
-
-# 标准 K 线周期排序顺序，用于 ``freqs_sorted`` 排序
-sorted_freqs = [
-    "Tick",
-    "1分钟",
-    "2分钟",
-    "3分钟",
-    "4分钟",
-    "5分钟",
-    "6分钟",
-    "10分钟",
-    "12分钟",
-    "15分钟",
-    "20分钟",
-    "30分钟",
-    "60分钟",
-    "120分钟",
-    "日线",
-    "周线",
-    "月线",
-    "季线",
-    "年线",
 ]
 
 
-def x_round(x: float | int, digit: int = 4) -> float | int:
-    """用去尾法截断小数
-
-    与 :func:`round` 不同，该函数采用去尾（向零）方式截断小数位，避免四舍五入
-    带来的微小偏差。
-
-    :param x: 数字（int 或 float）；如为 int 则原样返回
-    :param digit: 保留的小数位数
-    :return: 截断后的数字；异常时返回原值并打印日志
-    """
-    if isinstance(x, int):
-        return x
-
-    try:
-        digit_ = pow(10, digit)
-        x = int(x * digit_) / digit_
-    except Exception:
-        # 浮点转换失败时打印诊断信息，但不抛异常以保护调用链
-        print(f"x_round error: x = {x}")
-    return x
+# 包根目录：用于 get_py_namespace 的白名单判断，避免依赖 CWD
+_CZSC_PKG_ROOT = Path(__file__).resolve().parent.parent
 
 
-def get_py_namespace(file_py: str, keys: list = None) -> dict:
+def get_py_namespace(file_py: str, keys: list | None = None) -> dict:
     """获取 Python 脚本文件中的 namespace
 
     通过 ``compile`` + ``exec`` 在内存中执行脚本，并把执行后的全局命名空间返回。
@@ -197,22 +138,22 @@ def get_py_namespace(file_py: str, keys: list = None) -> dict:
     """
     if keys is None:
         keys = []
-    file_py = os.path.abspath(file_py)
-    # 安全白名单：只允许执行 czsc 内部的策略 / 信号脚本
-    allowed_prefixes = [os.path.abspath("czsc/strategies"), os.path.abspath("czsc/signals")]
-    if not any(file_py.startswith(p) for p in allowed_prefixes):
-        raise ValueError(f"文件路径 {file_py} 不在白名单目录内")
-    with open(file_py, encoding="utf-8") as _f:
+    target = Path(file_py).resolve()
+    # 白名单基于包真实位置而非 CWD，避免在仓库根目录之外调用时绕过校验
+    allowed_dirs = [_CZSC_PKG_ROOT / "strategies", _CZSC_PKG_ROOT / "signals"]
+    if not any(target.is_relative_to(d) for d in allowed_dirs):
+        raise ValueError(f"文件路径 {target} 不在白名单目录内")
+    with open(target, encoding="utf-8") as _f:
         text = _f.read()
-    code = compile(text, file_py, "exec")
-    namespace = {"file_py": file_py, "file_name": os.path.basename(file_py).split(".")[0]}
+    code = compile(text, str(target), "exec")
+    namespace: dict = {"file_py": str(target), "file_name": target.stem}
     exec(code, namespace)
     if keys:
         namespace = {k: v for k, v in namespace.items() if k in keys}
     return namespace
 
 
-def code_namespace(code: str, keys: list = None) -> dict:
+def code_namespace(code: str, keys: list | None = None) -> dict:
     """获取 Python 代码字符串中的 namespace
 
     与 :func:`get_py_namespace` 类似，但接受的是源代码字符串而非文件路径，
@@ -224,7 +165,7 @@ def code_namespace(code: str, keys: list = None) -> dict:
     """
     if keys is None:
         keys = []
-    namespace = {"code": code}
+    namespace: dict = {"code": code}
     exec(code, namespace)
     if keys:
         namespace = {k: v for k, v in namespace.items() if k in keys}
@@ -257,58 +198,14 @@ def import_by_name(name):
 def freqs_sorted(freqs):
     """K 线周期列表排序并去重，第一个元素是基础周期
 
+    内部统一调用 :func:`czsc._runtime_adapters.sort_freqs`，避免两份顺序表漂移。
+
     :param freqs: K 线周期列表（如 ``['日线', '5分钟', '30分钟']``）
-    :return: list，按 :data:`sorted_freqs` 顺序排序并去重后的结果
+    :return: list，从高频到低频去重后的结果
     """
-    _freqs_new = [x for x in sorted_freqs if x in freqs]
-    return _freqs_new
+    from czsc._runtime_adapters import sort_freqs
 
-
-def create_grid_params(prefix: str = "", multiply=3, **kwargs) -> dict:
-    """创建 grid search 参数组合
-
-    基于 ``sklearn.model_selection.ParameterGrid`` 生成参数笛卡尔积，并按用户
-    指定的命名风格输出，便于在批量回测、网格搜索时复用。
-
-    :param prefix: str，参数组前缀
-    :param multiply: int，参数组合编号的位数；为 0 时改用 ``#`` 连接的可读 key
-    :param kwargs: 任意参数的候选序列；推荐使用 list/tuple，单个值也会被自动包装
-    :return: dict，``{key: 参数字典}`` 形式的参数组合
-
-    示例：
-        >>> x = create_grid_params("test", x=(1, 2), y=('a', 'b'), detail=True)
-        >>> print(x)
-        Out[0]:
-            {'test_x=1_y=a': {'x': 1, 'y': 'a'},
-             'test_x=1_y=b': {'x': 1, 'y': 'b'},
-             'test_x=2_y=a': {'x': 2, 'y': 'a'},
-             'test_x=2_y=b': {'x': 2, 'y': 'b'}}
-
-        # 单个参数传入单个值也是可以的，但类型必须是 int, float, str 中的任一
-        >>> x = create_grid_params("test", x=2, y=('a', 'b'), detail=False)
-        >>> print(x)
-        Out[1]:
-            {'test001': {'x': 2, 'y': 'a'},
-             'test002': {'x': 2, 'y': 'b'}}
-    """
-    from sklearn.model_selection import ParameterGrid
-
-    params_grid = dict(kwargs)
-    for k, v in params_grid.items():
-        # 标量值自动包装为单元素列表，便于 ParameterGrid 处理
-        if type(v) in [int, float, str]:
-            v = [v]
-        assert type(v) in [tuple, list], f"输入参数值必须是 list 或 tuple 类型，当前参数 {k} 值：{v}"
-        params_grid[k] = v
-
-    params = {}
-    for i, row in enumerate(ParameterGrid(params_grid), 1):
-        # multiply == 0 时使用可读的 key，否则使用补零后的序号
-        key = "#".join([f"{k}={v}" for k, v in row.items()]) if multiply == 0 else str(i).zfill(multiply)
-
-        row["version"] = f"{prefix}{key}"
-        params[f"{prefix}@{key}"] = row
-    return params
+    return sort_freqs(freqs)
 
 
 def print_df_sample(df, n=5):
@@ -320,22 +217,6 @@ def print_df_sample(df, n=5):
     from tabulate import tabulate
 
     print(tabulate(df.head(n).values, headers=df.columns, tablefmt="rst"))
-
-
-def mac_address():
-    """获取本机 MAC 地址
-
-    MAC 地址（Media Access Control Address），又称为局域网地址（LAN Address）、
-    以太网地址（Ethernet Address）或物理地址（Physical Address），用于唯一标识
-    网络中的网卡。一台设备若有多块网卡，则每块网卡都会拥有各自的 MAC 地址。
-
-    :return: str，本机 MAC 地址，形如 ``"AA-BB-CC-DD-EE-FF"``
-    """
-    import uuid
-
-    x = uuid.UUID(int=uuid.getnode()).hex[-12:].upper()
-    x = "-".join([x[i : i + 2] for i in range(0, 11, 2)])
-    return x
 
 
 def to_arrow(df: pd.DataFrame):
@@ -355,110 +236,3 @@ def to_arrow(df: pd.DataFrame):
         with pa.ipc.new_file(sink, table.schema) as writer:
             writer.write_table(table)
         return sink.getvalue()
-
-
-def timeout_decorator(timeout):
-    """基于线程实现的超时装饰器
-
-    将被装饰函数放在子线程中执行，主线程 ``join`` 等待 ``timeout`` 秒；超时则
-    返回 ``None`` 并打印 warning 日志。注意：超时不会真正终止子线程，子线程仍在
-    后台运行。
-
-    :param timeout: int，超时秒数
-    :return: 装饰器
-    """
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # 用列表作为 mutable 容器，便于子线程回写
-            result = [None]
-            exception = [None]
-
-            def target():
-                try:
-                    result[0] = func(*args, **kwargs)
-                except Exception as e:
-                    exception[0] = e
-
-            thread = threading.Thread(target=target)
-            thread.start()
-            thread.join(timeout)
-
-            if thread.is_alive():
-                # 超时：不终止线程，只输出告警并返回 None
-                from loguru import logger as _logger
-
-                _logger.warning(f"{func.__name__} timed out after {timeout} seconds; args: {args}; kwargs: {kwargs}")
-                return None
-
-            if exception[0]:
-                raise exception[0]
-
-            return result[0]
-
-        return wrapper
-
-    return decorator
-
-
-# ---------------------------------------------------------------------------
-# 延迟加载（lazy import）配置
-# ---------------------------------------------------------------------------
-# plotting 子包及其下属绘图函数加载较重，统一在首次访问时再 importlib，避免
-# ``import czsc`` 阶段就把全部 plotly / matplotlib 等依赖拉起来。
-
-# 延迟加载的子模块映射：属性名 -> 模块路径
-_LAZY_SUBMODULES = {
-    "plotting": "czsc.utils.plotting",
-}
-
-# 延迟加载的属性映射：属性名 -> (模块路径, 属性名)
-_LAZY_ATTRS = {
-    # plotting.kline
-    "KlineChart": ("czsc.utils.plotting.kline", "KlineChart"),
-    "plot_czsc_chart": ("czsc.utils.plotting.kline", "plot_czsc_chart"),
-    # plotting.backtest
-    "plot_cumulative_returns": ("czsc.utils.plotting.backtest", "plot_cumulative_returns"),
-    "plot_drawdown_analysis": ("czsc.utils.plotting.backtest", "plot_drawdown_analysis"),
-    "plot_daily_return_distribution": ("czsc.utils.plotting.backtest", "plot_daily_return_distribution"),
-    "plot_monthly_heatmap": ("czsc.utils.plotting.backtest", "plot_monthly_heatmap"),
-    "plot_backtest_stats": ("czsc.utils.plotting.backtest", "plot_backtest_stats"),
-    "plot_colored_table": ("czsc.utils.plotting.backtest", "plot_colored_table"),
-    "plot_long_short_comparison": ("czsc.utils.plotting.backtest", "plot_long_short_comparison"),
-    # plotting.weight
-    "plot_weight_histogram_kde": ("czsc.utils.plotting.weight", "plot_weight_histogram_kde"),
-    "plot_weight_cdf": ("czsc.utils.plotting.weight", "plot_weight_cdf"),
-    "plot_turnover_overview": ("czsc.utils.plotting.weight", "plot_turnover_overview"),
-    "plot_turnover_cost_analysis": ("czsc.utils.plotting.weight", "plot_turnover_cost_analysis"),
-    "plot_weight_time_series": ("czsc.utils.plotting.weight", "plot_weight_time_series"),
-    # loguru logger 也通过懒加载暴露
-    "logger": ("loguru", "logger"),
-}
-
-
-def __getattr__(name):
-    """模块级 ``__getattr__``：实现延迟加载
-
-    当用户访问尚未导入的属性时（包括 ``plotting`` 子模块和具体的绘图函数），由
-    本函数完成动态 import 并把结果写回模块全局空间，以便后续再次访问无需重复导入。
-
-    :param name: str，访问的属性名
-    :return: 对应的模块或属性
-    :raises AttributeError: 当 name 既不在懒加载子模块也不在懒加载属性表中时
-    """
-    import importlib
-
-    if name in _LAZY_SUBMODULES:
-        module = importlib.import_module(_LAZY_SUBMODULES[name])
-        globals()[name] = module
-        return module
-
-    if name in _LAZY_ATTRS:
-        mod_path, attr_name = _LAZY_ATTRS[name]
-        module = importlib.import_module(mod_path)
-        attr = getattr(module, attr_name)
-        globals()[name] = attr
-        return attr
-
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
