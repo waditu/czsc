@@ -492,6 +492,20 @@ class CzscTrader:
         
         同 update：BarGenerator 硬错 propagate 成 Python ValueError。
         """
+    def dump_state(self) -> bytes:
+        r"""
+        导出完整状态快照为 bytes（热启动用，零重放）。
+        
+        快照含缠论计算状态（bg/kas/ta_cache 全历史）、仓位配置与运行时决策状态
+        （pos/operates/holds 等）、信号配置与集成方式，可经 ``restore_state`` 单参还原。
+        """
+    @staticmethod
+    def restore_state(data: bytes) -> CzscTrader:
+        r"""
+        从 ``dump_state`` 产生的 bytes 还原 trader（零重放热启动）。
+        
+        信号配置与集成方式从快照内读回，无需额外参数。
+        """
     def __reduce__(self) -> typing.Any:
         r"""
         Pickle 支持：返回构造参数 (bg, positions, signals_config, ensemble_method)。

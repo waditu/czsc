@@ -28,7 +28,7 @@ struct CompiledKlineFreqGroup {
     ops: Vec<CompiledKlineSignalOp>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 struct BarFingerprint {
     id: i32,
     dt_ns: i64,
@@ -57,6 +57,7 @@ impl BarFingerprint {
 }
 
 /// 多级别信号计算引擎
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct CzscSignals {
     /// K 线合成器
     pub bg: BarGenerator,
@@ -78,10 +79,15 @@ pub struct CzscSignals {
     /// Position 事件匹配使用的信号字典：key -> value
     pub signal_map: HashMap<String, String>,
 
-    /// 预编译后的 K 线信号执行计划
+    /// 预编译后的 K 线信号执行计划（含函数指针，不入快照；restore 后由
+    /// `ensure_compiled_kline_ops` 从 `signals_config` 重建）
+    #[serde(skip)]
     compiled_kline_groups: Vec<CompiledKlineFreqGroup>,
+    #[serde(skip)]
     use_plan_compiled: bool,
+    #[serde(skip)]
     compiled_cfg_ptr: usize,
+    #[serde(skip)]
     compiled_cfg_len: usize,
     /// 需要维护 CZSC 的频率集合；存在 trader 级信号时退化为全量维护
     required_kas_freqs: HashSet<String>,

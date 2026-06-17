@@ -28,7 +28,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 /// 笔
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
 #[builder(setter(into))]
 pub struct BI {
     pub symbol: Symbol,
@@ -41,6 +41,7 @@ pub struct BI {
     pub direction: Direction,
     pub bars: Vec<NewBar>,
     #[cfg(feature = "python")]
+    #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
 }

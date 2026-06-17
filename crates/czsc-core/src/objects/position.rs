@@ -54,7 +54,7 @@ fn parse_operate(s: &str) -> Result<Operate, String> {
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub enum Pos {
     /// 空
     Short,
@@ -324,7 +324,7 @@ impl PositionEventMatcher {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TempState {
     /// 最近一次信号传入的时间
     pub end_dt: DateTime<FixedOffset>,
@@ -336,7 +336,7 @@ pub struct TempState {
 
 /// 操作记录（push 到 operates）
 #[allow(unused)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperateRecord {
     pub symbol: String,
     pub dt: DateTime<FixedOffset>,
@@ -348,7 +348,7 @@ pub struct OperateRecord {
 }
 
 /// 持仓快照（push 到 holds）
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HoldRecord {
     pub dt: DateTime<FixedOffset>,
     pub pos: Pos,
@@ -397,7 +397,7 @@ impl HoldColumns {
 
 /// 记录最近一次用于计算止损/超时的开仓基准
 #[allow(unused)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LastEvent {
     pub dt: DateTime<FixedOffset>,
     pub bar_id: i32,
@@ -476,6 +476,22 @@ pub struct Position {
     event_match_cache: Vec<Option<CachedEncodedSignalValue>>,
 }
 
+/// Position 运行时决策状态的独立快照通道。
+///
+/// 与 `Position` 自身的 `#[derive(Serialize, Deserialize)]`（仅序列化开平仓配置、
+/// 受 sha256 配置文件契约保护）彻底分离：本结构承载热启动所需的全部运行时状态
+/// （`pos`/`last_event`/`temp_state`/`operates`/`holds`），用于零重放快照。
+/// `event_matcher` 等纯派生缓存不入快照，restore 后由 `ensure_event_matcher` 懒重建。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PositionRuntimeState {
+    pub pos: Pos,
+    pub pos_changed: bool,
+    pub temp_state: Option<TempState>,
+    pub last_event: Option<LastEvent>,
+    pub operates: Vec<OperateRecord>,
+    pub holds: Vec<HoldRecord>,
+}
+
 pub fn load_position(path: &Path) -> anyhow::Result<Position> {
     // 读取文件内容
     let content = fs::read_to_string(path).with_context(|| format!("读取文件失败: {path:?}"))?;
@@ -507,6 +523,34 @@ impl Position {
     /// 获取仓位是否发生变化
     pub fn get_pos_changed(&self) -> bool {
         self.pos_changed
+    }
+
+    /// 导出运行时决策状态（热启动快照用，独立于配置序列化通道）。
+    pub fn export_runtime_state(&self) -> PositionRuntimeState {
+        PositionRuntimeState {
+            pos: self.pos,
+            pos_changed: self.pos_changed,
+            temp_state: self.temp_state.clone(),
+            last_event: self.last_event.clone(),
+            operates: self.operates.clone(),
+            holds: self.holds.clone(),
+        }
+    }
+
+    /// 导入运行时决策状态（热启动 restore 用）。
+    ///
+    /// 仅覆盖运行时字段；`event_matcher` 与匹配缓存清空，后续首次 update
+    /// 时由 `ensure_event_matcher` 基于 opens/exits 懒重建，与连续喂 bar 路径一致。
+    pub fn import_runtime_state(&mut self, state: PositionRuntimeState) {
+        self.pos = state.pos;
+        self.pos_changed = state.pos_changed;
+        self.temp_state = state.temp_state;
+        self.last_event = state.last_event;
+        self.operates = state.operates;
+        self.holds = state.holds;
+        self.event_matcher = None;
+        self.event_match_values.clear();
+        self.event_match_cache.clear();
     }
 
     fn normalize_event_hash_names(&mut self) {

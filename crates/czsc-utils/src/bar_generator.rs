@@ -52,6 +52,68 @@ impl Clone for BarGenerator {
     }
 }
 
+/// `BarGenerator` 的可序列化中间结构（热启动快照用）。
+///
+/// `BarGenerator` 自身含 `RwLock`、`BTreeMap<Freq, ..>`、`VecDeque`，无法直接 derive
+/// serde。此处脱去 `RwLock`、`Freq` 转 `String`、`VecDeque` 转 `Vec`，由下方手动
+/// `Serialize`/`Deserialize` 实现桥接，序列化为有序的 `(freq_str, bars)` 列表。
+#[derive(serde::Serialize, serde::Deserialize)]
+struct BarGeneratorSnapshot {
+    market: Market,
+    base_freq: String,
+    max_count: usize,
+    freq_bars: Vec<(String, Vec<RawBar>)>,
+}
+
+impl serde::Serialize for BarGenerator {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let snapshot = BarGeneratorSnapshot {
+            market: self.market,
+            base_freq: self.base_freq.to_string(),
+            max_count: self.max_count,
+            freq_bars: self
+                .freq_bars
+                .iter()
+                .map(|(freq, bars_lock)| {
+                    (freq.to_string(), bars_lock.read().iter().cloned().collect())
+                })
+                .collect(),
+        };
+        snapshot.serialize(serializer)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for BarGenerator {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+        use std::str::FromStr;
+
+        let snapshot = BarGeneratorSnapshot::deserialize(deserializer)?;
+        let base_freq = Freq::from_str(&snapshot.base_freq)
+            .map_err(|e| D::Error::custom(format!("解析 base_freq 失败: {e}")))?;
+
+        let mut freq_bars = BTreeMap::new();
+        for (freq_str, bars) in snapshot.freq_bars {
+            let freq = Freq::from_str(&freq_str)
+                .map_err(|e| D::Error::custom(format!("解析 freq 失败: {e}")))?;
+            freq_bars.insert(freq, RwLock::new(bars.into_iter().collect()));
+        }
+
+        Ok(BarGenerator {
+            market: snapshot.market,
+            base_freq,
+            max_count: snapshot.max_count,
+            freq_bars,
+        })
+    }
+}
+
 impl BarGenerator {
     pub fn new(
         base_freq: Freq,

@@ -9,7 +9,7 @@ use czsc_trader::trader::CzscTrader;
 use czsc_utils::bar_generator::BarGenerator;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyBytes, PyDict, PyList};
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 use std::collections::HashMap;
 
@@ -350,6 +350,32 @@ impl PyCzscTrader {
             .map_err(|e| {
                 pyo3::exceptions::PyValueError::new_err(format!("update_signals 失败: {e}"))
             })
+    }
+
+    /// 导出完整状态快照为 bytes（热启动用，零重放）。
+    ///
+    /// 快照含缠论计算状态（bg/kas/ta_cache 全历史）、仓位配置与运行时决策状态
+    /// （pos/operates/holds 等）、信号配置与集成方式，可经 ``restore_state`` 单参还原。
+    fn dump_state(&self, py: Python) -> PyResult<Py<PyBytes>> {
+        let bytes = self
+            .inner
+            .dump_state(&self.signals_config, &self.ensemble_method)
+            .map_err(|e| PyValueError::new_err(format!("dump_state 失败: {e}")))?;
+        Ok(PyBytes::new(py, &bytes).unbind())
+    }
+
+    /// 从 ``dump_state`` 产生的 bytes 还原 trader（零重放热启动）。
+    ///
+    /// 信号配置与集成方式从快照内读回，无需额外参数。
+    #[staticmethod]
+    fn restore_state(data: &Bound<'_, PyBytes>) -> PyResult<Self> {
+        let restored = CzscTrader::restore_state(data.as_bytes())
+            .map_err(|e| PyValueError::new_err(format!("restore_state 失败: {e}")))?;
+        Ok(Self {
+            inner: restored.trader,
+            signals_config: restored.signals_config,
+            ensemble_method: restored.ensemble_method,
+        })
     }
 
     /// Pickle 支持：返回构造参数 (bg, positions, signals_config, ensemble_method)。

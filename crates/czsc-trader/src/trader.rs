@@ -2,12 +2,13 @@ use crate::czsc_signals::CzscSignals;
 use crate::sig_parse::SignalConfig;
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
-use czsc_core::objects::position::{LiteBar, Position};
+use czsc_core::objects::position::{LiteBar, Position, PositionRuntimeState};
 use czsc_core::objects::state::TraderState;
 use czsc_signals::types::TraderSignalFn;
 use czsc_utils::bar_generator::BarGenerator;
 use czsc_utils::errors::UtilsError;
 use polars::prelude::*;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -29,6 +30,39 @@ pub struct UpdateProfile {
 struct CompiledTraderSignalOp {
     func: TraderSignalFn,
     params: HashMap<String, Value>,
+}
+
+/// 热启动状态快照格式版本号。结构不兼容变更时递增。
+pub const TRADER_STATE_VERSION: u32 = 1;
+
+/// `CzscTrader` 完整状态快照（热启动零重放用）。
+///
+/// 承载重建一个 trader 到当下状态所需的全部信息：缠论计算状态（`signals`，含
+/// `bg`/`kas`/`ta_cache` 全历史）、仓位配置（`positions`，经 `Position` 现有 serde）
+/// 与仓位运行时决策状态（`position_runtime`，经独立通道），以及信号配置与集成方式。
+#[derive(Serialize, Deserialize)]
+pub struct TraderStateSnapshot {
+    /// 快照格式版本
+    pub version: u32,
+    /// trader 名称
+    pub name: String,
+    /// 缠论与信号计算状态（含 bg / kas / ta_cache 全量）
+    pub signals: CzscSignals,
+    /// 仓位配置（opens/exits/interval/...，运行时字段不含其中）
+    pub positions: Vec<Position>,
+    /// 与 `positions` 一一对应的运行时决策状态
+    pub position_runtime: Vec<PositionRuntimeState>,
+    /// 原始信号配置（restore 后据此重建编译信号函数指针）
+    pub signals_config: Vec<SignalConfig>,
+    /// 仓位集成方式
+    pub ensemble_method: String,
+}
+
+/// `restore_state` 的返回：trader 实例与随快照一并恢复的配置。
+pub struct RestoredTrader {
+    pub trader: CzscTrader,
+    pub signals_config: Vec<SignalConfig>,
+    pub ensemble_method: String,
 }
 
 /// 多策略联合交易引擎
@@ -153,6 +187,84 @@ impl CzscTrader {
             pos_fsm_ns,
             pos_risk_ns,
             pos_holds_ns,
+        })
+    }
+
+    /// 导出完整状态快照（热启动用），序列化为 MessagePack 字节。
+    ///
+    /// 选用 MessagePack 而非 JSON：TA 缓存可能含 `NaN`/`Inf`（指标预热期），
+    /// `serde_json` 会把它们写成 `null` 且反序列化失败，二进制 f64 则可无损往返。
+    ///
+    /// `signals_config` 与 `ensemble_method` 由调用方（Python 侧持有）传入，
+    /// 一并写入快照，使 `restore_state` 单参即可完全还原。
+    pub fn dump_state(
+        &self,
+        signals_config: &[SignalConfig],
+        ensemble_method: &str,
+    ) -> anyhow::Result<Vec<u8>> {
+        let snapshot = TraderStateSnapshot {
+            version: TRADER_STATE_VERSION,
+            name: self.name.clone(),
+            signals: self.signals.clone(),
+            positions: self.positions.clone(),
+            position_runtime: self
+                .positions
+                .iter()
+                .map(|p| p.export_runtime_state())
+                .collect(),
+            signals_config: signals_config.to_vec(),
+            ensemble_method: ensemble_method.to_string(),
+        };
+        let bytes = rmp_serde::to_vec_named(&snapshot)
+            .map_err(|e| anyhow::anyhow!("序列化 trader 快照失败: {e}"))?;
+        Ok(bytes)
+    }
+
+    /// 从快照字节恢复 trader（零重放）。
+    ///
+    /// 绕开 `CzscTrader::new`：`new` 会调用 `CzscSignals::new` 从 `bg` 重建 `kas`，
+    /// 丢掉增量计算状态；此处直接组装 `inner`，`kas`/`ta_cache` 来自快照原样还原。
+    /// 编译信号函数指针（trader 级 / K 线级）不入快照，restore 后置零，由首次
+    /// `update` 时的 `ensure_compiled_*` 据 `signals_config` 重建。
+    pub fn restore_state(data: &[u8]) -> anyhow::Result<RestoredTrader> {
+        let snapshot: TraderStateSnapshot = rmp_serde::from_slice(data)
+            .map_err(|e| anyhow::anyhow!("反序列化 trader 快照失败: {e}"))?;
+
+        if snapshot.version != TRADER_STATE_VERSION {
+            anyhow::bail!(
+                "不支持的快照版本: {}（当前 {}）",
+                snapshot.version,
+                TRADER_STATE_VERSION
+            );
+        }
+
+        let mut positions = snapshot.positions;
+        if positions.len() != snapshot.position_runtime.len() {
+            anyhow::bail!(
+                "positions({}) 与 position_runtime({}) 数量不一致",
+                positions.len(),
+                snapshot.position_runtime.len()
+            );
+        }
+        for (pos, rt) in positions.iter_mut().zip(snapshot.position_runtime) {
+            // 与 load 路径一致：先规范事件哈希名，再注入运行时状态
+            pos.normalize_runtime_fields();
+            pos.import_runtime_state(rt);
+        }
+
+        let trader = CzscTrader {
+            name: snapshot.name,
+            signals: snapshot.signals,
+            positions,
+            compiled_trader_ops: Vec::new(),
+            compiled_cfg_ptr: 0,
+            compiled_cfg_len: 0,
+        };
+
+        Ok(RestoredTrader {
+            trader,
+            signals_config: snapshot.signals_config,
+            ensemble_method: snapshot.ensemble_method,
         })
     }
 

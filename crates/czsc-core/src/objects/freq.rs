@@ -34,6 +34,8 @@ use pyo3::{IntoPyObject, Py};
     Display,
     Eq,
     Hash,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub enum Freq {
     /// 逐笔

@@ -6,7 +6,19 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pymethods};
 use std::str::FromStr;
 use strum_macros::{AsRefStr, Display, EnumString};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, AsRefStr, Display)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumString,
+    AsRefStr,
+    Display,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 #[cfg_attr(feature = "python", gen_stub_pyclass_enum)]
 #[cfg_attr(
     feature = "python",
