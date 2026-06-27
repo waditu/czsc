@@ -128,3 +128,8 @@ docs/examples/.DS_Store
 
 # auto-czsc-quant experiment artifacts
 scripts/auto-czsc-quant/results/
+
+# agent runtime artifacts (Multica / Claude Code) — not part of the library
+.multica/
+.agent_context/
+.claude/skills/
