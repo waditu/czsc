@@ -125,3 +125,6 @@ test_auto_report.html
 # docs/examples 的运行产物（HTML 报告、parquet、Position JSON 等）
 docs/examples/_output/
 docs/examples/.DS_Store
+
+# auto-czsc-quant experiment artifacts
+scripts/auto-czsc-quant/results/
