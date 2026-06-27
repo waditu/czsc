@@ -74,7 +74,7 @@ fn dispatch_all_signals(czsc: &CZSC) -> usize {
 fn bench_signals_dispatch(c: &mut Criterion) {
     // ① 单根代表 K 线下分派全部信号——把 100 根 bar 的 CZSC 视为典型回放截面
     let small_bars = generate_bars(100);
-    let small_czsc = CZSC::new(small_bars, 50);
+    let small_czsc = CZSC::new(small_bars, 50, 6);
     let signals_count = SIGNAL_REGISTRY.len();
 
     let mut group = c.benchmark_group("signals_dispatch");
@@ -92,7 +92,7 @@ fn bench_signals_dispatch(c: &mut Criterion) {
 
     // ② 1 万根 K 线场景——目标整体 ≤ 80 ms
     let large_bars = generate_bars(10_000);
-    let large_czsc = CZSC::new(large_bars, 50);
+    let large_czsc = CZSC::new(large_bars, 50, 6);
     group.bench_function(
         format!("dispatch_all({signals_count} signals, bars=10000)"),
         |b| {

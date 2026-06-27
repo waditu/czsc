@@ -218,6 +218,8 @@ class CZSC:
     @property
     def max_bi_num(self) -> builtins.int: ...
     @property
+    def min_bi_len(self) -> builtins.int: ...
+    @property
     def bi_list(self) -> builtins.list[BI]: ...
     @property
     def bars_raw(self) -> builtins.list[RawBar]:
@@ -276,9 +278,9 @@ class CZSC:
         最后一笔延伸情况（与 czsc 库兼容）
         判断最后一笔是否在延伸中，True 表示延伸中
         """
-    def __new__(cls, bars_raw: typing.Sequence[RawBar], max_bi_num: builtins.int = 50) -> CZSC: ...
+    def __new__(cls, bars_raw: typing.Sequence[RawBar], max_bi_num: builtins.int = 0, min_bi_len: builtins.int = 0) -> CZSC: ...
     @staticmethod
-    def from_dataframe(df_bytes: bytes, freq: Freq, max_bi_num: builtins.int = 50) -> CZSC:
+    def from_dataframe(df_bytes: bytes, freq: Freq, max_bi_num: builtins.int = 0, min_bi_len: builtins.int = 0) -> CZSC:
         r"""
         直接从Arrow格式的DataFrame创建CZSC对象，避免中间转换
         这是高性能的批量创建接口，适用于大量数据的初始化

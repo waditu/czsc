@@ -22,7 +22,7 @@ use czsc_core::objects::{RawBar, Freq};
 use czsc_core::analyze::CZSC;
 
 let bars: Vec<RawBar> = /* ... */;
-let czsc = CZSC::new(bars, 50);
+let czsc = CZSC::new(bars, 50, 6);
 println!("最新一笔方向: {:?}", czsc.bi_list.last().map(|b| b.direction));
 ```
 

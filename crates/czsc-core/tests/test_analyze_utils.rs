@@ -80,7 +80,7 @@ fn check_bi_returns_none_for_monotone_sequence() {
     let bars: Vec<NewBar> = (0..6)
         .map(|i| nb(i + 1, 10.0 + i as f64, 9.0 + i as f64))
         .collect();
-    let (bi, remainder) = check_bi(&bars);
+    let (bi, remainder) = check_bi(&bars, 6);
     assert!(bi.is_none(), "单调递增序列不应识别出笔");
     assert!(
         remainder.len() <= bars.len(),

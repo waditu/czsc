@@ -43,6 +43,8 @@ pub struct CZSC {
     // verbose: bool,
     /// 最大允许保留的笔数量
     pub max_bi_num: usize,
+    /// 笔的最小长度（去包含后的 K 线根数；默认 6，可由 CZSC_MIN_BI_LEN 覆盖）
+    pub min_bi_len: usize,
     /// 原始K线序列
     pub bars_raw: Vec<RawBar>,
     pub bars_ubi: Vec<NewBar>,
@@ -55,6 +57,36 @@ pub struct CZSC {
     #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
+}
+
+/// 解析"显式参数优先、否则环境变量、否则默认"的 usize 配置。
+/// 显式参数 > 0 时直接采用；否则依次读 UPPER / lower 环境变量，
+/// 解析失败或缺失时回落到 `default`。与 `czsc.envs` 大小写约定一致（spec §3.4）。
+fn resolve_env_usize(explicit: usize, upper: &str, lower: &str, default: usize) -> usize {
+    if explicit > 0 {
+        return explicit;
+    }
+    if let Ok(v) = std::env::var(upper) {
+        if let Ok(n) = v.trim().parse::<f64>() {
+            return n as usize;
+        }
+    }
+    if let Ok(v) = std::env::var(lower) {
+        if let Ok(n) = v.trim().parse::<f64>() {
+            return n as usize;
+        }
+    }
+    default
+}
+
+/// 笔最小长度：显式参数 (>0) 优先，否则读 `CZSC_MIN_BI_LEN`（大小写不敏感），再否则 6。
+pub fn resolve_min_bi_len(explicit: usize) -> usize {
+    resolve_env_usize(explicit, "CZSC_MIN_BI_LEN", "czsc_min_bi_len", 6)
+}
+
+/// 最大笔数：显式参数 (>0) 优先，否则读 `CZSC_MAX_BI_NUM`，再否则 50。
+pub fn resolve_max_bi_num(explicit: usize) -> usize {
+    resolve_env_usize(explicit, "CZSC_MAX_BI_NUM", "czsc_max_bi_num", 50)
 }
 
 impl CZSC {
@@ -90,11 +122,12 @@ impl CZSC {
         }
     }
 
-    pub fn new(bars_raw: Vec<RawBar>, max_bi_num: usize) -> Self {
+    pub fn new(bars_raw: Vec<RawBar>, max_bi_num: usize, min_bi_len: usize) -> Self {
         // todo check length of bars_raw
 
         let mut c = Self {
             max_bi_num,
+            min_bi_len,
             bars_raw: Vec::with_capacity(bars_raw.len()), // 预分配容量
             bars_ubi: Vec::with_capacity(bars_raw.len() / 2), // 预估容量
             bi_list: Vec::with_capacity(max_bi_num.min(bars_raw.len() / 10)), // 预估笔数量
@@ -221,7 +254,7 @@ impl CZSC {
                 .filter(|x| x.dt >= fx_a.elements[0].dt)
                 .collect::<Vec<_>>();
 
-            let (bi, bars_ubi_) = check_bi(&bars_ubi);
+            let (bi, bars_ubi_) = check_bi(&bars_ubi, self.min_bi_len);
             if let Some(bi) = bi {
                 self.bi_list.push(bi);
             }
@@ -237,7 +270,7 @@ impl CZSC {
         //     self.bars_ubi.last().unwrap().dt,
         //     self.bars_ubi.len()
         // );
-        let (bi, bars_ubi_) = check_bi(&self.bars_ubi);
+        let (bi, bars_ubi_) = check_bi(&self.bars_ubi, self.min_bi_len);
         if let Some(bi) = bi {
             self.bi_list.push(bi);
         }
@@ -343,9 +376,13 @@ impl CZSC {
 #[cfg_attr(feature = "python", pymethods)]
 impl CZSC {
     #[new]
-    #[pyo3(signature = (bars_raw, max_bi_num=50))]
-    pub fn new_py(bars_raw: Vec<RawBar>, max_bi_num: usize) -> PyResult<Self> {
-        Ok(CZSC::new(bars_raw, max_bi_num))
+    #[pyo3(signature = (bars_raw, max_bi_num=0, min_bi_len=0))]
+    pub fn new_py(bars_raw: Vec<RawBar>, max_bi_num: usize, min_bi_len: usize) -> PyResult<Self> {
+        Ok(CZSC::new(
+            bars_raw,
+            resolve_max_bi_num(max_bi_num),
+            resolve_min_bi_len(min_bi_len),
+        ))
     }
 
     /// 直接从Arrow格式的DataFrame创建CZSC对象，避免中间转换
@@ -356,11 +393,12 @@ impl CZSC {
     /// :param max_bi_num: 最大笔数量限制
     /// :return: CZSC对象
     #[staticmethod]
-    #[pyo3(signature = (df_bytes, freq, max_bi_num=50))]
+    #[pyo3(signature = (df_bytes, freq, max_bi_num=0, min_bi_len=0))]
     pub fn from_dataframe(
         df_bytes: pyo3::Bound<'_, pyo3::types::PyBytes>,
         freq: Freq,
         max_bi_num: usize,
+        min_bi_len: usize,
     ) -> PyResult<Self> {
         // 直接从Arrow字节数据创建DataFrame
         let bytes_data = df_bytes.as_bytes();
@@ -399,7 +437,11 @@ impl CZSC {
         })?;
 
         // 批量创建CZSC对象
-        Ok(CZSC::new(bars, max_bi_num))
+        Ok(CZSC::new(
+            bars,
+            resolve_max_bi_num(max_bi_num),
+            resolve_min_bi_len(min_bi_len),
+        ))
     }
 
     #[getter]
@@ -415,6 +457,11 @@ impl CZSC {
     #[getter]
     fn max_bi_num(&self) -> usize {
         self.max_bi_num
+    }
+
+    #[getter]
+    fn min_bi_len(&self) -> usize {
+        self.min_bi_len
     }
 
     #[getter]
@@ -673,8 +720,8 @@ impl CZSC {
     /// `restored.__getstate__() == obj.__getstate__()` 断言依赖这一点）。
     fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObject;
-        let trimmed = CZSC::new(self.bars_raw.clone(), self.max_bi_num);
-        let args = (trimmed.bars_raw, self.max_bi_num).into_pyobject(py)?;
+        let trimmed = CZSC::new(self.bars_raw.clone(), self.max_bi_num, self.min_bi_len);
+        let args = (trimmed.bars_raw, self.max_bi_num, self.min_bi_len).into_pyobject(py)?;
         let constructor = py.get_type::<Self>();
         let result = (constructor, args).into_pyobject(py)?;
         Ok(result.into())
@@ -803,7 +850,7 @@ dt,symbol,open,close,high,low,vol,amount
     #[test]
     fn test_czsc_bi_list() {
         let bars = get_bars();
-        let c = CZSC::new(bars, 50);
+        let c = CZSC::new(bars, 50, 6);
 
         let expected = [
             (
@@ -884,7 +931,7 @@ dt,symbol,open,close,high,low,vol,amount
     #[test]
     fn test_czsc_fx_list() {
         let bars = get_bars();
-        let c = CZSC::new(bars, 50);
+        let c = CZSC::new(bars, 50, 6);
 
         let expected = [
             ("2025-01-15 00:00:00", 50.73),

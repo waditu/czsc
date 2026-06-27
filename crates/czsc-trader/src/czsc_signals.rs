@@ -1,7 +1,7 @@
 use crate::engine_v2::catalog::SignalCategory;
 use crate::engine_v2::compiler::CompiledSignalPlanV2;
 use crate::sig_parse::SignalConfig;
-use czsc_core::analyze::CZSC;
+use czsc_core::analyze::{CZSC, resolve_max_bi_num, resolve_min_bi_len};
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::signal::Signal;
 use czsc_signals::registry;
@@ -99,13 +99,17 @@ pub struct CzscSignals {
 }
 
 impl CzscSignals {
+    fn new_czsc_from_bars(bars: Vec<RawBar>) -> CZSC {
+        CZSC::new(bars, resolve_max_bi_num(0), resolve_min_bi_len(0))
+    }
+
     pub fn new(symbol: String, bg: BarGenerator) -> Self {
         let mut kas = BTreeMap::new();
         for (freq, bars_lock) in &bg.freq_bars {
             let bars = bars_lock.read();
             if !bars.is_empty() {
                 let bars_vec: Vec<RawBar> = bars.iter().cloned().collect();
-                kas.insert(freq.to_string(), CZSC::new(bars_vec, 50));
+                kas.insert(freq.to_string(), Self::new_czsc_from_bars(bars_vec));
             }
         }
 
@@ -358,7 +362,8 @@ impl CzscSignals {
                 continue;
             }
             let bars_vec: Vec<RawBar> = bars.iter().cloned().collect();
-            self.kas.insert(freq.to_string(), CZSC::new(bars_vec, 50));
+            self.kas
+                .insert(freq.to_string(), Self::new_czsc_from_bars(bars_vec));
         }
     }
 
@@ -397,7 +402,7 @@ impl CzscSignals {
 
             if !self.kas.contains_key(&freq_str) {
                 let bars_vec: Vec<RawBar> = bars.iter().cloned().collect();
-                let czsc = CZSC::new(bars_vec, 50);
+                let czsc = Self::new_czsc_from_bars(bars_vec);
                 self.kas.insert(freq_str.clone(), czsc);
                 changed_freqs.insert(freq_str);
             } else if is_changed {
