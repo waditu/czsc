@@ -1,0 +1,20 @@
+{
+  "task_name": "tushare_llm_30m_demo",
+  "data_source": "tushare",
+  "symbols": ["000001.SZ#E"],
+  "base_freq": "30分钟",
+  "sdt": "20220101",
+  "edt": "20240601",
+  "candidate_mode": "llm",
+  "baseline_position_path": "../examples/baseline_position_30m.json",
+  "include_baseline": true,
+  "output_dir": "../results",
+  "fee_rate": 0.0002,
+  "yearly_days": 252,
+  "max_candidates": 4,
+  "top_k": 2,
+  "llm_candidate_count": 2,
+  "llm_max_tokens": 3000,
+  "llm_temperature": 0.1,
+  "llm_extra_prompt": "这次是生产 smoke test。请只围绕 30分钟_D1_表里关系V230101、30分钟_D1_涨跌停V230331 和 timeout/stop_loss 做小步变化，避免发散到未知信号。"
+}

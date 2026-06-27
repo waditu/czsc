@@ -1,0 +1,26 @@
+{
+  "symbol": "000001.SZ#E",
+  "name": "30分钟表里关系多头",
+  "opens": [
+    {
+      "name": "开多_30分钟表里向上",
+      "operate": "开多",
+      "signals_all": ["30分钟_D1_表里关系V230101_向上_任意_任意_0"],
+      "signals_any": [],
+      "signals_not": ["30分钟_D1_涨跌停V230331_涨停_任意_任意_0"]
+    }
+  ],
+  "exits": [
+    {
+      "name": "平多_30分钟表里向下",
+      "operate": "平多",
+      "signals_all": ["30分钟_D1_表里关系V230101_向下_任意_任意_0"],
+      "signals_any": [],
+      "signals_not": []
+    }
+  ],
+  "interval": 0,
+  "timeout": 20,
+  "stop_loss": 300,
+  "T0": false
+}
