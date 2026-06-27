@@ -9,6 +9,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`CZSC_MIN_BI_LEN` 现在真正作用于 Rust 端成笔逻辑**（[waditu/czsc#328](https://github.com/waditu/czsc/issues/328)）：此前 `crates/czsc-core/src/analyze/utils.rs` 的 `check_bi` 硬编码 `let min_bi_len = 6;`，且 `CZSC` 构造函数签名只有 `(bars_raw, max_bi_num)`，导致 `CZSC_MIN_BI_LEN` 只影响 `czsc.envs.get_min_bi_len()` 的返回值、对 `bi_list` / `finished_bis` 毫无作用。修复：
+  - `CZSC` 增加 `min_bi_len` 字段；`check_bi(bars, min_bi_len)` 改为接收阈值参数，移除硬编码。
+  - PyO3 构造函数 `CZSC(bars_raw, max_bi_num=0, min_bi_len=0)` / `from_dataframe(...)` 新增 `min_bi_len` 形参；显式参数 >0 时优先，否则读 `CZSC_MIN_BI_LEN`（大小写不敏感），再否则默认 6（与 `czsc.envs` 约定一致）。`max_bi_num` 同理改为 env-aware（默认 0 → 读 `CZSC_MAX_BI_NUM` → 50）。
+  - Rust 构造入口统一为 `CZSC::new(bars, max_bi_num, min_bi_len)`；`CzscSignals` 内部重建 `kas` 时也会读取同一套环境变量。
+  - 新增 `CZSC.min_bi_len` getter；pickle (`__reduce__`) 现在保留 `min_bi_len`。
+  - 回归测试 `min_bi_len_affects_bi_count` 锁定"更大阈值产出更少/更长的笔"。
+
 ### Notes
 
 - **1.0.0-rc.8 在纯 Rust 下游不可用（PyPI 用户不受影响）**：发布后验证发现 cargo 用户 `cargo add czsc@=1.0.0-rc.8` 无法编译。两个根因：

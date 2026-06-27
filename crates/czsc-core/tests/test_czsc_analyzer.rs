@@ -46,7 +46,7 @@ fn synthetic_zigzag(n: usize) -> Vec<RawBar> {
 #[test]
 fn new_populates_symbol_and_freq() {
     let bars = synthetic_zigzag(50);
-    let c = CZSC::new(bars, 50);
+    let c = CZSC::new(bars, 50, 6);
     assert_eq!(&*c.symbol, "000001");
     assert_eq!(c.freq, Freq::F30);
     assert_eq!(c.max_bi_num, 50);
@@ -55,7 +55,7 @@ fn new_populates_symbol_and_freq() {
 #[test]
 fn new_consumes_all_bars_and_builds_ubi() {
     let bars = synthetic_zigzag(40);
-    let c = CZSC::new(bars, 50);
+    let c = CZSC::new(bars, 50, 6);
     // bars_ubi 是合并后 bar（NewBar）序列；对于 40 根原始 zigzag
     // bar，我们期望合并后的序列非空
     assert!(!c.bars_ubi.is_empty(), "bars_ubi should not be empty");
@@ -64,7 +64,7 @@ fn new_consumes_all_bars_and_builds_ubi() {
 #[test]
 fn fx_and_bi_lists_are_consistent_with_zigzag() {
     let bars = synthetic_zigzag(60);
-    let c = CZSC::new(bars, 50);
+    let c = CZSC::new(bars, 50, 6);
     let fxs = c.get_fx_list();
     // 60 根 zigzag bar 的正弦波形必须产出至少 2 个分型（顶底交替）
     assert!(
@@ -85,7 +85,7 @@ fn fx_and_bi_lists_are_consistent_with_zigzag() {
 #[test]
 fn update_bar_appends_incrementally() {
     let bars = synthetic_zigzag(30);
-    let mut c = CZSC::new(bars, 50);
+    let mut c = CZSC::new(bars, 50, 6);
     let extra = rb(1_700_000_000 + 30 * 1800, 102.0, 103.0, 104.0, 101.0);
     c.update_bar(extra);
     assert_eq!(c.freq, Freq::F30);
@@ -100,8 +100,39 @@ fn update_bar_appends_incrementally() {
 #[test]
 fn analyzer_clones_independently() {
     let bars = synthetic_zigzag(20);
-    let c = CZSC::new(bars, 50);
+    let c = CZSC::new(bars, 50, 6);
     let d = c.clone();
     assert_eq!(d.bi_list.len(), c.bi_list.len());
     assert_eq!(&*d.symbol, &*c.symbol);
+}
+
+/// min_bi_len 必须真正作用于成笔逻辑：更大的阈值会过滤掉更短的笔，
+/// 因此 bi_list 数量应单调不增。这是 issue #328 的回归保护——
+/// 之前该值在 check_bi 里被硬编码为 6，外部传入完全失效。
+#[test]
+fn min_bi_len_affects_bi_count() {
+    let bars = synthetic_zigzag(60);
+    let small = CZSC::new(bars.clone(), 50, 6);
+    let large = CZSC::new(bars, 50, 11);
+    assert!(
+        large.bi_list.len() <= small.bi_list.len(),
+        "min_bi_len=11 不应比 min_bi_len=6 产出更多笔：{} > {}",
+        large.bi_list.len(),
+        small.bi_list.len()
+    );
+    // 所有成笔长度必须 >= 其 min_bi_len 阈值
+    for bi in &small.bi_list {
+        assert!(
+            bi.bars.len() >= 6,
+            "短阈值下出现 <6 的笔：{}",
+            bi.bars.len()
+        );
+    }
+    for bi in &large.bi_list {
+        assert!(
+            bi.bars.len() >= 11,
+            "长阈值下出现 <11 的笔：{}",
+            bi.bars.len()
+        );
+    }
 }

@@ -195,7 +195,7 @@ pub fn check_fx(k1: &NewBar, k2: &NewBar, k3: &NewBar) -> Option<FX> {
 ///
 ///    :param bars: 无包含关系K线列表
 ///    :return:
-pub fn check_bi<B>(bars: &[B]) -> (Option<BI>, &[B])
+pub fn check_bi<B>(bars: &[B], min_bi_len: usize) -> (Option<BI>, &[B])
 where
     B: AsRef<NewBar>,
 {
@@ -268,8 +268,6 @@ where
     let ab_include = (fx_a.high > fx_b.high && fx_a.low < fx_b.low)
         || (fx_a.high < fx_b.high && fx_a.low > fx_b.low);
 
-    // todo
-    let min_bi_len = 6;
     // 检查成笔条件
     if !ab_include && bars_a.len() >= min_bi_len {
         let fxs_filtered: Vec<_> = fxs

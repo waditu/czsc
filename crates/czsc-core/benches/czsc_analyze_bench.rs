@@ -66,7 +66,7 @@ fn bench_czsc_analyze(c: &mut Criterion) {
         b.iter_batched(
             || bars.clone(),
             |input| {
-                let c = CZSC::new(black_box(input), 50);
+                let c = CZSC::new(black_box(input), 50, 6);
                 black_box(c)
             },
             BatchSize::LargeInput,

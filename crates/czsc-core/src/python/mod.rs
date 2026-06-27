@@ -43,8 +43,14 @@ fn check_fxs_py(bars: Vec<NewBar>) -> Vec<FX> {
 /// 丢弃未使用的剩余切片；Python 调用方只消费可选的 BI 值。
 #[pyfunction]
 #[pyo3(name = "check_bi")]
-fn check_bi_py(bars: Vec<NewBar>) -> Option<BI> {
-    let (bi, _) = analyze_utils::check_bi(&bars);
+#[pyo3(signature = (bars, min_bi_len=0))]
+fn check_bi_py(bars: Vec<NewBar>, min_bi_len: usize) -> Option<BI> {
+    let n = if min_bi_len > 0 {
+        min_bi_len
+    } else {
+        crate::analyze::resolve_min_bi_len(min_bi_len)
+    };
+    let (bi, _) = analyze_utils::check_bi(&bars, n);
     bi
 }
 
