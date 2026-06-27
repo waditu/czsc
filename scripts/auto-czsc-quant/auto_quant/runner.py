@@ -6,12 +6,14 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import pandas as pd
 
 from auto_quant.backtest import backtest_position
 from auto_quant.data import load_bars
+from auto_quant.html_report import write_html_report
 from auto_quant.journal import write_journal
 from auto_quant.llm import generate_llm_candidates
 from auto_quant.schema import AutoQuantConfig, Candidate, dump_json, read_jsonl
@@ -23,6 +25,7 @@ from auto_quant.validate import load_valid_candidates
 class RunResult:
     run_dir: Path
     leaderboard_path: Path
+    report_path: Path
     accepted_count: int
     rejected_count: int
 
@@ -46,7 +49,29 @@ def _candidate_rows(candidates: list[Candidate]) -> list[dict[str, Any]]:
     return [{"id": c.id, "hypothesis": c.hypothesis, "position": c.position_data} for c in candidates]
 
 
-def _load_candidate_rows(config: AutoQuantConfig, run_dir: Path) -> list[dict[str, Any]]:
+def _record_step(
+    execution_log: list[dict[str, Any]],
+    step: str,
+    status: str,
+    started_at: float,
+    detail: str = "",
+) -> None:
+    execution_log.append(
+        {
+            "step": step,
+            "status": status,
+            "duration_sec": round(perf_counter() - started_at, 4),
+            "detail": detail,
+        }
+    )
+
+
+def _load_candidate_rows(
+    config: AutoQuantConfig,
+    run_dir: Path,
+    execution_log: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    started_at = perf_counter()
     rows: list[dict[str, Any]] = []
     if config.include_baseline:
         if not config.baseline_position_path:
@@ -58,6 +83,7 @@ def _load_candidate_rows(config: AutoQuantConfig, run_dir: Path) -> list[dict[st
         if not config.candidates_path:
             raise ValueError("candidate_mode=file 时必须配置 candidates_path")
         rows.extend(read_jsonl(config.candidates_path))
+        _record_step(execution_log, "load_candidates", "ok", started_at, f"file rows={len(rows)}")
         return rows
 
     if config.candidate_mode == "llm":
@@ -65,6 +91,7 @@ def _load_candidate_rows(config: AutoQuantConfig, run_dir: Path) -> list[dict[st
         (run_dir / "llm_raw.txt").write_text(raw, encoding="utf-8")
         _write_jsonl(run_dir / "llm_candidates.jsonl", llm_rows)
         rows.extend(llm_rows)
+        _record_step(execution_log, "load_candidates", "ok", started_at, f"llm rows={len(rows)}")
         return rows
 
     raise ValueError(f"未知 candidate_mode: {config.candidate_mode}（支持 file/llm）")
@@ -72,17 +99,32 @@ def _load_candidate_rows(config: AutoQuantConfig, run_dir: Path) -> list[dict[st
 
 def run_experiment(config: AutoQuantConfig) -> RunResult:
     """Run validation, mock backtests, scoring, and artifact writing."""
+    execution_log: list[dict[str, Any]] = []
+    started_at = perf_counter()
     run_dir = _new_run_dir(config)
     dump_json(run_dir / "config.json", config.to_dict())
+    _record_step(execution_log, "init_run_dir", "ok", started_at, str(run_dir))
 
-    raw_candidates = _load_candidate_rows(config, run_dir)
+    raw_candidates = _load_candidate_rows(config, run_dir, execution_log)
+    started_at = perf_counter()
     candidates, rejected = load_valid_candidates(raw_candidates, max_candidates=config.max_candidates)
     _write_jsonl(run_dir / "accepted.jsonl", _candidate_rows(candidates))
+    _record_step(
+        execution_log,
+        "validate_candidates",
+        "ok",
+        started_at,
+        f"accepted={len(candidates)} rejected={len(rejected)}",
+    )
 
+    started_at = perf_counter()
     bars_by_symbol = load_bars(config)
+    bars_summary = {symbol: len(bars) for symbol, bars in bars_by_symbol.items()}
+    _record_step(execution_log, "load_bars", "ok", started_at, json.dumps(bars_summary, ensure_ascii=False))
 
     rows: list[dict[str, Any]] = []
     for candidate in candidates:
+        started_at = perf_counter()
         try:
             symbol_results, portfolio_stats, portfolio_weights = backtest_position(
                 candidate.position,
@@ -99,9 +141,12 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
                     "stats": json.dumps(portfolio_stats, ensure_ascii=False, default=str),
                 }
             )
+            _record_step(execution_log, f"score:{candidate.id}", "ok", started_at, f"weights={len(portfolio_weights)}")
         except Exception as exc:  # noqa: BLE001 - experiment runners must record candidate failures.
             rejected.append({"id": candidate.id, "reason": f"backtest failed: {exc}"})
+            _record_step(execution_log, f"score:{candidate.id}", "failed", started_at, str(exc))
 
+    started_at = perf_counter()
     leaderboard = pd.DataFrame(rows)
     if not leaderboard.empty:
         leaderboard = leaderboard.sort_values("score", ascending=False).reset_index(drop=True)
@@ -115,10 +160,50 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
     leaderboard.to_csv(leaderboard_path, index=False)
     _write_jsonl(run_dir / "rejected.jsonl", rejected)
     write_journal(run_dir / "journal.md", config=config, leaderboard=leaderboard, rejected=rejected)
+    _record_step(execution_log, "write_core_artifacts", "ok", started_at, "leaderboard/journal/jsonl")
+
+    started_at = perf_counter()
+    report_path = run_dir / "report.html"
+    artifacts = [
+        run_dir / "config.json",
+        run_dir / "accepted.jsonl",
+        run_dir / "rejected.jsonl",
+        leaderboard_path,
+        run_dir / "journal.md",
+        run_dir / "llm_candidates.jsonl",
+        run_dir / "llm_raw.txt",
+    ]
+    artifacts.extend(sorted((run_dir / "best_positions").glob("*.json")))
+    write_html_report(
+        report_path,
+        config=config,
+        run_dir=run_dir,
+        leaderboard=leaderboard,
+        rejected=rejected,
+        candidates=candidates,
+        raw_candidate_count=len(raw_candidates),
+        bars_summary=bars_summary,
+        execution_log=execution_log,
+        artifacts=artifacts,
+    )
+    _record_step(execution_log, "write_html_report", "ok", started_at, str(report_path.name))
+    write_html_report(
+        report_path,
+        config=config,
+        run_dir=run_dir,
+        leaderboard=leaderboard,
+        rejected=rejected,
+        candidates=candidates,
+        raw_candidate_count=len(raw_candidates),
+        bars_summary=bars_summary,
+        execution_log=execution_log,
+        artifacts=[*artifacts, report_path],
+    )
 
     return RunResult(
         run_dir=run_dir,
         leaderboard_path=leaderboard_path,
+        report_path=report_path,
         accepted_count=len(candidates),
         rejected_count=len(rejected),
     )

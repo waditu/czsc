@@ -22,8 +22,11 @@ scripts/auto-czsc-quant/results/mock_position_demo/<run_id>/
   rejected.jsonl
   leaderboard.csv
   journal.md
+  report.html
   best_positions/
 ```
+
+`report.html` 是结构化优化报告，包含运行配置、数据加载、执行记录、leaderboard、候选详情、拒绝原因和产物索引。
 
 ## 候选协议
 

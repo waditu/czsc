@@ -84,8 +84,13 @@ def test_run_experiment_with_mock_data(tmp_path: Path) -> None:
     )
     result = run_experiment(config)
     assert result.leaderboard_path.exists()
+    assert result.report_path.exists()
     assert (result.run_dir / "journal.md").exists()
     assert (result.run_dir / "accepted.jsonl").exists()
+    report = result.report_path.read_text(encoding="utf-8")
+    assert "执行记录" in report
+    assert "Leaderboard" in report
+    assert "候选详情" in report
     assert "leaderboard" in build_goal_prompt(result.run_dir)
 
 
