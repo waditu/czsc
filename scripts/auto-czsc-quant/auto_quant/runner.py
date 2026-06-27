@@ -11,8 +11,9 @@ from typing import Any
 import pandas as pd
 
 from auto_quant.backtest import backtest_position
-from auto_quant.data import load_mock_bars
+from auto_quant.data import load_bars
 from auto_quant.journal import write_journal
+from auto_quant.llm import generate_llm_candidates
 from auto_quant.schema import AutoQuantConfig, Candidate, dump_json, read_jsonl
 from auto_quant.scorer import score_portfolio
 from auto_quant.validate import load_valid_candidates
@@ -42,10 +43,31 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _candidate_rows(candidates: list[Candidate]) -> list[dict[str, Any]]:
-    return [
-        {"id": c.id, "hypothesis": c.hypothesis, "position": c.position_data}
-        for c in candidates
-    ]
+    return [{"id": c.id, "hypothesis": c.hypothesis, "position": c.position_data} for c in candidates]
+
+
+def _load_candidate_rows(config: AutoQuantConfig, run_dir: Path) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    if config.include_baseline:
+        if not config.baseline_position_path:
+            raise ValueError("include_baseline=true 时必须配置 baseline_position_path")
+        baseline = json.loads(config.baseline_position_path.read_text(encoding="utf-8"))
+        rows.append({"id": "baseline", "hypothesis": "基准 Position 配置", "position": baseline})
+
+    if config.candidate_mode == "file":
+        if not config.candidates_path:
+            raise ValueError("candidate_mode=file 时必须配置 candidates_path")
+        rows.extend(read_jsonl(config.candidates_path))
+        return rows
+
+    if config.candidate_mode == "llm":
+        llm_rows, raw = generate_llm_candidates(config)
+        (run_dir / "llm_raw.txt").write_text(raw, encoding="utf-8")
+        _write_jsonl(run_dir / "llm_candidates.jsonl", llm_rows)
+        rows.extend(llm_rows)
+        return rows
+
+    raise ValueError(f"未知 candidate_mode: {config.candidate_mode}（支持 file/llm）")
 
 
 def run_experiment(config: AutoQuantConfig) -> RunResult:
@@ -53,17 +75,11 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
     run_dir = _new_run_dir(config)
     dump_json(run_dir / "config.json", config.to_dict())
 
-    raw_candidates = read_jsonl(config.candidates_path)
+    raw_candidates = _load_candidate_rows(config, run_dir)
     candidates, rejected = load_valid_candidates(raw_candidates, max_candidates=config.max_candidates)
     _write_jsonl(run_dir / "accepted.jsonl", _candidate_rows(candidates))
 
-    bars_by_symbol = load_mock_bars(
-        config.symbols,
-        freq=config.base_freq,
-        sdt=config.sdt,
-        edt=config.edt,
-        seed=config.seed,
-    )
+    bars_by_symbol = load_bars(config)
 
     rows: list[dict[str, Any]] = []
     for candidate in candidates:

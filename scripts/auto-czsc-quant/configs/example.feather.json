@@ -1,0 +1,16 @@
+{
+  "task_name": "feather_position_demo",
+  "data_source": "feather",
+  "symbols": ["000001"],
+  "base_freq": "30分钟",
+  "sdt": "20240101",
+  "edt": "20240401",
+  "feather_path": "../examples/sample_bars.feather",
+  "candidate_mode": "file",
+  "candidates_path": "../examples/candidates.jsonl",
+  "output_dir": "../results",
+  "fee_rate": 0.0002,
+  "yearly_days": 252,
+  "max_candidates": 10,
+  "top_k": 2
+}

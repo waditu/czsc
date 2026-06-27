@@ -4,11 +4,15 @@ import json
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 AUTO_QUANT = ROOT / "scripts" / "auto-czsc-quant"
 sys.path.insert(0, str(AUTO_QUANT))
 
+from auto_quant.data import load_feather_bars  # noqa: E402
 from auto_quant.goal_prompt import build_goal_prompt  # noqa: E402
+from auto_quant.llm import parse_candidate_text  # noqa: E402
 from auto_quant.runner import run_experiment  # noqa: E402
 from auto_quant.schema import AutoQuantConfig  # noqa: E402
 from auto_quant.validate import load_valid_candidates  # noqa: E402
@@ -83,3 +87,32 @@ def test_run_experiment_with_mock_data(tmp_path: Path) -> None:
     assert (result.run_dir / "journal.md").exists()
     assert (result.run_dir / "accepted.jsonl").exists()
     assert "leaderboard" in build_goal_prompt(result.run_dir)
+
+
+def test_load_feather_bars_standard_ohlcv(tmp_path: Path) -> None:
+    df = pd.DataFrame(
+        {
+            "dt": pd.date_range("2024-01-01", periods=5, freq="30min"),
+            "symbol": ["000001"] * 5,
+            "open": [1, 2, 3, 4, 5],
+            "close": [2, 3, 4, 5, 6],
+            "high": [2, 3, 4, 5, 6],
+            "low": [1, 2, 3, 4, 5],
+            "vol": [100, 100, 100, 100, 100],
+            "amount": [1000, 1000, 1000, 1000, 1000],
+        }
+    )
+    path = tmp_path / "bars.feather"
+    df.to_feather(path)
+    bars = load_feather_bars(str(path), ["000001"], freq="30分钟")
+    assert list(bars) == ["000001"]
+    assert len(bars["000001"]) == 5
+
+
+def test_parse_candidate_text_accepts_jsonl_and_fences() -> None:
+    text = """```jsonl
+{"id":"a","hypothesis":"h","position":{}}
+{"id":"b","hypothesis":"h2","position":{}}
+```"""
+    rows = parse_candidate_text(text)
+    assert [row["id"] for row in rows] == ["a", "b"]

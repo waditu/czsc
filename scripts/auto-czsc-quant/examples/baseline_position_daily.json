@@ -1,0 +1,26 @@
+{
+  "symbol": "000001.SZ#E",
+  "name": "日线涨跌停过滤多头",
+  "opens": [
+    {
+      "name": "开多_日线非涨跌停",
+      "operate": "开多",
+      "signals_all": ["日线_D1_涨跌停V230331_其他_任意_任意_0"],
+      "signals_any": [],
+      "signals_not": []
+    }
+  ],
+  "exits": [
+    {
+      "name": "平多_日线跌停",
+      "operate": "平多",
+      "signals_all": ["日线_D1_涨跌停V230331_跌停_任意_任意_0"],
+      "signals_any": [],
+      "signals_not": []
+    }
+  ],
+  "interval": 0,
+  "timeout": 10,
+  "stop_loss": 300,
+  "T0": false
+}
