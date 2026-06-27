@@ -51,7 +51,7 @@ def _metric_class(value: Any, *, invert: bool = False) -> str:
 
 def _table(headers: list[str], rows: list[list[Any]], *, empty: str = "无") -> str:
     if not rows:
-        return f"<p class=\"empty\">{escape(empty)}</p>"
+        return f'<p class="empty">{escape(empty)}</p>'
     head = "".join(f"<th>{escape(h)}</th>" for h in headers)
     body = []
     for row in rows:
@@ -123,7 +123,7 @@ _INVERTED_STATS = {"最大回撤", "年化波动率", "下行波动率", "新高
 
 def _leaderboard_table(leaderboard: pd.DataFrame) -> str:
     if leaderboard.empty:
-        return "<p class=\"empty\">没有候选通过评分。</p>"
+        return '<p class="empty">没有候选通过评分。</p>'
 
     scores = [_num(x) for x in leaderboard["score"].tolist()]
     numeric_scores = [x for x in scores if x is not None]
@@ -182,7 +182,7 @@ def _leaderboard_table(leaderboard: pd.DataFrame) -> str:
             <th>coverage</th>
           </tr>
         </thead>
-        <tbody>{''.join(rows)}</tbody>
+        <tbody>{"".join(rows)}</tbody>
       </table>
     </div>
     """
@@ -190,7 +190,7 @@ def _leaderboard_table(leaderboard: pd.DataFrame) -> str:
 
 def _comparison_panel(best: dict[str, Any] | None, baseline: dict[str, Any] | None) -> str:
     if not best:
-        return "<p class=\"empty\">暂无可比较结果。</p>"
+        return '<p class="empty">暂无可比较结果。</p>'
 
     metrics = [
         ("score", "score", False),
@@ -218,7 +218,7 @@ def _comparison_panel(best: dict[str, Any] | None, baseline: dict[str, Any] | No
             delta_arrow = "▲" if delta > 0 else "▼"
         base_label = f"基线 {escape(_fmt(base_value))}" if baseline else "无基线"
         delta_label = (
-            f"<span class=\"delta {delta_cls}\">{delta_arrow} {escape(_fmt(abs(delta)))}</span>"
+            f'<span class="delta {delta_cls}">{delta_arrow} {escape(_fmt(abs(delta)))}</span>'
             if delta is not None
             else ""
         )
@@ -245,12 +245,12 @@ def _comparison_panel(best: dict[str, Any] | None, baseline: dict[str, Any] | No
             f"<td>{escape(label)}</td>"
             f"<td>{escape(_fmt(best_s))}</td>"
             f"<td>{escape(_fmt(base_s))}</td>"
-            f"<td class=\"{_metric_class(delta_s)}\">{escape(_fmt(delta_s))}</td>"
+            f'<td class="{_metric_class(delta_s)}">{escape(_fmt(delta_s))}</td>'
             "</tr>"
         )
     extra_table = (
-        "<div class=\"compare-extra\"><h4>补充统计对比</h4>"
-        "<table class=\"mini\"><thead><tr><th>指标</th><th>best</th><th>baseline</th><th>delta</th></tr></thead>"
+        '<div class="compare-extra"><h4>补充统计对比</h4>'
+        '<table class="mini"><thead><tr><th>指标</th><th>best</th><th>baseline</th><th>delta</th></tr></thead>'
         f"<tbody>{''.join(extra_rows)}</tbody></table></div>"
     )
 
@@ -262,14 +262,14 @@ def _comparison_panel(best: dict[str, Any] | None, baseline: dict[str, Any] | No
         <p>{escape(_fmt(best.get("hypothesis")))}</p>
         {extra_table}
       </div>
-      <div class="compare-grid">{''.join(cards)}</div>
+      <div class="compare-grid">{"".join(cards)}</div>
     </div>
     """
 
 
 def _execution_timeline(execution_log: list[dict[str, Any]]) -> str:
     if not execution_log:
-        return "<p class=\"empty\">暂无执行记录。</p>"
+        return '<p class="empty">暂无执行记录。</p>'
     max_duration = max((_num(item.get("duration_sec")) or 0.0 for item in execution_log), default=0.0)
     items = []
     for item in execution_log:
@@ -292,7 +292,7 @@ def _execution_timeline(execution_log: list[dict[str, Any]]) -> str:
             </li>
             """
         )
-    return f"<ol class=\"timeline\">{''.join(items)}</ol>"
+    return f'<ol class="timeline">{"".join(items)}</ol>'
 
 
 def _candidate_cards(candidates: list[Candidate], leaderboard: pd.DataFrame) -> str:
@@ -314,7 +314,7 @@ def _candidate_cards(candidates: list[Candidate], leaderboard: pd.DataFrame) -> 
         is_inverted = {"回撤"}
         metrics = "".join(
             f"<span><em>{escape(label)}</em>"
-            f"<strong class=\"{_metric_class(value, invert=label in is_inverted)}\">"
+            f'<strong class="{_metric_class(value, invert=label in is_inverted)}">'
             f"{escape(_pct(value) if label in {'年化', '回撤', '胜率'} else _fmt(value))}"
             "</strong></span>"
             for label, value in metric_items
@@ -327,12 +327,10 @@ def _candidate_cards(candidates: list[Candidate], leaderboard: pd.DataFrame) -> 
                 continue
             display = _pct(value) if "胜率" in stat_key or "占比" in stat_key or "新高占比" in stat_key else _fmt(value)
             stat_cells.append(
-                f"<div class=\"stat-cell {_metric_class(value, invert=stat_key in _INVERTED_STATS)}\">"
+                f'<div class="stat-cell {_metric_class(value, invert=stat_key in _INVERTED_STATS)}">'
                 f"<span>{escape(label)}</span><strong>{escape(display)}</strong></div>"
             )
-        stats_grid = (
-            f"<div class=\"stats-grid\">{''.join(stat_cells)}</div>" if stat_cells else ""
-        )
+        stats_grid = f'<div class="stats-grid">{"".join(stat_cells)}</div>' if stat_cells else ""
         cards.append(
             f"""
             <article class="candidate-card">
@@ -353,7 +351,7 @@ def _candidate_cards(candidates: list[Candidate], leaderboard: pd.DataFrame) -> 
             </article>
             """
         )
-    return "\n".join(cards) if cards else "<p class=\"empty\">无候选。</p>"
+    return "\n".join(cards) if cards else '<p class="empty">无候选。</p>'
 
 
 def _artifact_links(run_dir: Path, artifacts: list[Path]) -> str:
@@ -371,7 +369,7 @@ def _artifact_links(run_dir: Path, artifacts: list[Path]) -> str:
                 </a>
                 """
             )
-    return f"<div class=\"artifact-grid\">{''.join(cards)}</div>" if cards else "<p class=\"empty\">无额外产物。</p>"
+    return f'<div class="artifact-grid">{"".join(cards)}</div>' if cards else '<p class="empty">无额外产物。</p>'
 
 
 # --- main entry -------------------------------------------------------------
@@ -845,7 +843,7 @@ def write_html_report(
         <div class="kpi-grid">
           <div class="kpi"><span>候选总数</span><strong>{raw_candidate_count}</strong></div>
           <div class="kpi"><span>通过校验</span><strong class="good">{len(candidates)}</strong></div>
-          <div class="kpi"><span>拒绝 / 失败</span><strong class="{_metric_class(-len(rejected)) if rejected else 'neutral'}">{len(rejected)}</strong></div>
+          <div class="kpi"><span>拒绝 / 失败</span><strong class="{_metric_class(-len(rejected)) if rejected else "neutral"}">{len(rejected)}</strong></div>
           <div class="kpi"><span>最佳候选</span><strong>{escape(_fmt(best.get("id") if best else "-"))}</strong></div>
           <div class="kpi"><span>最佳 score</span><strong class="{_metric_class(best.get("score") if best else None)}">{escape(_fmt(best.get("score") if best else "-"))}</strong></div>
           <div class="kpi"><span>总耗时</span><strong>{escape(_fmt(total_duration, digits=4))}s</strong></div>

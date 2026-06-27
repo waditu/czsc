@@ -58,7 +58,9 @@ def load_valid_candidates(
             try:
                 position = Position.from_json(json.dumps(normalized_position, ensure_ascii=False))
             except Exception as json_exc:  # noqa: BLE001
-                rejected.append(_reject(row, f"Position.load failed: {load_exc}; Position.from_json failed: {json_exc}"))
+                rejected.append(
+                    _reject(row, f"Position.load failed: {load_exc}; Position.from_json failed: {json_exc}")
+                )
                 continue
 
         if not position.opens:
