@@ -24,16 +24,33 @@ scripts/auto-czsc-quant/results/mock_position_demo/<run_id>/
   journal.md
   report.html
   best_positions/
+  curves/              # 每个候选的组合日收益序列，供报告叠加收益曲线对比
 ```
 
-`report.html` 是结构化优化报告，包含运行配置、数据加载、执行记录、leaderboard、候选详情、拒绝原因和产物索引。
+`report.html` 是结构化优化报告，包含运行配置、**top-k 策略累计收益曲线对比**、最佳对比、数据加载、执行记录、leaderboard、候选详情、拒绝原因和产物索引。
+
+## 优化语义
+
+优化只允许两种合法操作（可重复执行上百、上千次，逐步累积变好）：
+
+- **入场优化**：修改 `opens` 中某个 event 的 `signals_all` / `signals_any` / `signals_not`，换用不同的完全分类 signal，改进入场点。
+- **出场优化**：在 `exits` 中新增 event，让策略提前正确止盈/止损，降低收益回撤。
+
+每次迭代**必须真正改变 opens/exits 的 event 信号**，否则候选会被校验拒绝：
+
+- **信号必须真实存在**：候选里每个信号都要能被 `czsc.derive_signals_config` 解析（即在 czsc 信号注册表中），臆造信号一律拒绝。
+- **必须与 baseline 不同**：opens/exits 信号签名与 baseline 完全相同的候选（无效克隆）会被拒绝；同一批里签名重复的候选也会被拒。
+
+LLM 优化（`candidate_mode=llm` 或 `/goal` 提示）会把一份「信号目录」注入 prompt：从 czsc 注册表 + `signal-functions` skill 文档中提取经校验可直接使用的开多/平多方向信号字符串（参考 `.claude/skills/signal-functions`），让模型每轮都从真实信号池里选。
+
+`interval` / `timeout` / `stop_loss` / `T0` **不参与优化**：无论候选提交什么值，都会被 baseline（若配置 `baseline_position_path`）或安全默认值强制覆盖。`/goal` 下一轮提示会把上一轮 best 的 Position 作为新 baseline 喂回去，让优化持续迭代。
 
 ## 候选协议
 
 候选文件是 JSONL，一行一个完整候选：
 
 ```json
-{"id":"trial_001","hypothesis":"减少假突破开仓，缩短最长持仓","position":{...}}
+{"id":"trial_001","hypothesis":"入场优化：在开多 event 加入顶分型过滤","position":{...}}
 ```
 
 约束：
@@ -43,6 +60,7 @@ scripts/auto-czsc-quant/results/mock_position_demo/<run_id>/
 - `position` 必须能被 `czsc.Position.load` 加载。
 - `position.opens` 不能为空。
 - 候选数量不能超过配置中的 `max_candidates`。
+- `interval` / `timeout` / `stop_loss` / `T0` 即便填写也会被系统锁定覆盖。
 
 ## 数据源
 

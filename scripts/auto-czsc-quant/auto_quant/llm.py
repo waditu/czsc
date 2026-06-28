@@ -92,18 +92,40 @@ def _anthropic_messages(config: AutoQuantConfig, prompt: str) -> str:
 
 
 def build_mutation_prompt(config: AutoQuantConfig, baseline_position: dict[str, Any]) -> str:
-    """Build a strict prompt for complete Position JSONL candidates."""
-    return f"""你是 CZSC 策略配置研究助手。请基于下面 baseline Position 生成最多 {config.llm_candidate_count} 个候选。
+    """Build a strict prompt for opens/exits event optimization candidates.
+
+    优化只有两种合法操作（interval/timeout/stop_loss/T0 由系统锁定，写了也会被覆盖）：
+    1. 入场优化：修改 opens 里的 event 定义，用不同的完全分类 signal 改进入场事件。
+    2. 出场优化：在 exits 中新增 event，让策略更早、更准确地止盈/止损，降低回撤。
+
+    每次迭代必须真正改变 opens/exits 的 event 信号，否则会被校验当作无效克隆拒绝。
+    """
+    from auto_quant.signals import render_signal_catalog
+
+    catalog = render_signal_catalog(config.base_freq)
+    return f"""你是 CZSC 策略优化助手。目标：基于下面 baseline，持续优化「入场事件」和「出场事件」，让回测 score 持续变好。这个过程会重复执行上百、上千次。
+
+## 核心约束：每次迭代必须真正改变 event 信号
+- 每个候选的 opens / exits event 信号组合必须与 baseline **不同**。完全照抄 baseline 信号、或只改 interval/timeout/stop_loss/T0 的候选会被校验拒绝（无效克隆）。
+- 信号必须从下面的「信号目录」中选取真实存在的信号字符串，不能臆造。
 
 只输出 JSONL，不要输出解释、Markdown 或代码块。每行格式：
-{{"id":"trial_001","hypothesis":"一句话说明本候选要验证的结构假设","position":{{完整 CZSC Position JSON}}}}
+{{"id":"trial_001","hypothesis":"一句话说明本候选的入场/出场结构假设与改了哪个信号","position":{{完整 CZSC Position JSON}}}}
 
-硬性要求：
-- 每个 position 必须能被 czsc.Position.load 或 czsc.Position.from_json 加载。
-- 不要修改 symbol；T+0 字段使用 `T0`。
-- opens 不得为空；每个 hypothesis 必须非空。
-- 可以调整 opens/exits、signals_all/signals_any/signals_not、interval、timeout、stop_loss、T0。
-- 不要引用明显不存在的字段；优先做小步、可解释的结构变化。
+合法的优化操作（只允许这两类）：
+- 入场优化：修改 opens 中某个 event 的 signals_all / signals_any / signals_not，**换一个不同的完全分类 signal**，过滤假突破或捕捉更早的开仓点。opens 不得为空。
+- 出场优化：在 exits 中**新增**一个 event（用目录里的平多方向信号），让策略提前正确止盈，降低回撤。
+
+禁止操作（会被系统自动丢弃）：
+- 不要修改 interval / timeout / stop_loss / T0；不要修改 symbol。
+- 不要输出与 baseline event 信号完全相同的候选。
+
+其他要求：
+- 每个 position 必须能被 czsc.Position.from_json 加载。
+- 每行 hypothesis 必须说明本次改了哪个 event、用了哪个新信号、要验证的假设。
+- 优先做小步、可解释的变化；保留少量探索性变化。
+
+{catalog}
 
 baseline Position:
 {json.dumps(baseline_position, ensure_ascii=False, indent=2)}

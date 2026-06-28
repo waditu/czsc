@@ -97,6 +97,12 @@ def _load_candidate_rows(
     raise ValueError(f"未知 candidate_mode: {config.candidate_mode}（支持 file/llm）")
 
 
+def _load_baseline_position(config: AutoQuantConfig) -> dict[str, Any] | None:
+    if not config.baseline_position_path:
+        return None
+    return json.loads(config.baseline_position_path.read_text(encoding="utf-8"))
+
+
 def run_experiment(config: AutoQuantConfig) -> RunResult:
     """Run validation, mock backtests, scoring, and artifact writing."""
     execution_log: list[dict[str, Any]] = []
@@ -106,8 +112,13 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
     _record_step(execution_log, "init_run_dir", "ok", started_at, str(run_dir))
 
     raw_candidates = _load_candidate_rows(config, run_dir, execution_log)
+    baseline_position = _load_baseline_position(config)
     started_at = perf_counter()
-    candidates, rejected = load_valid_candidates(raw_candidates, max_candidates=config.max_candidates)
+    candidates, rejected = load_valid_candidates(
+        raw_candidates,
+        max_candidates=config.max_candidates,
+        baseline_position=baseline_position,
+    )
     _write_jsonl(run_dir / "accepted.jsonl", _candidate_rows(candidates))
     _record_step(
         execution_log,
@@ -123,10 +134,13 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
     _record_step(execution_log, "load_bars", "ok", started_at, json.dumps(bars_summary, ensure_ascii=False))
 
     rows: list[dict[str, Any]] = []
+    curves_dir = run_dir / "curves"
+    curves_dir.mkdir(exist_ok=True)
+    curves_by_id: dict[str, list[dict[str, Any]]] = {}
     for candidate in candidates:
         started_at = perf_counter()
         try:
-            symbol_results, portfolio_stats, portfolio_weights = backtest_position(
+            symbol_results, portfolio_stats, portfolio_weights, daily_return = backtest_position(
                 candidate.position,
                 bars_by_symbol,
                 fee_rate=config.fee_rate,
@@ -141,6 +155,16 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
                     "stats": json.dumps(portfolio_stats, ensure_ascii=False, default=str),
                 }
             )
+            # 曲线序列化失败不应让整个候选被拒（曲线仅用于报告可视化）。
+            try:
+                curve_records = [
+                    {"date": d.strftime("%Y-%m-%d"), "return": float(r)}
+                    for d, r in zip(daily_return["date"], daily_return["return"], strict=True)
+                ]
+                curves_by_id[candidate.id] = curve_records
+                dump_json(curves_dir / f"{candidate.id}.json", curve_records)
+            except Exception as curve_exc:  # noqa: BLE001
+                _record_step(execution_log, f"curve:{candidate.id}", "failed", started_at, str(curve_exc))
             _record_step(execution_log, f"score:{candidate.id}", "ok", started_at, f"weights={len(portfolio_weights)}")
         except Exception as exc:  # noqa: BLE001 - experiment runners must record candidate failures.
             rejected.append({"id": candidate.id, "reason": f"backtest failed: {exc}"})
@@ -174,6 +198,24 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
         run_dir / "llm_raw.txt",
     ]
     artifacts.extend(sorted((run_dir / "best_positions").glob("*.json")))
+    artifacts.extend(sorted((run_dir / "curves").glob("*.json")))
+
+    # top-k 的收益曲线，用于报告叠加对比。
+    top_k_curves: list[dict[str, Any]] = []
+    if not leaderboard.empty:
+        for _, lb_row in leaderboard.head(config.top_k).iterrows():
+            cid = str(lb_row["id"])
+            if cid in curves_by_id:
+                top_k_curves.append(
+                    {
+                        "id": cid,
+                        "rank": int(lb_row.get("rank", 0)),
+                        "score": lb_row.get("score"),
+                        "annual_return": lb_row.get("annual_return"),
+                        "curve": curves_by_id[cid],
+                    }
+                )
+
     write_html_report(
         report_path,
         config=config,
@@ -185,20 +227,9 @@ def run_experiment(config: AutoQuantConfig) -> RunResult:
         bars_summary=bars_summary,
         execution_log=execution_log,
         artifacts=artifacts,
+        top_k_curves=top_k_curves,
     )
     _record_step(execution_log, "write_html_report", "ok", started_at, str(report_path.name))
-    write_html_report(
-        report_path,
-        config=config,
-        run_dir=run_dir,
-        leaderboard=leaderboard,
-        rejected=rejected,
-        candidates=candidates,
-        raw_candidate_count=len(raw_candidates),
-        bars_summary=bars_summary,
-        execution_log=execution_log,
-        artifacts=[*artifacts, report_path],
-    )
 
     return RunResult(
         run_dir=run_dir,

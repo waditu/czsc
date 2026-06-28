@@ -1,0 +1,24 @@
+{
+  "task_name": "smoke_30x100_2017_2023",
+  "data_source": "tushare",
+  "symbols": [
+    "000001.SZ#E", "000002.SZ#E", "000063.SZ#E", "000333.SZ#E", "000651.SZ#E",
+    "000725.SZ#E", "000858.SZ#E", "002007.SZ#E", "002027.SZ#E", "002415.SZ#E",
+    "002594.SZ#E", "300015.SZ#E", "300059.SZ#E", "300750.SZ#E", "600000.SH#E",
+    "600009.SH#E", "600016.SH#E", "600036.SH#E", "600276.SH#E", "600309.SH#E",
+    "600519.SH#E", "600585.SH#E", "600690.SH#E", "600887.SH#E", "601012.SH#E",
+    "601088.SH#E", "601166.SH#E", "601318.SH#E", "601398.SH#E", "601888.SH#E"
+  ],
+  "base_freq": "30分钟",
+  "sdt": "20170101",
+  "edt": "20230101",
+  "candidate_mode": "file",
+  "candidates_path": "../results/prod_scale_inputs/candidates_smoke100.jsonl",
+  "output_dir": "../results",
+  "tushare_asset": "E",
+  "tushare_fq": "后复权",
+  "fee_rate": 0.0002,
+  "yearly_days": 252,
+  "max_candidates": 100,
+  "top_k": 10
+}
