@@ -66,15 +66,15 @@ fn resolve_env_usize(explicit: usize, upper: &str, lower: &str, default: usize) 
     if explicit > 0 {
         return explicit;
     }
-    if let Ok(v) = std::env::var(upper) {
-        if let Ok(n) = v.trim().parse::<f64>() {
-            return n as usize;
-        }
+    if let Ok(v) = std::env::var(upper)
+        && let Ok(n) = v.trim().parse::<f64>()
+    {
+        return n as usize;
     }
-    if let Ok(v) = std::env::var(lower) {
-        if let Ok(n) = v.trim().parse::<f64>() {
-            return n as usize;
-        }
+    if let Ok(v) = std::env::var(lower)
+        && let Ok(n) = v.trim().parse::<f64>()
+    {
+        return n as usize;
     }
     default
 }
