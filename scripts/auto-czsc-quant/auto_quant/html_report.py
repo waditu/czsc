@@ -375,6 +375,132 @@ def _artifact_links(run_dir: Path, artifacts: list[Path]) -> str:
 # --- main entry -------------------------------------------------------------
 
 
+def _top_k_curve_block(top_k_curves: list[dict[str, Any]]) -> str:
+    """Render a self-contained inline-SVG cumulative-return comparison for top-k.
+
+    参考 wbt.plot_cumulative_returns：日收益累加得到累计收益曲线，多策略叠加对比。
+    完全内联 SVG，不依赖任何外部 JS，离线可看。
+    """
+    if not top_k_curves:
+        return '<p class="empty">没有可对比的收益曲线（候选未产生成交）。</p>'
+
+    palette = ["#0d9488", "#2563eb", "#b45309", "#7c3aed", "#db2777", "#0891b2", "#ca8a04", "#475569"]
+
+    # 收集所有日期，计算每条曲线累计收益（%）。
+    all_dates: list[str] = []
+    seen: set[str] = set()
+    series: list[dict[str, Any]] = []
+    for item in top_k_curves:
+        idx_map: dict[str, float] = {p["date"]: float(p["return"]) for p in item["curve"]}
+        for d in idx_map:
+            if d not in seen:
+                seen.add(d)
+                all_dates.append(d)
+        series.append({"id": item["id"], "rank": item.get("rank", 0), "idx": idx_map})
+    all_dates.sort()
+
+    cum_series: list[list[float]] = []
+    for s in series:
+        cum = 0.0
+        ys = []
+        for d in all_dates:
+            cum += s["idx"].get(d, 0.0)
+            ys.append(cum * 100.0)
+        cum_series.append(ys)
+
+    if not all_dates:
+        return '<p class="empty">收益曲线无有效日期。</p>'
+
+    width, height = 980, 360
+    pad_l, pad_r, pad_t, pad_b = 56, 16, 16, 40
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+
+    y_min = min((min(ys) for ys in cum_series), default=0.0)
+    y_max = max((max(ys) for ys in cum_series), default=0.0)
+    if y_min == y_max:
+        y_min -= 1.0
+        y_max += 1.0
+    y_min = min(y_min, 0.0)
+    y_max = max(y_max, 0.0)
+
+    n = len(all_dates)
+
+    def xpx(i: int) -> float:
+        return pad_l + (0.0 if n == 1 else i / (n - 1) * plot_w)
+
+    def ypx(v: float) -> float:
+        return pad_t + plot_h - (v - y_min) / (y_max - y_min) * plot_h
+
+    def path_for(ys: list[float]) -> str:
+        return " ".join(f"{xpx(i):.1f},{ypx(v):.1f}" for i, v in enumerate(ys))
+
+    # y 轴网格与刻度（5 档）。
+    grid = []
+    for k in range(5):
+        frac = k / 4
+        val = y_min + frac * (y_max - y_min)
+        y = ypx(val)
+        grid.append(
+            f'<line x1="{pad_l}" y1="{y:.1f}" x2="{width - pad_r}" y2="{y:.1f}" '
+            f'stroke="#eef2f7" stroke-width="1"/>'
+            f'<text x="{pad_l - 8}" y="{y + 3:.1f}" text-anchor="end" '
+            f'font-size="10" fill="#94a3b8">{val:.1f}%</text>'
+        )
+    # 零线加粗。
+    if y_min < 0 < y_max:
+        yz = ypx(0.0)
+        grid.append(
+            f'<line x1="{pad_l}" y1="{yz:.1f}" x2="{width - pad_r}" y2="{yz:.1f}" stroke="#cbd5e1" stroke-width="1.2"/>'
+        )
+    # x 轴刻度（首/中/尾日期）。
+    for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
+        i = int(round(frac * (n - 1)))
+        x = xpx(i)
+        grid.append(
+            f'<text x="{x:.1f}" y="{height - pad_b + 18}" text-anchor="middle" '
+            f'font-size="10" fill="#94a3b8">{all_dates[i]}</text>'
+        )
+
+    polylines = []
+    legend_items = []
+    for s, ys, color in zip(series, cum_series, palette, strict=False):
+        rank = s["rank"]
+        sid = s["id"]
+        pid = f"curve-{escape(str(rank))}-{escape(sid)}"
+        polylines.append(
+            f'<polyline id="{pid}" fill="none" stroke="{color}" stroke-width="2" points="{path_for(ys)}"/>'
+        )
+        legend_items.append(
+            f'<span class="legend-chip" data-target="{pid}" style="--c:{color}">'
+            f'<i style="background:{color}"></i>#{rank} {escape(sid)}</span>'
+        )
+
+    return f"""
+    <div class="curve-panel">
+      <svg viewBox="0 0 {width} {height}" class="curve-svg" preserveAspectRatio="xMidYMid meet" role="img"
+           aria-label="top-k 累计收益对比">
+        {"".join(grid)}
+        {"".join(polylines)}
+      </svg>
+      <div class="curve-legend">{"".join(legend_items)}</div>
+      <p class="curve-hint">日收益累加为累计收益（%）；点击图例可切换显示。</p>
+    </div>
+    <script>
+    document.querySelectorAll('.curve-legend .legend-chip').forEach(function (chip) {{
+      chip.addEventListener('click', function () {{
+        var el = document.getElementById(chip.getAttribute('data-target'));
+        if (el) {{
+          var off = el.style.opacity === '0.15';
+          el.style.opacity = off ? '1' : '0.15';
+          chip.classList.toggle('off', !off);
+        }}
+      }});
+    }});
+    </script>
+    """
+
+
 def write_html_report(
     path: Path,
     *,
@@ -387,6 +513,7 @@ def write_html_report(
     bars_summary: dict[str, int],
     execution_log: list[dict[str, Any]],
     artifacts: list[Path],
+    top_k_curves: list[dict[str, Any]] | None = None,
 ) -> None:
     """Write a structured, dependency-free HTML report."""
     config_rows = [
@@ -787,6 +914,17 @@ def write_html_report(
     .artifact strong {{ overflow-wrap: anywhere; font-size: 13px; }}
     .artifact em {{ color: var(--muted); font-size: 11.5px; font-style: normal; }}
     .empty {{ color: var(--muted); margin: 0; }}
+    .curve-panel {{ border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: #fbfdff; }}
+    .curve-svg {{ width: 100%; height: auto; display: block; }}
+    .curve-legend {{ display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 6px; }}
+    .legend-chip {{
+      display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+      border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px;
+      font-size: 12.5px; background: #fff; user-select: none; transition: opacity .12s;
+    }}
+    .legend-chip i {{ width: 12px; height: 12px; border-radius: 3px; background: var(--c, var(--teal)); }}
+    .legend-chip.off {{ opacity: .4; }}
+    .curve-hint {{ color: var(--muted); font-size: 12px; margin: 6px 0 0; }}
     @media (max-width: 1040px) {{
       .layout {{ grid-template-columns: 1fr; padding: 20px; }}
       .sidebar {{ position: static; display: flex; flex-wrap: wrap; gap: 4px; }}
@@ -825,6 +963,7 @@ def write_html_report(
   <div class="layout">
     <nav class="sidebar" aria-label="report sections">
       <a href="#overview">结果概览</a>
+      <a href="#curves">收益曲线对比</a>
       <a href="#comparison">最佳对比</a>
       <a href="#config">配置与数据</a>
       <a href="#execution">执行记录</a>
@@ -848,6 +987,14 @@ def write_html_report(
           <div class="kpi"><span>最佳 score</span><strong class="{_metric_class(best.get("score") if best else None)}">{escape(_fmt(best.get("score") if best else "-"))}</strong></div>
           <div class="kpi"><span>总耗时</span><strong>{escape(_fmt(total_duration, digits=4))}s</strong></div>
         </div>
+      </section>
+
+      <section class="report-section" id="curves">
+        <div class="section-head">
+          <h2>Top-K 策略收益曲线对比</h2>
+          <span class="section-note">参考 wbt 累计收益叠加图</span>
+        </div>
+        {_top_k_curve_block(top_k_curves or [])}
       </section>
 
       <section class="report-section" id="comparison">

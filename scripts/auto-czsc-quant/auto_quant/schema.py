@@ -3,11 +3,39 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from czsc import Position
+
+# position 的这些参数不参与优化，固化在 baseline（或安全默认值）上。
+# 优化只允许改 opens/exits 里的 event 定义，见 §优化语义。
+# stop_loss 单位为 BP（基点），默认 300BP = 3%。
+IMMUTABLE_POSITION_FIELDS: dict[str, Any] = {
+    "interval": 0,
+    "timeout": 1000,
+    "stop_loss": 300.0,
+    "T0": False,
+}
+IMMUTABLE_FIELD_NAMES = "interval / timeout / stop_loss / T0"
+
+
+def lock_immutable_fields(
+    position_data: dict[str, Any],
+    *,
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """强制覆盖不可变参数，忽略候选提交的任何值。
+
+    overrides 来自 baseline position（若配置），缺省取 IMMUTABLE_POSITION_FIELDS。
+    """
+    locked = dict(overrides) if overrides else dict(IMMUTABLE_POSITION_FIELDS)
+    out = deepcopy(position_data)
+    for key, value in locked.items():
+        out[key] = value
+    return out
 
 
 @dataclass(frozen=True)
@@ -138,6 +166,8 @@ class Candidate:
     hypothesis: str
     position_data: dict[str, Any]
     position: Position
+    # 候选试图修改、但被强制锁定的不可变参数名（透明记录，便于复盘）。
+    touched_immutable: list[str] | None = None
 
 
 def _load_mapping(path: Path) -> dict[str, Any]:

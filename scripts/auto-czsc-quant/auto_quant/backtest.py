@@ -55,8 +55,12 @@ def backtest_position(
     *,
     fee_rate: float,
     yearly_days: int,
-) -> tuple[list[SymbolBacktestResult], dict[str, Any], pd.DataFrame]:
-    """Run one candidate over every configured symbol."""
+) -> tuple[list[SymbolBacktestResult], dict[str, Any], pd.DataFrame, pd.DataFrame]:
+    """Run one candidate over every configured symbol.
+
+    返回 (symbol_results, portfolio_stats, portfolio_weights, portfolio_daily_return)。
+    portfolio_daily_return 是组合日收益序列 (date, return)，供报告叠加收益曲线。
+    """
     symbol_results: list[SymbolBacktestResult] = []
     weight_frames: list[pd.DataFrame] = []
 
@@ -77,9 +81,23 @@ def backtest_position(
 
     if weight_frames:
         portfolio_weights = pd.concat(weight_frames, ignore_index=True)
-        portfolio_stats = WeightBacktest(portfolio_weights, fee_rate=fee_rate, yearly_days=yearly_days).stats
+        wb = WeightBacktest(portfolio_weights, fee_rate=fee_rate, yearly_days=yearly_days)
+        portfolio_stats = wb.stats
+        portfolio_daily_return = _daily_return_total(wb.daily_return)
     else:
         portfolio_weights = pd.DataFrame(columns=pd.Index(["dt", "symbol", "weight", "price"]))
         portfolio_stats = {"warning": "全部 symbol 无成交"}
+        portfolio_daily_return = pd.DataFrame(columns=pd.Index(["date", "return"]))
 
-    return symbol_results, portfolio_stats, portfolio_weights
+    return symbol_results, portfolio_stats, portfolio_weights, portfolio_daily_return
+
+
+def _daily_return_total(daily: pd.DataFrame) -> pd.DataFrame:
+    """从 daily_return 宽表提取 (date, return)，兼容 date 作为列或作为索引。"""
+    ret_col = "total" if "total" in daily.columns else daily.columns[0]
+    if "date" in daily.columns:
+        out = daily[["date", ret_col]].rename(columns={ret_col: "return"}).copy()
+    else:
+        out = daily[[ret_col]].rename(columns={ret_col: "return"}).reset_index(names="date")
+    out["date"] = pd.to_datetime(out["date"])
+    return out.sort_values("date").reset_index(drop=True)[["date", "return"]]
