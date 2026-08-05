@@ -62,7 +62,7 @@ fn dispatch_all_signals(czsc: &CZSC) -> usize {
     let empty_params: HashMap<String, Value> = HashMap::new();
     let mut cache = TaCache::default();
     let mut count = 0usize;
-    for (_name, meta) in SIGNAL_REGISTRY.iter() {
+    for meta in SIGNAL_REGISTRY.values() {
         let signals = (meta.func)(czsc, &empty_params, &mut cache);
         // black_box 让 LLVM 不能把 signals 作为死代码消除
         let _ = black_box(signals);
