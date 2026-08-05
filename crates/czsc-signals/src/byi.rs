@@ -1,17 +1,18 @@
 use crate::params::ParamView;
 use crate::types::TaCache;
+use crate::utils::math::std_pop;
 use crate::utils::sig::{
     get_sub_elements, make_kline_signal_v1, make_kline_signal_v2, make_kline_signal_v3,
 };
 use crate::utils::ta::update_macd_cache;
 use czsc_core::analyze::CZSC;
+use czsc_core::analyze::utils::is_symmetry_zs;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::bi::BI;
 use czsc_core::objects::direction::Direction;
 use czsc_core::objects::fx::FX;
 use czsc_core::objects::mark::Mark;
 use czsc_core::objects::signal::Signal;
-use czsc_core::objects::zs::ZS;
 use czsc_signal_macros::signal;
 use std::collections::HashMap;
 
@@ -32,42 +33,6 @@ fn raw_bar_upper(bar: &RawBar) -> f64 {
 
 fn raw_bar_lower(bar: &RawBar) -> f64 {
     bar.open.min(bar.close) - bar.low
-}
-
-fn mean(values: &[f64]) -> f64 {
-    if values.is_empty() {
-        f64::NAN
-    } else {
-        values.iter().sum::<f64>() / values.len() as f64
-    }
-}
-
-fn std_pop(values: &[f64]) -> f64 {
-    let m = mean(values);
-    if !m.is_finite() || values.is_empty() {
-        return f64::NAN;
-    }
-    let var = values.iter().map(|x| (x - m).powi(2)).sum::<f64>() / values.len() as f64;
-    var.sqrt()
-}
-
-fn is_symmetry_zs(bis: &[BI], th: f64) -> bool {
-    if bis.len().is_multiple_of(2) {
-        return false;
-    }
-    let zs = ZS::new(bis.to_vec());
-    if zs.zd > zs.zg {
-        return false;
-    }
-    let max_low = bis.iter().map(|x| x.get_low()).fold(f64::NEG_INFINITY, f64::max);
-    let min_high = bis.iter().map(|x| x.get_high()).fold(f64::INFINITY, f64::min);
-    if max_low > min_high {
-        return false;
-    }
-    let zns: Vec<f64> = bis.iter().map(|x| x.get_power_price()).collect();
-    let m = mean(&zns);
-    let s = std_pop(&zns);
-    m.is_finite() && s.is_finite() && m != 0.0 && s / m <= th
 }
 
 /// byi_symmetry_zs_V221107：对称中枢识别信号

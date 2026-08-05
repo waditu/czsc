@@ -161,6 +161,17 @@ impl CZSC {
         fxs
     }
 
+    /// 获取已经确认完成的笔。
+    pub fn get_finished_bis(&self) -> Vec<BI> {
+        if self.bi_list.is_empty() {
+            return vec![];
+        }
+        if self.bars_ubi.len() < 5 {
+            return self.bi_list[..self.bi_list.len().saturating_sub(1)].to_vec();
+        }
+        self.bi_list.clone()
+    }
+
     /// 更新分析结果
     ///
     /// :param bar: 单根K线对象
@@ -513,13 +524,13 @@ impl CZSC {
     /// 获取已完成的笔列表（与 bi_list 相同，为兼容 czsc 库）
     #[getter]
     fn finished_bis(&self) -> Vec<BI> {
-        if self.bi_list.is_empty() {
-            return vec![];
-        }
-        if self.bars_ubi.len() < 5 {
-            return self.bi_list[..self.bi_list.len().saturating_sub(1)].to_vec();
-        }
-        self.bi_list.to_vec()
+        self.get_finished_bis()
+    }
+
+    /// 基于已完成笔计算的中枢序列。
+    #[getter]
+    fn zs_list(&self) -> Vec<crate::objects::zs::ZS> {
+        utils::get_zs_seq(&self.get_finished_bis())
     }
 
     /// 获取分型列表（属性，与 czsc 库兼容）

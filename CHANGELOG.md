@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **公开缠论结构分析链 API**：新增 `create_fake_bis`、`get_zs_seq`、`is_symmetry_zs`、`is_bis_up`、`is_bis_down`、`check_gap_info`，并新增基于 `finished_bis` 计算的 `CZSC.zs_list` 属性。Python 顶层、`czsc._native` 类型桩和 Rust `czsc` facade 同步暴露。
+
 ### Fixed
 
 - **`CZSC_MIN_BI_LEN` 现在真正作用于 Rust 端成笔逻辑**（[waditu/czsc#328](https://github.com/waditu/czsc/issues/328)）：此前 `crates/czsc-core/src/analyze/utils.rs` 的 `check_bi` 硬编码 `let min_bi_len = 6;`，且 `CZSC` 构造函数签名只有 `(bars_raw, max_bi_num)`，导致 `CZSC_MIN_BI_LEN` 只影响 `czsc.envs.get_min_bi_len()` 的返回值、对 `bi_list` / `finished_bis` 毫无作用。修复：

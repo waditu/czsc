@@ -7,12 +7,157 @@ use crate::objects::{
     freq::Freq,
     fx::{FX, FXBuilder},
     mark::Mark,
+    zs::ZS,
 };
 use anyhow::Context;
 use chrono::DateTime;
 use chrono::Utc;
 use polars::frame::DataFrame;
 use polars::prelude::TimeUnit;
+
+/// K 线缺口信息。
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct GapInfo {
+    pub kind: String,
+    pub cover: String,
+    pub sdt: DateTime<Utc>,
+    pub edt: DateTime<Utc>,
+    pub high: f64,
+    pub low: f64,
+    pub delta: f64,
+}
+
+/// 将连续笔划分为中枢序列。
+pub fn get_zs_seq(bis: &[BI]) -> Vec<ZS> {
+    let mut zs_list = Vec::new();
+    for bi in bis.iter().cloned() {
+        let Some(last_zs) = zs_list.pop() else {
+            zs_list.push(ZS::new(vec![bi]));
+            continue;
+        };
+
+        if (bi.direction == Direction::Up && bi.get_high() < last_zs.zd)
+            || (bi.direction == Direction::Down && bi.get_low() > last_zs.zg)
+        {
+            zs_list.push(last_zs);
+            zs_list.push(ZS::new(vec![bi]));
+        } else {
+            let mut new_bis = last_zs.bis;
+            new_bis.push(bi);
+            zs_list.push(ZS::new(new_bis));
+        }
+    }
+    zs_list
+}
+
+/// 判断一组连续笔是否构成对称中枢。
+pub fn is_symmetry_zs(bis: &[BI], threshold: f64) -> bool {
+    if bis.len() < 3 || bis.len().is_multiple_of(2) || !threshold.is_finite() || threshold < 0.0 {
+        return false;
+    }
+
+    let zs = ZS::new(bis.to_vec());
+    let max_low = bis
+        .iter()
+        .map(BI::get_low)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let min_high = bis.iter().map(BI::get_high).fold(f64::INFINITY, f64::min);
+    if zs.zd > zs.zg || max_low > min_high {
+        return false;
+    }
+
+    let powers: Vec<f64> = bis.iter().map(BI::get_power_price).collect();
+    let mean = powers.iter().sum::<f64>() / powers.len() as f64;
+    if !mean.is_finite() || mean == 0.0 {
+        return false;
+    }
+    let variance = powers.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / powers.len() as f64;
+    let std = variance.sqrt();
+    std.is_finite() && std / mean.abs() <= threshold
+}
+
+fn bis_are_chronological(bis: &[BI]) -> bool {
+    bis.windows(2).all(|w| w[0].end_dt() < w[1].end_dt())
+}
+
+/// 判断连续奇数笔是否构成向上结构。
+pub fn is_bis_up(bis: &[BI]) -> bool {
+    if bis.len() < 3 || bis.len().is_multiple_of(2) || !bis_are_chronological(bis) {
+        return false;
+    }
+    let first = &bis[0];
+    let last = &bis[bis.len() - 1];
+    last.direction == Direction::Up
+        && last.get_high()
+            == bis
+                .iter()
+                .map(BI::get_high)
+                .fold(f64::NEG_INFINITY, f64::max)
+        && first.get_low() == bis.iter().map(BI::get_low).fold(f64::INFINITY, f64::min)
+}
+
+/// 判断连续奇数笔是否构成向下结构。
+pub fn is_bis_down(bis: &[BI]) -> bool {
+    if bis.len() < 3 || bis.len().is_multiple_of(2) || !bis_are_chronological(bis) {
+        return false;
+    }
+    let first = &bis[0];
+    let last = &bis[bis.len() - 1];
+    last.direction == Direction::Down
+        && first.get_high()
+            == bis
+                .iter()
+                .map(BI::get_high)
+                .fold(f64::NEG_INFINITY, f64::max)
+        && last.get_low() == bis.iter().map(BI::get_low).fold(f64::INFINITY, f64::min)
+}
+
+/// 检查 K 线序列中的跳空缺口及其后续回补状态。
+pub fn check_gap_info(bars: &[RawBar]) -> Vec<GapInfo> {
+    let mut gaps = Vec::new();
+    for i in 1..bars.len() {
+        let bar1 = &bars[i - 1];
+        let bar2 = &bars[i];
+        let right = &bars[i..];
+
+        let gap = if bar1.high < bar2.low {
+            Some(GapInfo {
+                kind: "向上缺口".to_string(),
+                cover: if right.iter().any(|x| x.low < bar1.high) {
+                    "已补".to_string()
+                } else {
+                    "未补".to_string()
+                },
+                sdt: bar1.dt,
+                edt: bar2.dt,
+                high: bar2.low,
+                low: bar1.high,
+                delta: ((bar2.low / bar1.high - 1.0) * 10_000.0).round() / 10_000.0,
+            })
+        } else if bar1.low > bar2.high {
+            Some(GapInfo {
+                kind: "向下缺口".to_string(),
+                cover: if right.iter().any(|x| x.high > bar1.low) {
+                    "已补".to_string()
+                } else {
+                    "未补".to_string()
+                },
+                sdt: bar1.dt,
+                edt: bar2.dt,
+                high: bar1.low,
+                low: bar2.high,
+                delta: ((bar1.low / bar2.high - 1.0) * 10_000.0).round() / 10_000.0,
+            })
+        } else {
+            None
+        };
+
+        if let Some(gap) = gap {
+            gaps.push(gap);
+        }
+    }
+    gaps
+}
 
 /// 去除包含关系：输入三根k线，其中k1和k2为没有包含关系的K线，k3为原始K线
 /// 处理逻辑如下：

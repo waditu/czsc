@@ -28,9 +28,20 @@ __all__ = [
     "RawBar",
     "Signal",
     "ZS",
+    "check_bi",
+    "check_fx",
+    "check_fxs",
+    "check_gap_info",
     "chip_distribution_triangle",
+    "create_fake_bis",
+    "format_standard_kline",
+    "get_zs_seq",
+    "is_bis_down",
+    "is_bis_up",
+    "is_symmetry_zs",
     "monotonicity",
     "parse_signal_doc",
+    "remove_include",
 ]
 
 @typing.final
@@ -240,6 +251,11 @@ class CZSC:
     def finished_bis(self) -> builtins.list[BI]:
         r"""
         获取已完成的笔列表（与 bi_list 相同，为兼容 czsc 库）
+        """
+    @property
+    def zs_list(self) -> builtins.list[ZS]:
+        r"""
+        基于已完成笔计算的中枢序列。
         """
     @property
     def fx_list(self) -> builtins.list[FX]:
@@ -1312,6 +1328,27 @@ class Market(enum.Enum):
 
     def __new__(cls, ob: typing.Any) -> Market: ...
 
+def check_bi(bars: typing.Sequence[NewBar], min_bi_len: builtins.int = 0) -> typing.Optional[BI]:
+    r"""
+    对 `analyze::utils::check_bi` 的 Python 友好的薄 wrapper。
+    丢弃未使用的剩余切片；Python 调用方只消费可选的 BI 值。
+    """
+
+def check_fx(k1: NewBar, k2: NewBar, k3: NewBar) -> typing.Optional[FX]:
+    r"""
+    对 `analyze::utils::check_fx` 的 Python 友好的薄 wrapper。
+    """
+
+def check_fxs(bars: typing.Sequence[NewBar]) -> builtins.list[FX]:
+    r"""
+    对 `analyze::utils::check_fxs` 的 Python 友好的薄 wrapper。
+    """
+
+def check_gap_info(bars: typing.Sequence[RawBar]) -> builtins.list[builtins.dict[builtins.str, typing.Any]]:
+    r"""
+    返回与历史 Python API 兼容的缺口字典列表。
+    """
+
 def chip_distribution_triangle(data: numpy.typing.NDArray[numpy.float64], price_step: builtins.float, decay_factor: builtins.float) -> tuple[numpy.typing.NDArray[numpy.float64], numpy.typing.NDArray[numpy.float64]]:
     r"""
     计算筹码分布（三角形分布 + 筹码沉淀机制）
@@ -1345,6 +1382,39 @@ def chip_distribution_triangle(data: numpy.typing.NDArray[numpy.float64], price_
     返回的两个数组长度相同，可用于绘制筹码分布图或进一步分析。
     """
 
+def create_fake_bis(fxs: typing.Sequence[FX]) -> builtins.list[FakeBI]:
+    r"""
+    将分型序列转换为虚拟笔；非法的非交替分型返回 ValueError。
+    """
+
+def format_standard_kline(bars: typing.Sequence[RawBar]) -> builtins.list[RawBar]:
+    r"""
+    对 `analyze::utils::format_standard_kline` 的 Python 友好的薄 wrapper。
+    Polars DataFrame 通过标准的 pyo3-polars / arrow 路径桥接；目前
+    我们接受一个预构建好的 RawBar 列表，以避免在 D.A 阶段引入 polars/python 的耦合。
+    完整的 DataFrame 入口会等到 Phase E/F 接入 polars Python 桥时再添加（详见 design doc §2.3）。
+    """
+
+def get_zs_seq(bis: typing.Sequence[BI]) -> builtins.list[ZS]:
+    r"""
+    将连续笔划分为中枢序列。
+    """
+
+def is_bis_down(bis: typing.Sequence[BI]) -> builtins.bool:
+    r"""
+    判断连续奇数笔是否构成向下结构。
+    """
+
+def is_bis_up(bis: typing.Sequence[BI]) -> builtins.bool:
+    r"""
+    判断连续奇数笔是否构成向上结构。
+    """
+
+def is_symmetry_zs(bis: typing.Sequence[BI], th: builtins.float = 0.3) -> builtins.bool:
+    r"""
+    判断一组连续笔是否构成对称中枢。
+    """
+
 def monotonicity(sequence: typing.Sequence[builtins.float]) -> builtins.float:
     r"""
     `czsc.monotonicity(sequence)` → float。
@@ -1357,5 +1427,10 @@ def monotonicity(sequence: typing.Sequence[builtins.float]) -> builtins.float:
 def parse_signal_doc(doc: builtins.str) -> ParsedSignalDoc:
     r"""
     解析文档中的Signal信息
+    """
+
+def remove_include(k1: NewBar, k2: NewBar, k3: RawBar) -> tuple[builtins.bool, NewBar]:
+    r"""
+    对 `analyze::utils::remove_include` 的 Python 友好的薄 wrapper。
     """
 
