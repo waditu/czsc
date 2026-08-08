@@ -102,10 +102,13 @@ class ChartPayload:
 # -- 构造逻辑 ------------------------------------------------------------------
 
 
+_NAIVE_CHINA_TIME_OFFSET_SECONDS = 8 * 60 * 60
+
+
 def _ts(dt: Any) -> int:
-    """pd.Timestamp / datetime → unix 秒整数。"""
+    """无时区中国交易时间 → lightweight-charts 使用的 UTC 秒整数。"""
     if hasattr(dt, "timestamp"):
-        return int(dt.timestamp())
+        return int(dt.timestamp()) - _NAIVE_CHINA_TIME_OFFSET_SECONDS
     raise TypeError(f"unsupported dt type: {type(dt)!r}")
 
 

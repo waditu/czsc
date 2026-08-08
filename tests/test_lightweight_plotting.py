@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from datetime import datetime
 from typing import Any
 
 import pytest
@@ -50,6 +51,12 @@ def _payload_dict(c: CZSC) -> dict[str, Any]:
 
 
 class TestBuildFromCzsc:
+    def test_naive_datetime_is_shifted_to_utc_for_lightweight_charts(self):
+        """无时区的中国交易时间应以 UTC 秒值传给图表库。"""
+        dt = datetime(2024, 1, 2, 9, 30)
+
+        assert _data._ts(dt) == int(dt.timestamp()) - 8 * 60 * 60
+
     def test_candle_count_equals_bars_raw(self, czsc_30m: CZSC):
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
@@ -60,7 +67,9 @@ class TestBuildFromCzsc:
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
         # 同 time 去重后两边数量应一致（czsc 不会出现真同 time 重复 FX）
-        fx_pairs = sorted({(int(fx.dt.timestamp()), float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0])
+        fx_pairs = sorted(
+            {(int(fx.dt.timestamp()) - 8 * 60 * 60, float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0]
+        )
         assert len(pane.main.fx_line) == len({t for t, _ in fx_pairs})
         # 时间严格升序
         times = [pt["time"] for pt in pane.main.fx_line]
