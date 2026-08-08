@@ -8,6 +8,7 @@ from __future__ import annotations
 import json  # noqa: F401  - 后续 task 使用
 import math  # noqa: F401  - 后续 task 使用
 import re  # noqa: F401  - 后续 task 使用
+from datetime import datetime
 from typing import Any  # noqa: F401  - 后续 task 使用
 
 import pandas as pd  # noqa: F401  - 后续 task 使用
@@ -15,6 +16,7 @@ import pytest  # noqa: F401  - 后续 task 使用
 
 from czsc import Freq, format_standard_kline  # noqa: F401  - 后续 task 使用
 from czsc.mock import generate_symbol_kines  # noqa: F401  - 后续 task 使用
+from czsc.utils.plotting.lightweight import _data
 
 
 class TestPaletteConstants:
@@ -93,7 +95,19 @@ class TestDetectTransitions:
         df = self._df(["A_x_x_0", "A_x_x_0", "B_x_x_0", "B_x_x_0", "C_x_x_0"])
         markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
         assert [m["v1"] for m in markers] == ["A", "B", "C"]
-        assert [m["time"] for m in markers] == [int(df["dt"].iloc[i].timestamp()) for i in (0, 2, 4)]
+        assert [m["time"] for m in markers] == [
+            _data._ts(df["dt"].iloc[i]) for i in (0, 2, 4)
+        ]
+
+    def test_marker_time_uses_chart_timestamp_contract(self):
+        """signal marker 与 K 线必须复用同一无时区 UTC 转换契约。"""
+        from czsc.utils.plotting.lightweight._signals import detect_transitions
+
+        dt = datetime(2024, 1, 2, 9, 30)
+        df = pd.DataFrame({"dt": [dt], "30分钟_D1_X": ["向上_任意_任意_0"]})
+
+        marker = detect_transitions(df, "30分钟_D1_X")[0]
+        assert marker["time"] == _data._ts(dt) == 1_704_159_000
 
     def test_u2_other_filtered_by_default(self):
         from czsc.utils.plotting.lightweight._signals import detect_transitions
