@@ -1,11 +1,11 @@
 use crate::utils::math::mean;
+pub use czsc_core::analyze::utils::get_zs_seq;
 use czsc_core::analyze::{CZSC, UBI};
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::bi::BI;
 use czsc_core::objects::direction::Direction;
 use czsc_core::objects::fx::FX;
 use czsc_core::objects::mark::Mark;
-use czsc_core::objects::zs::ZS;
 
 #[inline]
 pub fn raw_bar_upper(bar: &RawBar) -> f64 {
@@ -68,37 +68,6 @@ pub fn fx_has_zs(fx: &FX) -> bool {
         .map(|x| x.high)
         .fold(f64::INFINITY, f64::min);
     zg >= zd
-}
-
-pub fn get_zs_seq(bis: &[BI]) -> Vec<ZS> {
-    let mut zs_list: Vec<ZS> = Vec::new();
-    if bis.is_empty() {
-        return zs_list;
-    }
-
-    for bi in bis.iter().cloned() {
-        if zs_list.is_empty() {
-            zs_list.push(ZS::new(vec![bi]));
-            continue;
-        }
-
-        let last_zs = zs_list.pop().unwrap();
-        if last_zs.bis.is_empty() {
-            let mut new_bis = last_zs.bis;
-            new_bis.push(bi);
-            zs_list.push(ZS::new(new_bis));
-        } else if (bi.direction == Direction::Up && bi.get_high() < last_zs.zd)
-            || (bi.direction == Direction::Down && bi.get_low() > last_zs.zg)
-        {
-            zs_list.push(last_zs);
-            zs_list.push(ZS::new(vec![bi]));
-        } else {
-            let mut new_bis = last_zs.bis;
-            new_bis.push(bi);
-            zs_list.push(ZS::new(new_bis));
-        }
-    }
-    zs_list
 }
 
 pub fn unique_prices_from_bars(bars: &[RawBar]) -> Vec<f64> {

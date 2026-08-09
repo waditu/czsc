@@ -1055,7 +1055,7 @@ mod tests {
         }
 
         // 验证数据量限制是否生效（max_count = 5）
-        for (_, bars) in bg.freq_bars.iter() {
+        for bars in bg.freq_bars.values() {
             assert!(bars.read().len() <= 5, "K线数量超过了max_count限制");
         }
 

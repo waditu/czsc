@@ -66,11 +66,15 @@ pub use czsc_trader::strategy::{JsonStrategy, Strategy, unique_signals_across};
 
 // ── 顶层 re-export：常用类型直接挂在 czsc::* ────────────────────────────────
 pub use czsc_core::analyze::CZSC;
+pub use czsc_core::analyze::utils::{
+    GapInfo, check_gap_info, get_zs_seq, is_bis_down, is_bis_up, is_symmetry_zs,
+};
 pub use czsc_core::objects::{
     bar::{NewBar, RawBar, Symbol},
     bi::BI,
     direction::Direction,
     event::Event,
+    fake_bi::{FakeBI, create_fake_bis},
     freq::Freq,
     fx::FX,
     mark::Mark,
