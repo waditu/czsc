@@ -13,7 +13,11 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+import time
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -46,10 +50,50 @@ def _payload_dict(c: CZSC) -> dict[str, Any]:
     return _data.build_from_czsc(c).to_dict()
 
 
+_SHANGHAI_TZ = timezone(timedelta(hours=8))
+
+
+def _shanghai_naive_to_utc_epoch(dt: datetime) -> int:
+    """将无时区中国交易时间转换为固定 UTC epoch，不读取宿主时区。"""
+    return int(dt.replace(tzinfo=_SHANGHAI_TZ).timestamp())
+
+
+@contextmanager
+def _host_timezone(tz: str):
+    """临时切换宿主时区，验证时间转换不依赖进程环境。"""
+    original_tz = os.environ.get("TZ")
+    os.environ["TZ"] = tz
+    time.tzset()
+    try:
+        yield
+    finally:
+        if original_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = original_tz
+        time.tzset()
+
+
 # ---------- L1 数据准备层 -----------------------------------------------------
 
 
 class TestBuildFromCzsc:
+    @pytest.mark.skipif(not hasattr(time, "tzset"), reason="requires time.tzset")
+    def test_naive_datetime_uses_fixed_utc_epoch_across_host_timezones(self):
+        """无时区中国交易时间的 UTC epoch 不得受宿主 TZ 影响。"""
+        dt = datetime(2024, 1, 2, 9, 30)
+        expected = 1_704_159_000
+
+        for host_tz in ("UTC", "Asia/Shanghai"):
+            with _host_timezone(host_tz):
+                assert _data._ts(dt) == expected
+
+    def test_aware_datetime_keeps_its_own_timezone_semantics(self):
+        """带时区输入必须保留其时区语义，不应按中国交易时间重解释。"""
+        dt = datetime(2024, 1, 2, 9, 30, tzinfo=timezone(timedelta(hours=-5)))
+
+        assert _data._ts(dt) == 1_704_205_800
+
     def test_candle_count_equals_bars_raw(self, czsc_30m: CZSC):
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
@@ -60,7 +104,7 @@ class TestBuildFromCzsc:
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
         # 同 time 去重后两边数量应一致（czsc 不会出现真同 time 重复 FX）
-        fx_pairs = sorted({(int(fx.dt.timestamp()), float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0])
+        fx_pairs = sorted({(_shanghai_naive_to_utc_epoch(fx.dt), float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0])
         assert len(pane.main.fx_line) == len({t for t, _ in fx_pairs})
         # 时间严格升序
         times = [pt["time"] for pt in pane.main.fx_line]

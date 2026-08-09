@@ -10,6 +10,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from typing import Any, TypedDict, cast
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -102,9 +103,14 @@ class ChartPayload:
 # -- 构造逻辑 ------------------------------------------------------------------
 
 
+_CHINA_TIMEZONE = ZoneInfo("Asia/Shanghai")
+
+
 def _ts(dt: Any) -> int:
-    """pd.Timestamp / datetime → unix 秒整数。"""
+    """将时间转换为 UTC epoch；无时区输入按中国交易时间解释。"""
     if hasattr(dt, "timestamp"):
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=_CHINA_TIMEZONE)
         return int(dt.timestamp())
     raise TypeError(f"unsupported dt type: {type(dt)!r}")
 

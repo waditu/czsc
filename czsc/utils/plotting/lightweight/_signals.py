@@ -7,10 +7,11 @@ Streamlit 端共用同一份序列化结果。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import pandas as pd
 
+from ._data import _ts
 from ._theme import classify_direction, direction_color
 
 __all__ = [
@@ -66,9 +67,8 @@ def detect_transitions(
         if cur != prev_value:
             v1 = cur.split("_", 1)[0]
             direction = classify_direction(v1)
-            dt = row["dt"]
-            # 兼容 pd.Timestamp / datetime / ISO 字符串三种 dt 表达
-            ts = int(dt.timestamp()) if hasattr(dt, "timestamp") else int(pd.Timestamp(dt).timestamp())
+            dt: Any = row["dt"]
+            ts = _ts(pd.Timestamp(dt))
             markers.append(
                 SignalMarker(
                     time=ts,
