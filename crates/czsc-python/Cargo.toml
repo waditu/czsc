@@ -46,8 +46,8 @@ required-features = ["stub-gen"]
 czsc-core      = { workspace = true, features = ["python"] }
 czsc-ta        = { workspace = true, features = ["rust-numpy"] }
 czsc-utils     = { workspace = true, features = ["python"] }
-czsc-signals   = { workspace = true }
-czsc-trader    = { workspace = true }
+czsc-signals   = { workspace = true, features = ["python"] }
+czsc-trader    = { workspace = true, features = ["python"] }
 czsc-derive    = { workspace = true }
 anyhow         = "1"
 chrono         = { workspace = true }

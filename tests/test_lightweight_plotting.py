@@ -104,7 +104,9 @@ class TestBuildFromCzsc:
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
         # 同 time 去重后两边数量应一致（czsc 不会出现真同 time 重复 FX）
-        fx_pairs = sorted({(_shanghai_naive_to_utc_epoch(fx.dt), float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0])
+        fx_pairs = sorted(
+            {(_shanghai_naive_to_utc_epoch(fx.dt), float(fx.fx)) for fx in czsc_30m.fx_list}, key=lambda x: x[0]
+        )
         assert len(pane.main.fx_line) == len({t for t, _ in fx_pairs})
         # 时间严格升序
         times = [pt["time"] for pt in pane.main.fx_line]

@@ -240,7 +240,7 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 
 ## 可视化（HTML 输出）
 
-本次清理 起项目不再依赖 streamlit，可视化统一以 plotly + lightweight-charts 输出 HTML：
+可视化统一以 plotly + lightweight-charts 输出 HTML：
 
 | 模块 | 功能 |
 |------|------|
@@ -249,7 +249,7 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 | `czsc.utils.plotting.lightweight` | lightweight-charts 自包含 HTML，多周期联立 + 信号叠加 |
 | 累计收益 / 回撤 / 月度热力图 / 综合回测概览 | 改用 `wbt.generate_backtest_report` 或直接 plotly，见 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md) |
 
-如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入即可。从 1.x 升级请参考 [`docs/migration/cleanup-non-czsc-core.md`](docs/migration/cleanup-non-czsc-core.md)。
+使用 `plot_czsc`、`plot_czsc_trader` 或 `plot_czsc_signals` 生成自包含 HTML 后，可直接在浏览器中打开。
 
 
 ## 相关项目（生态依赖）

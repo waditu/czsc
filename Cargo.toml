@@ -44,14 +44,16 @@ serde         = { version = "1", features = ["derive", "rc"] }
 #   - version：`cargo publish` 时按 version 解析 crates.io 上的依赖
 # 业务 crate 用 `{ workspace = true }` 引用，避免在每个 Cargo.toml
 # 重复维护版本号；workspace.package.version 升级一次，全部跟随。
-czsc               = { path = "crates/czsc",               version = "1.0.0-rc.8" }
-czsc-core          = { path = "crates/czsc-core",          version = "1.0.0-rc.8" }
-czsc-utils         = { path = "crates/czsc-utils",         version = "1.0.0-rc.8" }
-czsc-ta            = { path = "crates/czsc-ta",            version = "1.0.0-rc.8" }
-czsc-signals       = { path = "crates/czsc-signals",       version = "1.0.0-rc.8" }
-czsc-trader        = { path = "crates/czsc-trader",        version = "1.0.0-rc.8" }
-czsc-signal-macros = { path = "crates/czsc-signal-macros", version = "1.0.0-rc.8" }
-czsc-derive        = { path = "crates/czsc-derive",        version = "1.0.0-rc.8" }
+# 发布产物之间必须精确锁定同一版本，避免 Cargo 将 prerelease 解析为更高的 stable。
+# 版本 bump 时，由 release workflow 同步替换本段全部版本号。
+czsc               = { path = "crates/czsc",               version = "=1.0.0-rc.8" }
+czsc-core          = { path = "crates/czsc-core",          version = "=1.0.0-rc.8" }
+czsc-utils         = { path = "crates/czsc-utils",         version = "=1.0.0-rc.8" }
+czsc-ta            = { path = "crates/czsc-ta",            version = "=1.0.0-rc.8" }
+czsc-signals       = { path = "crates/czsc-signals",       version = "=1.0.0-rc.8" }
+czsc-trader        = { path = "crates/czsc-trader",        version = "=1.0.0-rc.8" }
+czsc-signal-macros = { path = "crates/czsc-signal-macros", version = "=1.0.0-rc.8" }
+czsc-derive        = { path = "crates/czsc-derive",        version = "=1.0.0-rc.8" }
 
 [profile.release]
 lto           = true

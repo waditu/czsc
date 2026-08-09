@@ -5,7 +5,7 @@
 > **适用版本**：czsc ≥ 1.0（Rust + PyO3 架构，Python 端不再保留缠论算法回退）。
 
 每个案例都是一个**独立的 Python 脚本**，位于 [`docs/examples/`](./examples)。
-所有脚本仅依赖 `czsc` 顶层包（`czsc.mock` 提供模拟 K 线 / 权重数据，无需外部行情源），可以直接：
+除明确标注 Tushare 的真实数据案例外，所有脚本仅依赖 `czsc` 顶层包（`czsc.mock` 提供模拟 K 线 / 权重数据，无需外部行情源），可以直接：
 
 ```bash
 # 普通脚本
@@ -91,13 +91,20 @@ uv run python docs/examples/13_lightweight_charts_html.py
 | 13 | [`13_lightweight_charts_html.py`](./examples/13_lightweight_charts_html.py) | `plot_czsc` · `plot_czsc_trader` | 缠论 K 线 + 多周期联立，自包含 HTML（无需服务端） |
 | 15 | [`15_lightweight_signals_html.py`](./examples/15_lightweight_signals_html.py) | `plot_czsc_signals` | 信号叠加版本，含 signal timeline + tooltip |
 
-### 第六组：性能基准
+### 第六组：真实数据研究（需 `TUSHARE_TOKEN`）
+
+| #  | 文件 | 核心 API | 你将看到 |
+|----|------|----------|----------|
+| 14 | [`14_tushare_event_backtest.py`](./examples/14_tushare_event_backtest.py) | `get_raw_bars` · `CzscStrategyBase` · `WeightBacktest` | 单标的 30 分钟 Event 策略回测与 HTML 报告 |
+| 18 | [`18_tushare_daily_event_universe.py`](./examples/18_tushare_daily_event_universe.py) | `generate_czsc_signals` · `adjust_holding_weights` · `WeightBacktest` | 日线股票池事件选股与 HTML 报告 |
+
+运行真实数据案例前，请设置 `TUSHARE_TOKEN`；缺少令牌时脚本会明确退出，不影响本地 mock 案例验证。
+
+### 第七组：性能基准
 
 | #  | 文件 | 核心 API | 你将看到 |
 |----|------|----------|----------|
 | 17 | [`17_perf_benchmark.py`](./examples/17_perf_benchmark.py) | `CZSC` · `CzscTrader` | 20 年 5 分钟 K 线下 CZSC / CzscTrader 两条路径的吞吐量基准（纯文本输出） |
-
-> 本次清理 起原 streamlit 交互面板 10/11/12/14/16 已删除；如需 streamlit 集成，调用方自行 `pip install streamlit` 后用 `st.components.v1.html(plot_czsc(c, output='html'))` 嵌入 HTML 即可。详见 [`migration/cleanup-non-czsc-core.md`](./migration/cleanup-non-czsc-core.md)。
 
 ---
 
@@ -176,7 +183,7 @@ uv run python docs/examples/13_lightweight_charts_html.py
 
 ### 4.2 信号函数命名
 
-- Rust 端注册的信号函数名是简短形式（**不带** `czsc.signals.` 前缀；`#[signal]` 宏自动注册，不再使用 `V<yyMMdd>` 版本后缀），
+- Rust 端注册的信号函数名是简短形式；`#[signal]` 宏自动注册，不再使用 `V<yyMMdd>` 版本后缀，
   例如：`cxt_bi_status_V230101`、`bar_zdt_V230331`、`tas_ma_base_V221101`。
 - 完整列表：`czsc._native.signals.bar.list_signal_names()`
   （`bar / cxt / tas / vol / pressure / obv / cvolp` 七个子模块入口都返回**全集**）。
@@ -208,9 +215,9 @@ uv run python docs/examples/13_lightweight_charts_html.py
 
 ---
 
-## 5. 已知兼容性提示
+## 5. 可视化兼容性提示
 
-> 本次清理 后已删除 `czsc.svc` 与 streamlit 依赖，相关示例与组件提示一并移除；如需可视化请直接使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
+> 可视化统一使用 `czsc.utils.plotting.*`（plotly + HTML）或 `czsc.utils.plotting.lightweight.*`（lightweight-charts）。
 
 ---
 

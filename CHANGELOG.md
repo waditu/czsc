@@ -22,13 +22,13 @@
   - 新增 `CZSC.min_bi_len` getter；pickle (`__reduce__`) 现在保留 `min_bi_len`。
   - 回归测试 `min_bi_len_affects_bi_count` 锁定"更大阈值产出更少/更长的笔"。
 
-### Notes
+### Fixed
 
-- **1.0.0-rc.8 在纯 Rust 下游不可用（PyPI 用户不受影响）**：发布后验证发现 cargo 用户 `cargo add czsc@=1.0.0-rc.8` 无法编译。两个根因：
-  1. **SemVer prerelease 解析坑**：crates.io 上同时存在 `czsc-* 1.0.0` (stable) 与 `1.0.0-rc.*`，workspace 内部 dep 写 `version = "1.0.0-rc.8"`（不带 `=`）会被 cargo 解析到 1.0.0 stable（按 SemVer，stable > prerelease），导致 polars 0.42 与 0.52 双版本冲突。已对 8 个 czsc-* 1.0.0 stable 执行 `cargo yank` 缓解。
-  2. **pyo3 / pyo3-stub-gen / numpy 是无条件硬依赖**（不在 feature gate 后），纯 Rust 用户也被强制拉 PyO3 工具链，撞 pyo3-stub-gen 0.22.x ↔ pyo3 0.28.3 的 `PyEncodingWarning` 兼容性 bug。
-- **rc.9 计划**：(a) 把 4 个 czsc-* crate 的 pyo3 系列 dep 改 `optional = true` + 引入 `python` feature gate；(b) workspace dep 改 `version = "=1.0.0-rc.9"` 严格锁定 prerelease；(c) `docs/release_checklist.md` §7 已升级"cargo add 可解析" → "cargo check 真编"，下次再踩同样坑被立即拦下。
-- **PyPI 1.0.0rc8 完全可用**，Python 用户无需做任何处理。
+- **Rust 发布依赖图**：workspace 内部 `czsc-*` 依赖改为严格 `=<version>` 锁定；`czsc-signals` 与 `czsc-trader` 仅在 Python 构建路径启用 `czsc-core/python`，纯 Rust 用户不再被强制拉入 PyO3 工具链。
+
+### Documentation
+
+- 真实数据 Tushare 案例已补入案例索引，并明确其 `TUSHARE_TOKEN` 前置条件；发布自检只检查已删除模块路径，保留有效的兼容性说明。
 
 ---
 
