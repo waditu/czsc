@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-08-09
+
 ### Added
 
 - **公开缠论结构分析链 API**：新增 `create_fake_bis`、`get_zs_seq`、`is_symmetry_zs`、`is_bis_up`、`is_bis_down`、`check_gap_info`，并新增基于 `finished_bis` 计算的 `CZSC.zs_list` 属性。Python 顶层、`czsc._native` 类型桩和 Rust `czsc` facade 同步暴露。
@@ -408,6 +410,7 @@ fig.show()
   bump `Cargo.toml [workspace.package].version` 即可，pyproject.toml 自动同步。
 - 旧 Python 实现可在 `v0.9.69` tag 或 [0.9.X 分支](https://github.com/waditu/czsc/tree/v0.9.69) 查看。
 
+[1.0.1]: https://github.com/waditu/czsc/compare/v1.0.0-rc.8...v1.0.1
 [1.0.0-rc.5]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.5
 [1.0.0-rc.5]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.5
 [1.0.0-rc.4]: https://github.com/waditu/czsc/releases/tag/v1.0.0-rc.4
