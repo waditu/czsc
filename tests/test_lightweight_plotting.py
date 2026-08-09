@@ -88,6 +88,12 @@ class TestBuildFromCzsc:
             with _host_timezone(host_tz):
                 assert _data._ts(dt) == expected
 
+    def test_aware_datetime_keeps_its_own_timezone_semantics(self):
+        """带时区输入必须保留其时区语义，不应按中国交易时间重解释。"""
+        dt = datetime(2024, 1, 2, 9, 30, tzinfo=timezone(timedelta(hours=-5)))
+
+        assert _data._ts(dt) == 1_704_205_800
+
     def test_candle_count_equals_bars_raw(self, czsc_30m: CZSC):
         payload = _data.build_from_czsc(czsc_30m)
         pane = payload.panes[0]
