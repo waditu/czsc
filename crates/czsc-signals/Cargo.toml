@@ -17,7 +17,7 @@ name = "czsc_signals"
 path = "src/lib.rs"
 
 [dependencies]
-czsc-core           = { workspace = true, features = ["python"] }
+czsc-core           = { workspace = true }
 czsc-ta             = { workspace = true }
 czsc-signal-macros  = { workspace = true }
 serde               = { workspace = true }
@@ -26,6 +26,9 @@ anyhow              = "1.0"
 tracing             = "0.1"
 inventory           = "0.3"
 chrono              = { version = "0.4", default-features = false, features = ["clock"] }
+
+[features]
+python = ["czsc-core/python"]
 
 [dev-dependencies]
 criterion = "0.8"

@@ -22,22 +22,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import czsc
-import tushare as ts
-
-# ---------- Tushare 配置（必须在 import ts_connector 之前） ----------
-TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
-if not TUSHARE_TOKEN:
-    raise ValueError(
-        "请先设置 Tushare token: export TUSHARE_TOKEN='your_token'\n"
-        "注册地址: https://tushare.pro/register"
-    )
-ts.set_token(TUSHARE_TOKEN)
-czsc.set_url_token(token=TUSHARE_TOKEN, url="http://api.tushare.pro")
-
 import pandas as pd
+import tushare as ts
 from wbt import generate_backtest_report
 
+import czsc
 from czsc import (
     CzscStrategyBase,
     Event,
@@ -46,17 +35,20 @@ from czsc import (
 )
 from czsc.connectors.ts_connector import get_raw_bars
 
+# ---------- Tushare 配置（执行 main 前必须设置） ----------
+TUSHARE_TOKEN = os.environ.get("TUSHARE_TOKEN", "")
+
 # 所有案例统一把产物落到 _output/
 OUTPUT_DIR = Path(__file__).resolve().parent / "_output" / "14_tushare_event_backtest"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # 全局回测参数
-SYMBOL = "000001.SZ#E"   # 平安银行；可替换为任意 A 股 / ETF
+SYMBOL = "000001.SZ#E"  # 平安银行；可替换为任意 A 股 / ETF
 BASE_FREQ = "30分钟"
 SDT_DATA = "20200101"
 EDT_DATA = "20240601"
-SDT_BT = "2020-07-01"    # 预留半年给 CZSC 缓存中枢 / 笔
-FEE_RATE = 0.0002         # 单边 2 BP
+SDT_BT = "2020-07-01"  # 预留半年给 CZSC 缓存中枢 / 笔
+FEE_RATE = 0.0002  # 单边 2 BP
 
 # 平仓事件：笔向下；涨停过滤：开多禁开
 _EXIT_SIG_BI_DOWN = f"{BASE_FREQ}_D1_表里关系V230101_向下_任意_任意_0"
@@ -68,21 +60,25 @@ _NOT_SIG_ZHANGTING = f"{BASE_FREQ}_D1_涨跌停V230331_涨停_任意_任意_0"
 
 def _build_exit_event() -> Event:
     """统一的平多事件：30 分钟笔向下即平。"""
-    return Event.load({
-        "name": "笔向下_平多",
-        "operate": "平多",
-        "signals_all": [_EXIT_SIG_BI_DOWN],
-    })
+    return Event.load(
+        {
+            "name": "笔向下_平多",
+            "operate": "平多",
+            "signals_all": [_EXIT_SIG_BI_DOWN],
+        }
+    )
 
 
 def build_single_event_position(symbol: str) -> Position:
     """单 Event 版本：纯笔三买（cxt_third_buy_V230228）开多 + 笔向下平多。"""
-    open_event = Event.load({
-        "name": "三买V230228_开多",
-        "operate": "开多",
-        "signals_all": [f"{BASE_FREQ}_D1_三买辅助V230228_三买_任意_任意_0"],
-        "signals_not": [_NOT_SIG_ZHANGTING],
-    })
+    open_event = Event.load(
+        {
+            "name": "三买V230228_开多",
+            "operate": "开多",
+            "signals_all": [f"{BASE_FREQ}_D1_三买辅助V230228_三买_任意_任意_0"],
+            "signals_not": [_NOT_SIG_ZHANGTING],
+        }
+    )
     return Position(
         name="30min_三买_single",
         symbol=symbol,
@@ -98,24 +94,30 @@ def build_single_event_position(symbol: str) -> Position:
 def build_multi_event_position(symbol: str) -> Position:
     """多 Event 版本：同 Position 内放 3 个 open Event，OR 语义触发。"""
     opens = [
-        Event.load({
-            "name": "三买V230228_开多",
-            "operate": "开多",
-            "signals_all": [f"{BASE_FREQ}_D1_三买辅助V230228_三买_任意_任意_0"],
-            "signals_not": [_NOT_SIG_ZHANGTING],
-        }),
-        Event.load({
-            "name": "三买V230318_开多",
-            "operate": "开多",
-            "signals_all": [f"{BASE_FREQ}_D1#SMA#34_BS3辅助V230318_三买_任意_任意_0"],
-            "signals_not": [_NOT_SIG_ZHANGTING],
-        }),
-        Event.load({
-            "name": "三买V230319_开多",
-            "operate": "开多",
-            "signals_all": [f"{BASE_FREQ}_D1#SMA#34_BS3辅助V230319_三买_均线新高_任意_0"],
-            "signals_not": [_NOT_SIG_ZHANGTING],
-        }),
+        Event.load(
+            {
+                "name": "三买V230228_开多",
+                "operate": "开多",
+                "signals_all": [f"{BASE_FREQ}_D1_三买辅助V230228_三买_任意_任意_0"],
+                "signals_not": [_NOT_SIG_ZHANGTING],
+            }
+        ),
+        Event.load(
+            {
+                "name": "三买V230318_开多",
+                "operate": "开多",
+                "signals_all": [f"{BASE_FREQ}_D1#SMA#34_BS3辅助V230318_三买_任意_任意_0"],
+                "signals_not": [_NOT_SIG_ZHANGTING],
+            }
+        ),
+        Event.load(
+            {
+                "name": "三买V230319_开多",
+                "operate": "开多",
+                "signals_all": [f"{BASE_FREQ}_D1#SMA#34_BS3辅助V230319_三买_均线新高_任意_0"],
+                "signals_not": [_NOT_SIG_ZHANGTING],
+            }
+        ),
     ]
     return Position(
         name="30min_三买_multi",
@@ -205,6 +207,13 @@ def run_one(tag: str, strategy: CzscStrategyBase, bars: list, sdt: str) -> dict[
 
 
 def main() -> None:
+    if not TUSHARE_TOKEN:
+        raise SystemExit(
+            "请先设置 TUSHARE_TOKEN：export TUSHARE_TOKEN='your_token'\n注册地址: https://tushare.pro/register"
+        )
+    ts.set_token(TUSHARE_TOKEN)
+    czsc.set_url_token(token=TUSHARE_TOKEN, url="http://api.tushare.pro")
+
     # 1) 用 Tushare 拉真实 30 分钟 K 线（后复权）
     print(f"[数据] 正在从 Tushare 获取 {SYMBOL} {BASE_FREQ} K 线...")
     bars = get_raw_bars(

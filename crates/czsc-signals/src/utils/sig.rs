@@ -695,7 +695,7 @@ mod tests {
         intraday_time_segment, pd_cut_last_label, weekday_cn,
     };
     use crate::params::ParamView;
-    use czsc_core::objects::bar::RawBar;
+    use czsc_core::objects::bar::RawBarBuilder;
     use serde_json::Value;
     use std::collections::HashMap;
 
@@ -776,47 +776,25 @@ mod tests {
     #[test]
     fn test_intraday_time_segment_basic() {
         use chrono::TimeZone;
-        let bars = vec![
-            RawBar {
-                symbol: "T".into(),
-                id: 1,
-                dt: chrono::Utc.with_ymd_and_hms(2024, 1, 1, 9, 30, 0).unwrap(),
-                freq: czsc_core::objects::freq::Freq::F60,
-                open: 1.0,
-                close: 1.0,
-                high: 1.0,
-                low: 1.0,
-                vol: 1.0,
-                amount: 1.0,
-                cache: Default::default(),
-            },
-            RawBar {
-                symbol: "T".into(),
-                id: 2,
-                dt: chrono::Utc.with_ymd_and_hms(2024, 1, 2, 10, 30, 0).unwrap(),
-                freq: czsc_core::objects::freq::Freq::F60,
-                open: 1.0,
-                close: 1.0,
-                high: 1.0,
-                low: 1.0,
-                vol: 1.0,
-                amount: 1.0,
-                cache: Default::default(),
-            },
-            RawBar {
-                symbol: "T".into(),
-                id: 3,
-                dt: chrono::Utc.with_ymd_and_hms(2024, 1, 3, 10, 30, 0).unwrap(),
-                freq: czsc_core::objects::freq::Freq::F60,
-                open: 1.0,
-                close: 1.0,
-                high: 1.0,
-                low: 1.0,
-                vol: 1.0,
-                amount: 1.0,
-                cache: Default::default(),
-            },
-        ];
+
+        let make_bar = |id, day, hour| {
+            RawBarBuilder::default()
+                .symbol("T")
+                .id(id)
+                .dt(chrono::Utc
+                    .with_ymd_and_hms(2024, 1, day, hour, 30, 0)
+                    .unwrap())
+                .freq(czsc_core::objects::freq::Freq::F60)
+                .open(1.0)
+                .close(1.0)
+                .high(1.0)
+                .low(1.0)
+                .vol(1.0)
+                .amount(1.0)
+                .build()
+                .unwrap()
+        };
+        let bars = vec![make_bar(1, 1, 9), make_bar(2, 2, 10), make_bar(3, 3, 10)];
         assert_eq!(intraday_time_segment(&bars, 3), Some(2));
         assert_eq!(intraday_time_segment(&bars, 4), None);
     }

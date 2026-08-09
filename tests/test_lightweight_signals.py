@@ -95,9 +95,7 @@ class TestDetectTransitions:
         df = self._df(["A_x_x_0", "A_x_x_0", "B_x_x_0", "B_x_x_0", "C_x_x_0"])
         markers = detect_transitions(df, "30分钟_D1_X", include_others=False)
         assert [m["v1"] for m in markers] == ["A", "B", "C"]
-        assert [m["time"] for m in markers] == [
-            _data._ts(df["dt"].iloc[i]) for i in (0, 2, 4)
-        ]
+        assert [m["time"] for m in markers] == [_data._ts(df["dt"].iloc[i]) for i in (0, 2, 4)]
 
     def test_marker_time_uses_chart_timestamp_contract(self):
         """signal marker 与 K 线必须复用同一无时区 UTC 转换契约。"""

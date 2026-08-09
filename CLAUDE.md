@@ -83,7 +83,7 @@ uv run --no-sync ruff check czsc/ tests/
    - 暴露 `check_bi / check_fx / check_fxs / remove_include / freq_end_time / is_trading_time` 等工具函数
    - 暴露 220+ 信号函数（Python 端 7 个子模块：bar/cvolp/cxt/obv/pressure/tas/vol；底层 `crates/czsc-signals/src/` 有 22 个 .rs 源文件，可用 `ls crates/czsc-signals/src/` 自查最新清单）
    - 暴露 `czsc._native.ta.*`（Rust TA 算子，供信号函数内部使用；本次清理 起 Python 端不再暴露 `czsc.ta` 顶层 alias）
-   - **不存在 Python 回退**：`czsc/py/` 与 `czsc/core.py` 已在 Phase H 删除；`CZSC_USE_PYTHON` 环境变量已退役（spec §3.4）
+   - **不存在 Python 回退**：核心分析统一由 Rust 实现。
 
 2. **`crates/`** - Rust workspace（9 个 crate）：
    - `czsc` / `czsc-core` / `czsc-derive` / `czsc-signals` / `czsc-trader` / `czsc-utils` / `czsc-ta`
@@ -99,7 +99,7 @@ uv run --no-sync ruff check czsc/ tests/
    - Python 端暴露 7 个子模块（bar/cvolp/cxt/obv/pressure/tas/vol）；底层 `crates/czsc-signals/src/` 有 22 个 .rs 源文件，自查命令：`ls crates/czsc-signals/src/`
    - 原 `czsc/signals/` Python 命名空间层已在 Phase J **彻底删除**
    - 通过 `czsc.traders.generate_czsc_signals` 等接口调用信号
-   - 信号解析 API：`get_signals_config` / `get_signals_freqs`（`czsc.traders`）；`SignalsParser` 类已删除
+   - 信号解析 API：`get_signals_config` / `get_signals_freqs`（`czsc.traders`）
 
 5. **`czsc/utils/`** - 工具模块（Phase J 精简后）：
    - `data/cache.py` / `io.py` / `log.py` / `kline_quality.py`：缓存、IO、日志、K 线质量校验
@@ -145,7 +145,7 @@ CZSC 支持使用 `CzscTrader` 类进行多级别联立分析，可同时分析�
 - 信号函数由 Rust 实现，位于 `crates/czsc-signals/` 中
 - 原 Python 版 `czsc/signals/` 已彻底删除（Phase J）；新增信号需在 Rust 侧开发
 - 信号解析公共 API：`get_signals_config(signals_seq)` / `get_signals_freqs(signals_seq)`（来自 `czsc.traders`）
-- `SignalsParser` 类已删除，直接使用上述两个函数
+- 直接使用上述两个函数解析信号配置。
 
 ### 数据处理最佳实践
 - 测试数据统一通过 `czsc.mock.generate_symbol_kines` 生成
@@ -156,7 +156,7 @@ CZSC 支持使用 `CzscTrader` 类进行多级别联立分析，可同时分析�
 
 ### 数据格式转换
 ```python
-# 从mock数据生成CZSC对象的正确模式（czsc.core 已删除，全部走顶层 czsc 命名空间）
+# 从 mock 数据生成 CZSC 对象（全部走顶层 czsc 命名空间）
 from czsc import CZSC, Freq, format_standard_kline
 from czsc.mock import generate_symbol_kines
 
@@ -192,7 +192,6 @@ czsc_obj = CZSC(bars)
 - `CZSC_MIN_BI_LEN` / `czsc_min_bi_len`：最小笔长度，默认 6（来自 `czsc.envs`）
 - `CZSC_MAX_BI_NUM` / `czsc_max_bi_num`：最大笔数量，默认 50（来自 `czsc.envs`）
 - 大小写两种写法都接受，大写优先；构造器显式参数优先级最高
-- `CZSC_USE_PYTHON` 已**废弃**（spec §3.4，Python 回退路径已删，所有调用统一走 Rust）
 - 缓存目录自动管理，具备大小监控功能
 
 ## 缓存管理
@@ -205,13 +204,13 @@ czsc_obj = CZSC(bars)
 
 ## 可视化（Plotly + HTML）
 
-本次清理 起项目不再依赖 streamlit。所有可视化统一由 plotly 实现，输出方式：
+所有可视化统一由 plotly 实现，输出方式：
 
 - `czsc.utils.plotting.kline.KlineChart` / `plot_czsc_chart`：单周期 K 线 + 缠论结构（plotly Figure，可 `fig.show()` 或写 HTML）
 - `czsc.utils.plotting.weight.*`：权重时序图（plotly）
 - `czsc.utils.plotting.lightweight.plot_czsc{,_trader,_signals}`：lightweight-charts 自包含 HTML，多周期联立 + 信号叠加
 
-如需在 streamlit 中嵌入，调用方自行 `pip install streamlit` 后 `st.components.v1.html(plot_czsc(c, output='html'))` 即可（`czsc.svc` 已删除，参见 `docs/migration/cleanup-non-czsc-core.md`）。
+使用 `plot_czsc`、`plot_czsc_trader` 或 `plot_czsc_signals` 生成自包含 HTML 后，可直接在浏览器中打开。
 
 ## Rust/Python 混合架构
 
@@ -266,7 +265,7 @@ czsc_obj = CZSC(bars)
 
 ## 示例代码和用例
 
-项目维护的示例代码集中在 `docs/examples/` 下（如 `08_weight_backtest.py`、`13_lightweight_charts_html.py`、`15_lightweight_signals_html.py` 等）；历史上的 streamlit 示例（10/11/12/14/16）已在 本次清理 删除，HTML 路径示例（13/15）完整保留。
+项目维护的示例代码集中在 `docs/examples/` 下（如 `08_weight_backtest.py`、`13_lightweight_charts_html.py`、`15_lightweight_signals_html.py` 等）；HTML 路径示例（13/15）完整保留。
 
 ## 项目特色和最佳实践
 
@@ -275,7 +274,7 @@ czsc_obj = CZSC(bars)
 3. **系统化信号体系**: 信号→事件→交易的完整流程
 4. **丰富的数据源**: 支持A股、期货、数字货币等多市场
 5. **完善的测试框架**: 统一的模拟数据生成和测试规范
-6. **可视化工具**: Plotly + lightweight-charts HTML 输出，无 streamlit 强依赖
+6. **可视化工具**: Plotly + lightweight-charts HTML 输出
 7. **策略研究工具**: CTA框架、参数优化、回测分析一体化
 8. **代码质量优化**: 遵循 DRY、KISS、SOLID 原则
    - 使用模块级常量消除魔法值
