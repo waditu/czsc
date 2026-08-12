@@ -43,6 +43,26 @@ fn synthetic_zigzag(n: usize) -> Vec<RawBar> {
         .collect()
 }
 
+fn seeded_bars(seed: u64, n: usize) -> Vec<RawBar> {
+    let mut state = seed;
+    let mut price = 100.0;
+    (0..n)
+        .map(|i| {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            let delta = ((state >> 32) as i32 % 200) as f64 / 100.0;
+            price += delta;
+            let spread = 0.5 + ((state >> 48) % 100) as f64 / 100.0;
+            rb(
+                1_700_000_000 + (i as i64) * 1800,
+                price - 0.1,
+                price + 0.1,
+                price + spread,
+                price - spread,
+            )
+        })
+        .collect()
+}
+
 #[test]
 fn new_populates_symbol_and_freq() {
     let bars = synthetic_zigzag(50);
@@ -104,6 +124,36 @@ fn analyzer_clones_independently() {
     let d = c.clone();
     assert_eq!(d.bi_list.len(), c.bi_list.len());
     assert_eq!(&*d.symbol, &*c.symbol);
+}
+
+#[test]
+fn fx_list_deduplicates_shared_endpoint_between_finished_bis() {
+    let c = CZSC::new(seeded_bars(1, 80), 50, 6);
+    assert!(c.bi_list.len() >= 2);
+
+    let shared = c.bi_list[0].fxs.last().unwrap();
+    assert_eq!(shared, &c.bi_list[1].fxs[1]);
+
+    let fxs = c.get_fx_list();
+    assert_eq!(fxs.iter().filter(|fx| fx.dt == shared.dt).count(), 1);
+    assert_eq!(fxs.iter().find(|fx| fx.dt == shared.dt).unwrap(), shared);
+    assert!(fxs.windows(2).all(|pair| pair[0].dt < pair[1].dt));
+    assert!(fxs.windows(2).all(|pair| pair[0].mark != pair[1].mark));
+}
+
+#[test]
+fn fx_list_deduplicates_bi_to_ubi_boundary_and_keeps_later_ubi_fx() {
+    let c = CZSC::new(seeded_bars(1, 26), 50, 6);
+    let last_bi_fx = c.bi_list.last().unwrap().fxs.last().unwrap();
+    let ubi_fxs = c.get_ubi_fxs().unwrap();
+    assert_eq!(ubi_fxs.first().unwrap().dt, last_bi_fx.dt);
+    let later_ubi_fx = ubi_fxs.iter().find(|fx| fx.dt > last_bi_fx.dt).unwrap();
+
+    let fxs = c.get_fx_list();
+    assert_eq!(fxs.iter().filter(|fx| fx.dt == last_bi_fx.dt).count(), 1);
+    assert!(fxs.iter().any(|fx| fx == later_ubi_fx));
+    assert_eq!(fxs.last().unwrap(), later_ubi_fx);
+    assert!(fxs.windows(2).all(|pair| pair[0].dt < pair[1].dt));
 }
 
 /// min_bi_len 必须真正作用于成笔逻辑：更大的阈值会过滤掉更短的笔，

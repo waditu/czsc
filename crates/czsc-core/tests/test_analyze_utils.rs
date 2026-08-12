@@ -75,6 +75,44 @@ fn check_fxs_extracts_fx_from_sequence() {
 }
 
 #[test]
+fn check_fxs_keeps_first_of_adjacent_tops() {
+    let bars = vec![
+        nb(1, 10.0, 0.0),
+        nb(2, 12.0, 2.0),
+        nb(3, 11.0, 1.0),
+        nb(4, 11.5, 0.5),
+        nb(5, 13.0, 3.0),
+        nb(6, 10.0, 0.0),
+    ];
+
+    let fxs = check_fxs(&bars);
+
+    assert_eq!(fxs.len(), 1);
+    assert_eq!(fxs[0].mark, Mark::G);
+    assert_eq!(fxs[0].dt, Utc.timestamp_opt(2, 0).unwrap());
+    assert!(fxs.windows(2).all(|pair| pair[0].mark != pair[1].mark));
+}
+
+#[test]
+fn check_fxs_keeps_first_of_adjacent_bottoms() {
+    let bars = vec![
+        nb(1, 12.0, 2.0),
+        nb(2, 10.0, 0.0),
+        nb(3, 11.0, 1.0),
+        nb(4, 10.5, 1.5),
+        nb(5, 9.0, -1.0),
+        nb(6, 12.0, 2.0),
+    ];
+
+    let fxs = check_fxs(&bars);
+
+    assert_eq!(fxs.len(), 1);
+    assert_eq!(fxs[0].mark, Mark::D);
+    assert_eq!(fxs[0].dt, Utc.timestamp_opt(2, 0).unwrap());
+    assert!(fxs.windows(2).all(|pair| pair[0].mark != pair[1].mark));
+}
+
+#[test]
 fn check_bi_returns_none_for_monotone_sequence() {
     // 严格单调递增序列既无顶分型也无底分型，不满足笔的识别条件
     let bars: Vec<NewBar> = (0..6)
