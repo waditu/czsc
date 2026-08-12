@@ -269,7 +269,7 @@ pub fn check_fxs<B: AsRef<NewBar>>(bars: &[B]) -> Vec<FX> {
         {
             // 与Python版本保持一致：过滤重复的相同标记分型
             // 默认情况下，fxs本身是顶底交替的，但是对于一些特殊情况下不是这样; 临时强制要求fxs序列顶底交替
-            if fxs.len() >= 2 && fx1.mark == fxs.last().unwrap().mark {
+            if !fxs.is_empty() && fx1.mark == fxs.last().unwrap().mark {
                 eprintln!(
                     "check_fxs错误: {}，{:?}，{:?}",
                     k2.as_ref().dt,

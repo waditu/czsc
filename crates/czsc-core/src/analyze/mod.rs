@@ -146,9 +146,13 @@ impl CZSC {
 
     /// 分型列表，包括 bars_ubi 中的分型
     pub fn get_fx_list(&self) -> Vec<FX> {
-        let mut fxs = Vec::new();
+        let mut fxs: Vec<FX> = Vec::new();
         for bi_ in self.bi_list.iter() {
-            fxs.extend_from_slice(&bi_.fxs[1..]);
+            for x in &bi_.fxs[1..] {
+                if fxs.is_empty() || x.dt > fxs.last().unwrap().dt {
+                    fxs.push(x.clone());
+                }
+            }
         }
 
         if let Some(ubi_fxs) = self.get_ubi_fxs() {
