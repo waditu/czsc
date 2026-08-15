@@ -11,6 +11,12 @@
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
 **[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
 
+## 大模型量化策略研究平台（内测）
+
+> **胜可知量化研究平台正在内测**：使用大模型辅助量化策略研究，当前重点支持时序量价择时策略。注册即赠 500 元使用额度，邀请码：`5862EDBH2H9CDTGZ`。
+
+**[立即注册](https://quant.shengkezhi.com/)** | 新手入门：[使用路线](https://docs.shengkezhi.com/new-user-roadmap) · [研究方法](https://docs.shengkezhi.com/research-methodology) | [使用案例](https://s0cqcxuy3p.feishu.cn/minutes/obcn6m8m44515zvn24ltmu3y) | [产品介绍](https://www.shengkezhi.com/)
+
 > **1.0.X 版本开始，缠论核心算法（分型、笔、中枢等）已全部迁移到 Rust 实现，通过 PyO3 扩展（`czsc._native`）暴露给 Python。** 需要了解旧 Python 实现逻辑的，可查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。
 
 > [czsc_skills](https://github.com/zengbin93/czsc_skills)
