@@ -11,13 +11,17 @@
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
 **[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
 
-<div align="center">
+<table width="100%">
+  <tr>
+    <td align="center">
   <strong>胜可知 · 大模型量化策略研究平台（内测）</strong><br>
   <sub>使用大模型辅助量化策略研究，当前重点支持时序量价择时策略</sub><br><br>
   <a href="https://quant.shengkezhi.com/"><img alt="立即注册 · 领取 500 元额度" src="https://img.shields.io/static/v1?label=%E7%AB%8B%E5%8D%B3%E6%B3%A8%E5%86%8C&message=%E9%A2%86%E5%8F%96%20500%20%E5%85%83%E9%A2%9D%E5%BA%A6&color=2ea44f&style=for-the-badge"></a><br>
   <sub>邀请码：<code>5862EDBH2H9CDTGZ</code></sub><br><br>
   <a href="https://docs.shengkezhi.com/new-user-roadmap">新手路线</a> · <a href="https://docs.shengkezhi.com/research-methodology">研究方法</a> · <a href="https://s0cqcxuy3p.feishu.cn/minutes/obcn6m8m44515zvn24ltmu3y">使用案例</a> · <a href="https://www.shengkezhi.com/">产品介绍</a>
-</div>
+    </td>
+  </tr>
+</table>
 
 > **1.0.X 版本开始，缠论核心算法（分型、笔、中枢等）已全部迁移到 Rust 实现，通过 PyO3 扩展（`czsc._native`）暴露给 Python。** 需要了解旧 Python 实现逻辑的，可查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。
 
