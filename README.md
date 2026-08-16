@@ -11,7 +11,7 @@
 **[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
 **[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
 
-<table width="100%">
+<table>
   <tr>
     <td align="center">
   <strong>胜可知 · 大模型量化策略研究平台（内测）</strong><br>
