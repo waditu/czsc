@@ -29,7 +29,8 @@
     --max-bars N         增量处理 N 根后退出，默认一直运行
     --duration SECONDS   运行指定秒数后退出，默认一直运行
 
-按 Ctrl+C 或收到 SIGTERM 可随时安全退出（退避等待也会被立刻打断）；断线会按 1s → 2s → … →
+按 Ctrl+C 或收到 SIGTERM 可随时安全退出（退避等待也会被立刻打断）：退出提示会立刻打印，
+随后才关闭连接，且关闭握手最多等 2 秒（再按一次 Ctrl+C 会直接强制退出）；断线会按 1s → 2s → … →
 60s 的指数退避自动重连，重连后的第一根收盘 K 线会触发 REST 回补；回补失败会告警并跳过，
 留下缺口（不会自动重试）。
 连续 10 根 K 线处理失败会判定为持续性故障并以退出码 1 退出；缺少 ``websockets`` 这类永久性
@@ -77,12 +78,14 @@ _DT_FMT = "%Y-%m-%d %H:%M:%S"
 _WARN = "警告："
 _BANNER = "仅公开行情，不接账户、不保存密钥、不下单"
 _CTRL_C_MSG = "收到 Ctrl+C，安全退出"
+_CTRL_C_AGAIN_MSG = "再次收到 Ctrl+C，强制退出"
 _SERVER_CLOSED_MSG = "连接已被服务端关闭"
 _CONNECTING_TMPL = "连接 {symbol}@kline_{interval} …"
 
 RECONNECT_INITIAL_S = 1.0  # 断线重连的初始退避
 RECONNECT_MAX_S = 60.0  # 退避上限
 RECV_TIMEOUT_S = 90.0  # 1m kline 每 ~2 秒推一次，静默超过 90 秒视为死连接
+CLOSE_TIMEOUT_S = 2.0  # 关闭握手上限：websockets 默认 10 秒，退出时不值得为它干等
 MIN_LIMIT = 1  # Binance klines 单次请求根数下限
 MAX_LIMIT = 1000  # ……上限
 MAX_ENGINE_FAILURES = 10  # 连续处理失败上限：再多就不是偶发问题了
@@ -534,6 +537,7 @@ def run(
         while not should_stop():
             engine.sink(_CONNECTING_TMPL.format(symbol=engine.symbol, interval=engine.interval))
             stream: Iterator[dict[str, Any]] | None = None
+            interrupted = False
             try:
                 stream = stream_factory(engine.symbol, engine.interval)  # 建连失败也算断线，一并退避
                 for msg in stream:
@@ -562,6 +566,11 @@ def run(
                 engine.sink(f"{_SERVER_CLOSED_MSG}，{delay:g} 秒后重连")
             except (EngineFailureLimit, ImportError):
                 raise  # 引擎持续故障 / 缺依赖都是永久性问题，重连解决不了，直接抛给调用方
+            except KeyboardInterrupt:
+                # 必须赶在下面 finally 的关闭握手之前打印：握手要等最多 CLOSE_TIMEOUT_S 秒，
+                # 交给外层兜底的话用户按完 Ctrl+C 只能对着空屏幕，以为进程卡死了。
+                engine.sink(_CTRL_C_MSG)
+                interrupted = True
             except Exception as e:
                 engine.sink(f"{_WARN}连接中断，{delay:g} 秒后重连：{e!r}")
             finally:
@@ -569,8 +578,13 @@ def run(
                 if close is not None:
                     try:
                         close()  # 生成器持有 socket，必须显式关闭，不能等 GC
+                    except KeyboardInterrupt:  # 关闭握手期间又按了一次 Ctrl+C：别甩 traceback
+                        engine.sink(_CTRL_C_AGAIN_MSG if interrupted else _CTRL_C_MSG)
+                        interrupted = True
                     except Exception as e:
                         engine.sink(f"{_WARN}关闭连接失败（已忽略）：{e!r}")
+            if interrupted:  # 用局部标志而不是 finally 里 return（B012）
+                return applied
             wait_s = delay
             if duration_s is not None:  # 退避不能睡过头，否则 --duration 会被整整拖长一个退避周期
                 wait_s = min(delay, max(0.0, duration_s - (clock() - started)))
@@ -616,7 +630,7 @@ def binance_kline_stream(
         connect = connect if connect is not None else ws_connect
         closed_ok = closed_ok if closed_ok is not None else ConnectionClosedOK
 
-    with connect(stream_url(symbol, interval, url)) as ws:
+    with connect(stream_url(symbol, interval, url), close_timeout=CLOSE_TIMEOUT_S) as ws:
         while True:
             try:
                 raw = ws.recv(timeout=recv_timeout_s)

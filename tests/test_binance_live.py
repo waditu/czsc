@@ -1222,6 +1222,72 @@ def test_run_sleep_backoff_is_bounded_by_remaining_duration():
     assert sleeps == [0.5]
 
 
+class _ClosingStream:
+    """假流：先吐完 events，再抛 KeyboardInterrupt（``ends_normally`` 时改为正常结束）。
+
+    ``close()`` 往共享列表里记一笔 ``"close"``，可选地再抛 ``close_exc``。
+    """
+
+    def __init__(self, log, events=(), close_exc=None, ends_normally=False):
+        self.log = log
+        self._pending = list(events)
+        self._close_exc = close_exc
+        self._ends_normally = ends_normally
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._pending:
+            return self._pending.pop(0)
+        if self._ends_normally:
+            raise StopIteration
+        raise KeyboardInterrupt
+
+    def close(self):
+        self.log.append("close")
+        if self._close_exc is not None:
+            raise self._close_exc
+
+
+def test_run_prints_ctrl_c_prompt_before_closing_the_connection():
+    """关闭握手要几秒，提示必须先出来，否则用户按完 Ctrl+C 会以为进程卡死。"""
+    events = []
+    engine = _bootstrapped(events.append)
+    stream = _ClosingStream(events, [_ws_event(T0 + 3 * MINUTE_MS, closed=True)])
+
+    assert bl.run(engine, stream_factory=lambda s, i: stream, sleep=_forbid_sleep) == 1
+    assert events.count(bl._CTRL_C_MSG) == 1  # 内层处理过就不能再由外层兜底打一遍
+    assert events.index(bl._CTRL_C_MSG) < events.index("close")
+
+
+def test_run_survives_a_second_ctrl_c_during_close():
+    """连按两次 Ctrl+C：第二次落在关闭握手里，不能甩出 traceback。"""
+    events = []
+    engine = _bootstrapped(events.append)
+    stream = _ClosingStream(events, [_ws_event(T0 + 3 * MINUTE_MS, closed=True)], close_exc=KeyboardInterrupt())
+
+    assert bl.run(engine, stream_factory=lambda s, i: stream, sleep=_forbid_sleep) == 1
+    assert events.count(bl._CTRL_C_MSG) == 1
+    assert events[-1] == bl._CTRL_C_AGAIN_MSG
+
+
+def test_run_reports_a_first_ctrl_c_landing_in_the_close():
+    """服务端已正常断开、第一次 Ctrl+C 恰好落在关闭握手里：提示应是首次退出而非「再次」。"""
+    events = []
+    engine = _bootstrapped(events.append)
+    stream = _ClosingStream(
+        events,
+        [_ws_event(T0 + 3 * MINUTE_MS, closed=True)],
+        close_exc=KeyboardInterrupt(),
+        ends_normally=True,
+    )
+
+    assert bl.run(engine, stream_factory=lambda s, i: stream, sleep=_forbid_sleep) == 1
+    assert events[-1] == bl._CTRL_C_MSG
+    assert bl._CTRL_C_AGAIN_MSG not in events
+
+
 def test_run_returns_count_on_keyboard_interrupt_during_backoff_wait():
     lines = []
     engine = _bootstrapped(lines.append)
@@ -1331,10 +1397,12 @@ class _FakeConnect:
     def __init__(self, ws):
         self.ws = ws
         self.urls = []
+        self.kwargs = []
         self.exited = []
 
-    def __call__(self, url):
+    def __call__(self, url, **kwargs):
         self.urls.append(url)
+        self.kwargs.append(kwargs)
         return self
 
     def __enter__(self):
@@ -1365,6 +1433,15 @@ def test_binance_kline_stream_honours_custom_recv_timeout():
     gen, connect = _fake_stream([_FakeClosedOK()], recv_timeout_s=5.0)
     assert list(gen) == []
     assert connect.ws.timeouts == [5.0]
+
+
+def test_binance_kline_stream_caps_the_closing_handshake():
+    """websockets 默认 close_timeout 是 10 秒：Ctrl+C 后会白等一整个握手超时才退出。"""
+    gen, connect = _fake_stream([_FakeClosedOK()])
+
+    assert list(gen) == []
+    assert bl.CLOSE_TIMEOUT_S == 2.0
+    assert connect.kwargs == [{"close_timeout": bl.CLOSE_TIMEOUT_S}]
 
 
 def test_binance_kline_stream_propagates_timeout_error():
