@@ -249,6 +249,35 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 | `ccxt_connector.py` | CCXT | 数字货币交易所 |
 | `local_data.py` | 投研数据本地缓存 | CZSC 共享数据本地读取入口 |
 
+### 币安现货实时缠论（scripts/binance_live.py）
+
+用币安现货公开 REST 回补最近 1000 根已收盘 K 线初始化 CZSC，随后 WebSocket 仅在 K 线收盘时增量更新，自动去重、断线缺口用 REST 回补、持续追加保存 CSV，每根收盘打印一行 时间/收盘价/分型数/笔数/最近一笔方向。仅使用公开行情：不接账户、不保存密钥、不下单。
+
+```bash
+# 复用项目虚拟环境（本地开发版 czsc）
+uv run --no-sync --with websockets python scripts/binance_live.py --max-bars 3
+# PEP 723 隔离环境，依赖（含 czsc）自动从 PyPI 安装
+uv run scripts/binance_live.py
+```
+
+| 参数 | 说明 |
+|------|------|
+| `--symbol` | 交易对，自动转大写，默认 `BTCUSDT` |
+| `--interval` | K 线周期，取值 `1m` / `5m` / `15m` / `30m` / `1h` / `4h` / `1d`，默认 `1m` |
+| `--limit` | 启动时 REST 回补根数，1~1000，默认 1000 |
+| `--csv` / `--no-csv` | CSV 落盘路径，默认 `data/<SYMBOL>_<interval>.csv`；`--no-csv` 表示只在内存里分析（两者互斥） |
+| `--max-bars` | 增量处理指定根数后退出，默认一直运行 |
+| `--duration` | 运行指定秒数后退出，默认一直运行 |
+
+注意：
+
+- 时间列 `dt` 为 K 线收盘时间，tz-naive、按 UTC 解释（与 RawBar 约定一致，不做 +8h）。
+- CSV 采用 czsc 标准 K 线列 `dt,symbol,open,close,high,low,vol,amount`，跨重启累积、每次启动整份读回并原子重写，长期运行需自行归档。
+- 摘要里的 `bi` 受 `max_bi_num`（默认 50）限制会停在上限，`fx` 同样只反映当前保留窗口。
+- `Ctrl+C` / SIGTERM 均安全退出，断线后指数退避重连（1s 起、上限 60s），回补失败会告警并跳过。
+
+自动化测试见 `tests/test_binance_live.py`（全部离线，注入模拟 HTTP / WebSocket 数据）。
+
 
 ## 可视化（HTML 输出）
 

@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **币安现货实时缠论脚本** `scripts/binance_live.py`：公开 REST 回补 1000 根已收盘 K 线 + WebSocket 收盘增量更新 CZSC，自动去重、断线缺口 REST 回补、CSV 持续落盘、Ctrl+C / SIGTERM 安全退出；PEP 723 内联依赖，离线测试见 `tests/test_binance_live.py`。
+
 ## [1.0.1] — 2026-08-09
 
 ### Added

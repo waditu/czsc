@@ -133,3 +133,6 @@ scripts/auto-czsc-quant/results/
 .multica/
 .agent_context/
 .claude/skills/
+
+# scripts/binance_live.py 的实时行情落盘（根目录锚定，不影响 czsc/utils/data/ 包）
+/data/
