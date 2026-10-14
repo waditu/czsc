@@ -260,15 +260,15 @@ pub fn bar_end_v221211(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 
 /// bar_operate_span_V221111：日内时间区间过滤
 ///
-/// 参数模板：`"{freq}_T{t1}#{t2}_时间区间V221111"`
+/// 参数模板：`"{freq}_T{t1}#{t2}_时间区间"`
 ///
 /// 信号逻辑：
 /// 1. 读取最新K线时间 `HHMM`；
 /// 2. 若 `t1 <= HHMM <= t2` 判定 `是`，否则判定 `否`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_T0935#1450_时间区间V221111_是_任意_任意_0')`
-/// - `Signal('60分钟_T0935#1450_时间区间V221111_否_任意_任意_0')`
+/// - `Signal('60分钟_T0935#1450_时间区间_是_任意_任意_0')`
+/// - `Signal('60分钟_T0935#1450_时间区间_否_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `t1`：起始时间（`HHMM`），默认 `0935`；
@@ -277,7 +277,7 @@ pub fn bar_end_v221211(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "bar_operate_span_V221111",
-    template = "{freq}_T{t1}#{t2}_时间区间V221111",
+    template = "{freq}_T{t1}#{t2}_时间区间",
     opcode = "BarOperateSpanV221111",
     param_kind = "BarOperateSpanV221111"
 )]
@@ -286,7 +286,7 @@ pub fn bar_operate_span_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCac
     let t2 = params.str("t2", "1450");
     let k1 = c.freq.to_string();
     let k2 = format!("T{t1}#{t2}");
-    let k3 = "时间区间V221111";
+    let k3 = "时间区间";
     if c.bars_raw.is_empty() {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
     }
@@ -441,7 +441,7 @@ pub fn bar_vol_grow_v221112(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "bar_mean_amount_V221112",
-    template = "{freq}_D{di}K{n}B均额_{th1}至{th2}千万V221112",
+    template = "{freq}_D{di}K{n}B均额_{th1}至{th2}千万",
     opcode = "BarMeanAmountV221112",
     param_kind = "BarMeanAmountV221112"
 )]
@@ -491,7 +491,7 @@ pub fn bar_mean_amount_v221112(c: &CZSC, params: &ParamView, _cache: &mut TaCach
 #[signal(
     category = "kline",
     name = "bar_zdf_V221203",
-    template = "{freq}_D{di}{mode}_{t1}至{t2}V221203",
+    template = "{freq}_D{di}{mode}_{t1}至{t2}",
     opcode = "BarZdfV221203",
     param_kind = "BarZdfV221203"
 )]
@@ -556,7 +556,7 @@ pub fn bar_zdf_v221203(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "bar_amount_acc_V230214",
-    template = "{freq}_D{di}N{n}_累计超{t}千万V230214",
+    template = "{freq}_D{di}N{n}_累计超{t}千万",
     opcode = "BarAmountAccV230214",
     param_kind = "BarAmountAccV230214"
 )]
@@ -586,7 +586,7 @@ pub fn bar_amount_acc_v230214(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 
 /// bar_single_V230214：单K状态信号
 ///
-/// 参数模板：`"{freq}_D{di}T{t}_状态V230214"`
+/// 参数模板：`"{freq}_D{di}T{t}_状态"`
 ///
 /// 信号逻辑：
 /// 1. 倒数第 `di` 根K线，按 `close/open` 判 `阳线/阴线`；
@@ -605,7 +605,7 @@ pub fn bar_amount_acc_v230214(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 #[signal(
     category = "kline",
     name = "bar_single_V230214",
-    template = "{freq}_D{di}T{t}_状态V230214",
+    template = "{freq}_D{di}T{t}_状态",
     opcode = "BarSingleV230214",
     param_kind = "BarSingleV230214"
 )]
@@ -638,7 +638,7 @@ pub fn bar_single_v230214(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 
 /// bar_big_solid_V230215：窗口最大实体中位多空信号
 ///
-/// 参数模板：`"{freq}_D{di}N{n}_MIDV230215"`
+/// 参数模板：`"{freq}_D{di}N{n}_MID"`
 ///
 /// 信号逻辑：
 /// 1. 在窗口内找到实体最大K线；
@@ -657,7 +657,7 @@ pub fn bar_single_v230214(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 #[signal(
     category = "kline",
     name = "bar_big_solid_V230215",
-    template = "{freq}_D{di}N{n}_MIDV230215",
+    template = "{freq}_D{di}N{n}_MID",
     opcode = "BarBigSolidV230215",
     param_kind = "BarBigSolidV230215"
 )]
@@ -749,7 +749,7 @@ pub fn bar_bpm_v230227(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 
 /// bar_section_momentum_V221112：区间动量强弱与波动
 ///
-/// 参数模板：`"{freq}_D{di}K{n}B_阈值{th}BPV221112"`
+/// 参数模板：`"{freq}_D{di}K{n}B_阈值{th}BP"`
 ///
 /// 信号逻辑：
 /// 1. 区间 BP：`(last_close/first_open-1)*10000`；
@@ -769,7 +769,7 @@ pub fn bar_bpm_v230227(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "bar_section_momentum_V221112",
-    template = "{freq}_D{di}K{n}B_阈值{th}BPV221112",
+    template = "{freq}_D{di}K{n}B_阈值{th}BP",
     opcode = "BarSectionMomentumV221112",
     param_kind = "BarSectionMomentumV221112"
 )]
@@ -823,7 +823,7 @@ pub fn bar_section_momentum_v221112(
 
 /// bar_vol_bs1_V230224：量价高低点辅助
 ///
-/// 参数模板：`"{freq}_D{di}N{n}量价_BS1辅助V230224"`
+/// 参数模板：`"{freq}_D{di}N{n}量价_BS1辅助"`
 ///
 /// 信号逻辑：
 /// 1. 窗口末根创新高且上影显著、成交额远高于均值，判 `看空`；
@@ -841,7 +841,7 @@ pub fn bar_section_momentum_v221112(
 #[signal(
     category = "kline",
     name = "bar_vol_bs1_V230224",
-    template = "{freq}_D{di}N{n}量价_BS1辅助V230224",
+    template = "{freq}_D{di}N{n}量价_BS1辅助",
     opcode = "BarVolBs1V230224",
     param_kind = "BarVolBs1V230224"
 )]
@@ -1274,7 +1274,7 @@ pub fn bar_accelerate_v240428(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 
 /// bar_fake_break_V230204：区间假突破判定
 ///
-/// 参数模板：`"{freq}_D{di}N{n}M{m}_假突破V230204"`
+/// 参数模板：`"{freq}_D{di}N{n}M{m}_假突破"`
 ///
 /// 信号逻辑：
 /// 1. 在最近 `N` 根内寻找滑动 `M` 窗口重叠中枢；
@@ -1293,7 +1293,7 @@ pub fn bar_accelerate_v240428(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 #[signal(
     category = "kline",
     name = "bar_fake_break_V230204",
-    template = "{freq}_D{di}N{n}M{m}_假突破V230204",
+    template = "{freq}_D{di}N{n}M{m}_假突破",
     opcode = "BarFakeBreakV230204",
     param_kind = "BarFakeBreakV230204"
 )]
@@ -2080,7 +2080,7 @@ pub fn bar_fang_liang_break_v221216(
 #[signal(
     category = "kline",
     name = "bar_channel_V230508",
-    template = "{freq}_D{di}M{m}_通道V230508",
+    template = "{freq}_D{di}M{m}_通道V230507",
     opcode = "BarChannelV230508",
     param_kind = "BarChannelV230508"
 )]

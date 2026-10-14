@@ -89,17 +89,6 @@ pub fn signal(attr: TokenStream, item: TokenStream) -> TokenStream {
         if expected.is_empty() || (!name.is_empty() && expected != name) {
             errors.push(quote! { compile_error!("#[signal] name 必须与函数名版本后缀一致，例如 foo_v230101 <-> foo_V230101"); });
         }
-        if !template.is_empty() {
-            let ver = expected
-                .rsplit_once("_V")
-                .map(|(_, v)| v.to_string())
-                .unwrap_or_default();
-            if !ver.is_empty() && !template.contains(ver.as_str()) {
-                errors.push(
-                    quote! { compile_error!("#[signal] template 必须包含版本数字（如 230101）"); },
-                );
-            }
-        }
     }
 
     let argc = f.sig.inputs.len();

@@ -55,7 +55,7 @@ fn raw_bar_lower(bar: &RawBar) -> f64 {
 #[signal(
     category = "kline",
     name = "byi_symmetry_zs_V221107",
-    template = "{freq}_D{di}B_对称中枢V221107",
+    template = "{freq}_D{di}B_对称中枢",
     opcode = "ByiSymmetryZsV221107",
     param_kind = "ByiSymmetryZsV221107"
 )]

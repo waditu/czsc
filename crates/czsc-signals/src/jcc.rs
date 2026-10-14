@@ -82,7 +82,7 @@ fn check_szx(bar: &RawBar, th: i32) -> bool {
 #[signal(
     category = "kline",
     name = "jcc_san_xing_xian_V221023",
-    template = "{freq}_D{di}TH{th}_伞形线V221023",
+    template = "{freq}_D{di}TH{th}_伞形线",
     opcode = "JccSanXingXianV221023",
     param_kind = "JccSanXingXianV221023"
 )]
@@ -149,7 +149,7 @@ pub fn jcc_san_xing_xian_v221023(c: &CZSC, params: &ParamView, _cache: &mut TaCa
 #[signal(
     category = "kline",
     name = "jcc_ten_mo_V221028",
-    template = "{freq}_D{di}_吞没形态V221028",
+    template = "{freq}_D{di}_吞没形态",
     opcode = "JccTenMoV221028",
     param_kind = "JccTenMoV221028"
 )]
@@ -222,7 +222,7 @@ pub fn jcc_ten_mo_v221028(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 #[signal(
     category = "kline",
     name = "jcc_wu_yun_gai_ding_V221101",
-    template = "{freq}_D{di}Z{z}TH{th}_乌云盖顶V221101",
+    template = "{freq}_D{di}Z{z}TH{th}_乌云盖顶",
     opcode = "JccWuYunGaiDingV221101",
     param_kind = "JccWuYunGaiDingV221101"
 )]
@@ -285,7 +285,7 @@ pub fn jcc_wu_yun_gai_ding_v221101(
 #[signal(
     category = "kline",
     name = "jcc_ci_tou_V221101",
-    template = "{freq}_D{di}Z{z}TH{th}_刺透形态V221101",
+    template = "{freq}_D{di}Z{z}TH{th}_刺透形态",
     opcode = "JccCiTouV221101",
     param_kind = "JccCiTouV221101"
 )]
@@ -335,7 +335,7 @@ pub fn jcc_ci_tou_v221101(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 #[signal(
     category = "kline",
     name = "jcc_san_fa_V20221118",
-    template = "{freq}_D{di}K_三法AV20221118",
+    template = "{freq}_D{di}K_三法A",
     opcode = "JccSanFaV20221118",
     param_kind = "JccSanFaV20221118"
 )]
@@ -422,7 +422,7 @@ pub fn jcc_san_fa_v20221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_san_fa_V20221115",
-    template = "{freq}_D{di}K_三法V20221115",
+    template = "{freq}_D{di}K_三法",
     opcode = "JccSanFaV20221115",
     param_kind = "JccSanFaV20221115"
 )]
@@ -496,7 +496,7 @@ pub fn jcc_san_fa_v20221115(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_xing_xian_V221118",
-    template = "{freq}_D{di}TH{th}_星形线V221118",
+    template = "{freq}_D{di}TH{th}_星形线",
     opcode = "JccXingXianV221118",
     param_kind = "JccXingXianV221118"
 )]
@@ -568,7 +568,7 @@ pub fn jcc_xing_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "jcc_fen_shou_xian_V20221113",
-    template = "{freq}_D{di}K_分手线V20221113",
+    template = "{freq}_D{di}K_分手线",
     opcode = "JccFenShouXianV20221113",
     param_kind = "JccFenShouXianV20221113"
 )]
@@ -648,7 +648,7 @@ pub fn jcc_fen_shou_xian_v20221113(
 #[signal(
     category = "kline",
     name = "jcc_zhu_huo_xian_V221027",
-    template = "{freq}_D{di}T{th}F{zf}_烛火线V221027",
+    template = "{freq}_D{di}T{th}F{zf}_烛火线",
     opcode = "JccZhuHuoXianV221027",
     param_kind = "JccZhuHuoXianV221027"
 )]
@@ -724,7 +724,7 @@ pub fn jcc_zhu_huo_xian_v221027(
 #[signal(
     category = "kline",
     name = "jcc_yun_xian_V221118",
-    template = "{freq}_D{di}_孕线V221118",
+    template = "{freq}_D{di}_孕线",
     opcode = "JccYunXianV221118",
     param_kind = "JccYunXianV221118"
 )]
@@ -782,7 +782,7 @@ pub fn jcc_yun_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_ping_tou_V221113",
-    template = "{freq}_D{di}TH{th}_平头形态V221113",
+    template = "{freq}_D{di}TH{th}_平头形态",
     opcode = "JccPingTouV221113",
     param_kind = "JccPingTouV221113"
 )]
@@ -835,7 +835,7 @@ pub fn jcc_ping_tou_v221113(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_two_crow_V221108",
-    template = "{freq}_D{di}K_两只乌鸦V221108",
+    template = "{freq}_D{di}K_两只乌鸦",
     opcode = "JccTwoCrowV221108",
     param_kind = "JccTwoCrowV221108"
 )]
@@ -879,7 +879,7 @@ pub fn jcc_two_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_three_crow_V221108",
-    template = "{freq}_D{di}_三只乌鸦V221108",
+    template = "{freq}_D{di}_三只乌鸦",
     opcode = "JccThreeCrowV221108",
     param_kind = "JccThreeCrowV221108"
 )]
@@ -974,7 +974,7 @@ pub fn jcc_three_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 #[signal(
     category = "kline",
     name = "jcc_szx_V221111",
-    template = "{freq}_D{di}TH{th}_十字线V221111",
+    template = "{freq}_D{di}TH{th}_十字线",
     opcode = "JccSzxV221111",
     param_kind = "JccSzxV221111"
 )]
@@ -1040,7 +1040,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "jcc_san_szx_V221122",
-    template = "{freq}_D{di}T{th}_三星V221122",
+    template = "{freq}_D{di}T{th}_三星",
     opcode = "JccSanSzxV221122",
     param_kind = "JccSanSzxV221122"
 )]
@@ -1082,7 +1082,7 @@ pub fn jcc_san_szx_v221122(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
 #[signal(
     category = "kline",
     name = "jcc_fan_ji_xian_V221121",
-    template = "{freq}_D{di}_反击线V221121",
+    template = "{freq}_D{di}_反击线",
     opcode = "JccFanJiXianV221121",
     param_kind = "JccFanJiXianV221121"
 )]
@@ -1161,7 +1161,7 @@ pub fn jcc_fan_ji_xian_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCach
 #[signal(
     category = "kline",
     name = "jcc_shan_chun_V221121",
-    template = "{freq}_D{di}B_山川形态V221121",
+    template = "{freq}_D{di}B_山川形态",
     opcode = "JccShanChunV221121",
     param_kind = "JccShanChunV221121"
 )]
@@ -1212,7 +1212,7 @@ pub fn jcc_shan_chun_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "jcc_gap_yin_yang_V221121",
-    template = "{freq}_D{di}K_并列阴阳V221121",
+    template = "{freq}_D{di}K_并列阴阳",
     opcode = "JccGapYinYangV221121",
     param_kind = "JccGapYinYangV221121"
 )]
@@ -1272,7 +1272,7 @@ pub fn jcc_gap_yin_yang_v221121(
 #[signal(
     category = "kline",
     name = "jcc_ta_xing_V221124",
-    template = "{freq}_D{di}K_塔形V221124",
+    template = "{freq}_D{di}K_塔形",
     opcode = "JccTaXingV221124",
     param_kind = "JccTaXingV221124"
 )]

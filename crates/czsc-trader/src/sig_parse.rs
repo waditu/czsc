@@ -80,38 +80,62 @@ impl SignalConfig {
             return None;
         }
 
-        let k3 = parts[2];
         let key = parts[..3].join("_");
 
-        for (func_name, meta) in SIGNAL_REGISTRY.iter() {
-            let Some(tpl_parts) = split_template_parts(meta.param_template) else {
-                continue;
-            };
-            if tpl_parts.len() != 3 {
-                continue;
-            }
-            if tpl_parts[2] == k3
-                && let Some((freq, params)) = parse_template_into_config(meta.param_template, &key)
-            {
+        let templates = SIGNAL_REGISTRY
+            .iter()
+            .map(|(&name, meta)| (name, meta.param_template))
+            .chain(
+                TRADER_SIGNAL_REGISTRY
+                    .iter()
+                    .map(|(&name, meta)| (name, meta.param_template)),
+            );
+        for (name, template) in templates {
+            if let Some((freq, mut params)) = parse_template_into_config(template, &key) {
+                match name {
+                    "bar_operate_span_V221111" => {
+                        let (Some(start), Some(end)) = (
+                            params.get("t1").and_then(Value::as_i64),
+                            params.get("t2").and_then(Value::as_i64),
+                        ) else {
+                            continue;
+                        };
+                        for (param, time) in [("t1", start), ("t2", end)] {
+                            params.insert(param.to_string(), Value::String(format!("{time:04}")));
+                        }
+                    }
+                    "bar_zdf_V221203" => {
+                        let (Some(lower), Some(upper)) = (
+                            params.get("t1").and_then(Value::as_i64),
+                            params.get("t2").and_then(Value::as_i64),
+                        ) else {
+                            continue;
+                        };
+                        params.remove("t1");
+                        params.remove("t2");
+                        params.insert(
+                            "span".to_string(),
+                            Value::String(format!("{lower},{upper}")),
+                        );
+                    }
+                    "jcc_san_xing_xian_V221023" => {
+                        let Some(threshold) = params.get("th").and_then(Value::as_f64) else {
+                            continue;
+                        };
+                        let mut decoded = threshold / 100.0;
+                        if (decoded * 100.0).trunc() != threshold {
+                            decoded = if threshold < 0.0 {
+                                decoded.next_down()
+                            } else {
+                                decoded.next_up()
+                            };
+                        }
+                        params.insert("th".to_string(), Value::from(decoded));
+                    }
+                    _ => {}
+                }
                 return Some(Self {
-                    name: func_name.to_string(),
-                    freq,
-                    params,
-                });
-            }
-        }
-        for (func_name, meta) in TRADER_SIGNAL_REGISTRY.iter() {
-            let Some(tpl_parts) = split_template_parts(meta.param_template) else {
-                continue;
-            };
-            if tpl_parts.len() != 3 {
-                continue;
-            }
-            if tpl_parts[2] == k3
-                && let Some((freq, params)) = parse_template_into_config(meta.param_template, &key)
-            {
-                return Some(Self {
-                    name: func_name.to_string(),
+                    name: name.to_string(),
                     freq,
                     params,
                 });

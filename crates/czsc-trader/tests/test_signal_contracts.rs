@@ -1,0 +1,295 @@
+use chrono::{TimeZone, Utc};
+use czsc_core::analyze::CZSC;
+use czsc_core::objects::bar::RawBarBuilder;
+use czsc_core::objects::freq::Freq;
+use czsc_signals::registry::{
+    SIGNAL_REGISTRY, TRADER_SIGNAL_REGISTRY, list_generated_signal_descriptors,
+};
+use czsc_signals::types::{SignalFnRef, TaCache};
+use czsc_trader::sig_parse::SignalConfig;
+use serde_json::{Value, json};
+use std::collections::{HashMap, HashSet};
+
+fn context() -> CZSC {
+    let bar = RawBarBuilder::default()
+        .symbol("T")
+        .id(1)
+        .dt(Utc.with_ymd_and_hms(2026, 10, 14, 9, 35, 0).unwrap())
+        .freq(Freq::F60)
+        .open(1.0)
+        .close(1.0)
+        .high(1.0)
+        .low(1.0)
+        .vol(1.0)
+        .amount(1.0)
+        .build()
+        .unwrap();
+    CZSC::new(vec![bar], 50, 6)
+}
+
+#[test]
+fn test_legacy_default_and_empty_keys_match_templates() {
+    let contracts = [
+        (
+            "bar_operate_span_V221111",
+            "T0935#1450_时间区间",
+            json!({"t1": "0935", "t2": "1450"}),
+        ),
+        (
+            "bar_mean_amount_V221112",
+            "D1K10B均额_1至4千万",
+            json!({"n": 10, "th1": 1, "th2": 4}),
+        ),
+        (
+            "bar_zdf_V221203",
+            "D1ZF_300至600",
+            json!({"mode": "ZF", "t1": 300, "t2": 600}),
+        ),
+        (
+            "bar_amount_acc_V230214",
+            "D2N5_累计超10千万",
+            json!({"di": 2, "n": 5, "t": 10}),
+        ),
+        ("bar_single_V230214", "D1T10_状态", json!({"t": 10})),
+        ("bar_big_solid_V230215", "D1N20_MID", json!({"n": 20})),
+        (
+            "bar_section_momentum_V221112",
+            "D1K10B_阈值100BP",
+            json!({"n": 10, "th": 100}),
+        ),
+        ("bar_vol_bs1_V230224", "D1N20量价_BS1辅助", json!({"n": 20})),
+        (
+            "bar_fake_break_V230204",
+            "D1N20M5_假突破",
+            json!({"n": 20, "m": 5}),
+        ),
+        (
+            "bar_channel_V230508",
+            "D1M600_通道V230507",
+            json!({"m": 600}),
+        ),
+        ("cxt_fx_power_V221107", "D1F_分型强弱", json!({})),
+        ("cxt_first_buy_V221126", "D1B_BUY1", json!({})),
+        ("cxt_first_sell_V221126", "D1B_SELL1", json!({})),
+        ("coo_td_V221110", "D1K_TD", json!({})),
+        ("byi_symmetry_zs_V221107", "D1B_对称中枢", json!({})),
+        (
+            "jcc_san_xing_xian_V221023",
+            "D1TH200_伞形线",
+            json!({"th": 200}),
+        ),
+        ("jcc_ten_mo_V221028", "D1_吞没形态", json!({})),
+        (
+            "jcc_wu_yun_gai_ding_V221101",
+            "D1Z500TH50_乌云盖顶",
+            json!({"z": 500, "th": 50}),
+        ),
+        (
+            "jcc_ci_tou_V221101",
+            "D1Z100TH50_刺透形态",
+            json!({"z": 100, "th": 50}),
+        ),
+        ("jcc_san_fa_V20221118", "D1K_三法A", json!({})),
+        ("jcc_san_fa_V20221115", "D1K_三法", json!({})),
+        (
+            "jcc_xing_xian_V221118",
+            "D2TH2_星形线",
+            json!({"di": 2, "th": 2}),
+        ),
+        ("jcc_fen_shou_xian_V20221113", "D1K_分手线", json!({})),
+        (
+            "jcc_zhu_huo_xian_V221027",
+            "D1T2.0F500_烛火线",
+            json!({"th": "2.0", "zf": 500}),
+        ),
+        ("jcc_yun_xian_V221118", "D1_孕线", json!({})),
+        (
+            "jcc_ping_tou_V221113",
+            "D2TH100_平头形态",
+            json!({"di": 2, "th": 100}),
+        ),
+        ("jcc_two_crow_V221108", "D1K_两只乌鸦", json!({})),
+        ("jcc_three_crow_V221108", "D1_三只乌鸦", json!({})),
+        ("jcc_szx_V221111", "D1TH10_十字线", json!({"th": 10})),
+        ("jcc_san_szx_V221122", "D1T10_三星", json!({"th": 10})),
+        ("jcc_fan_ji_xian_V221121", "D1_反击线", json!({})),
+        ("jcc_shan_chun_V221121", "D1B_山川形态", json!({})),
+        ("jcc_gap_yin_yang_V221121", "D1K_并列阴阳", json!({})),
+        ("jcc_ta_xing_V221124", "D1K_塔形", json!({})),
+    ];
+    assert_eq!(contracts.len(), 34);
+    for (name, historical_key, bindings) in contracts {
+        let meta = &SIGNAL_REGISTRY[name];
+        let expected_key = format!("60分钟_{historical_key}");
+        let mut values = json!({"freq": "60分钟", "di": 1});
+        values
+            .as_object_mut()
+            .unwrap()
+            .extend(bindings.as_object().unwrap().clone());
+        let mut instantiated = meta.param_template.to_string();
+        for (param, value) in values.as_object().unwrap() {
+            let value = value
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| value.to_string());
+            instantiated = instantiated.replace(&format!("{{{param}}}"), &value);
+        }
+        assert_eq!(instantiated, expected_key, "{name} template");
+        for empty in [false, true] {
+            let mut context = context();
+            if empty {
+                context.bars_raw.clear();
+            }
+            let signals = (meta.func)(&context, &HashMap::new(), &mut TaCache::default());
+            assert_eq!(signals.len(), 1, "{name}, empty={empty}");
+            assert_eq!(signals[0].key(), expected_key, "{name}, empty={empty}");
+            let config = SignalConfig::from_signal_str(&signals[0].to_string())
+                .unwrap_or_else(|| panic!("{name}: {}", signals[0]));
+            assert_eq!(config.name, name);
+            assert_eq!(config.freq.as_deref(), Some("60分钟"));
+            let restored = (meta.func)(&context, &config.params, &mut TaCache::default());
+            assert_eq!(restored[0].key(), expected_key, "{name} round trip");
+        }
+    }
+}
+
+#[test]
+fn test_dynamic_k3_params_round_trip() {
+    for (name, key, params) in [
+        (
+            "bar_mean_amount_V221112",
+            "D1K10B均额_1至4千万",
+            json!({"di": 1, "n": 10, "th1": 1, "th2": 4}),
+        ),
+        (
+            "bar_mean_amount_V221112",
+            "D2K7B均额_2至8千万",
+            json!({"di": 2, "n": 7, "th1": 2, "th2": 8}),
+        ),
+        (
+            "bar_zdf_V221203",
+            "D1ZF_300至600",
+            json!({"di": 1, "mode": "ZF", "span": "300,600"}),
+        ),
+        (
+            "bar_zdf_V221203",
+            "D3DF_125至875",
+            json!({"di": 3, "mode": "DF", "span": "125,875"}),
+        ),
+        (
+            "bar_amount_acc_V230214",
+            "D2N5_累计超10千万",
+            json!({"di": 2, "n": 5, "t": 10}),
+        ),
+        (
+            "bar_amount_acc_V230214",
+            "D1N7_累计超25千万",
+            json!({"di": 1, "n": 7, "t": 25}),
+        ),
+        (
+            "bar_section_momentum_V221112",
+            "D1K10B_阈值100BP",
+            json!({"di": 1, "n": 10, "th": 100}),
+        ),
+        (
+            "bar_section_momentum_V221112",
+            "D2K7B_阈值250BP",
+            json!({"di": 2, "n": 7, "th": 250}),
+        ),
+    ] {
+        let key = format!("60分钟_{key}");
+        let config = SignalConfig::from_signal_str(&format!("{key}_其他_任意_任意_0"))
+            .unwrap_or_else(|| panic!("{name}: {key}"));
+        assert_eq!(config.name, name);
+        assert_eq!(config.freq.as_deref(), Some("60分钟"));
+        let expected_params: HashMap<String, Value> = serde_json::from_value(params).unwrap();
+        assert_eq!(config.params, expected_params, "{name}");
+        let signals =
+            (SIGNAL_REGISTRY[name].func)(&context(), &config.params, &mut TaCache::default());
+        assert_eq!(signals.len(), 1);
+        assert_eq!(signals[0].key(), key, "{name} round trip");
+    }
+}
+
+#[test]
+fn test_time_span_params_keep_hhmm_strings() {
+    for (start, end) in [("0935", "1450"), ("1000", "1100"), ("0000", "0030")] {
+        let key = format!("60分钟_T{start}#{end}_时间区间");
+        let config = SignalConfig::from_signal_str(&format!("{key}_是_任意_任意_0")).unwrap();
+        assert_eq!(config.name, "bar_operate_span_V221111");
+        assert_eq!(config.params["t1"], json!(start));
+        assert_eq!(config.params["t2"], json!(end));
+        let signals = (SIGNAL_REGISTRY[config.name.as_str()].func)(
+            &context(),
+            &config.params,
+            &mut TaCache::default(),
+        );
+        assert_eq!(signals[0].key(), key);
+    }
+}
+
+#[test]
+fn test_san_xing_xian_threshold_round_trip() {
+    for (encoded, threshold) in [
+        (200, 2.0),
+        (250, 2.5),
+        (150, 1.5),
+        (115, 1.15),
+        (-115, -1.15),
+    ] {
+        let key = format!("60分钟_D1TH{encoded}_伞形线");
+        let config = SignalConfig::from_signal_str(&format!("{key}_满足_任意_任意_0")).unwrap();
+        assert_eq!(config.name, "jcc_san_xing_xian_V221023");
+        assert!((config.params["th"].as_f64().unwrap() - threshold).abs() < 1e-12);
+        let signals = (SIGNAL_REGISTRY[config.name.as_str()].func)(
+            &context(),
+            &config.params,
+            &mut TaCache::default(),
+        );
+        assert_eq!(signals[0].key(), key);
+    }
+}
+
+#[test]
+fn test_parser_rejects_mismatched_contracts() {
+    for signal in [
+        "60分钟_T0935#1450_时间区间V221111_是_任意_任意_0",
+        "60分钟_D1K10B均额_1至4亿_其他_任意_任意_0",
+        "60分钟_D1错误_累计超10千万_其他_任意_任意_0",
+        "60分钟_D1K10B_阈值100BP_其他_任意_0",
+    ] {
+        assert!(SignalConfig::from_signal_str(signal).is_none(), "{signal}");
+    }
+}
+
+#[test]
+fn test_all_descriptors_are_unique_and_registered() {
+    let descriptors = list_generated_signal_descriptors();
+    assert!(descriptors.len() >= 246);
+    assert_eq!(
+        descriptors.len(),
+        SIGNAL_REGISTRY.len() + TRADER_SIGNAL_REGISTRY.len()
+    );
+    let mut names = HashSet::new();
+    let mut opcodes = HashSet::new();
+    for descriptor in descriptors {
+        assert!(names.insert(descriptor.name), "{}", descriptor.name);
+        assert!(opcodes.insert(descriptor.opcode), "{}", descriptor.opcode);
+        match descriptor.func_ref {
+            SignalFnRef::Kline(_) => {
+                assert_eq!(descriptor.category, "kline");
+                assert_eq!(
+                    SIGNAL_REGISTRY[descriptor.name].param_template,
+                    descriptor.template
+                );
+            }
+            SignalFnRef::Trader(_) => {
+                assert_eq!(descriptor.category, "trader");
+                assert_eq!(
+                    TRADER_SIGNAL_REGISTRY[descriptor.name].param_template,
+                    descriptor.template
+                );
+            }
+        }
+    }
+}

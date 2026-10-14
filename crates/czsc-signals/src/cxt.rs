@@ -189,7 +189,7 @@ pub fn cxt_bi_status_v230102(
 
 /// cxt_fx_power_V221107：倒数分型强弱
 ///
-/// 参数模板：`"{freq}_D{di}F_分型强弱V221107"`
+/// 参数模板：`"{freq}_D{di}F_分型强弱"`
 ///
 /// 信号逻辑：
 /// 1. 读取倒数第 `di` 个分型；
@@ -207,7 +207,7 @@ pub fn cxt_bi_status_v230102(
 #[signal(
     category = "kline",
     name = "cxt_fx_power_V221107",
-    template = "{freq}_D{di}F_分型强弱V221107",
+    template = "{freq}_D{di}F_分型强弱",
     opcode = "CxtFxPowerV221107",
     param_kind = "CxtFxPowerV221107"
 )]
@@ -1527,7 +1527,7 @@ pub fn cxt_bs_v240527(c: &CZSC, _params: &ParamView, _cache: &mut TaCache) -> Ve
 
 /// cxt_first_buy_V221126：一买信号
 ///
-/// 参数模板：`"{freq}_D{di}B_BUY1V221126"`
+/// 参数模板：`"{freq}_D{di}B_BUY1"`
 ///
 /// 信号逻辑：
 /// 1. 依次尝试最近 `21/19/17/15/13/11/9/7/5` 笔；
@@ -1545,7 +1545,7 @@ pub fn cxt_bs_v240527(c: &CZSC, _params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "cxt_first_buy_V221126",
-    template = "{freq}_D{di}B_BUY1V221126",
+    template = "{freq}_D{di}B_BUY1",
     opcode = "CxtFirstBuyV221126",
     param_kind = "CxtFirstBuyV221126"
 )]
@@ -1565,7 +1565,7 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 
 /// cxt_first_sell_V221126：一卖信号
 ///
-/// 参数模板：`"{freq}_D{di}B_SELL1V221126"`
+/// 参数模板：`"{freq}_D{di}B_SELL1"`
 ///
 /// 信号逻辑：
 /// 1. 依次尝试最近 `21/19/17/15/13/11/9/7/5` 笔；
@@ -1583,7 +1583,7 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "cxt_first_sell_V221126",
-    template = "{freq}_D{di}B_SELL1V221126",
+    template = "{freq}_D{di}B_SELL1",
     opcode = "CxtFirstSellV221126",
     param_kind = "CxtFirstSellV221126"
 )]

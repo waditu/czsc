@@ -64,7 +64,7 @@ fn td_signal_from_close(close: &[f64]) -> (&'static str, &'static str) {
 #[signal(
     category = "kline",
     name = "coo_td_V221110",
-    template = "{freq}_D{di}K_TDV221110",
+    template = "{freq}_D{di}K_TD",
     opcode = "CooTdV221110",
     param_kind = "CooTdV221110"
 )]
