@@ -115,3 +115,69 @@ gh workflow run python-publish.yml --repo waditu/czsc \
 - 新脚本与门禁回归使用独立安装环境执行：`python -m pytest .github/scripts/tests/test_release_wheel_smoke.py -q`。原始红灯 5 failed，修复后 5 passed。此工具回归不混入先前 546 项算法回归计数。
 
 当前配置的静态检查、本机在线安装与实际 CI wheel 执行日志随任务评论交付。远程 24 组合是否通过只能由新 head 的 job 执行结果证明；dispatch 成功或 queued 不算运行通过。未完成时只记录快照，不轮询等待外部 CI，也不申请发布批准。
+
+## Windows 编码与 musl 安装环境补证（2026-10-15）
+
+### 已完成演练的实际结果
+
+[run 38607249078](https://github.com/waditu/czsc/actions/runs/38607249078) 对应
+`bba2c0802931db51c43e523c19d2ee33f6ab4a7c`，已结束且失败，不是仍在等待。
+六个平台 wheel 和 sdist 构建成功；24 个运行组合为 **16 success / 8 failure**。
+manylinux x86_64/aarch64、macOS Intel/arm64 的 Python 3.10–3.13 全部完成完整在线无缓存安装、
+`pip check` 和 wheel/native/功能检查。Windows 四组合在 Cargo 版本读取阶段失败；
+musl 四组合在 wbt 源包的构建准备阶段失败，均尚未执行 native smoke。
+PyPI、TestPyPI、GitHub Release 三个 job 均 skipped。该远程证据更新前文的本地未验证记录，
+但不把历史产物或旧 SHA 的结果改写成修复 head 的结果。
+
+### 最小修复与回归
+
+- 两个 smoke 版本命令显式使用 UTF-8 读取 Cargo.toml；不设置全局 UTF-8/locale 环境绕开缺陷。
+  参数化回归直接执行 workflow 中的两个真实 Python 命令，在默认编码 cp1252 下先复现
+  `UnicodeDecodeError`（2 failed），然后验证显式 UTF-8（2 passed）。
+- musl 容器在创建新 venv 前安装 `build-base libgcc libstdc++ rustup pkgconf openssl-dev`，
+  用 `rustup-init -y --profile minimal --default-toolchain stable` 显式准备 musl Rust 工具链，
+  把 `$HOME/.cargo/bin` 加入 PATH，并打印 Alpine、APK、rustc 和 Cargo 版本。
+  不再依赖 Python 构建后端隐式安装 Rust；仅补 libgcc 不足以构建 wbt。
+- 以 `CARGO_BUILD_JOBS=2` 限制源码编译并行度，musl job 预算由 20 分钟改为 60 分钟，
+  为 Polars 及 wbt 的 release 编译预留资源。这不是运行成功证明，仍可能内存不足或超时。
+  不改变 wbt 的 LTO/profile，不更改 Python 依赖约束，不跳过完整安装，不删除平台或放宽上传 needs。
+- 环境配置回归先因缺少 APK 前置安装失败（1 failed），补齐后通过；8 项工具回归包含
+  编码、环境顺序、原完整安装/上传约束和本地既有已安装 wheel 的正反例。
+  静态配置断言不能代替真正的 Alpine 编译、在线依赖解析及 native 加载。
+
+### runner 补齐与用户分发要求不同
+
+核对公开 PyPI 的 wbt 0.9.2 文件清单及校验 SHA256 的 sdist：目前无 musllinux wheel，
+sdist 使用 maturin、Rust edition 2024、PyO3 0.28 与 Polars 0.53，Cargo.lock 无 git source。
+所以普通 Alpine 完整安装会构建 wbt 源包，需要可用的 Rust/C/C++ 工具链、头文件、链接器、
+运行库、网络以及足够 CPU/内存/时间；CZSC 的 abi3 musllinux wheel 本身不提供这些依赖。
+APK 的 rustup 包提供 rustup-init 并依赖 libgcc，可由
+[Alpine 包清单](https://pkgs.alpinelinux.org/package/v3.23/community/x86_64/rustup) 核对。
+容器日志中的实际 Alpine/工具链版本才是本次执行环境，不假定浮动标签永远不变。
+
+不能把 PyArrow 一概归为源码构建阻塞：本次 PyPI 清单中，25.0.1 有 Python 3.10 的
+musllinux_1_2_x86_64 wheel，26.0.0 有 3.11–3.13 对应 wheel；旧 3.11 失败日志也已选中
+PyArrow 的 musllinux wheel。因此此修复不安装或绑定发行版 Arrow SDK。
+若将来 resolver 选到只有 sdist 的 PyArrow，则需匹配的 Arrow C++ SDK、CMake 等，
+参见 [Arrow 源码构建说明](https://arrow.apache.org/docs/developers/python.html)；届时必须重新验证，
+不能使用 distro Python 包或 no-deps 假装满足普通 pip 安装。
+
+维护者需决定是否接受“musl 完整安装需要构建 wbt 源码”的用户要求。建议协调 wbt 上游补齐
+musllinux wheel，以降低用户编译成本；该跨仓库构建/上传不属于本任务，也未获得授权。
+本轮仅补 runner 基线，不调整依赖或支持范围。若完整安装仍失败，应继续记录实际缺口，
+由维护者选择补充工具/资源、上游 wheel 分发或其他明确方案；不能自行删掉 musl 门禁。
+
+### 证据复用与新 SHA 范围
+
+本次不修改 CZSC native/Python 运行源码、依赖图、wheel 构建参数或功能 smoke 脚本。
+既有算法、Rust、归档、安全审核和旧 head 的 16 个成功组合可作为历史证据复用，
+但新 run 的 wheel 必须标明其自身 producer SHA，不能标记旧产物为新产物。
+重点复核 Windows/musl × Python 3.10–3.13 八组合。由于共享版本命令也影响另外四平台，
+沿用现有完整 24 组合发布 smoke 演练、重建同一 head 产物，不另造只跑子集却能发布的通道；
+这会再次运行短 smoke，不重复已充分验证的全套算法测试。
+新演练显式 `publish_to_testpypi=false`，只取一次快照，不等待/轮询外部 CI。
+Windows 本机不可用，Docker daemon 不可用，未将本地编码/静态回归宣称为这八组合已通过。
+
+最终复审需核对实际修复 head、八组合安装/native 结果、其余平台共享命令结果以及所有上传
+仍 skipped。正式版/RC、最终发布范围、维护者审批、旧 extras 等残余风险接受和上传权限
+继续独立待确认；无上传演练通过也不是发布授权。

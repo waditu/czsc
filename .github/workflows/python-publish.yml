@@ -189,7 +189,7 @@ jobs:
       - name: Online clean install and release wheel smoke
         shell: bash
         run: |
-          VERSION=$(python -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(), re.M).group(1))')
+          VERSION=$(python -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(encoding="utf-8"), re.M).group(1))')
           python -m venv "$RUNNER_TEMP/release-wheel-env"
           if [ "$RUNNER_OS" = "Windows" ]; then
             PYTHON="$RUNNER_TEMP/release-wheel-env/Scripts/python.exe"
@@ -205,7 +205,7 @@ jobs:
     name: Smoke musllinux x86_64 Python ${{ matrix.python }}
     needs: build-wheels
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     permissions:
       contents: read
       actions: read
@@ -226,12 +226,19 @@ jobs:
       - name: Online clean install and native smoke in Alpine
         shell: bash
         run: |
-          VERSION=$(python3 -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(), re.M).group(1))')
+          VERSION=$(python3 -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(encoding="utf-8"), re.M).group(1))')
           docker run --rm --platform linux/amd64 \
             -v "$GITHUB_WORKSPACE/dist:/dist:ro" \
             -v "$GITHUB_WORKSPACE/.github/scripts:/smoke:ro" \
-            -e EXPECTED_VERSION="$VERSION" -w /tmp \
+            -e EXPECTED_VERSION="$VERSION" -e CARGO_BUILD_JOBS=2 -w /tmp \
             "python:${{ matrix.python }}-alpine" sh -ec '
+              apk add --no-cache build-base libgcc libstdc++ rustup pkgconf openssl-dev
+              rustup-init -y --profile minimal --default-toolchain stable
+              export PATH="$HOME/.cargo/bin:$PATH"
+              cat /etc/alpine-release
+              apk info -v
+              rustc --version
+              cargo --version
               python -m venv /tmp/release-wheel-env
               /tmp/release-wheel-env/bin/python -m pip install --disable-pip-version-check --no-cache-dir --index-url https://pypi.org/simple --report /tmp/pip-install.json /dist/*.whl
               /tmp/release-wheel-env/bin/python -m pip check
