@@ -1,3 +1,11 @@
+#![cfg_attr(
+    feature = "python",
+    allow(
+        clippy::clone_on_copy,
+        reason = "PyO3 from_py_object generates a sibling extraction impl using Clone::clone for this Copy enum"
+    )
+)]
+
 #[cfg(feature = "python")]
 use pyo3::{exceptions::PyValueError, prelude::*, types::PyString};
 #[cfg(feature = "python")]
