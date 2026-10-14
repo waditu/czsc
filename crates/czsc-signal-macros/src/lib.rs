@@ -21,35 +21,6 @@ fn template_has_version(template: &str, name: &str) -> bool {
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::template_has_version;
-
-    #[test]
-    fn template_version_must_match_terminal_k3() {
-        assert!(template_has_version(
-            "{freq}_T_时间区间V221111",
-            "bar_operate_span_V221111"
-        ));
-        assert!(template_has_version("{freq}_D_BS辅助221211", "tas_V221211"));
-        assert!(template_has_version(
-            "{freq}_D_三法AV20221118",
-            "jcc_san_fa_V20221118"
-        ));
-        for (template, name) in [
-            ("{freq}_T_时间区间", "bar_operate_span_V221111"),
-            ("{freq}_D_通道V230507", "bar_channel_V230508"),
-            ("{freq}_V221111_时间区间", "bar_operate_span_V221111"),
-            ("{freq}_T_时间区间V221111错误", "bar_operate_span_V221111"),
-            ("{freq}_T_时间区间", "bar_V"),
-            ("{freq}_D_KV99230101", "audit_V230101"),
-            ("{freq}_D_KV9920221118", "audit_V20221118"),
-        ] {
-            assert!(!template_has_version(template, name));
-        }
-    }
-}
-
 fn nth_arg_type(f: &ItemFn, idx: usize) -> Option<Type> {
     f.sig.inputs.iter().nth(idx).and_then(|a| match a {
         FnArg::Typed(t) => Some((*t.ty).clone()),
@@ -503,4 +474,33 @@ pub fn signal_module(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     quote! { #m }.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::template_has_version;
+
+    #[test]
+    fn template_version_must_match_terminal_k3() {
+        assert!(template_has_version(
+            "{freq}_T_时间区间V221111",
+            "bar_operate_span_V221111"
+        ));
+        assert!(template_has_version("{freq}_D_BS辅助221211", "tas_V221211"));
+        assert!(template_has_version(
+            "{freq}_D_三法AV20221118",
+            "jcc_san_fa_V20221118"
+        ));
+        for (template, name) in [
+            ("{freq}_T_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_D_通道V230507", "bar_channel_V230508"),
+            ("{freq}_V221111_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间V221111错误", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间", "bar_V"),
+            ("{freq}_D_KV99230101", "audit_V230101"),
+            ("{freq}_D_KV9920221118", "audit_V20221118"),
+        ] {
+            assert!(!template_has_version(template, name));
+        }
+    }
 }
