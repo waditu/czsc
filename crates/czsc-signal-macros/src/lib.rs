@@ -8,6 +8,19 @@ fn type_tokens(t: &Type) -> String {
     t.to_token_stream().to_string()
 }
 
+fn template_has_version(template: &str, name: &str) -> bool {
+    name.rsplit_once("_V").is_some_and(|(_, version)| {
+        !version.is_empty()
+            && version.chars().all(|character| character.is_ascii_digit())
+            && template.rsplit('_').next().is_some_and(|key| {
+                let digits_start = key
+                    .trim_end_matches(|character: char| character.is_ascii_digit())
+                    .len();
+                &key[digits_start..] == version
+            })
+    })
+}
+
 fn nth_arg_type(f: &ItemFn, idx: usize) -> Option<Type> {
     f.sig.inputs.iter().nth(idx).and_then(|a| match a {
         FnArg::Typed(t) => Some((*t.ty).clone()),
@@ -65,6 +78,11 @@ pub fn signal(attr: TokenStream, item: TokenStream) -> TokenStream {
     let fast_exec = fast_exec.unwrap_or_default();
     let fast_decode = fast_decode.unwrap_or_default();
 
+    if !template_has_version(&template, &name) {
+        errors
+            .push(quote! { compile_error!("#[signal] template 的 k3 的末尾完整连续数字串必须与注册版本完全相等"); });
+    }
+
     if category != "kline" && category != "trader" {
         errors.push(quote! { compile_error!("#[signal] category 必须是 kline 或 trader"); });
     }
@@ -88,17 +106,6 @@ pub fn signal(attr: TokenStream, item: TokenStream) -> TokenStream {
         };
         if expected.is_empty() || (!name.is_empty() && expected != name) {
             errors.push(quote! { compile_error!("#[signal] name 必须与函数名版本后缀一致，例如 foo_v230101 <-> foo_V230101"); });
-        }
-        if !template.is_empty() {
-            let ver = expected
-                .rsplit_once("_V")
-                .map(|(_, v)| v.to_string())
-                .unwrap_or_default();
-            if !ver.is_empty() && !template.contains(ver.as_str()) {
-                errors.push(
-                    quote! { compile_error!("#[signal] template 必须包含版本数字（如 230101）"); },
-                );
-            }
         }
     }
 
@@ -467,4 +474,33 @@ pub fn signal_module(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
 
     quote! { #m }.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::template_has_version;
+
+    #[test]
+    fn template_version_must_match_terminal_k3() {
+        assert!(template_has_version(
+            "{freq}_T_时间区间V221111",
+            "bar_operate_span_V221111"
+        ));
+        assert!(template_has_version("{freq}_D_BS辅助221211", "tas_V221211"));
+        assert!(template_has_version(
+            "{freq}_D_三法AV20221118",
+            "jcc_san_fa_V20221118"
+        ));
+        for (template, name) in [
+            ("{freq}_T_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_D_通道V230507", "bar_channel_V230508"),
+            ("{freq}_V221111_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间V221111错误", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间", "bar_V"),
+            ("{freq}_D_KV99230101", "audit_V230101"),
+            ("{freq}_D_KV9920221118", "audit_V20221118"),
+        ] {
+            assert!(!template_has_version(template, name));
+        }
+    }
 }

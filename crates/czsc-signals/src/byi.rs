@@ -37,7 +37,7 @@ fn raw_bar_lower(bar: &RawBar) -> f64 {
 
 /// byi_symmetry_zs_V221107：对称中枢识别信号
 ///
-/// 参数模板：`"{freq}_D{di}B_对称中枢"`
+/// 参数模板：`"{freq}_D{di}B_对称中枢V221107"`
 ///
 /// 信号逻辑：
 /// 1. 取倒数 `di` 截止最近 10 笔；
@@ -46,8 +46,8 @@ fn raw_bar_lower(bar: &RawBar) -> f64 {
 /// 4. 方向位按最后一笔反向映射（最后笔向下 -> `向上`）。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1B_对称中枢_是_向上_7笔_0')`
-/// - `Signal('60分钟_D1B_对称中枢_否_向下_任意_0')`
+/// - `Signal('60分钟_D1B_对称中枢V221107_是_向上_7笔_0')`
+/// - `Signal('60分钟_D1B_对称中枢V221107_否_向下_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：从倒数第 `di` 笔开始，默认 `1`。
@@ -64,7 +64,7 @@ pub fn byi_symmetry_zs_v221107(c: &CZSC, params: &ParamView, _cache: &mut TaCach
     let bis = get_sub_elements(&c.bi_list, di, 10);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}B", di);
-    let k3 = "对称中枢";
+    let k3 = "对称中枢V221107";
     if bis.len() < 7 {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
     }

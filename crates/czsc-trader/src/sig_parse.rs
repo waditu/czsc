@@ -80,38 +80,62 @@ impl SignalConfig {
             return None;
         }
 
-        let k3 = parts[2];
         let key = parts[..3].join("_");
 
-        for (func_name, meta) in SIGNAL_REGISTRY.iter() {
-            let Some(tpl_parts) = split_template_parts(meta.param_template) else {
-                continue;
-            };
-            if tpl_parts.len() != 3 {
-                continue;
-            }
-            if tpl_parts[2] == k3
-                && let Some((freq, params)) = parse_template_into_config(meta.param_template, &key)
-            {
+        let templates = SIGNAL_REGISTRY
+            .iter()
+            .map(|(&name, meta)| (name, meta.param_template))
+            .chain(
+                TRADER_SIGNAL_REGISTRY
+                    .iter()
+                    .map(|(&name, meta)| (name, meta.param_template)),
+            );
+        for (name, template) in templates {
+            if let Some((freq, mut params)) = parse_template_into_config(template, &key) {
+                match name {
+                    "bar_operate_span_V221111" => {
+                        let (Some(start), Some(end)) = (
+                            params.get("t1").and_then(Value::as_i64),
+                            params.get("t2").and_then(Value::as_i64),
+                        ) else {
+                            continue;
+                        };
+                        for (param, time) in [("t1", start), ("t2", end)] {
+                            params.insert(param.to_string(), Value::String(format!("{time:04}")));
+                        }
+                    }
+                    "bar_zdf_V221203" => {
+                        let (Some(lower), Some(upper)) = (
+                            params.get("t1").and_then(Value::as_i64),
+                            params.get("t2").and_then(Value::as_i64),
+                        ) else {
+                            continue;
+                        };
+                        params.remove("t1");
+                        params.remove("t2");
+                        params.insert(
+                            "span".to_string(),
+                            Value::String(format!("{lower},{upper}")),
+                        );
+                    }
+                    "jcc_san_xing_xian_V221023" => {
+                        let Some(threshold) = params.get("th").and_then(Value::as_f64) else {
+                            continue;
+                        };
+                        let mut decoded = threshold / 100.0;
+                        if (decoded * 100.0).trunc() != threshold {
+                            decoded = if threshold < 0.0 {
+                                decoded.next_down()
+                            } else {
+                                decoded.next_up()
+                            };
+                        }
+                        params.insert("th".to_string(), Value::from(decoded));
+                    }
+                    _ => {}
+                }
                 return Some(Self {
-                    name: func_name.to_string(),
-                    freq,
-                    params,
-                });
-            }
-        }
-        for (func_name, meta) in TRADER_SIGNAL_REGISTRY.iter() {
-            let Some(tpl_parts) = split_template_parts(meta.param_template) else {
-                continue;
-            };
-            if tpl_parts.len() != 3 {
-                continue;
-            }
-            if tpl_parts[2] == k3
-                && let Some((freq, params)) = parse_template_into_config(meta.param_template, &key)
-            {
-                return Some(Self {
-                    name: func_name.to_string(),
+                    name: name.to_string(),
                     freq,
                     params,
                 });
@@ -305,6 +329,14 @@ fn parse_template_tokens(
                         let Some(captured) = raw.get(raw_idx..end) else {
                             continue;
                         };
+                        if name == "di"
+                            && (captured.parse::<usize>().is_err()
+                                || raw
+                                    .get(end..)?
+                                    .starts_with(|character: char| character.is_ascii_digit()))
+                        {
+                            continue;
+                        }
                         let mut next_params = params.clone();
                         next_params.insert(name.clone(), parse_scalar_value(captured));
                         if let Some(parsed) =
@@ -438,19 +470,30 @@ mod tests {
 
     #[test]
     fn test_parse_template_segment_handles_adjacent_placeholders() {
-        let params = parse_template_segment("D{di}{ma_type}#{timeperiod}", "D1SMA#5")
-            .expect("segment should parse");
-        assert_eq!(params.get("di"), Some(&Value::from(1)));
-        assert_eq!(params.get("ma_type"), Some(&Value::from("SMA")));
-        assert_eq!(params.get("timeperiod"), Some(&Value::from(5)));
+        for di in [1, 10, 11, 100] {
+            for ma_type in ["SMA", "EMA", "WMA", "T3"] {
+                let params = parse_template_segment(
+                    "D{di}{ma_type}#{timeperiod}",
+                    &format!("D{di}{ma_type}#5"),
+                )
+                .expect("segment should parse");
+                assert_eq!(params.get("di"), Some(&Value::from(di)));
+                assert_eq!(params.get("ma_type"), Some(&Value::from(ma_type)));
+                assert_eq!(params.get("timeperiod"), Some(&Value::from(5)));
+            }
+        }
     }
 
     #[test]
-    fn test_parse_template_segment_handles_adjacent_numeric_and_string_placeholders_without_name_hints()
-     {
-        let params = parse_template_segment("D{di}{mode}", "D1ZF").expect("segment should parse");
-        assert_eq!(params.get("di"), Some(&Value::from(1)));
-        assert_eq!(params.get("mode"), Some(&Value::from("ZF")));
+    fn test_parse_template_segment_handles_adjacent_di_and_mode() {
+        for di in [1, 10, 11, 100] {
+            for mode in ["ZF", "DF"] {
+                let params = parse_template_segment("D{di}{mode}", &format!("D{di}{mode}"))
+                    .expect("segment should parse");
+                assert_eq!(params.get("di"), Some(&Value::from(di)));
+                assert_eq!(params.get("mode"), Some(&Value::from(mode)));
+            }
+        }
     }
 
     #[test]

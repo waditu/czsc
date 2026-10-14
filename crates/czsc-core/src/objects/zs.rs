@@ -2,7 +2,6 @@ use super::{bi::BI, direction::Direction};
 #[cfg(feature = "python")]
 use crate::utils::common::create_naive_pandas_timestamp;
 use chrono::{DateTime, Utc};
-use core::f64;
 use derive_builder::Builder;
 #[cfg(feature = "python")]
 use parking_lot::RwLock;
