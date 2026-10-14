@@ -73,7 +73,10 @@ fn test_zdf_multi_digit_di_params_and_complete_signals_round_trip() {
                         .unwrap();
                 let original = (meta.func)(&context, &params, &mut TaCache::default());
                 assert_eq!(original.len(), 1);
-                assert_eq!(original[0].key(), format!("60分钟_D{di}{mode}_300至600"));
+                assert_eq!(
+                    original[0].key(),
+                    format!("60分钟_D{di}{mode}_300至600V221203")
+                );
                 assert_eq!(original[0].value(), format!("{expected_value}_任意_任意_0"));
                 let config = SignalConfig::from_signal_str(&original[0].to_string()).unwrap();
                 assert_eq!(config.name, name);
@@ -130,99 +133,115 @@ fn test_adjacent_ma_params_and_complete_signals_round_trip() {
 }
 
 #[test]
-fn test_legacy_default_and_empty_keys_match_templates() {
+fn test_versioned_default_and_empty_keys_match_templates() {
     let contracts = [
         (
             "bar_operate_span_V221111",
-            "T0935#1450_时间区间",
+            "T0935#1450_时间区间V221111",
             json!({"t1": "0935", "t2": "1450"}),
         ),
         (
             "bar_mean_amount_V221112",
-            "D1K10B均额_1至4千万",
+            "D1K10B均额_1至4千万V221112",
             json!({"n": 10, "th1": 1, "th2": 4}),
         ),
         (
             "bar_zdf_V221203",
-            "D1ZF_300至600",
+            "D1ZF_300至600V221203",
             json!({"mode": "ZF", "t1": 300, "t2": 600}),
         ),
         (
             "bar_amount_acc_V230214",
-            "D2N5_累计超10千万",
+            "D2N5_累计超10千万V230214",
             json!({"di": 2, "n": 5, "t": 10}),
         ),
-        ("bar_single_V230214", "D1T10_状态", json!({"t": 10})),
-        ("bar_big_solid_V230215", "D1N20_MID", json!({"n": 20})),
+        ("bar_single_V230214", "D1T10_状态V230214", json!({"t": 10})),
+        (
+            "bar_big_solid_V230215",
+            "D1N20_MIDV230215",
+            json!({"n": 20}),
+        ),
         (
             "bar_section_momentum_V221112",
-            "D1K10B_阈值100BP",
+            "D1K10B_阈值100BPV221112",
             json!({"n": 10, "th": 100}),
         ),
-        ("bar_vol_bs1_V230224", "D1N20量价_BS1辅助", json!({"n": 20})),
+        (
+            "bar_vol_bs1_V230224",
+            "D1N20量价_BS1辅助V230224",
+            json!({"n": 20}),
+        ),
         (
             "bar_fake_break_V230204",
-            "D1N20M5_假突破",
+            "D1N20M5_假突破V230204",
             json!({"n": 20, "m": 5}),
         ),
         (
             "bar_channel_V230508",
-            "D1M600_通道V230507",
+            "D1M600_通道V230508",
             json!({"m": 600}),
         ),
-        ("cxt_fx_power_V221107", "D1F_分型强弱", json!({})),
-        ("cxt_first_buy_V221126", "D1B_BUY1", json!({})),
-        ("cxt_first_sell_V221126", "D1B_SELL1", json!({})),
-        ("coo_td_V221110", "D1K_TD", json!({})),
-        ("byi_symmetry_zs_V221107", "D1B_对称中枢", json!({})),
+        ("cxt_fx_power_V221107", "D1F_分型强弱V221107", json!({})),
+        ("cxt_first_buy_V221126", "D1B_BUY1V221126", json!({})),
+        ("cxt_first_sell_V221126", "D1B_SELL1V221126", json!({})),
+        ("coo_td_V221110", "D1K_TDV221110", json!({})),
+        ("byi_symmetry_zs_V221107", "D1B_对称中枢V221107", json!({})),
         (
             "jcc_san_xing_xian_V221023",
-            "D1TH200_伞形线",
+            "D1TH200_伞形线V221023",
             json!({"th": 200}),
         ),
-        ("jcc_ten_mo_V221028", "D1_吞没形态", json!({})),
+        ("jcc_ten_mo_V221028", "D1_吞没形态V221028", json!({})),
         (
             "jcc_wu_yun_gai_ding_V221101",
-            "D1Z500TH50_乌云盖顶",
+            "D1Z500TH50_乌云盖顶V221101",
             json!({"z": 500, "th": 50}),
         ),
         (
             "jcc_ci_tou_V221101",
-            "D1Z100TH50_刺透形态",
+            "D1Z100TH50_刺透形态V221101",
             json!({"z": 100, "th": 50}),
         ),
-        ("jcc_san_fa_V20221118", "D1K_三法A", json!({})),
-        ("jcc_san_fa_V20221115", "D1K_三法", json!({})),
+        ("jcc_san_fa_V20221118", "D1K_三法AV20221118", json!({})),
+        ("jcc_san_fa_V20221115", "D1K_三法V20221115", json!({})),
         (
             "jcc_xing_xian_V221118",
-            "D2TH2_星形线",
+            "D2TH2_星形线V221118",
             json!({"di": 2, "th": 2}),
         ),
-        ("jcc_fen_shou_xian_V20221113", "D1K_分手线", json!({})),
+        (
+            "jcc_fen_shou_xian_V20221113",
+            "D1K_分手线V20221113",
+            json!({}),
+        ),
         (
             "jcc_zhu_huo_xian_V221027",
-            "D1T2.0F500_烛火线",
+            "D1T2.0F500_烛火线V221027",
             json!({"th": "2.0", "zf": 500}),
         ),
-        ("jcc_yun_xian_V221118", "D1_孕线", json!({})),
+        ("jcc_yun_xian_V221118", "D1_孕线V221118", json!({})),
         (
             "jcc_ping_tou_V221113",
-            "D2TH100_平头形态",
+            "D2TH100_平头形态V221113",
             json!({"di": 2, "th": 100}),
         ),
-        ("jcc_two_crow_V221108", "D1K_两只乌鸦", json!({})),
-        ("jcc_three_crow_V221108", "D1_三只乌鸦", json!({})),
-        ("jcc_szx_V221111", "D1TH10_十字线", json!({"th": 10})),
-        ("jcc_san_szx_V221122", "D1T10_三星", json!({"th": 10})),
-        ("jcc_fan_ji_xian_V221121", "D1_反击线", json!({})),
-        ("jcc_shan_chun_V221121", "D1B_山川形态", json!({})),
-        ("jcc_gap_yin_yang_V221121", "D1K_并列阴阳", json!({})),
-        ("jcc_ta_xing_V221124", "D1K_塔形", json!({})),
+        ("jcc_two_crow_V221108", "D1K_两只乌鸦V221108", json!({})),
+        ("jcc_three_crow_V221108", "D1_三只乌鸦V221108", json!({})),
+        ("jcc_szx_V221111", "D1TH10_十字线V221111", json!({"th": 10})),
+        (
+            "jcc_san_szx_V221122",
+            "D1T10_三星V221122",
+            json!({"th": 10}),
+        ),
+        ("jcc_fan_ji_xian_V221121", "D1_反击线V221121", json!({})),
+        ("jcc_shan_chun_V221121", "D1B_山川形态V221121", json!({})),
+        ("jcc_gap_yin_yang_V221121", "D1K_并列阴阳V221121", json!({})),
+        ("jcc_ta_xing_V221124", "D1K_塔形V221124", json!({})),
     ];
     assert_eq!(contracts.len(), 34);
-    for (name, historical_key, bindings) in contracts {
+    for (name, versioned_key, bindings) in contracts {
         let meta = &SIGNAL_REGISTRY[name];
-        let expected_key = format!("60分钟_{historical_key}");
+        let expected_key = format!("60分钟_{versioned_key}");
         let mut values = json!({"freq": "60分钟", "di": 1});
         values
             .as_object_mut()
@@ -260,42 +279,42 @@ fn test_dynamic_k3_params_round_trip() {
     for (name, key, params) in [
         (
             "bar_mean_amount_V221112",
-            "D1K10B均额_1至4千万",
+            "D1K10B均额_1至4千万V221112",
             json!({"di": 1, "n": 10, "th1": 1, "th2": 4}),
         ),
         (
             "bar_mean_amount_V221112",
-            "D2K7B均额_2至8千万",
+            "D2K7B均额_2至8千万V221112",
             json!({"di": 2, "n": 7, "th1": 2, "th2": 8}),
         ),
         (
             "bar_zdf_V221203",
-            "D1ZF_300至600",
+            "D1ZF_300至600V221203",
             json!({"di": 1, "mode": "ZF", "span": "300,600"}),
         ),
         (
             "bar_zdf_V221203",
-            "D3DF_125至875",
+            "D3DF_125至875V221203",
             json!({"di": 3, "mode": "DF", "span": "125,875"}),
         ),
         (
             "bar_amount_acc_V230214",
-            "D2N5_累计超10千万",
+            "D2N5_累计超10千万V230214",
             json!({"di": 2, "n": 5, "t": 10}),
         ),
         (
             "bar_amount_acc_V230214",
-            "D1N7_累计超25千万",
+            "D1N7_累计超25千万V230214",
             json!({"di": 1, "n": 7, "t": 25}),
         ),
         (
             "bar_section_momentum_V221112",
-            "D1K10B_阈值100BP",
+            "D1K10B_阈值100BPV221112",
             json!({"di": 1, "n": 10, "th": 100}),
         ),
         (
             "bar_section_momentum_V221112",
-            "D2K7B_阈值250BP",
+            "D2K7B_阈值250BPV221112",
             json!({"di": 2, "n": 7, "th": 250}),
         ),
     ] {
@@ -316,7 +335,7 @@ fn test_dynamic_k3_params_round_trip() {
 #[test]
 fn test_time_span_params_keep_hhmm_strings() {
     for (start, end) in [("0935", "1450"), ("1000", "1100"), ("0000", "0030")] {
-        let key = format!("60分钟_T{start}#{end}_时间区间");
+        let key = format!("60分钟_T{start}#{end}_时间区间V221111");
         let config = SignalConfig::from_signal_str(&format!("{key}_是_任意_任意_0")).unwrap();
         assert_eq!(config.name, "bar_operate_span_V221111");
         assert_eq!(config.params["t1"], json!(start));
@@ -339,7 +358,7 @@ fn test_san_xing_xian_threshold_round_trip() {
         (115, 1.15),
         (-115, -1.15),
     ] {
-        let key = format!("60分钟_D1TH{encoded}_伞形线");
+        let key = format!("60分钟_D1TH{encoded}_伞形线V221023");
         let config = SignalConfig::from_signal_str(&format!("{key}_满足_任意_任意_0")).unwrap();
         assert_eq!(config.name, "jcc_san_xing_xian_V221023");
         assert!((config.params["th"].as_f64().unwrap() - threshold).abs() < 1e-12);
@@ -355,7 +374,8 @@ fn test_san_xing_xian_threshold_round_trip() {
 #[test]
 fn test_parser_rejects_mismatched_contracts() {
     for signal in [
-        "60分钟_T0935#1450_时间区间V221111_是_任意_任意_0",
+        "60分钟_T0935#1450_时间区间_是_任意_任意_0",
+        "60分钟_D1M600_通道V230507_其他_任意_任意_0",
         "60分钟_D1K10B均额_1至4亿_其他_任意_任意_0",
         "60分钟_D1错误_累计超10千万_其他_任意_任意_0",
         "60分钟_D1K10B_阈值100BP_其他_任意_0",
@@ -375,6 +395,15 @@ fn test_all_descriptors_are_unique_and_registered() {
     let mut names = HashSet::new();
     let mut opcodes = HashSet::new();
     for descriptor in descriptors {
+        let version = descriptor.name.rsplit_once("_V").unwrap().1;
+        assert!(
+            descriptor
+                .template
+                .rsplit('_')
+                .next()
+                .unwrap()
+                .ends_with(version)
+        );
         assert!(names.insert(descriptor.name), "{}", descriptor.name);
         assert!(opcodes.insert(descriptor.opcode), "{}", descriptor.opcode);
         match descriptor.func_ref {
@@ -394,4 +423,23 @@ fn test_all_descriptors_are_unique_and_registered() {
             }
         }
     }
+}
+
+#[test]
+fn test_strategy_conditions_require_versioned_keys() {
+    let context = context();
+    let output = (SIGNAL_REGISTRY["bar_operate_span_V221111"].func)(
+        &context,
+        &HashMap::new(),
+        &mut TaCache::default(),
+    );
+    let signals = HashMap::from([(output[0].key(), output[0].value())]);
+    let updated: czsc_core::objects::signal::Signal = output[0].to_string().parse().unwrap();
+    let legacy: czsc_core::objects::signal::Signal = output[0]
+        .to_string()
+        .replace("时间区间V221111", "时间区间")
+        .parse()
+        .unwrap();
+    assert!(updated.is_match(&signals));
+    assert!(!legacy.is_match(&signals));
 }

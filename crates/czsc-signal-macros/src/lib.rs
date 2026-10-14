@@ -8,6 +8,44 @@ fn type_tokens(t: &Type) -> String {
     t.to_token_stream().to_string()
 }
 
+fn template_has_version(template: &str, name: &str) -> bool {
+    name.rsplit_once("_V").is_some_and(|(_, version)| {
+        !version.is_empty()
+            && version.chars().all(|character| character.is_ascii_digit())
+            && template
+                .rsplit('_')
+                .next()
+                .is_some_and(|key| key.ends_with(version))
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::template_has_version;
+
+    #[test]
+    fn template_version_must_match_terminal_k3() {
+        assert!(template_has_version(
+            "{freq}_T_时间区间V221111",
+            "bar_operate_span_V221111"
+        ));
+        assert!(template_has_version("{freq}_D_BS辅助221211", "tas_V221211"));
+        assert!(template_has_version(
+            "{freq}_D_三法AV20221118",
+            "jcc_san_fa_V20221118"
+        ));
+        for (template, name) in [
+            ("{freq}_T_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_D_通道V230507", "bar_channel_V230508"),
+            ("{freq}_V221111_时间区间", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间V221111错误", "bar_operate_span_V221111"),
+            ("{freq}_T_时间区间", "bar_V"),
+        ] {
+            assert!(!template_has_version(template, name));
+        }
+    }
+}
+
 fn nth_arg_type(f: &ItemFn, idx: usize) -> Option<Type> {
     f.sig.inputs.iter().nth(idx).and_then(|a| match a {
         FnArg::Typed(t) => Some((*t.ty).clone()),
@@ -64,6 +102,11 @@ pub fn signal(attr: TokenStream, item: TokenStream) -> TokenStream {
     let param_kind = param_kind.unwrap_or_default();
     let fast_exec = fast_exec.unwrap_or_default();
     let fast_decode = fast_decode.unwrap_or_default();
+
+    if !template_has_version(&template, &name) {
+        errors
+            .push(quote! { compile_error!("#[signal] template 的 k3 必须以注册名的版本号结尾"); });
+    }
 
     if category != "kline" && category != "trader" {
         errors.push(quote! { compile_error!("#[signal] category 必须是 kline 或 trader"); });

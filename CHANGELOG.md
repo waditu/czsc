@@ -158,7 +158,9 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
   通过 `CzscTrader` / `CzscSignals` 分发，不承诺逐函数直接导入。
 - **信号注册名保留版本后缀**。Python 分发/配置仍使用 `foo_V<yyMMdd>`，
   Rust 实现函数使用 `foo_v<yyMMdd>`，由 `#[signal]` 自动注册；输出键的
-  k3 不要求与函数版本相同，以保留历史策略契约。新增信号需在 Rust 侧开发。
+  k3 必须与注册模板的版本标记一致。本次升级 34 个旧输出键，包括
+  时间区间 V221111 和通道 V230508；旧策略条件需迁移，不提供无版本别名。
+  迁移清单见 `docs/signal_contracts.md`。新增信号需在 Rust 侧开发。
 - **删除 `czsc.SignalsParser` 类**。改用 `czsc.traders.get_signals_config` /
   `czsc.traders.get_signals_freqs` 两个函数；底层调用 Rust 端
   `derive_signals_config` / `derive_signals_freqs`。

@@ -47,7 +47,10 @@ fn test_bar_operate_span_key_matches_template() {
             .replace("{freq}", "60分钟")
             .replace("{t1}", start)
             .replace("{t2}", end);
-        assert_eq!(expected_key, format!("60分钟_T{start}#{end}_时间区间"));
+        assert_eq!(
+            expected_key,
+            format!("60分钟_T{start}#{end}_时间区间V221111")
+        );
         for (hour, minute, expected_value) in cases {
             let bar = RawBarBuilder::default()
                 .symbol("T")

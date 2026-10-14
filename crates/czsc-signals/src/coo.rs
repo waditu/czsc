@@ -47,7 +47,7 @@ fn td_signal_from_close(close: &[f64]) -> (&'static str, &'static str) {
 
 /// coo_td_V221110：TD 神奇九转信号（旧版模板）
 ///
-/// 参数模板：`"{freq}_D{di}K_TD"`
+/// 参数模板：`"{freq}_D{di}K_TDV221110"`
 ///
 /// 信号逻辑：
 /// 1. 取倒数 `di` 截止的最近 50 根收盘价；
@@ -55,8 +55,8 @@ fn td_signal_from_close(close: &[f64]) -> (&'static str, &'static str) {
 /// 3. 根据最新 TD 值及前一值输出 `看多/看空/延续` 与 `TD顶/TD底/非顶/非底`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1K_TD_延续_非顶_任意_0')`
-/// - `Signal('60分钟_D1K_TD_看空_TD底_任意_0')`
+/// - `Signal('60分钟_D1K_TDV221110_延续_非顶_任意_0')`
+/// - `Signal('60分钟_D1K_TDV221110_看空_TD底_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：信号计算截止在倒数第 `di` 根K线，默认 `1`。
@@ -64,7 +64,7 @@ fn td_signal_from_close(close: &[f64]) -> (&'static str, &'static str) {
 #[signal(
     category = "kline",
     name = "coo_td_V221110",
-    template = "{freq}_D{di}K_TD",
+    template = "{freq}_D{di}K_TDV221110",
     opcode = "CooTdV221110",
     param_kind = "CooTdV221110"
 )]
@@ -72,7 +72,7 @@ pub fn coo_td_v221110(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Vec
     let di = params.usize("di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "TD";
+    let k3 = "TDV221110";
     let bars = get_sub_elements(&c.bars_raw, di, 50);
     if bars.is_empty() {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");

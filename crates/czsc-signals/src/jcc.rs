@@ -64,7 +64,7 @@ fn check_szx(bar: &RawBar, th: i32) -> bool {
 
 /// jcc_san_xing_xian_V221023：伞形线形态信号
 ///
-/// 参数模板：`"{freq}_D{di}TH{th}_伞形线"`
+/// 参数模板：`"{freq}_D{di}TH{th}_伞形线V221023"`
 ///
 /// 信号逻辑：
 /// 1. 判断当前K线是否满足长下影短上影（下影 > 实体 * th，且上影 < 0.2 * 实体）；
@@ -72,8 +72,8 @@ fn check_szx(bar: &RawBar, th: i32) -> bool {
 /// 3. 不满足时返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1TH200_伞形线_满足_锤子_任意_0')`
-/// - `Signal('15分钟_D1TH200_伞形线_满足_上吊_任意_0')`
+/// - `Signal('15分钟_D1TH200_伞形线V221023_满足_锤子_任意_0')`
+/// - `Signal('15分钟_D1TH200_伞形线V221023_满足_上吊_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -82,7 +82,7 @@ fn check_szx(bar: &RawBar, th: i32) -> bool {
 #[signal(
     category = "kline",
     name = "jcc_san_xing_xian_V221023",
-    template = "{freq}_D{di}TH{th}_伞形线",
+    template = "{freq}_D{di}TH{th}_伞形线V221023",
     opcode = "JccSanXingXianV221023",
     param_kind = "JccSanXingXianV221023"
 )]
@@ -93,7 +93,7 @@ pub fn jcc_san_xing_xian_v221023(c: &CZSC, params: &ParamView, _cache: &mut TaCa
 
     let k1 = c.freq.to_string();
     let k2 = format!("D{}TH{}", di, th_i);
-    let k3 = "伞形线";
+    let k3 = "伞形线V221023";
 
     if di == 0 || di > c.bars_raw.len() {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -132,7 +132,7 @@ pub fn jcc_san_xing_xian_v221023(c: &CZSC, params: &ParamView, _cache: &mut TaCa
 
 /// jcc_ten_mo_V221028：吞没形态
 ///
-/// 参数模板：`"{freq}_D{di}_吞没形态"`
+/// 参数模板：`"{freq}_D{di}_吞没形态V221028"`
 ///
 /// 信号逻辑：
 /// 1. 当前K线高低点完全包住前一根K线，记 `满足`；
@@ -140,8 +140,8 @@ pub fn jcc_san_xing_xian_v221023(c: &CZSC, params: &ParamView, _cache: &mut TaCa
 /// 3. 否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1_吞没形态_满足_看涨吞没_任意_0')`
-/// - `Signal('15分钟_D1_吞没形态_满足_看跌吞没_任意_0')`
+/// - `Signal('15分钟_D1_吞没形态V221028_满足_看涨吞没_任意_0')`
+/// - `Signal('15分钟_D1_吞没形态V221028_满足_看跌吞没_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -149,7 +149,7 @@ pub fn jcc_san_xing_xian_v221023(c: &CZSC, params: &ParamView, _cache: &mut TaCa
 #[signal(
     category = "kline",
     name = "jcc_ten_mo_V221028",
-    template = "{freq}_D{di}_吞没形态",
+    template = "{freq}_D{di}_吞没形态V221028",
     opcode = "JccTenMoV221028",
     param_kind = "JccTenMoV221028"
 )]
@@ -157,7 +157,7 @@ pub fn jcc_ten_mo_v221028(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}", di);
-    let k3 = "吞没形态";
+    let k3 = "吞没形态V221028";
 
     if c.bars_raw.len() < di + 1 || di == 0 {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -203,7 +203,7 @@ pub fn jcc_ten_mo_v221028(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 
 /// jcc_wu_yun_gai_ding_V221101：乌云盖顶
 ///
-/// 参数模板：`"{freq}_D{di}Z{z}TH{th}_乌云盖顶"`
+/// 参数模板：`"{freq}_D{di}Z{z}TH{th}_乌云盖顶V221101"`
 ///
 /// 信号逻辑：
 /// 1. 前一根阳线实体涨幅需大于 `z`；
@@ -211,8 +211,8 @@ pub fn jcc_ten_mo_v221028(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 /// 3. 前一根收盘位于左侧10根收盘高位，判定 `满足`。
 ///
 /// 信号列表示例：
-/// - `Signal('日线_D1Z500TH50_乌云盖顶_满足_任意_任意_0')`
-/// - `Signal('日线_D1Z500TH50_乌云盖顶_其他_任意_任意_0')`
+/// - `Signal('日线_D1Z500TH50_乌云盖顶V221101_满足_任意_任意_0')`
+/// - `Signal('日线_D1Z500TH50_乌云盖顶V221101_其他_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -222,7 +222,7 @@ pub fn jcc_ten_mo_v221028(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 #[signal(
     category = "kline",
     name = "jcc_wu_yun_gai_ding_V221101",
-    template = "{freq}_D{di}Z{z}TH{th}_乌云盖顶",
+    template = "{freq}_D{di}Z{z}TH{th}_乌云盖顶V221101",
     opcode = "JccWuYunGaiDingV221101",
     param_kind = "JccWuYunGaiDingV221101"
 )]
@@ -237,7 +237,7 @@ pub fn jcc_wu_yun_gai_ding_v221101(
 
     let k1 = c.freq.to_string();
     let k2 = format!("D{}Z{}TH{}", di, z as i32, th as i32);
-    let k3 = "乌云盖顶";
+    let k3 = "乌云盖顶V221101";
     let mut v1 = "其他";
 
     if c.bars_raw.len() > di + 10 && di > 0 {
@@ -266,7 +266,7 @@ pub fn jcc_wu_yun_gai_ding_v221101(
 
 /// jcc_ci_tou_V221101：刺透形态
 ///
-/// 参数模板：`"{freq}_D{di}Z{z}TH{th}_刺透形态"`
+/// 参数模板：`"{freq}_D{di}Z{z}TH{th}_刺透形态V221101"`
 ///
 /// 信号逻辑：
 /// 1. 前一根为大阴线且跌幅超过 `z`；
@@ -274,8 +274,8 @@ pub fn jcc_wu_yun_gai_ding_v221101(
 /// 3. 满足则返回 `满足`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1Z100TH50_刺透形态_满足_任意_任意_0')`
-/// - `Signal('15分钟_D1Z100TH50_刺透形态_其他_任意_任意_0')`
+/// - `Signal('15分钟_D1Z100TH50_刺透形态V221101_满足_任意_任意_0')`
+/// - `Signal('15分钟_D1Z100TH50_刺透形态V221101_其他_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -285,7 +285,7 @@ pub fn jcc_wu_yun_gai_ding_v221101(
 #[signal(
     category = "kline",
     name = "jcc_ci_tou_V221101",
-    template = "{freq}_D{di}Z{z}TH{th}_刺透形态",
+    template = "{freq}_D{di}Z{z}TH{th}_刺透形态V221101",
     opcode = "JccCiTouV221101",
     param_kind = "JccCiTouV221101"
 )]
@@ -296,7 +296,7 @@ pub fn jcc_ci_tou_v221101(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 
     let k1 = c.freq.to_string();
     let k2 = format!("D{}Z{}TH{}", di, z as i32, th as i32);
-    let k3 = "刺透形态";
+    let k3 = "刺透形态V221101";
 
     if c.bars_raw.len() < di + 15 || di == 0 {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
@@ -318,7 +318,7 @@ pub fn jcc_ci_tou_v221101(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 
 /// jcc_san_fa_V20221118：三法形态A
 ///
-/// 参数模板：`"{freq}_D{di}K_三法A"`
+/// 参数模板：`"{freq}_D{di}K_三法AV20221118"`
 ///
 /// 信号逻辑：
 /// 1. 在 5~8 根窗口内扫描三法形态；
@@ -326,8 +326,8 @@ pub fn jcc_ci_tou_v221101(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 /// 3. `v2` 记录触发窗口长度 `nK`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1K_三法A_上升三法_6K_任意_0')`
-/// - `Signal('60分钟_D1K_三法A_下降三法_8K_任意_0')`
+/// - `Signal('60分钟_D1K_三法AV20221118_上升三法_6K_任意_0')`
+/// - `Signal('60分钟_D1K_三法AV20221118_下降三法_8K_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -335,7 +335,7 @@ pub fn jcc_ci_tou_v221101(c: &CZSC, params: &ParamView, _cache: &mut TaCache) ->
 #[signal(
     category = "kline",
     name = "jcc_san_fa_V20221118",
-    template = "{freq}_D{di}K_三法A",
+    template = "{freq}_D{di}K_三法AV20221118",
     opcode = "JccSanFaV20221118",
     param_kind = "JccSanFaV20221118"
 )]
@@ -343,7 +343,7 @@ pub fn jcc_san_fa_v20221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "三法A";
+    let k3 = "三法AV20221118";
 
     let check = |bars: &[RawBar]| -> &'static str {
         if bars.len() < 5 {
@@ -404,7 +404,7 @@ pub fn jcc_san_fa_v20221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 
 /// jcc_san_fa_V20221115：三法形态
 ///
-/// 参数模板：`"{freq}_D{di}K_三法"`
+/// 参数模板：`"{freq}_D{di}K_三法V20221115"`
 ///
 /// 信号逻辑：
 /// 1. 固定观察 6 根K线，比较首尾与中间三根位置关系；
@@ -412,8 +412,8 @@ pub fn jcc_san_fa_v20221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 /// 3. 不满足返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1K_三法_满足_上升三法_任意_0')`
-/// - `Signal('60分钟_D1K_三法_满足_下降三法_任意_0')`
+/// - `Signal('60分钟_D1K_三法V20221115_满足_上升三法_任意_0')`
+/// - `Signal('60分钟_D1K_三法V20221115_满足_下降三法_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -422,7 +422,7 @@ pub fn jcc_san_fa_v20221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_san_fa_V20221115",
-    template = "{freq}_D{di}K_三法",
+    template = "{freq}_D{di}K_三法V20221115",
     opcode = "JccSanFaV20221115",
     param_kind = "JccSanFaV20221115"
 )]
@@ -431,7 +431,7 @@ pub fn jcc_san_fa_v20221115(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let zdf = get_usize_param(params, "zdf", 500) as f64;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "三法";
+    let k3 = "三法V20221115";
 
     let bars = get_sub_elements(&c.bars_raw, di, 6);
     if bars.len() != 6 {
@@ -478,7 +478,7 @@ pub fn jcc_san_fa_v20221115(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 
 /// jcc_xing_xian_V221118：星形线
 ///
-/// 参数模板：`"{freq}_D{di}TH{th}_星形线"`
+/// 参数模板：`"{freq}_D{di}TH{th}_星形线V221118"`
 ///
 /// 信号逻辑：
 /// 1. 取三根K线，按高低点结构区分启明星/黄昏星候选；
@@ -486,8 +486,8 @@ pub fn jcc_san_fa_v20221115(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 /// 3. 中间K线开收相等时输出 `中间十字`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D2TH2_星形线_启明星_中间十字_任意_0')`
-/// - `Signal('60分钟_D2TH2_星形线_黄昏星_任意_任意_0')`
+/// - `Signal('60分钟_D2TH2_星形线V221118_启明星_中间十字_任意_0')`
+/// - `Signal('60分钟_D2TH2_星形线V221118_黄昏星_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `2`；
@@ -496,7 +496,7 @@ pub fn jcc_san_fa_v20221115(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_xing_xian_V221118",
-    template = "{freq}_D{di}TH{th}_星形线",
+    template = "{freq}_D{di}TH{th}_星形线V221118",
     opcode = "JccXingXianV221118",
     param_kind = "JccXingXianV221118"
 )]
@@ -505,7 +505,7 @@ pub fn jcc_xing_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
     let th = get_usize_param(params, "th", 2) as f64;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}TH{}", di, th as i32);
-    let k3 = "星形线";
+    let k3 = "星形线V221118";
 
     let bars = get_sub_elements(&c.bars_raw, di, 3);
     if bars.len() != 3 {
@@ -550,7 +550,7 @@ pub fn jcc_xing_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 
 /// jcc_fen_shou_xian_V20221113：分手线
 ///
-/// 参数模板：`"{freq}_D{di}K_分手线"`
+/// 参数模板：`"{freq}_D{di}K_分手线V20221113"`
 ///
 /// 信号逻辑：
 /// 1. 两根K线同开盘，且第二根收盘突破第一根高低点，判 `满足`；
@@ -558,8 +558,8 @@ pub fn jcc_xing_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 /// 3. 否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1K_分手线_满足_上升分手_任意_0')`
-/// - `Signal('60分钟_D1K_分手线_满足_下跌分手_任意_0')`
+/// - `Signal('60分钟_D1K_分手线V20221113_满足_上升分手_任意_0')`
+/// - `Signal('60分钟_D1K_分手线V20221113_满足_下跌分手_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -568,7 +568,7 @@ pub fn jcc_xing_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "jcc_fen_shou_xian_V20221113",
-    template = "{freq}_D{di}K_分手线",
+    template = "{freq}_D{di}K_分手线V20221113",
     opcode = "JccFenShouXianV20221113",
     param_kind = "JccFenShouXianV20221113"
 )]
@@ -581,7 +581,7 @@ pub fn jcc_fen_shou_xian_v20221113(
     let zdf = get_usize_param(params, "zdf", 300) as f64;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "分手线";
+    let k3 = "分手线V20221113";
 
     if c.bars_raw.len() < di + 1 || di == 0 {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -629,7 +629,7 @@ pub fn jcc_fen_shou_xian_v20221113(
 
 /// jcc_zhu_huo_xian_V221027：烛火线
 ///
-/// 参数模板：`"{freq}_D{di}T{th}F{zf}_烛火线"`
+/// 参数模板：`"{freq}_D{di}T{th}F{zf}_烛火线V221027"`
 ///
 /// 信号逻辑：
 /// 1. 以影线、实体和振幅阈值判断是否 `满足`；
@@ -637,8 +637,8 @@ pub fn jcc_fen_shou_xian_v20221113(
 /// 3. 否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1T200F500_烛火线_满足_箭在弦_任意_0')`
-/// - `Signal('60分钟_D1T200F500_烛火线_满足_风中烛_任意_0')`
+/// - `Signal('60分钟_D1T200F500_烛火线V221027_满足_箭在弦_任意_0')`
+/// - `Signal('60分钟_D1T200F500_烛火线V221027_满足_风中烛_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -648,7 +648,7 @@ pub fn jcc_fen_shou_xian_v20221113(
 #[signal(
     category = "kline",
     name = "jcc_zhu_huo_xian_V221027",
-    template = "{freq}_D{di}T{th}F{zf}_烛火线",
+    template = "{freq}_D{di}T{th}F{zf}_烛火线V221027",
     opcode = "JccZhuHuoXianV221027",
     param_kind = "JccZhuHuoXianV221027"
 )]
@@ -662,7 +662,7 @@ pub fn jcc_zhu_huo_xian_v221027(
     let zf = get_usize_param(params, "zf", 500) as f64;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}T{}F{}", di, py_float_str(th), zf as i32);
-    let k3 = "烛火线";
+    let k3 = "烛火线V221027";
 
     if di == 0 || di > c.bars_raw.len() {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -707,7 +707,7 @@ pub fn jcc_zhu_huo_xian_v221027(
 
 /// jcc_yun_xian_V221118：孕线形态
 ///
-/// 参数模板：`"{freq}_D{di}_孕线"`
+/// 参数模板：`"{freq}_D{di}_孕线V221118"`
 ///
 /// 信号逻辑：
 /// 1. 前一根为长实体，当前为小实体；
@@ -715,8 +715,8 @@ pub fn jcc_zhu_huo_xian_v221027(
 /// 3. 方向反转判 `看多/看空`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1_孕线_看多_任意_任意_0')`
-/// - `Signal('60分钟_D1_孕线_看空_任意_任意_0')`
+/// - `Signal('60分钟_D1_孕线V221118_看多_任意_任意_0')`
+/// - `Signal('60分钟_D1_孕线V221118_看空_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -724,7 +724,7 @@ pub fn jcc_zhu_huo_xian_v221027(
 #[signal(
     category = "kline",
     name = "jcc_yun_xian_V221118",
-    template = "{freq}_D{di}_孕线",
+    template = "{freq}_D{di}_孕线V221118",
     opcode = "JccYunXianV221118",
     param_kind = "JccYunXianV221118"
 )]
@@ -732,7 +732,7 @@ pub fn jcc_yun_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}", di);
-    let k3 = "孕线";
+    let k3 = "孕线V221118";
 
     let bars = get_sub_elements(&c.bars_raw, di, 2);
     if bars.len() != 2 {
@@ -764,7 +764,7 @@ pub fn jcc_yun_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 
 /// jcc_ping_tou_V221113：平头形态
 ///
-/// 参数模板：`"{freq}_D{di}TH{th}_平头形态"`
+/// 参数模板：`"{freq}_D{di}TH{th}_平头形态V221113"`
 ///
 /// 信号逻辑：
 /// 1. 对比两根K线高点或低点差值比例，识别 `顶部/底部`；
@@ -772,8 +772,8 @@ pub fn jcc_yun_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 /// 3. 否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D2TH100_平头形态_顶部_实体标准_任意_0')`
-/// - `Signal('15分钟_D2TH100_平头形态_底部_任意_任意_0')`
+/// - `Signal('15分钟_D2TH100_平头形态V221113_顶部_实体标准_任意_0')`
+/// - `Signal('15分钟_D2TH100_平头形态V221113_底部_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `2`；
@@ -782,7 +782,7 @@ pub fn jcc_yun_xian_v221118(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_ping_tou_V221113",
-    template = "{freq}_D{di}TH{th}_平头形态",
+    template = "{freq}_D{di}TH{th}_平头形态V221113",
     opcode = "JccPingTouV221113",
     param_kind = "JccPingTouV221113"
 )]
@@ -791,7 +791,7 @@ pub fn jcc_ping_tou_v221113(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let th = get_usize_param(params, "th", 100) as f64;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}TH{}", di, th as i32);
-    let k3 = "平头形态";
+    let k3 = "平头形态V221113";
 
     let bars = get_sub_elements(&c.bars_raw, di, 2);
     if bars.len() != 2 {
@@ -818,7 +818,7 @@ pub fn jcc_ping_tou_v221113(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 
 /// jcc_two_crow_V221108：两只乌鸦
 ///
-/// 参数模板：`"{freq}_D{di}K_两只乌鸦"`
+/// 参数模板：`"{freq}_D{di}K_两只乌鸦V221108"`
 ///
 /// 信号逻辑：
 /// 1. 第一根长阳；
@@ -826,8 +826,8 @@ pub fn jcc_ping_tou_v221113(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 /// 3. 第三根阴线继续下压，判 `看空`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1K_两只乌鸦_看空_任意_任意_0')`
-/// - `Signal('60分钟_D1K_两只乌鸦_其他_任意_任意_0')`
+/// - `Signal('60分钟_D1K_两只乌鸦V221108_看空_任意_任意_0')`
+/// - `Signal('60分钟_D1K_两只乌鸦V221108_其他_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -835,7 +835,7 @@ pub fn jcc_ping_tou_v221113(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_two_crow_V221108",
-    template = "{freq}_D{di}K_两只乌鸦",
+    template = "{freq}_D{di}K_两只乌鸦V221108",
     opcode = "JccTwoCrowV221108",
     param_kind = "JccTwoCrowV221108"
 )]
@@ -843,7 +843,7 @@ pub fn jcc_two_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "两只乌鸦";
+    let k3 = "两只乌鸦V221108";
 
     let bars = get_sub_elements(&c.bars_raw, di, 3);
     if bars.len() != 3 {
@@ -862,7 +862,7 @@ pub fn jcc_two_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 
 /// jcc_three_crow_V221108：三只乌鸦
 ///
-/// 参数模板：`"{freq}_D{di}_三只乌鸦"`
+/// 参数模板：`"{freq}_D{di}_三只乌鸦V221108"`
 ///
 /// 信号逻辑：
 /// 1. 三根连续阴线且高低收盘递降；
@@ -870,8 +870,8 @@ pub fn jcc_two_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 /// 3. 根据开盘关系细分 `常规/加强/半加强`。
 ///
 /// 信号列表示例：
-/// - `Signal('30分钟_D1_三只乌鸦_满足_常规_任意_0')`
-/// - `Signal('30分钟_D1_三只乌鸦_满足_加强_任意_0')`
+/// - `Signal('30分钟_D1_三只乌鸦V221108_满足_常规_任意_0')`
+/// - `Signal('30分钟_D1_三只乌鸦V221108_满足_加强_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -879,7 +879,7 @@ pub fn jcc_two_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
 #[signal(
     category = "kline",
     name = "jcc_three_crow_V221108",
-    template = "{freq}_D{di}_三只乌鸦",
+    template = "{freq}_D{di}_三只乌鸦V221108",
     opcode = "JccThreeCrowV221108",
     param_kind = "JccThreeCrowV221108"
 )]
@@ -887,7 +887,7 @@ pub fn jcc_three_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}", di);
-    let k3 = "三只乌鸦";
+    let k3 = "三只乌鸦V221108";
 
     if c.bars_raw.len() < di + 2 || di == 0 {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -956,7 +956,7 @@ pub fn jcc_three_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 
 /// jcc_szx_V221111：十字线
 ///
-/// 参数模板：`"{freq}_D{di}TH{th}_十字线"`
+/// 参数模板：`"{freq}_D{di}TH{th}_十字线V221111"`
 ///
 /// 信号逻辑：
 /// 1. `(high-low)/|close-open| > th` 或 `close==open` 判十字线；
@@ -964,8 +964,8 @@ pub fn jcc_three_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 /// 3. 前一根强阳时追加 `北方`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1TH10_十字线_蜻蜓十字线_北方_任意_0')`
-/// - `Signal('60分钟_D1TH10_十字线_墓碑十字线_任意_任意_0')`
+/// - `Signal('60分钟_D1TH10_十字线V221111_蜻蜓十字线_北方_任意_0')`
+/// - `Signal('60分钟_D1TH10_十字线V221111_墓碑十字线_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -974,7 +974,7 @@ pub fn jcc_three_crow_v221108(c: &CZSC, params: &ParamView, _cache: &mut TaCache
 #[signal(
     category = "kline",
     name = "jcc_szx_V221111",
-    template = "{freq}_D{di}TH{th}_十字线",
+    template = "{freq}_D{di}TH{th}_十字线V221111",
     opcode = "JccSzxV221111",
     param_kind = "JccSzxV221111"
 )]
@@ -983,7 +983,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
     let th = get_usize_param(params, "th", 10) as i32;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}TH{}", di, th);
-    let k3 = "十字线";
+    let k3 = "十字线V221111";
 
     if c.bars_raw.len() < di + 10 || di == 0 {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "其他");
@@ -1006,7 +1006,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
         } else if lower > solid(bar2) && upper > solid(bar2) {
             "长腿十字线"
         } else {
-            "十字线"
+            "十字线V221111"
         }
     } else {
         "其他"
@@ -1022,7 +1022,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 
 /// jcc_san_szx_V221122：三星形态
 ///
-/// 参数模板：`"{freq}_D{di}T{th}_三星"`
+/// 参数模板：`"{freq}_D{di}T{th}_三星V221122"`
 ///
 /// 信号逻辑：
 /// 1. 取最近5根K线；
@@ -1030,8 +1030,8 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 /// 3. 不少于3根判 `满足`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1T10_三星_满足_任意_任意_0')`
-/// - `Signal('15分钟_D1T10_三星_其他_任意_任意_0')`
+/// - `Signal('15分钟_D1T10_三星V221122_满足_任意_任意_0')`
+/// - `Signal('15分钟_D1T10_三星V221122_其他_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`；
@@ -1040,7 +1040,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "jcc_san_szx_V221122",
-    template = "{freq}_D{di}T{th}_三星",
+    template = "{freq}_D{di}T{th}_三星V221122",
     opcode = "JccSanSzxV221122",
     param_kind = "JccSanSzxV221122"
 )]
@@ -1049,7 +1049,7 @@ pub fn jcc_san_szx_v221122(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
     let th = get_usize_param(params, "th", 10) as i32;
     let k1 = c.freq.to_string();
     let k2 = format!("D{}T{}", di, th);
-    let k3 = "三星";
+    let k3 = "三星V221122";
 
     let mut v1 = "其他";
     if c.bars_raw.len() > 6 + di {
@@ -1065,7 +1065,7 @@ pub fn jcc_san_szx_v221122(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
 
 /// jcc_fan_ji_xian_V221121：反击线
 ///
-/// 参数模板：`"{freq}_D{di}_反击线"`
+/// 参数模板：`"{freq}_D{di}_反击线V221121"`
 ///
 /// 信号逻辑：
 /// 1. 最近20根内检测收盘接近、跳空幅度和实体强度；
@@ -1073,8 +1073,8 @@ pub fn jcc_san_szx_v221122(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
 /// 3. 否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1_反击线_满足_看涨反击线_任意_0')`
-/// - `Signal('15分钟_D1_反击线_满足_看跌反击线_任意_0')`
+/// - `Signal('15分钟_D1_反击线V221121_满足_看涨反击线_任意_0')`
+/// - `Signal('15分钟_D1_反击线V221121_满足_看跌反击线_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -1082,7 +1082,7 @@ pub fn jcc_san_szx_v221122(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
 #[signal(
     category = "kline",
     name = "jcc_fan_ji_xian_V221121",
-    template = "{freq}_D{di}_反击线",
+    template = "{freq}_D{di}_反击线V221121",
     opcode = "JccFanJiXianV221121",
     param_kind = "JccFanJiXianV221121"
 )]
@@ -1090,7 +1090,7 @@ pub fn jcc_fan_ji_xian_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCach
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}", di);
-    let k3 = "反击线";
+    let k3 = "反击线V221121";
 
     if c.bars_raw.len() < 20 + di {
         return make_kline_signal_v2(&k1, &k2, k3, "其他", "任意");
@@ -1144,7 +1144,7 @@ pub fn jcc_fan_ji_xian_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCach
 
 /// jcc_shan_chun_V221121：山川形态
 ///
-/// 参数模板：`"{freq}_D{di}B_山川形态"`
+/// 参数模板：`"{freq}_D{di}B_山川形态V221121"`
 ///
 /// 信号逻辑：
 /// 1. 取最近5笔；
@@ -1152,8 +1152,8 @@ pub fn jcc_fan_ji_xian_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCach
 /// 3. 末笔向下且 `5/3/1` 笔低点方差小，判 `三川`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1B_山川形态_三山_任意_任意_0')`
-/// - `Signal('15分钟_D1B_山川形态_三川_任意_任意_0')`
+/// - `Signal('15分钟_D1B_山川形态V221121_三山_任意_任意_0')`
+/// - `Signal('15分钟_D1B_山川形态V221121_三川_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：截止倒数第 `di` 笔，默认 `1`。
@@ -1161,7 +1161,7 @@ pub fn jcc_fan_ji_xian_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCach
 #[signal(
     category = "kline",
     name = "jcc_shan_chun_V221121",
-    template = "{freq}_D{di}B_山川形态",
+    template = "{freq}_D{di}B_山川形态V221121",
     opcode = "JccShanChunV221121",
     param_kind = "JccShanChunV221121"
 )]
@@ -1169,7 +1169,7 @@ pub fn jcc_shan_chun_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}B", di);
-    let k3 = "山川形态";
+    let k3 = "山川形态V221121";
 
     let mut v1 = "其他";
     if c.bi_list.len() >= 6 + di {
@@ -1195,7 +1195,7 @@ pub fn jcc_shan_chun_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 
 /// jcc_gap_yin_yang_V221121：跳空并列阴阳
 ///
-/// 参数模板：`"{freq}_D{di}K_并列阴阳"`
+/// 参数模板：`"{freq}_D{di}K_并列阴阳V221121"`
 ///
 /// 信号逻辑：
 /// 1. 最近三根满足跳空窗口；
@@ -1203,8 +1203,8 @@ pub fn jcc_shan_chun_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 /// 3. 判定 `向上跳空/向下跳空`。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1K_并列阴阳_向上跳空_任意_任意_0')`
-/// - `Signal('15分钟_D1K_并列阴阳_向下跳空_任意_任意_0')`
+/// - `Signal('15分钟_D1K_并列阴阳V221121_向上跳空_任意_任意_0')`
+/// - `Signal('15分钟_D1K_并列阴阳V221121_向下跳空_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -1212,7 +1212,7 @@ pub fn jcc_shan_chun_v221121(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "jcc_gap_yin_yang_V221121",
-    template = "{freq}_D{di}K_并列阴阳",
+    template = "{freq}_D{di}K_并列阴阳V221121",
     opcode = "JccGapYinYangV221121",
     param_kind = "JccGapYinYangV221121"
 )]
@@ -1224,7 +1224,7 @@ pub fn jcc_gap_yin_yang_v221121(
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "并列阴阳";
+    let k3 = "并列阴阳V221121";
 
     let mut v1 = "其他";
     if c.bars_raw.len() > di + 5 {
@@ -1255,7 +1255,7 @@ pub fn jcc_gap_yin_yang_v221121(
 
 /// jcc_ta_xing_V221124：塔形顶底
 ///
-/// 参数模板：`"{freq}_D{di}K_塔形"`
+/// 参数模板：`"{freq}_D{di}K_塔形V221124"`
 ///
 /// 信号逻辑：
 /// 1. 在 5~9 根窗口内扫描；
@@ -1263,8 +1263,8 @@ pub fn jcc_gap_yin_yang_v221121(
 /// 3. 判定 `顶部/底部`，并返回窗口长度。
 ///
 /// 信号列表示例：
-/// - `Signal('15分钟_D1K_塔形_顶部_6K_任意_0')`
-/// - `Signal('15分钟_D1K_塔形_底部_8K_任意_0')`
+/// - `Signal('15分钟_D1K_塔形V221124_顶部_6K_任意_0')`
+/// - `Signal('15分钟_D1K_塔形V221124_底部_8K_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 根K线，默认 `1`。
@@ -1272,7 +1272,7 @@ pub fn jcc_gap_yin_yang_v221121(
 #[signal(
     category = "kline",
     name = "jcc_ta_xing_V221124",
-    template = "{freq}_D{di}K_塔形",
+    template = "{freq}_D{di}K_塔形V221124",
     opcode = "JccTaXingV221124",
     param_kind = "JccTaXingV221124"
 )]
@@ -1280,7 +1280,7 @@ pub fn jcc_ta_xing_v221124(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}K", di);
-    let k3 = "塔形";
+    let k3 = "塔形V221124";
 
     let check = |bars: &[RawBar]| -> &'static str {
         if bars.len() < 5 {

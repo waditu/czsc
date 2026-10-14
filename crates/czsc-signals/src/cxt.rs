@@ -189,7 +189,7 @@ pub fn cxt_bi_status_v230102(
 
 /// cxt_fx_power_V221107：倒数分型强弱
 ///
-/// 参数模板：`"{freq}_D{di}F_分型强弱"`
+/// 参数模板：`"{freq}_D{di}F_分型强弱V221107"`
 ///
 /// 信号逻辑：
 /// 1. 读取倒数第 `di` 个分型；
@@ -197,8 +197,8 @@ pub fn cxt_bi_status_v230102(
 /// 3. `v2 = 有中枢/无中枢`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1F_分型强弱_强顶_有中枢_任意_0')`
-/// - `Signal('60分钟_D2F_分型强弱_弱底_无中枢_任意_0')`
+/// - `Signal('60分钟_D1F_分型强弱V221107_强顶_有中枢_任意_0')`
+/// - `Signal('60分钟_D2F_分型强弱V221107_弱底_无中枢_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：倒数第 `di` 个分型，默认 `1`；
@@ -207,7 +207,7 @@ pub fn cxt_bi_status_v230102(
 #[signal(
     category = "kline",
     name = "cxt_fx_power_V221107",
-    template = "{freq}_D{di}F_分型强弱",
+    template = "{freq}_D{di}F_分型强弱V221107",
     opcode = "CxtFxPowerV221107",
     param_kind = "CxtFxPowerV221107"
 )]
@@ -215,7 +215,7 @@ pub fn cxt_fx_power_v221107(c: &CZSC, params: &ParamView, _cache: &mut TaCache) 
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}F", di);
-    let k3 = "分型强弱";
+    let k3 = "分型强弱V221107";
 
     if di == 0 {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
@@ -1527,7 +1527,7 @@ pub fn cxt_bs_v240527(c: &CZSC, _params: &ParamView, _cache: &mut TaCache) -> Ve
 
 /// cxt_first_buy_V221126：一买信号
 ///
-/// 参数模板：`"{freq}_D{di}B_BUY1"`
+/// 参数模板：`"{freq}_D{di}B_BUY1V221126"`
 ///
 /// 信号逻辑：
 /// 1. 依次尝试最近 `21/19/17/15/13/11/9/7/5` 笔；
@@ -1535,8 +1535,8 @@ pub fn cxt_bs_v240527(c: &CZSC, _params: &ParamView, _cache: &mut TaCache) -> Ve
 /// 3. 命中后输出对应笔数，否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1B_BUY1_一买_5笔_任意_0')`
-/// - `Signal('60分钟_D1B_BUY1_一买_13笔_任意_0')`
+/// - `Signal('60分钟_D1B_BUY1V221126_一买_5笔_任意_0')`
+/// - `Signal('60分钟_D1B_BUY1V221126_一买_13笔_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：从倒数第 `di` 笔开始取样，默认 `1`；
@@ -1545,7 +1545,7 @@ pub fn cxt_bs_v240527(c: &CZSC, _params: &ParamView, _cache: &mut TaCache) -> Ve
 #[signal(
     category = "kline",
     name = "cxt_first_buy_V221126",
-    template = "{freq}_D{di}B_BUY1",
+    template = "{freq}_D{di}B_BUY1V221126",
     opcode = "CxtFirstBuyV221126",
     param_kind = "CxtFirstBuyV221126"
 )]
@@ -1553,7 +1553,7 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}B", di);
-    let k3 = "BUY1";
+    let k3 = "BUY1V221126";
     for n in [21, 19, 17, 15, 13, 11, 9, 7, 5] {
         let bis = get_sub_elements(&c.bi_list, di, n);
         if bis.len() == n && check_first_buy(bis) {
@@ -1565,7 +1565,7 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 
 /// cxt_first_sell_V221126：一卖信号
 ///
-/// 参数模板：`"{freq}_D{di}B_SELL1"`
+/// 参数模板：`"{freq}_D{di}B_SELL1V221126"`
 ///
 /// 信号逻辑：
 /// 1. 依次尝试最近 `21/19/17/15/13/11/9/7/5` 笔；
@@ -1573,8 +1573,8 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 /// 3. 命中后输出对应笔数，否则返回 `其他`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_D1B_SELL1_一卖_5笔_任意_0')`
-/// - `Signal('60分钟_D1B_SELL1_一卖_13笔_任意_0')`
+/// - `Signal('60分钟_D1B_SELL1V221126_一卖_5笔_任意_0')`
+/// - `Signal('60分钟_D1B_SELL1V221126_一卖_13笔_任意_0')`
 ///
 /// 参数说明：
 /// - `di`：从倒数第 `di` 笔开始取样，默认 `1`；
@@ -1583,7 +1583,7 @@ pub fn cxt_first_buy_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache)
 #[signal(
     category = "kline",
     name = "cxt_first_sell_V221126",
-    template = "{freq}_D{di}B_SELL1",
+    template = "{freq}_D{di}B_SELL1V221126",
     opcode = "CxtFirstSellV221126",
     param_kind = "CxtFirstSellV221126"
 )]
@@ -1591,7 +1591,7 @@ pub fn cxt_first_sell_v221126(c: &CZSC, params: &ParamView, _cache: &mut TaCache
     let di = get_usize_param(params, "di", 1);
     let k1 = c.freq.to_string();
     let k2 = format!("D{}B", di);
-    let k3 = "SELL1";
+    let k3 = "SELL1V221126";
     for n in [21, 19, 17, 15, 13, 11, 9, 7, 5] {
         let bis = get_sub_elements(&c.bi_list, di, n);
         if bis.len() == n && check_first_sell(bis) {
