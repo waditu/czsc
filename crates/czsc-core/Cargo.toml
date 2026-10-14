@@ -33,7 +33,7 @@ strum          = "0.28"
 strum_macros   = "0.28"
 thiserror      = "2"
 pyo3           = { workspace = true, optional = true, features = ["chrono"] }
-pyo3-stub-gen  = { version = "0.22", optional = true }
+pyo3-stub-gen  = { version = "0.23", optional = true }
 
 [features]
 python = ["pyo3", "pyo3-stub-gen", "parking_lot"]

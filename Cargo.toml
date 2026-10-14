@@ -34,8 +34,8 @@ polars        = { version = "0.52.0", features = [
 # PYO3_PYTHON. The cdylib producer (`czsc-python`) layers on
 # `abi3-py310` + `extension-module` so the published wheel uses the
 # abi3 stable API and dynamically loads at Python startup time.
-pyo3          = { version = "0.28" }
-numpy         = "0.28"
+pyo3          = { version = "0.29" }
+numpy         = "0.29"
 rayon         = "1"
 serde         = { version = "1", features = ["derive", "rc"] }
 

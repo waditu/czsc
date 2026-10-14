@@ -26,6 +26,15 @@
 
 ### Fixed
 
+- **发布审核回归修复**：`resample_to_daily` 将输入、日线匹配键与输出统一为
+  `datetime64[ns]`，覆盖 pandas 2/3 及秒/毫秒/微秒/纳秒输入；不改变笔/分型算法。
+- **测试配置隔离**：移除测试包导入时的全局配置写入，环境默认值测试使用可恢复的
+  monkeypatch；独立核心快照不再依赖其他测试先清理配置，未刷新快照。
+- **依赖安全处置**：PyO3/NumPy Rust bindings 与 stub generator 匹配升级，
+  修补 Quinn、xxhash 及 Python 开发/发布锁中的已审核漏洞版本；普通 wheel 安装
+  要求 `urllib3>=2.8.0`。逐项影响、处理和残余风险见
+  [发布安全处置记录](docs/release_security_review.md)。
+
 - **重复分型生成与聚合**（#347）：从第二个候选起过滤相邻同标记分型、保留先出现项；
   `get_fx_list` 按严格递增时间聚合已完成 BI，消除相邻 BI 的共享端点重复。
 - **信号配置反解析**（#368）：按完整模板匹配动态 k3，恢复 HHMM、涨跌幅 `span`、

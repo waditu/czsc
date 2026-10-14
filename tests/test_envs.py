@@ -24,8 +24,6 @@
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from czsc import envs as envs_mod
@@ -61,7 +59,7 @@ class TestRetiredHelpers:
 class TestGetVerbose:
     """``get_verbose`` 函数行为测试：覆盖默认值、环境变量、参数覆盖三类来源。"""
 
-    def test_default_false(self) -> None:
+    def test_default_false(self, monkeypatch) -> None:
         """无任何外部输入时，get_verbose 默认返回 False。
 
         测试场景：
@@ -70,8 +68,8 @@ class TestGetVerbose:
         关键断言：
             返回值严格为 ``False``（使用 ``is`` 比较布尔身份）。
         """
-        os.environ.pop("CZSC_VERBOSE", None)
-        os.environ.pop("czsc_verbose", None)
+        monkeypatch.delenv("CZSC_VERBOSE", raising=False)
+        monkeypatch.delenv("czsc_verbose", raising=False)
         assert get_verbose() is False
 
     def test_env_true(self, monkeypatch) -> None:
@@ -83,14 +81,14 @@ class TestGetVerbose:
         monkeypatch.setenv("CZSC_VERBOSE", "1")
         assert get_verbose() is True
 
-    def test_parameter_override(self) -> None:
+    def test_parameter_override(self, monkeypatch) -> None:
         """显式传入参数覆盖环境变量与默认值。
 
         关键断言：
             - ``get_verbose(verbose="1")`` 返回 True；
             - ``get_verbose(verbose="0")`` 返回 False。
         """
-        os.environ.pop("czsc_verbose", None)
+        monkeypatch.delenv("czsc_verbose", raising=False)
         assert get_verbose(verbose="1") is True
         assert get_verbose(verbose="0") is False
 
@@ -98,10 +96,10 @@ class TestGetVerbose:
 class TestGetMinBiLen:
     """``get_min_bi_len`` 函数行为测试：覆盖默认值、参数覆盖、环境变量、返回类型。"""
 
-    def test_default_value(self) -> None:
+    def test_default_value(self, monkeypatch) -> None:
         """无任何外部输入时，最小笔长度默认值为 6 根 K 线。"""
-        os.environ.pop("CZSC_MIN_BI_LEN", None)
-        os.environ.pop("czsc_min_bi_len", None)
+        monkeypatch.delenv("CZSC_MIN_BI_LEN", raising=False)
+        monkeypatch.delenv("czsc_min_bi_len", raising=False)
         assert get_min_bi_len() == 6
 
     def test_parameter_override(self) -> None:
@@ -122,10 +120,10 @@ class TestGetMinBiLen:
 class TestGetMaxBiNum:
     """``get_max_bi_num`` 函数行为测试：覆盖默认值、参数覆盖、环境变量、返回类型。"""
 
-    def test_default_value(self) -> None:
+    def test_default_value(self, monkeypatch) -> None:
         """无任何外部输入时，最大笔数量默认值为 50。"""
-        os.environ.pop("CZSC_MAX_BI_NUM", None)
-        os.environ.pop("czsc_max_bi_num", None)
+        monkeypatch.delenv("CZSC_MAX_BI_NUM", raising=False)
+        monkeypatch.delenv("czsc_max_bi_num", raising=False)
         assert get_max_bi_num() == 50
 
     def test_parameter_override(self) -> None:

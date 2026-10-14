@@ -49,6 +49,7 @@ dependencies = [
     "polars>=0.20.0",
     # 网络请求（czsc.fsa 飞书 API 封装使用）
     "requests>=2.24.0",
+    "urllib3>=2.8.0",
     "requests_toolbelt",
     # 数学计算和统计
     "scipy",
