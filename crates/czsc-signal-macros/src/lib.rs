@@ -12,10 +12,12 @@ fn template_has_version(template: &str, name: &str) -> bool {
     name.rsplit_once("_V").is_some_and(|(_, version)| {
         !version.is_empty()
             && version.chars().all(|character| character.is_ascii_digit())
-            && template
-                .rsplit('_')
-                .next()
-                .is_some_and(|key| key.ends_with(version))
+            && template.rsplit('_').next().is_some_and(|key| {
+                let digits_start = key
+                    .trim_end_matches(|character: char| character.is_ascii_digit())
+                    .len();
+                &key[digits_start..] == version
+            })
     })
 }
 
@@ -40,6 +42,8 @@ mod tests {
             ("{freq}_V221111_时间区间", "bar_operate_span_V221111"),
             ("{freq}_T_时间区间V221111错误", "bar_operate_span_V221111"),
             ("{freq}_T_时间区间", "bar_V"),
+            ("{freq}_D_KV99230101", "audit_V230101"),
+            ("{freq}_D_KV9920221118", "audit_V20221118"),
         ] {
             assert!(!template_has_version(template, name));
         }
@@ -105,7 +109,7 @@ pub fn signal(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     if !template_has_version(&template, &name) {
         errors
-            .push(quote! { compile_error!("#[signal] template 的 k3 必须以注册名的版本号结尾"); });
+            .push(quote! { compile_error!("#[signal] template 的 k3 的末尾完整连续数字串必须与注册版本完全相等"); });
     }
 
     if category != "kline" && category != "trader" {

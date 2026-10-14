@@ -1006,7 +1006,7 @@ pub fn jcc_szx_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
         } else if lower > solid(bar2) && upper > solid(bar2) {
             "长腿十字线"
         } else {
-            "十字线V221111"
+            "十字线"
         }
     } else {
         "其他"

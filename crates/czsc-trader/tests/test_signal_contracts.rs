@@ -396,14 +396,11 @@ fn test_all_descriptors_are_unique_and_registered() {
     let mut opcodes = HashSet::new();
     for descriptor in descriptors {
         let version = descriptor.name.rsplit_once("_V").unwrap().1;
-        assert!(
-            descriptor
-                .template
-                .rsplit('_')
-                .next()
-                .unwrap()
-                .ends_with(version)
-        );
+        let k3 = descriptor.template.rsplit('_').next().unwrap();
+        let digits_start = k3
+            .trim_end_matches(|character: char| character.is_ascii_digit())
+            .len();
+        assert_eq!(&k3[digits_start..], version, "{}", descriptor.name);
         assert!(names.insert(descriptor.name), "{}", descriptor.name);
         assert!(opcodes.insert(descriptor.opcode), "{}", descriptor.opcode);
         match descriptor.func_ref {
@@ -441,5 +438,50 @@ fn test_strategy_conditions_require_versioned_keys() {
         .parse()
         .unwrap();
     assert!(updated.is_match(&signals));
+    assert!(!legacy.is_match(&signals));
+}
+
+#[test]
+fn test_normal_doji_preserves_classification_and_migrated_condition() {
+    let start = Utc.with_ymd_and_hms(2026, 10, 1, 9, 0, 0).unwrap();
+    let bars = (0..12)
+        .map(|index| {
+            let (open, close, high, low) = if index == 11 {
+                (100.0, 100.0, 101.0, 99.0)
+            } else {
+                (90.0, 100.0, 100.0, 90.0)
+            };
+            RawBarBuilder::default()
+                .symbol("T")
+                .id(index)
+                .dt(start + Duration::hours(index as i64))
+                .freq(Freq::F60)
+                .open(open)
+                .close(close)
+                .high(high)
+                .low(low)
+                .vol(1.0)
+                .amount(1.0)
+                .build()
+                .unwrap()
+        })
+        .collect();
+    let context = CZSC::new(bars, 50, 6);
+    assert_eq!(context.bars_raw.len(), 12);
+    let meta = &SIGNAL_REGISTRY["jcc_szx_V221111"];
+    let output = (meta.func)(&context, &HashMap::new(), &mut TaCache::default());
+    assert_eq!(output.len(), 1);
+    let expected = "60分钟_D1TH10_十字线V221111_十字线_北方_任意_0";
+    assert_eq!(output[0].to_string(), expected);
+    let config = SignalConfig::from_signal_str(expected).unwrap();
+    let replayed = (meta.func)(&context, &config.params, &mut TaCache::default());
+    assert_eq!(replayed[0].to_string(), expected);
+    let signals = HashMap::from([(output[0].key(), output[0].value())]);
+    let migrated: czsc_core::objects::signal::Signal = expected.parse().unwrap();
+    let legacy: czsc_core::objects::signal::Signal = expected
+        .replacen("十字线V221111", "十字线", 1)
+        .parse()
+        .unwrap();
+    assert!(migrated.is_match(&signals));
     assert!(!legacy.is_match(&signals));
 }
