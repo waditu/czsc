@@ -89,7 +89,7 @@ PY
 | macOS arm64 / Python 3.11 | 本机 release wheel、metadata/源码/stub/native 与独立环境验证；详见本轮日志 |
 | Linux x86_64、Linux arm64、musllinux、macOS Intel、Windows wheel | 本机未验证；需收集同一 head 的六平台 workflow 产物与真实运行环境 smoke |
 | Python 3.10/3.12/3.13 | 本机未重新运行；PR CI 是开发构建回归，不能替代对应 release wheel 验证 |
-| ARM/musllinux/macOS Intel import smoke | 原发布 workflow 没覆盖；本机 Docker daemon 不可用，缺硬件/容器环境，仍未验证 |
+| ARM/musllinux/macOS Intel import smoke | 已给现有 workflow 增加原生 ARM/Intel runner 与 Alpine 运行检查；配置不等于执行通过，本机 Docker daemon 不可用，结果仍须单独收集 |
 | 官方 crates.io 下游解析/安装 | 未发布，尚不可验证；离线镜像验证不是线上证据 |
 | PyPI Trusted Publisher / crates.io token | 仅知道 repo environment / secret 名存在，未验证有效性，不读取 secret 值 |
 | TestPyPI/正式上传与发布后验收 | 无授权，未触发；正式版/RC 和范围须维护者确认 |
@@ -102,3 +102,16 @@ gh workflow run python-publish.yml --repo waditu/czsc \
 ```
 
 不要改成 true 或推 v* tag 来获取证据：前者会上传 TestPyPI，后者会自动上传正式 PyPI。Rust 真正发布需要授权后在同一 tag dispatch `do_publish=true`。本任务不合并、不打 tag、不上传包。
+
+## 补充 release wheel 运行检查
+
+现有 `python-publish.yml` 的 smoke 已扩展至六个平台 × Python 3.10/3.11/3.12/3.13（24 个组合），不是重新运行全套算法回归：
+
+- manylinux x86_64、aarch64 分别在 x86_64、`ubuntu-24.04-arm` 原生 runner 执行；macOS Intel 在 `macos-15-intel`，arm64 在 Apple Silicon，Windows 在 x64 runner 执行。
+- musllinux x86_64 在对应 Python 版本的 Alpine Docker 环境执行，不能用 glibc Linux 或交叉编译结果替代实际加载。
+- 每个组合创建新 venv，从公开 PyPI 在线解析完整运行时依赖，安装同一 run 的 release wheel，执行 `pip check`；取消原最小依赖/no-deps smoke。依赖若缺少该平台发行包或编译环境，必须失败并记录，不能跳过依赖伪装普通安装成功。
+- 在仓库之外执行 `.github/scripts/smoke_release_wheel.py`；校验版本、runner 架构、模块属于目标 venv、native 二进制与下载 wheel 字节一致，并实际运行 RawBar/CZSC、Rust SMA 和八种时间精度组合。
+- 两个 smoke job 仅有 contents/actions read 权限，没有上传步骤或 OIDC write。原 PyPI/TestPyPI 上传条件不变，两个上传 job 新增 musl smoke 为依赖；演练必须继续显式 `publish_to_testpypi=false`。
+- 新脚本与门禁回归使用独立安装环境执行：`python -m pytest .github/scripts/tests/test_release_wheel_smoke.py -q`。原始红灯 5 failed，修复后 5 passed。此工具回归不混入先前 546 项算法回归计数。
+
+当前配置的静态检查、本机在线安装与实际 CI wheel 执行日志随任务评论交付。远程 24 组合是否通过只能由新 head 的 job 执行结果证明；dispatch 成功或 queued 不算运行通过。未完成时只记录快照，不轮询等待外部 CI，也不申请发布批准。
