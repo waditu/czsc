@@ -267,8 +267,8 @@ pub fn bar_end_v221211(c: &CZSC, params: &ParamView, _cache: &mut TaCache) -> Ve
 /// 2. 若 `t1 <= HHMM <= t2` 判定 `是`，否则判定 `否`。
 ///
 /// 信号列表示例：
-/// - `Signal('60分钟_T0935#1450_时间区间_是_任意_任意_0')`
-/// - `Signal('60分钟_T0935#1450_时间区间_否_任意_任意_0')`
+/// - `Signal('60分钟_T0935#1450_时间区间V221111_是_任意_任意_0')`
+/// - `Signal('60分钟_T0935#1450_时间区间V221111_否_任意_任意_0')`
 ///
 /// 参数说明：
 /// - `t1`：起始时间（`HHMM`），默认 `0935`；
@@ -286,7 +286,7 @@ pub fn bar_operate_span_v221111(c: &CZSC, params: &ParamView, _cache: &mut TaCac
     let t2 = params.str("t2", "1450");
     let k1 = c.freq.to_string();
     let k2 = format!("T{t1}#{t2}");
-    let k3 = "时间区间";
+    let k3 = "时间区间V221111";
     if c.bars_raw.is_empty() {
         return make_kline_signal_v1(&k1, &k2, k3, "其他");
     }
