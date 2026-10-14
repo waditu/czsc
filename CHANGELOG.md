@@ -130,7 +130,7 @@ czsc (Python 包)
 │   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
 │   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
 │   ├── CzscTrader / CzscSignals / generate_czsc_signals
-│   ├── signals.*         ← 250+ 信号函数（13+ 子模块）
+│   ├── signals.*         ← 统一分发接口、7 个分类子模块（246 项信号注册）
 │   └── ta.*              ← Rust TA 算子（ema/sma/boll 等，仅内部使用）
 ├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
 ├── czsc.utils.plotting   ← Plotly 可视化（kline / weight）+ lightweight_charts HTML
@@ -152,10 +152,13 @@ Rust workspace 同步发布到 crates.io，按依赖层拆分为 7 个 crate：
 - **删除环境变量 `CZSC_USE_PYTHON`**。原用于切换 Python / Rust 实现，
   Python 实现已退役，该变量无意义。
 - **删除 `czsc/signals/` Python 命名空间层**。原 Python 版信号函数全部删除，
-  改用 Rust 实现（`czsc._native.signals.*`，13+ 子模块、250+ 信号函数，自查
-  `ls crates/czsc-signals/src/`）。
-- **信号函数命名规则变化**。不再使用 `V<yyMMdd>` 版本后缀，改用 Rust 模块约定，
-  由 `#[signal]` 宏自动注册到 `SIGNAL_REGISTRY`。新增信号函数需在 Rust 侧开发。
+  改用 Rust 实现，246 项信号通过 inventory 注册。`czsc._native.signals`
+  提供统一分发接口及 bar/cxt/tas/vol/pressure/obv/cvolp 七个分类子模块。
+  K 线信号使用 `call_signal(name, czsc, params)`；依赖 trader 状态的信号
+  通过 `CzscTrader` / `CzscSignals` 分发，不承诺逐函数直接导入。
+- **信号注册名保留版本后缀**。Python 分发/配置仍使用 `foo_V<yyMMdd>`，
+  Rust 实现函数使用 `foo_v<yyMMdd>`，由 `#[signal]` 自动注册；输出键的
+  k3 不要求与函数版本相同，以保留历史策略契约。新增信号需在 Rust 侧开发。
 - **删除 `czsc.SignalsParser` 类**。改用 `czsc.traders.get_signals_config` /
   `czsc.traders.get_signals_freqs` 两个函数；底层调用 Rust 端
   `derive_signals_config` / `derive_signals_freqs`。
@@ -309,14 +312,15 @@ from czsc import CZSC, RawBar, Freq, BarGenerator
 #### 2. 信号函数导入
 
 ```python
-# v0.10.X — Python 实现，文件名带版本后缀
-from czsc.signals.bar import bar_end_V221111
+# v0.10.X — Python 实现，函数名带版本后缀
+from czsc.signals.bar import bar_end_V221211
+result = bar_end_V221211(czsc_obj, freq1="60分钟")  # czsc_obj 为已有的 CZSC 实例
 
-# v1.0.0 — Rust 实现，无版本后缀
-from czsc._native.signals.bar import bar_end          # 直接调用
-# 或更常见地，通过 generate_czsc_signals 传配置字符串使用：
-from czsc.traders import generate_czsc_signals
-signals_seq = ["bar_end_V0", ...]  # 命名以 crates/czsc-signals/src/ 为准
+# v1.0.0 — Rust 实现，注册名仍带版本后缀，通过统一接口调用
+from czsc._native.signals import call_signal
+result = call_signal("bar_end_V221211", czsc_obj, {"freq1": "60分钟"})
+# result 是 Signal 列表；信号函数名不是 signals_seq 中的条件字符串
+signals_seq = ["15分钟_60分钟结束_BS辅助221211_闭合_任意_任意_0"]
 ```
 
 #### 3. 信号配置解析

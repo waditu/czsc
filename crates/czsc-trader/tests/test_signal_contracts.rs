@@ -1,4 +1,4 @@
-use chrono::{TimeZone, Utc};
+use chrono::{Duration, TimeZone, Utc};
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBarBuilder;
 use czsc_core::objects::freq::Freq;
@@ -25,6 +25,108 @@ fn context() -> CZSC {
         .build()
         .unwrap();
     CZSC::new(vec![bar], 50, 6)
+}
+
+fn price_change_context(di: usize, close: f64) -> CZSC {
+    let mut closes = vec![100.0; 160];
+    let target = closes.len() - di;
+    closes[target] = close;
+    let start = Utc.with_ymd_and_hms(2026, 10, 1, 9, 0, 0).unwrap();
+    let bars = closes
+        .into_iter()
+        .enumerate()
+        .map(|(index, close)| {
+            RawBarBuilder::default()
+                .symbol("T")
+                .id(index as i32)
+                .dt(start + Duration::hours(index as i64))
+                .freq(Freq::F60)
+                .open(close)
+                .close(close)
+                .high(close + 1.0)
+                .low(close - 1.0)
+                .vol(1.0)
+                .amount(1.0)
+                .build()
+                .unwrap()
+        })
+        .collect();
+    CZSC::new(bars, 50, 6)
+}
+
+#[test]
+fn test_zdf_multi_digit_di_params_and_complete_signals_round_trip() {
+    let name = "bar_zdf_V221203";
+    let meta = &SIGNAL_REGISTRY[name];
+    for di in [10, 11, 100] {
+        for mode in ["ZF", "DF"] {
+            for (change, expected_value) in [(4.5, "满足"), (1.0, "其他")] {
+                let close = if mode == "ZF" {
+                    100.0 + change
+                } else {
+                    100.0 - change
+                };
+                let context = price_change_context(di, close);
+                assert_eq!(context.bars_raw.len(), 160);
+                let params: HashMap<String, Value> =
+                    serde_json::from_value(json!({"di": di, "mode": mode, "span": "300,600"}))
+                        .unwrap();
+                let original = (meta.func)(&context, &params, &mut TaCache::default());
+                assert_eq!(original.len(), 1);
+                assert_eq!(original[0].key(), format!("60分钟_D{di}{mode}_300至600"));
+                assert_eq!(original[0].value(), format!("{expected_value}_任意_任意_0"));
+                let config = SignalConfig::from_signal_str(&original[0].to_string()).unwrap();
+                assert_eq!(config.name, name);
+                assert_eq!(config.freq.as_deref(), Some("60分钟"));
+                let replayed = (meta.func)(&context, &config.params, &mut TaCache::default());
+                assert_eq!(replayed.len(), 1);
+                assert_eq!(replayed[0].to_string(), original[0].to_string());
+                assert_eq!(config.params, params);
+            }
+        }
+    }
+}
+
+#[test]
+fn test_adjacent_ma_params_and_complete_signals_round_trip() {
+    for name in [
+        "tas_ma_base_V221101",
+        "tas_ma_base_V221203",
+        "tas_second_bs_V230303",
+    ] {
+        let meta = &SIGNAL_REGISTRY[name];
+        for di in [10, 11, 100] {
+            for ma_type in ["SMA", "EMA", "WMA"] {
+                for (close, direction) in [(104.5, "多头_向上"), (95.5, "空头_向下")] {
+                    let context = price_change_context(di, close);
+                    let mut params: HashMap<String, Value> = serde_json::from_value(
+                        json!({"di": di, "ma_type": ma_type, "timeperiod": 5}),
+                    )
+                    .unwrap();
+                    if name == "tas_ma_base_V221203" {
+                        params.insert("th".to_string(), json!(100));
+                    }
+                    let original = (meta.func)(&context, &params, &mut TaCache::default());
+                    assert_eq!(original.len(), 1);
+                    if name != "tas_second_bs_V230303" {
+                        let distance = if name == "tas_ma_base_V221203" {
+                            "远离"
+                        } else {
+                            "任意"
+                        };
+                        assert_eq!(original[0].value(), format!("{direction}_{distance}_0"));
+                    }
+                    let config = SignalConfig::from_signal_str(&original[0].to_string()).unwrap();
+                    assert_eq!(config.name, name);
+                    assert_eq!(config.freq.as_deref(), Some("60分钟"));
+                    assert_eq!(config.params, params);
+                    let replayed = (meta.func)(&context, &config.params, &mut TaCache::default());
+                    assert_eq!(replayed.len(), 1);
+                    assert_eq!(replayed[0].to_string(), original[0].to_string());
+                }
+            }
+        }
+    }
 }
 
 #[test]

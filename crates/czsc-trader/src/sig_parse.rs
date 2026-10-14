@@ -329,6 +329,14 @@ fn parse_template_tokens(
                         let Some(captured) = raw.get(raw_idx..end) else {
                             continue;
                         };
+                        if name == "di"
+                            && (captured.parse::<usize>().is_err()
+                                || raw
+                                    .get(end..)?
+                                    .starts_with(|character: char| character.is_ascii_digit()))
+                        {
+                            continue;
+                        }
                         let mut next_params = params.clone();
                         next_params.insert(name.clone(), parse_scalar_value(captured));
                         if let Some(parsed) =
@@ -462,19 +470,30 @@ mod tests {
 
     #[test]
     fn test_parse_template_segment_handles_adjacent_placeholders() {
-        let params = parse_template_segment("D{di}{ma_type}#{timeperiod}", "D1SMA#5")
-            .expect("segment should parse");
-        assert_eq!(params.get("di"), Some(&Value::from(1)));
-        assert_eq!(params.get("ma_type"), Some(&Value::from("SMA")));
-        assert_eq!(params.get("timeperiod"), Some(&Value::from(5)));
+        for di in [1, 10, 11, 100] {
+            for ma_type in ["SMA", "EMA", "WMA", "T3"] {
+                let params = parse_template_segment(
+                    "D{di}{ma_type}#{timeperiod}",
+                    &format!("D{di}{ma_type}#5"),
+                )
+                .expect("segment should parse");
+                assert_eq!(params.get("di"), Some(&Value::from(di)));
+                assert_eq!(params.get("ma_type"), Some(&Value::from(ma_type)));
+                assert_eq!(params.get("timeperiod"), Some(&Value::from(5)));
+            }
+        }
     }
 
     #[test]
-    fn test_parse_template_segment_handles_adjacent_numeric_and_string_placeholders_without_name_hints()
-     {
-        let params = parse_template_segment("D{di}{mode}", "D1ZF").expect("segment should parse");
-        assert_eq!(params.get("di"), Some(&Value::from(1)));
-        assert_eq!(params.get("mode"), Some(&Value::from("ZF")));
+    fn test_parse_template_segment_handles_adjacent_di_and_mode() {
+        for di in [1, 10, 11, 100] {
+            for mode in ["ZF", "DF"] {
+                let params = parse_template_segment("D{di}{mode}", &format!("D{di}{mode}"))
+                    .expect("segment should parse");
+                assert_eq!(params.get("di"), Some(&Value::from(di)));
+                assert_eq!(params.get("mode"), Some(&Value::from(mode)));
+            }
+        }
     }
 
     #[test]
