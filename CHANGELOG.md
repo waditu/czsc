@@ -1,7 +1,7 @@
 # Changelog
 
 本项目的版本变更记录，格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
-版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
+通常遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)；本次 1.0.2 的维护者指定例外及破坏性变更见下文。
 
 > 1.0.X 之前的版本变更可在 git 历史与 [GitHub Releases](https://github.com/waditu/czsc/releases) 查看。
 
@@ -9,10 +9,12 @@
 
 ## [Unreleased]
 
-## [2.0.0] — 待发布
+## [1.0.2] — 待发布
 
 本次范围为 `v1.0.1` 之后已合并的 #347、#348、#349、#368。
-信号输出契约存在破坏性变更，按发布检查清单升级主版本；发布时间以正式发布为准。
+维护者于 2026-10-15 明确选择继续发布 1.0.2，同时保留 #368 的 34 项输出键迁移及新键契约，
+不做旧键别名或双协议兼容。这是版本规则的显式例外，**不是兼容性修复版本**；
+旧策略必须按下文迁移，不能因版本号仍为 1.x 就直接升级。发布时间以正式发布为准。
 
 ### Breaking Changes
 

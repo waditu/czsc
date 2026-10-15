@@ -43,3 +43,28 @@ def test_runtime_installs_require_patched_urllib3():
     assert urllib3 is not None
     assert Version("2.7.0") not in urllib3.specifier
     assert Version("2.8.0") in urllib3.specifier
+
+
+def test_release_102_workspace_and_exact_dependencies_are_consistent():
+    root = Path(__file__).resolve().parents[1]
+    workspace = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))["workspace"]
+    version = workspace["package"]["version"]
+    assert version == "1.0.2"
+    internal = {
+        name: dependency
+        for name, dependency in workspace["dependencies"].items()
+        if isinstance(dependency, dict) and "path" in dependency
+    }
+    assert len(internal) == 8
+    for name, dependency in internal.items():
+        assert dependency["version"] == f"={version}", name
+    locked = tomllib.loads((root / "Cargo.lock").read_text(encoding="utf-8"))["package"]
+    packages = {package["name"]: package for package in locked if package["name"] in {*internal, "czsc-python"}}
+    assert len(packages) == 9
+    assert all(package["version"] == version for package in packages.values())
+    for manifest in (root / "crates").glob("*/Cargo.toml"):
+        package = tomllib.loads(manifest.read_text(encoding="utf-8"))["package"]
+        assert package["version"] == {"workspace": True}, manifest
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert "version" in project["dynamic"]
+    assert "version" not in project

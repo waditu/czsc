@@ -1,4 +1,34 @@
-# 2.0.0 发布审核补证
+# 1.0.2 发布审核补证
+
+## 当前版本与验收边界（2026-10-15）
+
+维护者明确选择 1.0.2，保留 #368 的 34 项输出键迁移及新键契约，不增加别名或双协议，
+不再推进兼容改造或 2.0.0 发布。CHANGELOG 保留破坏性警告；该范围决定不是合并、tag 或上传授权。
+版本源、八个内部精确约束和九个工作区锁包必须统一 1.0.2，Python 版本仍由 maturin 动态读取。
+`uv.lock` 的项目为 dynamic/editable，没有待替换的项目版本；第三方包的 2.0.0 不是项目版本。
+
+```bash
+REPO_ROOT="$PWD"
+python -m pytest tests/test_release_dependencies.py .github/scripts/tests/test_release_wheel_smoke.py -q
+uvx maturin build --release --locked --offline --interpreter "$PYTHON" --out target/release-1.0.2-dist
+uvx maturin sdist --out target/release-1.0.2-dist
+mkdir -p target/release-1.0.2-smoke-cwd
+(cd target/release-1.0.2-smoke-cwd && "$PYTHON" "$REPO_ROOT/.github/scripts/smoke_release_wheel.py" \
+  --expected-version 1.0.2 --expected-machine arm64 --wheel-dir "$REPO_ROOT/target/release-1.0.2-dist")
+```
+
+构建后必须在新 venv 完整安装实际 1.0.2 wheel，并在仓库外运行 smoke；上面的 `$PYTHON` 对安装和
+检查命令应指向该环境，不能从源码目录导入旧 native 冒充新产物。检查版本/架构/来源/native 字节、
+RawBar/CZSC、SMA、八个时间精度组合及实际新信号键/配置往返、旧键拒绝，不放宽原功能门禁。
+原六平台 × Python 3.10–3.13 的 24 组合保持完整在线/no-cache 安装、pip check 和所有上传 needs；
+只无上传演练 `publish_to_testpypi=false`，新 producer SHA/产物哈希及一次执行快照随任务评论交付，
+没有结果的项目明确未验证，不轮询等待外部 CI。
+
+## 历史 2.0.0 候选记录（以下至文末均非新版本通过证明）
+
+下文保留此前源码、命令、版本、文件名、哈希及局部运行缺口的原貌，不改名复用历史产物。
+其后独立复审已验收 `eeeb731` / run 38615098709 的六平台与 24/24 组合，三个上传 job 均 skipped；
+该结论只属于原 2.0.0 产物。未变化的算法/安全图证据可按边界保留，不能替代 1.0.2 的重建和运行。
 
 本次验证对应 PR #369 的审核修复内容，不等于发布批准。版本源仍为 Cargo workspace；正式版/RC、范围和上传授权未确认。禁止把以下本地通过替代六平台产物、线上 registry 安装或上传权限证据。
 

@@ -65,6 +65,13 @@ def main():
     analysis = czsc.CZSC(bars)
     assert analysis.symbol == "SMOKE" and analysis.freq == czsc.Freq.F1
     assert analysis.bars_raw[-1].id == 11
+    signals = native.signals.call_signal("bar_operate_span_V221111", analysis)
+    assert len(signals) == 1
+    assert signals[0].key == "1分钟_T0935#1450_时间区间V221111"
+    signal_text = f"{signals[0].key}_{signals[0].value}"
+    config = czsc.get_signals_config([signal_text])
+    assert config == [{"name": "bar_operate_span_V221111", "freq": "1分钟", "t1": "0935", "t2": "1450"}], config
+    assert czsc.get_signals_config([signal_text.replace("时间区间V221111", "时间区间")]) == []
     np.testing.assert_allclose(ta.sma(np.array([1.0, 2.0, 3.0, 4.0, 5.0]), 3), [np.nan, np.nan, 2.0, 3.0, 4.0])
     for unit in ("s", "ms", "us", "ns"):
         frame = pd.DataFrame(
@@ -88,7 +95,7 @@ def main():
         platform.libc_ver(),
     )
     print("czsc:", installed_version, "pandas:", pd.__version__, "numpy:", np.__version__, "native:", native_path)
-    print("PASS installed release wheel: version, core, SMA, eight timestamp combinations")
+    print("PASS installed release wheel: version, core, migrated signal contract, SMA, eight timestamp combinations")
 
 
 if __name__ == "__main__":

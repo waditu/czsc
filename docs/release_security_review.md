@@ -1,4 +1,8 @@
-# 2.0.0 发布安全处置记录
+# 1.0.2 发布安全处置记录
+
+维护者已选择 1.0.2 并保留新信号键。本次只同步项目版本和内部精确依赖，不回退下列安全修复或
+变更第三方解析图。下文是此前 2.0.0 候选阶段对同一依赖图的审核记录；历史证据不是新 1.0.2
+产物验证或全库安全认证，新版本仍须重新构建、安装和运行检查。
 
 本轮针对审核 head `f7e5cc6` 的 30 项 open Dependabot 告警逐项处置。
 来源为只读 `gh api --paginate 'repos/waditu/czsc/dependabot/alerts?state=open&per_page=100'`；漏洞条件与修复阈值来自各项 `security_advisory` / `security_vulnerability`。

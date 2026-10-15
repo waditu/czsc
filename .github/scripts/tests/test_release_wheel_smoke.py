@@ -24,12 +24,12 @@ def test_workflow_version_command_reads_utf8_under_windows_default(job, monkeypa
     monkeypatch.chdir(ROOT)
     monkeypatch.setattr(Path, "read_text", read_with_windows_default)
     exec(command, {})
-    assert capsys.readouterr().out.strip() == "2.0.0"
+    assert capsys.readouterr().out.strip() == "1.0.2"
 
 
 def test_installed_wheel_runs_outside_repository(tmp_path):
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--expected-version", "2.0.0", "--expected-machine", platform.machine()],
+        [sys.executable, str(SCRIPT), "--expected-version", "1.0.2", "--expected-machine", platform.machine()],
         cwd=tmp_path,
         capture_output=True,
         text=True,
@@ -37,6 +37,7 @@ def test_installed_wheel_runs_outside_repository(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "PASS installed release wheel" in result.stdout
+    assert "migrated signal contract" in result.stdout
 
 
 def test_incorrect_release_version_is_rejected(tmp_path):
@@ -53,7 +54,7 @@ def test_incorrect_release_version_is_rejected(tmp_path):
 
 def test_wrong_architecture_is_rejected(tmp_path):
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--expected-version", "2.0.0", "--expected-machine", "wrong-architecture"],
+        [sys.executable, str(SCRIPT), "--expected-version", "1.0.2", "--expected-machine", "wrong-architecture"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
