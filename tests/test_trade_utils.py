@@ -10,8 +10,25 @@ describe: 测试交易工具函数（``czsc.resample_to_daily`` 等）
 
 import numpy as np
 import pandas as pd
+import pytest
 
 import czsc
+
+
+@pytest.mark.parametrize("unit", ["s", "ms", "us", "ns"])
+@pytest.mark.parametrize("only_trade_date", [True, False])
+def test_resample_to_daily_normalizes_datetime_precision(unit, only_trade_date):
+    dates = pd.date_range("2022-01-03", periods=3, freq="7D").astype(f"datetime64[{unit}]")
+    frame = pd.DataFrame({"dt": dates, "value": [10, 20, 30]})
+
+    result = czsc.resample_to_daily(frame, only_trade_date=only_trade_date)
+
+    assert result["dt"].dtype == "datetime64[ns]"
+    assert result["dt"].is_monotonic_increasing
+    assert result["value"].iloc[0] == 10
+    assert result["value"].iloc[-1] == 30
+    if only_trade_date:
+        assert (result["dt"].dt.dayofweek < 5).all()
 
 
 def test_make_it_daily():

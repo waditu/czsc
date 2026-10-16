@@ -150,40 +150,33 @@ jobs:
   # ------------------------------------------------------------------
   # 3) Smoke-test wheels
   #
-  #    跨 4 平台 (Linux x86_64 / macOS x86_64 / macOS arm64 / Windows x64)
-  #    用 --no-deps 安装 wheel，仅装最小必需依赖（pandas/numpy/loguru/
-  #    deprecated/parse），然后实际调用 czsc._native 中的 Rust 实现，
-  #    确认扩展模块在该平台能加载并运行，避免被 wbt/TA-Lib 等运行时
-  #    重型依赖在 PyPI 上的 wheel 可用性卡死发布流程。
-  #
-  #    smoke matrix 字段（os/target/manylinux）必须与 build-wheels matrix
-  #    保持同名，这样能复用上面 ARTIFACT NAMING CONTRACT 中的同一公式
-  #    `wheels-<os>-<target>-<manylinux|native>` 反推 artifact，无需手动
-  #    维护 artifact 字符串映射表（上一版本的常见漂移源）。
-  #
-  #    Linux ARM64 与 musllinux 不在 smoke 范围（GitHub-hosted runner
-  #    没有原生 ARM Linux / Alpine 环境，发布前可在本地 docker 验证）。
   # ------------------------------------------------------------------
   smoke-test:
-    name: Smoke ${{ matrix.smoke.os }} ${{ matrix.smoke.target }}
+    name: Smoke ${{ matrix.smoke.runner }} ${{ matrix.smoke.target }} Python ${{ matrix.python }}
     needs: build-wheels
-    runs-on: ${{ matrix.smoke.os }}
+    runs-on: ${{ matrix.smoke.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
         smoke:
-          - { os: ubuntu-latest,  target: x86_64,  manylinux: '2014' }
-          # macOS x86_64 wheel 是 cross-compile 出来的（见 build-wheels 注释），
-          # 不能在 Apple Silicon runner 上原生 import 验证（platform mismatch），
-          # 而 macos-13 Intel runner pool 紧张到不可用——故 CI 不 smoke 它，
-          # 信任 Apple 工具链 cross-build 的稳定性。
-          - { os: macos-latest,   target: aarch64, manylinux: '' }
-          - { os: windows-latest, target: x64,     manylinux: '' }
+          - { os: ubuntu-latest, runner: ubuntu-latest, target: x86_64, manylinux: '2014', machine: x86_64 }
+          - { os: ubuntu-latest, runner: ubuntu-24.04-arm, target: aarch64, manylinux: '2014', machine: aarch64 }
+          - { os: macos-latest, runner: macos-15-intel, target: x86_64, manylinux: '', machine: x86_64 }
+          - { os: macos-latest, runner: macos-latest, target: aarch64, manylinux: '', machine: aarch64 }
+          - { os: windows-latest, runner: windows-latest, target: x64, manylinux: '', machine: AMD64 }
     steps:
-      - name: Set up Python 3.10
+      - name: Checkout smoke script and version source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python }}
 
       - name: Download wheel
         uses: actions/download-artifact@v4
@@ -193,22 +186,64 @@ jobs:
           name: wheels-${{ matrix.smoke.os }}-${{ matrix.smoke.target }}-${{ matrix.smoke.manylinux || 'native' }}
           path: dist/
 
-      # 最小依赖集：czsc/__init__.py + czsc/fsa/__init__.py + czsc/traders/__init__.py
-      # 顶层 import 链上必须的几个。
-      # 注意：wbt 是 czsc 顶层 import（pyproject.toml 硬依赖）；requests 是 czsc.fsa
-      # 顶层 import；漏装任一项 smoke import czsc 会直接崩。
-      # 其余运行时依赖（pyarrow/polars/scipy/...）不在 import 路径上，--no-deps 跳过即可。
-      - name: Install + import czsc (no deps, then minimal deps)
+      - name: Online clean install and release wheel smoke
         shell: bash
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install --no-deps dist/*.whl
-          python -m pip install pandas numpy loguru deprecated parse pytz tqdm dill tenacity wbt requests
-          python -c "import czsc; print('czsc version:', czsc.__version__)"
-          python -c "from czsc import CZSC, RawBar, Freq; print('core imports OK')"
-          python -c "from czsc._native import signals; print('native signals namespace OK:', sorted(dir(signals))[:5])"
-          python -c "from czsc._native.signals import bar; print('bar signals callables:', [n for n in dir(bar) if not n.startswith('_')][:5])"
-          python -c "import czsc._native.ta as ta; print('rust ta module OK:', sorted(dir(ta))[:5])"
+          VERSION=$(python -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(encoding="utf-8"), re.M).group(1))')
+          python -m venv "$RUNNER_TEMP/release-wheel-env"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            PYTHON="$RUNNER_TEMP/release-wheel-env/Scripts/python.exe"
+          else
+            PYTHON="$RUNNER_TEMP/release-wheel-env/bin/python"
+          fi
+          "$PYTHON" -m pip install --disable-pip-version-check --no-cache-dir --index-url https://pypi.org/simple --report "$RUNNER_TEMP/pip-install.json" dist/*.whl
+          "$PYTHON" -m pip check
+          cd "$RUNNER_TEMP"
+          "$PYTHON" "$GITHUB_WORKSPACE/.github/scripts/smoke_release_wheel.py" --expected-version "$VERSION" --expected-machine "${{ matrix.smoke.machine }}" --wheel-dir "$GITHUB_WORKSPACE/dist"
+
+  smoke-musllinux:
+    name: Smoke musllinux x86_64 Python ${{ matrix.python }}
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - name: Checkout smoke script and version source
+        uses: actions/checkout@v4
+
+      - name: Download musllinux wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: wheels-ubuntu-latest-x86_64-musllinux_1_2
+          path: dist/
+
+      - name: Online clean install and native smoke in Alpine
+        shell: bash
+        run: |
+          VERSION=$(python3 -c 'import re; from pathlib import Path; print(re.search(r"^version\s*=\s*\"([^\"]+)\"", Path("Cargo.toml").read_text(encoding="utf-8"), re.M).group(1))')
+          docker run --rm --platform linux/amd64 \
+            -v "$GITHUB_WORKSPACE/dist:/dist:ro" \
+            -v "$GITHUB_WORKSPACE/.github/scripts:/smoke:ro" \
+            -e EXPECTED_VERSION="$VERSION" -e CARGO_BUILD_JOBS=2 -w /tmp \
+            "python:${{ matrix.python }}-alpine" sh -ec '
+              apk add --no-cache build-base libgcc libstdc++ rustup pkgconf openssl-dev
+              rustup-init -y --profile minimal --default-toolchain stable
+              export PATH="$HOME/.cargo/bin:$PATH"
+              cat /etc/alpine-release
+              apk info -v
+              rustc --version
+              cargo --version
+              python -m venv /tmp/release-wheel-env
+              /tmp/release-wheel-env/bin/python -m pip install --disable-pip-version-check --no-cache-dir --index-url https://pypi.org/simple --report /tmp/pip-install.json /dist/*.whl
+              /tmp/release-wheel-env/bin/python -m pip check
+              /tmp/release-wheel-env/bin/python /smoke/smoke_release_wheel.py --expected-version "$EXPECTED_VERSION" --expected-machine x86_64 --wheel-dir /dist
+            '
 
   # ------------------------------------------------------------------
   # 4) (optional) Publish to TestPyPI via workflow_dispatch
@@ -216,7 +251,7 @@ jobs:
   publish-to-testpypi:
     name: Publish to TestPyPI
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.publish_to_testpypi == 'true'
-    needs: [build-wheels, build-sdist, smoke-test]
+    needs: [build-wheels, build-sdist, smoke-test, smoke-musllinux]
     runs-on: ubuntu-latest
     environment:
       name: testpypi
@@ -253,7 +288,7 @@ jobs:
   publish-to-pypi:
     name: Publish to PyPI
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [build-wheels, build-sdist, smoke-test]
+    needs: [build-wheels, build-sdist, smoke-test, smoke-musllinux]
     runs-on: ubuntu-latest
     environment:
       name: pypi

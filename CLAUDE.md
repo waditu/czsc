@@ -220,7 +220,7 @@ czsc_obj = CZSC(bars)
 - **API 暴露**：所有面向用户的 API 都通过 `czsc.xxx` 顶层命名空间暴露，禁止用户感知 `czsc._native`
 - **Python/Rust 分工**：见本文件顶部「🏛️ 开发宪法 · 第一条」。该条款是硬约束，与此冲突的任何"局部例外"都不成立。
 - **类型 stub**：`czsc/py.typed` 启用 inline 类型注解；扩展模块 stub 已生成于 `czsc/_native/__init__.pyi`，由 `pyo3-stub-gen` 自动维护
-- **构建环境约束**：`pyo3-stub-gen` 与 `pyo3` 0.22 都要求 Python ≥ 3.10；通过 `crates/czsc-python/build.rs` 在编译期校验 `PYO3_PYTHON`，低于 3.10 时直接报错
+- **构建环境约束**：使用 `pyo3-stub-gen` 0.23 与 `pyo3` 0.29；项目要求 Python ≥ 3.10，通过 `crates/czsc-python/build.rs` 在编译期校验 `PYO3_PYTHON`，低于 3.10 时直接报错
 - **版本号锁死**（PR-5）：crates.io 与 PyPI 必须使用同一版本号。**唯一版本源**是 `Cargo.toml [workspace.package].version`；`pyproject.toml` 用 `dynamic = ["version"]`，由 maturin 在打 wheel 时从 Cargo workspace 注入。`crates/czsc-python/build.rs` 会在编译期校验 pyproject.toml 仍然走 dynamic 路径，禁止硬编码 `version = "..."`
 - **发版流程**：bump `Cargo.toml [workspace.package].version` 后，同步 publish 到 crates.io（`cargo publish`）与 PyPI（`maturin publish`）；CHANGELOG 必须列出本次 release 的 breaking changes
 - **rs-czsc 关系**：czsc 一次性 fork rs-czsc 的 Rust 实现进本仓库，**不再做季度同步**；`tests/parity/` 目录已删除，不再保留 rs-czsc parity 比对测试

@@ -130,13 +130,14 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
     :param only_trade_date: 是否只保留交易日数据
     :return: pd.DataFrame
     """
-    df["dt"] = pd.to_datetime(df["dt"])
+    df["dt"] = pd.to_datetime(df["dt"]).astype("datetime64[ns]")
     sdt = df["dt"].min() if not sdt else pd.to_datetime(sdt)
     edt = df["dt"].max() if not edt else pd.to_datetime(edt)
 
     # 创建日期序列
     trade_dates = _get_trade_dates(sdt, edt) if only_trade_date else pd.date_range(sdt, edt, freq="D").tolist()
     trade_dates = pd.DataFrame({"date": trade_dates})
+    trade_dates["date"] = pd.to_datetime(trade_dates["date"]).astype("datetime64[ns]")
     trade_dates = trade_dates.sort_values("date", ascending=True).reset_index(drop=True)
 
     # 通过 merge_asof 找到每个日期对应原始 df 中最近一个日期
@@ -155,6 +156,7 @@ def resample_to_daily(df: pd.DataFrame, sdt=None, edt=None, only_trade_date=True
         results.append(df_)
 
     dfr = pd.concat(results, ignore_index=True)
+    dfr["dt"] = pd.to_datetime(dfr["dt"]).astype("datetime64[ns]")
     return dfr
 
 

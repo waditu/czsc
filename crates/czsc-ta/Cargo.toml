@@ -20,7 +20,7 @@ path = "src/lib.rs"
 numpy         = { workspace = true, optional = true }
 ordered-float = { version = "5.3", optional = true }
 pyo3          = { workspace = true, optional = true, features = ["chrono"] }
-pyo3-stub-gen = { version = "0.22", optional = true }
+pyo3-stub-gen = { version = "0.23", optional = true }
 
 [features]
 python     = ["pyo3", "pyo3-stub-gen"]

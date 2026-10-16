@@ -68,7 +68,7 @@ jobs:
   # ------------------------------------------------------------------
   # 1.1) `czsc/_native/__init__.pyi` 漂移检查
   #
-  #      `crates/czsc-python/src/bin/stub_gen.rs` 通过 pyo3-stub-gen 0.22
+  #      `crates/czsc-python/src/bin/stub_gen.rs` 通过 pyo3-stub-gen 0.23
   #      把 Rust 端 `#[gen_stub_pyclass]` / `#[gen_stub_pyfunction]` /
   #      `#[gen_stub_pymethods]` 的元信息渲染成 `czsc/_native/__init__.pyi`。
   #      这个 stub 文件与 Rust 源码会双向漂移：
