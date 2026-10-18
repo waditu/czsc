@@ -21,6 +21,9 @@ use pyo3::{Py, PyAny, Python};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
+/// 将已完成的基础 K 线合成为其它周期。
+/// 基础分钟线保留调用方的原始 dt（包括开盘竞价标签），不重新对齐；
+/// 派生周期仍按市场收线表归桶，日、周、月等基础周期仍按原日期口径归一。
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 pub struct BarGenerator {
@@ -224,8 +227,13 @@ impl BarGenerator {
         freq: Freq,
         mut bars: RwLockWriteGuard<'_, VecDeque<RawBar>>,
     ) -> Result<(), UtilsError> {
-        // 1. 计算目标周期的结束时间
-        let freq_edt = freq_end_time(bar.dt, freq, self.market)?;
+        // 基础分钟线已收线，重映射会让09:30竞价占用09:31身份并吞掉下一根。
+        // 非分钟基础周期保留原日期归一合同；派生周期继续使用市场收线表。
+        let freq_edt = if freq == self.base_freq && freq.is_minute_freq() {
+            bar.dt
+        } else {
+            freq_end_time(bar.dt, freq, self.market)?
+        };
 
         // 如果是第一根K线
         if bars.is_empty() {
