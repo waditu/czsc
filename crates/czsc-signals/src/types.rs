@@ -1,16 +1,8 @@
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::signal::Signal;
+use czsc_core::objects::state::MacdSeries;
 use serde_json::Value;
-use std::collections::HashMap;
-
-/// MACD 缓存三元组
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct MacdSeries {
-    pub ids: Vec<i32>,
-    pub dif: Vec<f64>,
-    pub dea: Vec<f64>,
-    pub macd: Vec<f64>,
-}
+use std::collections::{HashMap, HashSet};
 
 /// BOLL 缓存三元组
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -32,6 +24,9 @@ pub struct KdjSeries {
 /// TA 指标增量缓存，存放所有由纯 Rust 计算产生的序列数据
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct TaCache {
+    /// Some only during a CzscSignals computation round; standalone calls use None.
+    #[serde(skip)]
+    pub updated_macd_keys: Option<HashSet<String>>,
     /// 简单单点序列（如 EMA/SMA/RSI/ATR）的缓存
     pub series: HashMap<String, Vec<f64>>,
 

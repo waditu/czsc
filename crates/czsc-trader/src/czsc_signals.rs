@@ -89,6 +89,9 @@ pub struct CzscSignals {
     compiled_cfg_ptr: usize,
     #[serde(skip)]
     compiled_cfg_len: usize,
+    /// Trader MACD dependencies, rebuilt with the compiled signal configuration.
+    #[serde(skip)]
+    trader_macd_freqs: HashSet<String>,
     /// 需要维护 CZSC 的频率集合；存在 trader 级信号时退化为全量维护
     required_kas_freqs: HashSet<String>,
     maintain_all_kas: bool,
@@ -125,6 +128,7 @@ impl CzscSignals {
             use_plan_compiled: false,
             compiled_cfg_ptr: 0,
             compiled_cfg_len: 0,
+            trader_macd_freqs: HashSet::new(),
             required_kas_freqs: HashSet::new(),
             maintain_all_kas: false,
             last_freq_fingerprints: HashMap::new(),
@@ -144,8 +148,14 @@ impl CzscSignals {
 
         let mut grouped: HashMap<String, Vec<CompiledKlineSignalOp>> = HashMap::new();
         self.required_kas_freqs.clear();
+        self.trader_macd_freqs.clear();
         self.maintain_all_kas = false;
         for config in signals_config {
+            self.trader_macd_freqs
+                .extend(czsc_signals::cat::required_macd_frequencies(
+                    &config.name,
+                    &config.params,
+                ));
             if config.freq.is_none() {
                 // trader 级信号可能访问任意频率 CZSC，保守退化为全量维护
                 self.maintain_all_kas = true;
@@ -196,12 +206,19 @@ impl CzscSignals {
     pub fn load_compiled_signal_plan(&mut self, plan: &CompiledSignalPlanV2) -> Result<(), String> {
         let mut grouped: HashMap<String, Vec<CompiledKlineSignalOp>> = HashMap::new();
         self.required_kas_freqs.clear();
+        self.trader_macd_freqs.clear();
         self.maintain_all_kas = false;
 
         for op in &plan.ops {
             if matches!(op.category, SignalCategory::Trader) {
                 // trader 级信号可能访问任意频率 CZSC，保守退化为全量维护
                 self.maintain_all_kas = true;
+                let params = serde_json::from_value(op.params.clone())
+                    .map_err(|e| format!("trader 信号参数解析失败 {}: {e}", op.name))?;
+                self.trader_macd_freqs
+                    .extend(czsc_signals::cat::required_macd_frequencies(
+                        &op.name, &params,
+                    ));
                 continue;
             }
             let Some(freq) = &op.freq else {
@@ -317,6 +334,7 @@ impl CzscSignals {
 
             if let Some(czsc) = self.kas.get(group.freq.as_str()) {
                 let cache = self.ta_cache.entry(group.freq.clone()).or_default();
+                cache.updated_macd_keys = Some(HashSet::new());
                 let mut freq_sigs = Vec::new();
                 for op in &group.ops {
                     let sigs_res = match op {
@@ -336,6 +354,25 @@ impl CzscSignals {
                 self.cached_freq_signals
                     .insert(group.freq.clone(), freq_sigs);
             }
+        }
+        // Preserve existing kline warmup/update order; prepare only dependencies
+        // not already calculated by a kline signal in this round.
+        for freq in &self.trader_macd_freqs {
+            let Some(czsc) = self.kas.get(freq) else {
+                continue;
+            };
+            let cache = self.ta_cache.entry(freq.clone()).or_default();
+            let key = "MACD12#26#9";
+            if changed_freqs.is_some_and(|changed| !changed.contains(freq))
+                && cache.macd.contains_key(key)
+            {
+                continue;
+            }
+            cache.updated_macd_keys.get_or_insert_with(HashSet::new);
+            czsc_signals::utils::ta::update_macd_cache(czsc, key, 12, 26, 9, cache);
+        }
+        for cache in self.ta_cache.values_mut() {
+            cache.updated_macd_keys = None;
         }
     }
 

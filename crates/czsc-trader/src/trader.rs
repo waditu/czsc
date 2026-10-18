@@ -308,6 +308,14 @@ impl CzscTrader {
 }
 
 impl TraderState for CzscTrader {
+    fn get_macd(
+        &self,
+        freq: &str,
+        cache_key: &str,
+    ) -> Option<&czsc_core::objects::state::MacdSeries> {
+        self.signals.ta_cache.get(freq)?.macd.get(cache_key)
+    }
+
     #[inline]
     fn get_position(&self, name: &str) -> Option<&Position> {
         self.positions.iter().find(|p| p.name == name)

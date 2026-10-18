@@ -1,6 +1,7 @@
-use crate::types::{BollSeries, KdjSeries, MacdSeries, TaCache};
+use crate::types::{BollSeries, KdjSeries, TaCache};
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::bar::RawBar;
+use czsc_core::objects::state::MacdSeries;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
@@ -548,6 +549,11 @@ pub fn update_macd_cache(
 ) {
     let now_len = czsc.bars_raw.len();
     if now_len == 0 {
+        return;
+    }
+    if let Some(updated) = &mut cache.updated_macd_keys
+        && !updated.insert(cache_key.to_string())
+    {
         return;
     }
     let bar_ids: Vec<i32> = czsc.bars_raw.iter().map(|b| b.id).collect();
