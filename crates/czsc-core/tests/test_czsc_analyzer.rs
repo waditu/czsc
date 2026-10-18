@@ -4,8 +4,8 @@
 
 use std::sync::Arc;
 
-use chrono::{TimeZone, Utc};
-use czsc_core::analyze::CZSC;
+use chrono::{NaiveDateTime, TimeZone, Utc};
+use czsc_core::analyze::{CZSC, CZSCBuilder};
 use czsc_core::objects::bar::{RawBar, RawBarBuilder};
 use czsc_core::objects::freq::Freq;
 
@@ -185,4 +185,187 @@ fn min_bi_len_affects_bi_count() {
             bi.bars.len()
         );
     }
+}
+
+fn natural_tail_fixture() -> (Vec<RawBar>, Vec<RawBar>) {
+    let data: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/tail_revision_605169_20260924.json")).unwrap();
+    let bar = |row: &serde_json::Value, id: i32| {
+        RawBarBuilder::default()
+            .symbol(Arc::<str>::from(data["symbol"].as_str().unwrap()))
+            .dt(
+                NaiveDateTime::parse_from_str(row["dt"].as_str().unwrap(), "%Y-%m-%dT%H:%M:%S")
+                    .unwrap()
+                    .and_utc(),
+            )
+            .freq(Freq::F30)
+            .id(id)
+            .open(row["open"].as_f64().unwrap())
+            .close(row["close"].as_f64().unwrap())
+            .high(row["high"].as_f64().unwrap())
+            .low(row["low"].as_f64().unwrap())
+            .vol(row["volume"].as_f64().unwrap())
+            .amount(row["amount"].as_f64().unwrap())
+            .build()
+            .unwrap()
+    };
+    let prefix: Vec<_> = data["prefix_30f"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+        .map(|(i, row)| bar(row, i as i32))
+        .collect();
+    let parts = data["tail_native_5m"].as_array().unwrap();
+    let end = bar(parts.last().unwrap(), prefix.len() as i32).dt;
+    let mut versions: Vec<RawBar> = Vec::new();
+    for row in parts {
+        let mut next = bar(row, prefix.len() as i32);
+        next.dt = end;
+        if let Some(previous) = versions.last() {
+            next.open = previous.open;
+            next.high = previous.high.max(next.high);
+            next.low = previous.low.min(next.low);
+            next.vol += previous.vol;
+            next.amount += previous.amount;
+        }
+        versions.push(next);
+    }
+    (prefix, versions)
+}
+
+fn assert_same_analysis(actual: &CZSC, expected: &CZSC) {
+    // Compare complete structures, including nested OHLCV and FX elements.
+    assert_eq!(actual.bars_raw, expected.bars_raw, "bars_raw");
+    assert_eq!(actual.bars_ubi, expected.bars_ubi, "bars_ubi");
+    assert_eq!(actual.bi_list, expected.bi_list, "bi_list");
+    assert_eq!(actual.get_fx_list(), expected.get_fx_list(), "fx_list");
+}
+
+#[test]
+fn tail_revision_retracts_a_bi_when_equal_high_changes_inclusion() {
+    let (prefix, versions) = natural_tail_fixture();
+    assert_eq!((versions[4].high, versions[5].high), (13.04, 13.05));
+    for limit in [1, 50, 1000] {
+        let mut c = CZSC::new(prefix.clone(), limit, 6);
+        c.update_bar(versions[4].clone());
+        assert_eq!(c.bi_list.len(), 1, "partial bar confirms a temporary BI");
+        assert_eq!(c.bars_ubi.len(), 3);
+
+        c.update_bar(versions[5].clone());
+        let mut closed = prefix.clone();
+        closed.push(versions[5].clone());
+        let expected = CZSC::new(closed, limit, 6);
+        assert!(
+            expected.bi_list.is_empty(),
+            "equal high retracts the top FX"
+        );
+        assert_same_analysis(&c, &expected);
+    }
+}
+
+#[test]
+fn repeated_tail_revisions_clone_and_serde_match_each_closed_snapshot() {
+    let (prefix, versions) = natural_tail_fixture();
+    let mut partial = prefix.clone();
+    partial.push(versions[4].clone());
+    let original = CZSC::new(partial, 1, 6);
+    let encoded = serde_json::to_vec(&original).unwrap();
+    let restored: CZSC = serde_json::from_slice(&encoded).unwrap();
+    assert_same_analysis(&restored, &original);
+
+    for mut c in [original.clone(), restored] {
+        // Replacements may repeat, retract a provisional bar, and extend again.
+        for index in [4, 5, 5, 0, 1, 2, 3, 4, 5] {
+            c.update_bar(versions[index].clone());
+            let mut closed = prefix.clone();
+            closed.push(versions[index].clone());
+            assert_same_analysis(&c, &CZSC::new(closed, 1, 6));
+        }
+    }
+    assert_eq!(
+        original.bi_list.len(),
+        1,
+        "clones must not mutate their source"
+    );
+}
+
+#[test]
+fn tail_revision_restores_pruned_bars_and_bis() {
+    let bars = seeded_bars(1, 200);
+    let mut c = CZSC::new(bars[..1].to_vec(), 1, 6);
+    let mut pruning_count = 0;
+    let mut removed_bi_count = 0;
+    for i in 1..bars.len() {
+        let previous_first = c.bars_raw[0].dt;
+        c.update_bar(bars[i].clone());
+        if c.bars_raw[0].dt > previous_first {
+            pruning_count += 1;
+        }
+        let mut revised = bars[i].clone();
+        // A wider version can destroy a new or previous BI and change inclusion.
+        revised.high = bars[i - 1].high.max(revised.high) + 3.0;
+        revised.low = bars[i - 1].low.min(revised.low) - 3.0;
+        let mut expected_bars = bars[..i].to_vec();
+        expected_bars.push(revised.clone());
+        let expected = CZSC::new(expected_bars, 1, 6);
+        if expected.bi_list.len() < c.bi_list.len() {
+            removed_bi_count += 1;
+        }
+
+        let mut restored: CZSC = serde_json::from_slice(&serde_json::to_vec(&c).unwrap()).unwrap();
+        for analyzer in [&mut c, &mut restored] {
+            analyzer.update_bar(revised.clone());
+            assert_same_analysis(analyzer, &expected);
+            analyzer.update_bar(bars[i].clone());
+            assert_same_analysis(analyzer, &CZSC::new(bars[..=i].to_vec(), 1, 6));
+        }
+    }
+    assert!(pruning_count > 3, "exercise repeated retention pruning");
+    assert!(removed_bi_count > 0, "exercise retraction after pruning");
+}
+
+#[test]
+fn closed_bar_updates_match_constructor() {
+    let (prefix, versions) = natural_tail_fixture();
+    let bars: Vec<_> = prefix.into_iter().chain([versions[5].clone()]).collect();
+    let mut c = CZSC::new(bars[..1].to_vec(), 1, 6);
+    for bar in &bars[1..] {
+        c.update_bar(bar.clone());
+    }
+    assert_same_analysis(&c, &CZSC::new(bars, 1, 6));
+}
+
+#[test]
+fn snapshots_require_tail_state_and_builder_starts_empty() {
+    let (prefix, versions) = natural_tail_fixture();
+    let c = CZSC::new(prefix, 1, 6);
+    let mut missing = serde_json::to_value(&c).unwrap();
+    missing.as_object_mut().unwrap().remove("tail_update");
+    let error = serde_json::from_value::<CZSC>(missing).unwrap_err();
+    assert!(error.to_string().contains("tail_update"));
+
+    let mut builder = CZSCBuilder::default();
+    builder
+        .symbol(Arc::<str>::from("605169.SH"))
+        .freq(Freq::F30)
+        .max_bi_num(1)
+        .min_bi_len(6)
+        .bars_raw(vec![])
+        .bars_ubi(vec![])
+        .bi_list(vec![]);
+    let empty = builder.build().unwrap();
+    let mut restored: CZSC = serde_json::from_slice(&serde_json::to_vec(&empty).unwrap()).unwrap();
+    for bar in versions {
+        restored.update_bar(bar.clone());
+        assert_same_analysis(&restored, &CZSC::new(vec![bar], 1, 6));
+    }
+    builder.bars_raw(c.bars_raw);
+    assert!(
+        builder
+            .build()
+            .unwrap_err()
+            .to_string()
+            .contains("CZSC::new")
+    );
 }
