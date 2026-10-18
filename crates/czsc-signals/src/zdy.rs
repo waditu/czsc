@@ -18,7 +18,7 @@ use std::collections::HashMap;
 #[allow(clippy::too_many_arguments)]
 fn snapshot_macd_values_from_raw_bars(
     c: &CZSC,
-    mc: &crate::types::MacdSeries,
+    mc: &czsc_core::objects::state::MacdSeries,
     id_to_idx: &HashMap<i32, usize>,
     raw_bars: &[RawBar],
     short: usize,
