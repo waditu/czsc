@@ -21,6 +21,9 @@ use pyo3::{Py, PyAny, Python};
 #[cfg(feature = "python")]
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
+/// 将已完成的基础 K 线合成为其它周期。
+/// 目标周期不得小于基础周期：高周期 K 线无法还原低周期的独立观测。
+/// 分钟目标周期还必须是分钟基础周期的整数倍，避免将一根基础 K 线拆入不同桶。
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 pub struct BarGenerator {
@@ -105,22 +108,41 @@ impl<'de> serde::Deserialize<'de> for BarGenerator {
             freq_bars.insert(freq, RwLock::new(bars.into_iter().collect()));
         }
 
-        Ok(BarGenerator {
-            market: snapshot.market,
+        let mut bg = Self::new(
             base_freq,
-            max_count: snapshot.max_count,
-            freq_bars,
-        })
+            freq_bars.keys().copied().collect(),
+            snapshot.max_count,
+            snapshot.market,
+        )
+        .map_err(D::Error::custom)?;
+        bg.freq_bars = freq_bars;
+        Ok(bg)
     }
 }
 
 impl BarGenerator {
+    /// 创建 K 线合成器；目标周期小于基础周期，或分钟周期不是整数倍时返回错误。
     pub fn new(
         base_freq: Freq,
         freqs: Vec<Freq>,
         max_count: usize,
         market: Market,
     ) -> Result<Self, UtilsError> {
+        if let Some(freq) = freqs.iter().find(|&&freq| freq < base_freq) {
+            czsc_bail!("目标周期 {} 不能小于基础周期 {}", freq, base_freq);
+        }
+        if let Some(base_minutes) = base_freq.minutes()
+            && let Some(freq) = freqs.iter().find(|freq| {
+                freq.minutes()
+                    .is_some_and(|minutes| minutes % base_minutes != 0)
+            })
+        {
+            czsc_bail!(
+                "目标分钟周期 {} 必须是基础周期 {} 的整数倍",
+                freq,
+                base_freq
+            );
+        }
         let bars = freqs
             .into_iter()
             .chain(std::iter::once(base_freq))
@@ -666,18 +688,20 @@ impl BarGenerator {
 
         let state_dict = state.cast_bound::<PyDict>(py)?;
 
-        // 恢复市场属性
-        if let Some(market_item) = state_dict.get_item("market")? {
+        // 先读取并校验局部状态，失败时保留原实例。
+        let market = if let Some(market_item) = state_dict.get_item("market")? {
             let market_str: String = market_item.extract()?;
-            self.market = Market::from_str(&market_str).map_err(|e| {
+            Market::from_str(&market_str).map_err(|e| {
                 pyo3::exceptions::PyValueError::new_err(format!("Failed to parse market: {e}"))
-            })?;
-        }
+            })?
+        } else {
+            self.market
+        };
 
         // 恢复K线数据
         if let Some(freq_bars_item) = state_dict.get_item("freq_bars")? {
             let freq_bars_dict = freq_bars_item.cast::<PyDict>()?;
-            self.freq_bars.clear();
+            let mut freq_bars = BTreeMap::new();
 
             for (freq_str, bars_obj) in freq_bars_dict.iter() {
                 let freq_str: String = freq_str.extract()?;
@@ -687,8 +711,18 @@ impl BarGenerator {
 
                 let bars_list: Vec<RawBar> = bars_obj.extract()?;
                 let bars_deque: VecDeque<RawBar> = bars_list.into_iter().collect();
-                self.freq_bars.insert(freq, RwLock::new(bars_deque));
+                freq_bars.insert(freq, RwLock::new(bars_deque));
             }
+            let mut bg = Self::new(
+                self.base_freq,
+                freq_bars.keys().copied().collect(),
+                self.max_count,
+                market,
+            )?;
+            bg.freq_bars = freq_bars;
+            *self = bg;
+        } else {
+            self.market = market;
         }
 
         Ok(())
