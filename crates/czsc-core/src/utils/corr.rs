@@ -121,9 +121,9 @@ pub fn pearson_corr(x: &[f64], y: &[f64]) -> Option<f64> {
 ///
 /// > Spearman 系数对于连续变量和离散有序变量都适用。
 ///
-/// - 当数据为空或长度不一致时返回 None。
+/// - 当数据为空、长度不一致或包含 NaN 时返回 None。
 pub fn spearman_rank_corr(x: &[f64], y: &[f64]) -> Option<f64> {
-    if x.len() != y.len() || x.is_empty() {
+    if x.len() != y.len() || x.is_empty() || x.iter().chain(y).any(|value| value.is_nan()) {
         return None;
     }
 
@@ -221,5 +221,16 @@ mod tests {
             spearman_rank_corr(&a, &b).map(|x| x.round_to_4_digit()),
             Some(0.6471)
         )
+    }
+
+    #[test]
+    fn test_spearman_rank_corr_returns_none_when_nan_is_present() {
+        let x_with_nan = [1.0, f64::NAN, 3.0];
+        let y = [1.0, 2.0, 3.0];
+        assert_eq!(spearman_rank_corr(&x_with_nan, &y), None);
+
+        let x = [1.0, 2.0, 3.0];
+        let y_with_nan = [1.0, f64::NAN, 3.0];
+        assert_eq!(spearman_rank_corr(&x, &y_with_nan), None);
     }
 }
