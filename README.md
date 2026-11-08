@@ -17,7 +17,7 @@
   <strong>胜可知 · 大模型量化策略研究平台（内测）</strong><br>
   <sub>使用大模型辅助量化策略研究，当前重点支持时序量价择时策略</sub><br><br>
   <a href="https://quant.shengkezhi.com/"><img alt="立即注册 · 领取 500 元额度" src="https://img.shields.io/static/v1?label=%E7%AB%8B%E5%8D%B3%E6%B3%A8%E5%86%8C&message=%E9%A2%86%E5%8F%96%20500%20%E5%85%83%E9%A2%9D%E5%BA%A6&color=2ea44f&style=for-the-badge"></a><br>
-  <sub>邀请码：<code>5862EDBH2H9CDTGZ</code></sub><br><br>
+  <sub>邀请码：<code>6293WHZ96DZ82MEJ</code></sub><br><br>
   <a href="https://docs.shengkezhi.com/new-user-roadmap">新手路线</a> · <a href="https://docs.shengkezhi.com/research-methodology">研究方法</a> · <a href="https://s0cqcxuy3p.feishu.cn/minutes/obcn6m8m44515zvn24ltmu3y">使用案例</a> · <a href="https://www.shengkezhi.com/">产品介绍</a>
     </td>
   </tr>
@@ -34,6 +34,21 @@
 
 * 已经开始用czsc库进行量化研究的朋友，欢迎[加入飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf)，快点击加入吧！
 * [B站视频教程合集（持续更新...）](https://space.bilibili.com/243682308/channel/series)
+
+
+## 微信公众号与精选文章
+
+欢迎在微信搜索并关注 **「胜可知QUANT」**，一起交流量化研究方法、策略复现与 AI 辅助投研实践。也可以打开下方文章，从公众号名称进入主页并关注。
+
+以下为已发布的精选文章：
+
+| 方向 | 文章 |
+|------|------|
+| 研究入门 | [不写一行代码，也能把量化研究跑完](https://mp.weixin.qq.com/s/Dk_2Al7uCfT-15ff058utQ) |
+| 策略复现 | [主观策略复现：从交易经验到系统化研究](https://mp.weixin.qq.com/s/IOxKqv1R0idF6eoHaCxA5A) |
+| 工具实践 | [使用 skz-auto-research skill 复现主观策略](https://mp.weixin.qq.com/s/v10rg1DikF2gjrJhqZrJ_A) |
+| 策略研究 | [策略为什么会出现收益能力的衰减？](https://mp.weixin.qq.com/s/8U24OGx7SeE6ZMMKB-1IEw) |
+| 研究分工 | [AI能批量做研究，研究员该把时间花在哪里？](https://mp.weixin.qq.com/s/QYGy8i3pMxYWmNp8CH_udQ) |
 
 
 ## 架构概览
