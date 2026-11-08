@@ -1,155 +1,82 @@
-# czsc - 缠中说禅技术分析工具
-
-[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=total&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Total)](https://pepy.tech/project/czsc)
-[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=month&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Month)](https://pepy.tech/project/czsc)
-[![Downloads](https://static.pepy.tech/personalized-badge/czsc?period=week&units=international_system&left_color=red&right_color=orange&left_text=Downloads/Week)](https://pepy.tech/project/czsc)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI](https://img.shields.io/pypi/v/czsc.svg)](https://pypi.org/project/czsc/)
-
-**[项目文档](https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf)** |
-**[投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh)** |
-**[信号函数编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd)** |
-**[DEVIN生成的文档](https://deepwiki.com/waditu/czsc/1-overview)**
-
-<table>
-  <tr>
-    <td align="center">
-  <strong>胜可知 · 大模型量化策略研究平台（内测）</strong><br>
-  <sub>使用大模型辅助量化策略研究，当前重点支持时序量价择时策略</sub><br><br>
-  <a href="https://quant.shengkezhi.com/"><img alt="立即注册 · 领取 500 元额度" src="https://img.shields.io/static/v1?label=%E7%AB%8B%E5%8D%B3%E6%B3%A8%E5%86%8C&message=%E9%A2%86%E5%8F%96%20500%20%E5%85%83%E9%A2%9D%E5%BA%A6&color=2ea44f&style=for-the-badge"></a><br>
-  <sub>邀请码：<code>6293WHZ96DZ82MEJ</code></sub><br><br>
-  <a href="https://docs.shengkezhi.com/new-user-roadmap">新手路线</a> · <a href="https://docs.shengkezhi.com/research-methodology">研究方法</a> · <a href="https://s0cqcxuy3p.feishu.cn/minutes/obcn6m8m44515zvn24ltmu3y">使用案例</a> · <a href="https://www.shengkezhi.com/">产品介绍</a>
-    </td>
-  </tr>
-</table>
-
-> **1.0.X 版本开始，缠论核心算法（分型、笔、中枢等）已全部迁移到 Rust 实现，通过 PyO3 扩展（`czsc._native`）暴露给 Python。** 需要了解旧 Python 实现逻辑的，可查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69) 版本。
-
-> [czsc_skills](https://github.com/zengbin93/czsc_skills)
-
-> 源于[缠中说缠博客](http://blog.sina.com.cn/chzhshch)，原始博客中的内容不太完整，且没有评论，以下是网友整理的原文备份
-
-* 备份网址1：http://www.fxgan.com
-* 备份网址2：https://chzhshch.blog
-
-* 已经开始用czsc库进行量化研究的朋友，欢迎[加入飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf)，快点击加入吧！
-* [B站视频教程合集（持续更新...）](https://space.bilibili.com/243682308/channel/series)
-
-
-## 微信公众号与精选文章
-
-欢迎在微信搜索并关注 **「胜可知QUANT」**，一起交流量化研究方法、策略复现与 AI 辅助投研实践。也可以打开下方文章，从公众号名称进入主页并关注。
-
+<h1 align="center">CZSC</h1>
+<p align="center"><strong>把缠论结构，变成可计算的研究工具。</strong></p>
+<p align="center">Rust 核心 · Python 接口 · 多周期分析 · 信号与策略研究</p>
 <p align="center">
-  <img src="docs/images/wechat-shengkezhi-quant.png" alt="扫码或微信搜一搜关注胜可知QUANT" width="720">
+  <a href="https://pypi.org/project/czsc/"><img src="https://img.shields.io/pypi/v/czsc?color=0969da" alt="PyPI"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776ab" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/Core-Rust-b7410e" alt="Rust core">
+  <a href="https://pepy.tech/project/czsc"><img src="https://static.pepy.tech/badge/czsc" alt="Downloads"></a>
+</p>
+<p align="center">
+  <a href="#快速开始">快速开始</a> · <a href="https://s0cqcxuy3p.feishu.cn/wiki/wikcn3gB1MKl3ClpLnboHM1QgKf">项目文档</a> · <a href="#使用案例">使用案例</a> · <a href="#交流与延伸阅读">交流与关注</a>
 </p>
 
-以下为已发布的精选文章：
+<a href="https://quant.shengkezhi.com/"><img src="docs/images/skz-research-banner.png" alt="胜可知 · AI 辅助量化研究：内测邀请码 6293WHZ96DZ82MEJ，注册领取 500 元额度，具体规则以平台页面为准" width="100%"></a>
 
-| 方向 | 文章 |
-|------|------|
-| 研究入门 | [不写一行代码，也能把量化研究跑完](https://mp.weixin.qq.com/s/Dk_2Al7uCfT-15ff058utQ) |
-| 策略复现 | [主观策略复现：从交易经验到系统化研究](https://mp.weixin.qq.com/s/IOxKqv1R0idF6eoHaCxA5A) |
-| 工具实践 | [使用 skz-auto-research skill 复现主观策略](https://mp.weixin.qq.com/s/v10rg1DikF2gjrJhqZrJ_A) |
-| 策略研究 | [策略为什么会出现收益能力的衰减？](https://mp.weixin.qq.com/s/8U24OGx7SeE6ZMMKB-1IEw) |
-| 研究分工 | [AI能批量做研究，研究员该把时间花在哪里？](https://mp.weixin.qq.com/s/QYGy8i3pMxYWmNp8CH_udQ) |
+**内测邀请码：`6293WHZ96DZ82MEJ`** · [新手路线](https://docs.shengkezhi.com/new-user-roadmap) · [研究方法](https://docs.shengkezhi.com/research-methodology) · [使用案例](https://s0cqcxuy3p.feishu.cn/minutes/obcn6m8m44515zvn24ltmu3y) · [产品介绍](https://www.shengkezhi.com/)
 
+<a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=0bak668e-7617-452c-b935-94d2c209e6cf"><img src="docs/images/feishu-community-banner.png" alt="加入 CZSC 飞书交流群：交流缠论结构、信号开发与策略研究实践，点击图片加入" width="100%"></a>
 
-## 架构概览
+---
 
-CZSC 1.0 采用 **Rust + Python 混合架构**：
+CZSC 是面向缠论分析与量化研究的开源工具：从 K 线出发，识别分型、笔与中枢，组织多周期信号，并连接策略回测与可视化。
 
-```
-czsc (Python 包)
-├── czsc._native          ← Rust 扩展（PyO3），缠论核心
-│   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
-│   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
-│   ├── CzscTrader / CzscSignals / generate_czsc_signals
-│   ├── signals.*         ← 220+ 信号函数（Python 端 7 个子模块；详见 crates/czsc-signals/src/）
-│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，本次清理 起仅内部使用)
-├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
-├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
-├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
-├── czsc.strategies       ← 策略门面（CzscStrategyBase/CzscJsonStrategy）
-├── czsc.fsa              ← 飞书自动化工具
-├── czsc.mock             ← 测试用模拟数据（转发自 wbt）
-└── czsc.envs             ← 环境变量管理
-```
+<p align="center"><img src="docs/images/czsc-demo.gif" alt="CZSC 真实绘图函数生成的缠论结构演示，使用模拟行情" width="100%"></p>
+<p align="center"><sub>缠论结构可视化 · 模拟行情，仅用于功能演示，不代表实盘或策略收益</sub></p>
 
-底层 Rust workspace 包含 9 个 crate：`czsc` / `czsc-core` / `czsc-derive` / `czsc-signals` /
-`czsc-trader` / `czsc-utils` / `czsc-ta` / `czsc-signal-macros` /
-`czsc-python`（PyO3 绑定入口）。
+## 你可以用它做什么
 
-
-## 项目贡献
-
-* 缠论的 `分型、笔` 的自动识别，由 Rust 实现并通过 `czsc._native` 暴露
-* 定义并实现 `信号-事件-交易` 量化交易逻辑体系，事件通过 `signals_all/signals_any/signals_not` 实现信号的逻辑组合
-* 定义并实现了 220+ 信号函数（Rust 实现），见 `czsc._native.signals`
-* 缠论多级别联立决策分析交易，详见 `CzscTrader`
-* HTML 可视化（plotly + lightweight-charts）：`czsc.utils.plotting.{kline,weight,lightweight}.*`
-
-
-## 安装使用
-
-**注意：** Python 版本必须 **≥ 3.10**
-
-从 PyPI 安装预编译版本（推荐）：
-
-```bash
-pip install czsc -U
-```
-
-使用 `uv` 安装（推荐开发环境）：
-
-```bash
-uv pip install czsc
-```
-
-从源码构建（需要 Rust 工具链和 maturin）：
-
-```bash
-# 安装 Rust：https://rustup.rs/
-# 安装 maturin
-pip install maturin
-
-# 克隆并构建
-git clone https://github.com/waditu/czsc.git
-cd czsc
-maturin develop --release
-```
-
-> **Rust 构建环境约束**：底层依赖 `pyo3` / `pyo3-stub-gen` 0.22 要求 Python ≥ 3.10。
-> 当系统默认 Python 低于 3.10 时，请通过环境变量显式指定：
->
-> ```bash
-> export PYO3_PYTHON=$(which python3.12)   # 或任意 3.10+ 的解释器
-> ```
->
-> 否则 `cargo build` / `cargo test` 会在 `crates/czsc-python/build.rs` 提前 panic 并给出修复建议。
-> 用 `uv sync --extra dev` 走 UV 流程时，UV 会自动选择项目声明的 Python，不需要额外设置。
-
+| 从哪里开始 | CZSC 提供什么 |
+|---|---|
+| 看清结构 | 自动识别分型、笔、中枢，把结构叠加到 K 线上 |
+| 组织信号 | 使用信号函数与事件组合，把交易想法转成可计算条件 |
+| 联立周期 | 合成不同周期 K 线，开展多周期分析与策略研究 |
+| 验证与分享 | 连接 wbt 权重回测，输出可交互 HTML 图表与报告 |
 
 ## 快速开始
 
-### 核心缠论分析
+需要 **Python ≥ 3.10**。优先安装预编译包，无需先搭建 Rust 开发环境。
+
+```bash
+pip install -U czsc
+```
+
+下面用模拟行情生成第一张缠论结构图：
 
 ```python
-import czsc
 from czsc import CZSC, Freq, format_standard_kline
 from czsc.mock import generate_symbol_kines
+from czsc.utils.plotting.lightweight import plot_czsc
 
-# 生成模拟 K 线数据
-df = generate_symbol_kines('000001', '30分钟', '20240101', '20240601')
-
-# 转换为 RawBar 对象列表
-bars = format_standard_kline(df, freq=Freq.F30)
-
-# 创建 CZSC 分析对象（自动识别分型、笔、中枢）
-czsc_obj = CZSC(bars)
-print(f"笔数量：{len(czsc_obj.bi_list)}")
-print(f"中枢数量：{len(czsc_obj.zs_list)}")
+# 模拟行情：仅用于演示
+frame = generate_symbol_kines("000001", "30分钟", "20240101", "20240601", seed=42)
+bars = format_standard_kline(frame, freq=Freq.F30)
+chart = CZSC(bars)
+plot_czsc(chart, output="html", path="czsc.html")
 ```
+
+在浏览器打开 `czsc.html`，查看 K 线、分型与笔。此绘图方式需联网加载图表依赖。
+
+> **版本提示**：1.0.X 已迁移至 Rust 核心，与 0.9.X 不兼容。旧项目请先阅读 [迁移说明](docs/migration/cleanup-non-czsc-core.md)，或查看 [0.9.X](https://github.com/waditu/czsc/tree/v0.9.69)。
+
+## 使用案例
+
+更多端到端案例汇总见飞书 wiki：[CZSC 1.0.X 版本使用说明和案例](https://s0cqcxuy3p.feishu.cn/wiki/X0mAwSZyqiuebek2EUacbyPMnDd)。
+
+| 序号 | 案例 | 一句话介绍 |
+|------|------|------------|
+| 1 | [基于 Event 的策略回测 + wbt HTML 报告](https://s0cqcxuy3p.feishu.cn/wiki/Li7ewsbReiQlWokEEVpcvLjznJU) | 5 行命令跑通 Event → Position → 回测 → 可交互 HTML 报告的完整闭环。 |
+| 2 | [lightweight_charts 缠论可视化](https://s0cqcxuy3p.feishu.cn/wiki/VF7Gwq3N8iuplckG1Tmcmp1Qn3d) | 几行代码把缠论结构（分型/笔/线段/中枢）导出为交互式 HTML，便于分享与嵌入。 |
+| 3 | [把信号函数画到 K 线主图（plot_czsc_signals）](https://s0cqcxuy3p.feishu.cn/wiki/ULxhwFyVkiavqhkZ2Xkc0N3fnYc) | 把信号触发点叠在 K 线主图上，直观调试 signals_config 与多周期联立。 |
+| 4 | [性能基准测试：在本地复现 CZSC / CzscTrader 吞吐量](https://s0cqcxuy3p.feishu.cn/wiki/ReRfw9WUjiVgEckZbMxcT87WnRc) | 一行命令本地评估吞吐量，配套关键指标速查表，用于容量规划与加速效果核对。 |
+| 5 | [信号函数模块深入介绍](https://s0cqcxuy3p.feishu.cn/wiki/WxU8wKTBViekKbkCyKzcwa7SnJd) | 系统讲解 czsc-signals 架构与 246 个信号函数的模块划分、参数模板、信号表达示例。 |
+
+## 进阶与开发
+
+按需展开，不必在开始使用前读完所有 API。
+
+<details>
+<summary>进阶示例：多周期、信号生成、权重回测与策略研究</summary>
 
 ### K 线合成与多级别分析
 
@@ -211,33 +138,36 @@ run_replay(bars, signals_seq, pos_seq, res_path='./results/')
 run_research(symbols, signals_seq, pos_seq, res_path='./results/')
 ```
 
-### 缠论可视化与回测报告
 
-```python
-# 缠论 K 线（多周期联立，自包含 HTML，离线即可打开）
-from czsc.utils.plotting.lightweight import plot_czsc, plot_czsc_trader
 
-html = plot_czsc(c, output="html")  # 单周期
-plot_czsc_trader(ct, output="html", path="trader.html")  # 多周期
+</details>
+<details>
+<summary>架构与核心 API</summary>
 
-# 回测 HTML 报告：用 wbt.generate_backtest_report 一键产出
-from wbt import generate_backtest_report
-generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
+## 架构概览
+
+CZSC 1.0 采用 **Rust + Python 混合架构**：
+
+```
+czsc (Python 包)
+├── czsc._native          ← Rust 扩展（PyO3），缠论核心
+│   ├── CZSC / FX / BI / ZS / RawBar / NewBar / BarGenerator
+│   ├── Freq / Mark / Direction / Signal / Event / Position / Operate
+│   ├── CzscTrader / CzscSignals / generate_czsc_signals
+│   ├── signals.*         ← 220+ 信号函数（Python 端 7 个子模块；详见 crates/czsc-signals/src/）
+│   └── ta.*              ← Rust TA 算子 (ema/sma/boll 等，本次清理 起仅内部使用)
+├── czsc.traders          ← Python 门面，汇聚 Rust 交易 API
+├── czsc.utils            ← 工具函数（绘图/缓存/统计/交易工具）
+├── czsc.connectors       ← 数据源连接器（天勤/Tushare/CCXT/本地缓存）
+├── czsc.strategies       ← 策略门面（CzscStrategyBase/CzscJsonStrategy）
+├── czsc.fsa              ← 飞书自动化工具
+├── czsc.mock             ← 测试用模拟数据（转发自 wbt）
+└── czsc.envs             ← 环境变量管理
 ```
 
-
-## 使用案例
-
-更多端到端案例汇总见飞书 wiki：[CZSC 1.0.X 版本使用说明和案例](https://s0cqcxuy3p.feishu.cn/wiki/X0mAwSZyqiuebek2EUacbyPMnDd)。
-
-| 序号 | 案例 | 一句话介绍 |
-|------|------|------------|
-| 1 | [基于 Event 的策略回测 + wbt HTML 报告](https://s0cqcxuy3p.feishu.cn/wiki/Li7ewsbReiQlWokEEVpcvLjznJU) | 5 行命令跑通 Event → Position → 回测 → 可交互 HTML 报告的完整闭环。 |
-| 2 | [lightweight_charts 缠论可视化](https://s0cqcxuy3p.feishu.cn/wiki/VF7Gwq3N8iuplckG1Tmcmp1Qn3d) | 几行代码把缠论结构（分型/笔/线段/中枢）导出为自包含离线 HTML，便于分享与嵌入。 |
-| 3 | [把信号函数画到 K 线主图（plot_czsc_signals）](https://s0cqcxuy3p.feishu.cn/wiki/ULxhwFyVkiavqhkZ2Xkc0N3fnYc) | 把信号触发点叠在 K 线主图上，直观调试 signals_config 与多周期联立。 |
-| 4 | [性能基准测试：在本地复现 CZSC / CzscTrader 吞吐量](https://s0cqcxuy3p.feishu.cn/wiki/ReRfw9WUjiVgEckZbMxcT87WnRc) | 一行命令本地评估吞吐量，配套关键指标速查表，用于容量规划与加速效果核对。 |
-| 5 | [信号函数模块深入介绍](https://s0cqcxuy3p.feishu.cn/wiki/WxU8wKTBViekKbkCyKzcwa7SnJd) | 系统讲解 czsc-signals 架构与 246 个信号函数的模块划分、参数模板、信号表达示例。 |
-
+底层 Rust workspace 包含 9 个 crate：`czsc` / `czsc-core` / `czsc-derive` / `czsc-signals` /
+`czsc-trader` / `czsc-utils` / `czsc-ta` / `czsc-signal-macros` /
+`czsc-python`（PyO3 绑定入口）。
 
 ## 核心 API 一览
 
@@ -256,6 +186,9 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 | **模拟数据** | `generate_symbol_kines` | 测试用 K线数据（来自 wbt） |
 | **格式转换** | `format_standard_kline` | DataFrame → RawBar 列表 |
 
+</details>
+<details>
+<summary>数据源与可视化接口</summary>
 
 ## 数据源连接器
 
@@ -267,7 +200,6 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 | `ts_connector.py` | Tushare | A股历史数据 |
 | `ccxt_connector.py` | CCXT | 数字货币交易所 |
 | `local_data.py` | 投研数据本地缓存 | CZSC 共享数据本地读取入口 |
-
 
 ## 可视化（HTML 输出）
 
@@ -282,19 +214,48 @@ generate_backtest_report(df=dfw, output_path="report.html", weight_type="ts")
 
 使用 `plot_czsc`、`plot_czsc_trader` 或 `plot_czsc_signals` 生成自包含 HTML 后，可直接在浏览器中打开。
 
+</details>
+<details>
+<summary>源码安装、开发与环境变量</summary>
 
-## 相关项目（生态依赖）
+## 安装使用
 
-czsc 在权重回测、权重落地与 TA 算子一致性校验上依赖以下三个独立开源项目，它们与 czsc 形成"分析 + 回测 + 落地 + 校验"的完整闭环：
+**注意：** Python 版本必须 **≥ 3.10**
 
-| 项目 | GitHub | 角色 | 与 czsc 的关系 |
-|------|--------|------|----------------|
-| **wbt** | <https://github.com/zengbin93/wbt> | 策略持仓权重回测引擎（Weight Back Test） | **硬依赖**。提供 `WeightBacktest / daily_performance / top_drawdowns / generate_backtest_report` 等；`czsc.mock` 也转发自 `wbt.mock`。czsc 顶层 `from czsc import WeightBacktest` 即来自此包。 |
-| **wmr** | <https://github.com/zengbin93/wmr> | 策略持仓权重管理系统（Weight Manager，DuckDB / ClickHouse 双后端） | **下游配套**（非硬依赖）。wbt 负责"离线回测权重"，wmr 负责"实盘 / 投研环境下权重的持久化、版本管理与查询"。czsc 产出信号 / 持仓 → wbt 跑回测 → wmr 落库供下游消费。 |
-| **talib-rs** | <https://github.com/0xcjun/talib-rs> | 纯 Rust 实现的 TA-Lib 替代库 | **测试可选依赖**。仅 `tests/unit/test_ta_parity.py` 用它对 `czsc._native.ta`（EMA / SMA 等）做数值 parity 校验，确保 czsc 自研 TA 算子与 TA-Lib 行为一致。运行时代码不依赖。 |
+从 PyPI 安装预编译版本（推荐）：
 
-简言之：**wbt = 回测**，**wmr = 权重落地**，**talib-rs = TA 基准**；czsc 自身专注缠论核心算法（Rust）与信号-事件-交易体系，其余环节通过这三个项目解耦协同。
+```bash
+pip install czsc -U
+```
 
+使用 `uv` 安装（推荐开发环境）：
+
+```bash
+uv pip install czsc
+```
+
+从源码构建（需要 Rust 工具链和 maturin）：
+
+```bash
+# 安装 Rust：https://rustup.rs/
+# 安装 maturin
+pip install maturin
+
+# 克隆并构建
+git clone https://github.com/waditu/czsc.git
+cd czsc
+maturin develop --release
+```
+
+> **Rust 构建环境约束**：底层依赖 `pyo3` / `pyo3-stub-gen` 0.22 要求 Python ≥ 3.10。
+> 当系统默认 Python 低于 3.10 时，请通过环境变量显式指定：
+>
+> ```bash
+> export PYO3_PYTHON=$(which python3.12)   # 或任意 3.10+ 的解释器
+> ```
+>
+> 否则 `cargo build` / `cargo test` 会在 `crates/czsc-python/build.rs` 提前 panic 并给出修复建议。
+> 用 `uv sync --extra dev` 走 UV 流程时，UV 会自动选择项目声明的 Python，不需要额外设置。
 
 ## 开发环境搭建
 
@@ -313,7 +274,6 @@ uv run ruff format czsc/ tests/
 uv run ruff check czsc/ tests/
 ```
 
-
 ## 关键环境变量
 
 | 变量 | 说明 | 默认值 |
@@ -322,13 +282,44 @@ uv run ruff check czsc/ tests/
 | `CZSC_MAX_BI_NUM` | 最大笔数量 | 50 |
 | `CZSC_VERBOSE` | 是否输出详细日志 | False |
 
+</details>
 
-## 使用前必看
+## 生态协作
 
-* 1.0.X 版本核心算法已迁移到 Rust，与 0.9.X 版本 **不兼容**；旧代码需按新 API 迁移；
-* 免责声明：项目开源仅用于技术交流！
-* 如果你发现了项目中的 Bug，可以先读一下《[如何有效地报告 Bug](https://www.chiark.greenend.org.uk/~sgtatham/bugs-cn.html)》，然后在 [issues](https://github.com/waditu/czsc/issues) 中报告 Bug
+**CZSC 专注结构与信号，其余环节按需组合。**
 
+| 项目 | 定位 | 依赖关系 |
+|---|---|---|
+| [wbt](https://github.com/zengbin93/wbt) | 权重回测与报告 | CZSC 的运行时依赖 |
+| [wmr](https://github.com/zengbin93/wmr) | 权重持久化与查询 | 下游配套，非硬依赖 |
+| [talib-rs](https://github.com/0xcjun/talib-rs) | TA 算子一致性校验 | 仅测试可选 |
+| [czsc_skills](https://github.com/zengbin93/czsc_skills) | CZSC 相关技能 | 按需使用 |
+
+## 交流与延伸阅读
+
+欢迎关注微信公众号 **「胜可知QUANT」**，交流量化研究方法、策略复现与 AI 辅助投研实践。
+
+<p align="center"><img src="docs/images/wechat-shengkezhi-quant.png" alt="扫码或微信搜索胜可知QUANT" width="480"></p>
+
+
+
+| 方向 | 文章 |
+|------|------|
+| 研究入门 | [不写一行代码，也能把量化研究跑完](https://mp.weixin.qq.com/s/Dk_2Al7uCfT-15ff058utQ) |
+| 策略复现 | [主观策略复现：从交易经验到系统化研究](https://mp.weixin.qq.com/s/IOxKqv1R0idF6eoHaCxA5A) |
+| 工具实践 | [使用 skz-auto-research skill 复现主观策略](https://mp.weixin.qq.com/s/v10rg1DikF2gjrJhqZrJ_A) |
+| 策略研究 | [策略为什么会出现收益能力的衰减？](https://mp.weixin.qq.com/s/8U24OGx7SeE6ZMMKB-1IEw) |
+| 研究分工 | [AI能批量做研究，研究员该把时间花在哪里？](https://mp.weixin.qq.com/s/QYGy8i3pMxYWmNp8CH_udQ) |
+[B 站视频教程](https://space.bilibili.com/243682308/channel/series) · [投研数据共享](https://s0cqcxuy3p.feishu.cn/wiki/wikcnzuPawXtBB7Cj7mqlYZxpDh) · [信号编写规范](https://s0cqcxuy3p.feishu.cn/wiki/wikcnCFLLTNGbr2THqo7KtWfBkd) · [DeepWiki](https://deepwiki.com/waditu/czsc/1-overview)
+
+
+## 缠论资料
+
+<details>
+<summary>原文备份、精华摘录与资料下载</summary>
+
+* 原始博客：http://blog.sina.com.cn/chzhshch
+* 网友备份：http://www.fxgan.com · https://chzhshch.blog
 
 ## 缠论精华
 
@@ -342,7 +333,6 @@ uv run ruff check czsc/ tests/
 > 边界条件分段后，就要确定一旦发生哪种情况就如何操作，也就是把操作也同样给分段化了。然后，把所有情况交给市场本身，让市场自己去当下选择。
 > 所有的操作，其实都是根据不同分段边界的一个结果，只是每个人的分段边界不同而已。因此，问题不是去预测什么，而是确定分段边界。
 
-
 ## 原文整理
 
 * [缠中说禅重新编排版《论语》（整理版）](https://blog.csdn.net/baidu_25764509/article/details/109517775)
@@ -352,8 +342,13 @@ uv run ruff check czsc/ tests/
 * [缠中说禅：缠非缠、禅非禅，枯木龙吟照大千（整理版）](https://blog.csdn.net/baidu_25764509/article/details/110775662)
 * [缠中说禅教你打坐（整理版）](https://blog.csdn.net/baidu_25764509/article/details/113735170)
 
-
 ## 资料分享
 
 * 链接：https://pan.baidu.com/s/1RXkP3188F0qu8Yk6CjbxRQ
 * 提取码：vhue
+
+</details>
+
+## 反馈与声明
+
+遇到问题请提交 [Issue](https://github.com/waditu/czsc/issues)，附版本、最小复现与错误信息。项目开源仅用于技术交流，不构成投资建议。
