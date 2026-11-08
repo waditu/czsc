@@ -40,6 +40,10 @@
 
 欢迎在微信搜索并关注 **「胜可知QUANT」**，一起交流量化研究方法、策略复现与 AI 辅助投研实践。也可以打开下方文章，从公众号名称进入主页并关注。
 
+<p align="center">
+  <img src="docs/images/wechat-shengkezhi-quant.png" alt="扫码或微信搜一搜关注胜可知QUANT" width="720">
+</p>
+
 以下为已发布的精选文章：
 
 | 方向 | 文章 |
