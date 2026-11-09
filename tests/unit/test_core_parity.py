@@ -52,7 +52,8 @@ def _build_czsc() -> tuple[Any | None, str | None]:
 
         df = generate_symbol_kines("000001", "30分钟", "20240101", "20240301", seed=42)
         bars = czsc.format_standard_kline(df, freq=czsc.Freq.F30)
-        return czsc.CZSC(bars), None
+        # 快照按 min_bi_len=6、max_bi_num=50 记录。显式传入，避免进程环境改变笔参数。
+        return czsc.CZSC(bars, min_bi_len=6, max_bi_num=50), None
     except Exception as exc:  # noqa: BLE001
         return None, f"build failed: {type(exc).__name__}: {exc}"
 

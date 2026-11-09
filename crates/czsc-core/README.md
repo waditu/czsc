@@ -26,6 +26,15 @@ let czsc = CZSC::new(bars, 50, 6);
 println!("最新一笔方向: {:?}", czsc.bi_list.last().map(|b| b.direction));
 ```
 
+`update_bar` 接收与末根 K 线相同的 `dt` 时，完整替换该根输入；包含关系、分型和笔
+与该版本只输入一次的结果一致。分析器只保存最近一次输入前的未完成笔状态，以及该次
+更新删除或裁剪的数据；下一根输入会替换这份状态，不积累历史快照。
+
+`Clone`、Serde 和 Python pickle 均保留这份修订状态。Serde 快照必须包含
+`tail_update` 字段；旧快照缺失该字段时会在反序列化时返回错误，不能从已裁剪的
+`bars_raw` 恢复。旧 pickle 仅包含构造参数，仍按旧参数重建，无法补回此前丢失的状态。
+`CZSCBuilder` 仅支持空分析状态；分析现有 K 线请调用 `CZSC::new`。
+
 ## 特性
 
 - `python`：启用 PyO3 binding，供 `czsc-python` crate 聚合到 `czsc._native` 扩展。

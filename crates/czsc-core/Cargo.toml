@@ -27,7 +27,7 @@ md5            = "0.8"
 parking_lot    = { version = "0.12", optional = true }
 polars         = { workspace = true, features = ["lazy", "ipc"] }
 serde          = { workspace = true }
-serde_json     = "1"
+serde_json     = { version = "1", features = ["float_roundtrip"] }
 sha2           = "0.11"
 strum          = "0.28"
 strum_macros   = "0.28"

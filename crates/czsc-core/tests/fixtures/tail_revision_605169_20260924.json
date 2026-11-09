@@ -1,0 +1,204 @@
+{
+  "symbol": "605169.SH",
+  "unit": {
+    "prices": "CNY",
+    "volume": "shares",
+    "amount": "CNY",
+    "datetime": "Asia/Shanghai wall clock, naive for CZSC"
+  },
+  "source_hashes": {
+    "5m": {
+      "sha256": "1356fcac8f43315f2dd82d681fbc4b0145d1dea09b2353b25f968d4ed9e202aa",
+      "rows": 1920,
+      "first": "2026-08-03T09:35:00+08:00",
+      "last": "2026-09-28T15:00:00+08:00"
+    },
+    "30f": {
+      "sha256": "db1907d58a6a4a880c8c2f830171ea1caf1b429d4fa03ee24e9794d0a482459f",
+      "rows": 320,
+      "first": "2026-08-03T10:00:00+08:00",
+      "last": "2026-09-28T15:00:00+08:00"
+    }
+  },
+  "adjustment_basis": "20260928",
+  "adjustment_ratios": [
+    1.0
+  ],
+  "selection": "Shortest consecutive 30F prefix suffix yielding a BI difference among lengths 1..308; original observations unchanged. This is not a claim of global delta-minimality.",
+  "prefix_30f": [
+    {
+      "dt": "2026-09-22T15:00:00",
+      "open": 12.98,
+      "close": 13.0,
+      "high": 13.0,
+      "low": 12.89,
+      "volume": 400300,
+      "amount": 5192163.0
+    },
+    {
+      "dt": "2026-09-23T10:00:00",
+      "open": 12.95,
+      "close": 12.76,
+      "high": 12.96,
+      "low": 12.73,
+      "volume": 774400,
+      "amount": 9955052.0
+    },
+    {
+      "dt": "2026-09-23T10:30:00",
+      "open": 12.76,
+      "close": 12.9,
+      "high": 12.9,
+      "low": 12.75,
+      "volume": 372300,
+      "amount": 4783745.0
+    },
+    {
+      "dt": "2026-09-23T11:00:00",
+      "open": 12.89,
+      "close": 12.94,
+      "high": 12.98,
+      "low": 12.89,
+      "volume": 202600,
+      "amount": 2620232.0
+    },
+    {
+      "dt": "2026-09-23T11:30:00",
+      "open": 12.92,
+      "close": 12.93,
+      "high": 12.95,
+      "low": 12.89,
+      "volume": 206200,
+      "amount": 2663661.0
+    },
+    {
+      "dt": "2026-09-23T13:30:00",
+      "open": 12.9,
+      "close": 12.93,
+      "high": 12.96,
+      "low": 12.89,
+      "volume": 197300,
+      "amount": 2551579.0
+    },
+    {
+      "dt": "2026-09-23T14:00:00",
+      "open": 12.93,
+      "close": 12.94,
+      "high": 12.98,
+      "low": 12.93,
+      "volume": 200600,
+      "amount": 2598726.0
+    },
+    {
+      "dt": "2026-09-23T14:30:00",
+      "open": 12.94,
+      "close": 12.95,
+      "high": 12.97,
+      "low": 12.93,
+      "volume": 116700,
+      "amount": 1511115.0
+    },
+    {
+      "dt": "2026-09-23T15:00:00",
+      "open": 12.95,
+      "close": 12.95,
+      "high": 12.96,
+      "low": 12.92,
+      "volume": 319600,
+      "amount": 4138035.0
+    },
+    {
+      "dt": "2026-09-24T10:00:00",
+      "open": 12.94,
+      "close": 12.96,
+      "high": 13.02,
+      "low": 12.81,
+      "volume": 557700,
+      "amount": 7218789.0
+    },
+    {
+      "dt": "2026-09-24T10:30:00",
+      "open": 12.97,
+      "close": 13.05,
+      "high": 13.05,
+      "low": 12.96,
+      "volume": 246100,
+      "amount": 3202787.0
+    },
+    {
+      "dt": "2026-09-24T11:00:00",
+      "open": 13.04,
+      "close": 13.02,
+      "high": 13.05,
+      "low": 12.98,
+      "volume": 285900,
+      "amount": 3722260.0
+    },
+    {
+      "dt": "2026-09-24T11:30:00",
+      "open": 13.02,
+      "close": 12.96,
+      "high": 13.05,
+      "low": 12.9,
+      "volume": 294000,
+      "amount": 3819369.0
+    }
+  ],
+  "tail_native_5m": [
+    {
+      "dt": "2026-09-24T13:05:00",
+      "open": 12.96,
+      "close": 13.0,
+      "high": 13.0,
+      "low": 12.95,
+      "volume": 44500,
+      "amount": 577186.0
+    },
+    {
+      "dt": "2026-09-24T13:10:00",
+      "open": 13.0,
+      "close": 13.03,
+      "high": 13.04,
+      "low": 12.98,
+      "volume": 65600,
+      "amount": 853810.0
+    },
+    {
+      "dt": "2026-09-24T13:15:00",
+      "open": 13.03,
+      "close": 13.0,
+      "high": 13.04,
+      "low": 13.0,
+      "volume": 53700,
+      "amount": 699350.0
+    },
+    {
+      "dt": "2026-09-24T13:20:00",
+      "open": 13.0,
+      "close": 12.97,
+      "high": 13.0,
+      "low": 12.97,
+      "volume": 16300,
+      "amount": 211487.0
+    },
+    {
+      "dt": "2026-09-24T13:25:00",
+      "open": 12.98,
+      "close": 13.0,
+      "high": 13.0,
+      "low": 12.97,
+      "volume": 27300,
+      "amount": 354620.0
+    },
+    {
+      "dt": "2026-09-24T13:30:00",
+      "open": 13.0,
+      "close": 13.04,
+      "high": 13.05,
+      "low": 13.0,
+      "volume": 21100,
+      "amount": 274712.0
+    }
+  ],
+  "source": "Public OHLCV observations for 605169.SH. Prices unchanged; the final 30-minute bar is aggregated from the six original 5-minute bars."
+}

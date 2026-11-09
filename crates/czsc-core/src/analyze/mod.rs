@@ -28,9 +28,9 @@ use crate::utils::common::{create_naive_pandas_timestamp, create_ordered_dict};
 #[cfg(feature = "python")]
 use pyo3::prelude::{PyAnyMethods, PyDictMethods};
 #[cfg(feature = "python")]
-use pyo3::types::{PyBytesMethods, PyDict};
+use pyo3::types::{PyBytes, PyBytesMethods, PyDict};
 #[cfg(feature = "python")]
-use pyo3::{Py, PyAny, PyErr, PyResult, Python};
+use pyo3::{Bound, Py, PyAny, PyErr, PyResult, Python};
 #[cfg(feature = "python")]
 use pyo3::{pyclass, pymethods};
 #[cfg(feature = "python")]
@@ -39,6 +39,7 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 #[cfg_attr(feature = "python", gen_stub_pyclass)]
 #[cfg_attr(feature = "python", pyclass(from_py_object, module = "czsc._native"))]
 #[derive(Debug, Clone, Builder, serde::Serialize, serde::Deserialize)]
+#[builder(build_fn(validate = "Self::validate"))]
 pub struct CZSC {
     // verbose: bool,
     /// 最大允许保留的笔数量
@@ -51,12 +52,38 @@ pub struct CZSC {
     pub bi_list: Vec<BI>,
     pub symbol: Symbol,
     pub freq: Freq,
+    /// State needed to undo only the latest input, including retention pruning.
+    #[builder(default, setter(skip))]
+    tail_update: TailUpdate,
     // get_signals
     // signals
     #[cfg(feature = "python")]
     #[serde(skip)]
     #[builder(default = "Arc::new(RwLock::new(None))")]
     pub cache: Arc<RwLock<Option<Py<PyDict>>>>,
+}
+
+/// A single-input undo record, not another analyzer or a raw-history replay log.
+/// Existing BIs are immutable: one update can append or remove only the last BI.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+struct TailUpdate {
+    bars_ubi: Vec<NewBar>,
+    bi_count: usize,
+    removed_bi: Option<BI>,
+    pruned_bis: Vec<BI>,
+    pruned_raw: Vec<RawBar>,
+}
+
+impl CZSCBuilder {
+    fn validate(&self) -> Result<(), String> {
+        if self.bars_raw.as_ref().is_some_and(|bars| !bars.is_empty())
+            || self.bars_ubi.as_ref().is_some_and(|bars| !bars.is_empty())
+            || self.bi_list.as_ref().is_some_and(|bis| !bis.is_empty())
+        {
+            return Err("use CZSC::new to analyze bars and retain tail revision state".into());
+        }
+        Ok(())
+    }
 }
 
 /// 解析"显式参数优先、否则环境变量、否则默认"的 usize 配置。
@@ -90,38 +117,6 @@ pub fn resolve_max_bi_num(explicit: usize) -> usize {
 }
 
 impl CZSC {
-    /// 对齐 Python 同 dt 延伸时的对象共享语义：
-    /// 仅同步“被 pop 出来的 last_ubi 对象”在已入笔结构中的镜像副本。
-    fn sync_extended_last_ubi_in_bis(&mut self, last_ubi: &NewBar, bar: &RawBar) {
-        #[inline]
-        fn patch_new_bar_if_same(nb: &mut NewBar, target: &NewBar, bar: &RawBar) {
-            if nb == target
-                && let Some(last) = nb.elements.last_mut()
-                && last.dt == bar.dt
-            {
-                *last = bar.clone();
-            }
-        }
-
-        #[inline]
-        fn patch_fx_if_same(fx: &mut FX, target: &NewBar, bar: &RawBar) {
-            for nb in &mut fx.elements {
-                patch_new_bar_if_same(nb, target, bar);
-            }
-        }
-
-        for bi in &mut self.bi_list {
-            for nb in &mut bi.bars {
-                patch_new_bar_if_same(nb, last_ubi, bar);
-            }
-            patch_fx_if_same(&mut bi.fx_a, last_ubi, bar);
-            patch_fx_if_same(&mut bi.fx_b, last_ubi, bar);
-            for fx in &mut bi.fxs {
-                patch_fx_if_same(fx, last_ubi, bar);
-            }
-        }
-    }
-
     pub fn new(bars_raw: Vec<RawBar>, max_bi_num: usize, min_bi_len: usize) -> Self {
         // todo check length of bars_raw
 
@@ -133,6 +128,7 @@ impl CZSC {
             bi_list: Vec::with_capacity(max_bi_num.min(bars_raw.len() / 10)), // 预估笔数量
             symbol: bars_raw[0].symbol.clone(),
             freq: bars_raw[0].freq,
+            tail_update: TailUpdate::default(),
             #[cfg(feature = "python")]
             cache: Arc::new(RwLock::new(None)),
         };
@@ -176,73 +172,76 @@ impl CZSC {
         self.bi_list.clone()
     }
 
-    /// 更新分析结果
+    /// 更新分析结果。同 dt 输入完整替换末根 K 线，结果等同于该版本只输入一次。
     ///
     /// :param bar: 单根K线对象
     pub fn update_bar(&mut self, bar: RawBar) {
-        // 更新K线序列
-        let last_bars = if self.bars_raw.is_empty() || bar.dt != self.bars_raw.last().unwrap().dt {
-            self.bars_raw.push(bar.clone());
-            vec![bar]
-        } else {
-            // 当前 bar 是上一根 bar 的时间延伸
-            *self.bars_raw.last_mut().unwrap() = bar.clone();
-            let last_ubi = self.bars_ubi.pop().unwrap();
-            self.sync_extended_last_ubi_in_bis(&last_ubi, &bar);
-            let mut last_bars = last_ubi.elements.to_vec();
-            assert_eq!(
-                bar.dt,
-                last_bars.last().unwrap().dt,
-                "时间错位: {} != {}",
-                bar.dt,
-                last_bars.last().unwrap().dt
-            );
-
-            *last_bars.last_mut().unwrap() = bar;
-            last_bars
+        if self.bars_raw.last().is_some_and(|last| last.dt == bar.dt) {
+            // Inclusion can retract an FX/BI even when the new high only equals
+            // an earlier high. Restore the exact pre-input state before analysis;
+            // neither patching nested RawBars nor replaying trimmed history does so.
+            let previous = std::mem::take(&mut self.tail_update);
+            self.bars_ubi = previous.bars_ubi;
+            self.bi_list.splice(0..0, previous.pruned_bis);
+            self.bi_list.truncate(previous.bi_count);
+            if let Some(bi) = previous.removed_bi {
+                self.bi_list.push(bi);
+            }
+            debug_assert_eq!(self.bi_list.len(), previous.bi_count);
+            self.bars_raw.pop();
+            self.bars_raw.splice(0..0, previous.pruned_raw);
+        }
+        // Drop the preceding input's record; no chain of historical states is kept.
+        self.tail_update = TailUpdate::default();
+        let mut tail_update = TailUpdate {
+            bars_ubi: self.bars_ubi.clone(),
+            bi_count: self.bi_list.len(),
+            removed_bi: None,
+            pruned_bis: Vec::new(),
+            pruned_raw: Vec::new(),
         };
+        self.bars_raw.push(bar.clone());
 
         // 去除包含关系
-        for bar in last_bars.iter() {
-            if self.bars_ubi.len() < 2 {
-                self.bars_ubi.push(NewBar::new_from_raw(bar));
+        if self.bars_ubi.len() < 2 {
+            self.bars_ubi.push(NewBar::new_from_raw(&bar));
+        } else {
+            let (has_include, k3) = {
+                let last = self.bars_ubi.len() - 1;
+                remove_include(&self.bars_ubi[last - 1], &self.bars_ubi[last], bar).unwrap()
+            };
+            if has_include {
+                *self.bars_ubi.last_mut().unwrap() = k3;
             } else {
-                let (has_include, k3) = {
-                    // 安全获取两个相邻元素的引用
-                    let idx = self.bars_ubi.len() - 2;
-                    let (_, last_two) = self.bars_ubi.split_at_mut(idx);
-                    let k1 = &last_two[0]; // 倒数第二个元素
-                    let k2 = &last_two[1]; // 最后一个元素
-                    remove_include(k1, k2, bar.clone()).unwrap()
-                };
-                if has_include {
-                    *self.bars_ubi.last_mut().unwrap() = k3;
-                } else {
-                    self.bars_ubi.push(k3);
-                }
+                self.bars_ubi.push(k3);
             }
         }
 
         // 更新笔
-        self.__update_bi();
+        let removed_bi = self.__update_bi();
+        if self.bi_list.len() < tail_update.bi_count {
+            tail_update.removed_bi = removed_bi;
+        }
         // 根据最大笔数量限制完成 bi_list, bars_raw 序列的数量控制
         if self.bi_list.len() > self.max_bi_num {
             let start_idx = self.bi_list.len() - self.max_bi_num;
-            self.bi_list.drain(0..start_idx);
+            tail_update.pruned_bis = self.bi_list.drain(0..start_idx).collect();
         }
 
         if !self.bi_list.is_empty() {
             let sdt = self.bi_list.first().unwrap().fx_a.elements[0].dt;
             // 对齐 Python: 取第一个 dt >= sdt 的位置（重复 dt 时必须取最左侧）
             let drain_to = self.bars_raw.partition_point(|bar| bar.dt < sdt);
-            self.bars_raw.drain(0..drain_to);
+            tail_update.pruned_raw = self.bars_raw.drain(0..drain_to).collect();
         }
+        self.tail_update = tail_update;
 
         // 如果有信号计算函数，则进行信号计算
         // todo self.get_signals
     }
 
-    fn __update_bi(&mut self) -> Option<()> {
+    /// Returns a removed tail BI so a same-dt revision can undo this input.
+    fn __update_bi(&mut self) -> Option<BI> {
         if self.bars_ubi.len() < 3 {
             return None;
         }
@@ -314,7 +313,7 @@ impl CZSC {
                 .collect();
 
             // 移除最后一个笔
-            self.bi_list.pop();
+            return self.bi_list.pop();
         }
         None
     }
@@ -724,21 +723,34 @@ impl CZSC {
         )
     }
 
-    /// Pickle 支持 —— `__reduce__` 返回 ``(CZSC, (fixed_point_bars, max_bi_num))``。
-    ///
-    /// `update_bar` 会丢弃 dt 小于当前 first-BI 起始时间的旧 bar
-    /// （参见上面的 `bars_raw.drain` 块），因此刚构造出来的 CZSC 的
-    /// `bars_raw` 可能仍然和「再分析一次后到达的不动点」不同。这里多
-    /// 跑一次 `CZSC::new`，让其在序列化前收敛 —— 保证即使 CzscSignals
-    /// 在 `kas[freq]` 里嵌套了 CZSC，`pickle.dumps(restored) ==
-    /// pickle.dumps(obj)` 也是逐字节相等的（Phase A 的
-    /// `restored.__getstate__() == obj.__getstate__()` 断言依赖这一点）。
+    /// Serialize exact Rust analysis state, including the pending tail revision.
+    fn __getstate__(&self, py: Python) -> PyResult<Py<PyBytes>> {
+        let bytes = serde_json::to_vec(self)
+            .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+        Ok(PyBytes::new(py, &bytes).unbind())
+    }
+
+    fn __setstate__(&mut self, state: &Bound<'_, PyBytes>) -> PyResult<()> {
+        let restored: Self = serde_json::from_slice(state.as_bytes())
+            .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+        if restored.bars_raw.is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "Python CZSC state requires non-empty bars_raw",
+            ));
+        }
+        *self = restored;
+        Ok(())
+    }
+
+    /// Pickle restores full state; retained RawBars alone cannot reconstruct it.
     fn __reduce__(&self, py: Python) -> PyResult<Py<PyAny>> {
         use pyo3::IntoPyObject;
-        let trimmed = CZSC::new(self.bars_raw.clone(), self.max_bi_num, self.min_bi_len);
-        let args = (trimmed.bars_raw, self.max_bi_num, self.min_bi_len).into_pyobject(py)?;
+        let last = self.bars_raw.last().ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("Python CZSC state requires non-empty bars_raw")
+        })?;
+        let args = (vec![last.clone()], self.max_bi_num, self.min_bi_len).into_pyobject(py)?;
         let constructor = py.get_type::<Self>();
-        let result = (constructor, args).into_pyobject(py)?;
+        let result = (constructor, args, self.__getstate__(py)?).into_pyobject(py)?;
         Ok(result.into())
     }
 }
