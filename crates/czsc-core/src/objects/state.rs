@@ -1,6 +1,15 @@
 use crate::analyze::CZSC;
 use crate::objects::position::Position;
 
+/// MACD values aligned to raw bar ids; computed and owned by the signal engine.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct MacdSeries {
+    pub ids: Vec<i32>,
+    pub dif: Vec<f64>,
+    pub dea: Vec<f64>,
+    pub macd: Vec<f64>,
+}
+
 /// 交易员状态接口
 ///
 /// 将 `CzscTrader` 的运行时状态抽象为 trait，允许 `czsc-signals` 中的 pos 系列
@@ -18,6 +27,8 @@ pub trait TraderState {
     fn get_position(&self, name: &str) -> Option<&Position>;
     /// 按频率查询 CZSC 解析器
     fn get_czsc(&self, freq: &str) -> Option<&CZSC>;
+    /// Read the frequency owner's prepared MACD values without recalculation.
+    fn get_macd(&self, freq: &str, cache_key: &str) -> Option<&MacdSeries>;
     /// 获取当前最新价格（通常为基础周期最新 close）
     fn latest_price(&self) -> Option<f64>;
 }

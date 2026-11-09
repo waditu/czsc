@@ -1,32 +1,44 @@
 use crate::params::ParamView;
-use crate::types::TaCache;
 use crate::utils::sig::{get_str_param, get_sub_elements, make_signal, make_signal_v1};
-use crate::utils::ta::update_macd_cache;
 use czsc_core::objects::bar::RawBar;
 use czsc_core::objects::signal::Signal;
-use czsc_core::objects::state::TraderState;
+use czsc_core::objects::state::{MacdSeries, TraderState};
 use czsc_signal_macros::signal;
+use serde_json::Value;
 use std::collections::HashMap;
 
-fn macd_map(cache: &TaCache, cache_key: &str) -> HashMap<i32, f64> {
+fn macd_frequencies<'a>(params: &'a ParamView) -> (&'a str, &'a str) {
+    (
+        get_str_param(params, "freq1", "5分钟"),
+        get_str_param(params, "freq2", "1分钟"),
+    )
+}
+
+/// Frequencies whose shared MACD cache must be prepared for this signal family.
+pub fn required_macd_frequencies(name: &str, params: &HashMap<String, Value>) -> Vec<String> {
+    if !matches!(name, "cat_macd_V230518" | "cat_macd_V230520") {
+        return Vec::new();
+    }
+    let view = ParamView::new(params);
+    let (first, second) = macd_frequencies(&view);
+    vec![first.to_string(), second.to_string()]
+}
+
+fn macd_map(series: &MacdSeries) -> HashMap<i32, f64> {
     let mut out = HashMap::new();
-    if let Some(series) = cache.macd.get(cache_key) {
-        for (i, id) in series.ids.iter().enumerate() {
-            if let Some(v) = series.macd.get(i) {
-                out.insert(*id, *v);
-            }
+    for (i, id) in series.ids.iter().enumerate() {
+        if let Some(v) = series.macd.get(i) {
+            out.insert(*id, *v);
         }
     }
     out
 }
 
-fn dea_map(cache: &TaCache, cache_key: &str) -> HashMap<i32, f64> {
+fn dea_map(series: &MacdSeries) -> HashMap<i32, f64> {
     let mut out = HashMap::new();
-    if let Some(series) = cache.macd.get(cache_key) {
-        for (i, id) in series.ids.iter().enumerate() {
-            if let Some(v) = series.dea.get(i) {
-                out.insert(*id, *v);
-            }
+    for (i, id) in series.ids.iter().enumerate() {
+        if let Some(v) = series.dea.get(i) {
+            out.insert(*id, *v);
         }
     }
     out
@@ -81,8 +93,7 @@ fn cross_down_bars<'a>(bars: &[&'a RawBar], macd: &HashMap<i32, f64>) -> Vec<&'a
     param_kind = "CatMacdV230518"
 )]
 pub fn cat_macd_v230518(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal> {
-    let freq1 = get_str_param(params, "freq1", "5分钟");
-    let freq2 = get_str_param(params, "freq2", "1分钟");
+    let (freq1, freq2) = macd_frequencies(params);
 
     let k1 = format!("{}#{}", freq1, freq2);
     let k2 = "MACD交叉";
@@ -99,12 +110,14 @@ pub fn cat_macd_v230518(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
     }
 
     let cache_key = "MACD12#26#9";
-    let mut c1_cache = TaCache::new();
-    let mut c2_cache = TaCache::new();
-    update_macd_cache(c1, cache_key, 12, 26, 9, &mut c1_cache);
-    update_macd_cache(c2, cache_key, 12, 26, 9, &mut c2_cache);
-    let c1_macd_map = macd_map(&c1_cache, cache_key);
-    let c2_macd_map = macd_map(&c2_cache, cache_key);
+    let (Some(c1_macd), Some(c2_macd)) = (
+        cat.get_macd(freq1, cache_key),
+        cat.get_macd(freq2, cache_key),
+    ) else {
+        return make_signal_v1(&k1, k2, k3, "其他");
+    };
+    let c1_macd_map = macd_map(c1_macd);
+    let c2_macd_map = macd_map(c2_macd);
 
     let c1_bars: Vec<&RawBar> = get_sub_elements(&c1.bars_raw, 1, 8).iter().collect();
     let c2_bars: Vec<&RawBar> = get_sub_elements(&c2.bars_raw, 1, 50).iter().collect();
@@ -186,8 +199,7 @@ pub fn cat_macd_v230518(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
     param_kind = "CatMacdV230520"
 )]
 pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal> {
-    let freq1 = get_str_param(params, "freq1", "5分钟");
-    let freq2 = get_str_param(params, "freq2", "1分钟");
+    let (freq1, freq2) = macd_frequencies(params);
 
     let k1 = format!("{}#{}", freq1, freq2);
     let k2 = "MACD交叉";
@@ -204,13 +216,15 @@ pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
     }
 
     let cache_key = "MACD12#26#9";
-    let mut c1_cache = TaCache::new();
-    let mut c2_cache = TaCache::new();
-    update_macd_cache(c1, cache_key, 12, 26, 9, &mut c1_cache);
-    update_macd_cache(c2, cache_key, 12, 26, 9, &mut c2_cache);
-    let c1_macd_map = macd_map(&c1_cache, cache_key);
-    let c2_macd_map = macd_map(&c2_cache, cache_key);
-    let c2_dea_map = dea_map(&c2_cache, cache_key);
+    let (Some(c1_macd), Some(c2_macd)) = (
+        cat.get_macd(freq1, cache_key),
+        cat.get_macd(freq2, cache_key),
+    ) else {
+        return make_signal_v1(&k1, k2, k3, "其他");
+    };
+    let c1_macd_map = macd_map(c1_macd);
+    let c2_macd_map = macd_map(c2_macd);
+    let c2_dea_map = dea_map(c2_macd);
 
     let c1_bars: Vec<&RawBar> = get_sub_elements(&c1.bars_raw, 1, 8).iter().collect();
     let c2_bars: Vec<&RawBar> = get_sub_elements(&c2.bars_raw, 1, 50).iter().collect();
@@ -230,16 +244,14 @@ pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
     let up3 = c1_macd[li - 2] < c1_macd[li - 1] && c1_macd[li - 1] < c1_macd[li];
     let down3 = c1_macd[li - 2] > c1_macd[li - 1] && c1_macd[li - 1] > c1_macd[li];
 
-    if up3
-        && c1_macd
-            .iter()
-            .copied()
-            .fold(f64::INFINITY, f64::min)
-            < 0.0
-    {
+    if up3 && c1_macd.iter().copied().fold(f64::INFINITY, f64::min) < 0.0 {
         let min_bar = c1_bars
             .iter()
-            .min_by(|a, b| a.low.partial_cmp(&b.low).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|a, b| {
+                a.low
+                    .partial_cmp(&b.low)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .copied();
         if let Some(min_bar) = min_bar {
             let c2_after: Vec<&RawBar> = c2_bars
@@ -266,7 +278,11 @@ pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
                         && min_macd.abs() > max_macd.abs() * 0.3
                     {
                         let dea = *c2_dea_map.get(&c2_gold[0].id).unwrap_or(&0.0);
-                        let v2 = if dea > 0.0 { "零轴上方" } else { "零轴下方" };
+                        let v2 = if dea > 0.0 {
+                            "零轴上方"
+                        } else {
+                            "零轴下方"
+                        };
                         return make_signal(&k1, k2, k3, "看多", v2);
                     }
                 }
@@ -274,16 +290,14 @@ pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
         }
     }
 
-    if down3
-        && c1_macd
-            .iter()
-            .copied()
-            .fold(f64::NEG_INFINITY, f64::max)
-            > 0.0
-    {
+    if down3 && c1_macd.iter().copied().fold(f64::NEG_INFINITY, f64::max) > 0.0 {
         let max_bar = c1_bars
             .iter()
-            .max_by(|a, b| a.high.partial_cmp(&b.high).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| {
+                a.high
+                    .partial_cmp(&b.high)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .copied();
         if let Some(max_bar) = max_bar {
             let c2_after: Vec<&RawBar> = c2_bars
@@ -310,7 +324,11 @@ pub fn cat_macd_v230520(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal
                         && max_macd.abs() > min_macd.abs() * 0.3
                     {
                         let dea = *c2_dea_map.get(&c2_dead[0].id).unwrap_or(&0.0);
-                        let v2 = if dea > 0.0 { "零轴上方" } else { "零轴下方" };
+                        let v2 = if dea > 0.0 {
+                            "零轴上方"
+                        } else {
+                            "零轴下方"
+                        };
                         return make_signal(&k1, k2, k3, "看空", v2);
                     }
                 }

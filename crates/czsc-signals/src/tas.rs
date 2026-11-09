@@ -23,7 +23,7 @@ use std::collections::HashMap;
 #[allow(clippy::too_many_arguments)]
 fn snapshot_dif_values_from_raw_bars(
     czsc: &CZSC,
-    mc: &crate::types::MacdSeries,
+    mc: &czsc_core::objects::state::MacdSeries,
     id_to_idx: &HashMap<i32, usize>,
     raw_bars: &[RawBar],
     short: usize,
@@ -53,7 +53,7 @@ fn snapshot_dif_values_from_raw_bars(
 #[allow(clippy::too_many_arguments)]
 fn snapshot_dif_values_from_fx(
     czsc: &CZSC,
-    mc: &crate::types::MacdSeries,
+    mc: &czsc_core::objects::state::MacdSeries,
     id_to_idx: &HashMap<i32, usize>,
     fx: &czsc_core::objects::fx::FX,
     short: usize,

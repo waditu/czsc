@@ -18,6 +18,21 @@
 权重回测（`WeightBacktest`）按 czsc 设计文档由外部 [`wbt`](https://pypi.org/project/wbt/)
 crate 提供，`czsc-trader` 只负责生成信号与持仓权重序列。
 
+## 联合信号的指标状态
+
+`cat_macd_V230518` / `cat_macd_V230520` 读取 `CzscSignals.ta_cache` 中各周期的
+`MACD12#26#9`，与单周期信号共用预热和增量状态。只配置联合信号时也由该 owner
+准备缓存；同一 owner 计算轮内，同 key 的多个单周期/联合信号只刷新一次，避免长预热
+首轮先全量初始化、后重复增量更新造成同公式数值分叉。轮结束即清除标记，独立调用
+`update_macd_cache` 仍逐次处理输入。`CzscTrader` 和 compiled runtime
+采用同一规则。联合信号的周期发现复用 `get_signals_freqs`，包含两个 MACD 联合信号
+及 `cxt_zhong_shu_gong_zhen_V221221` 自身声明的缺省周期。
+
+Rust 自定义 `TraderState` 实现必须通过 `get_macd` 提供频率 owner 的缓存引用。
+`MacdSeries` 的唯一类型定义为 `czsc_core::objects::state::MacdSeries`；旧的
+`czsc_signals::types::MacdSeries` 路径已删除。Python 公共 API 不暴露该内部缓存类型。
+`dump_state` / `restore_state` 保留增量缓存；Python `pickle` 仍按已有合同重建 fresh trader。
+
 ## 用法
 
 ```toml

@@ -11,6 +11,14 @@ fn is_valid_zs(bis: &[czsc_core::objects::bi::BI]) -> bool {
     bis.len() >= 3 && ZS::new(bis.to_vec()).zg > ZS::new(bis.to_vec()).zd
 }
 
+/// The resonance signal and its BG dependency discovery share these defaults.
+pub fn zhong_shu_gong_zhen_frequencies<'a>(params: &'a ParamView) -> (&'a str, &'a str) {
+    (
+        get_str_param(params, "freq1", "日线"),
+        get_str_param(params, "freq2", "60分钟"),
+    )
+}
+
 /// cxt_zhong_shu_gong_zhen_V221221：大小级别中枢共振
 ///
 /// 参数模板：`"{freq1}_{freq2}_中枢共振V221221"`
@@ -27,8 +35,7 @@ fn is_valid_zs(bis: &[czsc_core::objects::bi::BI]) -> bool {
     param_kind = "CxtZhongShuGongZhenV221221"
 )]
 pub fn cxt_zhong_shu_gong_zhen_v221221(cat: &dyn TraderState, params: &ParamView) -> Vec<Signal> {
-    let freq1 = get_str_param(params, "freq1", "日线");
-    let freq2 = get_str_param(params, "freq2", "60分钟");
+    let (freq1, freq2) = zhong_shu_gong_zhen_frequencies(params);
     let k1 = freq1.to_string();
     let k2 = freq2.to_string();
     let k3 = "中枢共振V221221";
@@ -144,7 +151,10 @@ pub fn cxt_intraday_v230701(cat: &dyn TraderState, params: &ParamView) -> Vec<Si
     }
 
     let high_first = bars[0].high.max(bars[1].high).max(bars[2].high)
-        == bars.iter().map(|x| x.high).fold(f64::NEG_INFINITY, f64::max);
+        == bars
+            .iter()
+            .map(|x| x.high)
+            .fold(f64::NEG_INFINITY, f64::max);
     let low_first = bars[0].low.min(bars[1].low).min(bars[2].low)
         == bars.iter().map(|x| x.low).fold(f64::INFINITY, f64::min);
     let v1 = if high_first && !low_first {

@@ -4,7 +4,7 @@
 
 use czsc_core::analyze::CZSC;
 use czsc_core::objects::position::Position;
-use czsc_core::objects::state::TraderState;
+use czsc_core::objects::state::{MacdSeries, TraderState};
 
 struct StubTrader;
 
@@ -13,6 +13,9 @@ impl TraderState for StubTrader {
         None
     }
     fn get_czsc(&self, _freq: &str) -> Option<&CZSC> {
+        None
+    }
+    fn get_macd(&self, _freq: &str, _cache_key: &str) -> Option<&MacdSeries> {
         None
     }
     fn latest_price(&self) -> Option<f64> {

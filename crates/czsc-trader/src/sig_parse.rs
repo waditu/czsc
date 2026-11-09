@@ -375,6 +375,17 @@ pub fn get_signals_freqs(signals_config: &[SignalConfig]) -> Vec<String> {
         if let Some(f) = &cfg.freq {
             freqs.insert(f.clone());
         }
+        freqs.extend(czsc_signals::cat::required_macd_frequencies(
+            &cfg.name,
+            &cfg.params,
+        ));
+        if cfg.name == "cxt_zhong_shu_gong_zhen_V221221" {
+            let params = czsc_signals::params::ParamView::new(&cfg.params);
+            let (first, second) =
+                czsc_signals::cxt_trader::zhong_shu_gong_zhen_frequencies(&params);
+            freqs.insert(first.to_string());
+            freqs.insert(second.to_string());
+        }
         for (k, v) in &cfg.params {
             if !k.starts_with("freq") {
                 continue;

@@ -13,7 +13,7 @@ use czsc_signals::types::TraderSignalFn;
 use czsc_utils::bar_generator::BarGenerator;
 use czsc_utils::freq_data::infer_market_from_bars;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -53,10 +53,19 @@ struct CompiledTraderSignalOp {
 struct RuntimeTraderState<'a> {
     positions: &'a [Position],
     kas: &'a std::collections::BTreeMap<String, CZSC>,
+    ta_cache: &'a HashMap<String, czsc_signals::types::TaCache>,
     latest_price: Option<f64>,
 }
 
 impl TraderState for RuntimeTraderState<'_> {
+    fn get_macd(
+        &self,
+        freq: &str,
+        cache_key: &str,
+    ) -> Option<&czsc_core::objects::state::MacdSeries> {
+        self.ta_cache.get(freq)?.macd.get(cache_key)
+    }
+
     #[inline]
     fn get_position(&self, name: &str) -> Option<&Position> {
         self.positions.iter().find(|p| p.name == name)
@@ -182,6 +191,7 @@ impl UnifiedExecEngine {
                 let state = RuntimeTraderState {
                     positions: &positions,
                     kas: &signals.kas,
+                    ta_cache: &signals.ta_cache,
                     latest_price,
                 };
                 for op in &trader_ops {
@@ -220,6 +230,7 @@ impl UnifiedExecEngine {
                 let state = RuntimeTraderState {
                     positions: &positions,
                     kas: &signals.kas,
+                    ta_cache: &signals.ta_cache,
                     latest_price,
                 };
                 for op in &trader_ops {
@@ -282,33 +293,11 @@ fn collect_freqs(
     base_freq: Freq,
     signals_config: &[crate::sig_parse::SignalConfig],
 ) -> Result<Vec<Freq>, String> {
-    let push_freq = |freq_str: &str, freq_set: &mut HashSet<Freq>| {
-        if let Ok(f) = freq_str.parse::<Freq>()
-            && f != base_freq
-        {
-            freq_set.insert(f);
-        }
-    };
-
-    let mut freq_set: HashSet<Freq> = HashSet::new();
-    for sc in signals_config {
-        if let Some(freq_str) = &sc.freq {
-            push_freq(freq_str, &mut freq_set);
-        }
-        // 兼容 trader 级信号通过 params 传入多周期字段（freq/freq1/freq2/...）
-        for (k, v) in &sc.params {
-            if !k.starts_with("freq") {
-                continue;
-            }
-            if let Some(freq_str) = v.as_str() {
-                push_freq(freq_str, &mut freq_set);
-            }
-        }
-    }
-
-    let mut freqs: Vec<Freq> = freq_set.into_iter().collect();
-    freqs.sort();
-    Ok(freqs)
+    Ok(crate::sig_parse::get_signals_freqs(signals_config)
+        .into_iter()
+        .filter_map(|freq| freq.parse::<Freq>().ok())
+        .filter(|freq| *freq != base_freq)
+        .collect())
 }
 
 fn parse_market(market: Option<&str>) -> Market {
@@ -365,6 +354,22 @@ mod tests {
     use czsc_core::objects::{bar::RawBarBuilder, freq::Freq, market::Market};
     use serde_json::json;
     use std::collections::HashMap;
+
+    #[test]
+    fn test_collect_freqs_includes_joint_signal_defaults() {
+        for (name, expected) in [
+            ("cat_macd_V230518", vec![Freq::F5]),
+            ("cat_macd_V230520", vec![Freq::F5]),
+            ("cxt_zhong_shu_gong_zhen_V221221", vec![Freq::F60, Freq::D]),
+        ] {
+            let configs = vec![SignalConfig {
+                name: name.to_string(),
+                freq: None,
+                params: HashMap::new(),
+            }];
+            assert_eq!(collect_freqs(Freq::F1, &configs).unwrap(), expected);
+        }
+    }
 
     #[test]
     fn test_collect_freqs_includes_trader_freq_params() {
